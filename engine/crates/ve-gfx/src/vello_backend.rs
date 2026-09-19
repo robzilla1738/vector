@@ -617,6 +617,7 @@ impl VelloRenderer {
         width: u32,
         height: u32,
         scale: f32,
+        images: Option<&ImageCache>,
     ) -> Result<(), GfxError> {
         if width == 0 || height == 0 {
             return Err(GfxError::Gpu("zero-sized frame".into()));
@@ -626,7 +627,7 @@ impl VelloRenderer {
             self.cached_scene = Some(build_scene_fonts(
                 &list,
                 if scale > 0.0 { scale } else { 1.0 },
-                None,
+                images,
                 Some(&mut self.fonts),
             ));
             let _ = compositor.take_damage();
@@ -877,6 +878,40 @@ mod tests {
             return;
         };
         gpu.present_list_with(&list, 16, 16, 1.0, Some(&cache))
+            .expect("present");
+        let frame = gpu.readback_present_target().expect("readback");
+        let px = frame.pixel(2, 2).expect("pixel");
+        assert!(
+            px[1] > 200 && px[0] < 40 && px[2] < 40,
+            "expected green image pixels, not magenta placeholder, got {px:?}"
+        );
+    }
+
+    #[test]
+    fn present_composited_paints_cached_image_not_magenta() {
+        let mut cache = crate::ImageCache::new();
+        let handle = cache.insert(crate::DecodedImage::solid(8, 8, [0, 255, 0, 255]));
+        let mut list = DisplayList::new(Size::new(16.0, 16.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 16.0, 16.0),
+            color: ve_style::Rgba::WHITE,
+        });
+        list.push(DisplayItem::Image {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            handle,
+            src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
+            fixed: false,
+            pixelated: false,
+        });
+        let mut compositor = crate::Compositor::new();
+        compositor.add_layer(Rect::new(0.0, 0.0, 16.0, 16.0), list);
+        let Ok((mut gpu, _)) = VelloRenderer::headless() else {
+            return;
+        };
+        gpu.present_composited(&mut compositor, 16, 16, 1.0, Some(&cache))
             .expect("present");
         let frame = gpu.readback_present_target().expect("readback");
         let px = frame.pixel(2, 2).expect("pixel");

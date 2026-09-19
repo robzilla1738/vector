@@ -43,7 +43,7 @@ use crate::page::Page;
 /// between the prelude and [`HostApi::call`].
 pub const HOST_FUNCTIONS: &[&str] = &[
     "log",        // 0: log(level, message)
-    "setTimer",   // 1: setTimer(id, delayMs, repeat)
+    "setTimer",   // 1: setTimer(delayMs, repeat, fn, args) → id
     "clearTimer", // 2: clearTimer(id)
     "now",        // 3: now() → virtual ms
     "dom",          // 4: dom(op, ...args) — plan A14
@@ -79,15 +79,9 @@ const CONSOLE_CAP: usize = 200;
 
 /// JavaScript prelude: Web API shapes over the host primitives.
 pub const PRELUDE: &str = r#"(() => {
-  const timers = new Map();
-  let nextId = 1;
-  const arm = (fn, ms, repeat, args) => {
-    const id = nextId++;
-    timers.set(id, { fn, args, repeat });
-    __ve.setTimer(id, Math.max(0, Number(ms) || 0), repeat);
-    return id;
-  };
-  const disarm = (id) => { if (timers.delete(id)) __ve.clearTimer(id); };
+  const arm = (fn, ms, repeat, args) =>
+    __ve.setTimer(Math.max(0, Number(ms) || 0), repeat, fn, args);
+  const disarm = (id) => { if (id !== undefined && id !== null) __ve.clearTimer(id); };
   globalThis.setTimeout = function setTimeout(fn) {
     const ms = arguments.length > 1 ? arguments[1] : 0;
     const args = Array.prototype.slice.call(arguments, 2);
@@ -106,26 +100,13 @@ pub const PRELUDE: &str = r#"(() => {
   };
   globalThis.queueMicrotask = function queueMicrotask(fn) { Promise.resolve().then(fn); };
   globalThis.requestAnimationFrame = function requestAnimationFrame(fn) {
-    const id = nextId++;
-    timers.set(id, { fn: () => fn(__ve.now()), args: [], repeat: false, raf: true });
-    __ve.setTimer(id, 0, false);
-    return id;
+    return arm(function () { fn(__ve.now()); }, 0, false, []);
   };
   globalThis.cancelAnimationFrame = function cancelAnimationFrame(id) { disarm(id); };
-  globalThis.requestIdleCallback = (fn) => arm(() => fn({ didTimeout: false, timeRemaining: () => 50 }), 1, false, []);
+  globalThis.requestIdleCallback = (fn) => arm(function () {
+    fn({ didTimeout: false, timeRemaining: () => 50 });
+  }, 1, false, []);
   globalThis.cancelIdleCallback = disarm;
-  globalThis.__veFireTimer = (id) => {
-    const t = timers.get(id);
-    if (!t) return false;
-    if (!t.repeat) timers.delete(id);
-    try {
-      if (typeof t.fn === "function") t.fn(...t.args);
-      else (0, eval)(String(t.fn));
-    } catch (e) {
-      __ve.log("error", "Uncaught (in timer) " + (e && e.stack || e));
-    }
-    return t.repeat;
-  };
   const show = (v) => {
     if (typeof v === "string") return v;
     if (v instanceof Error) return v.stack || String(v);
@@ -299,6 +280,9 @@ impl Scripting {
         self.scripts_run = 0;
         self.script_errors = 0;
         self.event_loop = ve_script::EventLoop::new();
+        if let Some(vm) = self.vm.as_mut() {
+            vm.clear_timer_callbacks();
+        }
     }
 }
 
@@ -330,15 +314,15 @@ impl HostApi for PageHost<'_> {
                 Ok(JsValue::Undefined)
             }
             Some("setTimer") => {
-                let id = arg_num(0) as u64;
-                let delay = arg_num(1).max(0.0) as u64;
-                let repeat = args.get(2).is_some_and(JsValue::is_truthy);
+                let delay = arg_num(0).max(0.0) as u64;
+                let repeat = args.get(1).is_some_and(JsValue::is_truthy);
                 let now = self.page.virtual_time_ms();
-                self.page
+                let id = self
+                    .page
                     .scripting_mut()
                     .event_loop
-                    .arm_js_timer(id, now, delay, repeat);
-                Ok(JsValue::Undefined)
+                    .arm_js_timer(now, delay, repeat);
+                Ok(JsValue::Number(id as f64))
             }
             Some("clearTimer") => {
                 let id = arg_num(0) as u64;
@@ -495,6 +479,27 @@ impl Page {
         let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
         if let Some(s) = self.scripting.as_mut() {
             s.vm = Some(vm);
+        }
+    }
+
+    /// Fires a timer callback stored on the VM (H1-A3: no prelude Map).
+    fn fire_timer_callback(&mut self, id: u64) -> Result<JsValue> {
+        let Some(mut vm) = self.scripting.as_mut().and_then(|s| s.vm.take()) else {
+            return Err(Error::capability_unsupported(
+                "scripting is not enabled on this page",
+            ));
+        };
+        let result = vm.fire_timer_callback(&mut PageHost { page: self }, id);
+        let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
+        if let Some(s) = self.scripting.as_mut() {
+            s.vm = Some(vm);
+        }
+        result.map_err(Error::from)
+    }
+
+    fn drop_timer_callback(&mut self, id: u64) {
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.drop_timer_callback(id);
         }
     }
 
@@ -726,6 +731,7 @@ impl Page {
                 raf_fired += 1;
                 if raf_fired > ve_script::EventLoop::MAX_RAF_DRAIN {
                     self.scripting_mut().event_loop.drop_js_timer(timer.id);
+                    self.drop_timer_callback(timer.id);
                     continue;
                 }
             }
@@ -745,8 +751,21 @@ impl Page {
                 }
             }
             fired += 1;
-            if let Err(e) = self.call_script("__veFireTimer", &[JsValue::Number(timer.id as f64)]) {
+            if let Err(e) = self.fire_timer_callback(timer.id) {
                 tracing::debug!(error = %e, "timer callback failed");
+                let scripting = self.scripting_mut();
+                if scripting.console.len() >= CONSOLE_CAP {
+                    scripting.console.remove(0);
+                }
+                let at_ms = self.virtual_time_ms();
+                self.scripting_mut().console.push(ConsoleLine {
+                    level: "error".into(),
+                    message: format!("Uncaught (in timer) {e}"),
+                    at_ms,
+                });
+            }
+            if timer.repeat_ms.is_none() {
+                self.drop_timer_callback(timer.id);
             }
             if self.script_readiness().2 {
                 self.drain_js_jobs();
@@ -768,5 +787,26 @@ impl Page {
             later,
             s.vm.as_ref().is_some_and(|vm| vm.has_pending_jobs()),
         )
+    }
+}
+
+#[cfg(test)]
+mod h1_a3_tests {
+    use super::PRELUDE;
+
+    #[test]
+    fn prelude_does_not_keep_a_timers_map() {
+        assert!(
+            !PRELUDE.contains("const timers = new Map"),
+            "H1-A3 retires the prelude timers Map"
+        );
+        assert!(
+            !PRELUDE.contains("__veFireTimer"),
+            "timer fire is host-owned, not a prelude callback table"
+        );
+        assert!(
+            PRELUDE.contains("__ve.setTimer"),
+            "setTimeout must still arm EventLoop via the host"
+        );
     }
 }

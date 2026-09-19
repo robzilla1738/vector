@@ -17,6 +17,7 @@
 #![allow(unsafe_code)]
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -178,6 +179,20 @@ fn start_shared_watchdog() {
 /// `eval_with_host`/`call_with_host` frame is alive.
 struct CurrentHost(*mut dyn HostApi);
 
+/// Host function names in registration order (trampoline looks up by index).
+struct HostFnNames(Vec<String>);
+
+/// JS timer callbacks persisted on the isolate (H1-A3).
+#[derive(Default)]
+struct TimerPins {
+    slots: RefCell<HashMap<u64, TimerPin>>,
+}
+
+struct TimerPin {
+    func: v8::Global<v8::Value>,
+    args: v8::Global<v8::Value>,
+}
+
 /// V8 virtual machine.
 pub struct V8Vm {
     /// Dropped before [`Self::isolate`] (`rusty_v8` globals must not outlive it).
@@ -230,6 +245,8 @@ impl V8Vm {
         }
         let mut isolate = v8::Isolate::new(params);
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        isolate.set_slot(TimerPins::default());
+        isolate.set_slot(HostFnNames(Vec::new()));
         let context = {
             v8::scope!(let scope, &mut isolate);
             let context = v8::Context::new(scope, v8::ContextOptions::default());
@@ -456,9 +473,22 @@ fn host_trampoline(
     // only invokes callbacks while a script is running inside that frame.
     let host: &mut dyn HostApi = unsafe { &mut *ptr };
     let index = usize::try_from(index).unwrap_or(usize::MAX);
+    let host_name = scope
+        .get_slot::<HostFnNames>()
+        .and_then(|names| names.0.get(index).cloned());
+    if host_name.as_deref() == Some("clearTimer") {
+        if let Some(id) = converted.first().and_then(JsValue::as_f64) {
+            drop_timer_pin(scope, id as u64);
+        }
+    }
     let result = catch_unwind(AssertUnwindSafe(|| host.call(index, &converted)));
     match result {
         Ok(Ok(value)) => {
+            if host_name.as_deref() == Some("setTimer") {
+                if let JsValue::Number(id) = &value {
+                    pin_timer_callback(scope, *id as u64, args.get(2), args.get(3));
+                }
+            }
             let v = from_js_value(scope, &value);
             rv.set(v);
         }
@@ -521,6 +551,7 @@ impl JsVm for V8Vm {
             Some(())
         });
         self.host_names.extend(owned);
+        self.isolate.set_slot(HostFnNames(self.host_names.clone()));
         result
     }
 
@@ -602,6 +633,26 @@ impl JsVm for V8Vm {
         }
         self.parked = false;
     }
+
+    fn fire_timer_callback(
+        &mut self,
+        host: &mut dyn HostApi,
+        id: u64,
+    ) -> Result<JsValue, ScriptError> {
+        self.with_host(Some(host), |vm| vm.fire_timer_inner(id))
+    }
+
+    fn drop_timer_callback(&mut self, id: u64) {
+        if let Some(pins) = self.isolate.get_slot::<TimerPins>() {
+            pins.slots.borrow_mut().remove(&id);
+        }
+    }
+
+    fn clear_timer_callbacks(&mut self) {
+        if let Some(pins) = self.isolate.get_slot::<TimerPins>() {
+            pins.slots.borrow_mut().clear();
+        }
+    }
 }
 
 impl V8Vm {
@@ -682,6 +733,68 @@ impl V8Vm {
             let value = func.call(scope, recv, &argv)?;
             Some(to_js_value(scope, value))
         })
+    }
+
+    fn fire_timer_inner(&mut self, id: u64) -> Result<JsValue, ScriptError> {
+        self.run(|scope| {
+            let (func_g, args_g) = {
+                let pins = scope.get_slot::<TimerPins>()?;
+                let slots = pins.slots.borrow();
+                let pin = slots.get(&id)?;
+                (pin.func.clone(), pin.args.clone())
+            };
+            let func = v8::Local::new(scope, &func_g);
+            let args_val = v8::Local::new(scope, &args_g);
+            if let Ok(js_fn) = v8::Local::<v8::Function>::try_from(func) {
+                let recv = v8::undefined(scope).into();
+                let argv = array_locals(scope, args_val);
+                let value = js_fn.call(scope, recv, &argv)?;
+                return Some(to_js_value(scope, value));
+            }
+            let src = func.to_rust_string_lossy(scope);
+            let code = v8::String::new(scope, &src)?;
+            let script = v8::Script::compile(scope, code, None)?;
+            let value = script.run(scope)?;
+            Some(to_js_value(scope, value))
+        })
+    }
+}
+
+fn array_locals<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    value: v8::Local<'s, v8::Value>,
+) -> Vec<v8::Local<'s, v8::Value>> {
+    let Ok(arr) = v8::Local::<v8::Array>::try_from(value) else {
+        return Vec::new();
+    };
+    let mut out = Vec::with_capacity(arr.length() as usize);
+    for i in 0..arr.length() {
+        let key = v8::Integer::new(scope, i as i32);
+        if let Some(item) = arr.get(scope, key.into()) {
+            out.push(item);
+        }
+    }
+    out
+}
+
+fn pin_timer_callback(
+    scope: &mut v8::PinScope<'_, '_>,
+    id: u64,
+    func: v8::Local<'_, v8::Value>,
+    args: v8::Local<'_, v8::Value>,
+) {
+    let pin = TimerPin {
+        func: v8::Global::new(scope, func),
+        args: v8::Global::new(scope, args),
+    };
+    if let Some(pins) = scope.get_slot::<TimerPins>() {
+        pins.slots.borrow_mut().insert(id, pin);
+    }
+}
+
+fn drop_timer_pin(scope: &mut v8::PinScope<'_, '_>, id: u64) {
+    if let Some(pins) = scope.get_slot::<TimerPins>() {
+        pins.slots.borrow_mut().remove(&id);
     }
 }
 

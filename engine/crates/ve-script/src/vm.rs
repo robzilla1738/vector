@@ -257,6 +257,24 @@ pub trait JsVm {
 
     /// Re-enter a parked isolate before evaluating worker scripts.
     fn unpark(&mut self) {}
+
+    /// Invokes a timer callback persisted by `setTimer` (H1-A3).
+    fn fire_timer_callback(
+        &mut self,
+        host: &mut dyn HostApi,
+        id: u64,
+    ) -> Result<JsValue, ScriptError> {
+        let _ = (host, id);
+        Err(ScriptError::Unsupported("timer callbacks".into()))
+    }
+
+    /// Drops one persisted timer callback.
+    fn drop_timer_callback(&mut self, id: u64) {
+        let _ = id;
+    }
+
+    /// Drops every persisted timer callback (document reset).
+    fn clear_timer_callbacks(&mut self) {}
 }
 
 /// The backend used when no real VM is compiled in.

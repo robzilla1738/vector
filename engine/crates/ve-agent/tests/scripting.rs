@@ -98,6 +98,23 @@ fn document_scripts_run_in_order_and_timers_fire_inside_settle() {
 }
 
 #[test]
+fn event_loop_fires_string_timeouts_and_extra_args() {
+    let mut page = open("<p>t</p>", true);
+    let _ = page.evaluate(
+        r##"(function () {
+          window.__hits = [];
+          setTimeout(function (a, b) { window.__hits.push(a + b); }, 10, 'x', 'y');
+          setTimeout("window.__hits.push('str')", 20);
+          const id = setTimeout(function () { window.__hits.push('nope'); }, 30);
+          clearTimeout(id);
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    let hits = page.evaluate("window.__hits.join(',')").unwrap();
+    assert_eq!(hits, serde_json::json!("xy,str"), "{hits}");
+}
+
+#[test]
 fn evaluate_step_returns_json_and_is_capability_gated() {
     let mut page = open(
         "<script>globalThis.data = {n: 2, s: 'x', arr: [1, 2]}</script>",
