@@ -33,8 +33,20 @@ const obs = (over: { elements?: number; text?: string } = {}): Observation => ({
   },
 });
 
+const WRITE_LIKE = new Set([
+  "click", "dblclick", "fill", "type", "press", "select", "check", "uncheck",
+  "navigate", "submit", "hover", "scroll", "dragTo", "clickPoint", "reload",
+]);
+
 const doneOutcome = (stepId: string, op: string): StepOutcome => ({
-  stepId, op, status: "ok", startedAt: Date.now(), durationMs: 1,
+  stepId,
+  op,
+  status: "ok",
+  startedAt: Date.now(),
+  durationMs: 1,
+  ...(WRITE_LIKE.has(op)
+    ? { receipt: { observed: `${op} dispatched`, remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } }
+    : {}),
 });
 
 function harness(opts: {
