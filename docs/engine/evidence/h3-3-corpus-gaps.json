@@ -6,13 +6,79 @@
   },
   "declarations": {
     "deferred": 0,
-    "missRatio": 0.004,
+    "missRatio": 0.003,
     "total": 24280,
-    "unknown": 85
+    "unknown": 75
   },
   "notes": "CssCoverage on live HTML bodies. H3-3 still has isolated property tests; this is the corpus-frequency ledger, not a claim that remaining CSS is done.",
   "pages": 100,
   "profile": "release",
   "requiresScript": 1,
-  "test": "writes_h3_3_corpus_css_coverage"
+  "test": "writes_h3_3_corpus_css_coverage",
+  "topUnknown": [
+    {
+      "count": 7,
+      "name": "-webkit-mask-image"
+    },
+    {
+      "count": 7,
+      "name": "-webkit-text-decoration"
+    },
+    {
+      "count": 7,
+      "name": "mask-image"
+    },
+    {
+      "count": 4,
+      "name": "-o-object-fit"
+    },
+    {
+      "count": 4,
+      "name": "-webkit-user-select"
+    },
+    {
+      "count": 4,
+      "name": "scrollbar-width"
+    },
+    {
+      "count": 3,
+      "name": "-moz-column-gap"
+    },
+    {
+      "count": 3,
+      "name": "-moz-user-select"
+    },
+    {
+      "count": 3,
+      "name": "-webkit-overflow-scrolling"
+    },
+    {
+      "count": 3,
+      "name": "contain-intrinsic-size"
+    },
+    {
+      "count": 2,
+      "name": "-webkit-margin-before"
+    },
+    {
+      "count": 2,
+      "name": "-webkit-margin-start"
+    },
+    {
+      "count": 1,
+      "name": "-moz-appearance"
+    },
+    {
+      "count": 1,
+      "name": "-moz-columns"
+    },
+    {
+      "count": 1,
+      "name": "-ms-overflow-style"
+    },
+    {
+      "count": 1,
+      "name": "-ms-user-select"
+    }
+  ]
 }

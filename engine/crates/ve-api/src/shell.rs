@@ -17,9 +17,7 @@ use ve_chrome::{
     sync_order, sync_spaces, toggle_pin,
 };
 use ve_core::{Error, ErrorCode, Point, Result, ScrollPhase, Size, process_rss_bytes};
-use ve_gfx::{
-    DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer, TileGrid,
-};
+use ve_gfx::{DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer, TileGrid};
 use ve_profile::{Profile, SessionTab};
 
 use crate::{
@@ -1009,8 +1007,7 @@ impl NativeBrowser {
             let before = page.scroll_offset();
             let over_before = page.overscroll_offset();
             page.tick_scroll_physics(dt_ms);
-            let moved =
-                page.scroll_offset() != before || page.overscroll_offset() != over_before;
+            let moved = page.scroll_offset() != before || page.overscroll_offset() != over_before;
             (moved, page.needs_scroll_frame())
         };
         if moved {
@@ -1042,8 +1039,14 @@ impl NativeBrowser {
         let gpu = self.gpu.as_mut()?;
         let width = self.window.surface.width;
         let height = self.window.surface.height;
-        gpu.present_list_with(&list, width, height, self.window.device_scale, images.as_ref())
-            .ok()?;
+        gpu.present_list_with(
+            &list,
+            width,
+            height,
+            self.window.device_scale,
+            images.as_ref(),
+        )
+        .ok()?;
         gpu.readback_present_target().ok()
     }
 
@@ -1422,10 +1425,8 @@ impl NativeBrowser {
                     if let Ok(session) = profile.session() {
                         for tab in session {
                             if self.open_url(&tab.url).is_err() {
-                                let html = format!(
-                                    "<p>Restored {}</p>",
-                                    tab.title.replace('<', "")
-                                );
+                                let html =
+                                    format!("<p>Restored {}</p>", tab.title.replace('<', ""));
                                 let _ = self.new_tab(&html, &tab.url);
                             }
                         }
@@ -1473,8 +1474,7 @@ impl NativeBrowser {
             .map(|(i, t)| ChromeTab {
                 page_id: t.page.0.to_string(),
                 title: if Chrome::is_start_url(&t.url)
-                    && (t.page_title.is_empty()
-                        || t.page_title.eq_ignore_ascii_case("about:blank"))
+                    && (t.page_title.is_empty() || t.page_title.eq_ignore_ascii_case("about:blank"))
                 {
                     "New Tab".into()
                 } else {
@@ -1503,11 +1503,7 @@ impl NativeBrowser {
             .active_tab()
             .map(|t| t.route_reason.clone())
             .unwrap_or_default();
-        let pages: Vec<String> = self
-            .tabs
-            .iter()
-            .map(|t| t.page.0.to_string())
-            .collect();
+        let pages: Vec<String> = self.tabs.iter().map(|t| t.page.0.to_string()).collect();
         if self.chrome.layout.spaces.is_empty() {
             self.chrome.layout = empty_layout();
         }
@@ -1881,7 +1877,8 @@ impl NativeBrowser {
                     .map(|t| (t.url.clone(), t.page_title.clone()))
                 {
                     let space = self.chrome.layout.active_space_id.clone();
-                    self.chrome.layout = toggle_pin(&self.chrome.layout, &space, Pin { url, title });
+                    self.chrome.layout =
+                        toggle_pin(&self.chrome.layout, &space, Pin { url, title });
                 }
             }
             _ => {}
@@ -2467,12 +2464,7 @@ impl NativeBrowser {
 
     /// Rasterizes the untranslated page list once per layout revision, then
     /// blits the visible viewport (compositor scroll). Dirty tiles only.
-    fn present_page_layer(
-        &mut self,
-        page: PageId,
-        stage: ve_core::Rect,
-        scale: f32,
-    ) -> Result<()> {
+    fn present_page_layer(&mut self, page: PageId, stage: ve_core::Rect, scale: f32) -> Result<()> {
         let (viewport, scroll) = self
             .ensure_page_list(page)
             .ok_or_else(|| Error::internal("paint failed"))?;
@@ -2489,9 +2481,10 @@ impl NativeBrowser {
             .unwrap_or(viewport.height);
         let pw = (viewport.width * scale).round().max(1.0) as u32;
         let ph = (content_h.max(viewport.height) * scale).round().max(1.0) as u32;
-        let size_ok = self.page_layer.as_ref().is_some_and(|f| {
-            self.page_layer_rev == rev && f.width == pw && f.height == ph
-        });
+        let size_ok = self
+            .page_layer
+            .as_ref()
+            .is_some_and(|f| self.page_layer_rev == rev && f.width == pw && f.height == ph);
         if !size_ok {
             self.page_layer = Some(Frame::filled(pw, ph, [255, 255, 255, 255]));
             self.page_layer_rev = rev;
@@ -2601,7 +2594,6 @@ fn read_os_clipboard(enabled: bool) -> Option<String> {
         None
     }
 }
-
 
 impl Default for NativeBrowser {
     fn default() -> Self {
@@ -2890,10 +2882,16 @@ mod tests {
             )
             .unwrap();
         let _ = browser.present().unwrap();
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1280.0, 720.0));
         let x = (stage.x() + 8.0) as u32;
         let y = (stage.y() + 8.0) as u32;
-        let px = browser.present().unwrap().pixel(x, y).expect("pixel in stage");
+        let px = browser
+            .present()
+            .unwrap()
+            .pixel(x, y)
+            .expect("pixel in stage");
         assert!(
             px[0] > 200 && px[0] > px[1] && px[0] > px[2] && px[2] < 200,
             "expected reddish <img> (not white/magenta), got {px:?} at ({x},{y})"
@@ -2951,10 +2949,10 @@ mod tests {
         let vp = browser.engine_viewport_for_test(page);
         assert_eq!(vp, (800.0, 600.0));
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         let _ = browser.handle_event(NativeEvent::AccessKitAction {
             name: "urlbar".into(),
         });
@@ -3010,10 +3008,10 @@ mod tests {
             .unwrap();
         assert_eq!(browser.program_dispatches(), 0);
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         assert_eq!(browser.program_dispatches(), 0);
         assert_eq!(browser.active_virtual_time_ms(), 0);
     }
@@ -3033,9 +3031,7 @@ mod tests {
             })
             .unwrap();
         browser
-            .handle_event(NativeEvent::Ime {
-                text: "hi".into(),
-            })
+            .handle_event(NativeEvent::Ime { text: "hi".into() })
             .unwrap();
         let _ = browser.handle_event(NativeEvent::Key {
             key: "a".into(),
@@ -3373,7 +3369,9 @@ mod tests {
                 url: "https://scroll.test/".into(),
             })
             .unwrap();
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1280.0, 720.0));
         let _ = browser.handle_event(NativeEvent::PointerMove {
             x: stage.x() + 20.0,
             y: stage.y() + 20.0,
@@ -3381,15 +3379,15 @@ mod tests {
         let _ = browser.present();
         let before = browser.from_layout_calls();
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         assert_eq!(
             browser.from_layout_calls(),
             before,
@@ -3423,7 +3421,9 @@ mod tests {
         );
         assert!(texts.iter().any(|t| t.contains("Engine")), "{texts:?}");
         assert!(browser.chrome_enabled());
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1280.0, 720.0));
         assert!(stage.x() >= 200.0);
         assert!(
             browser.chrome().rail_used() == 0.0,
@@ -3448,24 +3448,30 @@ mod tests {
             .unwrap();
         let _ = browser.present();
         let sig = browser.chrome_base_sig;
-        assert!(browser.chrome_base.is_some(), "first present must cache chrome");
+        assert!(
+            browser.chrome_base.is_some(),
+            "first present must cache chrome"
+        );
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         assert_eq!(
             browser.chrome_base_sig, sig,
             "wheel must not rebuild chrome widgets"
         );
         assert!(browser.chrome_base.is_some());
-        assert!(browser.page_layer.is_some(), "first present must cache page layer");
+        assert!(
+            browser.page_layer.is_some(),
+            "first present must cache page layer"
+        );
         let rev = browser.page_layer_rev;
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         assert_eq!(
             browser.page_layer_rev, rev,
             "wheel must blit the cached page layer"
@@ -3534,7 +3540,9 @@ mod tests {
             })
             .unwrap();
         let _ = browser.present();
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1280.0, 720.0));
         let _ = browser.handle_event(NativeEvent::PointerDown {
             x: stage.x() + 16.0,
             y: stage.y() + 16.0,
@@ -3546,16 +3554,14 @@ mod tests {
             let _ = browser.present();
             repaint_ms.push(t0.elapsed().as_secs_f64() * 1000.0);
             let t1 = Instant::now();
-            let _ = browser.handle_event(NativeEvent::Ime {
-                text: "k".into(),
-            });
+            let _ = browser.handle_event(NativeEvent::Ime { text: "k".into() });
             input_ms.push(t1.elapsed().as_secs_f64() * 1000.0);
             let t2 = Instant::now();
             let _ = browser.handle_event(NativeEvent::Wheel {
-                    dx: 0.0,
-                    dy: 40.0,
-                    phase: ScrollPhase::Changed,
-                });
+                dx: 0.0,
+                dy: 40.0,
+                phase: ScrollPhase::Changed,
+            });
             scroll_ms.push(t2.elapsed().as_secs_f64() * 1000.0);
         }
         let pct = |mut xs: Vec<f64>, p: f64| {
@@ -3605,10 +3611,10 @@ mod tests {
         let _ = browser.present();
         for _ in 0..30 {
             let _ = browser.handle_event(NativeEvent::Wheel {
-                    dx: 0.0,
-                    dy: 200.0,
-                    phase: ScrollPhase::Changed,
-                });
+                dx: 0.0,
+                dy: 200.0,
+                phase: ScrollPhase::Changed,
+            });
         }
         assert!(
             browser.needs_frame(),
@@ -3617,10 +3623,7 @@ mod tests {
         for _ in 0..24 {
             let _ = browser.handle_event(NativeEvent::Frame { dt_ms: 16.0 });
         }
-        assert!(
-            !browser.needs_frame(),
-            "spring-back should settle"
-        );
+        assert!(!browser.needs_frame(), "spring-back should settle");
         let mut browser = NativeBrowser::new();
         browser
             .handle_event(NativeEvent::NewTab {
@@ -3630,10 +3633,10 @@ mod tests {
             .unwrap();
         for _ in 0..30 {
             let _ = browser.handle_event(NativeEvent::Wheel {
-                    dx: 0.0,
-                    dy: 200.0,
-                    phase: ScrollPhase::Changed,
-                });
+                dx: 0.0,
+                dy: 200.0,
+                phase: ScrollPhase::Changed,
+            });
         }
         browser
             .handle_event(NativeEvent::NewTab {
@@ -3661,10 +3664,7 @@ mod tests {
             dy: 80.0,
             phase: ScrollPhase::Changed,
         });
-        assert!(
-            browser.interacting(),
-            "Changed phase is a live gesture"
-        );
+        assert!(browser.interacting(), "Changed phase is a live gesture");
         let preferred = |interacting: bool, reduced: bool| {
             if reduced {
                 60.0
@@ -3683,10 +3683,7 @@ mod tests {
             dy: 0.0,
             phase: ScrollPhase::Ended,
         });
-        assert!(
-            browser.needs_frame(),
-            "Ended with dy=0 must keep momentum"
-        );
+        assert!(browser.needs_frame(), "Ended with dy=0 must keep momentum");
         assert!(
             !browser.interacting(),
             "coasting after Ended is not interacting"
@@ -4039,10 +4036,7 @@ mod tests {
 
     #[test]
     fn session_restore_reopens_tabs_after_restart() {
-        let path = format!(
-            "/tmp/vector-session-restore-{}.sqlite",
-            std::process::id()
-        );
+        let path = format!("/tmp/vector-session-restore-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
         {
             let mut browser = NativeBrowser::new();
@@ -4143,7 +4137,12 @@ mod tests {
         time_step("restart-restore", &mut || {
             restored.enable_product_chrome_at(&path);
         });
-        let urls: Vec<String> = restored.chrome().tabs.iter().map(|t| t.url.clone()).collect();
+        let urls: Vec<String> = restored
+            .chrome()
+            .tabs
+            .iter()
+            .map(|t| t.url.clone())
+            .collect();
         assert!(
             urls.iter().any(|u| u.contains("alpha")) && urls.iter().any(|u| u.contains("beta")),
             "day-of-browsing must restore both tabs: {urls:?}"
@@ -4158,7 +4157,11 @@ mod tests {
             restored.chrome().bookmarks
         );
         assert!(
-            restored.chrome().history.iter().any(|(u, _)| u.contains("day.test")),
+            restored
+                .chrome()
+                .history
+                .iter()
+                .any(|(u, _)| u.contains("day.test")),
             "history must survive restart: {:?}",
             restored.chrome().history
         );
@@ -4169,7 +4172,11 @@ mod tests {
         );
         assert_eq!(restored.chrome().find, "hello");
         assert!(
-            restored.chrome().download_names.iter().any(|n| n == "report.pdf"),
+            restored
+                .chrome()
+                .download_names
+                .iter()
+                .any(|n| n == "report.pdf"),
             "downloads must survive restart: {:?}",
             restored.chrome().download_names
         );
@@ -4189,8 +4196,8 @@ mod tests {
             "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find",
             "notes": "Session-step wall times on this host, then kill and reopen the SQLite profile. Not an Apple-silicon published score."
         });
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/engine/evidence");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/engine/evidence");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(
             dir.join("day-of-browsing.json"),
@@ -4214,7 +4221,9 @@ mod tests {
                 url: "https://gui.test/".into(),
             })
             .unwrap();
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1280.0, 720.0));
         let _ = browser.handle_event(NativeEvent::PointerDown {
             x: stage.x() + 20.0,
             y: stage.y() + 20.0,
@@ -4244,10 +4253,10 @@ mod tests {
             y: stage.y() + 40.0,
         });
         let _ = browser.handle_event(NativeEvent::Wheel {
-                dx: 0.0,
-                dy: 80.0,
-                phase: ScrollPhase::Changed,
-            });
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
         assert_eq!(
             browser.from_layout_calls(),
             before,
@@ -4256,8 +4265,8 @@ mod tests {
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("shell png");
         assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-gui.png"), &png).unwrap();
         let regions = serde_json::json!({
@@ -4333,8 +4342,8 @@ mod tests {
         });
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("start png");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-start.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
@@ -4369,13 +4378,15 @@ mod tests {
             })
             .collect();
         assert!(
-            texts.iter().any(|t| t.starts_with("Good ") || t == "Late night."),
+            texts
+                .iter()
+                .any(|t| t.starts_with("Good ") || t == "Late night."),
             "{texts:?}"
         );
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("light start png");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-start-light.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
@@ -4402,15 +4413,13 @@ mod tests {
         assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
         assert!(texts.iter().any(|t| t == "AGENT"), "{texts:?}");
         assert!(
-            texts
-                .iter()
-                .any(|t| t.contains("Compare Checkout Session")),
+            texts.iter().any(|t| t.contains("Compare Checkout Session")),
             "{texts:?}"
         );
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("browse png");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-browse.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
@@ -4461,7 +4470,11 @@ mod tests {
         );
         assert_eq!(browser.chrome().sidebar_used(), 56.0);
         assert!(
-            browser.chrome().stage_rect(ve_core::Size::new(1440.0, 900.0)).y() < 16.0,
+            browser
+                .chrome()
+                .stage_rect(ve_core::Size::new(1440.0, 900.0))
+                .y()
+                < 16.0,
             "collapsed rail must not keep a top toolbar"
         );
         let list = browser.paint_shell_list().unwrap();
@@ -4474,11 +4487,15 @@ mod tests {
             })
             .collect();
         assert!(
-            !texts.iter().any(|t| t == "Personal" || t == "AGENT" || t == "New Tab"),
+            !texts
+                .iter()
+                .any(|t| t == "Personal" || t == "AGENT" || t == "New Tab"),
             "collapsed rail must not paint expanded labels: {texts:?}"
         );
         assert!(
-            texts.iter().any(|t| t == "G" || t == "L" || t == "S" || t == "Y"),
+            texts
+                .iter()
+                .any(|t| t == "G" || t == "L" || t == "S" || t == "Y"),
             "rail tiles must show host letters: {texts:?}"
         );
         assert!(
@@ -4491,7 +4508,9 @@ mod tests {
             )),
             "paint_shell_list must include the 56px CSS rail"
         );
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1440.0, 900.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1440.0, 900.0));
         assert!(
             list.items().iter().any(|i| matches!(
                 i,
@@ -4504,8 +4523,8 @@ mod tests {
         );
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("rail png");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-rail.png"), &png).unwrap();
         let _ = browser.handle_event(NativeEvent::PointerMove { x: 20.0, y: 120.0 });
@@ -4594,8 +4613,8 @@ mod tests {
         assert!(texts.iter().any(|t| t == "Ask on this page"), "{texts:?}");
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("command png");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-command.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
@@ -4692,8 +4711,8 @@ mod tests {
             "agentRail": { "x": 1440.0 - rail_w, "width": rail_w, "height": 900.0 },
             "toolbarWhileSidebarOpen": 0.0
         });
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(
             dir.join("ve-chrome-geometry.json"),
@@ -4715,8 +4734,8 @@ mod tests {
             .collect();
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect(name);
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join(name), &png).unwrap();
         texts
@@ -4740,10 +4759,7 @@ mod tests {
                 state: KeyState::Down,
             })
             .unwrap();
-        assert!(
-            browser.chrome().rail_open,
-            "⌘⇧A must open the agent rail"
-        );
+        assert!(browser.chrome().rail_open, "⌘⇧A must open the agent rail");
         browser.seed_live_run_chrome("run");
         let texts = write_shell_shot(&mut browser, "ve-shell-run.png");
         let rail_list = browser.paint_shell_list().unwrap();
@@ -4774,8 +4790,14 @@ mod tests {
         browser.set_active(0);
         browser.seed_live_run_chrome("takeover");
         let texts = write_shell_shot(&mut browser, "ve-shell-takeover.png");
-        assert!(texts.iter().any(|t| t.contains("You're in control")), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Return control")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("You're in control")),
+            "{texts:?}"
+        );
+        assert!(
+            texts.iter().any(|t| t.contains("Return control")),
+            "{texts:?}"
+        );
         let _ = std::fs::remove_file(&path);
     }
 
@@ -4790,7 +4812,10 @@ mod tests {
         browser.seed_live_run_chrome("needs-input");
         let texts = write_shell_shot(&mut browser, "ve-shell-needs-input.png");
         assert!(texts.iter().any(|t| t == "Needs your answer"), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Type an answer")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Type an answer")),
+            "{texts:?}"
+        );
         let _ = std::fs::remove_file(&path);
     }
 
@@ -4835,7 +4860,16 @@ mod tests {
             height: 900.0,
         });
         let texts = write_shell_shot(&mut browser, "ve-shell-many-tabs.png");
-        assert!(texts.iter().any(|t| t.contains("ResizeObserver") || t.contains("MDN") || t.contains("Gmail") || t.contains("Calendar") || t.contains("Wikipedia") || t.contains("Are.na") || t.contains("Vercel")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("ResizeObserver")
+                || t.contains("MDN")
+                || t.contains("Gmail")
+                || t.contains("Calendar")
+                || t.contains("Wikipedia")
+                || t.contains("Are.na")
+                || t.contains("Vercel")),
+            "{texts:?}"
+        );
         let _ = std::fs::remove_file(&path);
     }
 
@@ -4877,7 +4911,10 @@ mod tests {
         browser.seed_set_progress_chrome();
         let texts = write_shell_shot(&mut browser, "ve-shell-set.png");
         assert!(texts.iter().any(|t| t == "Set"), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Competitor pricing")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Competitor pricing")),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| t.contains("429")), "{texts:?}");
         let _ = std::fs::remove_file(&path);
     }
@@ -4900,7 +4937,10 @@ mod tests {
             height: 900.0,
         });
         let texts = write_shell_shot(&mut browser, "ve-shell-disconnected.png");
-        assert!(texts.iter().any(|t| t.contains("Waiting for the runtime")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Waiting for the runtime")),
+            "{texts:?}"
+        );
         let _ = std::fs::remove_file(&path);
     }
 
@@ -4942,8 +4982,8 @@ mod tests {
         );
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("palette png");
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-palette.png"), &png).unwrap();
         let mut new_pt = None;
@@ -5016,7 +5056,10 @@ mod tests {
     fn tls_navigation_error_opens_cert_sheet() {
         struct CertFail;
         impl ve_net::Transport for CertFail {
-            fn send(&self, request: &ve_net::Request) -> std::result::Result<ve_net::Response, ve_net::NetError> {
+            fn send(
+                &self,
+                request: &ve_net::Request,
+            ) -> std::result::Result<ve_net::Response, ve_net::NetError> {
                 Err(ve_net::NetError::Transport(format!(
                     "invalid peer certificate: UnknownIssuer for {}",
                     request.url
@@ -5091,11 +5134,7 @@ mod tests {
             let _ = engine.close(opened.page);
         }
         samples.sort_unstable();
-        let p50 = samples
-            .get(samples.len() / 2)
-            .copied()
-            .unwrap_or(0) as f64
-            / 1000.0;
+        let p50 = samples.get(samples.len() / 2).copied().unwrap_or(0) as f64 / 1000.0;
         let p95_idx = ((samples.len() as f64) * 0.95).floor() as usize;
         let p95 = samples
             .get(p95_idx.min(samples.len().saturating_sub(1)))
@@ -5147,7 +5186,9 @@ mod tests {
         if let Some(fetch) = live_fetch {
             evidence["liveFetch"] = fetch;
         } else {
-            evidence["reason"] = serde_json::json!("offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1");
+            evidence["reason"] = serde_json::json!(
+                "offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1"
+            );
         }
         let ev = ev_path.parent().unwrap();
         let _ = std::fs::create_dir_all(ev);
@@ -5290,8 +5331,7 @@ mod tests {
         for case in &cases {
             let page_html = format!(
                 "<!DOCTYPE html><html><body>{}<script>const el=document.querySelector('{}');const r=el.getBoundingClientRect();document.documentElement.setAttribute('data-box',JSON.stringify({{x:r.x,y:r.y,w:r.width,h:r.height}}));</script></body></html>",
-                case.fragment,
-                case.selector
+                case.fragment, case.selector
             );
             let path = dir.join(format!(
                 "{}-{}.html",
@@ -5319,9 +5359,7 @@ mod tests {
                 if let Some(i) = dom.find("data-box=\"") {
                     let rest = &dom[i + 10..];
                     if let Some(end) = rest.find('"') {
-                        let json = rest[..end]
-                            .replace("&quot;", "\"")
-                            .replace("&#34;", "\"");
+                        let json = rest[..end].replace("&quot;", "\"").replace("&#34;", "\"");
                         if let Ok(row) = serde_json::from_str::<serde_json::Value>(&json) {
                             chromium.insert(
                                 (case.html_name.to_string(), case.selector.to_string()),
@@ -5431,6 +5469,8 @@ mod tests {
         let mut unknown = 0u64;
         let mut deferred = 0u64;
         let mut scripted = 0u32;
+        let mut name_counts: std::collections::HashMap<String, u32> =
+            std::collections::HashMap::new();
         for path in paths {
             let html = std::fs::read_to_string(&path).unwrap_or_default();
             if html.is_empty() {
@@ -5449,6 +5489,9 @@ mod tests {
                 total += cov.declarations_total as u64;
                 unknown += cov.unknown as u64;
                 deferred += cov.deferred as u64;
+                for row in &cov.top_unknown {
+                    *name_counts.entry(row.name.clone()).or_insert(0) += row.count;
+                }
             }
             if page.routing().requires_script {
                 scripted += 1;
@@ -5463,6 +5506,9 @@ mod tests {
         } else {
             (unknown + deferred) as f64 / total as f64
         };
+        let mut top_unknown: Vec<(String, u32)> = name_counts.into_iter().collect();
+        top_unknown.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        top_unknown.truncate(16);
         let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../docs/engine/evidence/h3-3-corpus-gaps.json");
         let doc = serde_json::json!({
@@ -5476,6 +5522,10 @@ mod tests {
                 "deferred": deferred,
                 "missRatio": (miss * 1000.0).round() / 1000.0
             },
+            "topUnknown": top_unknown.iter().map(|(name, count)| serde_json::json!({
+                "name": name,
+                "count": count
+            })).collect::<Vec<_>>(),
             "requiresScript": scripted,
             "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
             "notes": "CssCoverage on live HTML bodies. H3-3 still has isolated property tests; this is the corpus-frequency ledger, not a claim that remaining CSS is done."
@@ -5513,10 +5563,18 @@ mod tests {
             .collect();
         paths.sort();
         // Debug: even-sample 60. Release: every saved body (parse stops at 256 KB).
-        let live_html_cap = if cfg!(debug_assertions) { 60 } else { paths.len() };
+        let live_html_cap = if cfg!(debug_assertions) {
+            60
+        } else {
+            paths.len()
+        };
         if paths.len() > live_html_cap {
             let step = (paths.len() / live_html_cap).max(1);
-            paths = paths.into_iter().step_by(step).take(live_html_cap).collect();
+            paths = paths
+                .into_iter()
+                .step_by(step)
+                .take(live_html_cap)
+                .collect();
         }
         for path in paths {
             let html = std::fs::read_to_string(&path).unwrap_or_default();
@@ -5564,11 +5622,7 @@ mod tests {
                         });
                     if let Some(r) = task_ref {
                         control_pages += 1;
-                        if content
-                            .elements
-                            .iter()
-                            .take(40)
-                            .any(|e| e.reference == r)
+                        if content.elements.iter().take(40).any(|e| e.reference == r)
                             || content
                                 .form_fields
                                 .iter()
@@ -5647,9 +5701,11 @@ mod tests {
                 "unit": "approxTokens",
                 "kind": "fetched-html-bodies"
             });
-            doc["engineCapabilityUnsupportedRate"] = serde_json::json!(
-                if n == 0 { 0.0 } else { f64::from(unsupported) / f64::from(n) }
-            );
+            doc["engineCapabilityUnsupportedRate"] = serde_json::json!(if n == 0 {
+                0.0
+            } else {
+                f64::from(unsupported) / f64::from(n)
+            });
             let rate = if control_pages == 0 {
                 1.0
             } else {
@@ -5718,10 +5774,7 @@ mod tests {
             if html.is_empty() {
                 continue;
             }
-            let stem = path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("page");
+            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("page");
             let url = format!("https://live.test/{stem}");
             let Ok(opened) = engine.open(crate::OpenRequest::html(&html, Some(&url))) else {
                 continue;
@@ -5776,14 +5829,20 @@ mod tests {
             "corpus incremental observe p95 {p95} ms (n={}, p50={p50}) must be < 2 ms",
             times.len()
         );
-        assert!(times.len() >= 20, "need ≥20 corpus incremental samples, got {}", times.len());
+        assert!(
+            times.len() >= 20,
+            "need ≥20 corpus incremental samples, got {}",
+            times.len()
+        );
     }
 
     #[test]
     fn engine_only_never_starts_chromium() {
         let mut browser = NativeBrowser::new();
         browser.set_engine_only(true);
-        let err = browser.open_chromium_tab("https://needs-chrome.test/").unwrap_err();
+        let err = browser
+            .open_chromium_tab("https://needs-chrome.test/")
+            .unwrap_err();
         assert_eq!(err.code(), ve_core::ErrorCode::CapabilityUnsupported);
         assert!(err.to_string().contains("does not start Chromium"));
         browser
@@ -5821,7 +5880,8 @@ mod tests {
             .iter()
             .find_map(|i| match i {
                 ve_gfx::DisplayItem::Rect { rect, .. }
-                    if (rect.width() - 200.0).abs() < 1.0 && (rect.height() - 100.0).abs() < 1.0 =>
+                    if (rect.width() - 200.0).abs() < 1.0
+                        && (rect.height() - 100.0).abs() < 1.0 =>
                 {
                     Some(*rect)
                 }
@@ -5851,7 +5911,8 @@ mod tests {
             .iter()
             .find_map(|i| match i {
                 ve_gfx::DisplayItem::Rect { rect, .. }
-                    if (rect.width() - 200.0).abs() < 1.0 && (rect.height() - 100.0).abs() < 1.0 =>
+                    if (rect.width() - 200.0).abs() < 1.0
+                        && (rect.height() - 100.0).abs() < 1.0 =>
                 {
                     Some(*rect)
                 }
@@ -5877,9 +5938,9 @@ mod tests {
             );
         }
         assert!(
-            list_2x.items().iter().all(|i| i.bounds().is_none_or(|r| {
-                r.right() <= 800.0 + 2.0 && r.bottom() <= 600.0 + 2.0
-            })),
+            list_2x.items().iter().all(|i| i
+                .bounds()
+                .is_none_or(|r| { r.right() <= 800.0 + 2.0 && r.bottom() <= 600.0 + 2.0 })),
             "no display-list geometry in physical px: {:?}",
             list_2x.bounds()
         );
@@ -5962,16 +6023,19 @@ mod tests {
             browser.engine().cookies(private_ctx).unwrap(),
             vec![priv_cookie]
         );
-        assert_eq!(browser.engine().cookies(default_ctx).unwrap()[0].name, "sid");
+        assert_eq!(
+            browser.engine().cookies(default_ctx).unwrap()[0].name,
+            "sid"
+        );
         let shared_page = browser
             .new_tab_in_context("<p>also</p>", "https://app.test/x", private_ctx)
             .unwrap()
             .page;
+        assert_eq!(browser.tabs().last().map(|t| t.context), Some(private_ctx));
         assert_eq!(
-            browser.tabs().last().map(|t| t.context),
-            Some(private_ctx)
+            browser.engine().context_of(shared_page).unwrap(),
+            private_ctx
         );
-        assert_eq!(browser.engine().context_of(shared_page).unwrap(), private_ctx);
     }
 
     #[test]

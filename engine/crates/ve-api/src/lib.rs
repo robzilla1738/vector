@@ -51,7 +51,6 @@ pub use shell::{
     ChromeAxNode, EventOutcome, KeyState, NativeBrowser, NativeController, NativeEvent, Tab,
     scene_json,
 };
-pub use window::{Browser, NativeWindow};
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
@@ -61,6 +60,7 @@ pub use ve_agent::{
 };
 pub use ve_core::{Clock, ScrollPhase, VERSION};
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
+pub use window::{Browser, NativeWindow};
 
 /// Start V8 before a production sandbox denies new threads.
 pub fn preload_scripting() {
@@ -333,13 +333,21 @@ impl Loader for NetLoader {
         })
     }
 
-    /// One concurrent batch through `NetworkContext::fetch_many`
+    /// One concurrent batch through `NetworkContext::start_fetch_many`
     /// (`Initiator::Parser`, kind-specific `Accept`), so a page's stylesheets,
     /// images and scripts share the transport's pooled connections.
     fn fetch_subresources(
         &mut self,
         requests: &[ve_agent::SubresourceRequest],
     ) -> Vec<Result<ve_agent::LoadedResource>> {
+        let pending = self.start_subresources(requests);
+        self.join_subresources(pending)
+    }
+
+    fn start_subresources(
+        &mut self,
+        requests: &[ve_agent::SubresourceRequest],
+    ) -> ve_agent::PendingSubresources {
         let mut wire = Vec::with_capacity(requests.len());
         let mut failed: Vec<(usize, Error)> = Vec::new();
         for (i, r) in requests.iter().enumerate() {
@@ -369,35 +377,24 @@ impl Loader for NetLoader {
                 Err(e) => failed.push((i, e.into())),
             }
         }
-        let responses = self
+        let batch = self
             .net
             .borrow_mut()
-            .fetch_many(wire.iter().map(|(_, r)| r.clone()).collect());
-        let mut out: Vec<Option<Result<ve_agent::LoadedResource>>> =
-            (0..requests.len()).map(|_| None).collect();
-        for ((i, _), response) in wire.into_iter().zip(responses) {
-            out[i] = Some(
-                response
-                    .map_err(Error::from)
-                    .map(|response| ve_agent::LoadedResource {
-                        url: response.url.to_string(),
-                        bytes: response.body.to_vec(),
-                        content_type: response.content_type().map(str::to_owned),
-                        status: response.status.as_u16(),
-                        corp: response
-                            .headers
-                            .get("cross-origin-resource-policy")
-                            .and_then(|v| v.to_str().ok())
-                            .map(str::to_owned),
-                    }),
-            );
-        }
-        for (i, e) in failed {
-            out[i] = Some(Err(e));
-        }
-        out.into_iter()
-            .map(|r| r.unwrap_or_else(|| Err(Error::internal("subresource result missing"))))
-            .collect()
+            .start_fetch_many(wire.iter().map(|(_, r)| r.clone()).collect());
+        ve_agent::PendingSubresources::from_net(
+            batch,
+            requests.len(),
+            wire.into_iter().map(|(i, _)| i).collect(),
+            failed,
+        )
+    }
+
+    fn join_subresources(
+        &mut self,
+        pending: ve_agent::PendingSubresources,
+    ) -> Vec<Result<ve_agent::LoadedResource>> {
+        let net = Rc::clone(&self.net);
+        pending.finish_net(move |batch| net.borrow_mut().join_fetch_many(batch))
     }
 
     fn preconnect(&mut self, urls: &[String]) {

@@ -19,8 +19,9 @@
 //!   [`MockTransport`] for tests or enable the `http` feature for
 //!   [`HyperTransport`] (hyper 1 + rustls + HTTP/1.1, HTTP/2, and HTTP/3 over QUIC).
 //! * Everything is synchronous from the caller's point of view; the hyper
-//!   transport runs its own single-threaded tokio runtime. Streaming bodies
-//!   and progress events are a follow-up.
+//!   transport runs its own 2-worker tokio runtime so [`Transport::start_many`]
+//!   can spawn without blocking the caller. Streaming bodies and progress
+//!   events are a follow-up.
 
 #![forbid(unsafe_code)]
 
@@ -38,7 +39,7 @@ pub mod websocket;
 pub mod wire;
 
 use std::collections::{HashMap, VecDeque};
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::SocketAddr;
 use std::time::{Instant, SystemTime};
 
 use bytes::Bytes;
@@ -57,7 +58,7 @@ pub use http3::{H3Endpoint, ProtocolSupport, advertises_http3, parse_h3_alt_svc}
 pub use hyper_transport::HyperTransport;
 pub use policy::NetworkPolicy;
 pub use replay::ReplayTransport;
-pub use transport::{FnTransport, MockTransport, NullTransport, Transport};
+pub use transport::{FnTransport, MockTransport, NullTransport, PendingFetches, Transport};
 pub use websocket::WebSocketClient;
 pub use wire::{WireRequest, WireResponse};
 
@@ -452,7 +453,8 @@ impl NetworkContext {
         self.fetch_at(request, SystemTime::now())
     }
 
-    /// DNS-warm `url` for `rel=preconnect` / `dns-prefetch`. No GET.
+    /// DNS-warm `url` for `rel=preconnect` / `dns-prefetch`. No GET. Returns
+    /// after policy check; live DNS is detached onto the transport.
     pub fn preconnect(&self, url: &str) -> Result<(), NetError> {
         let request = Request::get(url)?;
         self.policy.check_request(&request)?;
@@ -460,7 +462,7 @@ impl NetworkContext {
             && let Some(host) = request.url.host_str()
         {
             let port = request.url.port_or_known_default().unwrap_or(80);
-            let _ = (host, port).to_socket_addrs();
+            self.transport.warmup_dns(host, port);
         }
         Ok(())
     }
@@ -581,12 +583,18 @@ impl NetworkContext {
 
     /// Fetches several requests in one batch: cache hits are answered
     /// immediately, the misses go to the transport together
-    /// ([`Transport::send_many`]) and redirects are followed individually.
+    /// ([`Transport::start_many`]) and redirects are followed individually.
     /// Results are in request order. Every request is logged as
     /// in-flight/completed exactly like [`Self::fetch`], so `settle()` sees
     /// the batch.
     pub fn fetch_many(&mut self, requests: Vec<Request>) -> Vec<Result<Response, NetError>> {
         self.fetch_many_at(requests, SystemTime::now())
+    }
+
+    /// Starts the batch and returns without waiting on the wire. Join with
+    /// [`Self::join_fetch_many`].
+    pub fn start_fetch_many(&mut self, requests: Vec<Request>) -> PendingBatch {
+        self.start_fetch_many_at(requests, SystemTime::now())
     }
 
     /// Like [`Self::fetch_many`] with an explicit clock.
@@ -595,6 +603,12 @@ impl NetworkContext {
         requests: Vec<Request>,
         now: SystemTime,
     ) -> Vec<Result<Response, NetError>> {
+        let pending = self.start_fetch_many_at(requests, now);
+        self.join_fetch_many(pending)
+    }
+
+    /// Like [`Self::start_fetch_many`] with an explicit clock.
+    pub fn start_fetch_many_at(&mut self, requests: Vec<Request>, now: SystemTime) -> PendingBatch {
         let span = Stage::Fetch.span();
         let _guard = span.enter();
         let started = Instant::now();
@@ -625,7 +639,31 @@ impl NetworkContext {
             }
         }
         let wire: Vec<Request> = pending.iter().map(|(_, p)| p.request.clone()).collect();
-        let responses = self.transport.send_many(&wire);
+        let fetches = self.transport.start_many(&wire);
+        PendingBatch {
+            pending,
+            fetches,
+            results,
+            meta,
+            started,
+            started_at,
+            now,
+        }
+    }
+
+    /// Waits for a batch from [`Self::start_fetch_many`] and finishes cache,
+    /// cookies, and redirects.
+    pub fn join_fetch_many(&mut self, batch: PendingBatch) -> Vec<Result<Response, NetError>> {
+        let PendingBatch {
+            pending,
+            fetches,
+            mut results,
+            meta,
+            started,
+            started_at,
+            now,
+        } = batch;
+        let responses = fetches.join();
         for ((i, prepared), response) in pending.into_iter().zip(responses) {
             let mut redirects = 0u8;
             results[i] = Some(match response {
@@ -881,6 +919,18 @@ fn mime_for_path(path: &std::path::Path) -> &'static str {
 }
 
 /// Reads a `file:` URL from disk.
+/// Wire batch started by [`NetworkContext::start_fetch_many`]. Join with
+/// [`NetworkContext::join_fetch_many`].
+pub struct PendingBatch {
+    pending: Vec<(usize, PreparedRequest)>,
+    fetches: crate::transport::PendingFetches,
+    results: Vec<Option<Result<Response, NetError>>>,
+    meta: Vec<(u64, Option<u64>, String)>,
+    started: Instant,
+    started_at: u64,
+    now: SystemTime,
+}
+
 /// A request that must go to the wire, with the stale cache entry it may
 /// revalidate.
 struct PreparedRequest {
@@ -1238,6 +1288,105 @@ mod tests {
             ctx.preconnect("mailto:x@y"),
             Err(NetError::UnsupportedScheme(_))
         ));
+    }
+
+    struct SlowTransport {
+        delay: std::time::Duration,
+    }
+
+    impl Transport for SlowTransport {
+        fn send(&self, request: &Request) -> Result<Response, NetError> {
+            std::thread::sleep(self.delay);
+            Ok(Response::new(
+                request.url.clone(),
+                StatusCode::OK,
+                HeaderMap::new(),
+                Bytes::from_static(b"slow"),
+            ))
+        }
+
+        fn start_many(&self, requests: &[Request]) -> crate::transport::PendingFetches {
+            let delay = self.delay;
+            let urls: Vec<Url> = requests.iter().map(|r| r.url.clone()).collect();
+            crate::transport::PendingFetches::from_join(move || {
+                std::thread::sleep(delay);
+                urls.into_iter()
+                    .map(|url| {
+                        Ok(Response::new(
+                            url,
+                            StatusCode::OK,
+                            HeaderMap::new(),
+                            Bytes::from_static(b"slow"),
+                        ))
+                    })
+                    .collect()
+            })
+        }
+
+        fn name(&self) -> &'static str {
+            "slow"
+        }
+
+        fn uses_live_dns(&self) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn start_many_returns_before_join_waits() {
+        let transport = SlowTransport {
+            delay: std::time::Duration::from_millis(80),
+        };
+        let reqs = [Request::get("https://slow.test/a").unwrap()];
+        let t0 = Instant::now();
+        let pending = transport.start_many(&reqs);
+        assert!(
+            t0.elapsed() < std::time::Duration::from_millis(20),
+            "start_many must return before the 80ms body: {:?}",
+            t0.elapsed()
+        );
+        let t1 = Instant::now();
+        let out = pending.join();
+        assert!(
+            t1.elapsed() >= std::time::Duration::from_millis(80),
+            "join waits for the body: {:?}",
+            t1.elapsed()
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].as_ref().unwrap().text(), "slow");
+    }
+
+    #[test]
+    fn start_fetch_many_returns_before_join_waits() {
+        let mut ctx = NetworkContext::new(
+            ContextId(1),
+            Box::new(SlowTransport {
+                delay: std::time::Duration::from_millis(80),
+            }),
+        )
+        .with_policy(NetworkPolicy::permissive());
+        let t0 = Instant::now();
+        let pending = ctx.start_fetch_many(vec![Request::get("https://slow.test/b").unwrap()]);
+        assert!(
+            t0.elapsed() < std::time::Duration::from_millis(20),
+            "start_fetch_many must return before the 80ms body: {:?}",
+            t0.elapsed()
+        );
+        assert_eq!(
+            ctx.in_flight(None).len(),
+            1,
+            "batch is in-flight until join"
+        );
+        let t1 = Instant::now();
+        let out = ctx.join_fetch_many(pending);
+        assert!(
+            t1.elapsed() >= std::time::Duration::from_millis(80),
+            "join_fetch_many waits for the body: {:?}",
+            t1.elapsed()
+        );
+        assert_eq!(out[0].as_ref().unwrap().text(), "slow");
+        assert!(ctx.in_flight(None).is_empty());
+        assert_eq!(ctx.completed(None).len(), 1);
     }
 
     #[test]

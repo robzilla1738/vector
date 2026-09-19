@@ -6,12 +6,14 @@
 //! visibility". [`CssCoverage`] is the counter that decision reads. It is
 //! accumulated while stylesheets and `style=""` attributes are parsed.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::properties::{DEFERRED_PROPERTIES, GEOMETRY_AFFECTING_DEFERRED, PropertyId};
 
 /// Counts of declarations seen while parsing, by how the engine handled them.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CssCoverage {
     /// Every declaration encountered (a shorthand counts once).
     pub declarations_total: usize,
@@ -26,6 +28,9 @@ pub struct CssCoverage {
     /// At least one unknown / deferred / invalid declaration could change
     /// what is displayed, where it is, or whether it is visible.
     pub affects_geometry: bool,
+    /// Unknown property names (not deferred) and how often they appeared.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub unknown_names: HashMap<String, u32>,
 }
 
 impl CssCoverage {
@@ -42,6 +47,7 @@ impl CssCoverage {
             self.declarations_deferred += 1;
         } else {
             self.declarations_unknown += 1;
+            *self.unknown_names.entry(lower.clone()).or_insert(0) += 1;
         }
         if GEOMETRY_AFFECTING_DEFERRED.contains(&lower.as_str()) {
             self.affects_geometry = true;
@@ -87,6 +93,22 @@ impl CssCoverage {
         self.declarations_deferred += other.declarations_deferred;
         self.declarations_invalid += other.declarations_invalid;
         self.affects_geometry |= other.affects_geometry;
+        for (name, count) in &other.unknown_names {
+            *self.unknown_names.entry(name.clone()).or_insert(0) += *count;
+        }
+    }
+
+    /// Unknown names sorted by count descending, then name.
+    #[must_use]
+    pub fn top_unknown(&self, n: usize) -> Vec<(String, u32)> {
+        let mut rows: Vec<(String, u32)> = self
+            .unknown_names
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        rows.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        rows.truncate(n);
+        rows
     }
 
     /// Unknown + deferred declarations as a fraction of the total (`0.0` for
@@ -126,6 +148,8 @@ mod tests {
         let c = sheet.coverage;
         assert_eq!(c.declarations_total, 6);
         assert_eq!(c.declarations_unknown, 1, "frobnicate");
+        assert_eq!(c.unknown_names.get("frobnicate"), Some(&1));
+        assert_eq!(c.top_unknown(1), vec![("frobnicate".into(), 1)]);
         assert_eq!(c.declarations_deferred, 1, "src");
         assert_eq!(c.declarations_invalid, 1, "display: ruby");
         assert!(c.affects_geometry, "display: ruby");

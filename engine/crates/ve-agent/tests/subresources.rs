@@ -5,10 +5,11 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 use ve_agent::{
     DEFAULT_VIEWPORT, Format, LoadedDocument, LoadedResource, Loader, NavigationRequest,
-    ObservationRequest, Page, SubresourceRequest,
+    ObservationRequest, Page, PendingSubresources, SubresourceRequest,
 };
 use ve_core::{Error, Result};
 
@@ -243,10 +244,7 @@ fn css_animation_interpolates_opacity_from_keyframes() {
     page.pump_virtual_time(500);
     page.update();
     let mid = page.style_tree().style(id).opacity;
-    assert!(
-        (mid - 0.5).abs() < 0.05,
-        "mid-animation opacity was {mid}"
-    );
+    assert!((mid - 0.5).abs() < 0.05, "mid-animation opacity was {mid}");
 }
 
 #[test]
@@ -312,11 +310,97 @@ fn preconnect_and_prefetch_are_issued() {
     assert_eq!(stats.stylesheets, 1, "{stats:?}");
     let b = batches.borrow();
     assert!(
-        b.iter().any(|batch| batch.iter().any(|u| u.starts_with("preconnect:https://cdn.test"))),
+        b.iter().any(|batch| batch
+            .iter()
+            .any(|u| u.starts_with("preconnect:https://cdn.test"))),
         "preconnect batch: {b:?}"
     );
     assert!(
-        b.iter().any(|batch| batch.iter().any(|u| u == "https://s.test/next.html")),
+        b.iter()
+            .any(|batch| batch.iter().any(|u| u == "https://s.test/next.html")),
         "prefetch in fetch batch: {b:?}"
+    );
+}
+
+struct SlowSite {
+    start_ms: Rc<RefCell<Option<u128>>>,
+}
+
+impl Loader for SlowSite {
+    fn load(&mut self, request: &NavigationRequest) -> Result<LoadedDocument> {
+        Ok(LoadedDocument::html(
+            &request.url,
+            r#"<!doctype html><img src="/i.png"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAAAAAAAAAAAAA==">"#,
+        ))
+    }
+
+    fn start_subresources(&mut self, requests: &[SubresourceRequest]) -> PendingSubresources {
+        *self.start_ms.borrow_mut() = Some(0);
+        let urls: Vec<String> = requests.iter().map(|r| r.url.clone()).collect();
+        let started = Instant::now();
+        let start_ms = self.start_ms.clone();
+        PendingSubresources::from_join(move || {
+            std::thread::sleep(Duration::from_millis(80));
+            *start_ms.borrow_mut() = Some(started.elapsed().as_millis());
+            urls.into_iter()
+                .map(|url| {
+                    Ok(LoadedResource {
+                        url,
+                        bytes: PNG_8X4.to_vec(),
+                        content_type: Some("image/png".into()),
+                        status: 200,
+                        corp: None,
+                    })
+                })
+                .collect()
+        })
+    }
+}
+
+#[test]
+fn start_subresources_returns_before_join_waits() {
+    let mut site = SlowSite {
+        start_ms: Rc::new(RefCell::new(None)),
+    };
+    let req = SubresourceRequest {
+        url: "https://s.test/i.png".into(),
+        kind: ve_agent::SubresourceKind::Image,
+        page: 1,
+        referrer: None,
+    };
+    let t0 = Instant::now();
+    let pending = site.start_subresources(&[req]);
+    assert!(
+        t0.elapsed() < Duration::from_millis(20),
+        "start_subresources must return before the 80ms body: {:?}",
+        t0.elapsed()
+    );
+    let t1 = Instant::now();
+    let out = site.join_subresources(pending);
+    assert!(
+        t1.elapsed() >= Duration::from_millis(80),
+        "join waits for the body: {:?}",
+        t1.elapsed()
+    );
+    assert_eq!(out.len(), 1);
+}
+
+#[test]
+fn page_starts_subresource_io_before_data_images() {
+    let start_ms = Rc::new(RefCell::new(None));
+    let site = SlowSite {
+        start_ms: start_ms.clone(),
+    };
+    let t0 = Instant::now();
+    let page = Page::open(1, Box::new(site), "https://s.test/", DEFAULT_VIEWPORT).unwrap();
+    let elapsed = t0.elapsed();
+    assert!(
+        elapsed >= Duration::from_millis(80),
+        "open waits at settle for the body: {elapsed:?}"
+    );
+    assert_eq!(page.load_stats().images, 2, "data URL + fetched PNG");
+    assert!(
+        start_ms.borrow().is_some(),
+        "start_subresources ran during open"
     );
 }

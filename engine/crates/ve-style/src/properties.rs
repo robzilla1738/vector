@@ -18,20 +18,25 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition,
-    BackgroundRepeat, BackgroundSize,
-    BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
-    Clear, ClipPath, Color, Content, ContentItem, CssClip, Direction, Display, Filter, FlexDirection,
-    FlexWrap,
-    Float, FontFamily,
-    FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
-    LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    AnimationDirection, AnimationFillMode, AnimationPlayState,
-    Appearance, BackfaceVisibility, BackgroundAttachment, BoxOrient, BreakBefore, BreakInside, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontDisplay, FontKerning, FontOpticalSizing, FontSmoothing, FontStretch, FontSynthesis, FontVariant, FontVariantLigatures, FontVariantNumeric, ForcedColorAdjust, GridAutoFlow, HangingPunctuation, Hyphens, ImageRendering, Isolation, MathStyle, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents, Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Rgba, RubyPosition, ScrollBehavior, ScrollSnapAlign, ScrollSnapType, Speak, TextAlignLast, TextDecorationStyle, TextEmphasis, TextJustify, TextRendering, TextUnderlinePosition, TextWrap, TouchAction, TransformBox, TransformStyle, VectorEffect,
-    SelfAlignment, TextAlign,
-    TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
-    UserSelect,
-    Resize, ShapeOutside, TableLayout, TextOrientation, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
+    AlignItems, AnimationDirection, AnimationFillMode, AnimationPlayState, Appearance,
+    BackfaceVisibility, BackgroundAttachment, BackgroundClip, BackgroundImage, BackgroundOrigin,
+    BackgroundPosition, BackgroundRepeat, BackgroundSize, BorderCollapse, BorderStyle, BoxOrient,
+    BoxShadow, BoxSizing, BreakBefore, BreakInside, CaptionSide, Clear, ClipPath, Color,
+    ColumnSpan, Contain, ContainerType, Content, ContentItem, ContentVisibility, CssClip,
+    Direction, Display, EmptyCells, FieldSizing, Filter, FlexDirection, FlexWrap, Float,
+    FontDisplay, FontFamily, FontKerning, FontOpticalSizing, FontSmoothing, FontStretch, FontStyle,
+    FontSynthesis, FontVariant, FontVariantLigatures, FontVariantNumeric, FontWeight,
+    ForcedColorAdjust, GridAutoFlow, GridLine, GridTemplateAreas, HangingPunctuation, Hyphens,
+    ImageRendering, Isolation, JustifyContent, Keyword, Length, LengthContext, LengthPercentage,
+    LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MathStyle, MaxSize,
+    MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents,
+    Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba, RubyPosition,
+    ScrollBehavior, ScrollSnapAlign, ScrollSnapType, SelfAlignment, ShapeOutside, Speak,
+    TableLayout, TextAlign, TextAlignLast, TextDecorationLine, TextDecorationStyle, TextEmphasis,
+    TextJustify, TextOrientation, TextOverflow, TextRendering, TextTransform,
+    TextUnderlinePosition, TextWrap, TouchAction, TrackSize, TransformBox, TransformOp,
+    TransformStyle, UnicodeBidi, UserSelect, VectorEffect, VerticalAlign, Visibility, WhiteSpace,
+    WordBreak, WritingMode, ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -1049,6 +1054,7 @@ macro_rules! property_table {
                     "-webkit-text-size-adjust" => Some(Self::TextSizeAdjust),
                     "-webkit-box-orient" => Some(Self::BoxOrient),
                     "-webkit-tap-highlight-color" => Some(Self::TapHighlightColor),
+                    "-webkit-transform" | "-moz-transform" => Some(Self::Transform),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -1700,9 +1706,7 @@ impl ComputedStyle {
     /// Returns `true` if either overflow axis clips content.
     #[must_use]
     pub fn overflow_clips(&self) -> bool {
-        self.overflow.clips()
-            || self.overflow_y.clips()
-            || self.resize != Resize::None
+        self.overflow.clips() || self.overflow_y.clips() || self.resize != Resize::None
     }
 
     /// Returns `true` if the element is a float that is in flow (not
@@ -1741,10 +1745,7 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
-pub const DEFERRED_PROPERTIES: &[&str] = &[
-    "src",
-    "unicode-range",
-];
+pub const DEFERRED_PROPERTIES: &[&str] = &["src", "unicode-range"];
 
 // ---------------------------------------------------------------------------
 // Value parsing
@@ -2321,15 +2322,14 @@ fn parse_transform_list(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
                         number(y).ok_or_else(|| args.new_error_for_next_token::<()>())?,
                     ),
                     ("rotate" | "rotatez", [a]) => {
-                        let deg =
-                            number(a).ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                        let deg = number(a).ok_or_else(|| args.new_error_for_next_token::<()>())?;
                         SpecifiedTransform::Rotate(deg.to_radians())
                     }
                     // 3-D rotations, skews and matrices do not move the box's
                     // axis-aligned centre; treat them as identity.
                     (
-                        "rotatex" | "rotatey" | "rotate3d" | "skew"
-                        | "skewx" | "skewy" | "matrix" | "matrix3d" | "perspective",
+                        "rotatex" | "rotatey" | "rotate3d" | "skew" | "skewx" | "skewy" | "matrix"
+                        | "matrix3d" | "perspective",
                         _,
                     ) => SpecifiedTransform::Scale(1.0, 1.0),
                     _ => return Err(args.new_error_for_next_token()),
@@ -2449,14 +2449,19 @@ fn parse_box_shadow(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     Some(SpecifiedValue::BoxShadow(Box::new(SpecifiedBoxShadow {
         dx: lengths[0].clone(),
         dy: lengths[1].clone(),
-        blur: lengths.get(2).cloned().unwrap_or(SpecifiedValue::Number(0.0)),
+        blur: lengths
+            .get(2)
+            .cloned()
+            .unwrap_or(SpecifiedValue::Number(0.0)),
         color,
     })))
 }
 
 fn specified_lp(v: &SpecifiedValue) -> Option<LengthPercentage> {
     match v {
-        SpecifiedValue::Length(l) => Some(LengthPercentage::Px(l.to_px(&ConvertContext::DUMMY.lengths()))),
+        SpecifiedValue::Length(l) => Some(LengthPercentage::Px(
+            l.to_px(&ConvertContext::DUMMY.lengths()),
+        )),
         SpecifiedValue::Percentage(p) => Some(LengthPercentage::Percent(*p)),
         SpecifiedValue::Number(n) if *n == 0.0 => Some(LengthPercentage::ZERO),
         SpecifiedValue::Integer(0) => Some(LengthPercentage::ZERO),
@@ -2467,9 +2472,9 @@ fn specified_lp(v: &SpecifiedValue) -> Option<LengthPercentage> {
 fn specified_lpa(v: &SpecifiedValue) -> Option<LengthPercentageAuto> {
     match v {
         SpecifiedValue::Keyword(k) if k == "auto" => Some(LengthPercentageAuto::Auto),
-        SpecifiedValue::Length(l) => {
-            Some(LengthPercentageAuto::Px(l.to_px(&ConvertContext::DUMMY.lengths())))
-        }
+        SpecifiedValue::Length(l) => Some(LengthPercentageAuto::Px(
+            l.to_px(&ConvertContext::DUMMY.lengths()),
+        )),
         SpecifiedValue::Percentage(p) => Some(LengthPercentageAuto::Percent(*p)),
         SpecifiedValue::Number(n) if *n == 0.0 => Some(LengthPercentageAuto::Px(0.0)),
         SpecifiedValue::Integer(0) => Some(LengthPercentageAuto::Px(0.0)),
@@ -2478,10 +2483,7 @@ fn specified_lpa(v: &SpecifiedValue) -> Option<LengthPercentageAuto> {
 }
 
 fn parse_individual_translate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
-    if input
-        .try_parse(|i| i.expect_ident_matching("none"))
-        .is_ok()
-    {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
         return Some(SpecifiedValue::Keyword("none".into()));
     }
     let x = parse_component(input)?;
@@ -2490,16 +2492,13 @@ fn parse_individual_translate(input: &mut Parser<'_, '_>) -> Option<SpecifiedVal
     } else {
         parse_component(input)?
     };
-    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Translate(
-        x, y,
-    )]))
+    Some(SpecifiedValue::Transform(vec![
+        SpecifiedTransform::Translate(x, y),
+    ]))
 }
 
 fn parse_individual_scale(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
-    if input
-        .try_parse(|i| i.expect_ident_matching("none"))
-        .is_ok()
-    {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
         return Some(SpecifiedValue::Keyword("none".into()));
     }
     let x = match parse_component(input)? {
@@ -2516,14 +2515,13 @@ fn parse_individual_scale(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> 
             _ => return None,
         }
     };
-    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Scale(x, y)]))
+    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Scale(
+        x, y,
+    )]))
 }
 
 fn parse_individual_rotate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
-    if input
-        .try_parse(|i| i.expect_ident_matching("none"))
-        .is_ok()
-    {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
         return Some(SpecifiedValue::Keyword("none".into()));
     }
     let deg = match parse_component(input)? {
@@ -2537,10 +2535,7 @@ fn parse_individual_rotate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue>
 }
 
 fn parse_aspect_ratio(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
-    if input
-        .try_parse(|i| i.expect_ident_matching("auto"))
-        .is_ok()
-    {
+    if input.try_parse(|i| i.expect_ident_matching("auto")).is_ok() {
         return Some(SpecifiedValue::Keyword("auto".into()));
     }
     let width = match input.next().ok()?.clone() {
@@ -2635,7 +2630,10 @@ fn parse_background_position(input: &mut Parser<'_, '_>) -> Option<SpecifiedValu
         (a, SpecifiedValue::Keyword(kb)) => (specified_lp(a)?, keyword_y(kb)?),
         (a, b) => (specified_lp(a)?, specified_lp(b)?),
     };
-    Some(SpecifiedValue::BackgroundPosition(BackgroundPosition { x, y }))
+    Some(SpecifiedValue::BackgroundPosition(BackgroundPosition {
+        x,
+        y,
+    }))
 }
 
 fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
@@ -2650,7 +2648,9 @@ fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
             }
             Token::Ident(k) if k.eq_ignore_ascii_case("span") => span = true,
             Token::Ident(k) => {
-                return Some(SpecifiedValue::GridLine(GridLine::Named(k.to_ascii_lowercase())));
+                return Some(SpecifiedValue::GridLine(GridLine::Named(
+                    k.to_ascii_lowercase(),
+                )));
             }
             Token::Number {
                 int_value: Some(i), ..
@@ -2666,10 +2666,7 @@ fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
 }
 
 fn parse_grid_areas(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
-    if input
-        .try_parse(|i| i.expect_ident_matching("none"))
-        .is_ok()
-    {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
         return Some(SpecifiedValue::Keyword("none".into()));
     }
     let mut rows = Vec::new();
@@ -2904,6 +2901,7 @@ pub const SHORTHANDS: &[&str] = &[
     "transition",
     "border-radius",
     "outline",
+    "column-rule",
     "columns",
     "offset",
     "container",
@@ -3280,7 +3278,9 @@ pub fn expand_shorthand<'i>(
                         {
                             fill = v;
                         }
-                        SpecifiedValue::Keyword(k) if matches!(k.as_str(), "running" | "paused") => {
+                        SpecifiedValue::Keyword(k)
+                            if matches!(k.as_str(), "running" | "paused") =>
+                        {
                             play = v;
                         }
                         SpecifiedValue::Keyword(k)
@@ -3312,6 +3312,37 @@ pub fn expand_shorthand<'i>(
                     (P::AnimationPlayState, play),
                     (P::AnimationDirection, direction),
                     (P::AnimationTimingFunction, timing),
+                ])
+            }
+            "column-rule" => {
+                let values = parse_components(input, 4)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ColumnRuleWidth, values[0].clone()),
+                        (P::ColumnRuleStyle, values[0].clone()),
+                        (P::ColumnRuleColor, values[0].clone()),
+                    ]);
+                }
+                let mut width = SpecifiedValue::Length(Length::Px(0.0));
+                let mut style = SpecifiedValue::Keyword("none".into());
+                let mut color = SpecifiedValue::Color(Color::CurrentColor);
+                for v in values {
+                    if P::ColumnRuleWidth.accepts(&v)
+                        && !matches!(&v, SpecifiedValue::Keyword(k) if k == "none" || k == "hidden" || k == "solid" || k == "dashed" || k == "dotted" || k == "double")
+                    {
+                        width = v;
+                    } else if P::ColumnRuleStyle.accepts(&v)
+                        && matches!(&v, SpecifiedValue::Keyword(_))
+                    {
+                        style = v;
+                    } else if P::ColumnRuleColor.accepts(&v) {
+                        color = v;
+                    }
+                }
+                Some(vec![
+                    (P::ColumnRuleWidth, width),
+                    (P::ColumnRuleStyle, style),
+                    (P::ColumnRuleColor, color),
                 ])
             }
             "outline" => {
@@ -3427,9 +3458,12 @@ pub fn expand_shorthand<'i>(
                 let mut path = SpecifiedValue::Keyword("none".into());
                 let mut distance = SpecifiedValue::Length(Length::ZERO);
                 while !input.is_exhausted() {
-                    if let Some(p) = input.try_parse(|i| {
-                        parse_offset_path(i).ok_or_else(|| i.new_error_for_next_token::<()>())
-                    }).ok() {
+                    if let Some(p) = input
+                        .try_parse(|i| {
+                            parse_offset_path(i).ok_or_else(|| i.new_error_for_next_token::<()>())
+                        })
+                        .ok()
+                    {
                         path = p;
                         continue;
                     }
@@ -3659,6 +3693,10 @@ mod tests {
         );
         assert!(PropertyId::from_name("not-a-property").is_none());
         assert_eq!(
+            PropertyId::from_name("-webkit-transform"),
+            Some(PropertyId::Transform)
+        );
+        assert_eq!(
             PropertyId::from_name("overflow-x"),
             Some(PropertyId::OverflowX)
         );
@@ -3754,8 +3792,20 @@ mod tests {
         ok("transition-property", "opacity");
         ok("transition-duration", "0.2s");
         let anim = expand("animation", "fade 1s").expect("animation shorthand");
-        assert_eq!(anim[0], (PropertyId::AnimationName, SpecifiedValue::Keyword("fade".into())));
-        assert_eq!(anim[1], (PropertyId::AnimationDuration, SpecifiedValue::Number(1000.0)));
+        assert_eq!(
+            anim[0],
+            (
+                PropertyId::AnimationName,
+                SpecifiedValue::Keyword("fade".into())
+            )
+        );
+        assert_eq!(
+            anim[1],
+            (
+                PropertyId::AnimationDuration,
+                SpecifiedValue::Number(1000.0)
+            )
+        );
         assert_eq!(anim.len(), 8);
         let trans = expand("transition", "opacity 200ms").expect("transition shorthand");
         assert_eq!(
@@ -3767,7 +3817,10 @@ mod tests {
         );
         assert_eq!(
             trans[1],
-            (PropertyId::TransitionDuration, SpecifiedValue::Number(200.0))
+            (
+                PropertyId::TransitionDuration,
+                SpecifiedValue::Number(200.0)
+            )
         );
         assert_eq!(trans.len(), 4);
         ok("border-top-style", "dashed");
@@ -3982,6 +4035,15 @@ mod tests {
             )
         );
 
+        let out = expand("column-rule", "2px dotted red").unwrap();
+        assert_eq!(out.len(), 3);
+        assert!(out.iter().any(|(p, v)| *p == PropertyId::ColumnRuleWidth
+            && *v == SpecifiedValue::Length(Length::Px(2.0))));
+        assert!(out.iter().any(|(p, v)| *p == PropertyId::ColumnRuleStyle
+            && *v == SpecifiedValue::Keyword("dotted".into())));
+        assert!(out.iter().any(|(p, v)| *p == PropertyId::ColumnRuleColor
+            && *v == SpecifiedValue::Keyword("red".into())));
+
         let out = expand("border", "2px solid red").unwrap();
         assert_eq!(out.len(), 12, "width, style and colour for four sides");
         assert!(out.iter().any(|(p, v)| *p == PropertyId::BorderLeftWidth
@@ -4118,10 +4180,16 @@ mod tests {
         );
 
         let out = expand("columns", "2").unwrap();
-        assert_eq!(out[0], (PropertyId::ColumnCount, SpecifiedValue::Integer(2)));
+        assert_eq!(
+            out[0],
+            (PropertyId::ColumnCount, SpecifiedValue::Integer(2))
+        );
         assert_eq!(
             out[1],
-            (PropertyId::ColumnWidth, SpecifiedValue::Keyword("auto".into()))
+            (
+                PropertyId::ColumnWidth,
+                SpecifiedValue::Keyword("auto".into())
+            )
         );
 
         let mut input = cssparser::ParserInput::new("1px");

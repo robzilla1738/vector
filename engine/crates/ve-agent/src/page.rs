@@ -284,6 +284,103 @@ pub struct LoadStats {
     pub preconnects: usize,
 }
 
+/// In-flight parser subresource batch from [`Loader::start_subresources`].
+pub struct PendingSubresources {
+    inner: PendingSubInner,
+}
+
+enum PendingSubInner {
+    Ready(Vec<Result<LoadedResource>>),
+    Join(Box<dyn FnOnce() -> Vec<Result<LoadedResource>>>),
+    Net {
+        batch: ve_net::PendingBatch,
+        n: usize,
+        wire: Vec<usize>,
+        failed: Vec<(usize, Error)>,
+    },
+}
+
+impl PendingSubresources {
+    /// Results that are already available (tests, sequential default).
+    #[must_use]
+    pub fn ready(results: Vec<Result<LoadedResource>>) -> Self {
+        Self {
+            inner: PendingSubInner::Ready(results),
+        }
+    }
+
+    /// Results produced when [`Loader::join_subresources`] runs.
+    #[must_use]
+    pub fn from_join(join: impl FnOnce() -> Vec<Result<LoadedResource>> + 'static) -> Self {
+        Self {
+            inner: PendingSubInner::Join(Box::new(join)),
+        }
+    }
+
+    /// Wire batch owned by [`ve_net::NetworkContext`].
+    #[must_use]
+    pub fn from_net(
+        batch: ve_net::PendingBatch,
+        n: usize,
+        wire: Vec<usize>,
+        failed: Vec<(usize, Error)>,
+    ) -> Self {
+        Self {
+            inner: PendingSubInner::Net {
+                batch,
+                n,
+                wire,
+                failed,
+            },
+        }
+    }
+
+    /// Finishes a net batch through `join_batch`, or returns ready/join results.
+    pub fn finish_net(
+        self,
+        join_batch: impl FnOnce(
+            ve_net::PendingBatch,
+        ) -> Vec<std::result::Result<ve_net::Response, ve_net::NetError>>,
+    ) -> Vec<Result<LoadedResource>> {
+        match self.inner {
+            PendingSubInner::Ready(results) => results,
+            PendingSubInner::Join(join) => join(),
+            PendingSubInner::Net {
+                batch,
+                n,
+                wire,
+                failed,
+            } => {
+                let responses = join_batch(batch);
+                let mut out: Vec<Option<Result<LoadedResource>>> = (0..n).map(|_| None).collect();
+                for (i, response) in wire.into_iter().zip(responses) {
+                    out[i] = Some(response.map_err(Error::from).map(|response| {
+                        LoadedResource {
+                            url: response.url.to_string(),
+                            bytes: response.body.to_vec(),
+                            content_type: response.content_type().map(str::to_owned),
+                            status: response.status.as_u16(),
+                            corp: response
+                                .headers
+                                .get("cross-origin-resource-policy")
+                                .and_then(|v| v.to_str().ok())
+                                .map(str::to_owned),
+                        }
+                    }));
+                }
+                for (i, e) in failed {
+                    out[i] = Some(Err(e));
+                }
+                out.into_iter()
+                    .map(|r| {
+                        r.unwrap_or_else(|| Err(Error::internal("subresource result missing")))
+                    })
+                    .collect()
+            }
+        }
+    }
+}
+
 /// Fetches documents for navigations and answers network questions for the
 /// page. Supplied by the embedder (`ve-api` backs it with `ve-net`).
 pub trait Loader {
@@ -299,6 +396,23 @@ pub trait Loader {
             .iter()
             .map(|r| self.script_fetch(&r.url, "GET", &[], r.page, None))
             .collect()
+    }
+    /// Starts parser subresource IO and returns without waiting on bodies.
+    /// The default runs [`Self::fetch_subresources`].
+    fn start_subresources(&mut self, requests: &[SubresourceRequest]) -> PendingSubresources {
+        PendingSubresources::ready(self.fetch_subresources(requests))
+    }
+    /// Waits for [`Self::start_subresources`].
+    fn join_subresources(&mut self, pending: PendingSubresources) -> Vec<Result<LoadedResource>> {
+        match pending.inner {
+            PendingSubInner::Ready(results) => results,
+            PendingSubInner::Join(join) => join(),
+            PendingSubInner::Net { .. } => {
+                vec![Err(Error::internal(
+                    "net subresource batch needs NetLoader",
+                ))]
+            }
+        }
     }
     /// Warm DNS for `rel=preconnect` / `dns-prefetch`. Default: no-op.
     fn preconnect(&mut self, _urls: &[String]) {}
@@ -685,7 +799,11 @@ fn sample_linear_gradient(
     for w in ordered.windows(2) {
         if t >= w[0].0 && t <= w[1].0 {
             let span = w[1].0 - w[0].0;
-            let u = if span < 1e-8 { 0.0 } else { (t - w[0].0) / span };
+            let u = if span < 1e-8 {
+                0.0
+            } else {
+                (t - w[0].0) / span
+            };
             return lerp_rgba(w[0].1, w[1].1, u);
         }
     }
@@ -1634,14 +1752,11 @@ impl Page {
         c.ops
     }
 
-    pub(crate) fn canvas_draw_image(
-        &mut self,
-        id: NodeId,
-        src: NodeId,
-        dx: i32,
-        dy: i32,
-    ) -> u64 {
-        let src_pixels = self.canvases.get(&src).map(|s| (s.width, s.height, s.pixels.clone()));
+    pub(crate) fn canvas_draw_image(&mut self, id: NodeId, src: NodeId, dx: i32, dy: i32) -> u64 {
+        let src_pixels = self
+            .canvases
+            .get(&src)
+            .map(|s| (s.width, s.height, s.pixels.clone()));
         let c = self
             .canvases
             .entry(id)
@@ -2063,7 +2178,8 @@ impl Page {
                 let alternate = rels.iter().any(|r| r == "alternate");
                 if is_sheet && !alternate && self.doc.attribute(id, "disabled").is_none() {
                     if let Some(m) = self.doc.attribute(id, "media")
-                        && !ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
+                        && !ve_style::MediaQueryList::parse_str(m)
+                            .evaluate(&self.style_engine.media)
                     {
                         continue;
                     }
@@ -2081,7 +2197,10 @@ impl Page {
                     continue;
                 }
                 if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
-                    if rels.iter().any(|r| r == "preconnect" || r == "dns-prefetch") {
+                    if rels
+                        .iter()
+                        .any(|r| r == "preconnect" || r == "dns-prefetch")
+                    {
                         preconnects.push(url);
                     } else if rels.iter().any(|r| r == "prefetch" || r == "modulepreload") {
                         requests.push((
@@ -2194,6 +2313,18 @@ impl Page {
                 }
             }
         }
+        let started = Instant::now();
+        let pending = if has_loader && !requests.is_empty() {
+            let batch: Vec<SubresourceRequest> = requests.iter().map(|(_, r)| r.clone()).collect();
+            Some(
+                self.loader
+                    .as_mut()
+                    .expect("loader")
+                    .start_subresources(&batch),
+            )
+        } else {
+            None
+        };
         for (id, w, h, data) in data_images {
             let _ = self.doc.set_natural_size(id, w, h);
             self.load_stats.images += 1;
@@ -2208,17 +2339,15 @@ impl Page {
                 .preconnect(&preconnects);
             self.load_stats.preconnects += preconnects.len();
         }
-        if !has_loader || requests.is_empty() {
+        let Some(pending) = pending else {
             self.collect_scripts(&HashMap::new());
             return sheets;
-        }
-        let started = Instant::now();
-        let batch: Vec<SubresourceRequest> = requests.iter().map(|(_, r)| r.clone()).collect();
+        };
         let results = self
             .loader
             .as_mut()
             .expect("loader")
-            .fetch_subresources(&batch);
+            .join_subresources(pending);
         let mut script_sources: HashMap<NodeId, Option<String>> = HashMap::new();
         let mut imports: Vec<(NodeId, usize, SubresourceRequest)> = Vec::new();
         for ((id, req), result) in requests.into_iter().zip(results) {
@@ -2447,10 +2576,7 @@ impl Page {
                     .as_ref()
                     .and_then(|b| b.join(href.trim()).ok())
                     .map(|u| u.to_string())
-                    .or_else(|| {
-                        href.starts_with("http")
-                            .then(|| href.clone())
-                    });
+                    .or_else(|| href.starts_with("http").then(|| href.clone()));
                 if let Some(url) = url {
                     requests.push(SubresourceRequest {
                         url,
@@ -2495,7 +2621,17 @@ impl Page {
     }
 
     fn apply_animations(&mut self) {
-        let animated: Vec<(NodeId, String, f32, f32, f32, ve_style::AnimationFillMode, ve_style::AnimationPlayState, ve_style::AnimationDirection, String)> = self
+        let animated: Vec<(
+            NodeId,
+            String,
+            f32,
+            f32,
+            f32,
+            ve_style::AnimationFillMode,
+            ve_style::AnimationPlayState,
+            ve_style::AnimationDirection,
+            String,
+        )> = self
             .doc
             .elements()
             .filter_map(|id| {
@@ -2702,8 +2838,7 @@ impl Page {
     /// True when COOP + COEP isolate this document (H3-4).
     #[must_use]
     pub fn is_cross_origin_isolated(&self) -> bool {
-        !matches!(self.coop, CoopPolicy::UnsafeNone)
-            && !matches!(self.coep, CoepPolicy::UnsafeNone)
+        !matches!(self.coop, CoopPolicy::UnsafeNone) && !matches!(self.coep, CoepPolicy::UnsafeNone)
     }
 
     /// Whether a fetched subresource may be used under this document's COEP.
@@ -2779,10 +2914,14 @@ impl Page {
     /// First `input` / `textarea` / `contenteditable` when nothing is focused.
     #[must_use]
     pub fn first_editable(&self) -> Option<NodeId> {
-        self.doc.descendants(self.doc.document_element()?).find(|id| {
-            self.doc.element(*id).is_some_and(|e| e.is_html("input") || e.is_html("textarea"))
-                || self.doc.attribute(*id, "contenteditable").is_some()
-        })
+        self.doc
+            .descendants(self.doc.document_element()?)
+            .find(|id| {
+                self.doc
+                    .element(*id)
+                    .is_some_and(|e| e.is_html("input") || e.is_html("textarea"))
+                    || self.doc.attribute(*id, "contenteditable").is_some()
+            })
     }
 
     /// History length and current index.
@@ -2880,7 +3019,9 @@ impl Page {
     pub fn now_ms(&self) -> u64 {
         match self.clock {
             ve_core::Clock::Virtual => self.virtual_time_ms,
-            ve_core::Clock::Wall => ve_core::Clock::wall_unix_ms().saturating_sub(self.wall_origin_ms),
+            ve_core::Clock::Wall => {
+                ve_core::Clock::wall_unix_ms().saturating_sub(self.wall_origin_ms)
+            }
         }
     }
 
@@ -2888,7 +3029,8 @@ impl Page {
     pub fn set_clock(&mut self, clock: ve_core::Clock) {
         self.clock = clock;
         if clock == ve_core::Clock::Wall {
-            self.wall_origin_ms = ve_core::Clock::wall_unix_ms().saturating_sub(self.virtual_time_ms);
+            self.wall_origin_ms =
+                ve_core::Clock::wall_unix_ms().saturating_sub(self.virtual_time_ms);
         }
     }
 
@@ -3031,6 +3173,11 @@ impl Page {
             declarations_total: c.declarations_total,
             unknown: c.declarations_unknown,
             deferred: c.declarations_deferred,
+            top_unknown: c
+                .top_unknown(16)
+                .into_iter()
+                .map(|(name, count)| crate::routing::UnknownProperty { name, count })
+                .collect(),
         });
         if !self.routing.requires_script && c.exceeds(0.50) {
             self.routing.requires_script = true;
@@ -4723,10 +4870,7 @@ impl Page {
             files.get(&id).cloned().unwrap_or_default()
         });
         if self.dispatch_js_event(form, "submit", true, true, None) {
-            return Ok(format!(
-                "submit default prevented on {}",
-                ref_for(form)
-            ));
+            return Ok(format!("submit default prevented on {}", ref_for(form)));
         }
         if plan.method == FormMethod::Dialog {
             if let Some(dialog) = self
@@ -5002,17 +5146,15 @@ impl Page {
         };
         current.push_str(value);
         self.set_text_value(id, &current)?;
-        let _ = self.dispatch_js_event_init(
-            id,
-            "compositionend",
-            true,
-            true,
-            None,
-            &[("data", data)],
-        );
+        let _ =
+            self.dispatch_js_event_init(id, "compositionend", true, true, None, &[("data", data)]);
         self.dispatch_js_event(id, "input", true, false, None);
         self.dispatch_js_event(id, "change", true, false, None);
-        Ok(format!("composed {} chars into {}", value.chars().count(), ref_for(id)))
+        Ok(format!(
+            "composed {} chars into {}",
+            value.chars().count(),
+            ref_for(id)
+        ))
     }
 
     /// `press`: keydown, default action unless prevented, keyup.
@@ -5071,8 +5213,14 @@ impl Page {
         let extra = [
             ("key", ve_script::JsValue::from(key_name.as_str())),
             ("code", ve_script::JsValue::from(code.as_str())),
-            ("keyCode", ve_script::JsValue::Number(f64::from(chord.key_code()))),
-            ("which", ve_script::JsValue::Number(f64::from(chord.key_code()))),
+            (
+                "keyCode",
+                ve_script::JsValue::Number(f64::from(chord.key_code())),
+            ),
+            (
+                "which",
+                ve_script::JsValue::Number(f64::from(chord.key_code())),
+            ),
             ("ctrlKey", ve_script::JsValue::Bool(chord.modifiers.control)),
             ("shiftKey", ve_script::JsValue::Bool(chord.modifiers.shift)),
             ("altKey", ve_script::JsValue::Bool(chord.modifiers.alt)),
@@ -5105,7 +5253,9 @@ impl Page {
             "end" => (len, len),
             _ => return false,
         };
-        self.doc.set_form_selection(id, next_start, next_end).is_ok()
+        self.doc
+            .set_form_selection(id, next_start, next_end)
+            .is_ok()
     }
 
     fn press_key(&mut self, _target: Option<NodeId>, chord: &Chord) -> Result<String> {
@@ -5575,9 +5725,10 @@ impl Page {
     }
 
     fn snap_scroll(&mut self, max_y: f32) {
-        let snapping = self.doc.elements().any(|id| {
-            self.style_tree.style(id).scroll_snap_type != ve_style::ScrollSnapType::None
-        });
+        let snapping = self
+            .doc
+            .elements()
+            .any(|id| self.style_tree.style(id).scroll_snap_type != ve_style::ScrollSnapType::None);
         if !snapping {
             return;
         }
@@ -6143,7 +6294,11 @@ fn animation_progress(
             None
         };
     }
-    let cycle = if duration > 0.0 { elapsed / duration } else { 0.0 };
+    let cycle = if duration > 0.0 {
+        elapsed / duration
+    } else {
+        0.0
+    };
     let iter = cycle.floor();
     let mut t = cycle - iter;
     let reverse = match direction {
