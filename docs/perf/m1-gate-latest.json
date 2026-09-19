@@ -1,0 +1,503 @@
+{
+  "engine_version": "0.0.1",
+  "profile": "release",
+  "backend": "vector-engine",
+  "security_mode": "production",
+  "os": "linux",
+  "arch": "x86_64",
+  "rss_bytes": 12857344,
+  "host_package_energy_uj": null,
+  "iterations": 200,
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0
+  },
+  "fixtures": [
+    {
+      "name": "account-login.html",
+      "bytes": 6582,
+      "nodes": 143,
+      "elements": 33,
+      "approx_tokens": 749,
+      "route_reason": "static",
+      "targets": {
+        "click": "r71",
+        "select": null,
+        "text": "r31"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 12,
+          "p95_us": 12,
+          "max_us": 35
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 5,
+          "p95_us": 5,
+          "max_us": 11
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 7,
+          "p95_us": 7,
+          "max_us": 32
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 118,
+          "p95_us": 129,
+          "max_us": 177
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 1322,
+          "p95_us": 1348,
+          "max_us": 1382
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 188,
+          "p95_us": 199,
+          "max_us": 221
+        }
+      }
+    },
+    {
+      "name": "blog-post.html",
+      "bytes": 10901,
+      "nodes": 335,
+      "elements": 47,
+      "approx_tokens": 1931,
+      "route_reason": "static",
+      "targets": {
+        "click": "r257",
+        "select": null,
+        "text": "r31"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 24,
+          "p95_us": 25,
+          "max_us": 74
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 8,
+          "p95_us": 8,
+          "max_us": 13
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 16,
+          "p95_us": 16,
+          "max_us": 45
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 259,
+          "p95_us": 276,
+          "max_us": 314
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 2627,
+          "p95_us": 2745,
+          "max_us": 2840
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 387,
+          "p95_us": 397,
+          "max_us": 416
+        }
+      }
+    },
+    {
+      "name": "docs-guide.html",
+      "bytes": 10643,
+      "nodes": 376,
+      "elements": 54,
+      "approx_tokens": 1852,
+      "route_reason": "static",
+      "targets": {
+        "click": "r351",
+        "select": null,
+        "text": "r31"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 28,
+          "p95_us": 29,
+          "max_us": 35
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 9,
+          "p95_us": 9,
+          "max_us": 14
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 18,
+          "p95_us": 18,
+          "max_us": 48
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 248,
+          "p95_us": 264,
+          "max_us": 313
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 2571,
+          "p95_us": 2664,
+          "max_us": 2689
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 439,
+          "p95_us": 448,
+          "max_us": 489
+        }
+      }
+    },
+    {
+      "name": "gov-benefits-form.html",
+      "bytes": 10371,
+      "nodes": 340,
+      "elements": 54,
+      "approx_tokens": 1421,
+      "route_reason": "static",
+      "targets": {
+        "click": "r165",
+        "select": "r131",
+        "text": "r31"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 26,
+          "p95_us": 27,
+          "max_us": 34
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 10,
+          "p95_us": 10,
+          "max_us": 16
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 18,
+          "p95_us": 18,
+          "max_us": 47
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 291,
+          "p95_us": 309,
+          "max_us": 341
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 2481,
+          "p95_us": 2506,
+          "max_us": 2763
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 506,
+          "p95_us": 517,
+          "max_us": 537
+        }
+      }
+    },
+    {
+      "name": "help-faq.html",
+      "bytes": 12258,
+      "nodes": 366,
+      "elements": 66,
+      "approx_tokens": 1382,
+      "route_reason": "static",
+      "targets": {
+        "click": "r269",
+        "select": "r232",
+        "text": "r33"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 27,
+          "p95_us": 27,
+          "max_us": 39
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 11,
+          "p95_us": 11,
+          "max_us": 17
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 17,
+          "p95_us": 18,
+          "max_us": 47
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 255,
+          "p95_us": 269,
+          "max_us": 308
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 2168,
+          "p95_us": 2197,
+          "max_us": 2476
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 537,
+          "p95_us": 550,
+          "max_us": 619
+        }
+      }
+    },
+    {
+      "name": "news-index.html",
+      "bytes": 13045,
+      "nodes": 464,
+      "elements": 90,
+      "approx_tokens": 2322,
+      "route_reason": "static",
+      "targets": {
+        "click": "r380",
+        "select": null,
+        "text": "r35"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 33,
+          "p95_us": 33,
+          "max_us": 39
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 15,
+          "p95_us": 15,
+          "max_us": 22
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 23,
+          "p95_us": 24,
+          "max_us": 65
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 377,
+          "p95_us": 389,
+          "max_us": 423
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 2716,
+          "p95_us": 2742,
+          "max_us": 3045
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 669,
+          "p95_us": 684,
+          "max_us": 693
+        }
+      }
+    },
+    {
+      "name": "product-catalog.html",
+      "bytes": 10818,
+      "nodes": 542,
+      "elements": 79,
+      "approx_tokens": 1468,
+      "route_reason": "static",
+      "targets": {
+        "click": "r77",
+        "select": "r44",
+        "text": "r31"
+      },
+      "metrics": {
+        "click_step": {
+          "samples": 200,
+          "p50_us": 38,
+          "p95_us": 38,
+          "max_us": 45
+        },
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 13,
+          "p95_us": 13,
+          "max_us": 20
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 26,
+          "p95_us": 27,
+          "max_us": 93
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 300,
+          "p95_us": 313,
+          "max_us": 617
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 3091,
+          "p95_us": 3112,
+          "max_us": 3126
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 686,
+          "p95_us": 699,
+          "max_us": 717
+        }
+      }
+    },
+    {
+      "name": "wiki-article.html",
+      "bytes": 14156,
+      "nodes": 457,
+      "elements": 83,
+      "approx_tokens": 3000,
+      "route_reason": "static",
+      "targets": {
+        "click": null,
+        "select": null,
+        "text": "r31"
+      },
+      "metrics": {
+        "diff_after_edit": {
+          "samples": 200,
+          "p50_us": 13,
+          "p95_us": 13,
+          "max_us": 287
+        },
+        "fill_step": {
+          "samples": 200,
+          "p50_us": 21,
+          "p95_us": 21,
+          "max_us": 42
+        },
+        "observe": {
+          "samples": 200,
+          "p50_us": 343,
+          "p95_us": 357,
+          "max_us": 374
+        },
+        "open_to_observe": {
+          "samples": 200,
+          "p50_us": 3106,
+          "p95_us": 3124,
+          "max_us": 3143
+        },
+        "program_10": {
+          "samples": 200,
+          "p50_us": 524,
+          "p95_us": 534,
+          "max_us": 600
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "click_step": {
+      "samples": 1400,
+      "p50_us": 27,
+      "p95_us": 38,
+      "max_us": 74
+    },
+    "diff_after_edit": {
+      "samples": 1600,
+      "p50_us": 11,
+      "p95_us": 15,
+      "max_us": 287
+    },
+    "fill_step": {
+      "samples": 1600,
+      "p50_us": 18,
+      "p95_us": 27,
+      "max_us": 93
+    },
+    "observe": {
+      "samples": 1600,
+      "p50_us": 291,
+      "p95_us": 389,
+      "max_us": 617
+    },
+    "open_to_observe": {
+      "samples": 1600,
+      "p50_us": 2627,
+      "p95_us": 3124,
+      "max_us": 3143
+    },
+    "program_10": {
+      "samples": 1600,
+      "p50_us": 524,
+      "p95_us": 699,
+      "max_us": 717
+    }
+  },
+  "layout_100": {
+    "samples": 30,
+    "p50_us": 1090,
+    "p95_us": 1113,
+    "max_us": 1119
+  },
+  "gate": "m1",
+  "gates": [
+    {
+      "metric": "observe",
+      "gate_us": 5000,
+      "p95_us": 389,
+      "pass": true
+    },
+    {
+      "metric": "open_to_observe",
+      "gate_us": 50000,
+      "p95_us": 3124,
+      "pass": true
+    },
+    {
+      "metric": "click_step",
+      "gate_us": 2000,
+      "p95_us": 38,
+      "pass": true
+    },
+    {
+      "metric": "fill_step",
+      "gate_us": 2000,
+      "p95_us": 27,
+      "pass": true
+    },
+    {
+      "metric": "program_10",
+      "gate_us": 20000,
+      "p95_us": 699,
+      "pass": true
+    },
+    {
+      "metric": "diff_after_edit",
+      "gate_us": 500,
+      "p95_us": 15,
+      "pass": true
+    }
+  ],
+  "all_gates_pass": true
+}

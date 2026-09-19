@@ -26,7 +26,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use ve_api::{
     EngineConfig, ExecuteRequest, NativeBrowser, NativeEvent, NetworkPolicy, ObservationContent,
-    ObservationRequest, OpenRequest, PageId, Program, ScrollPhase, VectorEngine,
+    ObservationRequest, OpenRequest, PageId, Program, ScrollPhase, SecurityProfile, VectorEngine,
 };
 use ve_core::Size;
 
@@ -467,6 +467,7 @@ fn main() -> Result<()> {
         viewport,
         offline: true,
         policy: NetworkPolicy::permissive(),
+        security_profile: SecurityProfile::Production,
         ..EngineConfig::default()
     });
 
@@ -615,6 +616,7 @@ fn run_frames(args: &Args) -> Result<()> {
     let mut browser = NativeBrowser::with_config(EngineConfig {
         viewport: Size::new(args.width, args.height),
         offline: true,
+        security_profile: SecurityProfile::Production,
         ..EngineConfig::default()
     });
     browser.handle_event(NativeEvent::NewTab {
