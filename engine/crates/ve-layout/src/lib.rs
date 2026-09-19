@@ -1011,6 +1011,26 @@ mod tests {
     }
 
     #[test]
+    fn grid_template_areas_place_named_items() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} .g{display:grid;width:200px;grid-template-columns:50px 150px;grid-template-rows:20px;grid-template-areas:\"a b\"}\
+             #a{grid-area:a} #b{grid-area:b}</style>\
+             <div class=g><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.x() - 0.0).abs() < 1.0 && (a.width() - 50.0).abs() < 1.0,
+            "area a, got {a:?}"
+        );
+        assert!(
+            (b.x() - 50.0).abs() < 1.0 && (b.width() - 150.0).abs() < 1.0,
+            "area b, got {b:?}"
+        );
+    }
+
+    #[test]
     fn positioned_boxes_and_stacking_order() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #rel{position:relative;top:5px;left:5px;height:20px}\

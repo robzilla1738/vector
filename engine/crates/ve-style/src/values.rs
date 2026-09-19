@@ -648,7 +648,7 @@ impl VerticalAlign {
 }
 
 /// A computed `grid-row-start` / `grid-column-end` value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum GridLine {
     /// Auto-placed.
     #[default]
@@ -657,6 +657,65 @@ pub enum GridLine {
     Line(i32),
     /// Span this many tracks from the opposite edge.
     Span(u32),
+    /// A named line or `grid-template-areas` name.
+    Named(String),
+}
+
+/// Computed `grid-template-areas` (`none` is empty).
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct GridTemplateAreas {
+    /// Rows of cell names (`.` cells are stored as `"."`).
+    pub rows: Vec<Vec<String>>,
+}
+
+impl GridTemplateAreas {
+    /// No areas.
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    /// Column count from the longest row.
+    #[must_use]
+    pub fn column_count(&self) -> u16 {
+        self.rows.iter().map(|r| r.len() as u16).max().unwrap_or(0)
+    }
+
+    /// Row count.
+    #[must_use]
+    pub fn row_count(&self) -> u16 {
+        self.rows.len() as u16
+    }
+
+    /// Named areas as `(name, row_start, row_end, col_start, col_end)` in
+    /// 1-based grid lines.
+    #[must_use]
+    pub fn named_boxes(&self) -> Vec<(String, u16, u16, u16, u16)> {
+        let mut boxes: std::collections::BTreeMap<String, (u16, u16, u16, u16)> =
+            std::collections::BTreeMap::new();
+        for (r, row) in self.rows.iter().enumerate() {
+            let row_i = (r as u16) + 1;
+            for (c, name) in row.iter().enumerate() {
+                if name == "." || name.is_empty() {
+                    continue;
+                }
+                let col_i = (c as u16) + 1;
+                boxes
+                    .entry(name.clone())
+                    .and_modify(|b| {
+                        b.0 = b.0.min(row_i);
+                        b.1 = b.1.max(row_i + 1);
+                        b.2 = b.2.min(col_i);
+                        b.3 = b.3.max(col_i + 1);
+                    })
+                    .or_insert((row_i, row_i + 1, col_i, col_i + 1));
+            }
+        }
+        boxes
+            .into_iter()
+            .map(|(name, (rs, re, cs, ce))| (name, rs, re, cs, ce))
+            .collect()
+    }
 }
 
 /// One component of the `content` property.

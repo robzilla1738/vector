@@ -13,6 +13,7 @@
 
 use taffy::prelude::*;
 use taffy::tree::{LayoutInput, LayoutOutput};
+use taffy::{GridTemplateArea, GridTemplateAreas as TaffyGridTemplateAreas};
 use ve_core::{Point, Rect as CoreRect};
 use ve_style::{
     AlignItems as CssAlign, ComputedStyle, FlexDirection as CssDir, FlexWrap as CssWrap, GridLine,
@@ -167,16 +168,17 @@ fn auto_track(t: TrackSize) -> TrackSizingFunction {
 }
 
 fn placement(start: GridLine, end: GridLine) -> Line<GridPlacement<String>> {
-    let one = |g: GridLine| -> GridPlacement<String> {
+    let one = |g: GridLine, suffix: &str| -> GridPlacement<String> {
         match g {
             GridLine::Auto => auto(),
             GridLine::Line(n) => line(i16::try_from(n).unwrap_or(i16::MAX)),
             GridLine::Span(n) => span(u16::try_from(n).unwrap_or(u16::MAX)),
+            GridLine::Named(name) => GridPlacement::NamedLine(format!("{name}{suffix}"), 1),
         }
     };
     Line {
-        start: one(start),
-        end: one(end),
+        start: one(start, "-start"),
+        end: one(end, "-end"),
     }
 }
 
@@ -285,6 +287,25 @@ fn container_style(
             .copied()
             .map(auto_track)
             .collect(),
+        grid_template_areas: (!style.grid_template_areas.is_none()).then(|| {
+            let areas = style
+                .grid_template_areas
+                .named_boxes()
+                .into_iter()
+                .map(|(name, rs, re, cs, ce)| GridTemplateArea {
+                    name,
+                    row_start: rs,
+                    row_end: re,
+                    column_start: cs,
+                    column_end: ce,
+                })
+                .collect();
+            TaffyGridTemplateAreas {
+                areas,
+                row_count: style.grid_template_areas.row_count(),
+                column_count: style.grid_template_areas.column_count(),
+            }
+        }),
         ..Style::default()
     }
 }
@@ -316,8 +337,11 @@ fn item_style(style: &ComputedStyle, basis: Basis) -> Style<String> {
         flex_basis: dimension(style.flex_basis, basis.width),
         align_self: align_self(style.align_self),
         justify_self: align_self(style.justify_self),
-        grid_row: placement(style.grid_row_start, style.grid_row_end),
-        grid_column: placement(style.grid_column_start, style.grid_column_end),
+        grid_row: placement(style.grid_row_start.clone(), style.grid_row_end.clone()),
+        grid_column: placement(
+            style.grid_column_start.clone(),
+            style.grid_column_end.clone(),
+        ),
         ..Style::default()
     }
 }

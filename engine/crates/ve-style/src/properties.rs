@@ -24,7 +24,7 @@ use crate::values::{
     Clear, ClipPath, Color, Content, ContentItem, CssClip, Direction, Display, Filter, FlexDirection,
     FlexWrap,
     Float, FontFamily,
-    FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
+    FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     Contain, ContainerType, ContentVisibility, EmptyCells, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
     SelfAlignment, TextAlign,
@@ -285,6 +285,8 @@ pub enum SpecifiedValue {
     ClipInset(Box<[SpecifiedValue; 4]>),
     /// `clip: rect(top, right, bottom, left)`.
     ClipRect(Box<[SpecifiedValue; 4]>),
+    /// `grid-template-areas`.
+    GridAreas(GridTemplateAreas),
     /// `box-shadow: <offset-x> <offset-y> <blur>? <color>?`.
     BoxShadow(Box<SpecifiedBoxShadow>),
     /// `background-size`.
@@ -377,6 +379,8 @@ enum ValueSyntax {
     ClipPath,
     /// `grid-*-start` / `grid-*-end`.
     GridLine,
+    /// `grid-template-areas`.
+    GridAreas,
     /// The `box-shadow` property.
     BoxShadow,
     /// `aspect-ratio`.
@@ -645,9 +649,18 @@ mod conv {
 
     pub fn grid_line(v: &SpecifiedValue, _: &ConvertContext) -> Option<GridLine> {
         match v {
-            SpecifiedValue::GridLine(l) => Some(*l),
+            SpecifiedValue::GridLine(l) => Some(l.clone()),
             SpecifiedValue::Keyword(k) if k == "auto" => Some(GridLine::Auto),
+            SpecifiedValue::Keyword(k) => Some(GridLine::Named(k.clone())),
             SpecifiedValue::Integer(i) if *i != 0 => Some(GridLine::Line(*i)),
+            _ => None,
+        }
+    }
+
+    pub fn grid_areas(v: &SpecifiedValue, _: &ConvertContext) -> Option<GridTemplateAreas> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(GridTemplateAreas::default()),
+            SpecifiedValue::GridAreas(a) => Some(a.clone()),
             _ => None,
         }
     }
@@ -1223,6 +1236,8 @@ property_table! {
     GridTemplateColumns: "grid-template-columns" => grid_template_columns: Vec<TrackSize> = Vec::new(), inherited = false, syntax = TrackList, convert = conv::tracks;
     /// `grid-template-rows` (explicit tracks only; empty = `none`)
     GridTemplateRows: "grid-template-rows" => grid_template_rows: Vec<TrackSize> = Vec::new(), inherited = false, syntax = TrackList, convert = conv::tracks;
+    /// `grid-template-areas`
+    GridTemplateAreas: "grid-template-areas" => grid_template_areas: GridTemplateAreas = GridTemplateAreas { rows: Vec::new() }, inherited = false, syntax = GridAreas, convert = conv::grid_areas;
     /// `grid-auto-columns` (first track size only)
     GridAutoColumns: "grid-auto-columns" => grid_auto_columns: Vec<TrackSize> = Vec::new(), inherited = false, syntax = TrackList, convert = conv::tracks;
     /// `grid-auto-rows` (first track size only)
@@ -1403,8 +1418,6 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
     "float-offset",
     "shape-outside",
     "visibility-collapse",
-    "grid-template-areas",
-    "grid-area",
     "field-sizing",
     "resize",
 ];
@@ -1481,7 +1494,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "backface-visibility",
     "container-name",
     "container",
-    "grid-template-areas",
     "grid-auto-flow",
     "resize",
     "accent-color",
@@ -2422,8 +2434,9 @@ fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
                     .then_some(SpecifiedValue::Keyword("auto".into()));
             }
             Token::Ident(k) if k.eq_ignore_ascii_case("span") => span = true,
-            // Custom line names are ignored; the number (if any) is kept.
-            Token::Ident(_) => {}
+            Token::Ident(k) => {
+                return Some(SpecifiedValue::GridLine(GridLine::Named(k.to_ascii_lowercase())));
+            }
             Token::Number {
                 int_value: Some(i), ..
             } if i != 0 => number = Some(i),
@@ -2435,6 +2448,32 @@ fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
         (false, Some(n)) => GridLine::Line(n),
         (false, None) => GridLine::Auto,
     }))
+}
+
+fn parse_grid_areas(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input
+        .try_parse(|i| i.expect_ident_matching("none"))
+        .is_ok()
+    {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let mut rows = Vec::new();
+    while !input.is_exhausted() {
+        match input.next().ok()?.clone() {
+            Token::QuotedString(s) => {
+                let cells: Vec<String> = s
+                    .split_whitespace()
+                    .map(|c| c.to_ascii_lowercase())
+                    .collect();
+                if cells.is_empty() {
+                    return None;
+                }
+                rows.push(cells);
+            }
+            _ => return None,
+        }
+    }
+    (!rows.is_empty()).then_some(SpecifiedValue::GridAreas(GridTemplateAreas { rows }))
 }
 
 /// Reads the remaining input as raw text (for custom properties and `var()`
@@ -2499,6 +2538,9 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::GridLine => css_wide(input)
                 .or_else(|()| parse_grid_line(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::GridAreas => css_wide(input)
+                .or_else(|()| parse_grid_areas(input).ok_or(()))
                 .ok()?,
             ValueSyntax::BoxShadow => css_wide(input)
                 .or_else(|()| parse_box_shadow(input).ok_or(()))
@@ -2835,9 +2877,33 @@ pub fn expand_shorthand<'i>(
             "grid-area" => slash_separated(input, 4).and_then(|parts| {
                 let mut it = parts.into_iter();
                 let row_start = it.next()?;
-                let column_start = it.next().unwrap_or_else(|| mirror_line(&row_start));
-                let row_end = it.next().unwrap_or_else(|| mirror_line(&row_start));
-                let column_end = it.next().unwrap_or_else(|| mirror_line(&column_start));
+                let named_area = it.len() == 0
+                    && match &row_start {
+                        SpecifiedValue::GridLine(GridLine::Named(_)) => true,
+                        SpecifiedValue::Keyword(k) if k != "auto" => true,
+                        _ => false,
+                    };
+                let column_start = it.next().unwrap_or_else(|| {
+                    if named_area {
+                        row_start.clone()
+                    } else {
+                        mirror_line(&row_start)
+                    }
+                });
+                let row_end = it.next().unwrap_or_else(|| {
+                    if named_area {
+                        row_start.clone()
+                    } else {
+                        mirror_line(&row_start)
+                    }
+                });
+                let column_end = it.next().unwrap_or_else(|| {
+                    if named_area {
+                        row_start.clone()
+                    } else {
+                        mirror_line(&column_start)
+                    }
+                });
                 let out = vec![
                     (P::GridRowStart, row_start),
                     (P::GridColumnStart, column_start),
@@ -3364,11 +3430,13 @@ mod tests {
         ok("column-width", "12em");
         ok("table-layout", "fixed");
         ok("empty-cells", "hide");
+        ok("grid-template-areas", "\"a b\" \"a c\"");
+        ok("grid-row-start", "header");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 134);
+        assert_eq!(PropertyId::ALL.len(), 135);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
