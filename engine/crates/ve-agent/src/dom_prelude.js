@@ -6293,6 +6293,48 @@
       this.dispatchEvent(ev);
     }
   }
+  class SpeechSynthesisUtterance extends EventTarget {
+    constructor(text) {
+      super();
+      this.text = text == null ? "" : String(text);
+      this.lang = "";
+      this.volume = 1;
+      this.rate = 1;
+      this.pitch = 1;
+      this.voice = null;
+      this.onstart = null;
+      this.onend = null;
+      this.onerror = null;
+      this.onpause = null;
+      this.onresume = null;
+      this.onboundary = null;
+      this.onmark = null;
+    }
+  }
+  class SpeechSynthesis extends EventTarget {
+    constructor() {
+      super();
+      this.pending = false;
+      this.speaking = false;
+      this.paused = false;
+    }
+    getVoices() { return []; }
+    speak(utterance) {
+      if (!utterance) return;
+      this.pending = false;
+      this.speaking = true;
+      const self = this;
+      utterance.dispatchEvent(new Event("start"));
+      queueMicrotask(() => {
+        self.speaking = false;
+        utterance.dispatchEvent(new Event("end"));
+      });
+    }
+    cancel() { this.speaking = false; this.pending = false; this.paused = false; }
+    pause() { this.paused = true; }
+    resume() { this.paused = false; }
+  }
+  const speechSynthesis = new SpeechSynthesis();
   class Document extends Node {
     constructor() {
       super();
@@ -7249,7 +7291,16 @@
   }
   class NavigationPrecommitController {
     constructor() { throw new TypeError("Illegal constructor"); }
-    redirect(url) {}
+    redirect(url) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'redirect' on 'NavigationPrecommitController': 1 argument required, but only 0 present.");
+      }
+      if (this._event && this._event._destination) {
+        const next = String(url);
+        this._event._destination._url = next;
+        this._event._redirected = next;
+      }
+    }
     addHandler(handler) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'addHandler' on 'NavigationPrecommitController': 1 argument required, but only 0 present.");
@@ -7283,7 +7334,15 @@
     get info() { return this._info; }
     get hasUAVisualTransition() { return this._hasUAVisualTransition; }
     get sourceElement() { return this._sourceElement; }
-    intercept() { this._intercepted = true; }
+    intercept(options) {
+      this._intercepted = true;
+      if (options && typeof options.precommitHandler === "function") {
+        const ctrl = Object.create(NavigationPrecommitController.prototype);
+        ctrl._event = this;
+        options.precommitHandler(ctrl);
+      }
+      if (options && typeof options.handler === "function") this._handler = options.handler;
+    }
     scroll() { this._scrolled = true; }
   }
   class NavigationCurrentEntryChangeEvent extends Event {
@@ -7326,8 +7385,8 @@
       dest._url = String(url);
       const ev = new NavigateEvent("navigate", { destination: dest, canIntercept: true });
       this.dispatchEvent(ev);
-      if (!ev._intercepted) {
-        D("locationSet", "href", String(url));
+      if (!ev._intercepted || ev._redirected) {
+        D("locationSet", "href", ev._redirected || String(url));
         const list = this._list();
         list.push(makeNavEntry(D("locationGet", "href"), list.length));
       }
@@ -8248,16 +8307,44 @@
       (sw._messageFns || []).forEach((fn) => { try { fn(ev); } catch (e) {} });
     }
   }
+  const blobUrls = new Map();
+  let blobUrlSeq = 0;
+  function createBlobObjectURL(obj) {
+    const u = "blob:https://s.test/" + (++blobUrlSeq);
+    blobUrls.set(u, obj);
+    return u;
+  }
+  function revokeBlobObjectURL(u) { blobUrls.delete(String(u)); }
   function fetchImpl(url, init) {
     init = init || {};
     if (init.signal && init.signal.aborted) {
       return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
     }
+    const rawUrl = String(url && url.url ? url.url : url);
+    if (rawUrl.indexOf("blob:") === 0) {
+      const blob = blobUrls.get(rawUrl);
+      if (!blob) {
+        return Promise.reject(new TypeError("Failed to fetch"));
+      }
+      const bytes = blob._bytes || new Uint8Array(0);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      let text = bin;
+      try { text = decodeURIComponent(escape(bin)); } catch (e) {}
+      return Promise.resolve(responseFrom({
+        status: 200,
+        statusText: "OK",
+        url: rawUrl,
+        body: text,
+        bodyB64: btoa(bin),
+        headers: { "content-type": blob.type || "application/octet-stream" },
+      }));
+    }
     return new Promise((resolve, reject) => {
       try {
         const headers = JSON.stringify(init.headers || {});
         const body = init.body == null ? "" : String(init.body);
-        const id = D("fetchStart", String(url && url.url ? url.url : url), init.method || "GET", headers, body);
+        const id = D("fetchStart", rawUrl, init.method || "GET", headers, body);
         if (init.signal) {
           init.signal.addEventListener("abort", () => {
             D("fetchAbort", id);
@@ -8557,8 +8644,8 @@
     }
     abort() { this.readyState = 2; }
   }
-  URL.createObjectURL = () => "blob:vector:0";
-  URL.revokeObjectURL = () => {};
+  URL.createObjectURL = createBlobObjectURL;
+  URL.revokeObjectURL = revokeBlobObjectURL;
   function utf8Encode(string) {
     const out = [];
     for (let i = 0; i < string.length; i++) {
@@ -9050,7 +9137,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Sanitizer,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];

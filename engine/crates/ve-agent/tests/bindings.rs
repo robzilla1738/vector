@@ -3622,6 +3622,78 @@ fn crypto_subtle_digests_sha256() {
 }
 
 #[test]
+fn navigation_precommit_redirect_updates_location() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              navigation.addEventListener("navigate", function (ev) {
+                ev.intercept({
+                  precommitHandler: function (ctrl) { ctrl.redirect("#other"); }
+                });
+              });
+              navigation.navigate("#first");
+              return { hash: location.hash, dest: navigation.currentEntry.url };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hash"], "#other", "{v}");
+}
+
+#[test]
+fn fetch_reads_blob_object_url() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              var blob = new Blob(["hello-blob"], { type: "text/plain" });
+              window.__blobUrl = URL.createObjectURL(blob);
+              window.__blobText = null;
+              window.__revoked = null;
+              fetch(window.__blobUrl).then(function (r) { return r.text(); }).then(function (t) {
+                window.__blobText = t;
+                URL.revokeObjectURL(window.__blobUrl);
+                return fetch(window.__blobUrl).then(function () { window.__revoked = "ok"; }, function () { window.__revoked = "fail"; });
+              });
+              return { unique: window.__blobUrl !== "blob:vector:0", prefix: window.__blobUrl.indexOf("blob:") === 0 };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["unique"], true, "{started}");
+    assert_eq!(started["prefix"], true, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("({ text: window.__blobText, revoked: window.__revoked })")
+        .unwrap();
+    assert_eq!(v["text"], "hello-blob", "{v}");
+    assert_eq!(v["revoked"], "fail", "{v}");
+}
+
+#[test]
+fn speech_synthesis_speak_fires_start_and_end() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__sp = [];
+              var u = new SpeechSynthesisUtterance("hi");
+              u.onstart = function () { window.__sp.push("start"); };
+              u.onend = function () { window.__sp.push("end"); };
+              speechSynthesis.speak(u);
+              return { speaking: speechSynthesis.speaking, voices: speechSynthesis.getVoices().length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["speaking"], true, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("({ ev: window.__sp.join(','), speaking: speechSynthesis.speaking })")
+        .unwrap();
+    assert_eq!(v["ev"], "start,end", "{v}");
+    assert_eq!(v["speaking"], false, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
