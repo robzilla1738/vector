@@ -1045,6 +1045,21 @@ impl NativeBrowser {
                             self.urlbar.push_str(&key);
                         }
                     }
+                } else if self.chrome_enabled && self.chrome.find_open && state == KeyState::Down {
+                    match key.as_str() {
+                        "Escape" => self.chrome.find_open = false,
+                        "Backspace" => {
+                            self.chrome.find.pop();
+                            self.refresh_find();
+                        }
+                        "Enter" => self.advance_find(true),
+                        k if k.len() == 1 && modifiers & (2 | 4) == 0 => {
+                            self.chrome.find.push_str(k);
+                            self.refresh_find();
+                        }
+                        _ => {}
+                    }
+                    self.present_dirty();
                 } else if self.dispatch_chrome_shortcut(&key, modifiers, state) {
                     self.present_dirty();
                 } else {
@@ -1058,10 +1073,16 @@ impl NativeBrowser {
                 }
             }
             NativeEvent::Ime { text } => {
-                self.ime_preedit.clear();
-                self.last_typed.clone_from(&text);
-                self.dispatch_human_ime(&text)?;
-                self.present_dirty();
+                if self.chrome_enabled && self.chrome.find_open {
+                    self.chrome.find.push_str(&text);
+                    self.refresh_find();
+                    self.present_dirty();
+                } else {
+                    self.ime_preedit.clear();
+                    self.last_typed.clone_from(&text);
+                    self.dispatch_human_ime(&text)?;
+                    self.present_dirty();
+                }
             }
             NativeEvent::ImePreedit { text } => {
                 self.ime_preedit = text;
@@ -1175,6 +1196,9 @@ impl NativeBrowser {
                 }
                 if let Ok(find) = profile.find() {
                     self.chrome.find = find;
+                }
+                if let Ok(dls) = profile.downloads() {
+                    self.downloads = dls.into_iter().map(|d| d.path).collect();
                 }
                 self.profile = Some(profile);
             }
@@ -1438,6 +1462,7 @@ impl NativeBrowser {
             }
             "find" => {
                 self.chrome.find_open = true;
+                self.refresh_find();
             }
             "sb" | "hide-sb" => {
                 self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
@@ -1606,6 +1631,42 @@ impl NativeBrowser {
         &self.downloads
     }
 
+    fn refresh_find(&mut self) {
+        let q = self.chrome.find.clone();
+        if let Some(profile) = &self.profile {
+            let _ = profile.set_find(&q);
+        }
+        if q.is_empty() {
+            self.chrome.find_matches = 0;
+            self.chrome.find_active = 0;
+            return;
+        }
+        let text = self
+            .observe_active()
+            .ok()
+            .map(|o| o.observation.content.text)
+            .unwrap_or_default();
+        let n = text.to_lowercase().matches(&q.to_lowercase()).count() as u32;
+        self.chrome.find_matches = n;
+        self.chrome.find_active = if n == 0 { 0 } else { 1 };
+    }
+
+    fn advance_find(&mut self, forward: bool) {
+        let n = self.chrome.find_matches;
+        if n == 0 {
+            self.chrome.find_active = 0;
+            return;
+        }
+        let cur = self.chrome.find_active.max(1);
+        self.chrome.find_active = if forward {
+            if cur >= n { 1 } else { cur + 1 }
+        } else if cur <= 1 {
+            n
+        } else {
+            cur - 1
+        };
+    }
+
     /// Bookmark the active tab (chrome / profile, never page text).
     pub fn bookmark_active(&mut self) {
         if let (Some(tab), Some(profile)) = (self.active_tab(), self.profile.as_ref()) {
@@ -1683,7 +1744,18 @@ impl NativeBrowser {
             }
             "f" | "F" => {
                 self.chrome.find_open = !self.chrome.find_open;
+                if self.chrome.find_open {
+                    self.refresh_find();
+                }
                 true
+            }
+            "g" | "G" => {
+                if self.chrome.find_open {
+                    self.advance_find(modifiers & 8 == 0);
+                    true
+                } else {
+                    false
+                }
             }
             "-" => {
                 self.chrome.zoom = (self.chrome.zoom - 0.1).max(0.25);
@@ -2598,6 +2670,111 @@ mod tests {
             "restart must restore the last session: {:?}",
             restored.chrome().tabs
         );
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn day_of_browsing_restores_tabs_history_bookmarks_zoom_find() {
+        let path = format!("/tmp/vector-day-browse-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
+        {
+            let mut browser = NativeBrowser::new();
+            browser.enable_product_chrome();
+            browser
+                .handle_event(NativeEvent::NewTab {
+                    html: "<p>alpha hello hello</p>".into(),
+                    url: "https://day.test/alpha".into(),
+                })
+                .unwrap();
+            browser
+                .handle_event(NativeEvent::NewTab {
+                    html: "<p>beta hello hello</p>".into(),
+                    url: "https://day.test/beta".into(),
+                })
+                .unwrap();
+            browser.bookmark_active();
+            browser.record_download("report.pdf");
+            browser
+                .handle_event(NativeEvent::Key {
+                    key: "=".into(),
+                    code: "Equal".into(),
+                    modifiers: 4,
+                    repeat: false,
+                    state: KeyState::Down,
+                })
+                .unwrap();
+            browser
+                .handle_event(NativeEvent::Key {
+                    key: "f".into(),
+                    code: "KeyF".into(),
+                    modifiers: 4,
+                    repeat: false,
+                    state: KeyState::Down,
+                })
+                .unwrap();
+            browser
+                .handle_event(NativeEvent::Ime {
+                    text: "hello".into(),
+                })
+                .unwrap();
+            assert!(browser.chrome().find_open);
+            assert_eq!(browser.chrome().find, "hello");
+            assert_eq!(browser.chrome().find_matches, 2);
+            assert!(browser.chrome().zoom > 1.0);
+            let _ = browser.present();
+        }
+        let mut restored = NativeBrowser::new();
+        restored.enable_product_chrome();
+        let urls: Vec<String> = restored.chrome().tabs.iter().map(|t| t.url.clone()).collect();
+        assert!(
+            urls.iter().any(|u| u.contains("alpha")) && urls.iter().any(|u| u.contains("beta")),
+            "day-of-browsing must restore both tabs: {urls:?}"
+        );
+        assert!(
+            restored
+                .chrome()
+                .bookmarks
+                .iter()
+                .any(|(u, _)| u.contains("day.test")),
+            "bookmark must survive restart: {:?}",
+            restored.chrome().bookmarks
+        );
+        assert!(
+            restored.chrome().history.iter().any(|(u, _)| u.contains("day.test")),
+            "history must survive restart: {:?}",
+            restored.chrome().history
+        );
+        assert!(
+            restored.chrome().zoom > 1.0,
+            "zoom must survive restart: {}",
+            restored.chrome().zoom
+        );
+        assert_eq!(restored.chrome().find, "hello");
+        assert!(
+            restored.chrome().download_names.iter().any(|n| n == "report.pdf"),
+            "downloads must survive restart: {:?}",
+            restored.chrome().download_names
+        );
+        let evidence = serde_json::json!({
+            "review": "H2-exit",
+            "gate": "day-of-ordinary-browsing",
+            "profile": path,
+            "restoredTabs": urls,
+            "bookmarks": restored.chrome().bookmarks.len(),
+            "history": restored.chrome().history.len(),
+            "zoom": restored.chrome().zoom,
+            "find": restored.chrome().find,
+            "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find"
+        });
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/engine/evidence");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(
+            dir.join("day-of-browsing.json"),
+            serde_json::to_vec_pretty(&evidence).unwrap(),
+        )
+        .unwrap();
         let _ = std::fs::remove_file(&path);
     }
 

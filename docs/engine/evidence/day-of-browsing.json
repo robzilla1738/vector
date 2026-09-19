@@ -1,0 +1,14 @@
+{
+  "bookmarks": 1,
+  "find": "hello",
+  "gate": "day-of-ordinary-browsing",
+  "history": 10,
+  "profile": "/tmp/vector-day-browse-138925.sqlite",
+  "restoredTabs": [
+    "https://day.test/alpha",
+    "https://day.test/beta"
+  ],
+  "review": "H2-exit",
+  "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find",
+  "zoom": 1.100000023841858
+}

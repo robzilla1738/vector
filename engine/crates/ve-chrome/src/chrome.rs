@@ -142,6 +142,10 @@ pub struct Chrome {
     pub find: String,
     /// Find visible.
     pub find_open: bool,
+    /// Active find match (1-based; 0 when none).
+    pub find_active: u32,
+    /// Total find matches on the current page.
+    pub find_matches: u32,
     /// Page zoom (1.0 = 100%).
     pub zoom: f32,
     /// Sidebar collapsed to a rail.
@@ -184,6 +188,8 @@ impl Default for Chrome {
             command_focused: false,
             find: String::new(),
             find_open: false,
+            find_active: 0,
+            find_matches: 0,
             zoom: 1.0,
             sidebar_collapsed: false,
             sidebar_width: ChromeMetrics::default().sidebar_w,
@@ -879,7 +885,7 @@ impl Chrome {
     fn paint_find(&self, list: &mut DisplayList, window: Size) {
         let t = &self.tokens;
         let stage = self.stage_rect(window);
-        let bar = Rect::new(stage.x() + 12.0, stage.y() + 8.0, 280.0, 28.0);
+        let bar = Rect::new(stage.x() + 12.0, stage.y() + 8.0, 360.0, 32.0);
         list.push(DisplayItem::RoundedClip {
             rect: bar,
             radius: 8.0,
@@ -894,13 +900,36 @@ impl Chrome {
         } else {
             self.find.as_str()
         };
-        self.label(list, Point::new(bar.x() + 10.0, bar.y() + 19.0), q, 12.0, t.ink_0);
+        self.label(list, Point::new(bar.x() + 12.0, bar.y() + 21.0), q, 12.0, t.ink_0);
+        let count = if self.find.is_empty() {
+            String::new()
+        } else if self.find_matches == 0 {
+            "No results".to_string()
+        } else {
+            format!("{} of {}", self.find_active.max(1), self.find_matches)
+        };
+        if !count.is_empty() {
+            self.label(
+                list,
+                Point::new(bar.x() + 200.0, bar.y() + 21.0),
+                &count,
+                11.0,
+                if self.find_matches == 0 { t.err } else { t.ink_1 },
+            );
+        }
         self.label(
             list,
-            Point::new(bar.x() + 200.0, bar.y() + 19.0),
-            &format!("{:.0}%", self.zoom * 100.0),
+            Point::new(bar.x() + 300.0, bar.y() + 21.0),
+            "Done",
             11.0,
             t.ink_1,
+        );
+        self.label(
+            list,
+            Point::new(bar.right() + 12.0, bar.y() + 21.0),
+            &format!("{:.0}%", self.zoom * 100.0),
+            11.0,
+            t.ink_2,
         );
     }
 
@@ -1727,6 +1756,39 @@ mod tests {
             chrome.hit(window, dark.x() + 4.0, dark.y() + 4.0),
             ChromeHit::ThemeDark
         );
+    }
+
+    #[test]
+    fn find_bar_shows_match_count() {
+        let mut chrome = sample();
+        chrome.find_open = true;
+        chrome.find = "hello".into();
+        chrome.find_active = 1;
+        chrome.find_matches = 3;
+        let list = chrome.paint(Size::new(1280.0, 720.0));
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "hello"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "1 of 3"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Done"), "{texts:?}");
+        chrome.find_matches = 0;
+        chrome.find_active = 0;
+        let list = chrome.paint(Size::new(1280.0, 720.0));
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "No results"), "{texts:?}");
     }
 
     #[test]
