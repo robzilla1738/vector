@@ -58,6 +58,7 @@ const PRE_DISPATCH_CODES = new Set([
   "backend_unavailable",
   "not_found",
   "target_detached",
+  "ref_stale",
   "unsupported_op",
   "conflict",
   "permission_denied",

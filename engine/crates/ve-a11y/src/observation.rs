@@ -166,6 +166,14 @@ fn is_main_frame(s: &str) -> bool {
     s == "main"
 }
 
+fn is_main_frame_chain(chain: &[String]) -> bool {
+    chain.is_empty() || chain == ["main"]
+}
+
+fn is_zero_depth(depth: &u32) -> bool {
+    *depth == 0
+}
+
 /// `SelectorStrategy.role`.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct RoleSelector {
@@ -273,6 +281,18 @@ pub struct ElementRef {
     /// Covered at its centre point (Full).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub occluded: Option<bool>,
+    /// Frame keys from the top document to this element's frame.
+    #[serde(default, skip_serializing_if = "is_main_frame_chain")]
+    pub frame_chain: Vec<String>,
+    /// Shadow roots between this node and the light tree.
+    #[serde(default, skip_serializing_if = "is_zero_depth")]
+    pub shadow_depth: u32,
+    /// Nearest scrollable ancestor (`r<index>`), if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scroll_container: Option<String>,
+    /// Element covering this one at its centre (`r<index>`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub occluded_by: Option<String>,
     /// Attached but not shown (Full).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
@@ -544,6 +564,8 @@ pub struct Visibility5 {
     pub offscreen: bool,
     /// Something else is on top at the centre.
     pub occluded: bool,
+    /// Covering node when `occluded`.
+    pub occluded_by: Option<NodeId>,
     /// Viewport-relative rect after clipping.
     pub rect: Rect,
 }
@@ -674,6 +696,35 @@ impl<'a> Builder<'a> {
         self.input.styles.get(id)
     }
 
+    fn shadow_depth(&self, id: NodeId) -> u32 {
+        let mut n = 0u32;
+        let mut cur = Some(id);
+        while let Some(node) = cur {
+            let Some(shadow) = self.doc.containing_shadow_root(node) else {
+                break;
+            };
+            n += 1;
+            cur = self.doc.host(shadow);
+        }
+        n
+    }
+
+    fn scroll_container_ref(&self, id: NodeId) -> Option<String> {
+        std::iter::once(id)
+            .chain(self.doc.ancestors(id))
+            .find(|&a| {
+                self.input
+                    .styles
+                    .get(a)
+                    .is_some_and(|s| s.overflow.is_scrollable())
+                    && self
+                        .doc
+                        .element(a)
+                        .is_some_and(|e| !e.is_html("body") && !e.is_html("html"))
+            })
+            .map(ref_for)
+    }
+
     fn resolve_href(&self, href: &str) -> String {
         let href = href.trim();
         match &self.base {
@@ -752,18 +803,22 @@ impl<'a> Builder<'a> {
         }
         let offscreen = !rect.intersects(&self.viewport_rect) && !rect.is_empty()
             || (rect.is_empty() && !self.viewport_rect.contains(Point::new(rect.x(), rect.y())));
-        let occluded = if rect.is_empty() || offscreen {
-            false
+        let (occluded, occluded_by) = if rect.is_empty() || offscreen {
+            (false, None)
         } else {
             let center = rect.center();
             // Occluded: the topmost box at the centre belongs to neither the
             // element, a descendant, nor an ancestor (an ancestor hit means the
             // centre fell between the element's own fragments).
             match self.input.layout.hit_test(center) {
-                Some(hit) => {
-                    hit != id && !doc.is_ancestor_of(id, hit) && !doc.is_ancestor_of(hit, id)
+                Some(hit)
+                    if hit != id
+                        && !doc.is_ancestor_of(id, hit)
+                        && !doc.is_ancestor_of(hit, id) =>
+                {
+                    (true, Some(hit))
                 }
-                None => false,
+                _ => (false, None),
             }
         };
         let viewport_rect = rect.translate(-self.input.scroll.x, -self.input.scroll.y);
@@ -771,6 +826,7 @@ impl<'a> Builder<'a> {
             shown: true,
             offscreen,
             occluded,
+            occluded_by,
             rect: viewport_rect,
         }
     }
@@ -1107,7 +1163,10 @@ impl<'a> Builder<'a> {
                 }
             }
         }
-        let children: Vec<NodeId> = doc.children(id).collect();
+        let mut children: Vec<NodeId> = doc.children(id).collect();
+        if let Some(shadow) = doc.shadow_root(id) {
+            children.extend(doc.children(shadow));
+        }
         for child in children {
             self.walk_candidates(child, false, order, out);
         }
@@ -1324,6 +1383,10 @@ impl<'a> Builder<'a> {
             // element needs a scroll first or will not land at all.
             offscreen: c.vis.offscreen.then_some(true),
             occluded: c.vis.occluded.then_some(true),
+            frame_chain: vec!["main".into()],
+            shadow_depth: self.shadow_depth(id),
+            scroll_container: self.scroll_container_ref(id),
+            occluded_by: c.vis.occluded_by.map(ref_for),
             hidden: None,
             description: None,
             states: None,
@@ -2525,8 +2588,14 @@ mod tests {
         let full = p.full();
         let under = full.element(&ref_for(p.id("under"))).unwrap();
         assert_eq!(under.occluded, Some(true), "{under:?}");
+        assert_eq!(
+            under.occluded_by.as_deref(),
+            Some(ref_for(p.id("cover")).as_str()),
+            "occludedBy names the cover"
+        );
         let free = full.element(&ref_for(p.id("free"))).unwrap();
         assert_eq!(free.occluded, Some(false));
+        assert!(free.occluded_by.is_none());
         let compact = p.compact();
         assert_eq!(
             compact.elements[0].reference,
@@ -2534,6 +2603,28 @@ mod tests {
             "occluded sorted after"
         );
         assert_eq!(compact.elements[1].reference, ref_for(p.id("under")));
+    }
+
+    #[test]
+    fn protocol_fields_frame_chain_scroll_shadow_and_occluder() {
+        let p = page(
+            r#"<style>#box{height:40px;overflow:auto}</style>
+            <div id=box><button id=in>In</button></div>
+            <div id=host><template shadowrootmode="open"><button id=s>Shadow</button></template></div>"#,
+        );
+        let full = p.full();
+        let inner = full.element(&ref_for(p.id("in"))).unwrap();
+        assert_eq!(inner.frame_chain, vec!["main".to_string()]);
+        assert_eq!(
+            inner.scroll_container.as_deref(),
+            Some(ref_for(p.id("box")).as_str())
+        );
+        let shadow = full
+            .elements
+            .iter()
+            .find(|e| e.name.as_deref() == Some("Shadow"))
+            .expect("shadow button is observed");
+        assert!(shadow.shadow_depth >= 1, "{shadow:?}");
     }
 
     #[test]

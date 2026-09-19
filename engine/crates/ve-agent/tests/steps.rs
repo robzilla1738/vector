@@ -813,14 +813,14 @@ fn target_resolution_errors_carry_exact_codes_and_candidates() {
     );
     assert_eq!(error_code(&result, 0), ErrorCode::TargetDetached);
 
-    // Epoch mismatch → target_detached before anything runs.
+    // Epoch mismatch → ref_stale before anything runs.
     let one = reference(&page, "css:#one");
     let program = serde_json::json!({
         "documentEpoch": epoch + 1,
         "steps": [{ "id": "s", "op": "click", "target": one }]
     });
     let result = page.execute(&Program::from_value(program).unwrap());
-    assert_eq!(error_code(&result, 0), ErrorCode::TargetDetached);
+    assert_eq!(error_code(&result, 0), ErrorCode::RefStale);
 }
 
 #[test]

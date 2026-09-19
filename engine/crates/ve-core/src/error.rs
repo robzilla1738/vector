@@ -23,8 +23,10 @@ pub enum ErrorCode {
     NotFound,
     /// Malformed step JSON, unknown key chord, bad URL.
     InvalidParams,
-    /// Ref tombstoned or document epoch mismatch.
+    /// Ref tombstoned (node removed from the document).
     TargetDetached,
+    /// Ref generation or document epoch does not match the live node.
+    RefStale,
     /// Selector target matched more than one shown element.
     TargetAmbiguous,
     /// Network failure or missing transport.
@@ -51,6 +53,7 @@ impl ErrorCode {
             Self::NotFound => "not_found",
             Self::InvalidParams => "invalid_params",
             Self::TargetDetached => "target_detached",
+            Self::RefStale => "ref_stale",
             Self::TargetAmbiguous => "target_ambiguous",
             Self::BackendUnavailable => "backend_unavailable",
             Self::CapabilityUnsupported => "capability_unsupported",
@@ -284,6 +287,7 @@ mod tests {
             (ErrorCode::NotFound, "not_found"),
             (ErrorCode::InvalidParams, "invalid_params"),
             (ErrorCode::TargetDetached, "target_detached"),
+            (ErrorCode::RefStale, "ref_stale"),
             (ErrorCode::TargetAmbiguous, "target_ambiguous"),
             (ErrorCode::BackendUnavailable, "backend_unavailable"),
             (ErrorCode::CapabilityUnsupported, "capability_unsupported"),

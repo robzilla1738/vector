@@ -593,6 +593,7 @@ impl Page {
                     Ok(m) => m,
                     Err(e) if e.code() == ErrorCode::NotFound => Vec::new(),
                     Err(e) if e.code() == ErrorCode::TargetDetached => Vec::new(),
+                    Err(e) if e.code() == ErrorCode::RefStale => Vec::new(),
                     Err(e) => return Err(e),
                 };
                 self.update();

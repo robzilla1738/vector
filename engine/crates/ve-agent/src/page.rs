@@ -3706,8 +3706,9 @@ impl Page {
     // Target resolution
     // ---------------------------------------------------------------------
 
-    /// Resolves an `r<index>` ref: `target_detached` for tombstones (and
-    /// epoch mismatches), `not_found` for never-allocated indices.
+    /// Resolves an `r<index>` ref: `target_detached` for tombstones,
+    /// `ref_stale` for generation/epoch mismatches, `not_found` for
+    /// never-allocated indices.
     pub fn resolve_ref(&self, reference: &str, epoch: Option<u64>) -> Result<NodeId> {
         let (index, generation) = parse_ref_parts(reference)
             .ok_or_else(|| Error::invalid_params(format!("malformed ref {reference:?}")))?;
@@ -3715,7 +3716,7 @@ impl Page {
             && epoch != u64::from(self.generation)
         {
             return Err(Error::coded_with(
-                ErrorCode::TargetDetached,
+                ErrorCode::RefStale,
                 format!(
                     "ref {reference} belongs to document epoch {epoch}; the page is at epoch {}",
                     self.generation
@@ -3730,7 +3731,7 @@ impl Page {
                     && id.generation() != g
                 {
                     return Err(Error::coded_with(
-                        ErrorCode::TargetDetached,
+                        ErrorCode::RefStale,
                         format!(
                             "ref {reference} generation {g} does not match live generation {}",
                             id.generation()

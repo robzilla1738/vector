@@ -2,6 +2,7 @@ export type VectorErrorCode =
   | "not_found"
   | "invalid_params"
   | "target_detached"
+  | "ref_stale"
   | "target_ambiguous"
   | "backend_unavailable"
   | "capability_unsupported"

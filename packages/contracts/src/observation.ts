@@ -46,6 +46,14 @@ export const ElementRefSchema = z.object({
   offscreen: z.boolean().optional(),
   /** covered at its centre point by another element (overlay, sticky bar) */
   occluded: z.boolean().optional(),
+  /** Frame keys from the top document to this element's frame. */
+  frameChain: z.array(z.string()).optional(),
+  /** Shadow roots between this node and the light tree. */
+  shadowDepth: z.number().int().optional(),
+  /** Nearest scrollable ancestor ref. */
+  scrollContainer: z.string().optional(),
+  /** Ref of the element covering this one at its centre. */
+  occludedBy: z.string().optional(),
   /** attached but not shown (Full only) */
   hidden: z.boolean().optional(),
   /** accessible description (Full only) */

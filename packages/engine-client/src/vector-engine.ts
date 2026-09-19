@@ -195,7 +195,7 @@ interface ResponseMeta {
 }
 
 const CODES: ReadonlySet<string> = new Set<VectorErrorCode>([
-  "not_found", "invalid_params", "target_detached", "target_ambiguous", "backend_unavailable",
+  "not_found", "invalid_params", "target_detached", "ref_stale", "target_ambiguous", "backend_unavailable",
   "capability_unsupported", "step_failed", "condition_timeout", "cancelled", "model_error",
   "model_output_invalid", "needs_input", "conflict", "permission_denied", "assertion_failed", "operation_not_found", "internal",
 ]);

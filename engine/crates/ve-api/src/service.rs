@@ -821,6 +821,7 @@ fn parse_code(code: &str) -> ErrorCode {
         "not_found" => ErrorCode::NotFound,
         "invalid_params" => ErrorCode::InvalidParams,
         "target_detached" => ErrorCode::TargetDetached,
+        "ref_stale" => ErrorCode::RefStale,
         "target_ambiguous" => ErrorCode::TargetAmbiguous,
         "backend_unavailable" => ErrorCode::BackendUnavailable,
         "capability_unsupported" => ErrorCode::CapabilityUnsupported,
