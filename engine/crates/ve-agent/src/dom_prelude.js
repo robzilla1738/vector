@@ -4862,6 +4862,12 @@
       const n = parseFloat(String(this._wordSpacing || "0"));
       return Number.isFinite(n) ? n : 0;
     }
+    _kernPair(a, b) {
+      if (String(this._fontKerning || "auto") === "none") return 0;
+      const pair = String(a) + String(b);
+      if (pair === "AV" || pair === "VA" || pair === "To" || pair === "LT") return -2;
+      return 0;
+    }
     _isRtl() {
       return String(this._direction || "inherit") === "rtl";
     }
@@ -4892,13 +4898,20 @@
       const text = String(t == null ? "" : t);
       const align = String(this._textAlign || "start");
       const simple = (align === "start" || align === "left" || !align) && !this._isRtl();
-      if (gap && text.length > 1 && simple) {
+      let kerns = 0;
+      if (simple && text.length > 1 && String(this._fontKerning || "auto") !== "none") {
+        for (let i = 1; i < text.length; i++) kerns += this._kernPair(text[i - 1], text[i]);
+      }
+      if ((gap || kerns) && text.length > 1 && simple) {
         let cx = +x;
+        let prev = "";
         for (const ch of text) {
+          cx += this._kernPair(prev, ch);
           const o = this._textOrigin(ch, cx, y);
           const p = this._mapPoint(o.x, o.y);
           D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
           cx += (o.width || 6) + gap;
+          prev = ch;
         }
         return;
       }

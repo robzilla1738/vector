@@ -2074,6 +2074,42 @@ fn canvas_letter_spacing_shifts_second_glyph() {
 }
 
 #[test]
+fn canvas_font_kerning_tightens_av_pair() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(kern) {
+                var c = document.createElement("canvas");
+                c.width = 64;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.fontKerning = kern;
+                ctx.fillText("AV", 2, 16);
+                var data = ctx.getImageData(0, 0, 64, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 64; x++) {
+                    if (data[(y * 64 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { none: maxX("none"), normal: maxX("normal") };
+            })()"##,
+        )
+        .unwrap();
+    let none = v["none"].as_u64().unwrap_or(0);
+    let normal = v["normal"].as_u64().unwrap_or(0);
+    assert!(
+        none > normal + 1,
+        "fontKerning:normal must tighten AV: {v}"
+    );
+}
+
+#[test]
 fn canvas_word_spacing_shifts_second_word() {
     let mut page = open(r#"<body></body>"#);
     let v = page

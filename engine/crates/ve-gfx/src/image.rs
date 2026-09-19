@@ -569,6 +569,12 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         {
             y += 7.0 * scale;
         }
+        let shift = match svg_attr_str(tag, "baseline-shift").unwrap_or("0") {
+            "sub" => -2.0 * scale,
+            "super" => 3.0 * scale,
+            raw => raw.parse().unwrap_or(0.0),
+        };
+        y -= shift;
         let vertical = svg_attr_str(tag, "writing-mode")
             .unwrap_or("")
             .to_ascii_lowercase()
@@ -4566,6 +4572,17 @@ mod tests {
         assert!(px[1] > 200, "{px:?}");
         assert!(px[0] < 40, "{px:?}");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_baseline_shift_moves_glyph_down() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='7' fill='#ff0000' baseline-shift='-4'>I</text></svg>",
+        )
+        .expect("svg baseline-shift");
+        assert_eq!(img.pixel(2, 3), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(2, 7), Some([255, 0, 0, 255]));
     }
 
     #[test]
