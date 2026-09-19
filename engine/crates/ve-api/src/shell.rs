@@ -2888,7 +2888,7 @@ mod tests {
         let _ = browser.present().unwrap();
         let stage = browser
             .chrome()
-            .stage_rect(ve_core::Size::new(1280.0, 720.0));
+            .stage_rect(ve_core::Size::new(1440.0, 900.0));
         let x = (stage.x() + 8.0) as u32;
         let y = (stage.y() + 8.0) as u32;
         let px = browser
@@ -3446,7 +3446,7 @@ mod tests {
             .unwrap();
         let stage = browser
             .chrome()
-            .stage_rect(ve_core::Size::new(1280.0, 720.0));
+            .stage_rect(ve_core::Size::new(1440.0, 900.0));
         let _ = browser.handle_event(NativeEvent::PointerMove {
             x: stage.x() + 20.0,
             y: stage.y() + 20.0,
@@ -3601,8 +3601,16 @@ mod tests {
         let mut browser = NativeBrowser::with_config(crate::EngineConfig {
             offline: true,
             security_profile: crate::SecurityProfile::Production,
+            viewport: ve_core::Size::new(1440.0, 900.0),
+            scale: 2.0,
             ..crate::EngineConfig::default()
         });
+        browser
+            .handle_event(NativeEvent::Resize {
+                width: 1440.0,
+                height: 900.0,
+            })
+            .unwrap();
         browser.enable_product_chrome_at(format!(
             "/tmp/vector-s6-timing-{}.sqlite",
             std::process::id()
@@ -3651,9 +3659,10 @@ mod tests {
             "security_mode": "production",
             "n": 8,
             "unit": "ms",
-            "appleSilicon": false,
+            "appleSilicon": cfg!(all(target_os = "macos", target_arch = "aarch64")),
             "rustcDebug": cfg!(debug_assertions),
-            "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score. Wheel is a chrome+page-layer blit. IME invalidates the page layer and re-rasters. SQLite persist is off this path.",
+            "viewport": { "cssWidth": 1440, "cssHeight": 900, "deviceScale": 2 },
+            "notes": "Measured on this host at 1440x900 CSS px @2x, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Wheel is a chrome+page-layer blit. IME invalidates the page layer and re-rasters. SQLite persist is off this path.",
             "inputToPaint": { "p50": pct(input_ms.clone(), 0.5), "p95": pct(input_ms.clone(), 0.95), "samples": input_ms },
             "wheelScroll": { "p50": pct(scroll_ms.clone(), 0.5), "p95": pct(scroll_ms.clone(), 0.95), "samples": scroll_ms },
             "fullRepaint": { "p50": pct(repaint_ms.clone(), 0.5), "p95": pct(repaint_ms.clone(), 0.95), "samples": repaint_ms },
@@ -3810,8 +3819,16 @@ mod tests {
         let mut browser = NativeBrowser::with_config(crate::EngineConfig {
             offline: true,
             security_profile: crate::SecurityProfile::Production,
+            viewport: ve_core::Size::new(1440.0, 900.0),
+            scale: 2.0,
             ..crate::EngineConfig::default()
         });
+        browser
+            .handle_event(NativeEvent::Resize {
+                width: 1440.0,
+                height: 900.0,
+            })
+            .unwrap();
         browser.enable_product_chrome_at(format!(
             "/tmp/vector-s6-budgets-{}.sqlite",
             std::process::id()
@@ -3846,6 +3863,15 @@ mod tests {
         let wall = wall0.elapsed().as_secs_f64().max(0.001);
         let idle_pct = 100.0 * ((cpu1.saturating_sub(cpu0)) as f64 / 100.0) / wall;
 
+        for (key, code, modifiers) in [("k", "KeyK", 4), ("Escape", "Escape", 0)] {
+            let _ = browser.handle_event(NativeEvent::Key {
+                key: key.into(),
+                code: code.into(),
+                modifiers,
+                repeat: false,
+                state: KeyState::Down,
+            });
+        }
         for _ in 0..8 {
             let t = Instant::now();
             let _ = browser.handle_event(NativeEvent::Key {
@@ -3874,22 +3900,26 @@ mod tests {
         let todo = format!(
             "<section class=todoapp><h1>todos</h1><ul class=todo-list>{items}</ul></section>"
         );
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            viewport: ve_core::Size::new(1440.0, 900.0),
+            scale: 2.0,
+            ..crate::EngineConfig::default()
+        });
         let todo_n = if cfg!(debug_assertions) { 10 } else { 100 };
         for i in 0..todo_n {
-            let _ = browser.handle_event(NativeEvent::NewTab {
-                html: todo.clone(),
-                url: format!("https://s6.test/todo/{i}"),
-            });
-            let _ = browser.handle_event(NativeEvent::CloseTab);
+            let opened = engine
+                .open(crate::OpenRequest::html(
+                    &todo,
+                    Some(&format!("https://s6.test/todo/{i}")),
+                ))
+                .unwrap();
+            let _ = engine.close(opened.page);
             peak = peak.max(process_rss_bytes().unwrap_or(0));
         }
         let after_todo = process_rss_bytes().unwrap_or(peak);
 
-        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
-            offline: true,
-            security_profile: crate::SecurityProfile::Production,
-            ..crate::EngineConfig::default()
-        });
         let warmup_n = if cfg!(debug_assertions) { 10 } else { 50 };
         let soak_n = if cfg!(debug_assertions) { 50 } else { 1000 };
         for i in 0..warmup_n {
@@ -3928,9 +3958,10 @@ mod tests {
             "host": std::env::consts::ARCH,
             "os": std::env::consts::OS,
             "security_mode": "production",
-            "appleSilicon": false,
+            "appleSilicon": cfg!(all(target_os = "macos", target_arch = "aarch64")),
             "rustcDebug": cfg!(debug_assertions),
-            "notes": "This-host budgets. Idle CPU uses the GUI Wait path (sleep when needs_frame is false) with an off-screen animating tab. Command ack is ⌘K then Escape. Peak RSS includes the cargo-test harness after 100 TodoMVC-shaped open/close. Soak is 1000 engine.open+close after 50 warmup. Not an Apple-silicon published score.",
+            "viewport": { "cssWidth": 1440, "cssHeight": 900, "deviceScale": 2 },
+            "notes": "This-host budgets at 1440x900 CSS px @2x. Idle CPU uses the GUI Wait path (sleep when needs_frame is false) with an off-screen animating tab. Command ack is ⌘K then Escape. Peak RSS includes the cargo-test harness after 100 TodoMVC-shaped open/close. Soak is 1000 engine.open+close after 50 warmup.",
             "idleCpu": { "percent": idle_pct, "windowMs": 1000, "needsFrame": false },
             "commandAck": { "p50": pct(command_ms.clone(), 0.5), "p95": pct(command_ms.clone(), 0.95), "samples": command_ms, "unit": "ms" },
             "peakRss": { "baselineBytes": baseline, "after100TodoBytes": after_todo, "peakBytes": peak, "peakMb": peak as f64 / (1024.0 * 1024.0) },

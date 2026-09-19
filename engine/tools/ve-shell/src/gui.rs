@@ -181,6 +181,21 @@ impl ApplicationHandler<AccessKitEvent> for App {
             return;
         };
         window.set_ime_allowed(true);
+        #[cfg(target_os = "macos")]
+        let Some(mut host) = ({
+            use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            window.window_handle().ok().and_then(|handle| match handle.as_raw() {
+                RawWindowHandle::AppKit(handle) => {
+                    // SAFETY: winit owns this live NSView on the main event-loop thread.
+                    unsafe { ve_shell_mac::MacWindow::attach_product_view(handle.ns_view) }
+                }
+                _ => None,
+            })
+        }) else {
+            event_loop.exit();
+            return;
+        };
+        #[cfg(not(target_os = "macos"))]
         let mut host = ve_shell_mac::MacWindow::product();
         host.set_appearance(match self.browser().chrome().theme {
             ve_chrome::ChromeTheme::Light => ve_shell_mac::Appearance::Light,

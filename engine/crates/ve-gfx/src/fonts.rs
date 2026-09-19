@@ -1,5 +1,8 @@
 //! Font database and glyph rasterisation.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 use swash::scale::{Render, ScaleContext, Source, StrikeWith};
 use swash::zeno::Format;
 use swash::{FontRef, GlyphId};
@@ -76,6 +79,8 @@ pub struct GlyphBitmap {
 pub struct FontSystem {
     db: fontdb::Database,
     scaler: ScaleContext,
+    glyph_faces: RefCell<HashMap<(fontdb::ID, char), Option<(fontdb::ID, GlyphId)>>>,
+    advances: RefCell<HashMap<(fontdb::ID, u32, u32), Option<f32>>>,
 }
 
 impl std::fmt::Debug for FontSystem {
@@ -110,12 +115,16 @@ impl FontSystem {
         Self {
             db: fontdb::Database::new(),
             scaler: ScaleContext::new(),
+            glyph_faces: RefCell::new(HashMap::new()),
+            advances: RefCell::new(HashMap::new()),
         }
     }
 
     /// Registers every face in a font file. Returns the number of faces now known.
     pub fn load_font_data(&mut self, data: Vec<u8>) -> usize {
         self.db.load_font_data(data);
+        self.glyph_faces.get_mut().clear();
+        self.advances.get_mut().clear();
         self.db.len()
     }
 
@@ -135,6 +144,8 @@ impl FontSystem {
     /// paint real glyphs. Safe to call more than once.
     pub fn load_system_fonts(&mut self) {
         self.db.load_system_fonts();
+        self.glyph_faces.get_mut().clear();
+        self.advances.get_mut().clear();
         self.load_known_ui_fonts();
     }
 
@@ -296,9 +307,15 @@ impl FontSystem {
     /// Horizontal advance of a glyph at `size` pixels.
     #[must_use]
     pub fn advance(&self, id: fontdb::ID, glyph: GlyphId, size: f32) -> Option<f32> {
-        self.with_font(id, |font| {
+        let key = (id, u32::from(glyph), size.to_bits());
+        if let Some(advance) = self.advances.borrow().get(&key) {
+            return *advance;
+        }
+        let advance = self.with_font(id, |font| {
             font.glyph_metrics(&[]).scale(size).advance_width(glyph)
-        })
+        });
+        self.advances.borrow_mut().insert(key, advance);
+        advance
     }
 
     /// Runs `f` with the face bytes and collection index.
@@ -309,26 +326,30 @@ impl FontSystem {
     /// Face + glyph for `ch`, preferring a colour-emoji face for emoji.
     #[must_use]
     pub fn glyph_face(&self, primary: fontdb::ID, ch: char) -> Option<(fontdb::ID, GlyphId)> {
+        if let Some(glyph) = self.glyph_faces.borrow().get(&(primary, ch)) {
+            return *glyph;
+        }
         let emoji = self.emoji_face();
-        if is_emoji_char(ch)
+        let glyph = if is_emoji_char(ch)
             && let Some(eid) = emoji
             && let Some(gid) = self.glyph_for_char(eid, ch)
             && gid != 0
         {
-            return Some((eid, gid));
-        }
-        if let Some(gid) = self.glyph_for_char(primary, ch)
+            Some((eid, gid))
+        } else if let Some(gid) = self.glyph_for_char(primary, ch)
             && gid != 0
         {
-            return Some((primary, gid));
-        }
-        if let Some(eid) = emoji
+            Some((primary, gid))
+        } else if let Some(eid) = emoji
             && let Some(gid) = self.glyph_for_char(eid, ch)
             && gid != 0
         {
-            return Some((eid, gid));
-        }
-        None
+            Some((eid, gid))
+        } else {
+            None
+        };
+        self.glyph_faces.borrow_mut().insert((primary, ch), glyph);
+        glyph
     }
 
     /// Retained glyph run: ids and 1/4-px snapped pen positions.
@@ -366,7 +387,7 @@ impl FontSystem {
     /// Width of `text` at `size` pixels using simple per-glyph advances (no shaping).
     #[must_use]
     pub fn measure(&self, id: fontdb::ID, text: &str, size: f32) -> Option<f32> {
-        self.with_font(id, |_| ())?;
+        self.db.face(id)?;
         Some(
             text.chars()
                 .map(|ch| {
@@ -381,7 +402,7 @@ impl FontSystem {
     /// Scaled outline for `glyph` (empty if the face has no outline).
     pub fn outline(&mut self, id: fontdb::ID, glyph: GlyphId, size: f32) -> Option<GlyphOutline> {
         use swash::zeno::{Command, PathData};
-        let FontSystem { db, scaler } = self;
+        let FontSystem { db, scaler, .. } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
             let mut built = scaler.builder(font).size(size).hint(size <= 36.0).build();
@@ -429,7 +450,7 @@ impl FontSystem {
         size: f32,
         hint: bool,
     ) -> Option<GlyphBitmap> {
-        let FontSystem { db, scaler } = self;
+        let FontSystem { db, scaler, .. } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
             let mut built = scaler.builder(font).size(size).hint(hint).build();

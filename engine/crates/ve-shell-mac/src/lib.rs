@@ -6,6 +6,11 @@
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_os = "macos")]
+use objc2::rc::Retained;
+#[cfg(target_os = "macos")]
+use objc2_app_kit::NSWindow;
+
 pub use ve_core::ScrollPhase;
 
 /// `CADisplayLink.preferredFrameRateRange` (H1-A4 ProMotion).
@@ -104,6 +109,8 @@ pub struct MacWindow {
     pub last_command: Option<String>,
     /// Whether a native NSWindow was created (macOS only).
     pub native: bool,
+    #[cfg(target_os = "macos")]
+    native_window: Option<Retained<NSWindow>>,
 }
 
 impl Default for MacWindow {
@@ -117,6 +124,8 @@ impl Default for MacWindow {
             menus: default_menus(),
             last_command: None,
             native: false,
+            #[cfg(target_os = "macos")]
+            native_window: None,
         }
     }
 }
@@ -139,6 +148,18 @@ impl MacWindow {
         {
             Self::test_double()
         }
+    }
+
+    /// Attach the product host to the visible winit `NSView`.
+    ///
+    /// # Safety
+    ///
+    /// `ns_view` must be a live AppKit `NSView` on the main thread. The host
+    /// retains its owning `NSWindow` for the lifetime of this value.
+    #[cfg(target_os = "macos")]
+    #[must_use]
+    pub unsafe fn attach_product_view(ns_view: std::ptr::NonNull<std::ffi::c_void>) -> Option<Self> {
+        unsafe { macos::attach_window(ns_view) }
     }
 
     /// Map AppKit `NSEvent.phase` / `momentumPhase` bits onto [`ScrollPhase`].
@@ -212,20 +233,19 @@ impl MacWindow {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::{Appearance, MacWindow};
+    use super::MacWindow;
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2::{msg_send, ClassType};
+    use objc2::MainThreadOnly;
     use objc2_app_kit::{
-        NSApp, NSApplication, NSApplicationActivationPolicy, NSColor, NSMenu, NSMenuItem,
-        NSWindow, NSWindowStyleMask,
+        NSApplication, NSApplicationActivationPolicy, NSColor, NSMenu, NSMenuItem,
+        NSView, NSWindow, NSWindowStyleMask,
     };
     use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
     /// Creates a titled, closable, resizable `NSWindow` and the Vector menu.
     pub(super) fn create_window() -> MacWindow {
-        // SAFETY: AppKit calls require the main thread. ve-shell --gui runs there.
-        let mtm = unsafe { MainThreadMarker::new_unchecked() };
+        let mtm = MainThreadMarker::new().expect("ve-shell product window requires the main thread");
         let app = NSApplication::sharedApplication(mtm);
         app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
         let frame = NSRect::new(NSPoint::new(80.0, 80.0), NSSize::new(1280.0, 720.0));
@@ -246,14 +266,32 @@ mod macos {
         window.setBackgroundColor(Some(&NSColor::colorWithWhite_alpha(0.122, 1.0)));
         install_menus(mtm, &app);
         window.makeKeyAndOrderFront(None);
+        let host = host_for_window(window, &app);
+        let _app: &AnyObject = app.as_ref();
+        host
+    }
+
+    pub(super) unsafe fn attach_window(
+        ns_view: std::ptr::NonNull<std::ffi::c_void>,
+    ) -> Option<MacWindow> {
+        let view = unsafe { Retained::<NSView>::retain(ns_view.as_ptr().cast()) }?;
+        let window = view.window()?;
+        let mtm = MainThreadMarker::new()?;
+        let app = NSApplication::sharedApplication(mtm);
+        install_menus(mtm, &app);
+        window.setTitle(&NSString::from_str("Vector"));
+        Some(host_for_window(window, &app))
+    }
+
+    fn host_for_window(window: Retained<NSWindow>, app: &NSApplication) -> MacWindow {
         let mut host = MacWindow::default();
         host.native = true;
-        let name = app.effectiveAppearance().name().to_string();
-        host.appearance = super::MacWindow::appearance_from_ns_name(&name);
+        host.appearance = super::MacWindow::appearance_from_ns_name(
+            &app.effectiveAppearance().name().to_string(),
+        );
         host.set_ime(String::new(), false);
         host.set_scroll_phase(super::MacWindow::scroll_phase_from_nsevent(0, 0));
-        let _retained: Retained<NSWindow> = window;
-        let _app: &AnyObject = app.as_ref();
+        host.native_window = Some(window);
         host
     }
 
@@ -283,8 +321,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn product_host_forwards_ime_scroll_and_appearance() {
-        let mut w = MacWindow::product();
+    fn host_forwards_ime_scroll_and_appearance() {
+        let mut w = MacWindow::test_double();
         w.set_ime("你", true);
         w.set_scroll_phase(MacWindow::scroll_phase_from_nsevent(2, 0));
         w.set_appearance(MacWindow::appearance_from_ns_name("NSAppearanceNameAqua"));
