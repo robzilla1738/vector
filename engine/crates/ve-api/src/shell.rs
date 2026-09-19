@@ -237,6 +237,14 @@ pub struct NativeBrowser {
     engine_only: bool,
     /// Reused software renderer (system fonts loaded once).
     sw: Option<SoftwareRenderer>,
+    /// Last raster of `chrome.paint_base` (no page, no overlay).
+    chrome_base: Option<Frame>,
+    /// Signature of the chrome widgets used to paint `chrome_base`.
+    chrome_base_sig: u64,
+    /// Document-space raster of the untranslated page list (layout revision keyed).
+    page_layer: Option<Frame>,
+    /// Layout revision the page layer was painted at.
+    page_layer_rev: u64,
 }
 
 /// Who currently owns input on the live page.
@@ -304,6 +312,10 @@ impl NativeBrowser {
             profile: None,
             engine_only: engine_only_from_env(),
             sw: None,
+            chrome_base: None,
+            chrome_base_sig: 0,
+            page_layer: None,
+            page_layer_rev: 0,
         }
     }
 
@@ -391,6 +403,7 @@ impl NativeBrowser {
         self.compositor.mark_damaged();
         if self.chrome_enabled {
             self.sync_chrome();
+            self.persist_profile();
             self.apply_chrome_viewport();
         }
         Ok(self.tabs.last().unwrap())
@@ -413,6 +426,7 @@ impl NativeBrowser {
         self.compositor.mark_damaged();
         if self.chrome_enabled {
             self.sync_chrome();
+            self.persist_profile();
             self.apply_chrome_viewport();
         }
         Ok(self.tabs.last().unwrap())
@@ -482,11 +496,16 @@ impl NativeBrowser {
             p.set_scale(self.device_scale);
         }
         self.list_cache = None;
+        self.page_layer = None;
+        self.page_layer_rev = 0;
     }
 
     fn resize_surface(&mut self, css_w: f32, css_h: f32) {
         let pw = (css_w * self.device_scale).round().max(1.0) as u32;
         let ph = (css_h * self.device_scale).round().max(1.0) as u32;
+        if self.surface.width == pw && self.surface.height == ph {
+            return;
+        }
         self.surface = Frame::filled(pw, ph, [255, 255, 255, 255]);
     }
 
@@ -814,20 +833,7 @@ impl NativeBrowser {
             return Ok(&self.surface);
         }
         if self.chrome_enabled {
-            let list = self.paint_shell_list()?;
-            self.resize_surface(self.window_size.width, self.window_size.height);
-            if self.sw.is_none() {
-                self.sw = Some(SoftwareRenderer::with_system_fonts());
-            }
-            let renderer = self.sw.as_mut().expect("software renderer");
-            self.surface = renderer
-                .render(
-                    &list,
-                    self.surface.width,
-                    self.surface.height,
-                    self.device_scale,
-                )
-                .map_err(|e| Error::internal(format!("chrome present: {e}")))?;
+            self.present_product_chrome()?;
             let _ = self.compositor.take_damage();
             self.presented = true;
             return Ok(&self.surface);
@@ -979,6 +985,10 @@ impl NativeBrowser {
                     }
                     self.urlbar_focused = false;
                     self.compositor.mark_damaged();
+                    if self.chrome_enabled {
+                        self.sync_chrome();
+                        self.persist_profile();
+                    }
                 }
             }
             NativeEvent::NextTab => {
@@ -1175,14 +1185,19 @@ impl NativeBrowser {
     /// Product chrome: Arc sidebar, command bar, inset stage, agent rail.
     /// Also opens the SQLite profile and restores the last session.
     pub fn enable_product_chrome(&mut self) {
+        let path = std::env::var("VECTOR_PROFILE").unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+            format!("{home}/.vector/profile.sqlite")
+        });
+        self.enable_product_chrome_at(path);
+    }
+
+    /// Product chrome bound to an explicit profile path (tests; avoids env races).
+    pub fn enable_product_chrome_at(&mut self, path: impl AsRef<std::path::Path>) {
         self.chrome_enabled = true;
         self.chrome.set_theme(ChromeTheme::Dark);
         self.sync_chrome();
         if self.profile.is_none() {
-            let path = std::env::var("VECTOR_PROFILE").unwrap_or_else(|_| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-                format!("{home}/.vector/profile.sqlite")
-            });
             if let Ok(profile) = Profile::open(path) {
                 if self.tabs.is_empty() {
                     if let Ok(session) = profile.session() {
@@ -1207,6 +1222,7 @@ impl NativeBrowser {
                     self.downloads = dls.into_iter().map(|d| d.path).collect();
                 }
                 self.profile = Some(profile);
+                self.persist_profile();
             }
         }
         self.sync_chrome();
@@ -1278,40 +1294,45 @@ impl NativeBrowser {
         }
         self.chrome.layout.order = sync_order(&self.chrome.layout.order, &pages);
         self.chrome.layout = sync_spaces(&self.chrome.layout, &pages);
-        if let Some(profile) = &self.profile {
-            let session: Vec<SessionTab> = self
-                .tabs
-                .iter()
-                .map(|t| SessionTab {
-                    url: t.url.clone(),
-                    title: t.page_title.clone(),
-                })
-                .collect();
-            let _ = profile.save_session(&session);
-            if let Some(tab) = self.active_tab() {
-                if !Chrome::is_start_url(&tab.url) {
-                    let _ = profile.visit(
-                        &tab.url,
-                        &tab.page_title,
-                        std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map(|d| d.as_millis() as u64)
-                            .unwrap_or(0),
-                    );
-                }
-            }
-            if let Ok(hist) = profile.history() {
-                self.chrome.history = hist
-                    .into_iter()
-                    .filter(|h| !Chrome::is_start_url(&h.url))
-                    .map(|h| (h.url, h.title))
-                    .collect();
-            }
-            if let Ok(marks) = profile.bookmarks() {
-                self.chrome.bookmarks = marks.into_iter().map(|b| (b.url, b.title)).collect();
+        self.chrome.download_names.clone_from(&self.downloads);
+    }
+
+    /// SQLite writes stay off the present/wheel path. Call after tab/session mutations.
+    fn persist_profile(&mut self) {
+        let Some(profile) = &self.profile else {
+            return;
+        };
+        let session: Vec<SessionTab> = self
+            .tabs
+            .iter()
+            .map(|t| SessionTab {
+                url: t.url.clone(),
+                title: t.page_title.clone(),
+            })
+            .collect();
+        let _ = profile.save_session(&session);
+        if let Some(tab) = self.active_tab() {
+            if !Chrome::is_start_url(&tab.url) {
+                let _ = profile.visit(
+                    &tab.url,
+                    &tab.page_title,
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0),
+                );
             }
         }
-        self.chrome.download_names.clone_from(&self.downloads);
+        if let Ok(hist) = profile.history() {
+            self.chrome.history = hist
+                .into_iter()
+                .filter(|h| !Chrome::is_start_url(&h.url))
+                .map(|h| (h.url, h.title))
+                .collect();
+        }
+        if let Ok(marks) = profile.bookmarks() {
+            self.chrome.bookmarks = marks.into_iter().map(|b| (b.url, b.title)).collect();
+        }
     }
 
     fn apply_chrome_viewport(&mut self) {
@@ -1328,6 +1349,93 @@ impl NativeBrowser {
             p.set_scale(self.device_scale);
         }
         self.list_cache = None;
+        self.chrome_base = None;
+        self.chrome_base_sig = 0;
+        self.page_layer = None;
+        self.page_layer_rev = 0;
+    }
+
+    fn chrome_base_sig(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        for t in &self.chrome.tabs {
+            t.page_id.hash(&mut h);
+            t.title.hash(&mut h);
+            t.url.hash(&mut h);
+            t.active.hash(&mut h);
+        }
+        self.chrome.command.hash(&mut h);
+        self.chrome.find.hash(&mut h);
+        self.chrome.find_open.hash(&mut h);
+        self.chrome.zoom.to_bits().hash(&mut h);
+        self.chrome.sidebar_collapsed.hash(&mut h);
+        self.chrome.sidebar_width.to_bits().hash(&mut h);
+        self.chrome.rail_open.hash(&mut h);
+        self.chrome.rail_width.to_bits().hash(&mut h);
+        self.chrome.agent_status.hash(&mut h);
+        self.chrome.route_reason.hash(&mut h);
+        (self.chrome.theme == ve_chrome::ChromeTheme::Dark).hash(&mut h);
+        self.chrome.shows_start_page().hash(&mut h);
+        self.window_size.width.to_bits().hash(&mut h);
+        self.window_size.height.to_bits().hash(&mut h);
+        self.device_scale.to_bits().hash(&mut h);
+        h.finish()
+    }
+
+    fn present_product_chrome(&mut self) -> Result<()> {
+        self.sync_chrome();
+        self.resize_surface(self.window_size.width, self.window_size.height);
+        if self.sw.is_none() {
+            self.sw = Some(SoftwareRenderer::with_system_fonts());
+        }
+        let window = self.window_size;
+        let scale = self.device_scale;
+        let w = self.surface.width;
+        let h = self.surface.height;
+        let sig = self.chrome_base_sig();
+        let reuse = self.chrome_base.is_some()
+            && self.chrome_base_sig == sig
+            && self.chrome.overlay == ChromeOverlay::None
+            && !self.chrome.shows_start_page();
+        if !reuse {
+            let list = self.chrome.paint_base(window);
+            let renderer = self.sw.as_mut().expect("software renderer");
+            let base = renderer
+                .render(&list, w, h, scale)
+                .map_err(|e| Error::internal(format!("chrome base: {e}")))?;
+            self.chrome_base = Some(base);
+            self.chrome_base_sig = sig;
+        }
+        if let Some(base) = &self.chrome_base {
+            self.surface.copy_from(base);
+        }
+        if let Some(tab) = self.active_tab() {
+            if !self.chrome.shows_start_page() {
+                let page = tab.page;
+                let stage = self.chrome.stage_rect(window);
+                self.present_page_layer(page, stage, scale)?;
+            }
+        }
+        if self.chrome.overlay != ChromeOverlay::None {
+            let mut overlay = ve_gfx::DisplayList::new(window);
+            self.chrome.append_overlay(&mut overlay, window);
+            let renderer = self.sw.as_mut().expect("software renderer");
+            let over = renderer
+                .render(&overlay, w, h, scale)
+                .map_err(|e| Error::internal(format!("overlay present: {e}")))?;
+            for (dst, src) in self
+                .surface
+                .rgba
+                .chunks_exact_mut(4)
+                .zip(over.rgba.chunks_exact(4))
+            {
+                if src[3] > 0 {
+                    dst.copy_from_slice(src);
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Chrome + page display list (what `ve-shell --gui` presents).
@@ -1679,6 +1787,7 @@ impl NativeBrowser {
             let _ = profile.bookmark(&tab.url, &tab.page_title);
         }
         self.sync_chrome();
+        self.persist_profile();
     }
 
     /// Number of tabs.
@@ -1871,36 +1980,7 @@ impl NativeBrowser {
         use ve_core::{Rect, Size};
         use ve_gfx::{DisplayItem, DisplayList};
 
-        let cached = self
-            .list_cache
-            .as_ref()
-            .map(|c| (c.layout_revision, c.viewport));
-        let (layout_revision, viewport, scroll, rebuilt) = {
-            let p = self.engine.page_mut(page).ok()?;
-            p.update();
-            let layout_revision = p.layout_tree().revision().0;
-            let viewport = p.viewport();
-            let scroll = p.scroll_offset();
-            let hit = cached.is_some_and(|(l, v)| l == layout_revision && v == viewport);
-            let rebuilt = if hit {
-                None
-            } else {
-                Some(DisplayList::from_layout_with(
-                    p.layout_tree(),
-                    p.style_tree(),
-                    p.node_images(),
-                ))
-            };
-            (layout_revision, viewport, scroll, rebuilt)
-        };
-        if let Some(list) = rebuilt {
-            self.from_layout_calls += 1;
-            self.list_cache = Some(DisplayListCache {
-                layout_revision,
-                viewport,
-                list,
-            });
-        }
+        let (viewport, scroll) = self.ensure_page_list(page)?;
         let src = self.list_cache.as_ref()?;
         let mut translated = DisplayList::new(Size::new(viewport.width, viewport.height));
         translated.push(DisplayItem::Rect {
@@ -1914,6 +1994,110 @@ impl NativeBrowser {
             translated.push(item.translated(-scroll.x, -scroll.y));
         }
         Some(translated)
+    }
+
+    /// Ensures `list_cache` matches the live page. Returns viewport + scroll.
+    fn ensure_page_list(&mut self, page: PageId) -> Option<(ve_core::Size, ve_core::Point)> {
+        use ve_gfx::DisplayList;
+
+        let cached = self
+            .list_cache
+            .as_ref()
+            .map(|c| (c.layout_revision, c.viewport));
+        let (layout_revision, viewport, scroll, content_h, rebuilt) = {
+            let p = self.engine.page_mut(page).ok()?;
+            p.update();
+            let layout_revision = p.layout_tree().revision().0;
+            let viewport = p.viewport();
+            let scroll = p.scroll_offset();
+            let content_h = p.layout_tree().content_height();
+            let hit = cached.is_some_and(|(l, v)| l == layout_revision && v == viewport);
+            let rebuilt = if hit {
+                None
+            } else {
+                Some(DisplayList::from_layout_with(
+                    p.layout_tree(),
+                    p.style_tree(),
+                    p.node_images(),
+                ))
+            };
+            (layout_revision, viewport, scroll, content_h, rebuilt)
+        };
+        if let Some(list) = rebuilt {
+            self.from_layout_calls += 1;
+            self.list_cache = Some(DisplayListCache {
+                layout_revision,
+                viewport,
+                list,
+            });
+            self.page_layer = None;
+            self.page_layer_rev = 0;
+        }
+        let _ = content_h;
+        Some((viewport, scroll))
+    }
+
+    /// Rasterizes the untranslated page list once per layout revision, then
+    /// blits the visible viewport (compositor scroll).
+    fn present_page_layer(
+        &mut self,
+        page: PageId,
+        stage: ve_core::Rect,
+        scale: f32,
+    ) -> Result<()> {
+        let (viewport, scroll) = self
+            .ensure_page_list(page)
+            .ok_or_else(|| Error::internal("paint failed"))?;
+        let rev = self
+            .list_cache
+            .as_ref()
+            .map(|c| c.layout_revision)
+            .unwrap_or(0);
+        let content_h = self
+            .engine
+            .page_mut(page)
+            .ok()
+            .map(|p| p.layout_tree().content_height())
+            .unwrap_or(viewport.height);
+        let pw = (viewport.width * scale).round().max(1.0) as u32;
+        let ph = (content_h.max(viewport.height) * scale).round().max(1.0) as u32;
+        let reuse = self.page_layer.as_ref().is_some_and(|f| {
+            self.page_layer_rev == rev && f.width == pw && f.height == ph
+        });
+        if !reuse {
+            let list = self
+                .list_cache
+                .as_ref()
+                .ok_or_else(|| Error::internal("no page list"))?
+                .list
+                .clone();
+            let renderer = self.sw.as_mut().expect("software renderer");
+            let frame = renderer
+                .render(&list, pw, ph, scale)
+                .map_err(|e| Error::internal(format!("page layer: {e}")))?;
+            self.page_layer = Some(frame);
+            self.page_layer_rev = rev;
+        }
+        if let Some(layer) = &self.page_layer {
+            self.surface.blit_region(
+                layer,
+                (scroll.x * scale).round() as i32,
+                (scroll.y * scale).round() as i32,
+                (stage.x() * scale).round() as i32,
+                (stage.y() * scale).round() as i32,
+                (stage.width() * scale).round().max(1.0) as u32,
+                (stage.height() * scale).round().max(1.0) as u32,
+            );
+        }
+        Ok(())
+    }
+}
+
+impl Drop for NativeBrowser {
+    fn drop(&mut self) {
+        if self.chrome_enabled {
+            self.persist_profile();
+        }
     }
 }
 
@@ -2549,7 +2733,10 @@ mod tests {
     #[test]
     fn wheel_does_not_rebuild_the_display_list() {
         let mut browser = NativeBrowser::new();
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-wheel-dl-{}.sqlite",
+            std::process::id()
+        ));
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<p style=\"height:4000px\">tall</p>".into(),
@@ -2575,8 +2762,7 @@ mod tests {
     #[test]
     fn product_chrome_paints_sidebar_stage_and_rail() {
         let mut browser = NativeBrowser::new();
-        unsafe { std::env::set_var("VECTOR_PROFILE", "/tmp/vector-test-profile.sqlite") };
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at("/tmp/vector-test-profile.sqlite");
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<p>hello</p>".into(),
@@ -2602,9 +2788,40 @@ mod tests {
     }
 
     #[test]
+    fn wheel_reuses_cached_chrome_base() {
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-chrome-base-{}.sqlite",
+            std::process::id()
+        ));
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:2400px'><p>scroll</p></body></html>".into(),
+                url: "https://scroll.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.present();
+        let sig = browser.chrome_base_sig;
+        assert!(browser.chrome_base.is_some(), "first present must cache chrome");
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        assert_eq!(
+            browser.chrome_base_sig, sig,
+            "wheel must not rebuild chrome widgets"
+        );
+        assert!(browser.chrome_base.is_some());
+        assert!(browser.page_layer.is_some(), "first present must cache page layer");
+        let rev = browser.page_layer_rev;
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        assert_eq!(
+            browser.page_layer_rev, rev,
+            "wheel must blit the cached page layer"
+        );
+        assert!(browser.page_layer.is_some());
+    }
+
+    #[test]
     fn writes_section_6_human_timings() {
         use std::time::Instant;
-        unsafe { std::env::set_var("VECTOR_PROFILE", "/tmp/vector-s6-timing.sqlite") };
         let mut input_ms = Vec::new();
         let mut scroll_ms = Vec::new();
         let mut repaint_ms = Vec::new();
@@ -2613,7 +2830,10 @@ mod tests {
             security_profile: crate::SecurityProfile::Production,
             ..crate::EngineConfig::default()
         });
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-s6-timing-{}.sqlite",
+            std::process::id()
+        ));
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<html><body style='height:2400px'><input id=a value=x><p>news</p></body></html>"
@@ -2656,7 +2876,7 @@ mod tests {
             "unit": "ms",
             "appleSilicon": false,
             "rustcDebug": cfg!(debug_assertions),
-            "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score.",
+            "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score. Wheel/IME/full-repaint after first paint are compositor blits of cached chrome + page layers; SQLite persist is off this path.",
             "inputToPaint": { "p50": pct(input_ms.clone(), 0.5), "p95": pct(input_ms.clone(), 0.95), "samples": input_ms },
             "wheelScroll": { "p50": pct(scroll_ms.clone(), 0.5), "p95": pct(scroll_ms.clone(), 0.95), "samples": scroll_ms },
             "fullRepaint": { "p50": pct(repaint_ms.clone(), 0.5), "p95": pct(repaint_ms.clone(), 0.95), "samples": repaint_ms },
@@ -2729,10 +2949,9 @@ mod tests {
             std::process::id()
         );
         let _ = std::fs::remove_file(&path);
-        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
         {
             let mut browser = NativeBrowser::new();
-            browser.enable_product_chrome();
+            browser.enable_product_chrome_at(&path);
             browser
                 .handle_event(NativeEvent::NewTab {
                     html: "<p>kept</p>".into(),
@@ -2742,7 +2961,7 @@ mod tests {
             let _ = browser.present();
         }
         let mut restored = NativeBrowser::new();
-        restored.enable_product_chrome();
+        restored.enable_product_chrome_at(&path);
         assert!(
             restored
                 .chrome()
@@ -2759,10 +2978,9 @@ mod tests {
     fn day_of_browsing_restores_tabs_history_bookmarks_zoom_find() {
         let path = format!("/tmp/vector-day-browse-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
-        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
         {
             let mut browser = NativeBrowser::new();
-            browser.enable_product_chrome();
+            browser.enable_product_chrome_at(&path);
             browser
                 .handle_event(NativeEvent::NewTab {
                     html: "<p>alpha hello hello</p>".into(),
@@ -2807,7 +3025,7 @@ mod tests {
             let _ = browser.present();
         }
         let mut restored = NativeBrowser::new();
-        restored.enable_product_chrome();
+        restored.enable_product_chrome_at(&path);
         let urls: Vec<String> = restored.chrome().tabs.iter().map(|t| t.url.clone()).collect();
         assert!(
             urls.iter().any(|u| u.contains("alpha")) && urls.iter().any(|u| u.contains("beta")),
@@ -2862,9 +3080,11 @@ mod tests {
 
     #[test]
     fn gui_chrome_typing_scroll_and_screenshot() {
-        unsafe { std::env::set_var("VECTOR_PROFILE", "/tmp/vector-gui-shot.sqlite") };
         let mut browser = NativeBrowser::new();
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-gui-shot-{}.sqlite",
+            std::process::id()
+        ));
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<html><body style='height:2000px'><input id=a><input id=b></body></html>"
@@ -2943,9 +3163,8 @@ mod tests {
     fn start_page_is_composited_instead_of_blank_document() {
         let path = format!("/tmp/vector-start-shot-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
-        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
         let mut browser = NativeBrowser::new();
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at(&path);
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<html><body></body></html>".into(),
@@ -2982,9 +3201,8 @@ mod tests {
     fn palette_command_new_tab_and_screenshot() {
         let path = format!("/tmp/vector-palette-shot-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
-        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
         let mut browser = NativeBrowser::new();
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at(&path);
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<html><body><p>open</p></body></html>".into(),
@@ -3060,9 +3278,8 @@ mod tests {
     fn cert_and_permission_sheets_persist_to_profile() {
         let path = format!("/tmp/vector-sheets-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
-        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
         let mut browser = NativeBrowser::new();
-        browser.enable_product_chrome();
+        browser.enable_product_chrome_at(&path);
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<p>x</p>".into(),

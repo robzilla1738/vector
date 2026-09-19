@@ -42,6 +42,66 @@ impl Frame {
         self.rgba[i..i + 4].try_into().ok()
     }
 
+    /// Copies `src` into this frame. Sizes must match.
+    pub fn copy_from(&mut self, src: &Frame) {
+        if self.width == src.width && self.height == src.height {
+            self.rgba.copy_from_slice(&src.rgba);
+        }
+    }
+
+    /// Blits `src` into this frame at pixel origin `(dst_x, dst_y)`.
+    pub fn blit_from(&mut self, src: &Frame, dst_x: i32, dst_y: i32) {
+        self.blit_region(src, 0, 0, dst_x, dst_y, src.width, src.height);
+    }
+
+    /// Copies a `width × height` rectangle from `src` at `(src_x, src_y)`
+    /// onto this frame at `(dst_x, dst_y)`.
+    pub fn blit_region(
+        &mut self,
+        src: &Frame,
+        src_x: i32,
+        src_y: i32,
+        dst_x: i32,
+        dst_y: i32,
+        width: u32,
+        height: u32,
+    ) {
+        for row in 0..height {
+            let sy = src_y + row as i32;
+            let dy = dst_y + row as i32;
+            if sy < 0 || sy >= src.height as i32 || dy < 0 || dy >= self.height as i32 {
+                continue;
+            }
+            let mut sx0 = src_x;
+            let mut dx0 = dst_x;
+            let mut n = width as i32;
+            if sx0 < 0 {
+                n += sx0;
+                dx0 -= sx0;
+                sx0 = 0;
+            }
+            if dx0 < 0 {
+                n += dx0;
+                sx0 -= dx0;
+                dx0 = 0;
+            }
+            if sx0 + n > src.width as i32 {
+                n = src.width as i32 - sx0;
+            }
+            if dx0 + n > self.width as i32 {
+                n = self.width as i32 - dx0;
+            }
+            if n <= 0 {
+                continue;
+            }
+            let src_off = ((sy as u32 * src.width + sx0 as u32) * 4) as usize;
+            let dst_off = ((dy as u32 * self.width + dx0 as u32) * 4) as usize;
+            let bytes = (n as usize) * 4;
+            self.rgba[dst_off..dst_off + bytes]
+                .copy_from_slice(&src.rgba[src_off..src_off + bytes]);
+        }
+    }
+
     /// Encodes the frame as a binary PPM (P6) image, dropping alpha. Handy
     /// for debugging without an image encoder dependency.
     #[must_use]
