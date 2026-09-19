@@ -1433,6 +1433,160 @@ fn canvas_soft_light_darkens_mid_gray() {
 }
 
 #[test]
+fn canvas_exclusion_and_hard_light_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                exclusion: sample("exclusion", "#ffffff", "#ffffff"),
+                hard: sample("hard-light", "#c0c0c0", "#404040")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["exclusion"]["r"], 0, "{v}");
+    assert_eq!(v["exclusion"]["g"], 0, "{v}");
+    assert_eq!(v["exclusion"]["b"], 0, "{v}");
+    assert_eq!(v["hard"]["r"], 96, "{v}");
+    assert_eq!(v["hard"]["g"], 96, "{v}");
+    assert_eq!(v["hard"]["b"], 96, "{v}");
+    assert_eq!(v["hard"]["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_color_dodge_and_color_burn_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                dodge: sample("color-dodge", "#400000", "#800000"),
+                burn: sample("color-burn", "#c0c0c0", "#808080")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["dodge"]["r"], 128, "{v}");
+    assert_eq!(v["dodge"]["g"], 0, "{v}");
+    assert_eq!(v["dodge"]["b"], 0, "{v}");
+    assert_eq!(v["burn"]["r"], 130, "{v}");
+    assert_eq!(v["burn"]["g"], 130, "{v}");
+    assert_eq!(v["burn"]["b"], 130, "{v}");
+}
+
+#[test]
+fn canvas_filter_blur_spills_outside_stroke_path() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.filter = "blur(2px)";
+              ctx.beginPath();
+              ctx.moveTo(4, 8);
+              ctx.lineTo(12, 8);
+              ctx.stroke();
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var halo = ctx.getImageData(8, 6, 1, 1).data;
+              return { mg: mid[1], ma: mid[3], ha: halo[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["mg"].as_u64().unwrap_or(0) > 20,
+        "blurred stroke keeps the line: {v}"
+    );
+    assert!(
+        v["ha"].as_u64().unwrap_or(0) > 0,
+        "stroke blur must spill off the path: {v}"
+    );
+}
+
+#[test]
+fn data_transfer_stores_and_clears_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var dt = new DataTransfer();
+              dt.setData("text", "hello");
+              dt.setData("url", "https://example.com/");
+              var ev = new DragEvent("dragstart");
+              ev.dataTransfer.setData("text/plain", "from-event");
+              var itemType = "";
+              var itemKind = "";
+              var asString = "";
+              if (dt.items && dt.items.length) {
+                itemType = dt.items.item(0).type;
+                itemKind = dt.items.item(0).kind;
+                dt.items.item(0).getAsString(function (s) { asString = s; });
+              }
+              var before = {
+                text: dt.getData("text"),
+                url: dt.getData("url"),
+                types: dt.types.slice(),
+                items: dt.items.length,
+                itemType: itemType,
+                itemKind: itemKind,
+                asString: asString,
+                ev: ev.dataTransfer.getData("text")
+              };
+              dt.clearData("text");
+              var afterOne = { text: dt.getData("text"), url: dt.getData("url"), types: dt.types.slice() };
+              dt.clearData();
+              return {
+                before: before,
+                afterOne: afterOne,
+                empty: { text: dt.getData("text"), types: dt.types.slice(), items: dt.items.length }
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"]["text"], "hello", "{v}");
+    assert_eq!(v["before"]["url"], "https://example.com/", "{v}");
+    assert_eq!(v["before"]["items"], 2, "{v}");
+    assert_eq!(v["before"]["itemKind"], "string", "{v}");
+    assert_eq!(v["before"]["asString"], "hello", "{v}");
+    assert_eq!(v["before"]["ev"], "from-event", "{v}");
+    assert_eq!(v["afterOne"]["text"], "", "{v}");
+    assert_eq!(v["afterOne"]["url"], "https://example.com/", "{v}");
+    assert_eq!(v["empty"]["text"], "", "{v}");
+    assert_eq!(v["empty"]["items"], 0, "{v}");
+}
+
+#[test]
 fn canvas_text_baseline_shifts_fill_text() {
     let mut page = open(r#"<body></body>"#);
     let v = page

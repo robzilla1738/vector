@@ -829,6 +829,10 @@ enum CompositeOp {
     Overlay,
     Difference,
     SoftLight,
+    HardLight,
+    Exclusion,
+    ColorDodge,
+    ColorBurn,
 }
 
 impl CompositeOp {
@@ -843,6 +847,10 @@ impl CompositeOp {
             "overlay" => Self::Overlay,
             "difference" => Self::Difference,
             "soft-light" => Self::SoftLight,
+            "hard-light" => Self::HardLight,
+            "exclusion" => Self::Exclusion,
+            "color-dodge" => Self::ColorDodge,
+            "color-burn" => Self::ColorBurn,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
             "source-out" => Self::SourceOut,
@@ -1157,6 +1165,74 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
                     df + (2.0 * sf - 1.0) * (1.0 - (1.0 - df) * (1.0 - df) - df)
                 };
                 (out.clamp(0.0, 1.0) * 255.0).round() as u8
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::HardLight => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let s = u32::from(s);
+                let d = u32::from(d);
+                if s < 128 {
+                    ((2 * s * d) / 255) as u8
+                } else {
+                    (255 - (2 * (255 - s) * (255 - d)) / 255) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Exclusion => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let s = u32::from(s);
+                let d = u32::from(d);
+                (s + d - (2 * s * d) / 255) as u8
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::ColorDodge => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                if d == 0 {
+                    0
+                } else if s == 255 {
+                    255
+                } else {
+                    ((u32::from(d) * 255) / (255 - u32::from(s))).min(255) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::ColorBurn => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                if d == 255 {
+                    255
+                } else if s == 0 {
+                    0
+                } else {
+                    (255 - ((255 - u32::from(d)) * 255 / u32::from(s)).min(255)) as u8
+                }
             };
             return [
                 ch(src[0], dst[0]),
@@ -2898,6 +2974,7 @@ impl Page {
         cap: &str,
         join: &str,
         miter_limit: f32,
+        filter: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let c = self
@@ -2916,6 +2993,19 @@ impl Page {
             LineJoin::parse(join),
             if miter_limit > 0.0 { miter_limit } else { 10.0 },
         );
+        let blur = parse_canvas_blur_px(filter);
+        if blur > 0 {
+            if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+                let pad = blur + width.max(1) / 2 + 1;
+                c.blur_rect(
+                    x - pad,
+                    y - pad,
+                    (w + 2 * pad).max(1),
+                    (h + 2 * pad).max(1),
+                    blur,
+                );
+            }
+        }
         c.ops
     }
 

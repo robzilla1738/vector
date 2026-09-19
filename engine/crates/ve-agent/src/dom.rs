@@ -2315,6 +2315,7 @@ pub(crate) fn host_call(
                     &arg_str(args, 6),
                     &arg_str(args, 7),
                     arg_f64(args, 8) as f32,
+                    &arg_str(args, 9),
                 )
             } else {
                 page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2), &arg_str(args, 3))

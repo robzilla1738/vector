@@ -246,17 +246,11 @@
     constructor(t) {
       const i = arguments[1] || {};
       super(t, i);
-      this._dataTransfer = i.dataTransfer || {
-        dropEffect: "move",
-        effectAllowed: "all",
-        files: [],
-        items: [],
-        types: [],
-        setData() {},
-        getData() { return ""; },
-        clearData() {},
-        setDragImage() {},
-      };
+      this._dataTransfer = i.dataTransfer || new DataTransfer();
+      if (!i.dataTransfer) {
+        this._dataTransfer.dropEffect = "move";
+        this._dataTransfer.effectAllowed = "all";
+      }
     }
     get dataTransfer() { return this._dataTransfer; }
   }
@@ -4464,7 +4458,7 @@
     stroke() {
       const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
-      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1, (this._dash || []).join(","), Number(this._lineDashOffset) || 0, String(this._lineCap || "butt"), String(this._lineJoin || "miter"), Number(this._miterLimit) || 10);
+      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1, (this._dash || []).join(","), Number(this._lineDashOffset) || 0, String(this._lineCap || "butt"), String(this._lineJoin || "miter"), Number(this._miterLimit) || 10, String(this._filter || "none"));
     }
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
@@ -7060,6 +7054,27 @@
     close() {}
     destroy() {}
   }
+  function normalizeDataTransferType(format) {
+    const f = String(format).toLowerCase();
+    if (f === "text") return "text/plain";
+    if (f === "url") return "text/uri-list";
+    return String(format);
+  }
+  function makeDataTransferItem(kind, type, data) {
+    const item = Object.create(DataTransferItem.prototype);
+    Object.defineProperties(item, {
+      kind: { configurable: true, enumerable: true, get() { return kind; } },
+      type: { configurable: true, enumerable: true, get() { return type; } }
+    });
+    item.getAsString = function (callback) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getAsString' on 'DataTransferItem': 1 argument required, but only 0 present.");
+      }
+      if (typeof callback === "function") callback(String(data));
+    };
+    item.getAsFile = function () { return null; };
+    return item;
+  }
   class DataTransferItem {
     constructor() { throw new TypeError("Illegal constructor"); }
     get kind() { return ""; }
@@ -7087,31 +7102,75 @@
     }
     clear() {}
   }
+  function makeDataTransferItemList(owner) {
+    const list = Object.create(DataTransferItemList.prototype);
+    Object.defineProperty(list, "length", {
+      configurable: true,
+      enumerable: true,
+      get() { return owner._keys().length; }
+    });
+    list.add = function (data) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'add' on 'DataTransferItemList': 1 argument required, but only 0 present.");
+      }
+      const type = arguments.length > 1 ? String(arguments[1]) : "text/plain";
+      owner.setData(type, data);
+      return owner._item(type);
+    };
+    list.remove = function (index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'remove' on 'DataTransferItemList': 1 argument required, but only 0 present.");
+      }
+      const keys = owner._keys();
+      const i = Number(index);
+      if (i >= 0 && i < keys.length) owner.clearData(keys[i]);
+    };
+    list.clear = function () { owner.clearData(); };
+    list.item = function (index) {
+      const keys = owner._keys();
+      const i = Number(index);
+      return i >= 0 && i < keys.length ? owner._item(keys[i]) : null;
+    };
+    return list;
+  }
   class DataTransfer {
     constructor() {
       this._dropEffect = "none";
       this._effectAllowed = "none";
-      this._items = Object.create(DataTransferItemList.prototype);
+      this._store = Object.create(null);
+      this._items = makeDataTransferItemList(this);
+    }
+    _keys() { return Object.keys(this._store); }
+    _item(type) {
+      return this._store[type] == null ? null : makeDataTransferItem("string", type, this._store[type]);
     }
     get dropEffect() { return this._dropEffect; }
     set dropEffect(v) { this._dropEffect = String(v); }
     get effectAllowed() { return this._effectAllowed; }
     set effectAllowed(v) { this._effectAllowed = String(v); }
     get items() { return this._items; }
-    get types() { return []; }
+    get types() { return this._keys(); }
     get files() { return []; }
     getData(format) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'getData' on 'DataTransfer': 1 argument required, but only 0 present.");
       }
-      return "";
+      const key = normalizeDataTransferType(format);
+      return this._store[key] == null ? "" : String(this._store[key]);
     }
     setData(format, data) {
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'setData' on 'DataTransfer': 2 arguments required, but only " + arguments.length + " present.");
       }
+      this._store[normalizeDataTransferType(format)] = String(data);
     }
-    clearData() {}
+    clearData(format) {
+      if (arguments.length < 1 || format == null || format === "") {
+        for (const key of Object.keys(this._store)) delete this._store[key];
+        return;
+      }
+      delete this._store[normalizeDataTransferType(format)];
+    }
     setDragImage(image, x, y) {
       if (arguments.length < 3) {
         throw new TypeError("Failed to execute 'setDragImage' on 'DataTransfer': 3 arguments required, but only " + arguments.length + " present.");
