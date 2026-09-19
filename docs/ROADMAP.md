@@ -123,7 +123,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A2 | rAF as `TaskSource::Rendering`; drain ≤ N frames so perpetual rAF settles | A | ☑ | `MAX_RAF_DRAIN` |
 | H1-A3 | One scheduler: retire prelude `timers` Map in favour of `ve_script::EventLoop` | B | ☑ | EventLoop owns due times |
 | H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | frame tracer + cache |
-| H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | display-list cache translate |
+| H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | display-list cache translate; `rubber_band_overshoots_then_springs_back`; `overscroll_behavior_none_clamps`; `momentum_coasts_after_a_flick`; `reduced_motion_skips_rubber_band_and_momentum`; `MacWindow::scroll_phase_from_nsevent` |
 | H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☑ | `FontSystem::shape_retained`; `Scene::draw_glyphs`; quarter-px snap; COLR/emoji via vello; `rasterize_hinted` (CSS size ≤ 18, including Retina 2×); `system_fonts_paint_inter_ui_text` |
 | H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |
 | H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | env read; prelude default |

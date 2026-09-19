@@ -440,6 +440,10 @@ pub struct Page {
     pub(crate) viewport: Size,
     scale: f32,
     pub(crate) scroll: Point,
+    /// Rubber-band offset past the clamped scroll (H1-A5).
+    overscroll: Point,
+    /// Trackpad-style coasting velocity in CSS px / 16 ms (H1-A5).
+    scroll_velocity: Point,
     pub(crate) element_scroll: HashMap<NodeId, Point>,
     files: HashMap<NodeId, Vec<String>>,
     focused: Option<NodeId>,
@@ -1143,6 +1147,8 @@ impl Page {
             viewport,
             scale: 1.0,
             scroll: Point::ZERO,
+            overscroll: Point::ZERO,
+            scroll_velocity: Point::ZERO,
             element_scroll: HashMap::new(),
             files: HashMap::new(),
             focused: None,
@@ -1766,12 +1772,58 @@ impl Page {
 
     /// Scrolls the viewport by CSS pixels without running an agent Program.
     pub fn scroll_by(&mut self, dx: f32, dy: f32) -> ScrollState {
+        self.update();
         if dx.abs() > f32::EPSILON {
             let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
             self.scroll.x = (self.scroll.x + dx).clamp(0.0, max_x);
             self.doc.record_scrolled(None);
         }
         self.scroll_viewport(dy)
+    }
+
+    /// Rubber-band offset past the clamped scroll range.
+    #[must_use]
+    pub fn overscroll_offset(&self) -> Point {
+        self.overscroll
+    }
+
+    /// `prefers-reduced-motion: reduce` — skips rubber-band and momentum.
+    pub fn set_reduced_motion(&mut self, reduce: bool) {
+        self.style_engine.media.reduced_motion = reduce;
+    }
+
+    /// Advances rubber-band spring-back and trackpad momentum.
+    pub fn tick_scroll_physics(&mut self, dt_ms: f32) {
+        self.update();
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let frames = (dt_ms / 16.0).clamp(1.0, 16.0) as i32;
+        if self.style_engine.media.reduced_motion {
+            self.overscroll = Point::ZERO;
+            self.scroll_velocity = Point::ZERO;
+            return;
+        }
+        for _ in 0..frames {
+            if self.overscroll.y.abs() > 0.2 {
+                self.overscroll.y *= 0.62;
+                if self.overscroll.y.abs() < 0.15 {
+                    self.overscroll.y = 0.0;
+                }
+                self.scroll_velocity.y = 0.0;
+                continue;
+            }
+            self.overscroll.y = 0.0;
+            if self.scroll_velocity.y.abs() < 0.4 {
+                self.scroll_velocity.y = 0.0;
+                continue;
+            }
+            let next = (self.scroll.y + self.scroll_velocity.y).clamp(0.0, max_y);
+            self.scroll.y = next;
+            self.scroll_velocity.y *= 0.88;
+            if next <= 0.0 || next >= max_y {
+                self.scroll_velocity.y = 0.0;
+            }
+        }
+        self.doc.record_scrolled(None);
     }
 
     /// Sets the device pixel ratio used for screenshots and `viewport.scale`.
@@ -1830,6 +1882,8 @@ impl Page {
         self.iframe_urls.clear();
         self.routing = classify(&self.doc, self.content_type.as_deref());
         self.scroll = Point::ZERO;
+        self.overscroll = Point::ZERO;
+        self.scroll_velocity = Point::ZERO;
         self.element_scroll.clear();
         self.files.clear();
         self.focused = None;
@@ -2592,10 +2646,13 @@ impl Page {
         self.style_tree = StyleTree::default();
     }
 
-    /// Viewport scroll offset.
+    /// Viewport scroll offset, including rubber-band.
     #[must_use]
     pub fn scroll_offset(&self) -> Point {
-        self.scroll
+        Point::new(
+            self.scroll.x + self.overscroll.x,
+            self.scroll.y + self.overscroll.y,
+        )
     }
 
     /// Focused element.
@@ -5159,13 +5216,44 @@ impl Page {
             })
     }
 
+    fn rubber_band_allowed(&self) -> bool {
+        if self.style_engine.media.reduced_motion {
+            return false;
+        }
+        let Some(root) = self.doc.document_element() else {
+            return true;
+        };
+        !matches!(
+            self.style_tree.style(root).overscroll_behavior,
+            ve_style::OverscrollBehavior::None | ve_style::OverscrollBehavior::Contain
+        )
+    }
+
     fn scroll_viewport(&mut self, dy: f32) -> ScrollState {
         let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
         let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
-        self.scroll = Point::new(
-            self.scroll.x.clamp(0.0, max_x),
-            (self.scroll.y + dy).clamp(0.0, max_y),
-        );
+        let next_y = self.scroll.y + dy;
+        if self.rubber_band_allowed() {
+            if next_y < 0.0 {
+                self.overscroll.y += next_y * 0.55;
+                self.scroll.y = 0.0;
+            } else if next_y > max_y {
+                self.overscroll.y += (next_y - max_y) * 0.55;
+                self.scroll.y = max_y;
+            } else {
+                self.overscroll.y *= 0.35;
+                if self.overscroll.y.abs() < 0.15 {
+                    self.overscroll.y = 0.0;
+                }
+                self.scroll.y = next_y.clamp(0.0, max_y);
+            }
+            self.scroll_velocity.y = dy;
+        } else {
+            self.overscroll = Point::ZERO;
+            self.scroll_velocity = Point::ZERO;
+            self.scroll.y = next_y.clamp(0.0, max_y);
+        }
+        self.scroll.x = self.scroll.x.clamp(0.0, max_x);
         self.snap_scroll(max_y);
         self.doc.record_scrolled(None);
         ScrollState {
