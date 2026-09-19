@@ -3896,6 +3896,89 @@ fn crypto_subtle_digests_sha1_and_signs_hmac() {
 }
 
 #[test]
+fn intersection_observer_refires_after_scroll() {
+    let mut page = open(
+        r#"<body>
+          <div id="out" style="position:absolute;top:2000px;left:0;width:40px;height:20px">out</div>
+        </body>"#,
+    );
+    page.evaluate(
+        r##"(function () {
+          window.__ioHits = [];
+          new IntersectionObserver(function (recs) {
+            window.__ioHits.push(recs[0] && recs[0].isIntersecting);
+          }).observe(document.getElementById("out"));
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(20).settled);
+    page.evaluate("scrollTo(0, 2000)").unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return { hits: window.__ioHits, top: document.getElementById("out").getBoundingClientRect().top };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hits"][0], false, "{v}");
+    assert_eq!(v["hits"][1], true, "{v}");
+}
+
+#[test]
+fn resize_observer_refires_when_style_width_changes() {
+    let mut page = open(r#"<body><div id="t" style="width:80px;height:20px">x</div></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__roW = [];
+          new ResizeObserver(function (recs) {
+            window.__roW.push(recs[0] && recs[0].contentRect.width);
+          }).observe(document.getElementById("t"));
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(20).settled);
+    page.evaluate("document.getElementById('t').style.width = '160px'").unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__roW").unwrap();
+    assert_eq!(v[0], 80.0, "{v}");
+    assert_eq!(v[1], 160.0, "{v}");
+}
+
+#[test]
+fn mutation_record_is_a_real_class() {
+    let mut page = open(r#"<body><div id="c"></div></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__mr = null;
+          const c = document.getElementById("c");
+          const obs = new MutationObserver(function (recs) { window.__mr = recs[0]; });
+          obs.observe(c, { childList: true });
+          c.appendChild(document.createElement("span"));
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const r = window.__mr;
+              return {
+                isRec: r instanceof MutationRecord,
+                tag: Object.prototype.toString.call(r),
+                type: r && r.type,
+                added: r && r.addedNodes && r.addedNodes.length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["isRec"], true, "{v}");
+    assert_eq!(v["tag"], "[object MutationRecord]", "{v}");
+    assert_eq!(v["type"], "childList", "{v}");
+    assert_eq!(v["added"], 1, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

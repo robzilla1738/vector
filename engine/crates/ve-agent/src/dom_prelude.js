@@ -36,6 +36,12 @@
     if (!m) { m = new Map(); listeners.set(o, m); }
     return m;
   };
+  const liveIntersectionObservers = new Set();
+  const liveResizeObservers = new Set();
+  function notifyGeometryObservers() {
+    for (const o of liveIntersectionObservers) o._fire();
+    for (const o of liveResizeObservers) o._fire();
+  }
 
   class Event {
     constructor(type, init) {
@@ -2269,7 +2275,10 @@
   function styleProxy(handle) {
     const decl = {
       getPropertyValue(name) { return D("computed", handle, String(name)) || ""; },
-      setProperty(name, value) { D("setStyle", handle, String(name), value == null ? "" : String(value)); },
+      setProperty(name, value) {
+        D("setStyle", handle, String(name), value == null ? "" : String(value));
+        queueMicrotask(notifyGeometryObservers);
+      },
       removeProperty(name) { const old = this.getPropertyValue(name); D("setStyle", handle, String(name), ""); return old; },
       get cssText() { return D("getAttr", handle, "style") || ""; },
       set cssText(v) { D("setAttr", handle, "style", String(v)); },
@@ -7810,6 +7819,23 @@
     }
   }
 
+  class MutationRecord {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  Object.defineProperty(MutationRecord.prototype, Symbol.toStringTag, { value: "MutationRecord", configurable: true });
+  function makeMutationRecord(fields) {
+    const r = Object.create(MutationRecord.prototype);
+    r.type = fields.type;
+    r.target = fields.target;
+    r.addedNodes = fields.addedNodes;
+    r.removedNodes = fields.removedNodes;
+    r.attributeName = fields.attributeName;
+    r.oldValue = fields.oldValue;
+    r.previousSibling = fields.previousSibling;
+    r.nextSibling = fields.nextSibling;
+    r.attributeNamespace = null;
+    return r;
+  }
   class MutationObserver {
     constructor(cb) { this._cb = cb; this._rev = D("revision"); this._on = false; this._opts = []; observers.push(this); }
     observe(target, options) {
@@ -7876,7 +7902,7 @@
         for (const o of this._opts) {
           if (!this._match(t, r, o)) continue;
           const keepOld = (r.type === "attributes" && o.attributeOldValue) || (r.type === "characterData" && o.characterDataOldValue);
-          recs.push({
+          recs.push(makeMutationRecord({
             type: r.type,
             target: t || o.target,
             addedNodes: list(r.added || []),
@@ -7885,7 +7911,7 @@
             oldValue: keepOld ? (r.oldValue == null ? null : r.oldValue) : null,
             previousSibling: wrap(r.prev) || null,
             nextSibling: wrap(r.next) || null,
-          });
+          }));
           break;
         }
       }
@@ -8031,6 +8057,8 @@
       opts = opts || {};
       this._cb = cb;
       this._t = [];
+      this._last = new Map();
+      this._pending = [];
       this.root = opts.root || null;
       this.rootMargin = opts.rootMargin == null ? "0px" : String(opts.rootMargin);
       const th = opts.threshold;
@@ -8039,20 +8067,35 @@
     observe(t) {
       if (!t || this._t.indexOf(t) >= 0) return;
       this._t.push(t);
+      liveIntersectionObservers.add(this);
       queueMicrotask(() => this._fire());
     }
-    unobserve(t) { this._t = this._t.filter((x) => x !== t); }
-    disconnect() { this._t = []; }
-    takeRecords() { return []; }
+    unobserve(t) {
+      this._t = this._t.filter((x) => x !== t);
+      this._last.delete(t);
+      if (!this._t.length) liveIntersectionObservers.delete(this);
+    }
+    disconnect() {
+      this._t = [];
+      this._last.clear();
+      this._pending = [];
+      liveIntersectionObservers.delete(this);
+    }
+    takeRecords() {
+      const out = this._pending;
+      this._pending = [];
+      return out;
+    }
     _fire() {
       const root = inflateClientRect(rootClientRect(this.root), parseRootMargin(this.rootMargin));
-      const recs = this._t.map((t) => {
+      const recs = [];
+      for (const t of this._t) {
         const br = normalizeClientRect(t.getBoundingClientRect());
         const ir = intersectClientRects(br, root);
         const area = Math.max(0, br.width) * Math.max(0, br.height);
         const ia = ir.width * ir.height;
         const ratio = area > 0 ? ia / area : 0;
-        return {
+        const rec = {
           target: t,
           isIntersecting: ia > 0,
           intersectionRatio: ratio,
@@ -8061,22 +8104,45 @@
           rootBounds: root,
           time: performance.now(),
         };
-      });
-      if (this._cb) this._cb(recs, this);
+        const prev = this._last.get(t);
+        if (!prev || prev.isIntersecting !== rec.isIntersecting || prev.intersectionRatio !== rec.intersectionRatio) {
+          this._last.set(t, rec);
+          recs.push(rec);
+        }
+      }
+      if (!recs.length) return;
+      this._pending = this._pending.concat(recs);
+      if (this._cb) {
+        const delivered = this._pending;
+        this._pending = [];
+        this._cb(delivered, this);
+      }
     }
   }
   class ResizeObserver {
-    constructor(cb) { this._cb = cb; this._t = []; this._box = new Map(); }
+    constructor(cb) { this._cb = cb; this._t = []; this._box = new Map(); this._last = new Map(); }
     observe(t, opts) {
       if (!t) return;
       this._box.set(t, opts && opts.box ? String(opts.box) : "content-box");
       if (this._t.indexOf(t) < 0) this._t.push(t);
+      liveResizeObservers.add(this);
       queueMicrotask(() => this._fire());
     }
-    unobserve(t) { this._t = this._t.filter((x) => x !== t); this._box.delete(t); }
-    disconnect() { this._t = []; this._box.clear(); }
+    unobserve(t) {
+      this._t = this._t.filter((x) => x !== t);
+      this._box.delete(t);
+      this._last.delete(t);
+      if (!this._t.length) liveResizeObservers.delete(this);
+    }
+    disconnect() {
+      this._t = [];
+      this._box.clear();
+      this._last.clear();
+      liveResizeObservers.delete(this);
+    }
     _fire() {
-      const recs = this._t.map((t) => {
+      const recs = [];
+      for (const t of this._t) {
         const br = normalizeClientRect(t.getBoundingClientRect());
         const pl = cssBoxPx(t, "paddingLeft");
         const pr = cssBoxPx(t, "paddingRight");
@@ -8092,16 +8158,19 @@
           x: pl, y: pt, width: contentW, height: contentH,
           top: pt, left: pl, right: pl + contentW, bottom: pt + contentH,
         };
+        const prev = this._last.get(t);
+        if (prev && prev.w === contentW && prev.h === contentH && prev.bw === br.width && prev.bh === br.height) continue;
+        this._last.set(t, { w: contentW, h: contentH, bw: br.width, bh: br.height });
         const dpr = Number(window.devicePixelRatio) || 1;
-        return {
+        recs.push({
           target: t,
           contentRect,
           contentBoxSize: [{ inlineSize: contentW, blockSize: contentH }],
           borderBoxSize: [{ inlineSize: br.width, blockSize: br.height }],
           devicePixelContentBoxSize: [{ inlineSize: contentW * dpr, blockSize: contentH * dpr }],
-        };
-      });
-      if (this._cb) this._cb(recs, this);
+        });
+      }
+      if (recs.length && this._cb) this._cb(recs, this);
     }
   }
 
@@ -9594,12 +9663,15 @@
       if (typeof x === "object") { y = x.top; x = x.left; }
       document.documentElement.scrollTop = y || 0;
       document.documentElement.scrollLeft = x || 0;
+      const ev = new Event("scroll");
       const vv = globalThis.visualViewport;
       if (vv) {
-        const ev = new Event("scroll");
         if (typeof vv.onscroll === "function") vv.onscroll(ev);
         vv.dispatchEvent(ev);
       }
+      if (typeof globalThis.onscroll === "function") globalThis.onscroll(ev);
+      if (typeof globalThis.dispatchEvent === "function") globalThis.dispatchEvent(ev);
+      notifyGeometryObservers();
     },
     scroll(x, y) { window.scrollTo(x, y); },
     scrollBy(x, y) {
@@ -9681,7 +9753,7 @@
     },
     Image: HTMLImageElement,
     NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4, SHOW_COMMENT: 128, SHOW_ALL: 0xFFFFFFFF },
-    MutationRecord: function () {},
+    MutationRecord,
   };
   const windowTarget = new EventTarget();
   windowEventTarget = windowTarget;
@@ -10144,6 +10216,7 @@
   brandWrap(HTMLSelectedContentElement);
   brandWrap(Range);
   brandWrap(Selection);
+  brandWrap(MutationRecord);
   brandWrap(IDBFactory);
   brandWrap(IDBDatabase);
   brandWrap(IDBTransaction);
