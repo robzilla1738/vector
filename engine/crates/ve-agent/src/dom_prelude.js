@@ -8773,8 +8773,68 @@
     viewport() {}
     enable() {}
     disable() {}
+    createBuffer() { return { _buf: true }; }
+    bindBuffer() {}
+    bufferData() {}
+    createShader() { return { _sh: true, _ok: true }; }
+    shaderSource() {}
+    compileShader() {}
+    getShaderParameter() { return true; }
+    createProgram() { return { _prog: true, _ok: true }; }
+    attachShader() {}
+    linkProgram() {}
+    getProgramParameter() { return true; }
+    useProgram() {}
   }
   Object.defineProperty(WebGLRenderingContext.prototype, Symbol.toStringTag, { value: "WebGLRenderingContext", configurable: true });
+
+  class RTCPeerConnection extends EventTarget {
+    constructor(config) {
+      super();
+      this.connectionState = "new";
+      this.iceConnectionState = "new";
+      this.iceGatheringState = "new";
+      this.signalingState = "stable";
+      this.localDescription = null;
+      this.remoteDescription = null;
+      this._config = config || {};
+    }
+    createOffer() {
+      return Promise.resolve({
+        type: "offer",
+        sdp: "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n",
+      });
+    }
+    createAnswer() {
+      return Promise.resolve({
+        type: "answer",
+        sdp: "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n",
+      });
+    }
+    setLocalDescription(desc) {
+      this.localDescription = desc || this.localDescription;
+      this.signalingState = this.localDescription && this.localDescription.type === "offer" ? "have-local-offer" : "stable";
+      this.iceGatheringState = "complete";
+      const self = this;
+      queueMicrotask(() => self.dispatchEvent(new Event("icecandidate")));
+      return Promise.resolve();
+    }
+    setRemoteDescription(desc) {
+      this.remoteDescription = desc || null;
+      this.signalingState = desc && desc.type === "offer" ? "have-remote-offer" : "stable";
+      return Promise.resolve();
+    }
+    addIceCandidate() { return Promise.resolve(); }
+    createDataChannel(label) {
+      return { label: String(label || ""), readyState: "connecting", send() {}, close() {}, addEventListener() {} };
+    }
+    close() {
+      this.connectionState = "closed";
+      this.iceConnectionState = "closed";
+      this.signalingState = "closed";
+    }
+  }
+  Object.defineProperty(RTCPeerConnection.prototype, Symbol.toStringTag, { value: "RTCPeerConnection", configurable: true });
 
   function responseFrom(r) {
     let bodyUsed = false;
@@ -9425,6 +9485,28 @@
     if (dest && n) dest.set(src.subarray(0, n));
     return { read: String(string == null ? "" : string).length, written: n };
   };
+  class TextEncoderStream {
+    constructor() {
+      const enc = new TextEncoder();
+      const t = new TransformStream({
+        transform(chunk, ctrl) { ctrl.enqueue(enc.encode(chunk == null ? "" : String(chunk))); },
+      });
+      this.readable = t.readable;
+      this.writable = t.writable;
+      this.encoding = "utf-8";
+    }
+  }
+  class TextDecoderStream {
+    constructor(label, options) {
+      const dec = new TextDecoder(label, options);
+      const t = new TransformStream({
+        transform(chunk, ctrl) { ctrl.enqueue(dec.decode(chunk)); },
+      });
+      this.readable = t.readable;
+      this.writable = t.writable;
+      this.encoding = dec.encoding;
+    }
+  }
   const b64tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   function atob(s) {
     if (arguments.length < 1) {
@@ -10274,6 +10356,16 @@
     return el;
   });
   const windowExternal = Object.create(External.prototype);
+  const liveMqls = [];
+  function notifyMediaQueries() {
+    for (const mql of liveMqls) {
+      const now = mql._eval ? !!mql._eval() : false;
+      if (now !== mql._last) {
+        mql._last = now;
+        try { mql.dispatchEvent(new Event("change")); } catch (e) {}
+      }
+    }
+  }
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
     localStorage: storage("local"), sessionStorage: storage("session"),
@@ -10355,7 +10447,8 @@
     MediaQueryList, Highlight, HighlightRegistry,
     ReadableStream, WritableStream, TransformStream, URLPattern,
     AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
-    WebGLRenderingContext,
+    WebGLRenderingContext, RTCPeerConnection,
+    TextEncoderStream, TextDecoderStream,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,
@@ -10505,6 +10598,8 @@
       const mql = Object.create(MediaQueryList.prototype);
       mql._media = q;
       mql._eval = evalQ;
+      mql._last = evalQ();
+      liveMqls.push(mql);
       return mql;
     },
     getSelection() { return documentSelection; },
@@ -10534,6 +10629,16 @@
       notifyGeometryObservers();
     },
     scroll(x, y) { window.scrollTo(x, y); },
+    resizeTo(w, h) {
+      D("setViewport", Number(w) || 1, Number(h) || 1);
+      notifyMediaQueries();
+      const ev = new Event("resize");
+      if (typeof globalThis.onresize === "function") globalThis.onresize(ev);
+      if (typeof globalThis.dispatchEvent === "function") globalThis.dispatchEvent(ev);
+    },
+    resizeBy(dw, dh) {
+      window.resizeTo((D("innerWidth") || 0) + (Number(dw) || 0), (D("innerHeight") || 0) + (Number(dh) || 0));
+    },
     scrollBy(x, y) {
       const dx = typeof x === "object" ? (x.left || 0) : (x || 0);
       const dy = typeof x === "object" ? (x.top || 0) : (y || 0);
@@ -11435,7 +11540,7 @@
   }
   globalThis.atob = windowOp(atob, 1);
   globalThis.btoa = windowOp(btoa, 1);
-  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError", "createImageBitmap", "structuredClone"]) {
+  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "resizeTo", "resizeBy", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError", "createImageBitmap", "structuredClone"]) {
     const fn = globalThis[name];
     if (typeof fn === "function") {
       try {

@@ -585,6 +585,46 @@ pub const PRELUDE: &str = r#"(() => {
         }
         return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
       },
+      exportKey(format, key) {
+        if (!key || !key._raw) {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        if (!key.extractable) {
+          return Promise.reject(new DOMException("key is not extractable", "InvalidAccessError"));
+        }
+        const raw = key._raw;
+        if (format === "raw") {
+          return Promise.resolve(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
+        }
+        if (format === "jwk") {
+          const tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+          let k = "";
+          for (let i = 0; i < raw.length; i += 3) {
+            const a = raw[i];
+            const b = i + 1 < raw.length ? raw[i + 1] : 0;
+            const c = i + 2 < raw.length ? raw[i + 2] : 0;
+            k += tab[a >> 2];
+            k += tab[((a & 3) << 4) | (b >> 4)];
+            if (i + 1 < raw.length) k += tab[((b & 15) << 2) | (c >> 6)];
+            if (i + 2 < raw.length) k += tab[c & 63];
+          }
+          return Promise.resolve({
+            kty: "oct",
+            k,
+            alg: key.algorithm && key.algorithm.name === "HMAC" ? "HS256" : "A128CBC",
+            ext: true,
+            key_ops: key.usages || [],
+          });
+        }
+        return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+      },
+      deriveKey(algorithm, baseKey, derivedKeyType, extractable, usages) {
+        const dname = String(derivedKeyType && derivedKeyType.name ? derivedKeyType.name : derivedKeyType).replace(/-/g, "").toUpperCase();
+        const bits = dname.indexOf("AES") === 0 ? 128 : 256;
+        return cryptoObj.subtle.deriveBits(algorithm, baseKey, bits).then((buf) => {
+          return cryptoObj.subtle.importKey("raw", buf, derivedKeyType, extractable, usages);
+        });
+      },
       sign(algorithm, key, data) {
         const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
         if (name !== "HMAC" || !key || !key._raw) {

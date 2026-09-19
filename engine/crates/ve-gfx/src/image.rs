@@ -296,6 +296,15 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             let first = coords[0];
             coords.push(first);
         }
+        let fill = svg_fill(tag);
+        if closed && !fill.eq_ignore_ascii_case("none") && coords.len() >= 3 {
+            fill_polygon_with(&mut img, &coords, |x, y| {
+                parse_url_id(fill)
+                    .and_then(|id| grads.get(id))
+                    .map(|g| sample_grad(g, x as f32 + 0.5, y as f32 + 0.5))
+                    .unwrap_or_else(|| parse_svg_color(fill))
+            });
+        }
         for w in coords.windows(2) {
             stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
         }
@@ -327,7 +336,12 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             }
             let fill = svg_fill(tag);
             if closed && !fill.eq_ignore_ascii_case("none") && pts.len() >= 3 {
-                fill_polygon(&mut img, &pts, parse_svg_color(fill));
+                fill_polygon_with(&mut img, &pts, |x, y| {
+                    parse_url_id(fill)
+                        .and_then(|id| grads.get(id))
+                        .map(|g| sample_grad(g, x as f32 + 0.5, y as f32 + 0.5))
+                        .unwrap_or_else(|| parse_svg_color(fill))
+                });
             }
             if svg_attr_str(tag, "stroke").is_some() || !closed {
                 for w in pts.windows(2) {
@@ -694,7 +708,11 @@ fn paint_svg_text(img: &mut DecodedImage, content: &str, x: f32, y: f32, color: 
     }
 }
 
-fn fill_polygon(img: &mut DecodedImage, pts: &[(f32, f32)], color: [u8; 4]) {
+fn fill_polygon_with(
+    img: &mut DecodedImage,
+    pts: &[(f32, f32)],
+    mut color_at: impl FnMut(u32, u32) -> [u8; 4],
+) {
     if pts.len() < 3 {
         return;
     }
@@ -731,7 +749,7 @@ fn fill_polygon(img: &mut DecodedImage, pts: &[(f32, f32)], color: [u8; 4]) {
             for x in x0..=x1 {
                 let idx = ((y as u32 * img.width + x) * 4) as usize;
                 if idx + 3 < img.rgba.len() {
-                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                    img.rgba[idx..idx + 4].copy_from_slice(&color_at(x, y as u32));
                 }
             }
         }
@@ -1380,6 +1398,40 @@ mod tests {
             Some([255, 0, 0, 255]),
             "{:?}",
             img.pixel(1, 1)
+        );
+    }
+
+    #[test]
+    fn decode_svg_path_and_polygon_sample_gradients() {
+        let path = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/>\
+              <stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <path d='M0 0 H8 V8 H0 Z' fill='url(#g)'/></svg>",
+        )
+        .expect("svg path gradient");
+        let left = path.pixel(1, 4).unwrap();
+        let right = path.pixel(6, 4).unwrap();
+        assert!(
+            left[0] > right[0] && right[2] > left[2],
+            "path should sample the gradient: left={left:?} right={right:?}"
+        );
+        let polygon = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/>\
+              <stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <polygon points='0,0 8,0 8,8 0,8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg polygon gradient");
+        let pl = polygon.pixel(1, 4).unwrap();
+        let pr = polygon.pixel(6, 4).unwrap();
+        assert!(
+            pl[0] > pr[0] && pr[2] > pl[2],
+            "polygon should sample the gradient: left={pl:?} right={pr:?}"
         );
     }
 }

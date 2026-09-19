@@ -4808,6 +4808,148 @@ fn crypto_subtle_generate_key_round_trips_aes_cbc() {
 }
 
 #[test]
+fn crypto_subtle_export_and_derive_key() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__exp = null;
+          const pw = new TextEncoder().encode("password");
+          const salt = new TextEncoder().encode("salt");
+          crypto.subtle.generateKey({ name: "AES-CBC" }, true, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.exportKey("raw", key).then(function (raw) {
+              return crypto.subtle.importKey("raw", pw, "PBKDF2", false, ["deriveKey"]).then(function (base) {
+                return crypto.subtle.deriveKey(
+                  { name: "PBKDF2", salt: salt, iterations: 1, hash: "SHA-256" },
+                  base,
+                  { name: "AES-CBC" },
+                  true,
+                  ["encrypt", "decrypt"]
+                ).then(function (derived) {
+                  return crypto.subtle.exportKey("jwk", derived).then(function (jwk) {
+                    window.__exp = {
+                      rawLen: new Uint8Array(raw).length,
+                      kty: jwk.kty,
+                      derived: derived.type
+                    };
+                  });
+                });
+              });
+            });
+          }).catch(function (e) { window.__exp = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__exp").unwrap();
+    assert_eq!(v["rawLen"], 16, "{v}");
+    assert_eq!(v["kty"], "oct", "{v}");
+    assert_eq!(v["derived"], "secret", "{v}");
+}
+
+#[test]
+fn text_encoder_stream_encodes_chunks() {
+    let mut page = open("<title>tes</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__tes = null;
+          const s = new TextEncoderStream();
+          const w = s.writable.getWriter();
+          const r = s.readable.getReader();
+          w.write("hi").then(function () { return w.close(); }).then(function () {
+            return r.read();
+          }).then(function (v) {
+            const dec = new TextDecoderStream();
+            const dw = dec.writable.getWriter();
+            const dr = dec.readable.getReader();
+            return dw.write(v.value).then(function () { return dw.close(); }).then(function () {
+              return dr.read();
+            }).then(function (out) {
+              window.__tes = {
+                enc: s instanceof TextEncoderStream,
+                dec: dec instanceof TextDecoderStream,
+                bytes: Array.from(v.value),
+                text: out.value
+              };
+            });
+          }).catch(function (e) { window.__tes = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__tes").unwrap();
+    assert_eq!(v["enc"], true, "{v}");
+    assert_eq!(v["dec"], true, "{v}");
+    assert_eq!(v["bytes"][0], 104, "{v}");
+    assert_eq!(v["bytes"][1], 105, "{v}");
+    assert_eq!(v["text"], "hi", "{v}");
+}
+
+#[test]
+fn rtc_peer_connection_creates_offer() {
+    let mut page = open("<title>rtc</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__rtc = null;
+          const pc = new RTCPeerConnection();
+          let ice = 0;
+          pc.addEventListener("icecandidate", function () { ice++; });
+          pc.createOffer().then(function (offer) {
+            return pc.setLocalDescription(offer).then(function () {
+              window.__rtc = {
+                inst: pc instanceof RTCPeerConnection,
+                type: offer.type,
+                sdp: offer.sdp.indexOf("v=0") === 0,
+                state: pc.signalingState,
+                ice: ice,
+                tag: Object.prototype.toString.call(pc)
+              };
+            });
+          }).catch(function (e) { window.__rtc = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__rtc").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["type"], "offer", "{v}");
+    assert_eq!(v["sdp"], true, "{v}");
+    assert_eq!(v["state"], "have-local-offer", "{v}");
+    assert_eq!(v["ice"], 1, "{v}");
+    assert_eq!(v["tag"], "[object RTCPeerConnection]", "{v}");
+}
+
+#[test]
+fn match_media_change_fires_on_resize() {
+    let mut page = open("<title>mq</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const mql = matchMedia("(max-width: 400px)");
+              const evs = [];
+              mql.addEventListener("change", function () { evs.push(mql.matches); });
+              const before = mql.matches;
+              resizeTo(360, 640);
+              const mid = mql.matches;
+              resizeTo(1280, 720);
+              return {
+                before,
+                mid,
+                after: mql.matches,
+                evs,
+                width: innerWidth
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], false, "{v}");
+    assert_eq!(v["mid"], true, "{v}");
+    assert_eq!(v["after"], false, "{v}");
+    assert_eq!(v["evs"][0], true, "{v}");
+    assert_eq!(v["evs"][1], false, "{v}");
+    assert_eq!(v["width"], 1280, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

@@ -1729,6 +1729,13 @@ pub(crate) fn host_call(
         "innerHeight" => Ok(JsValue::Number(
             crate::idl::LiveDom::document(page).inner_height(),
         )),
+        "setViewport" => {
+            let w = arg_f64(args, 0).max(1.0) as f32;
+            let h = arg_f64(args, 1).max(1.0) as f32;
+            page.set_viewport(ve_core::Size::new(w, h));
+            page.update();
+            Ok(JsValue::Undefined)
+        }
         "scrollX" => Ok(JsValue::Number(
             crate::idl::LiveDom::document(page).scroll_x(),
         )),
