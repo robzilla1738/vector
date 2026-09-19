@@ -3470,6 +3470,24 @@
           }
           if (owned) out.push(el);
         }
+        const customs = scope.querySelectorAll("*");
+        for (let i = 0; i < customs.length; i++) {
+          const el = customs[i];
+          if (!el._internals) continue;
+          const owner = el.getAttribute("form");
+          if (owner != null) {
+            if (owner !== "" && owner === formId) out.push(el);
+            continue;
+          }
+          let p = el.parentNode;
+          let owned = false;
+          while (p) {
+            if (p === form) { owned = true; break; }
+            if (p.tagName === "FORM") break;
+            p = p.parentNode;
+          }
+          if (owned) out.push(el);
+        }
         return out;
       });
       return this._elementsCol;
@@ -5650,20 +5668,32 @@
   });
   class ValidityState {
     constructor() { throw new TypeError("Illegal constructor"); }
-    get valueMissing() { return false; }
-    get typeMismatch() { return false; }
-    get patternMismatch() { return false; }
-    get tooLong() { return false; }
-    get tooShort() { return false; }
-    get rangeUnderflow() { return false; }
-    get rangeOverflow() { return false; }
-    get stepMismatch() { return false; }
-    get badInput() { return false; }
-    get customError() { return false; }
-    get valid() { return true; }
+    get valueMissing() { return !!(this._flags && this._flags.valueMissing); }
+    get typeMismatch() { return !!(this._flags && this._flags.typeMismatch); }
+    get patternMismatch() { return !!(this._flags && this._flags.patternMismatch); }
+    get tooLong() { return !!(this._flags && this._flags.tooLong); }
+    get tooShort() { return !!(this._flags && this._flags.tooShort); }
+    get rangeUnderflow() { return !!(this._flags && this._flags.rangeUnderflow); }
+    get rangeOverflow() { return !!(this._flags && this._flags.rangeOverflow); }
+    get stepMismatch() { return !!(this._flags && this._flags.stepMismatch); }
+    get badInput() { return !!(this._flags && this._flags.badInput); }
+    get customError() { return !!(this._flags && this._flags.customError); }
+    get valid() {
+      const f = this._flags;
+      if (!f) return true;
+      return !(f.valueMissing || f.typeMismatch || f.patternMismatch || f.tooLong || f.tooShort
+        || f.rangeUnderflow || f.rangeOverflow || f.stepMismatch || f.badInput || f.customError);
+    }
   }
   Object.defineProperty(ValidityState.prototype, Symbol.toStringTag, { value: "ValidityState", configurable: true });
-  function validityState() { return Object.create(ValidityState.prototype); }
+  function validityState() {
+    const st = Object.create(ValidityState.prototype);
+    st._flags = {
+      valueMissing: false, typeMismatch: false, patternMismatch: false, tooLong: false, tooShort: false,
+      rangeUnderflow: false, rangeOverflow: false, stepMismatch: false, badInput: false, customError: false
+    };
+    return st;
+  }
   class CustomStateSet {
     constructor() { throw new TypeError("Illegal constructor"); }
     add(v) { (this._items || (this._items = new Set())).add(String(v)); return this; }
@@ -5705,7 +5735,7 @@
     get form() { return this._el && this._el.form ? this._el.form : null; }
     get willValidate() { return true; }
     get validity() { return this._validity || (this._validity = validityState()); }
-    get validationMessage() { return ""; }
+    get validationMessage() { return this._validationMessage || ""; }
     get labels() { return this._labels || (this._labels = emptyNodeList()); }
     get states() {
       if (!this._states) {
@@ -5714,10 +5744,26 @@
       }
       return this._states;
     }
-    setFormValue(value) {}
-    setValidity() {}
-    checkValidity() { return true; }
-    reportValidity() { return true; }
+    setFormValue(value) {
+      this._formValue = value == null ? null : String(value);
+      this._formState = arguments.length > 1 ? arguments[1] : this._formValue;
+    }
+    setValidity(flags, message) {
+      const st = this.validity;
+      const src = flags || {};
+      const keys = ["valueMissing", "typeMismatch", "patternMismatch", "tooLong", "tooShort",
+        "rangeUnderflow", "rangeOverflow", "stepMismatch", "badInput", "customError"];
+      for (const k of keys) {
+        if (k in src) st._flags[k] = !!src[k];
+      }
+      this._validationMessage = st.valid ? "" : String(message == null ? "" : message);
+    }
+    checkValidity() {
+      const ok = this.validity.valid;
+      if (!ok && this._el) this._el.dispatchEvent(new Event("invalid", { bubbles: true }));
+      return ok;
+    }
+    reportValidity() { return this.checkValidity(); }
   }
   Object.defineProperty(ElementInternals.prototype, Symbol.toStringTag, { value: "ElementInternals", configurable: true });
   function makeElementInternals(el) {
@@ -6956,16 +7002,25 @@
   }
   class NavigationHistoryEntry extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
-    get url() { return D("locationGet", "href"); }
-    get key() { return "current"; }
-    get id() { return "current"; }
-    get index() { return 0; }
-    get sameDocument() { return true; }
-    getState() { return null; }
+    get url() { return this._url != null ? this._url : D("locationGet", "href"); }
+    get key() { return this._key || "current"; }
+    get id() { return this._id || "current"; }
+    get index() { return this._index == null ? 0 : this._index; }
+    get sameDocument() { return this._sameDocument !== false; }
+    getState() { return this._state == null ? null : this._state; }
+  }
+  function makeNavEntry(url, index) {
+    const entry = Object.create(NavigationHistoryEntry.prototype);
+    entry._url = String(url || "");
+    entry._key = "k" + (index == null ? 0 : index);
+    entry._id = "e" + (index == null ? 0 : index);
+    entry._index = index == null ? 0 : index;
+    entry._sameDocument = true;
+    return entry;
   }
   class NavigationDestination {
     constructor() { throw new TypeError("Illegal constructor"); }
-    get url() { return ""; }
+    get url() { return this._url == null ? "" : this._url; }
     get key() { return ""; }
     get id() { return ""; }
     get index() { return -1; }
@@ -7022,8 +7077,8 @@
     get info() { return this._info; }
     get hasUAVisualTransition() { return this._hasUAVisualTransition; }
     get sourceElement() { return this._sourceElement; }
-    intercept() {}
-    scroll() {}
+    intercept() { this._intercepted = true; }
+    scroll() { this._scrolled = true; }
   }
   class NavigationCurrentEntryChangeEvent extends Event {
     constructor(type, init) {
@@ -7037,20 +7092,38 @@
   }
   class Navigation extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
-    entries() { return []; }
-    get currentEntry() { return null; }
+    _list() {
+      if (!this._entries) this._entries = [makeNavEntry(D("locationGet", "href"), 0)];
+      return this._entries;
+    }
+    entries() { return this._list().slice(); }
+    get currentEntry() {
+      const list = this._list();
+      return list.length ? list[list.length - 1] : null;
+    }
     updateCurrentEntry(options) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'updateCurrentEntry' on 'Navigation': 1 argument required, but only 0 present.");
       }
+      const cur = this.currentEntry;
+      if (cur) cur._state = options && "state" in options ? options.state : null;
     }
     get transition() { return null; }
     get activation() { return null; }
-    get canGoBack() { return false; }
+    get canGoBack() { return this._list().length > 1; }
     get canGoForward() { return false; }
     navigate(url) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'navigate' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+      const dest = Object.create(NavigationDestination.prototype);
+      dest._url = String(url);
+      const ev = new NavigateEvent("navigate", { destination: dest, canIntercept: true });
+      this.dispatchEvent(ev);
+      if (!ev._intercepted) {
+        D("locationSet", "href", String(url));
+        const list = this._list();
+        list.push(makeNavEntry(D("locationGet", "href"), list.length));
       }
       return { committed: Promise.resolve(), finished: Promise.resolve() };
     }
@@ -7139,10 +7212,26 @@
     get error() { return this._error; }
   }
   class CloseWatcher extends EventTarget {
-    constructor() { super(); }
-    requestClose() {}
-    close() {}
-    destroy() {}
+    constructor() {
+      super();
+      this._closed = false;
+      this._destroyed = false;
+    }
+    requestClose() {
+      if (this._destroyed || this._closed) return;
+      const ev = new Event("cancel", { cancelable: true });
+      this.dispatchEvent(ev);
+      if (!ev.defaultPrevented) this.close();
+    }
+    close() {
+      if (this._destroyed || this._closed) return;
+      this._closed = true;
+      this.dispatchEvent(new Event("close"));
+    }
+    destroy() {
+      this._destroyed = true;
+      this._closed = true;
+    }
   }
   function normalizeDataTransferType(format) {
     const f = String(format).toLowerCase();
@@ -7507,6 +7596,11 @@
       this._ = [];
       if (form && form.elements) {
         for (const el of form.elements) {
+          if (el._internals && el._internals._formValue != null) {
+            const name = el.name || el.getAttribute("name");
+            if (name) this.append(name, el._internals._formValue);
+            continue;
+          }
           if (!el.name) continue;
           if ((el.type === "checkbox" || el.type === "radio") && !el.checked) continue;
           this.append(el.name, el.value);

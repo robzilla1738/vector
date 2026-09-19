@@ -3055,6 +3055,106 @@ fn media_load_resets_playback_and_fast_seek_moves() {
 }
 
 #[test]
+fn element_internals_stores_form_value_and_validity() {
+    let mut page = open(r#"<body><form id="f"></form></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              customElements.define("x-field", class extends HTMLElement {});
+              var form = document.getElementById("f");
+              var el = document.createElement("x-field");
+              el.setAttribute("name", "qty");
+              form.appendChild(el);
+              var internals = el.attachInternals();
+              internals.setFormValue("7");
+              internals.setValidity({ customError: true }, "bad");
+              var msg = internals.validationMessage;
+              var invalid = [];
+              el.addEventListener("invalid", function () { invalid.push(1); });
+              var check = internals.checkValidity();
+              internals.setValidity({ customError: false }, "");
+              var fd = new FormData(form);
+              return {
+                value: fd.get("qty"),
+                check: check,
+                invalid: invalid.length,
+                msg: msg,
+                ok: internals.checkValidity()
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["value"], "7", "{v}");
+    assert_eq!(v["check"], false, "{v}");
+    assert_eq!(v["invalid"], 1, "{v}");
+    assert_eq!(v["msg"], "bad", "{v}");
+    assert_eq!(v["ok"], true, "{v}");
+}
+
+#[test]
+fn navigation_navigate_updates_location_unless_intercepted() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var seen = [];
+              navigation.addEventListener("navigate", function (ev) {
+                seen.push(ev.destination.url);
+                if (String(ev.destination.url).indexOf("hold") >= 0) ev.intercept();
+              });
+              navigation.navigate("#go");
+              var afterGo = location.hash;
+              var entries = navigation.entries().length;
+              navigation.navigate("#hold");
+              return {
+                afterGo: afterGo,
+                hold: location.hash,
+                entries: entries,
+                seen: seen.length,
+                current: navigation.currentEntry instanceof NavigationHistoryEntry
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["afterGo"], "#go", "{v}");
+    assert_eq!(v["hold"], "#go", "intercept must skip the location write: {v}");
+    assert!(v["entries"].as_u64().unwrap_or(0) >= 2, "{v}");
+    assert_eq!(v["seen"], 2, "{v}");
+    assert_eq!(v["current"], true, "{v}");
+}
+
+#[test]
+fn close_watcher_request_close_honours_prevent_default() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var w = new CloseWatcher();
+              var ev = [];
+              w.addEventListener("cancel", function (e) { ev.push("cancel"); e.preventDefault(); });
+              w.addEventListener("close", function () { ev.push("close"); });
+              w.requestClose();
+              var blocked = ev.slice();
+              var w2 = new CloseWatcher();
+              var ev2 = [];
+              w2.addEventListener("cancel", function () { ev2.push("cancel"); });
+              w2.addEventListener("close", function () { ev2.push("close"); });
+              w2.requestClose();
+              w2.requestClose();
+              w2.destroy();
+              w2.close();
+              return { blocked: blocked, closed: ev2 };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["blocked"][0], "cancel", "{v}");
+    assert_eq!(v["blocked"].as_array().map(|a| a.len()).unwrap_or(0), 1, "{v}");
+    assert_eq!(v["closed"][0], "cancel", "{v}");
+    assert_eq!(v["closed"][1], "close", "{v}");
+    assert_eq!(v["closed"].as_array().map(|a| a.len()).unwrap_or(0), 2, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
