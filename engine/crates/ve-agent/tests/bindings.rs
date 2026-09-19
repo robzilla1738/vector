@@ -1736,6 +1736,37 @@ fn canvas_draw_image_blits_source_pixels() {
 }
 
 #[test]
+fn canvas_draw_image_honours_source_and_dest_rects() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 8;
+              src.height = 4;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#ff0000";
+              sctx.fillRect(0, 0, 4, 4);
+              sctx.fillStyle = "#0000ff";
+              sctx.fillRect(4, 0, 4, 4);
+              var dst = document.createElement("canvas");
+              dst.width = 8;
+              dst.height = 8;
+              var dctx = dst.getContext("2d");
+              dctx.drawImage(src, 4, 0, 4, 4, 0, 0, 8, 8);
+              var a = dctx.getImageData(1, 1, 1, 1).data;
+              var b = dctx.getImageData(6, 6, 1, 1).data;
+              return { ar: a[0], ab: a[2], br: b[0], bb: b[2] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ar"], 0, "source-rect must skip the red half: {v}");
+    assert!(v["ab"].as_u64().unwrap_or(0) > 200, "scaled blue: {v}");
+    assert_eq!(v["br"], 0, "{v}");
+    assert!(v["bb"].as_u64().unwrap_or(0) > 200, "{v}");
+}
+
+#[test]
 fn canvas_save_restore_translate_and_global_alpha() {
     let mut page = open(r#"<body></body>"#);
     let v = page

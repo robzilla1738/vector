@@ -2241,8 +2241,18 @@ pub(crate) fn host_call(
         "canvasDrawImage" => {
             let id = live(page, args, 0)?;
             let src = live(page, args, 1)?;
-            let ops =
-                page.canvas_draw_image(id, src, arg_f64(args, 2) as i32, arg_f64(args, 3) as i32);
+            let ops = page.canvas_draw_image(
+                id,
+                src,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+                arg_f64(args, 5) as i32,
+                arg_f64(args, 6) as i32,
+                arg_f64(args, 7) as i32,
+                arg_f64(args, 8) as i32,
+                arg_f64(args, 9) as i32,
+            );
             Ok(JsValue::Number(ops as f64))
         }
         "canvasClip" => {

@@ -4519,11 +4519,35 @@
       p._repetition = String(repetition || "repeat");
       return p;
     }
-    drawImage(img, dx, dy) {
-      if (img && img.__h != null) {
-        const p = this._mapPoint(dx, dy);
-        D("canvasDrawImage", this.__h, img.__h, p[0], p[1]);
+    drawImage(img) {
+      if (!img || img.__h == null) return;
+      let sx = 0;
+      let sy = 0;
+      let sw = 0;
+      let sh = 0;
+      let dx = 0;
+      let dy = 0;
+      let dw = 0;
+      let dh = 0;
+      if (arguments.length >= 9) {
+        sx = +arguments[1];
+        sy = +arguments[2];
+        sw = +arguments[3];
+        sh = +arguments[4];
+        dx = +arguments[5];
+        dy = +arguments[6];
+        dw = +arguments[7];
+        dh = +arguments[8];
+      } else {
+        dx = +arguments[1];
+        dy = +arguments[2];
+        if (arguments.length >= 5) {
+          dw = +arguments[3];
+          dh = +arguments[4];
+        }
       }
+      const box = dw || dh ? this._mapRect(dx, dy, dw, dh) : this._mapPoint(dx, dy).concat([0, 0]);
+      D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3]);
     }
     fillText(t, x, y) {
       const p = this._mapPoint(x, y);

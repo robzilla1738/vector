@@ -1810,7 +1810,50 @@ impl CanvasSurface {
     }
 
     fn blit(&mut self, src: &[u8], sw: u32, sh: u32, dx: i32, dy: i32) {
-        self.put_image_data(dx, dy, sw, sh, src);
+        self.blit_scaled(src, sw, sh, 0, 0, sw, sh, dx, dy, sw, sh);
+    }
+
+    fn blit_scaled(
+        &mut self,
+        src: &[u8],
+        src_w: u32,
+        src_h: u32,
+        sx: u32,
+        sy: u32,
+        sw: u32,
+        sh: u32,
+        dx: i32,
+        dy: i32,
+        dw: u32,
+        dh: u32,
+    ) {
+        if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
+            return;
+        }
+        for row in 0..dh {
+            let src_y = sy + row * sh / dh;
+            if src_y >= src_h {
+                continue;
+            }
+            for col in 0..dw {
+                let src_x = sx + col * sw / dw;
+                if src_x >= src_w {
+                    continue;
+                }
+                let si = (src_y * src_w + src_x) as usize * 4;
+                if si + 3 >= src.len() {
+                    continue;
+                }
+                let x = dx + col as i32;
+                let y = dy + row as i32;
+                if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
+                    continue;
+                }
+                let di = (y as u32 * self.width + x as u32) as usize * 4;
+                self.pixels[di..di + 4].copy_from_slice(&src[si..si + 4]);
+            }
+        }
+        self.ops += 1;
     }
 }
 
@@ -2749,7 +2792,19 @@ impl Page {
         c.ops
     }
 
-    pub(crate) fn canvas_draw_image(&mut self, id: NodeId, src: NodeId, dx: i32, dy: i32) -> u64 {
+    pub(crate) fn canvas_draw_image(
+        &mut self,
+        id: NodeId,
+        src: NodeId,
+        sx: i32,
+        sy: i32,
+        sw: i32,
+        sh: i32,
+        dx: i32,
+        dy: i32,
+        dw: i32,
+        dh: i32,
+    ) -> u64 {
         let src_pixels = self
             .canvases
             .get(&src)
@@ -2764,7 +2819,21 @@ impl Page {
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
         if let Some((w, h, px)) = src_pixels {
-            c.blit(&px, w, h, dx, dy);
+            let sx = sx.max(0) as u32;
+            let sy = sy.max(0) as u32;
+            let sw = if sw <= 0 {
+                w.saturating_sub(sx)
+            } else {
+                (sw as u32).min(w.saturating_sub(sx))
+            };
+            let sh = if sh <= 0 {
+                h.saturating_sub(sy)
+            } else {
+                (sh as u32).min(h.saturating_sub(sy))
+            };
+            let dw = if dw <= 0 { sw } else { dw as u32 };
+            let dh = if dh <= 0 { sh } else { dh as u32 };
+            c.blit_scaled(&px, w, h, sx, sy, sw, sh, dx, dy, dw, dh);
         }
         c.ops
     }
