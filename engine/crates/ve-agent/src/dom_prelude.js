@@ -3907,8 +3907,7 @@
       this._dash = [];
       this._path = new Path2D();
       this._stack = [];
-      this._tx = 0;
-      this._ty = 0;
+      this._a = 1; this._b = 0; this._c = 0; this._d = 1; this._e = 0; this._f = 0;
     }
     get canvas() { return this._canvas || null; }
     get fillStyle() { return this._fillStyle; }
@@ -3972,18 +3971,29 @@
       this._globalAlpha = 1;
       this._path = new Path2D();
       this._stack = [];
-      this._tx = 0;
-      this._ty = 0;
+      this._a = 1; this._b = 0; this._c = 0; this._d = 1; this._e = 0; this._f = 0;
     }
     isContextLost() { return false; }
-    getTransform() { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; }
+    getTransform() { return { a: this._a, b: this._b, c: this._c, d: this._d, e: this._e, f: this._f }; }
+    _mapPoint(x, y) {
+      x = Number(x) || 0;
+      y = Number(y) || 0;
+      return [this._a * x + this._c * y + this._e, this._b * x + this._d * y + this._f];
+    }
+    _mapRect(x, y, w, h) {
+      const p = this._mapPoint(x, y);
+      const q = this._mapPoint((Number(x) || 0) + (Number(w) || 0), (Number(y) || 0) + (Number(h) || 0));
+      return [p[0], p[1], q[0] - p[0], q[1] - p[1]];
+    }
     fillRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
-      D("canvasFillRect", this.__h, (Number(x) || 0) + this._tx, (Number(y) || 0) + this._ty, Number(w) || 0, Number(h) || 0, String(this.fillStyle), Number(this._globalAlpha));
+      const box = this._mapRect(x, y, w, h);
+      D("canvasFillRect", this.__h, box[0], box[1], box[2], box[3], String(this.fillStyle), Number(this._globalAlpha));
     }
     clearRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'clearRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
-      D("canvasClearRect", this.__h, (Number(x) || 0) + this._tx, (Number(y) || 0) + this._ty, Number(w) || 0, Number(h) || 0);
+      const box = this._mapRect(x, y, w, h);
+      D("canvasClearRect", this.__h, box[0], box[1], box[2], box[3]);
     }
     beginPath() { this._path = new Path2D(); }
     closePath() { this._path.closePath(); }
@@ -4003,15 +4013,15 @@
     }
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
-      D("canvasStrokeRect", this.__h, (Number(x) || 0) + this._tx, (Number(y) || 0) + this._ty, Number(w) || 0, Number(h) || 0, String(this.strokeStyle || this.fillStyle));
+      const box = this._mapRect(x, y, w, h);
+      D("canvasStrokeRect", this.__h, box[0], box[1], box[2], box[3], String(this.strokeStyle || this.fillStyle));
     }
     save() {
       this._stack.push({
         fillStyle: this._fillStyle,
         strokeStyle: this._strokeStyle,
         globalAlpha: this._globalAlpha,
-        tx: this._tx,
-        ty: this._ty
+        a: this._a, b: this._b, c: this._c, d: this._d, e: this._e, f: this._f
       });
     }
     restore() {
@@ -4020,20 +4030,32 @@
       this._fillStyle = s.fillStyle;
       this._strokeStyle = s.strokeStyle;
       this._globalAlpha = s.globalAlpha;
-      this._tx = s.tx;
-      this._ty = s.ty;
+      this._a = s.a; this._b = s.b; this._c = s.c; this._d = s.d; this._e = s.e; this._f = s.f;
     }
     translate(x, y) {
-      this._tx += Number(x) || 0;
-      this._ty += Number(y) || 0;
+      x = Number(x) || 0;
+      y = Number(y) || 0;
+      this._e += this._a * x + this._c * y;
+      this._f += this._b * x + this._d * y;
     }
-    scale(x, y) {}
+    scale(x, y) {
+      x = Number(x) || 0;
+      y = Number(y) || 0;
+      this._a *= x; this._b *= x; this._c *= y; this._d *= y;
+    }
     rotate(angle) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'rotate' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
     }
-    setTransform() {}
+    setTransform(a, b, c, d, e, f) {
+      if (arguments.length < 6) {
+        this._a = 1; this._b = 0; this._c = 0; this._d = 1; this._e = 0; this._f = 0;
+        return;
+      }
+      this._a = Number(a) || 0; this._b = Number(b) || 0; this._c = Number(c) || 0;
+      this._d = Number(d) || 0; this._e = Number(e) || 0; this._f = Number(f) || 0;
+    }
     resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
     transform() {}
     drawFocusIfNeeded(element) {
@@ -4069,10 +4091,14 @@
     createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
     createPattern() { return null; }
     drawImage(img, dx, dy) {
-      if (img && img.__h != null) D("canvasDrawImage", this.__h, img.__h, (Number(dx) || 0) + this._tx, (Number(dy) || 0) + this._ty);
+      if (img && img.__h != null) {
+        const p = this._mapPoint(dx, dy);
+        D("canvasDrawImage", this.__h, img.__h, p[0], p[1]);
+      }
     }
     fillText(t, x, y) {
-      D("canvasFillText", this.__h, String(t == null ? "" : t), (Number(x) || 0) + this._tx, (Number(y) || 0) + this._ty, String(this.fillStyle));
+      const p = this._mapPoint(x, y);
+      D("canvasFillText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.fillStyle));
     }
     strokeText(t, x, y) {
       this.fillText(t, x, y);

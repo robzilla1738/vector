@@ -27,6 +27,8 @@ pub struct Layer {
     pub opacity: f32,
     /// Compositor-only translation, applied after scroll (no relayout).
     pub translate: Point,
+    /// Compositor-only scale about the layer origin (no relayout).
+    pub scale: Point,
     /// Content in layer-local coordinates (origin = `rect.origin`).
     pub content: DisplayList,
 }
@@ -71,6 +73,7 @@ impl Compositor {
             scroll: Point::ZERO,
             opacity: 1.0,
             translate: Point::ZERO,
+            scale: Point::new(1.0, 1.0),
             content,
         });
         self.damaged = true;
@@ -185,6 +188,25 @@ impl Compositor {
         true
     }
 
+    /// Compositor-only animation: lerp scale from `from` to `to` at `t` in `0..=1`.
+    pub fn animate_scale_at(&mut self, id: LayerId, from: Point, to: Point, t: f32) -> bool {
+        let t = t.clamp(0.0, 1.0);
+        self.animate_scale(
+            id,
+            Point::new(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t),
+        )
+    }
+
+    /// Compositor-only animation: scale a layer without relayout.
+    pub fn animate_scale(&mut self, id: LayerId, scale: Point) -> bool {
+        let Some(layer) = self.layer_mut(id) else {
+            return false;
+        };
+        layer.scale = scale;
+        self.damaged = true;
+        true
+    }
+
     /// Flattens all layers into one root-space display list for a surface of `size`.
     #[must_use]
     pub fn composite(&self, size: Size) -> DisplayList {
@@ -198,11 +220,27 @@ impl Compositor {
                 out.push(DisplayItem::PushOpacity(layer.opacity));
             }
             out.push(DisplayItem::PushClip(layer.rect));
+            let scaled = (layer.scale.x - 1.0).abs() > f32::EPSILON
+                || (layer.scale.y - 1.0).abs() > f32::EPSILON;
+            if scaled {
+                out.push(DisplayItem::PushTransform {
+                    tx: 0.0,
+                    ty: 0.0,
+                    sx: layer.scale.x,
+                    sy: layer.scale.y,
+                    angle: 0.0,
+                    ox: layer.rect.x(),
+                    oy: layer.rect.y(),
+                });
+            }
             out.append_translated(
                 &layer.content,
                 layer.rect.x() - layer.scroll.x + layer.translate.x,
                 layer.rect.y() - layer.scroll.y + layer.translate.y,
             );
+            if scaled {
+                out.push(DisplayItem::PopTransform);
+            }
             out.push(DisplayItem::PopClip);
             if grouped {
                 out.push(DisplayItem::PopOpacity);
@@ -260,6 +298,18 @@ mod tests {
         assert!((comp.layer(id).unwrap().opacity - 0.4).abs() < f32::EPSILON);
         assert!(comp.animate_translate_at(id, Point::ZERO, Point::new(20.0, 0.0), 0.5));
         assert!((comp.layer(id).unwrap().translate.x - 10.0).abs() < f32::EPSILON);
+        assert!(comp.animate_scale_at(id, Point::new(1.0, 1.0), Point::new(2.0, 2.0), 0.5));
+        assert!((comp.layer(id).unwrap().scale.x - 1.5).abs() < f32::EPSILON);
+        let scaled = comp.composite(Size::new(200.0, 200.0));
+        assert!(
+            scaled.items().iter().any(|item| matches!(
+                item,
+                DisplayItem::PushTransform { sx, sy, .. }
+                    if (*sx - 1.5).abs() < f32::EPSILON && (*sy - 1.5).abs() < f32::EPSILON
+            )),
+            "composite emits PushTransform for layer scale: {:?}",
+            scaled.items()
+        );
         assert!(comp.take_damage());
         assert!(comp.remove_layer(id));
         assert!(comp.composite(Size::ZERO).is_empty());

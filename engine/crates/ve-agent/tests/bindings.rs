@@ -823,13 +823,21 @@ fn canvas_save_restore_translate_and_global_alpha() {
               ctx.fillRect(0, 0, 2, 2);
               ctx.restore();
               ctx.fillRect(0, 0, 2, 2);
+              ctx.save();
+              ctx.scale(2, 1);
+              ctx.fillStyle = "#0000ff";
+              ctx.globalAlpha = 1;
+              ctx.fillRect(3, 2, 1, 1);
+              ctx.restore();
               var left = ctx.getImageData(0, 0, 1, 1).data;
               var right = ctx.getImageData(4, 0, 1, 1).data;
               var mid = ctx.getImageData(2, 0, 1, 1).data;
+              var scaled = ctx.getImageData(6, 2, 1, 1).data;
               return {
                 la: left[3], lr: left[0],
                 rg: right[1], ra: right[3],
-                ma: mid[3]
+                ma: mid[3],
+                sb: scaled[2], sa: scaled[3]
               };
             })()"##,
         )
@@ -842,6 +850,8 @@ fn canvas_save_restore_translate_and_global_alpha() {
     assert_eq!(v["rg"], 255, "{v}");
     assert_eq!(v["ra"], 255, "{v}");
     assert_eq!(v["ma"], 0, "{v}");
+    assert_eq!(v["sb"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
 }
 
 #[test]
