@@ -3207,6 +3207,41 @@ fn document_style_sheets_exposes_style_element_rules() {
 }
 
 #[test]
+fn event_source_opens_and_delivers_sse_data() {
+    let mut page = open(r#"<body></body>"#);
+    let connecting = page
+        .evaluate(
+            r##"(function () {
+              window.__es = [];
+              window.__opened = -1;
+              var payload = btoa("data:hello\nid:42\n\n");
+              window.__src = new EventSource("data:text/event-stream;base64," + payload);
+              window.__src.onopen = function () { window.__opened = window.__src.readyState; };
+              window.__src.onmessage = function (e) { window.__es.push({ data: e.data, id: e.lastEventId }); };
+              return { connecting: window.__src.readyState, connectingConst: EventSource.CONNECTING };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(connecting["connecting"], 0, "{connecting}");
+    assert_eq!(connecting["connectingConst"], 0, "{connecting}");
+    assert!(page.settle(50).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var open = window.__opened;
+              var got = window.__es.slice();
+              window.__src.close();
+              return { open: open, data: got[0] && got[0].data, id: got[0] && got[0].id, closed: window.__src.readyState };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["open"], 1, "{v}");
+    assert_eq!(v["data"], "hello", "{v}");
+    assert_eq!(v["id"], "42", "{v}");
+    assert_eq!(v["closed"], 2, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

@@ -6724,6 +6724,29 @@
   function encodeUSVHref(s) {
     return toUSV(s).replace(/\uFFFD/g, "%EF%BF%BD");
   }
+  function parseSse(text) {
+    const events = [];
+    let data = [];
+    let id = "";
+    const lines = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line === "") {
+        if (data.length) events.push({ data: data.join("\n"), id });
+        data = [];
+        continue;
+      }
+      if (line.charAt(0) === ":") continue;
+      const colon = line.indexOf(":");
+      const field = colon < 0 ? line : line.slice(0, colon);
+      let value = colon < 0 ? "" : line.slice(colon + 1);
+      if (value.charAt(0) === " ") value = value.slice(1);
+      if (field === "data") data.push(value);
+      else if (field === "id") id = value;
+    }
+    if (data.length) events.push({ data: data.join("\n"), id });
+    return events;
+  }
   class EventSource extends EventTarget {
     constructor(url) {
       super();
@@ -6733,12 +6756,47 @@
       const init = arguments[1] || {};
       this._url = encodeUSVHref(String(url));
       this._withCredentials = !!init.withCredentials;
-      this._readyState = 2;
+      this._readyState = EventSource.CONNECTING;
+      this._id = 0;
+      try {
+        this._id = D("fetchStart", this._url, "GET", JSON.stringify({ accept: "text/event-stream" }), "");
+      } catch (e) {
+        this._readyState = EventSource.CLOSED;
+        return;
+      }
+      const self = this;
+      const pump = () => {
+        if (self._readyState === EventSource.CLOSED) return;
+        const r = D("fetchPoll", self._id);
+        if (r && r.pending) {
+          D("fetchPump");
+          if (typeof globalThis.setTimeout === "function") globalThis.setTimeout(pump, 0);
+          else pump();
+          return;
+        }
+        if (!r || r.error) {
+          self._readyState = EventSource.CLOSED;
+          self.dispatchEvent(new Event("error"));
+          return;
+        }
+        self._readyState = EventSource.OPEN;
+        self.dispatchEvent(new Event("open"));
+        const events = parseSse(r.body || "");
+        for (let i = 0; i < events.length; i++) {
+          if (self._readyState === EventSource.CLOSED) return;
+          self.dispatchEvent(new MessageEvent("message", { data: events[i].data, lastEventId: events[i].id || "" }));
+        }
+      };
+      if (typeof globalThis.setTimeout === "function") globalThis.setTimeout(pump, 0);
+      else pump();
     }
     get url() { return this._url; }
     get withCredentials() { return this._withCredentials; }
     get readyState() { return this._readyState; }
-    close() { this._readyState = 2; }
+    close() {
+      if (this._id) D("fetchAbort", this._id);
+      this._readyState = EventSource.CLOSED;
+    }
   }
   Object.defineProperty(EventSource.prototype, Symbol.toStringTag, { value: "EventSource", configurable: true });
   idlConstants(EventSource, { CONNECTING: 0, OPEN: 1, CLOSED: 2 });
