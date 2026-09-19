@@ -177,9 +177,15 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         if let Some(h) = svg_attr(tag, "height") {
             height = h.max(1.0) as u32;
         }
-        if let Some(vb) = tag.split("viewBox=\"").nth(1).and_then(|s| s.split('"').next())
+        if let Some(vb) = tag
+            .split("viewBox=\"")
+            .nth(1)
+            .and_then(|s| s.split('"').next())
         {
-            let nums: Vec<f32> = vb.split_whitespace().filter_map(|p| p.parse().ok()).collect();
+            let nums: Vec<f32> = vb
+                .split_whitespace()
+                .filter_map(|p| p.parse().ok())
+                .collect();
             if nums.len() == 4 {
                 width = nums[2].max(1.0) as u32;
                 height = nums[3].max(1.0) as u32;
@@ -301,16 +307,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 })
                 .unwrap_or("#000000"),
         );
-        let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
-        for s in 0..=steps {
-            let t = s as f32 / steps as f32;
-            let xx = (x1 + (x2 - x1) * t).round() as i32;
-            let yy = (y1 + (y2 - y1) * t).round() as i32;
-            if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
-                let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
-                img.rgba[idx..idx + 4].copy_from_slice(&color);
-            }
-        }
+        stroke_line(&mut img, x1, y1, x2, y2, color);
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
@@ -348,30 +345,173 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 }
             }
         }
-        let mut coords: Vec<(f32, f32)> = pts.chunks(2).filter_map(|c| {
-            (c.len() == 2).then_some((c[0], c[1]))
-        }).collect();
+        let mut coords: Vec<(f32, f32)> = pts
+            .chunks(2)
+            .filter_map(|c| (c.len() == 2).then_some((c[0], c[1])))
+            .collect();
         if closed && coords.len() >= 2 {
             let first = coords[0];
             coords.push(first);
         }
         for w in coords.windows(2) {
-            let (x1, y1) = w[0];
-            let (x2, y2) = w[1];
-            let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
-            for s in 0..=steps {
-                let t = s as f32 / steps as f32;
-                let xx = (x1 + (x2 - x1) * t).round() as i32;
-                let yy = (y1 + (y2 - y1) * t).round() as i32;
-                if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
-                    let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
-                    img.rgba[idx..idx + 4].copy_from_slice(&color);
-                }
+            stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
+    rest = text.as_ref();
+    while let Some(i) = rest.find("<path") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let color = parse_svg_color(
+            tag.split("stroke=")
+                .nth(1)
+                .and_then(|s| {
+                    let q = s.chars().next()?;
+                    if q == '"' || q == '\'' {
+                        s[1..].split(q).next()
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| svg_fill(tag)),
+        );
+        if let Some(d) = svg_attr_str(tag, "d") {
+            for w in svg_path_points(d).windows(2) {
+                stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
             }
         }
         rest = &rest[i + tag_end + 1..];
     }
     Ok(img)
+}
+
+fn stroke_line(img: &mut DecodedImage, x1: f32, y1: f32, x2: f32, y2: f32, color: [u8; 4]) {
+    let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
+    for s in 0..=steps {
+        let t = s as f32 / steps as f32;
+        let xx = (x1 + (x2 - x1) * t).round() as i32;
+        let yy = (y1 + (y2 - y1) * t).round() as i32;
+        if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
+            let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+            img.rgba[idx..idx + 4].copy_from_slice(&color);
+        }
+    }
+}
+
+fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
+    let mut nums = Vec::new();
+    let mut cmds = Vec::new();
+    let mut rest = d.trim();
+    while !rest.is_empty() {
+        let c = rest.as_bytes()[0] as char;
+        if c.is_ascii_alphabetic() {
+            cmds.push((nums.len(), c));
+            rest = rest[1..].trim_start();
+            continue;
+        }
+        if c == ',' {
+            rest = rest[1..].trim_start();
+            continue;
+        }
+        let bytes = rest.as_bytes();
+        let mut end = 0;
+        if bytes[0] == b'+' || bytes[0] == b'-' {
+            end = 1;
+        }
+        let mut saw_dot = false;
+        while end < bytes.len() {
+            let ch = bytes[end] as char;
+            if ch.is_ascii_digit() {
+                end += 1;
+            } else if ch == '.' && !saw_dot {
+                saw_dot = true;
+                end += 1;
+            } else {
+                break;
+            }
+        }
+        if end > 0
+            && rest[..end]
+                .parse::<f32>()
+                .ok()
+                .map(|n| {
+                    nums.push(n);
+                    true
+                })
+                .unwrap_or(false)
+        {
+            rest = rest[end..].trim_start();
+            continue;
+        }
+        rest = rest[1..].trim_start();
+    }
+    let mut out = Vec::new();
+    let mut cx = 0.0;
+    let mut cy = 0.0;
+    let mut sx = 0.0;
+    let mut sy = 0.0;
+    for (i, &(start, cmd)) in cmds.iter().enumerate() {
+        let next_cmd_at = cmds.get(i + 1).map(|(idx, _)| *idx).unwrap_or(nums.len());
+        let mut ni = start;
+        let rel = cmd.is_ascii_lowercase();
+        match cmd.to_ascii_uppercase() {
+            'M' | 'L' => {
+                let mut first = cmd.eq_ignore_ascii_case(&'m');
+                while ni + 1 < next_cmd_at {
+                    let mut x = nums[ni];
+                    let mut y = nums[ni + 1];
+                    if rel {
+                        x += cx;
+                        y += cy;
+                    }
+                    if !first && !out.is_empty() {
+                        out.push((cx, cy));
+                    }
+                    out.push((x, y));
+                    cx = x;
+                    cy = y;
+                    if first {
+                        sx = x;
+                        sy = y;
+                        first = false;
+                    }
+                    ni += 2;
+                }
+            }
+            'H' => {
+                while ni < next_cmd_at {
+                    let mut x = nums[ni];
+                    if rel {
+                        x += cx;
+                    }
+                    out.push((cx, cy));
+                    out.push((x, cy));
+                    cx = x;
+                    ni += 1;
+                }
+            }
+            'V' => {
+                while ni < next_cmd_at {
+                    let mut y = nums[ni];
+                    if rel {
+                        y += cy;
+                    }
+                    out.push((cx, cy));
+                    out.push((cx, y));
+                    cy = y;
+                    ni += 1;
+                }
+            }
+            'Z' => {
+                out.push((cx, cy));
+                out.push((sx, sy));
+                cx = sx;
+                cy = sy;
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 fn svg_attr_str<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
@@ -546,5 +686,11 @@ mod tests {
         .expect("svg polyline");
         assert_eq!(poly.pixel(0, 0), Some([0, 255, 255, 255]));
         assert_eq!(poly.pixel(7, 0), Some([0, 255, 255, 255]));
+        let path = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><path d='M0 0 H7 V0' stroke='#ff00ff'/></svg>",
+        )
+        .expect("svg path");
+        assert_eq!(path.pixel(0, 0), Some([255, 0, 255, 255]));
+        assert_eq!(path.pixel(7, 0), Some([255, 0, 255, 255]));
     }
 }
