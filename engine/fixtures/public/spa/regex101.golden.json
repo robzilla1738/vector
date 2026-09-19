@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 720.0
+    "maxY": 657.56006
   },
   "frames": [
     {
@@ -18,34 +18,81 @@
       "sameOrigin": true
     }
   ],
-  "text": "[header]\n# regular expressions 101\n[nav]\n## Manage Workspace\nSave & Share\n## Editor\nFlavor: PCRE2 (PHP)\nMatch\nSubstitution\nList\nUnit Tests\nPipeline Pro\n## Tools\nCode Generator\nRegex Debugger\nExport Matches\nBenchmark Regex Pro\nFormat Regex Pro\nSponso⁠rs\n[Fewer distractions and more power with regex101 Pro.]",
+  "text": "[header]\n# regular expressions 101\n[Upgrade to Pro]\n[Enterprise]\n[Sponsor]\n[Info]\n[nav]\n## Manage Workspace\nSave & Share\n## Editor\nFlavor: PCRE2 (PHP)\nMatch\nSubstitution\nList\nUnit Tests\nPipeline Pro\n## Tools\nCode Generator\nRegex Debugger\nExport Matches\nBenchmark Regex Pro\nFormat Regex Pro\nSponso⁠rs\n[Fewer distractions and more power with regex101 Pro.]\n## Explanation Copy explanation Collapse Explanation\nAn explanation of your regex will be automatically generated as you type.\n## Match Information Collapse Match Information\nDetailed match information will be displayed here automatically.\n## Quick Reference Collapse Quick Reference\nAll Tokens\nCommon Tokens\nGeneral Tokens\nAnchors\nMeta Sequences\nQuantifiers\nGroup Constructs\nCharacter Classes\nFlags/Modifiers\nSubstitution\nA single character of: a, b or c\n[abc]\nA character except: a, b or c\n[^abc]\nA character in the range: a-z\n[a-z]\nA character not in the range: a-z\n[^a-z]\nA character in the range: a-z or A-Z\n[a-zA-Z]\nAny single character\n.\nAlternate - match either a or b\na|b\nAny whitespace character\n\\s\nAny non-whitespace character\n\\S\nAny digit\n\\d\nAny non-digit\n\\D\nAny word character\n\\w\nAny non-word character\n\\W\nNon-capturing group\n(?:...)\nCapturing Group\n(...)\nZero or one of a\na?\nZero or more of a\na*\nOne or more of a\na+\nExactly 3 of a\na{3}\n3 or more of a\na{3,}\nBetween 3 and 6 of a\na{3,6}\nStart of string\n^\nEnd of string\n$\nA word boundary\n\\b\nNon-word boundary\n\\B\n## Regular Expression\n[Regex delimiter]\n[Regex options]\n## Test String Pro Add test string",
   "headings": [
     "regular expressions 101",
     "Manage Workspace",
     "Editor",
-    "Tools"
+    "Tools",
+    "Explanation Copy explanation Collapse Explanation",
+    "Match Information Collapse Match Information",
+    "Quick Reference Collapse Quick Reference",
+    "Regular Expression",
+    "Test String Pro Add test string"
   ],
   "elements": [
+    {
+      "ref": "r165",
+      "tag": "button",
+      "role": "button",
+      "name": "Upgrade to Pro",
+      "type": "button"
+    },
+    {
+      "ref": "r178",
+      "tag": "button",
+      "role": "button",
+      "name": "Enterprise",
+      "type": "button",
+      "scrollContainer": "r178"
+    },
+    {
+      "ref": "r195",
+      "tag": "button",
+      "role": "button",
+      "name": "Sponsor",
+      "type": "button",
+      "scrollContainer": "r195"
+    },
+    {
+      "ref": "r208",
+      "tag": "button",
+      "role": "button",
+      "name": "Info",
+      "type": "button",
+      "scrollContainer": "r208"
+    },
     {
       "ref": "r257",
       "tag": "button",
       "role": "button",
       "name": "Live Help",
-      "type": "button"
-    },
-    {
-      "ref": "r262",
-      "tag": "button",
-      "role": "button",
-      "name": "Keyboard Shortcuts",
-      "type": "button"
+      "type": "button",
+      "scrollContainer": "r257"
     },
     {
       "ref": "r273",
       "tag": "button",
       "role": "button",
       "name": "Settings",
-      "type": "button"
+      "type": "button",
+      "scrollContainer": "r273"
+    },
+    {
+      "ref": "r283",
+      "tag": "li",
+      "role": "button",
+      "name": "Save & Share",
+      "scrollContainer": "r283"
+    },
+    {
+      "ref": "r470",
+      "tag": "button",
+      "role": "button",
+      "name": "Copy explanation",
+      "type": "button",
+      "disabled": true,
+      "scrollContainer": "r470"
     },
     {
       "ref": "r474",
@@ -53,7 +100,8 @@
       "role": "button",
       "name": "Collapse Explanation",
       "type": "button",
-      "expanded": true
+      "expanded": true,
+      "scrollContainer": "r466"
     },
     {
       "ref": "r487",
@@ -61,7 +109,8 @@
       "role": "button",
       "name": "Collapse Match Information",
       "type": "button",
-      "expanded": true
+      "expanded": true,
+      "scrollContainer": "r483"
     },
     {
       "ref": "r501",
@@ -69,7 +118,8 @@
       "role": "button",
       "name": "Collapse Quick Reference",
       "type": "button",
-      "expanded": true
+      "expanded": true,
+      "scrollContainer": "r497"
     },
     {
       "ref": "r515",
@@ -84,284 +134,335 @@
       "ref": "r519",
       "tag": "li",
       "role": "button",
-      "name": "All Tokens"
+      "name": "All Tokens",
+      "scrollContainer": "r519"
     },
     {
       "ref": "r531",
       "tag": "li",
       "role": "button",
-      "name": "Common Tokens"
+      "name": "Common Tokens",
+      "scrollContainer": "r531"
     },
     {
       "ref": "r540",
       "tag": "li",
       "role": "button",
-      "name": "General Tokens"
+      "name": "General Tokens",
+      "scrollContainer": "r540"
     },
     {
       "ref": "r553",
       "tag": "li",
       "role": "button",
-      "name": "Anchors"
+      "name": "Anchors",
+      "scrollContainer": "r553"
     },
     {
       "ref": "r564",
       "tag": "li",
       "role": "button",
-      "name": "Meta Sequences"
+      "name": "Meta Sequences",
+      "scrollContainer": "r564"
     },
     {
       "ref": "r574",
       "tag": "li",
       "role": "button",
-      "name": "Quantifiers"
+      "name": "Quantifiers",
+      "scrollContainer": "r574"
     },
     {
       "ref": "r584",
       "tag": "li",
       "role": "button",
-      "name": "Group Constructs"
+      "name": "Group Constructs",
+      "scrollContainer": "r584"
     },
     {
       "ref": "r594",
       "tag": "li",
       "role": "button",
-      "name": "Character Classes"
+      "name": "Character Classes",
+      "scrollContainer": "r594"
     },
     {
       "ref": "r604",
       "tag": "li",
       "role": "button",
-      "name": "Flags/Modifiers"
+      "name": "Flags/Modifiers",
+      "scrollContainer": "r604"
     },
     {
       "ref": "r614",
       "tag": "li",
       "role": "button",
-      "name": "Substitution"
+      "name": "Substitution",
+      "scrollContainer": "r614"
     },
     {
       "ref": "r632",
       "tag": "li",
       "role": "button",
-      "name": "A single character of: a, b or c [abc]"
+      "name": "A single character of: a, b or c [abc]",
+      "scrollContainer": "r632"
     },
     {
       "ref": "r638",
       "tag": "li",
       "role": "button",
-      "name": "A character except: a, b or c [^abc]"
-    },
-    {
-      "ref": "r644",
-      "tag": "li",
-      "role": "button",
-      "name": "A character in the range: a-z [a-z]"
-    },
-    {
-      "ref": "r650",
-      "tag": "li",
-      "role": "button",
-      "name": "A character not in the range: a-z [^a-z]"
-    },
-    {
-      "ref": "r656",
-      "tag": "li",
-      "role": "button",
-      "name": "A character in the range: a-z or A-Z [a-zA-Z]"
-    },
-    {
-      "ref": "r662",
-      "tag": "li",
-      "role": "button",
-      "name": "Any single character ."
-    },
-    {
-      "ref": "r668",
-      "tag": "li",
-      "role": "button",
-      "name": "Alternate - match either a or b a|b"
-    },
-    {
-      "ref": "r674",
-      "tag": "li",
-      "role": "button",
-      "name": "Any whitespace character \\s"
-    },
-    {
-      "ref": "r680",
-      "tag": "li",
-      "role": "button",
-      "name": "Any non-whitespace character \\S"
-    },
-    {
-      "ref": "r686",
-      "tag": "li",
-      "role": "button",
-      "name": "Any digit \\d"
-    },
-    {
-      "ref": "r692",
-      "tag": "li",
-      "role": "button",
-      "name": "Any non-digit \\D"
-    },
-    {
-      "ref": "r698",
-      "tag": "li",
-      "role": "button",
-      "name": "Any word character \\w"
-    },
-    {
-      "ref": "r704",
-      "tag": "li",
-      "role": "button",
-      "name": "Any non-word character \\W"
-    },
-    {
-      "ref": "r791",
-      "tag": "button",
-      "role": "button",
-      "name": "Regex delimiter",
-      "type": "button"
-    },
-    {
-      "ref": "r798",
-      "tag": "button",
-      "role": "button",
-      "name": "Regex options",
-      "type": "button"
-    },
-    {
-      "ref": "r816",
-      "tag": "button",
-      "role": "button",
-      "name": "Add test string",
-      "type": "button"
+      "name": "A character except: a, b or c [^abc]",
+      "scrollContainer": "r638"
     },
     {
       "ref": "r155",
       "tag": "a",
       "role": "link",
       "name": "regular expressions 101",
-      "href": "https://regex101.com/",
-      "offscreen": true
+      "href": "https://regex101.com/"
     },
     {
-      "ref": "r165",
-      "tag": "button",
-      "role": "button",
-      "name": "Upgrade to Pro",
-      "type": "button",
-      "offscreen": true
+      "ref": "r233",
+      "tag": "a",
+      "role": "link",
+      "name": "Community Library",
+      "href": "https://regex101.com/library",
+      "scrollContainer": "r233"
     },
     {
-      "ref": "r178",
-      "tag": "button",
-      "role": "button",
-      "name": "Enterprise",
-      "type": "button",
-      "offscreen": true
+      "ref": "r241",
+      "tag": "a",
+      "role": "link",
+      "name": "Account",
+      "href": "https://regex101.com/account/mine",
+      "scrollContainer": "r241"
     },
     {
-      "ref": "r195",
-      "tag": "button",
-      "role": "button",
-      "name": "Sponsor",
-      "type": "button",
-      "offscreen": true
+      "ref": "r247",
+      "tag": "a",
+      "role": "link",
+      "name": "Regex Quiz",
+      "href": "https://regex101.com/quiz",
+      "scrollContainer": "r247"
     },
     {
-      "ref": "r208",
-      "tag": "button",
+      "ref": "r644",
+      "tag": "li",
       "role": "button",
-      "name": "Info",
-      "type": "button",
-      "offscreen": true
+      "name": "A character in the range: a-z [a-z]",
+      "offscreen": true,
+      "scrollContainer": "r644"
+    },
+    {
+      "ref": "r650",
+      "tag": "li",
+      "role": "button",
+      "name": "A character not in the range: a-z [^a-z]",
+      "offscreen": true,
+      "scrollContainer": "r650"
+    },
+    {
+      "ref": "r656",
+      "tag": "li",
+      "role": "button",
+      "name": "A character in the range: a-z or A-Z [a-zA-Z]",
+      "offscreen": true,
+      "scrollContainer": "r656"
+    },
+    {
+      "ref": "r662",
+      "tag": "li",
+      "role": "button",
+      "name": "Any single character .",
+      "offscreen": true,
+      "scrollContainer": "r662"
+    },
+    {
+      "ref": "r668",
+      "tag": "li",
+      "role": "button",
+      "name": "Alternate - match either a or b a|b",
+      "offscreen": true,
+      "scrollContainer": "r668"
+    },
+    {
+      "ref": "r674",
+      "tag": "li",
+      "role": "button",
+      "name": "Any whitespace character \\s",
+      "offscreen": true,
+      "scrollContainer": "r674"
+    },
+    {
+      "ref": "r680",
+      "tag": "li",
+      "role": "button",
+      "name": "Any non-whitespace character \\S",
+      "offscreen": true,
+      "scrollContainer": "r680"
+    },
+    {
+      "ref": "r686",
+      "tag": "li",
+      "role": "button",
+      "name": "Any digit \\d",
+      "offscreen": true,
+      "scrollContainer": "r686"
+    },
+    {
+      "ref": "r692",
+      "tag": "li",
+      "role": "button",
+      "name": "Any non-digit \\D",
+      "offscreen": true,
+      "scrollContainer": "r692"
+    },
+    {
+      "ref": "r698",
+      "tag": "li",
+      "role": "button",
+      "name": "Any word character \\w",
+      "offscreen": true,
+      "scrollContainer": "r698"
+    },
+    {
+      "ref": "r704",
+      "tag": "li",
+      "role": "button",
+      "name": "Any non-word character \\W",
+      "offscreen": true,
+      "scrollContainer": "r704"
     },
     {
       "ref": "r710",
       "tag": "li",
       "role": "button",
       "name": "Non-capturing group (?:...)",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r710"
     },
     {
       "ref": "r716",
       "tag": "li",
       "role": "button",
       "name": "Capturing Group (...)",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r716"
     },
     {
       "ref": "r722",
       "tag": "li",
       "role": "button",
       "name": "Zero or one of a a?",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r722"
     },
     {
       "ref": "r728",
       "tag": "li",
       "role": "button",
       "name": "Zero or more of a a*",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r728"
     },
     {
       "ref": "r734",
       "tag": "li",
       "role": "button",
       "name": "One or more of a a+",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r734"
     },
     {
       "ref": "r740",
       "tag": "li",
       "role": "button",
       "name": "Exactly 3 of a a{3}",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r740"
     },
     {
       "ref": "r746",
       "tag": "li",
       "role": "button",
       "name": "3 or more of a a{3,}",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r746"
     },
     {
       "ref": "r752",
       "tag": "li",
       "role": "button",
       "name": "Between 3 and 6 of a a{3,6}",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r752"
     },
     {
       "ref": "r758",
       "tag": "li",
       "role": "button",
       "name": "Start of string ^",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r758"
     },
     {
       "ref": "r764",
       "tag": "li",
       "role": "button",
       "name": "End of string $",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r764"
     },
     {
       "ref": "r770",
       "tag": "li",
       "role": "button",
       "name": "A word boundary \\b",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r770"
     },
     {
       "ref": "r776",
       "tag": "li",
       "role": "button",
       "name": "Non-word boundary \\B",
+      "offscreen": true,
+      "scrollContainer": "r776"
+    },
+    {
+      "ref": "r791",
+      "tag": "button",
+      "role": "button",
+      "name": "Regex delimiter",
+      "type": "button",
       "offscreen": true
+    },
+    {
+      "ref": "r798",
+      "tag": "button",
+      "role": "button",
+      "name": "Regex options",
+      "type": "button",
+      "offscreen": true
+    },
+    {
+      "ref": "r803",
+      "tag": "button",
+      "role": "button",
+      "name": "Copy to clipboard",
+      "type": "button",
+      "disabled": true,
+      "offscreen": true,
+      "scrollContainer": "r803"
+    },
+    {
+      "ref": "r816",
+      "tag": "button",
+      "role": "button",
+      "name": "Add test string",
+      "type": "button",
+      "offscreen": true,
+      "scrollContainer": "r816"
     },
     {
       "ref": "r823",
@@ -371,42 +472,23 @@
       "offscreen": true
     },
     {
-      "ref": "r233",
-      "tag": "a",
-      "role": "link",
-      "name": "Community Library",
-      "href": "https://regex101.com/library",
-      "occluded": true
-    },
-    {
-      "ref": "r241",
-      "tag": "a",
-      "role": "link",
-      "name": "Account",
-      "href": "https://regex101.com/account/mine",
-      "occluded": true
-    },
-    {
-      "ref": "r247",
-      "tag": "a",
-      "role": "link",
-      "name": "Regex Quiz",
-      "href": "https://regex101.com/quiz",
-      "occluded": true
-    },
-    {
-      "ref": "r283",
-      "tag": "li",
+      "ref": "r262",
+      "tag": "button",
       "role": "button",
-      "name": "Save & Share",
-      "occluded": true
+      "name": "Keyboard Shortcuts",
+      "type": "button",
+      "occluded": true,
+      "scrollContainer": "r262",
+      "occludedBy": "r511"
     },
     {
       "ref": "r299",
       "tag": "li",
       "role": "button",
       "name": "Flavor: PCRE2 (PHP)",
-      "occluded": true
+      "occluded": true,
+      "scrollContainer": "r299",
+      "occludedBy": "r527"
     },
     {
       "ref": "r313",
@@ -414,7 +496,9 @@
       "role": "link",
       "name": "Match",
       "href": "https://regex101.com/",
-      "occluded": true
+      "occluded": true,
+      "scrollContainer": "r312",
+      "occludedBy": "r536"
     },
     {
       "ref": "r324",
@@ -422,7 +506,9 @@
       "role": "link",
       "name": "Substitution",
       "href": "https://regex101.com/substitution",
-      "occluded": true
+      "occluded": true,
+      "scrollContainer": "r323",
+      "occludedBy": "r549"
     },
     {
       "ref": "r340",
@@ -430,7 +516,9 @@
       "role": "link",
       "name": "List",
       "href": "https://regex101.com/list-substitution",
-      "occluded": true
+      "occluded": true,
+      "scrollContainer": "r339",
+      "occludedBy": "r560"
     },
     {
       "ref": "r358",
@@ -438,7 +526,9 @@
       "role": "link",
       "name": "Unit Tests",
       "href": "https://regex101.com/unit-tests",
-      "occluded": true
+      "occluded": true,
+      "scrollContainer": "r357",
+      "occludedBy": "r570"
     },
     {
       "ref": "r370",
@@ -446,7 +536,9 @@
       "role": "link",
       "name": "PipelinePro",
       "href": "https://regex101.com/substitution-pipeline",
-      "occluded": true
+      "occluded": true,
+      "scrollContainer": "r369",
+      "occludedBy": "r580"
     },
     {
       "ref": "r456",
@@ -454,7 +546,8 @@
       "role": "button",
       "name": "Fewer distractions and more power with regex101 Pro.",
       "type": "button",
-      "occluded": true
+      "occluded": true,
+      "occludedBy": "r634"
     }
   ],
   "formFields": [
@@ -517,9 +610,9 @@
   "dialogs": [],
   "truncated": false,
   "stats": {
-    "elementsTotal": 62,
-    "elementsShown": 62,
-    "textChars": 307,
-    "approxTokens": 767
+    "elementsTotal": 64,
+    "elementsShown": 64,
+    "textChars": 1518,
+    "approxTokens": 1136
   }
 }

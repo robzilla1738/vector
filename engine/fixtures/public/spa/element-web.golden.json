@@ -9,17 +9,12 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 2160.0
+    "maxY": 8.0
   },
   "frames": [
     {
       "frame": "main",
       "url": "https://app.element.io/",
-      "sameOrigin": true
-    },
-    {
-      "frame": "f1",
-      "url": "",
       "sameOrigin": true
     }
   ],

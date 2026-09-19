@@ -58,6 +58,12 @@
     }
   ],
   "dialogs": [],
+  "console": [
+    {
+      "level": "error",
+      "message": "https://todomvc.com/examples/backbone/dist/#inline: script: uncaught exception: Uncaught TypeError: Cannot set properties of undefined (setting 'sync')"
+    }
+  ],
   "truncated": false,
   "stats": {
     "elementsTotal": 2,
