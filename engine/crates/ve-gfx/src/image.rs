@@ -755,7 +755,42 @@ struct SvgGrad {
     r: f32,
     object_bbox: bool,
     spread: SvgSpread,
+    tx: f32,
+    ty: f32,
     stops: Vec<(f32, [u8; 4])>,
+}
+
+fn svg_gradient_translate(tag: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, "gradientTransform") else {
+        return (0.0, 0.0);
+    };
+    let mut x = 0.0;
+    let mut y = 0.0;
+    if let Some(idx) = raw.find("translate") {
+        let rest = raw[idx + 9..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        let mut nums = rest
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty());
+        x += nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+        y += nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    }
+    if let Some(idx) = raw.find("matrix") {
+        let rest = raw[idx + 6..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        let nums: Vec<f32> = rest
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty())
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        if nums.len() >= 6 {
+            x += nums[4];
+            y += nums[5];
+        }
+    }
+    (x, y)
 }
 
 fn svg_spread(tag: &str) -> SvgSpread {
@@ -2424,6 +2459,8 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
                         object_bbox: svg_attr_str(tag, "gradientUnits")
                             .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox")),
                         spread: svg_spread(tag),
+                        tx: svg_gradient_translate(tag).0,
+                        ty: svg_gradient_translate(tag).1,
                         stops: parse_gradient_stops(block),
                     },
                 );
@@ -2477,6 +2514,8 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
     } else {
         (x, y)
     };
+    let x = x - g.tx;
+    let y = y - g.ty;
     let raw = if g.r > 0.0 {
         let dx = x - g.cx;
         let dy = y - g.cy;
@@ -4785,6 +4824,23 @@ mod tests {
         let right = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
         assert!(left[0] > left[2], "inherited left is red: {left:?}");
         assert!(right[2] > right[0], "inherited right is blue: {right:?}");
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_transform_shifts_start() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0' gradientTransform='translate(4,0)'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradientTransform");
+        let right = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(
+            right[0] > right[2],
+            "translate(4,0) keeps the right edge redder than blue: {right:?}"
+        );
     }
 
     #[test]

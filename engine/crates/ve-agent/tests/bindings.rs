@@ -2836,6 +2836,40 @@ fn canvas_fill_rect_paints_shadow_offset() {
 }
 
 #[test]
+fn canvas_fill_text_paints_shadow_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.shadowOffsetX = 8;
+              ctx.shadowOffsetY = 0;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillText("I", 1, 14);
+              var src = ctx.getImageData(2, 8, 1, 1).data;
+              var sh = ctx.getImageData(10, 8, 1, 1).data;
+              return { sr: src[0], sa: src[3], sb: sh[2], sha: sh[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 100,
+        "source I coverage: {v}"
+    );
+    assert_eq!(v["sb"], 255, "{v}");
+    assert!(
+        v["sha"].as_u64().unwrap_or(0) > 100,
+        "shadow I coverage: {v}"
+    );
+}
+
+#[test]
 fn canvas_stroke_rect_honours_line_dash() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -6740,6 +6774,34 @@ fn webgl_stencil_mask_zero_skips_stencil_write() {
     assert_eq!(v["lg"], 0, "{v}");
     assert_eq!(v["rg"], 0, "{v}");
     assert_eq!(v["ra"], 0, "{v}");
+}
+
+#[test]
+fn webgl_clear_stencil_sets_ref_for_equal() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.clearStencil(1);
+              gl.clear(gl.STENCIL_BUFFER_BIT);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { g: px[1], a: px[3], bit: gl.STENCIL_BUFFER_BIT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["bit"], 1024, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
 }
 
 #[test]
