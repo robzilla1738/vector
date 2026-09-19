@@ -749,6 +749,26 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeCreateComment", create_comment)?;
+            let create_ns = v8::FunctionTemplate::builder(native_document_create_element_ns)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateElementNS", create_ns)?;
+            let create_frag = v8::FunctionTemplate::builder(native_document_create_fragment)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateFragment", create_frag)?;
+            let import = v8::FunctionTemplate::builder(native_document_import_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeImportNode", import)?;
+            let adopt = v8::FunctionTemplate::builder(native_document_adopt_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeAdoptNode", adopt)?;
+            let root = v8::FunctionTemplate::builder(native_node_get_root_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetRootNode", root)?;
             Some(())
         })?;
         self.eval(
@@ -883,7 +903,26 @@ impl JsVm for V8Vm {
     Document.prototype.createComment = function (data) {
       return wrapNode(globalThis.__veNativeCreateComment.call(this, data == null ? "" : String(data)));
     };
+    Document.prototype.createElementNS = function (ns, name) {
+      var el = wrapNode(globalThis.__veNativeCreateElementNS.call(this, ns == null ? "" : String(ns), name));
+      if (typeof globalThis.__veConstructCustom === "function") globalThis.__veConstructCustom(el);
+      return el;
+    };
+    Document.prototype.createDocumentFragment = function () {
+      return wrapNode(globalThis.__veNativeCreateFragment.call(this));
+    };
+    Document.prototype.importNode = function (n, deep) {
+      return wrapNode(globalThis.__veNativeImportNode.call(this, n, !!deep));
+    };
+    Document.prototype.adoptNode = function (n) {
+      if (n == null) throw new TypeError("Failed to execute 'adoptNode' on 'Document'");
+      if (n.nodeType === 9) throw new DOMException("Document nodes cannot be adopted.", "NotSupportedError");
+      return wrapNode(globalThis.__veNativeAdoptNode.call(this, n)) || n;
+    };
   }
+  Node.prototype.getRootNode = function (opts) {
+    return wrapNode(globalThis.__veNativeGetRootNode.call(this, !!(opts && opts.composed))) || this;
+  };
   defNode("ownerDocument", function () { return wrapNode(globalThis.__veNativeOwnerDocument.call(this)); });
   Node.prototype.appendChild = function (n) {
     if (n && n.nodeType === 11) {
@@ -919,7 +958,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2087,6 +2126,70 @@ fn native_document_create_comment(
 ) {
     let data = native_arg(scope, &args, 0);
     let value = call_dom_host(scope, &[JsValue::from("createComment"), data]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_element_ns(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let ns = native_arg(scope, &args, 0);
+    let name = native_arg(scope, &args, 1);
+    let value = call_dom_host(scope, &[JsValue::from("createElementNS"), ns, name]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_fragment(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let _ = args;
+    let value = call_dom_host(scope, &[JsValue::from("createFragment")]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_import_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let node = native_child_handle(scope, &args, 0);
+    let deep = if args.length() > 1 {
+        to_js_value(scope, args.get(1))
+    } else {
+        JsValue::Bool(false)
+    };
+    let value = call_dom_host(scope, &[JsValue::from("importNode"), node, deep]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_adopt_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let node = native_child_handle(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("adoptNode"), node]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_get_root_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let composed = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Bool(false)
+    };
+    let value = call_dom_host(scope, &[JsValue::from("getRootNode"), handle, composed]);
     native_set_handle_or_null(scope, &mut rv, value);
 }
 

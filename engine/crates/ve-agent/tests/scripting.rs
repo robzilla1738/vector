@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode"
         )
     );
     assert_eq!(
@@ -511,6 +511,33 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("document.body.lastChild.tagName").unwrap(),
         serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.createElementNS('http://www.w3.org/2000/svg', 'svg').namespaceURI"
+        )
+        .unwrap(),
+        serde_json::json!("http://www.w3.org/2000/svg")
+    );
+    assert_eq!(
+        page.evaluate("document.createDocumentFragment().nodeType")
+            .unwrap(),
+        serde_json::json!(11)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.getRootNode() === document")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.importNode(document.body.lastChild, true).tagName")
+            .unwrap(),
+        serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate("document.importNode(document.body.lastChild, false) !== document.body.lastChild")
+            .unwrap(),
+        serde_json::json!(true)
     );
 }
 
