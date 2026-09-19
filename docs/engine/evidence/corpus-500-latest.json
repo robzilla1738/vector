@@ -77,14 +77,15 @@
     "kind": "fetched-html-bodies",
     "liveHtml": {
       "kind": "fetched-html-bodies",
-      "n": 60,
-      "p50Ms": 1.552,
-      "p95Ms": 2.959,
+      "n": 488,
+      "p50Ms": 1.564,
+      "p95Ms": 3.15,
       "unsupported": 0
     },
-    "n": 60,
-    "p50Ms": 1.552,
-    "p95Ms": 2.959,
+    "n": 488,
+    "p50Ms": 1.564,
+    "p95Ms": 3.15,
+    "rustcDebug": false,
     "standInP50Ms": 0.056,
     "standInP95Ms": 0.07,
     "unit": "ms"
@@ -92,12 +93,13 @@
   "openToObserve": {
     "htmlBytesCap": 256000,
     "kind": "fetched-html-bodies",
-    "maxMs": 47.639,
-    "n": 60,
+    "maxMs": 78.834,
+    "n": 488,
     "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. HTML parse stops at 256 KB so multi-MB specs do not take a full cascade. Not an Apple-silicon published score.",
-    "p50Ms": 13.952,
-    "p95Ms": 28.161,
-    "slowest": "136",
+    "p50Ms": 13.929,
+    "p95Ms": 29.296,
+    "rustcDebug": false,
+    "slowest": "117",
     "unit": "ms"
   },
   "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
@@ -106,9 +108,9 @@
   "snapshotTokens": {
     "budget": 3000,
     "kind": "fetched-html-bodies",
-    "n": 60,
+    "n": 488,
     "p50": 2985,
-    "p95": 2998,
+    "p95": 2999,
     "unit": "approxTokens"
   },
   "urls": 500
