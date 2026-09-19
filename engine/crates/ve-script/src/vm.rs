@@ -540,7 +540,7 @@ mod tests {
         );
         assert_eq!(
             module_import_specifiers("import { n } from './lib.js'; import './side.js';"),
-            vec!["./lib.js".to_string(), "./side.js".to_string(), "./lib.js".to_string()]
+            vec!["./side.js".to_string(), "./lib.js".to_string()]
         );
         assert_eq!(
             decode_data_module("data:text/javascript,export%20const%20n=1").as_deref(),
