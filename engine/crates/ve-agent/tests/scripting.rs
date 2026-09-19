@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches"
         )
     );
     assert_eq!(
@@ -313,6 +313,19 @@ fn native_bindings_install_element_id_accessor() {
         page.evaluate("document.getElementById('y').innerHTML")
             .unwrap(),
         serde_json::json!("<b>ok</b>")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').matches('p')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert!(
+        page.evaluate("document.getElementById('y').outerHTML")
+            .unwrap()
+            .as_str()
+            .unwrap_or("")
+            .contains("<p"),
+        "outerHTML should serialize the element"
     );
 }
 

@@ -617,6 +617,18 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeInnerHTMLSet", inner_set)?;
+            let outer_get = v8::FunctionTemplate::builder(native_element_outer_html_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeOuterHTMLGet", outer_get)?;
+            let outer_set = v8::FunctionTemplate::builder(native_element_outer_html_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeOuterHTMLSet", outer_set)?;
+            let matches = v8::FunctionTemplate::builder(native_element_matches)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeMatches", matches)?;
             Some(())
         })?;
         self.eval(
@@ -657,12 +669,14 @@ impl JsVm for V8Vm {
     });
   }
   def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
+  def(Element.prototype, "outerHTML", globalThis.__veNativeOuterHTMLGet, globalThis.__veNativeOuterHTMLSet);
   Element.prototype.getAttribute = globalThis.__veNativeGetAttribute;
   Element.prototype.setAttribute = globalThis.__veNativeSetAttribute;
   Element.prototype.removeAttribute = globalThis.__veNativeRemoveAttribute;
   Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
   Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML";
+  Element.prototype.matches = globalThis.__veNativeMatches;
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1325,6 +1339,45 @@ fn native_element_inner_html_set(
             JsValue::from(normalized.as_str()),
         ],
     );
+}
+
+fn native_element_outer_html_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("outerHTML"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_outer_html_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("setOuterHTML"), handle, value]);
+}
+
+fn native_element_matches(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("matches"), handle, sel]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
 }
 
 fn looks_like_module(source: &str) -> bool {

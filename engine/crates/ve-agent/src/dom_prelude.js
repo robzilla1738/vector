@@ -3790,13 +3790,28 @@
       if (arguments.length < 4) {
         throw new TypeError("Failed to execute 'quadraticCurveTo' on 'Path2D': 4 arguments required, but only " + arguments.length + " present.");
       }
-      this.lineTo(x, y);
+      const start = this._c.length ? this._c[this._c.length - 1] : [+cpx, +cpy];
+      const steps = 12;
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const u = 1 - t;
+        this.lineTo(u * u * start[0] + 2 * u * t * cpx + t * t * x, u * u * start[1] + 2 * u * t * cpy + t * t * y);
+      }
     }
     bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y) {
       if (arguments.length < 6) {
         throw new TypeError("Failed to execute 'bezierCurveTo' on 'Path2D': 6 arguments required, but only " + arguments.length + " present.");
       }
-      this.lineTo(x, y);
+      const start = this._c.length ? this._c[this._c.length - 1] : [+cp1x, +cp1y];
+      const steps = 16;
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const u = 1 - t;
+        this.lineTo(
+          u * u * u * start[0] + 3 * u * u * t * cp1x + 3 * u * t * t * cp2x + t * t * t * x,
+          u * u * u * start[1] + 3 * u * u * t * cp1y + 3 * u * t * t * cp2y + t * t * t * y
+        );
+      }
     }
     arcTo(x1, y1, x2, y2, radius) {
       if (arguments.length < 5) {
@@ -4023,6 +4038,7 @@
         globalAlpha: this._globalAlpha,
         a: this._a, b: this._b, c: this._c, d: this._d, e: this._e, f: this._f
       });
+      D("canvasSave", this.__h);
     }
     restore() {
       const s = this._stack.pop();
@@ -4031,6 +4047,7 @@
       this._strokeStyle = s.strokeStyle;
       this._globalAlpha = s.globalAlpha;
       this._a = s.a; this._b = s.b; this._c = s.c; this._d = s.d; this._e = s.e; this._f = s.f;
+      D("canvasRestore", this.__h);
     }
     translate(x, y) {
       x = Number(x) || 0;
@@ -4065,17 +4082,21 @@
     }
     isPointInPath() { return false; }
     isPointInStroke() { return false; }
-    arcTo() {}
-    roundRect() {}
-    ellipse() {}
+    arcTo(x1, y1, x2, y2, radius) { this._path.arcTo(x1, y1, x2, y2, radius); }
+    roundRect(x, y, w, h) { this._path.roundRect(x, y, w, h); }
+    ellipse(x, y, rx, ry, rotation, a0, a1) { this._path.ellipse(x, y, rx, ry, rotation, a0, a1); }
     setLineDash(d) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'setLineDash' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       this._dash = Array.isArray(d) ? d.slice() : [];
     }
     getLineDash() { return this._dash.slice(); }
-    clip() {}
-    quadraticCurveTo() {}
-    bezierCurveTo() {}
+    clip() {
+      const path = arguments[0];
+      const p = path instanceof Path2D ? path : this._path;
+      D("canvasClip", this.__h, p._payload());
+    }
+    quadraticCurveTo(cpx, cpy, x, y) { this._path.quadraticCurveTo(cpx, cpy, x, y); }
+    bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y) { this._path.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y); }
     createLinearGradient(x0, y0, x1, y1) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'createLinearGradient' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       const g = Object.create(CanvasGradient.prototype);

@@ -885,6 +885,8 @@ pub(crate) struct CanvasSurface {
     height: u32,
     pixels: Vec<u8>,
     ops: u64,
+    clip: Option<(i32, i32, i32, i32)>,
+    clip_stack: Vec<Option<(i32, i32, i32, i32)>>,
 }
 
 impl CanvasSurface {
@@ -896,6 +898,8 @@ impl CanvasSurface {
             width,
             height,
             ops: 0,
+            clip: None,
+            clip_stack: Vec::new(),
         }
     }
 
@@ -927,10 +931,11 @@ impl CanvasSurface {
             self.ops += 1;
             return;
         }
-        let x0 = x.max(0) as u32;
-        let y0 = y.max(0) as u32;
-        let x1 = (x.saturating_add(w)).max(0) as u32;
-        let y1 = (y.saturating_add(h)).max(0) as u32;
+        let (cl, ct, cr, cb) = self.clip_rect();
+        let x0 = x.max(cl).max(0) as u32;
+        let y0 = y.max(ct).max(0) as u32;
+        let x1 = (x.saturating_add(w)).min(cr).max(0) as u32;
+        let y1 = (y.saturating_add(h)).min(cb).max(0) as u32;
         let x1 = x1.min(self.width);
         let y1 = y1.min(self.height);
         let x0 = x0.min(x1);
@@ -950,6 +955,31 @@ impl CanvasSurface {
 
     fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
         self.fill_rect_styled(x, y, w, h, &CanvasStyle::Solid(color), 1.0);
+    }
+
+    fn clip_rect(&self) -> (i32, i32, i32, i32) {
+        self.clip
+            .unwrap_or((0, 0, self.width as i32, self.height as i32))
+    }
+
+    fn intersect_clip(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        let (cl, ct, cr, cb) = self.clip_rect();
+        let x0 = cl.max(x);
+        let y0 = ct.max(y);
+        let x1 = cr.min(x.saturating_add(w));
+        let y1 = cb.min(y.saturating_add(h));
+        self.clip = Some((x0, y0, x1, y1));
+        self.ops += 1;
+    }
+
+    fn save_clip(&mut self) {
+        self.clip_stack.push(self.clip);
+        self.ops += 1;
+    }
+
+    fn restore_clip(&mut self) {
+        self.clip = self.clip_stack.pop().flatten();
+        self.ops += 1;
     }
 
     fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
@@ -1804,6 +1834,63 @@ impl Page {
         if let Some((w, h, px)) = src_pixels {
             c.blit(&px, w, h, dx, dy);
         }
+        c.ops
+    }
+
+    pub(crate) fn canvas_clip_path(
+        &mut self,
+        id: NodeId,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+    ) -> u64 {
+        let mut min_x = f32::MAX;
+        let mut min_y = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut max_y = f32::MIN;
+        for r in rects {
+            min_x = min_x.min(r[0]);
+            min_y = min_y.min(r[1]);
+            max_x = max_x.max(r[0] + r[2]);
+            max_y = max_y.max(r[1] + r[3]);
+        }
+        for poly in polys {
+            for p in poly {
+                min_x = min_x.min(p[0]);
+                min_y = min_y.min(p[1]);
+                max_x = max_x.max(p[0]);
+                max_y = max_y.max(p[1]);
+            }
+        }
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if min_x <= max_x && min_y <= max_y {
+            c.intersect_clip(
+                min_x.floor() as i32,
+                min_y.floor() as i32,
+                (max_x - min_x).ceil() as i32,
+                (max_y - min_y).ceil() as i32,
+            );
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_save(&mut self, id: NodeId) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.save_clip();
+        c.ops
+    }
+
+    pub(crate) fn canvas_restore(&mut self, id: NodeId) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.restore_clip();
         c.ops
     }
 

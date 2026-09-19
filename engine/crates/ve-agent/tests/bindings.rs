@@ -855,6 +855,67 @@ fn canvas_save_restore_translate_and_global_alpha() {
 }
 
 #[test]
+fn canvas_clip_and_quadratic_curve_paint_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(0, 0, 4, 4);
+              ctx.clip();
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 16, 8);
+              var inside = ctx.getImageData(1, 1, 1, 1).data;
+              var outside = ctx.getImageData(8, 1, 1, 1).data;
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(0, 0, 2, 2);
+              ctx.clip();
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 16, 8);
+              ctx.restore();
+              ctx.fillStyle = "#0000aa";
+              ctx.fillRect(0, 0, 16, 8);
+              var after = ctx.getImageData(3, 1, 1, 1).data;
+              var still = ctx.getImageData(8, 1, 1, 1).data;
+              ctx.restore();
+              ctx.beginPath();
+              ctx.moveTo(0, 7);
+              ctx.quadraticCurveTo(8, 0, 15, 7);
+              ctx.strokeStyle = "#0000ff";
+              ctx.stroke();
+              var row = ctx.getImageData(0, 0, 16, 8).data;
+              var blue = 0;
+              for (var i = 0; i < row.length; i += 4) {
+                if (row[i + 2] > 200 && row[i] < 40) blue++;
+              }
+              return {
+                ir: inside[0], oa: outside[3],
+                ab: after[2], sa: still[3],
+                blue: blue
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ir"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+    assert!(
+        v["ab"].as_u64().unwrap_or(0) > 100,
+        "restore clip then fill: {v}"
+    );
+    assert_eq!(v["sa"], 0, "{v}");
+    assert!(
+        v["blue"].as_f64().unwrap_or(0.0) > 4.0,
+        "quadratic should paint: {v}"
+    );
+}
+
+#[test]
 fn canvas_stroke_path_records_ops() {
     let mut page = open(r#"<body></body>"#);
     let v = page

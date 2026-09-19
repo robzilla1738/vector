@@ -44,6 +44,42 @@ fn arg_alpha(args: &[JsValue], i: usize) -> f32 {
         .unwrap_or(1.0)
         .clamp(0.0, 1.0) as f32
 }
+
+fn parse_canvas_path(spec: &serde_json::Value) -> (Vec<[f32; 4]>, Vec<Vec<[f32; 2]>>) {
+    let mut rects = Vec::new();
+    if let Some(arr) = spec.get("r").and_then(serde_json::Value::as_array) {
+        for r in arr {
+            if let Some(v) = r.as_array() {
+                rects.push([
+                    v.first().and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                    v.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                    v.get(2).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                    v.get(3).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                ]);
+            }
+        }
+    }
+    let mut polys = Vec::new();
+    if let Some(arr) = spec.get("p").and_then(serde_json::Value::as_array) {
+        for poly in arr {
+            let Some(pts) = poly.as_array() else { continue };
+            let mut out = Vec::new();
+            for pt in pts {
+                let Some(xy) = pt.as_array() else { continue };
+                out.push([
+                    xy.first()
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0) as f32,
+                    xy.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                ]);
+            }
+            if out.len() >= 2 {
+                polys.push(out);
+            }
+        }
+    }
+    (rects, polys)
+}
 fn obj(pairs: &[(&str, JsValue)]) -> JsValue {
     JsValue::Object(
         pairs
@@ -2161,42 +2197,28 @@ pub(crate) fn host_call(
                 page.canvas_draw_image(id, src, arg_f64(args, 2) as i32, arg_f64(args, 3) as i32);
             Ok(JsValue::Number(ops as f64))
         }
+        "canvasClip" => {
+            let id = live(page, args, 0)?;
+            let spec: serde_json::Value =
+                serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
+            let (rects, polys) = parse_canvas_path(&spec);
+            Ok(JsValue::Number(
+                page.canvas_clip_path(id, &rects, &polys) as f64
+            ))
+        }
+        "canvasSave" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(page.canvas_save(id) as f64))
+        }
+        "canvasRestore" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(page.canvas_restore(id) as f64))
+        }
         "canvasFillPath" | "canvasStrokePath" => {
             let id = live(page, args, 0)?;
             let spec: serde_json::Value =
                 serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
-            let mut rects = Vec::new();
-            if let Some(arr) = spec.get("r").and_then(serde_json::Value::as_array) {
-                for r in arr {
-                    if let Some(v) = r.as_array() {
-                        rects.push([
-                            v.first().and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                            v.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                            v.get(2).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                            v.get(3).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                        ]);
-                    }
-                }
-            }
-            let mut polys = Vec::new();
-            if let Some(arr) = spec.get("p").and_then(serde_json::Value::as_array) {
-                for poly in arr {
-                    let Some(pts) = poly.as_array() else { continue };
-                    let mut out = Vec::new();
-                    for pt in pts {
-                        let Some(xy) = pt.as_array() else { continue };
-                        out.push([
-                            xy.first()
-                                .and_then(serde_json::Value::as_f64)
-                                .unwrap_or(0.0) as f32,
-                            xy.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                        ]);
-                    }
-                    if out.len() >= 2 {
-                        polys.push(out);
-                    }
-                }
-            }
+            let (rects, polys) = parse_canvas_path(&spec);
             let ops = if op == "canvasStrokePath" {
                 page.canvas_stroke_path(id, &rects, &polys, &arg_str(args, 2))
             } else {
