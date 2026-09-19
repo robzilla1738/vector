@@ -5197,6 +5197,84 @@ fn midi_display_and_shared_storage_deny() {
 }
 
 #[test]
+fn local_fonts_and_screen_details_deny() {
+    let mut page = open("<title>fonts</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__fsd = null;
+          Promise.allSettled([
+            navigator.queryLocalFonts(),
+            navigator.getScreenDetails()
+          ]).then(function (rows) {
+            window.__fsd = {
+              fonts: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              screen: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__fsd").unwrap();
+    assert_eq!(v["fonts"], true, "{v}");
+    assert_eq!(v["screen"], true, "{v}");
+}
+
+#[test]
+fn set_html_strips_script_and_keeps_paragraph() {
+    let mut page = open(r#"<body><div id="t"></div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const t = document.getElementById("t");
+              t.setHTML("<p id=ok>hi</p><script>window.__x=1</script>");
+              return {
+                p: !!t.querySelector("p#ok"),
+                script: t.querySelector("script") == null,
+                text: (t.textContent || "").indexOf("hi") >= 0,
+                leaked: window.__x == null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["p"], true, "{v}");
+    assert_eq!(v["script"], true, "{v}");
+    assert_eq!(v["text"], true, "{v}");
+    assert_eq!(v["leaked"], true, "{v}");
+}
+
+#[test]
+fn webgl_framebuffer_clear_blits_via_texture() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              const fb = gl.createFramebuffer();
+              gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+              gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { fb: !!(fb && fb._fb), r: px[0], g: px[1], b: px[2], a: px[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fb"], true, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
 fn crypto_subtle_digests_sha512() {
     let mut page = open(r#"<body></body>"#);
     let _ = page

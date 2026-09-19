@@ -200,6 +200,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     let grads = parse_svg_gradients(full);
     let clips = parse_svg_clips(full);
     let patterns = parse_svg_patterns(full);
+    let filters = parse_svg_filters(full);
     let markers = parse_svg_markers(full);
     let by_id = parse_svg_ids(full);
     let mut rest = full;
@@ -208,14 +209,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) && !svg_hidden(tag) {
-            paint_svg_rect(
-                &mut img,
-                tag,
-                svg_group_offset(full, abs),
-                &grads,
-                &clips,
-                &patterns,
-            );
+            let g = svg_group_offset(full, abs);
+            paint_svg_rect(&mut img, tag, g, &grads, &clips, &patterns);
+            apply_svg_filter(&mut img, tag, g, &filters);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -225,14 +221,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) && !svg_hidden(tag) {
-            paint_svg_circle(
-                &mut img,
-                tag,
-                svg_group_offset(full, abs),
-                &grads,
-                &clips,
-                &patterns,
-            );
+            let g = svg_group_offset(full, abs);
+            paint_svg_circle(&mut img, tag, g, &grads, &clips, &patterns);
+            apply_svg_filter(&mut img, tag, g, &filters);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -242,14 +233,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) && !svg_hidden(tag) {
-            paint_svg_ellipse(
-                &mut img,
-                tag,
-                svg_group_offset(full, abs),
-                &grads,
-                &clips,
-                &patterns,
-            );
+            let g = svg_group_offset(full, abs);
+            paint_svg_ellipse(&mut img, tag, g, &grads, &clips, &patterns);
+            apply_svg_filter(&mut img, tag, g, &filters);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -713,6 +699,125 @@ fn parse_svg_patterns(text: &str) -> HashMap<String, SvgPattern> {
         rest = &after[end..];
     }
     out
+}
+
+fn parse_svg_filters(text: &str) -> HashMap<String, f32> {
+    let mut out = HashMap::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("<filter") {
+        let after = &rest[i..];
+        let end = after
+            .find("</filter>")
+            .map(|e| e + 9)
+            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+        let block = &after[..end];
+        let tag_end = block.find('>').unwrap_or(block.len());
+        let tag = &block[..tag_end];
+        if let Some(id) = svg_attr_str(tag, "id") {
+            if let Some(bi) = block.find("<feGaussianBlur") {
+                let be = block[bi..].find('>').unwrap_or(block.len() - bi);
+                let blur = &block[bi..bi + be];
+                let raw = svg_attr_str(blur, "stdDeviation").unwrap_or("0");
+                let radius = raw
+                    .split(|c: char| c == ',' || c.is_whitespace())
+                    .find(|s| !s.is_empty())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0.0);
+                if radius > 0.0 {
+                    out.insert(id.to_string(), radius);
+                }
+            }
+        }
+        rest = &after[end..];
+    }
+    out
+}
+
+fn apply_svg_filter(
+    img: &mut DecodedImage,
+    tag: &str,
+    g: SvgXform,
+    filters: &HashMap<String, f32>,
+) {
+    let Some(raw) = svg_attr_str(tag, "filter") else {
+        return;
+    };
+    let Some(id) = parse_url_id(raw) else {
+        return;
+    };
+    let Some(&radius) = filters.get(id) else {
+        return;
+    };
+    let world = g.then_tag(tag);
+    let (x0, y0, x1, y1) =
+        if let (Some(w), Some(h)) = (svg_attr(tag, "width"), svg_attr(tag, "height")) {
+            let (ax, ay) = world.map(
+                svg_attr(tag, "x").unwrap_or(0.0),
+                svg_attr(tag, "y").unwrap_or(0.0),
+            );
+            let (bx, by) = world.map(
+                svg_attr(tag, "x").unwrap_or(0.0) + w,
+                svg_attr(tag, "y").unwrap_or(0.0) + h,
+            );
+            (ax.min(bx), ay.min(by), ax.max(bx), ay.max(by))
+        } else if let Some(r) = svg_attr(tag, "r") {
+            let (cx, cy) = world.map(
+                svg_attr(tag, "cx").unwrap_or(0.0),
+                svg_attr(tag, "cy").unwrap_or(0.0),
+            );
+            let rr = r * world.sx.abs().min(world.sy.abs());
+            (cx - rr, cy - rr, cx + rr, cy + rr)
+        } else {
+            let (cx, cy) = world.map(
+                svg_attr(tag, "cx").unwrap_or(0.0),
+                svg_attr(tag, "cy").unwrap_or(0.0),
+            );
+            let rx = svg_attr(tag, "rx").unwrap_or(0.0) * world.sx.abs();
+            let ry = svg_attr(tag, "ry").unwrap_or(0.0) * world.sy.abs();
+            (cx - rx, cy - ry, cx + rx, cy + ry)
+        };
+    let pad = radius.ceil() as i32 + 1;
+    let bx0 = (x0.floor() as i32 - pad).max(0);
+    let by0 = (y0.floor() as i32 - pad).max(0);
+    let bx1 = ((x1.ceil() as i32) + pad).min(img.width as i32);
+    let by1 = ((y1.ceil() as i32) + pad).min(img.height as i32);
+    blur_decoded_rect(img, bx0, by0, bx1, by1, radius);
+}
+
+fn blur_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, radius: f32) {
+    let r = radius.round().max(0.0) as i32;
+    if r == 0 || x1 <= x0 || y1 <= y0 {
+        return;
+    }
+    let src = img.rgba.clone();
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let mut acc = [0u32; 4];
+            let mut n = 0u32;
+            for yy in (y - r).max(y0)..(y + r + 1).min(y1) {
+                for xx in (x - r).max(x0)..(x + r + 1).min(x1) {
+                    let i = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                    if i + 3 < src.len() {
+                        acc[0] += u32::from(src[i]);
+                        acc[1] += u32::from(src[i + 1]);
+                        acc[2] += u32::from(src[i + 2]);
+                        acc[3] += u32::from(src[i + 3]);
+                        n += 1;
+                    }
+                }
+            }
+            if n == 0 {
+                continue;
+            }
+            let i = ((y as u32 * img.width + x as u32) * 4) as usize;
+            if i + 3 < img.rgba.len() {
+                img.rgba[i] = (acc[0] / n) as u8;
+                img.rgba[i + 1] = (acc[1] / n) as u8;
+                img.rgba[i + 2] = (acc[2] / n) as u8;
+                img.rgba[i + 3] = (acc[3] / n) as u8;
+            }
+        }
+    }
 }
 
 fn sample_pattern(p: &SvgPattern, x: f32, y: f32) -> [u8; 4] {
@@ -2890,5 +2995,19 @@ mod tests {
         .expect("svg underline");
         assert_eq!(img.pixel(2, 7), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_filter_blur_spills_outside_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feGaussianBlur stdDeviation='1'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg blur");
+        assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
+        let edge = img.pixel(1, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(edge[0] > 0, "expected blur spill, got {edge:?}");
+        assert!(edge[0] < 255, "expected faded spill, got {edge:?}");
     }
 }

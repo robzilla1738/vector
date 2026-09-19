@@ -7350,6 +7350,12 @@
     requestMIDIAccess() {
       return Promise.reject(new DOMException("MIDI access denied", "NotAllowedError"));
     }
+    queryLocalFonts() {
+      return Promise.reject(new DOMException("Font access denied", "NotAllowedError"));
+    }
+    getScreenDetails() {
+      return Promise.reject(new DOMException("Screen details denied", "NotAllowedError"));
+    }
     get sharedStorage() {
       if (!this._sharedStorage) {
         this._sharedStorage = {
@@ -9331,6 +9337,9 @@
       this.RENDERER = 7937;
       this.RGBA = 6408;
       this.UNSIGNED_BYTE = 5121;
+      this.FRAMEBUFFER = 36160;
+      this.COLOR_ATTACHMENT0 = 36064;
+      this.TEXTURE_2D = 3553;
       this._clear = [0, 0, 0, 0];
     }
     getParameter(p) {
@@ -9343,9 +9352,24 @@
     getSupportedExtensions() { return []; }
     clearColor(r, g, b, a) { this._clear = [Number(r) || 0, Number(g) || 0, Number(b) || 0, a == null ? 1 : Number(a)]; }
     clear() {
+      const [r, g, b, a] = this._clear;
+      if (this._fb && this._fb._tex) {
+        const tex = this._fb._tex;
+        const w = tex._w || this.drawingBufferWidth || 8;
+        const h = tex._h || this.drawingBufferHeight || 8;
+        const cr = Math.max(0, Math.min(255, Math.round(r * 255)));
+        const cg = Math.max(0, Math.min(255, Math.round(g * 255)));
+        const cb = Math.max(0, Math.min(255, Math.round(b * 255)));
+        const ca = Math.max(0, Math.min(255, Math.round((a == null ? 1 : a) * 255)));
+        let s = "";
+        for (let i = 0; i < w * h; i++) s += String.fromCharCode(cr, cg, cb, ca);
+        tex._w = w;
+        tex._h = h;
+        tex._b64 = btoa(s);
+        return;
+      }
       const c = this.canvas;
       if (!c || c.__h == null) return;
-      const [r, g, b, a] = this._clear;
       const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
       const css = a >= 1 ? ("#" + hex(r) + hex(g) + hex(b)) : ("rgba(" + Math.round(r * 255) + "," + Math.round(g * 255) + "," + Math.round(b * 255) + "," + a + ")");
       D("canvasResize", c.__h, c.width, c.height);
@@ -9416,6 +9440,11 @@
     getProgramInfoLog(prog) { return prog && prog._ok ? "" : "link failed"; }
     useProgram(prog) { if (prog && prog._ok) this._prog = prog; }
     getUniformLocation(prog, name) { return { _u: true, _name: String(name || ""), _prog: prog }; }
+    createFramebuffer() { return { _fb: true, _tex: null }; }
+    bindFramebuffer(_target, fb) { this._fb = fb || null; }
+    framebufferTexture2D(_target, _attach, _texTarget, tex) {
+      if (this._fb) this._fb._tex = tex || null;
+    }
     uniform4f(_loc, r, g, b, a) { this._uniform = [Number(r) || 0, Number(g) || 0, Number(b) || 0, a == null ? 1 : Number(a)]; }
     uniform4fv(_loc, v) {
       const a = v && v.length ? v : [0, 0, 0, 1];
