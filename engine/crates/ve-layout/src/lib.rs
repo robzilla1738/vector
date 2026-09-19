@@ -2052,6 +2052,32 @@ mod tests {
     }
 
     #[test]
+    fn text_wrap_balance_evens_two_lines() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:72px;font-size:16px;line-height:20px;text-wrap:balance;margin:0}</style>\
+             <p id=p>aa bb cc dd</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert_eq!(lines.len(), 2, "balance keeps two lines");
+        let t0: String = lines[0]
+            .fragments
+            .iter()
+            .filter_map(|f| f.text.as_deref())
+            .collect();
+        let t1: String = lines[1]
+            .fragments
+            .iter()
+            .filter_map(|f| f.text.as_deref())
+            .collect();
+        assert!(
+            t1.contains("cc"),
+            "balance moves cc onto the second line, got {t0:?} / {t1:?}"
+        );
+    }
+
+    #[test]
     fn hyphens_auto_wraps_long_word() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;hyphens:auto;margin:0}</style>\

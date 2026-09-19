@@ -9482,6 +9482,7 @@
       this.ONE_MINUS_SRC_ALPHA = 771;
       this.FUNC_ADD = 32774;
       this.FUNC_SUBTRACT = 32778;
+      this.FUNC_REVERSE_SUBTRACT = 32779;
       this.ARRAY_BUFFER = 34962;
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
@@ -9684,7 +9685,7 @@
       if (this._blendOn && src === this.ZERO && dst === this.ONE) {
         return;
       }
-      if (this._blendOn && this._blendEq === this.FUNC_SUBTRACT && c && c.__h != null) {
+      if (this._blendOn && (this._blendEq === this.FUNC_SUBTRACT || this._blendEq === this.FUNC_REVERSE_SUBTRACT) && c && c.__h != null) {
         const [x, y, w, h] = this._clearRect();
         const dest = D("canvasGetImageData", c.__h, x, y, w, h) || {};
         const destBin = atob(dest.b64 || "");
@@ -9694,8 +9695,9 @@
         const srcBin = atob(drawn.b64 || "");
         let out = "";
         const n = Math.max(destBin.length, srcBin.length);
+        const reverse = this._blendEq === this.FUNC_REVERSE_SUBTRACT;
         for (let i = 0; i < n; i += 4) {
-          const sub = (d, s) => Math.max(0, (d || 0) - (s || 0));
+          const sub = (d, s) => Math.max(0, reverse ? (s || 0) - (d || 0) : (d || 0) - (s || 0));
           out += String.fromCharCode(
             sub(destBin.charCodeAt(i), srcBin.charCodeAt(i)),
             sub(destBin.charCodeAt(i + 1), srcBin.charCodeAt(i + 1)),

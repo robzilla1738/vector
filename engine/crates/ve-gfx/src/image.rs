@@ -4002,6 +4002,17 @@ mod tests {
     }
 
     #[test]
+    fn decode_svg_text_anchor_middle_centers_glyph() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='4' y='7' fill='#ff0000' text-anchor='middle'>I</text></svg>",
+        )
+        .expect("svg text-anchor middle");
+        assert_eq!(img.pixel(3, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(7, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
     fn decode_svg_text_anchor_end_shifts_left() {
         let img = decode(
             b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\

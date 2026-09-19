@@ -381,6 +381,15 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
             .shaper
             .shape(text, style, state.remaining(), state.line.width, wrap);
     }
+    if wrap && style.text_wrap == TextWrap::Balance && lines.len() > 1 {
+        let n = lines.len();
+        let total: f32 = lines.iter().map(|l| l.width).sum();
+        let target = (total / n as f32) + 0.5;
+        let balanced = state.ctx.shaper.shape(text, style, target, target, wrap);
+        if balanced.len() == n {
+            lines = balanced;
+        }
+    }
     let mut union = Rect::ZERO;
     for (i, shaped) in lines.into_iter().enumerate() {
         if i > 0 {
