@@ -326,3 +326,90 @@ fn events_log_human_and_agent_clicks_are_byte_identical() {
         "{agent}"
     );
 }
+
+#[test]
+fn pointer_capture_retargets_pointerup() {
+    let mut page = open(
+        r#"<div id="outer"><button id="b">Go</button></div>
+           <pre id="log"></pre>
+           <script>
+             const log = [];
+             const rec = (e) => log.push(e.type + ":" + (e.target && e.target.id) + ":" + (e.currentTarget && e.currentTarget.id));
+             const outer = document.getElementById("outer");
+             const b = document.getElementById("b");
+             outer.addEventListener("pointerdown", (e) => { rec(e); outer.setPointerCapture(e.pointerId); });
+             outer.addEventListener("pointerup", rec);
+             b.addEventListener("pointerup", rec);
+             outer.addEventListener("lostpointercapture", rec);
+             document.getElementById("log").__dump = () => JSON.stringify(log);
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    page.click_target("css:#b").unwrap();
+    let log = page
+        .evaluate("document.getElementById('log').__dump()")
+        .unwrap();
+    let types = log.as_str().unwrap();
+    assert!(types.contains("pointerdown:b:outer"), "{types}");
+    assert!(types.contains("pointerup:outer:outer"), "{types}");
+    assert!(types.contains("lostpointercapture:outer:outer"), "{types}");
+    assert!(
+        page.evaluate("typeof PointerEvent === 'function' && typeof CompositionEvent === 'function'")
+            .unwrap()
+            .as_bool()
+            .unwrap_or(false)
+    );
+}
+
+#[test]
+fn fill_selects_the_control_and_fires_select() {
+    let mut page = open(
+        r#"<input id="n" value="old"><pre id="log"></pre>
+           <script>
+             const n = document.getElementById("n");
+             n.addEventListener("select", () => { document.getElementById("log").textContent = n.selectionStart + "-" + n.selectionEnd; });
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let id = page.document().element_by_id("n").expect("#n");
+    page.fill(id, "Ada", 5_000).unwrap();
+    let log = page
+        .evaluate("document.getElementById('log').textContent")
+        .unwrap();
+    assert_eq!(log.as_str().unwrap(), "0-3");
+}
+
+#[test]
+fn compose_text_fires_composition_sequence() {
+    let mut page = open(
+        r#"<input id="n"><pre id="log"></pre>
+           <script>
+             const log = [];
+             const n = document.getElementById("n");
+             ["compositionstart", "compositionupdate", "compositionend", "input"].forEach((t) =>
+               n.addEventListener(t, (e) => log.push(e.type + ":" + (e.data || "")))
+             );
+             document.getElementById("log").__dump = () => JSON.stringify(log);
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let id = page.document().element_by_id("n").expect("#n");
+    page.compose_text(id, "あい", 5_000).unwrap();
+    let log = page
+        .evaluate("document.getElementById('log').__dump()")
+        .unwrap();
+    let types = log.as_str().unwrap();
+    assert!(types.contains("compositionstart:"), "{types}");
+    assert!(types.contains("compositionupdate:あい"), "{types}");
+    assert!(types.contains("compositionend:あい"), "{types}");
+    assert_eq!(
+        page.evaluate("document.getElementById('n').value")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "あい"
+    );
+}

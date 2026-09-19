@@ -28,6 +28,7 @@
   }
   const onReadyStateChange = new WeakMap();
   const trustedEvents = new WeakSet();
+  const pointerCaptures = new Map();
   const waiters = new Map();
   let currentScriptNode = null;
   const store = (o) => {
@@ -217,6 +218,20 @@
       this.metaKey = !!i.metaKey;
     }
   }
+  class PointerEvent extends MouseEvent {
+    constructor(t, i) {
+      super(t, i);
+      i = i || {};
+      this.pointerId = i.pointerId != null ? Number(i.pointerId) : 1;
+      this.pointerType = i.pointerType != null ? String(i.pointerType) : "mouse";
+      this.isPrimary = i.isPrimary != null ? !!i.isPrimary : true;
+      this.width = i.width != null ? Number(i.width) : 1;
+      this.height = i.height != null ? Number(i.height) : 1;
+      this.pressure = i.pressure != null ? Number(i.pressure) : (this.buttons ? 0.5 : 0);
+      this.tiltX = i.tiltX != null ? Number(i.tiltX) : 0;
+      this.tiltY = i.tiltY != null ? Number(i.tiltY) : 0;
+    }
+  }
   class WheelEvent extends MouseEvent {
     constructor(t, i) {
       super(t, i);
@@ -266,6 +281,12 @@
       this.data = i && i.data != null ? i.data : null;
       this.inputType = (i && i.inputType) || "";
       this.isComposing = !!(i && i.isComposing);
+    }
+  }
+  class CompositionEvent extends UIEvent {
+    constructor(t, i) {
+      super(t, i);
+      this.data = i && i.data != null ? String(i.data) : "";
     }
   }
   class MessageEvent extends Event {
@@ -2381,6 +2402,21 @@
       }
     }
     scrollIntoView() { D("scrollIntoView", this.__h); }
+    setPointerCapture(pointerId) {
+      const id = Number(pointerId);
+      if (!isFinite(id)) return;
+      pointerCaptures.set(id, this);
+      try { this.dispatchEvent(new PointerEvent("gotpointercapture", { bubbles: true, pointerId: id, isPrimary: true })); } catch (e) {}
+    }
+    releasePointerCapture(pointerId) {
+      const id = Number(pointerId);
+      if (pointerCaptures.get(id) !== this) return;
+      pointerCaptures.delete(id);
+      try { this.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: true, pointerId: id, isPrimary: true })); } catch (e) {}
+    }
+    hasPointerCapture(pointerId) {
+      return pointerCaptures.get(Number(pointerId)) === this;
+    }
   }
   applyChildNode(Element.prototype);
   Element.prototype.streamAppendHTMLUnsafe = function streamAppendHTMLUnsafe(opts) {
@@ -3073,6 +3109,7 @@
     select() {
       this.selectionStart = 0;
       this.selectionEnd = (this.value || "").length;
+      this.dispatchEvent(new Event("select", { bubbles: true }));
     }
     showPicker() {}
     setRangeText(replacement) {
@@ -3107,6 +3144,7 @@
     select() {
       this.selectionStart = 0;
       this.selectionEnd = (this.value || "").length;
+      this.dispatchEvent(new Event("select", { bubbles: true }));
     }
     setRangeText(replacement) {
       if (arguments.length < 1) {
@@ -7304,6 +7342,13 @@
       r.collapse(true);
       this._ranges.push(r);
     },
+    selectAllChildren(node) {
+      this.removeAllRanges();
+      if (!node) return;
+      const r = new Range();
+      r.selectNodeContents(node);
+      this._ranges.push(r);
+    },
   };
 
   const document = wrap(D("documentNode"));
@@ -7347,7 +7392,7 @@
     window: null, self: null, document, location, history, atob, btoa,
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
-    Event, HashChangeEvent, PopStateEvent, ToggleEvent, TrackEvent, FormDataEvent, StorageEvent, MouseEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
+    Event, HashChangeEvent, PopStateEvent, ToggleEvent, TrackEvent, FormDataEvent, StorageEvent, MouseEvent, PointerEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, CompositionEvent, MessageEvent, EventTarget, DragEvent,
     Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
     ProcessingInstruction, DocumentType, HTMLCollection, HTMLAllCollection,
     HTMLFormControlsCollection, HTMLOptionsCollection, RadioNodeList,
@@ -8536,23 +8581,46 @@
   } catch {}
 
   globalThis.__veDispatch = (handle, type, init) => {
-    const node = wrap(handle);
+    let node = wrap(handle);
     if (!node) return false;
     init = init || {};
     if (init.composed === undefined && (type === "click" || type === "input" || type === "change")) {
       init = { ...init, composed: true };
     }
+    const pointerId = init.pointerId != null ? Number(init.pointerId) : 1;
+    if (type.indexOf("pointer") === 0 && type !== "pointerdown" && type !== "gotpointercapture" && type !== "lostpointercapture") {
+      const captured = pointerCaptures.get(pointerId);
+      if (captured) node = captured;
+    }
     const keyish = type === "keydown" || type === "keypress" || type === "keyup";
+    const pointerish = type.indexOf("pointer") === 0;
     const ev = type.indexOf("drag") === 0
       ? new DragEvent(type, init)
       : (type === "click" || type === "mousedown" || type === "mouseup" || type === "mousemove"
         ? new MouseEvent(type, init)
-        : (type === "beforeinput" || type === "input"
-          ? new InputEvent(type, init)
-          : (keyish ? new KeyboardEvent(type, init) : new Event(type, init))));
+        : (pointerish
+          ? new PointerEvent(type, { pointerId, isPrimary: true, pointerType: "mouse", ...init })
+          : (type.indexOf("composition") === 0
+            ? new CompositionEvent(type, init)
+            : (type === "beforeinput" || type === "input"
+              ? new InputEvent(type, init)
+              : (keyish ? new KeyboardEvent(type, init) : new Event(type, init))))));
     trustedEvents.add(ev);
     node.dispatchEvent(ev);
+    if (type === "pointerup" || type === "pointercancel") {
+      const captured = pointerCaptures.get(pointerId);
+      if (captured) {
+        pointerCaptures.delete(pointerId);
+        try { captured.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: true, pointerId, isPrimary: true })); } catch (e) {}
+      }
+    }
     return ev.defaultPrevented;
+  };
+  globalThis.__veSelectControl = (handle) => {
+    const node = wrap(handle);
+    if (!node) return false;
+    try { if (typeof node.select === "function") node.select(); } catch (e) {}
+    return true;
   };
   function fetchText(url, headers) {
     if (!url) return null;

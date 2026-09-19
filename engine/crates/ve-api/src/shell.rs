@@ -2197,7 +2197,7 @@ impl NativeBrowser {
         let page = self.engine.page_mut(page_id)?;
         let target = page.focused().or_else(|| page.first_editable());
         if let Some(id) = target {
-            let _ = page.type_text(id, text, 0);
+            let _ = page.compose_text(id, text, 0);
         }
         self.sync_active_tab();
         self.list_cache = None;

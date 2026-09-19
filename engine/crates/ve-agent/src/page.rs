@@ -4301,7 +4301,11 @@ impl Page {
             MouseButton::Middle => 1.0,
             MouseButton::Right => 2.0,
         };
-        let extra = [("button", ve_script::JsValue::Number(button_code))];
+        let extra = [
+            ("button", ve_script::JsValue::Number(button_code)),
+            ("pointerId", ve_script::JsValue::Number(1.0)),
+            ("isPrimary", ve_script::JsValue::Bool(true)),
+        ];
         let _ = self.dispatch_js_event_init(id, "pointerdown", true, true, Some(point), &extra);
         let _ = self.dispatch_js_event_init(id, "mousedown", true, true, Some(point), &extra);
         let _ = self.dispatch_js_event_init(id, "pointerup", true, true, Some(point), &extra);
@@ -4775,6 +4779,11 @@ impl Page {
             return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
         }
         self.focus(Some(id));
+        if self.scripting.is_some() {
+            let _ = self.call_script("__veSelectControl", &[crate::dom::pack(id)]);
+        } else {
+            self.dispatch_js_event(id, "select", true, false, None);
+        }
         let via_value = self.input_type(id).is_some()
             || self.doc.element(id).is_some_and(|e| e.is_html("textarea"));
         if via_value && self.scripting.is_some() {
@@ -4855,6 +4864,52 @@ impl Page {
         self.dispatch_js_event(id, "input", true, false, None);
         self.dispatch_js_event(id, "change", true, false, None);
         Ok(format!("typed {typed} chars into {}", ref_for(id)))
+    }
+
+    /// IME commit: compositionstart → compositionupdate → compositionend, then insert.
+    pub fn compose_text(&mut self, id: NodeId, value: &str, timeout_ms: u64) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        if !self.is_text_control(id) {
+            return Err(Error::invalid_params(format!(
+                "{} is not a text control",
+                ref_for(id)
+            )));
+        }
+        if self.doc.attribute(id, "readonly").is_some() {
+            return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
+        }
+        self.focus(Some(id));
+        let data = ve_script::JsValue::from(value);
+        let _ = self.dispatch_js_event_init(id, "compositionstart", true, true, None, &[]);
+        let _ = self.dispatch_js_event_init(
+            id,
+            "compositionupdate",
+            true,
+            true,
+            None,
+            &[("data", data.clone())],
+        );
+        let mut current = if self.doc.attribute(id, "contenteditable").is_some()
+            && self.input_type(id).is_none()
+            && !self.doc.element(id).is_some_and(|e| e.is_html("textarea"))
+        {
+            self.doc.text_content(id)
+        } else {
+            self.doc.form_value(id).unwrap_or_default()
+        };
+        current.push_str(value);
+        self.set_text_value(id, &current)?;
+        let _ = self.dispatch_js_event_init(
+            id,
+            "compositionend",
+            true,
+            true,
+            None,
+            &[("data", data)],
+        );
+        self.dispatch_js_event(id, "input", true, false, None);
+        self.dispatch_js_event(id, "change", true, false, None);
+        Ok(format!("composed {} chars into {}", value.chars().count(), ref_for(id)))
     }
 
     /// `press`: a key chord with default actions.
