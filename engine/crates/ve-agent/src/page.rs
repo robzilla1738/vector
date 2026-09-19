@@ -19,7 +19,7 @@ use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
 use ve_style::{BackgroundImage, FontFaceSrc, StyleEngine, StyleTree};
 
 use crate::forms::{self, Enctype, FormMethod};
-use crate::keys::{Chord, Key};
+use crate::keys::{Chord, Key, Modifiers};
 use crate::routing::{CssCoverage, RoutingInfo, classify};
 use crate::screenshot::{self, Screenshot};
 use crate::steps::{MouseButton, ScrollDirection, Settled};
@@ -4950,14 +4950,97 @@ impl Page {
         Ok(format!("composed {} chars into {}", value.chars().count(), ref_for(id)))
     }
 
-    /// `press`: a key chord with default actions.
+    /// `press`: keydown, default action unless prevented, keyup.
     pub fn press(&mut self, target: Option<NodeId>, key: &str, timeout_ms: u64) -> Result<String> {
         let chord = Chord::parse(key)?;
         if let Some(id) = target {
             self.actionable(id, timeout_ms)?;
             self.focus(Some(id));
         }
-        self.press_key(target, &chord)
+        let detail = self.dispatch_parsed_key(&chord, true, false)?;
+        let _ = self.dispatch_parsed_key(&chord, false, false);
+        Ok(detail)
+    }
+
+    /// Human key down or up. Default action runs only on down when not prevented.
+    pub fn dispatch_key(
+        &mut self,
+        key: &str,
+        down: bool,
+        repeat: bool,
+        modifiers: Modifiers,
+    ) -> Result<String> {
+        let mut chord = Chord::parse(key)?;
+        chord.modifiers = modifiers;
+        self.dispatch_parsed_key(&chord, down, repeat)
+    }
+
+    fn dispatch_parsed_key(&mut self, chord: &Chord, down: bool, repeat: bool) -> Result<String> {
+        let ty = if down { "keydown" } else { "keyup" };
+        let prevented = self.fire_keyboard(ty, self.focused, chord, repeat);
+        if down && !prevented {
+            return self.press_key(self.focused, chord);
+        }
+        Ok(if prevented {
+            format!("{ty} default prevented")
+        } else {
+            format!("{ty}")
+        })
+    }
+
+    fn fire_keyboard(
+        &mut self,
+        ty: &str,
+        target: Option<NodeId>,
+        chord: &Chord,
+        repeat: bool,
+    ) -> bool {
+        let Some(id) = target
+            .or(self.focused)
+            .or_else(|| self.doc.document_element())
+        else {
+            return false;
+        };
+        let key_name = chord.key_name();
+        let code = chord.code();
+        let extra = [
+            ("key", ve_script::JsValue::from(key_name.as_str())),
+            ("code", ve_script::JsValue::from(code.as_str())),
+            ("keyCode", ve_script::JsValue::Number(f64::from(chord.key_code()))),
+            ("which", ve_script::JsValue::Number(f64::from(chord.key_code()))),
+            ("ctrlKey", ve_script::JsValue::Bool(chord.modifiers.control)),
+            ("shiftKey", ve_script::JsValue::Bool(chord.modifiers.shift)),
+            ("altKey", ve_script::JsValue::Bool(chord.modifiers.alt)),
+            ("metaKey", ve_script::JsValue::Bool(chord.modifiers.meta)),
+            ("repeat", ve_script::JsValue::Bool(repeat)),
+        ];
+        self.dispatch_js_event_init(id, ty, true, true, None, &extra)
+    }
+
+    fn move_text_caret(&mut self, id: NodeId, mode: &str) -> bool {
+        let (start, end) = self.doc.form_selection(id);
+        let len = u32::try_from(
+            self.doc
+                .form_value(id)
+                .unwrap_or_default()
+                .encode_utf16()
+                .count(),
+        )
+        .unwrap_or(u32::MAX);
+        let (next_start, next_end) = match mode {
+            "left" => {
+                let n = start.saturating_sub(1);
+                (n, n)
+            }
+            "right" => {
+                let n = end.saturating_add(1).min(len);
+                (n, n)
+            }
+            "home" => (0, 0),
+            "end" => (len, len),
+            _ => return false,
+        };
+        self.doc.set_form_selection(id, next_start, next_end).is_ok()
     }
 
     fn press_key(&mut self, _target: Option<NodeId>, chord: &Chord) -> Result<String> {
@@ -5074,6 +5157,18 @@ impl Page {
                     if self.input_type(id).as_deref() == Some("radio") {
                         return self.step_radio(id, forward);
                     }
+                    if self.is_text_control(id) {
+                        let mode = match chord.key {
+                            Key::ArrowLeft => "left",
+                            Key::ArrowRight => "right",
+                            Key::Home => "home",
+                            Key::End => "end",
+                            _ => "",
+                        };
+                        if !mode.is_empty() && self.move_text_caret(id, mode) {
+                            return Ok(format!("caret {mode} in {}", ref_for(id)));
+                        }
+                    }
                 }
                 // Viewport scroll by 40px (up/down) like a browser.
                 if matches!(chord.key, Key::ArrowUp | Key::ArrowDown) {
@@ -5083,6 +5178,19 @@ impl Page {
                 Ok("arrow ignored".into())
             }
             Key::Home | Key::End | Key::PageUp | Key::PageDown => {
+                if let Some(id) = focused
+                    && self.is_text_control(id)
+                    && matches!(chord.key, Key::Home | Key::End)
+                {
+                    let mode = if matches!(chord.key, Key::Home) {
+                        "home"
+                    } else {
+                        "end"
+                    };
+                    if self.move_text_caret(id, mode) {
+                        return Ok(format!("caret {mode} in {}", ref_for(id)));
+                    }
+                }
                 let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
                 let y = match chord.key {
                     Key::Home => 0.0,
@@ -5094,6 +5202,7 @@ impl Page {
                 self.doc.record_scrolled(None);
                 Ok(format!("scrolled to y={y}"))
             }
+            Key::Function(_) => Ok(format!("function key {}", chord.key_name())),
             Key::Char(c) => {
                 if chord.modifiers.control || chord.modifiers.meta {
                     let lower = c.to_ascii_lowercase();

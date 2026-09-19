@@ -5,8 +5,8 @@
 #![cfg(feature = "v8")]
 
 use ve_agent::{
-    DEFAULT_VIEWPORT, MouseButton, ObservationRequest, Page, Program, ProgramStatus, Step, StepBase,
-    StepStatus,
+    DEFAULT_VIEWPORT, Modifiers, MouseButton, ObservationRequest, Page, Program, ProgramStatus,
+    Step, StepBase, StepStatus,
 };
 use ve_script::{JsVm, V8Vm};
 
@@ -305,6 +305,63 @@ fn program_fill_and_submit_sets_the_output() {
         .evaluate("document.getElementById('out').textContent")
         .unwrap();
     assert_eq!(out, serde_json::json!("submitted:Ada"));
+}
+
+#[test]
+fn press_fires_keydown_and_keyup_and_honours_prevent_default() {
+    let mut page = open(
+        r#"<input id="q" value="ab">
+           <script>
+             const log = [];
+             const q = document.getElementById("q");
+             q.addEventListener("keydown", (e) => {
+               log.push("down:" + e.key + ":" + e.code + ":" + e.repeat + ":" + e.ctrlKey);
+               if (e.key === "x") e.preventDefault();
+             });
+             q.addEventListener("keyup", (e) => { log.push("up:" + e.key); });
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let id = page.document().element_by_id("q").expect("#q");
+    page.press(Some(id), "a", 0).unwrap();
+    page.press(Some(id), "x", 0).unwrap();
+    page.dispatch_key(
+        "F5",
+        true,
+        true,
+        Modifiers {
+            control: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    page.dispatch_key(
+        "F5",
+        false,
+        false,
+        Modifiers {
+            control: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let log = page.evaluate("log.join('|')").unwrap();
+    assert_eq!(
+        log,
+        serde_json::json!("down:a:KeyA:false:false|up:a|down:x:KeyX:false:false|up:x|down:F5:F5:true:true|up:F5"),
+        "{log}"
+    );
+    let value = page.evaluate("document.getElementById('q').value").unwrap();
+    assert_eq!(value, serde_json::json!("aba"), "preventDefault on x must skip typing");
+    let _ = page.evaluate(
+        "var q = document.getElementById('q'); q.selectionStart = q.selectionEnd = q.value.length;",
+    );
+    page.press(Some(id), "ArrowLeft", 0).unwrap();
+    let caret = page
+        .evaluate("document.getElementById('q').selectionStart")
+        .unwrap();
+    assert_eq!(caret, serde_json::json!(2), "ArrowLeft must move the caret");
 }
 
 #[test]

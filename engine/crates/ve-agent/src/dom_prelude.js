@@ -264,11 +264,16 @@
     constructor(t, i) {
       super(t, i);
       i = i || {};
-      if (i.key != null) this.key = String(i.key);
-      if (i.code != null) this.code = String(i.code);
-      if (i.keyCode != null) this.keyCode = i.keyCode;
-      if (i.which != null) this.which = i.which;
-      if (i.charCode != null) this.charCode = i.charCode;
+      this.key = i.key != null ? String(i.key) : "";
+      this.code = i.code != null ? String(i.code) : "";
+      this.keyCode = i.keyCode != null ? Number(i.keyCode) : 0;
+      this.which = i.which != null ? Number(i.which) : this.keyCode;
+      this.charCode = i.charCode != null ? Number(i.charCode) : 0;
+      this.ctrlKey = !!i.ctrlKey;
+      this.shiftKey = !!i.shiftKey;
+      this.altKey = !!i.altKey;
+      this.metaKey = !!i.metaKey;
+      this.repeat = !!i.repeat;
     }
   }
   class CustomEvent extends Event {
@@ -3087,10 +3092,10 @@
       const id = this.getAttribute("list");
       return id ? document.getElementById(id) : null;
     }
-    get selectionStart() { return this._selStart || 0; }
-    set selectionStart(v) { this._selStart = v | 0; }
-    get selectionEnd() { return this._selEnd == null ? (this.value || "").length : this._selEnd; }
-    set selectionEnd(v) { this._selEnd = v | 0; }
+    get selectionStart() { const v = D("selectionStart", this.__h); return v == null ? 0 : v | 0; }
+    set selectionStart(v) { D("setSelectionStart", this.__h, v | 0); }
+    get selectionEnd() { const v = D("selectionEnd", this.__h); return v == null ? (this.value || "").length : v | 0; }
+    set selectionEnd(v) { D("setSelectionEnd", this.__h, v | 0); }
     get selectionDirection() { return this._selDir || "none"; }
     set selectionDirection(v) { this._selDir = String(v); }
     get popoverTargetElement() {
@@ -3135,10 +3140,10 @@
     get defaultValue() { return this.getAttribute("value") || this.textContent || ""; }
     set defaultValue(v) { this.textContent = v == null ? "" : String(v); }
     get textLength() { return (this.value || "").length; }
-    get selectionStart() { return this._selStart || 0; }
-    set selectionStart(v) { this._selStart = v | 0; }
-    get selectionEnd() { return this._selEnd == null ? (this.value || "").length : this._selEnd; }
-    set selectionEnd(v) { this._selEnd = v | 0; }
+    get selectionStart() { const v = D("selectionStart", this.__h); return v == null ? 0 : v | 0; }
+    set selectionStart(v) { D("setSelectionStart", this.__h, v | 0); }
+    get selectionEnd() { const v = D("selectionEnd", this.__h); return v == null ? (this.value || "").length : v | 0; }
+    set selectionEnd(v) { D("setSelectionEnd", this.__h, v | 0); }
     get selectionDirection() { return this._selDir || "none"; }
     set selectionDirection(v) { this._selDir = String(v); }
     select() {
@@ -8664,6 +8669,21 @@
     const node = wrap(handle);
     if (!node) return false;
     try { if (typeof node.select === "function") node.select(); } catch (e) {}
+    return true;
+  };
+  globalThis.__veMoveCaret = (handle, mode) => {
+    const node = wrap(handle);
+    if (!node || node.selectionStart == null) return false;
+    const len = String(node.value == null ? "" : node.value).length;
+    let start = node.selectionStart | 0;
+    let end = node.selectionEnd | 0;
+    if (mode === "left") { start = Math.max(0, start - 1); end = start; }
+    else if (mode === "right") { start = Math.min(len, end + 1); end = start; }
+    else if (mode === "home") { start = 0; end = 0; }
+    else if (mode === "end") { start = len; end = len; }
+    else return false;
+    node.selectionStart = start;
+    node.selectionEnd = end;
     return true;
   };
   function fetchText(url, headers) {

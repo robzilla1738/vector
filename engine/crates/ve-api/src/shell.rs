@@ -1125,7 +1125,7 @@ impl NativeBrowser {
                 key,
                 code: _,
                 modifiers,
-                repeat: _,
+                repeat,
                 state,
             } => {
                 if self.urlbar_focused {
@@ -1184,7 +1184,7 @@ impl NativeBrowser {
                     if state == KeyState::Down && key.len() == 1 {
                         self.last_typed.push_str(&key);
                     }
-                    self.dispatch_human_key(&key, state)?;
+                    self.dispatch_human_key(&key, state, modifiers, repeat)?;
                     if state == KeyState::Down {
                         self.present_dirty();
                     }
@@ -2085,11 +2085,11 @@ impl NativeBrowser {
         }
         match key {
             "[" | "ArrowLeft" => {
-                let _ = self.dispatch_human_key("Back", KeyState::Down);
+                let _ = self.dispatch_human_key("Back", KeyState::Down, 0, false);
                 true
             }
             "]" | "ArrowRight" => {
-                let _ = self.dispatch_human_key("Forward", KeyState::Down);
+                let _ = self.dispatch_human_key("Forward", KeyState::Down, 0, false);
                 true
             }
             "f" | "F" => {
@@ -2176,26 +2176,29 @@ impl NativeBrowser {
         }
     }
 
-    fn dispatch_human_key(&mut self, key: &str, state: KeyState) -> Result<()> {
-        if state == KeyState::Up {
-            return Ok(());
-        }
+    fn dispatch_human_key(
+        &mut self,
+        key: &str,
+        state: KeyState,
+        modifiers: u8,
+        repeat: bool,
+    ) -> Result<()> {
         let Some(page_id) = self.active_tab().map(|t| t.page) else {
             return Ok(());
         };
         let page = self.engine.page_mut(page_id)?;
-        if key.eq_ignore_ascii_case("back") {
+        if state == KeyState::Down && key.eq_ignore_ascii_case("back") {
             let _ = page.press(None, "Back", 0);
             self.sync_active_tab();
             return Ok(());
         }
-        if key.eq_ignore_ascii_case("forward") {
+        if state == KeyState::Down && key.eq_ignore_ascii_case("forward") {
             let _ = page.press(None, "Forward", 0);
             self.sync_active_tab();
             return Ok(());
         }
-        let focused = page.focused();
-        let _ = page.press(focused, key, 0);
+        let mods = ve_agent::Modifiers::from_mask(modifiers);
+        let _ = page.dispatch_key(key, state == KeyState::Down, repeat, mods);
         self.sync_active_tab();
         self.list_cache = None;
         self.page_layer = None;

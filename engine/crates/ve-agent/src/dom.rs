@@ -1597,6 +1597,28 @@ pub(crate) fn host_call(
             crate::idl::LiveDom::new(page, id).set_value(arg_str(args, 1));
             Ok(JsValue::Undefined)
         }
+        "selectionStart" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(f64::from(page.doc.form_selection(id).0)))
+        }
+        "setSelectionStart" => {
+            let id = live(page, args, 0)?;
+            let start = arg_f64(args, 1) as u32;
+            let end = page.doc.form_selection(id).1.max(start);
+            page.doc.set_form_selection(id, start, end).ok();
+            Ok(JsValue::Undefined)
+        }
+        "selectionEnd" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(f64::from(page.doc.form_selection(id).1)))
+        }
+        "setSelectionEnd" => {
+            let id = live(page, args, 0)?;
+            let end = arg_f64(args, 1) as u32;
+            let start = page.doc.form_selection(id).0.min(end);
+            page.doc.set_form_selection(id, start, end).ok();
+            Ok(JsValue::Undefined)
+        }
         "checked" => {
             let id = live(page, args, 0)?;
             Ok(JsValue::Bool(crate::idl::LiveDom::new(page, id).checked()))
