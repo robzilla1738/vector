@@ -7034,9 +7034,47 @@
           _text: "",
           writeText(t) { this._text = String(t == null ? "" : t); return Promise.resolve(); },
           readText() { return Promise.resolve(this._text); },
+          write(items) {
+            const list = Array.from(items || []);
+            const self = this;
+            return Promise.all(list.map((it) => {
+              const type = it && it.types && it.types[0];
+              if (!type || typeof it.getType !== "function") {
+                self._text = String(it);
+                return null;
+              }
+              return it.getType(type).then((blob) => {
+                if (blob && typeof blob.text === "function") return blob.text().then((s) => { self._text = s; });
+                self._text = String(blob);
+              });
+            })).then(() => {});
+          },
+          read() {
+            return Promise.resolve([new ClipboardItem({ "text/plain": this._text })]);
+          },
         };
       }
       return this._clipboard;
+    }
+    get storage() {
+      if (!this._storageManager) {
+        this._storageManager = {
+          persist() { return Promise.resolve(false); },
+          persisted() { return Promise.resolve(false); },
+          estimate() {
+            let usage = 0;
+            try {
+              const n = localStorage.length | 0;
+              for (let i = 0; i < n; i++) {
+                const k = localStorage.key(i) || "";
+                usage += k.length + String(localStorage.getItem(k) || "").length;
+              }
+            } catch (e) {}
+            return Promise.resolve({ quota: 1073741824, usage });
+          },
+        };
+      }
+      return this._storageManager;
     }
     get permissions() {
       if (!this._permissions) {
@@ -9507,6 +9545,122 @@
       this.encoding = dec.encoding;
     }
   }
+  function u8ToB64(u8) {
+    let s = "";
+    for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+    return btoa(s);
+  }
+  function b64ToU8(b64) {
+    const s = atob(String(b64 || ""));
+    const out = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+  function chunkToU8(chunk) {
+    if (chunk instanceof Uint8Array) return chunk;
+    if (chunk instanceof ArrayBuffer) return new Uint8Array(chunk);
+    if (ArrayBuffer.isView(chunk)) return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+    return utf8Encode(chunk == null ? "" : String(chunk));
+  }
+  class CompressionStream {
+    constructor(format) {
+      const fmt = String(format || "gzip");
+      const parts = [];
+      const t = new TransformStream({
+        transform(chunk) { parts.push(chunkToU8(chunk)); },
+        flush(ctrl) {
+          let n = 0;
+          for (const p of parts) n += p.length;
+          const all = new Uint8Array(n);
+          let o = 0;
+          for (const p of parts) { all.set(p, o); o += p.length; }
+          ctrl.enqueue(b64ToU8(D("compress", fmt, u8ToB64(all))));
+        },
+      });
+      this.readable = t.readable;
+      this.writable = t.writable;
+      this.format = fmt;
+    }
+  }
+  Object.defineProperty(CompressionStream.prototype, Symbol.toStringTag, { value: "CompressionStream", configurable: true });
+  class DecompressionStream {
+    constructor(format) {
+      const fmt = String(format || "gzip");
+      const parts = [];
+      const t = new TransformStream({
+        transform(chunk) { parts.push(chunkToU8(chunk)); },
+        flush(ctrl) {
+          let n = 0;
+          for (const p of parts) n += p.length;
+          const all = new Uint8Array(n);
+          let o = 0;
+          for (const p of parts) { all.set(p, o); o += p.length; }
+          ctrl.enqueue(b64ToU8(D("decompress", fmt, u8ToB64(all))));
+        },
+      });
+      this.readable = t.readable;
+      this.writable = t.writable;
+      this.format = fmt;
+    }
+  }
+  Object.defineProperty(DecompressionStream.prototype, Symbol.toStringTag, { value: "DecompressionStream", configurable: true });
+  class CookieStore {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get(name) {
+      const want = typeof name === "string" ? name : (name && name.name);
+      return this.getAll().then((all) => all.find((c) => c.name === String(want)) || null);
+    }
+    getAll() {
+      const raw = String(D("cookie") || "");
+      if (!raw) return Promise.resolve([]);
+      return Promise.resolve(raw.split(";").map((part) => {
+        const i = part.indexOf("=");
+        const n = (i < 0 ? part : part.slice(0, i)).trim();
+        const v = i < 0 ? "" : part.slice(i + 1).trim();
+        return { name: n, value: v };
+      }).filter((c) => c.name));
+    }
+    set(name, value) {
+      let n, v, opts = {};
+      if (typeof name === "object" && name) {
+        n = name.name;
+        v = name.value;
+        opts = name;
+      } else {
+        n = name;
+        v = value;
+      }
+      let cookie = String(n) + "=" + String(v == null ? "" : v);
+      if (opts.path) cookie += "; Path=" + opts.path;
+      if (opts.maxAge != null) cookie += "; Max-Age=" + opts.maxAge;
+      D("setCookie", cookie);
+      return Promise.resolve();
+    }
+    delete(name) {
+      const n = typeof name === "string" ? name : (name && name.name);
+      D("setCookie", String(n) + "=; Max-Age=0");
+      return Promise.resolve();
+    }
+  }
+  Object.defineProperty(CookieStore.prototype, Symbol.toStringTag, { value: "CookieStore", configurable: true });
+  const cookieStore = Object.create(CookieStore.prototype);
+  class ClipboardItem {
+    constructor(items, options) {
+      this._items = items && typeof items === "object" ? items : {};
+      this.types = Object.keys(this._items);
+      this.presentationStyle = (options && options.presentationStyle) || "unspecified";
+    }
+    getType(type) {
+      const v = this._items[type];
+      if (v == null) return Promise.reject(new DOMException("type not found", "NotFoundError"));
+      if (v instanceof Blob) return Promise.resolve(v);
+      if (v && typeof v.then === "function") {
+        return v.then((x) => (x instanceof Blob ? x : new Blob([String(x)], { type })));
+      }
+      return Promise.resolve(new Blob([String(v)], { type }));
+    }
+  }
+  Object.defineProperty(ClipboardItem.prototype, Symbol.toStringTag, { value: "ClipboardItem", configurable: true });
   const b64tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   function atob(s) {
     if (arguments.length < 1) {
@@ -10449,6 +10603,7 @@
     AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
+    CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,

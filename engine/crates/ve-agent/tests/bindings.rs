@@ -4950,6 +4950,190 @@ fn match_media_change_fires_on_resize() {
 }
 
 #[test]
+fn crypto_subtle_digests_sha512() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__sha512 = null;
+              crypto.subtle.digest("SHA-512", new Uint8Array([97, 98, 99])).then(function (buf) {
+                var u = new Uint8Array(buf);
+                var hex = "";
+                for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+                window.__sha512 = hex;
+              }).catch(function (e) { window.__sha512 = String(e); });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__sha512").unwrap();
+    assert_eq!(
+        v,
+        "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+        "{v}"
+    );
+}
+
+#[test]
+fn crypto_subtle_hkdf_matches_rfc5869() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__hkdf = null;
+          const ikm = new Uint8Array(22);
+          for (let i = 0; i < 22; i++) ikm[i] = 0x0b;
+          const salt = new Uint8Array([0,1,2,3,4,5,6,7,8,9,10,11,12]);
+          const info = new Uint8Array([0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8,0xf9]);
+          crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]).then(function (key) {
+            return crypto.subtle.deriveBits(
+              { name: "HKDF", hash: "SHA-256", salt: salt, info: info },
+              key,
+              336
+            );
+          }).then(function (buf) {
+            var u = new Uint8Array(buf);
+            var hex = "";
+            for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+            window.__hkdf = hex;
+          }).catch(function (e) { window.__hkdf = String(e); });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__hkdf").unwrap();
+    assert_eq!(
+        v,
+        "3cb25f25faacd57a90435c47e6259ebefdcadc9d5a999fbc3f9732269a0dda08f42cab9d4cf71007",
+        "{v}"
+    );
+}
+
+#[test]
+fn compression_stream_round_trips_gzip() {
+    let mut page = open("<title>gz</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__gz = null;
+          const cs = new CompressionStream("gzip");
+          const w = cs.writable.getWriter();
+          const r = cs.readable.getReader();
+          w.write(new TextEncoder().encode("hello")).then(function () { return w.close(); }).then(function () {
+            return r.read();
+          }).then(function (v) {
+            const bytes = Array.from(v.value);
+            const ds = new DecompressionStream("gzip");
+            const dw = ds.writable.getWriter();
+            const dr = ds.readable.getReader();
+            return dw.write(v.value).then(function () { return dw.close(); }).then(function () {
+              return dr.read();
+            }).then(function (out) {
+              window.__gz = {
+                inst: cs instanceof CompressionStream && ds instanceof DecompressionStream,
+                magic: bytes[0] === 31 && bytes[1] === 139,
+                text: new TextDecoder().decode(out.value)
+              };
+            });
+          }).catch(function (e) { window.__gz = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__gz").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["magic"], true, "{v}");
+    assert_eq!(v["text"], "hello", "{v}");
+}
+
+#[test]
+fn cookie_store_sets_and_deletes() {
+    let mut page = open("<title>ck</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__ck = null;
+          cookieStore.set("ve", "1").then(function () {
+            return cookieStore.get("ve");
+          }).then(function (got) {
+            return cookieStore.delete("ve").then(function () {
+              return cookieStore.get("ve").then(function (after) {
+                window.__ck = {
+                  inst: cookieStore instanceof CookieStore,
+                  name: got && got.name,
+                  value: got && got.value,
+                  gone: after === null
+                };
+              });
+            });
+          }).catch(function (e) { window.__ck = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ck").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["name"], "ve", "{v}");
+    assert_eq!(v["value"], "1", "{v}");
+    assert_eq!(v["gone"], true, "{v}");
+}
+
+#[test]
+fn clipboard_item_write_and_read() {
+    let mut page = open("<title>clip</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__clip = null;
+          const item = new ClipboardItem({ "text/plain": "hi" });
+          navigator.clipboard.write([item]).then(function () {
+            return navigator.clipboard.read();
+          }).then(function (items) {
+            return items[0].getType("text/plain").then(function (blob) {
+              return blob.text().then(function (t) {
+                window.__clip = {
+                  inst: item instanceof ClipboardItem,
+                  types: item.types,
+                  text: t
+                };
+              });
+            });
+          }).catch(function (e) { window.__clip = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__clip").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["types"][0], "text/plain", "{v}");
+    assert_eq!(v["text"], "hi", "{v}");
+}
+
+#[test]
+fn navigator_storage_estimates_usage() {
+    let mut page = open("<title>st</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__st = null;
+          localStorage.setItem("k", "vv");
+          navigator.storage.estimate().then(function (e) {
+            window.__st = {
+              quota: e.quota,
+              usage: e.usage,
+              persist: null
+            };
+            return navigator.storage.persist().then(function (ok) {
+              window.__st.persist = ok;
+            });
+          }).catch(function (e) { window.__st = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__st").unwrap();
+    assert_eq!(v["quota"], 1073741824, "{v}");
+    assert_eq!(v["usage"], 3, "{v}");
+    assert_eq!(v["persist"], false, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

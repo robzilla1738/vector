@@ -1276,6 +1276,22 @@ pub(crate) fn host_call(
             crate::idl::LiveDom::document(page).set_cookie(arg_str(args, 0));
             Ok(JsValue::Undefined)
         }
+        "compress" => {
+            let format = arg_str(args, 0);
+            let input = ve_net::base64_decode(arg_str(args, 1).as_bytes()).unwrap_or_default();
+            match compress_bytes(&format, &input) {
+                Ok(out) => Ok(JsValue::from(ve_net::base64_encode(&out).as_str())),
+                Err(e) => Err(fail(e)),
+            }
+        }
+        "decompress" => {
+            let format = arg_str(args, 0);
+            let input = ve_net::base64_decode(arg_str(args, 1).as_bytes()).unwrap_or_default();
+            match decompress_bytes(&format, &input) {
+                Ok(out) => Ok(JsValue::from(ve_net::base64_encode(&out).as_str())),
+                Err(e) => Err(fail(e)),
+            }
+        }
         "lastModified" => Ok(JsValue::from(page.last_modified.as_deref().unwrap_or(""))),
         "readyState" => Ok(JsValue::from(page.ready_state)),
         "setReadyState" => {
@@ -2717,6 +2733,55 @@ fn header_value(headers_json: &str, name: &str) -> Option<String> {
                 .then(|| val.as_str().unwrap_or(&val.to_string()).to_owned())
         }),
         _ => None,
+    }
+}
+
+fn compress_bytes(format: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::Write;
+    match format {
+        "gzip" => {
+            let mut enc = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(input).map_err(|e| e.to_string())?;
+            enc.finish().map_err(|e| e.to_string())
+        }
+        "deflate" => {
+            let mut enc =
+                flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(input).map_err(|e| e.to_string())?;
+            enc.finish().map_err(|e| e.to_string())
+        }
+        "deflate-raw" => {
+            let mut enc =
+                flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(input).map_err(|e| e.to_string())?;
+            enc.finish().map_err(|e| e.to_string())
+        }
+        _ => Err("unsupported compression format".into()),
+    }
+}
+
+fn decompress_bytes(format: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    match format {
+        "gzip" => {
+            let mut dec = flate2::read::GzDecoder::new(input);
+            let mut out = Vec::new();
+            dec.read_to_end(&mut out).map_err(|e| e.to_string())?;
+            Ok(out)
+        }
+        "deflate" => {
+            let mut dec = flate2::read::ZlibDecoder::new(input);
+            let mut out = Vec::new();
+            dec.read_to_end(&mut out).map_err(|e| e.to_string())?;
+            Ok(out)
+        }
+        "deflate-raw" => {
+            let mut dec = flate2::read::DeflateDecoder::new(input);
+            let mut out = Vec::new();
+            dec.read_to_end(&mut out).map_err(|e| e.to_string())?;
+            Ok(out)
+        }
+        _ => Err("unsupported compression format".into()),
     }
 }
 

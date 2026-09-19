@@ -29,6 +29,7 @@ ve-html.workspace = true
 ve-net.workspace = true
 ve-gfx.workspace = true
 png.workspace = true
+flate2.workspace = true
 url.workspace = true
 serde.workspace = true
 serde_json.workspace = true
