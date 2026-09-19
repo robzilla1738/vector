@@ -1823,6 +1823,36 @@ mod tests {
     }
 
     #[test]
+    fn text_overflow_ellipsis_truncates_nowrap_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;overflow:hidden;text-overflow:ellipsis;text-wrap:nowrap;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let line = &tree.root.find(p).unwrap().lines[0];
+        let text: String = line
+            .fragments
+            .iter()
+            .filter_map(|f| f.text.as_deref())
+            .collect();
+        assert!(text.ends_with('…'), "ellipsis, got {text:?}");
+        assert!(
+            !text.contains("cccc"),
+            "overflowing tail is dropped, got {text:?}"
+        );
+        let right = line
+            .fragments
+            .iter()
+            .map(|f| f.rect.right())
+            .fold(0.0_f32, f32::max);
+        assert!(
+            right <= 40.01,
+            "ellipsis stays inside the box, right {right}"
+        );
+    }
+
+    #[test]
     fn text_align_last_center_shifts_last_line() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:72px;font-size:16px;line-height:20px;text-align:left;text-align-last:right;margin:0}</style>\

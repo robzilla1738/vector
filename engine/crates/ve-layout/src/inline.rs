@@ -11,7 +11,7 @@
 use ve_core::{NodeId, Point, Rect};
 use ve_style::{
     ComputedStyle, Direction, HangingPunctuation, TextAlign, TextAlignLast, TextJustify,
-    TextWrap,
+    TextOverflow, TextWrap,
 };
 
 use crate::block::{
@@ -222,6 +222,9 @@ pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect)
     if let Some(n) = bx.style.line_clamp {
         bx.lines.truncate(n.max(1) as usize);
     }
+    if bx.style.text_overflow == TextOverflow::Ellipsis && bx.style.overflow.clips() {
+        apply_text_ellipsis(&mut bx.lines, content.right(), &bx.style, state.ctx.shaper);
+    }
     sync_atomic_boxes(&mut children, &bx.lines);
     bx.children = children;
     bx.lines
@@ -315,6 +318,39 @@ fn flow_float(child: &mut LayoutBox, state: &mut InlineState<'_, '_>) {
     }
     state.line.x = l;
     state.line.width = (r - l).max(0.0);
+}
+
+fn apply_text_ellipsis(
+    lines: &mut [LineBox],
+    max_right: f32,
+    style: &ComputedStyle,
+    shaper: &mut dyn crate::text::TextShaper,
+) {
+    let dots = "…";
+    let dw = shaper.measure(dots, style);
+    for line in lines.iter_mut() {
+        if !line
+            .fragments
+            .iter()
+            .any(|f| f.text.is_some() && f.rect.right() > max_right + 0.01)
+        {
+            continue;
+        }
+        let limit = max_right - dw;
+        line.fragments.retain(|f| f.rect.x() < limit + 0.01);
+        let Some(last) = line.fragments.iter_mut().rev().find(|f| f.text.is_some()) else {
+            continue;
+        };
+        let budget = (limit - last.rect.x()).max(0.0);
+        let mut t = last.text.clone().unwrap_or_default();
+        while !t.is_empty() && shaper.measure(&t, style) > budget + 0.01 {
+            t.pop();
+        }
+        t.push_str(dots);
+        let width = shaper.measure(&t, style);
+        last.text = Some(t);
+        last.rect = Rect::new(last.rect.x(), last.rect.y(), width.max(0.0), last.rect.height());
+    }
 }
 
 fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>, align: TextAlign) {

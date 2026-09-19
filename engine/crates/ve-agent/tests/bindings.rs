@@ -2693,6 +2693,35 @@ fn canvas_stroke_path_honours_line_dash() {
 }
 
 #[test]
+fn canvas_stroke_honours_line_dash_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.lineDashOffset = 4;
+              ctx.beginPath();
+              ctx.moveTo(1, 3);
+              ctx.lineTo(17, 3);
+              ctx.stroke();
+              var off = ctx.getImageData(1, 3, 1, 1).data;
+              var on = ctx.getImageData(5, 3, 1, 1).data;
+              return { fa: off[3], og: on[1], oa: on[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fa"], 0, "{v}");
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+}
+
+#[test]
 fn canvas_is_point_in_path_hits_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -5964,6 +5993,33 @@ fn webgl_front_face_cw_flips_culling() {
     assert_eq!(v["ca"], 0, "{v}");
     assert_eq!(v["sg"], 255, "{v}");
     assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_blend_zero_one_keeps_dest() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ZERO, gl.ONE);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], z: gl.ZERO, o: gl.ONE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["z"], 0, "{v}");
+    assert_eq!(v["o"], 1, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
 }
 
 #[test]

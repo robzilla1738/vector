@@ -9639,7 +9639,12 @@
     }
     _withBlend(fn) {
       const c = this.canvas;
-      const add = this._blendOn && this._blend && this._blend[0] === this.ONE && this._blend[1] === this.ONE;
+      const src = this._blend && this._blend[0];
+      const dst = this._blend && this._blend[1];
+      if (this._blendOn && src === this.ZERO && dst === this.ONE) {
+        return;
+      }
+      const add = this._blendOn && src === this.ONE && dst === this.ONE;
       if (add && c && c.__h != null) {
         D("canvasSetComposite", c.__h, "lighter");
         try { fn(); } finally { D("canvasSetComposite", c.__h, "source-over"); }

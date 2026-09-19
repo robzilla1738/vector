@@ -928,6 +928,9 @@ enum SvgFilterKind {
     Displace { scale: f32 },
     MergeKeep,
     Lighting { color: [u8; 4] },
+    DropShadow { dx: f32, dy: f32, color: [u8; 4] },
+    HueRotate(f32),
+    LuminanceToAlpha,
 }
 
 #[derive(Clone, Copy)]
@@ -1074,6 +1077,13 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                         .and_then(|s| s.split_whitespace().next()?.parse().ok())
                         .unwrap_or(1.0);
                     out.insert(id.to_string(), SvgFilterKind::Saturate(amount));
+                } else if kind.eq_ignore_ascii_case("hueRotate") {
+                    let deg = svg_attr_str(cm, "values")
+                        .and_then(|s| s.split_whitespace().next()?.parse().ok())
+                        .unwrap_or(0.0);
+                    out.insert(id.to_string(), SvgFilterKind::HueRotate(deg));
+                } else if kind.eq_ignore_ascii_case("luminanceToAlpha") {
+                    out.insert(id.to_string(), SvgFilterKind::LuminanceToAlpha);
                 }
             } else if let Some(bi) = block.find("<feGaussianBlur") {
                 let be = block[bi..].find('>').unwrap_or(block.len() - bi);
@@ -1099,6 +1109,23 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                         out.insert(id.to_string(), SvgFilterKind::Erode(radius));
                     }
                 }
+            } else if let Some(di) = block.find("<feDropShadow") {
+                let de = block[di..].find('>').unwrap_or(block.len() - di);
+                let ds = &block[di..di + de];
+                let mut color =
+                    parse_svg_color(svg_attr_str(ds, "flood-color").unwrap_or("#000000"));
+                let op = svg_attr(ds, "flood-opacity")
+                    .unwrap_or(1.0)
+                    .clamp(0.0, 1.0);
+                color[3] = (f32::from(color[3]) * op).round() as u8;
+                out.insert(
+                    id.to_string(),
+                    SvgFilterKind::DropShadow {
+                        dx: svg_attr(ds, "dx").unwrap_or(2.0),
+                        dy: svg_attr(ds, "dy").unwrap_or(2.0),
+                        color,
+                    },
+                );
             } else if let Some(oi) = block.find("<feOffset") {
                 let oe = block[oi..].find('>').unwrap_or(block.len() - oi);
                 let off = &block[oi..oi + oe];
@@ -1251,6 +1278,137 @@ fn apply_svg_filter(
         SvgFilterKind::Lighting { color } => {
             let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
             light_decoded_rect(img, bx0, by0, bx1, by1, *color);
+        }
+        SvgFilterKind::DropShadow { dx, dy, color } => {
+            let pad = dx.abs().max(dy.abs()).ceil() as i32;
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, pad);
+            drop_shadow_decoded_rect(img, bx0, by0, bx1, by1, *dx, *dy, *color);
+        }
+        SvgFilterKind::HueRotate(deg) => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            hue_rotate_decoded_rect(img, bx0, by0, bx1, by1, *deg);
+        }
+        SvgFilterKind::LuminanceToAlpha => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            luminance_to_alpha_decoded_rect(img, bx0, by0, bx1, by1);
+        }
+    }
+}
+
+fn drop_shadow_decoded_rect(
+    img: &mut DecodedImage,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    dx: f32,
+    dy: f32,
+    color: [u8; 4],
+) {
+    let mut src = Vec::new();
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            if let Some(px) = img.pixel(x as u32, y as u32) {
+                if px[3] > 0 {
+                    src.push((x, y, px));
+                }
+            }
+        }
+    }
+    let ox = dx.round() as i32;
+    let oy = dy.round() as i32;
+    for (x, y, _) in &src {
+        plot_px(img, x + ox, y + oy, color);
+    }
+    for (x, y, px) in src {
+        plot_px(img, x, y, px);
+    }
+}
+
+fn svg_rgb_to_hsv(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let d = max - min;
+    let s = if max == 0.0 { 0.0 } else { d / max };
+    let h = if d == 0.0 {
+        0.0
+    } else if (max - r).abs() < f32::EPSILON {
+        60.0 * (((g - b) / d) % 6.0)
+    } else if (max - g).abs() < f32::EPSILON {
+        60.0 * ((b - r) / d + 2.0)
+    } else {
+        60.0 * ((r - g) / d + 4.0)
+    };
+    (if h < 0.0 { h + 360.0 } else { h }, s, max)
+}
+
+fn svg_hsv_to_rgb(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
+    let h = ((h % 360.0) + 360.0) % 360.0;
+    let c = v * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = v - c;
+    let (r, g, b) = if h < 60.0 {
+        (c, x, 0.0)
+    } else if h < 120.0 {
+        (x, c, 0.0)
+    } else if h < 180.0 {
+        (0.0, c, x)
+    } else if h < 240.0 {
+        (0.0, x, c)
+    } else if h < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    (r + m, g + m, b + m)
+}
+
+fn hue_rotate_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, deg: f32) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let Some([r, g, b, a]) = img.pixel(x as u32, y as u32) else {
+                continue;
+            };
+            if a == 0 {
+                continue;
+            }
+            let (h, s, v) = svg_rgb_to_hsv(f32::from(r), f32::from(g), f32::from(b));
+            let (nr, ng, nb) = svg_hsv_to_rgb(h + deg, s, v);
+            plot_px(
+                img,
+                x,
+                y,
+                [
+                    nr.round().clamp(0.0, 255.0) as u8,
+                    ng.round().clamp(0.0, 255.0) as u8,
+                    nb.round().clamp(0.0, 255.0) as u8,
+                    a,
+                ],
+            );
+        }
+    }
+}
+
+fn luminance_to_alpha_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let Some([r, g, b, a]) = img.pixel(x as u32, y as u32) else {
+                continue;
+            };
+            if a == 0 {
+                continue;
+            }
+            let y601 = 0.299 * f32::from(r) + 0.587 * f32::from(g) + 0.114 * f32::from(b);
+            plot_px(img, x, y, [0, 0, 0, y601.round().clamp(0.0, 255.0) as u8]);
         }
     }
 }
@@ -4380,5 +4538,47 @@ mod tests {
         .expect("svg overline");
         assert_eq!(img.pixel(2, 0), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_filter_drop_shadow_paints_offset() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feDropShadow dx='3' dy='0' flood-color='#00ff00'/></filter></defs>\
+              <rect x='1' y='2' width='3' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg drop-shadow");
+        assert_eq!(img.pixel(1, 4), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(0, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_hue_rotate_shifts_red_to_green() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feColorMatrix type='hueRotate' values='120'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg hueRotate");
+        let px = img.pixel(4, 4).unwrap_or([0, 0, 0, 0]);
+        assert_eq!(px[3], 255, "{px:?}");
+        assert!(px[1] > 200, "{px:?}");
+        assert!(px[0] < 40, "{px:?}");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_luminance_to_alpha_zeros_rgb() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feColorMatrix type='luminanceToAlpha'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg luminanceToAlpha");
+        let px = img.pixel(4, 4).unwrap_or([0, 0, 0, 0]);
+        assert_eq!((px[0], px[1], px[2]), (0, 0, 0), "{px:?}");
+        assert!(px[3] > 50 && px[3] < 120, "{px:?}");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
     }
 }
