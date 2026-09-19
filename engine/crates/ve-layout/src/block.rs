@@ -684,6 +684,9 @@ pub fn layout_float(child: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rec
     let origin = ctx
         .floats()
         .place(side, size, y, content.x(), content.right());
+    let margin_box = Rect::new(origin.x, origin.y, size.width, size.height);
+    ctx.floats()
+        .set_last_wrap(child.style.shape_outside.wrap_rect(margin_box));
     translate_subtree(
         child,
         origin.x + margins.left - child.rect.x(),

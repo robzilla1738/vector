@@ -26,11 +26,11 @@ use crate::values::{
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Contain, ContainerType, ContentVisibility, EmptyCells, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
+    Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
-    TableLayout, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
+    Resize, ShapeOutside, TableLayout, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -285,6 +285,8 @@ pub enum SpecifiedValue {
     ClipInset(Box<[SpecifiedValue; 4]>),
     /// `clip: rect(top, right, bottom, left)`.
     ClipRect(Box<[SpecifiedValue; 4]>),
+    /// `offset-path: path(...)` line.
+    OffsetPath(OffsetPath),
     /// `grid-template-areas`.
     GridAreas(GridTemplateAreas),
     /// `box-shadow: <offset-x> <offset-y> <blur>? <color>?`.
@@ -397,6 +399,10 @@ enum ValueSyntax {
     BackgroundPosition,
     /// CSS 2.1 `clip`.
     Clip,
+    /// `offset-path`.
+    OffsetPath,
+    /// `shape-outside`.
+    ShapeOutside,
     /// Arbitrary token stream (custom properties).
     Raw,
 }
@@ -844,6 +850,27 @@ mod conv {
         match v {
             SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
             _ => Some(Some(length_px(v, ctx)?)),
+        }
+    }
+
+    pub fn offset_path(v: &SpecifiedValue, _: &ConvertContext) -> Option<OffsetPath> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(OffsetPath::None),
+            SpecifiedValue::OffsetPath(p) => Some(*p),
+            _ => None,
+        }
+    }
+
+    pub fn shape_outside(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<ShapeOutside> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(ShapeOutside::None),
+            SpecifiedValue::ClipInset(sides) => Some(ShapeOutside::Inset {
+                top: lp(&sides[0], ctx)?,
+                right: lp(&sides[1], ctx)?,
+                bottom: lp(&sides[2], ctx)?,
+                left: lp(&sides[3], ctx)?,
+            }),
+            _ => None,
         }
     }
 
@@ -1337,6 +1364,16 @@ property_table! {
     EmptyCells: "empty-cells" => empty_cells: EmptyCells = EmptyCells::Show, inherited = true, syntax = Single, convert = conv::kw::<EmptyCells>;
     /// `content-visibility`
     ContentVisibility: "content-visibility" => content_visibility: ContentVisibility = ContentVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<ContentVisibility>;
+    /// `field-sizing`
+    FieldSizing: "field-sizing" => field_sizing: FieldSizing = FieldSizing::Fixed, inherited = false, syntax = Single, convert = conv::kw::<FieldSizing>;
+    /// `resize`
+    Resize: "resize" => resize: Resize = Resize::None, inherited = false, syntax = Single, convert = conv::kw::<Resize>;
+    /// `offset-path` (`none` or `path()` line)
+    OffsetPath: "offset-path" => offset_path: OffsetPath = OffsetPath::None, inherited = false, syntax = OffsetPath, convert = conv::offset_path;
+    /// `offset-distance`
+    OffsetDistance: "offset-distance" => offset_distance: LengthPercentage = LengthPercentage::ZERO, inherited = false, syntax = Single, convert = conv::lp;
+    /// `shape-outside` (`none` or `inset()`)
+    ShapeOutside: "shape-outside" => shape_outside: ShapeOutside = ShapeOutside::None, inherited = false, syntax = ShapeOutside, convert = conv::shape_outside;
 }
 
 impl ComputedStyle {
@@ -1373,7 +1410,9 @@ impl ComputedStyle {
     /// Returns `true` if either overflow axis clips content.
     #[must_use]
     pub fn overflow_clips(&self) -> bool {
-        self.overflow.clips() || self.overflow_y.clips()
+        self.overflow.clips()
+            || self.overflow_y.clips()
+            || self.resize != Resize::None
     }
 
     /// Returns `true` if the element is a float that is in flow (not
@@ -1408,18 +1447,13 @@ impl ComputedStyle {
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
 pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "offset",
-    "offset-path",
     "position-anchor",
     "anchor-name",
     "inset-area",
     "position-area",
     "text-orientation",
     "float-offset",
-    "shape-outside",
     "visibility-collapse",
-    "field-sizing",
-    "resize",
 ];
 
 /// Known properties the engine parses names for but does not implement.
@@ -1495,12 +1529,10 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "container-name",
     "container",
     "grid-auto-flow",
-    "resize",
     "accent-color",
     "color-scheme",
     "forced-color-adjust",
     "print-color-adjust",
-    "shape-outside",
     "text-wrap",
     "text-align-last",
     "text-justify",
@@ -1513,7 +1545,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "position-anchor",
     "anchor-name",
     "view-transition-name",
-    "field-sizing",
     "text-emphasis",
     "ruby-position",
     "caret-color",
@@ -2476,6 +2507,41 @@ fn parse_grid_areas(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     (!rows.is_empty()).then_some(SpecifiedValue::GridAreas(GridTemplateAreas { rows }))
 }
 
+fn parse_offset_path(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    match input.next().ok()?.clone() {
+        Token::Ident(k) if k.eq_ignore_ascii_case("none") => {
+            Some(SpecifiedValue::Keyword("none".into()))
+        }
+        Token::Function(name) if name.eq_ignore_ascii_case("path") => {
+            let d = input
+                .parse_nested_block(|args| match args.next().ok() {
+                    Some(Token::QuotedString(s)) => Ok(s.to_string()),
+                    _ => Err(args.new_error_for_next_token::<()>()),
+                })
+                .ok()?;
+            let nums: Vec<f32> = d
+                .split(|c: char| !c.is_ascii_digit() && c != '.' && c != '-' && c != '+')
+                .filter_map(|p| p.parse().ok())
+                .collect();
+            if nums.len() >= 4 {
+                Some(SpecifiedValue::OffsetPath(OffsetPath::Line {
+                    x0: nums[0],
+                    y0: nums[1],
+                    x1: nums[2],
+                    y1: nums[3],
+                }))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+fn parse_shape_outside(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    parse_clip_path(input)
+}
+
 /// Reads the remaining input as raw text (for custom properties and `var()`
 /// detection) without consuming it.
 fn peek_raw<'i>(input: &mut Parser<'i, '_>) -> &'i str {
@@ -2566,6 +2632,12 @@ impl PropertyId {
             ValueSyntax::Clip => css_wide(input)
                 .or_else(|()| parse_css_clip(input).ok_or(()))
                 .ok()?,
+            ValueSyntax::OffsetPath => css_wide(input)
+                .or_else(|()| parse_offset_path(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::ShapeOutside => css_wide(input)
+                .or_else(|()| parse_shape_outside(input).ok_or(()))
+                .ok()?,
         };
         input.expect_exhausted().ok()?;
         self.accepts(&value).then_some(value)
@@ -2649,6 +2721,7 @@ pub const SHORTHANDS: &[&str] = &[
     "border-radius",
     "outline",
     "columns",
+    "offset",
 ];
 
 /// Expands a shorthand into longhand `(property, value)` pairs. Returns
@@ -3078,6 +3151,24 @@ pub fn expand_shorthand<'i>(
                 }
                 Some(vec![(P::ColumnCount, count), (P::ColumnWidth, width)])
             }
+            "offset" => {
+                let mut path = SpecifiedValue::Keyword("none".into());
+                let mut distance = SpecifiedValue::Length(Length::ZERO);
+                while !input.is_exhausted() {
+                    if let Some(p) = input.try_parse(|i| {
+                        parse_offset_path(i).ok_or_else(|| i.new_error_for_next_token::<()>())
+                    }).ok() {
+                        path = p;
+                        continue;
+                    }
+                    if let Some(d) = parse_component(input) {
+                        distance = d;
+                    } else {
+                        return None;
+                    }
+                }
+                Some(vec![(P::OffsetPath, path), (P::OffsetDistance, distance)])
+            }
             _ => None,
         }
     })();
@@ -3432,11 +3523,16 @@ mod tests {
         ok("empty-cells", "hide");
         ok("grid-template-areas", "\"a b\" \"a c\"");
         ok("grid-row-start", "header");
+        ok("field-sizing", "content");
+        ok("resize", "both");
+        ok("offset-path", "path(\"M 0 0 L 80 0\")");
+        ok("offset-distance", "50%");
+        ok("shape-outside", "inset(0 20px 0 0)");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 135);
+        assert_eq!(PropertyId::ALL.len(), 140);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

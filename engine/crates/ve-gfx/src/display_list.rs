@@ -1045,6 +1045,26 @@ mod tests {
     }
 
     #[test]
+    fn from_layout_applies_offset_path() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;offset-path:path(\"M 0 0 L 80 0\");offset-distance:100%}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { rect, .. } if (rect.x() - 80.0).abs() < 0.5 && (rect.width() - 20.0).abs() < 0.5
+            )),
+            "offset-path paint missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
     fn from_layout_hides_empty_cells() {
         let html = "<style>body{margin:0} table{border-spacing:0;empty-cells:hide} td{width:20px;height:10px;background:red;padding:0}</style>\
                     <table><tr><td id=e></td><td id=f>x</td></tr></table>";

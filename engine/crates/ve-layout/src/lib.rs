@@ -607,18 +607,29 @@ fn finish_subtree(bx: &mut LayoutBox, inherited_clip: Option<Rect>) {
     propagate_clips(bx, inherited_clip);
 }
 
-/// Applies `transform: translate() / scale() / rotate()` to boxes (geometry only).
+/// Applies `transform: translate() / scale() / rotate()` and `offset-path`
+/// to boxes (geometry only).
 fn apply_transforms(bx: &mut LayoutBox) {
-    if bx.has_own_edges() && !bx.style.transform.is_empty() {
-        let rect = bx.rect;
-        let center = rect.center();
-        for op in bx.style.transform.clone() {
-            match op {
-                TransformOp::Translate(x, y) => {
-                    block::translate_subtree(bx, x.resolve(rect.width()), y.resolve(rect.height()));
+    if bx.has_own_edges() {
+        let (ox, oy) = bx.style.offset_path.translation(bx.style.offset_distance);
+        if ox != 0.0 || oy != 0.0 {
+            block::translate_subtree(bx, ox, oy);
+        }
+        if !bx.style.transform.is_empty() {
+            let rect = bx.rect;
+            let center = rect.center();
+            for op in bx.style.transform.clone() {
+                match op {
+                    TransformOp::Translate(x, y) => {
+                        block::translate_subtree(
+                            bx,
+                            x.resolve(rect.width()),
+                            y.resolve(rect.height()),
+                        );
+                    }
+                    TransformOp::Scale(sx, sy) => scale_subtree(bx, center, sx, sy),
+                    TransformOp::Rotate(angle) => rotate_subtree(bx, center, angle),
                 }
-                TransformOp::Scale(sx, sy) => scale_subtree(bx, center, sx, sy),
-                TransformOp::Rotate(angle) => rotate_subtree(bx, center, angle),
             }
         }
     }
@@ -1566,6 +1577,79 @@ mod tests {
             boxc.height() < 8.0,
             "contain:size auto height stays empty, got {}",
             boxc.height()
+        );
+    }
+
+    #[test]
+    fn field_sizing_content_sizes_to_value() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} input{display:block;font-size:16px;border:0;padding:0;field-sizing:content}</style>\
+             <input id=a value=hi><input id=b value=hellohello>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.width() - 16.0).abs() < 0.5,
+            "2ch at 16px font, got {}",
+            a.width()
+        );
+        assert!(
+            (b.width() - 80.0).abs() < 0.5,
+            "10ch at 16px font, got {}",
+            b.width()
+        );
+        assert!(b.width() > a.width() + 40.0);
+    }
+
+    #[test]
+    fn offset_path_translates_box() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #g{width:20px;height:10px;offset-path:path(\"M 0 0 L 80 0\");offset-distance:100%}</style>\
+             <div id=g></div>",
+            400.0,
+        );
+        let g = rect(&tree, &engine, &doc, "#g");
+        assert!(
+            (g.x() - 80.0).abs() < 0.5 && (g.y() - 0.0).abs() < 0.5,
+            "offset-path 100% along 80px line, got {g:?}"
+        );
+    }
+
+    #[test]
+    fn shape_outside_inset_narrows_float_wrap() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px;line-height:20px;width:300px}\
+             #f{float:left;width:100px;height:40px;shape-outside:inset(0 20px 0 0)}</style>\
+             <div id=f></div><p id=p style='margin:0'>aaaa bbbb cccc dddd eeee ffff</p>",
+            300.0,
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#f"),
+            Rect::new(0.0, 0.0, 100.0, 40.0),
+            "float margin box is unchanged"
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert!(
+            !lines.is_empty() && (lines[0].rect.x() - 80.0).abs() < 0.5,
+            "shape-outside inset 20px, first line starts at 80, got {:?}",
+            lines.first().map(|l| l.rect)
+        );
+    }
+
+    #[test]
+    fn resize_establishes_bfc() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{resize:both;width:200px} #f{float:left;width:40px;height:30px}</style>\
+             <div id=p><div id=f></div></div>",
+            400.0,
+        );
+        let p = rect(&tree, &engine, &doc, "#p");
+        assert!(
+            p.height() >= 30.0,
+            "resize:both contains the float, got height {}",
+            p.height()
         );
     }
 }

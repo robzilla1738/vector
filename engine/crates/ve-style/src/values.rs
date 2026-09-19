@@ -1185,6 +1185,116 @@ impl ContainerType {
 }
 
 keyword_enum! {
+    /// The `field-sizing` property.
+    FieldSizing {
+        /// UA default control size.
+        Fixed = "fixed",
+        /// Size to the control's value.
+        Content = "content",
+    }
+}
+
+keyword_enum! {
+    /// The `resize` property.
+    Resize {
+        /// Not user-resizable.
+        None = "none",
+        /// Both axes.
+        Both = "both",
+        /// Inline axis.
+        Horizontal = "horizontal",
+        /// Block axis.
+        Vertical = "vertical",
+    }
+}
+
+/// Computed `offset-path` (`none` or a line from `path()`).
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum OffsetPath {
+    /// `none`
+    #[default]
+    None,
+    /// `path("M x0 y0 L x1 y1")` treated as a straight segment.
+    Line {
+        /// Start X.
+        x0: f32,
+        /// Start Y.
+        y0: f32,
+        /// End X.
+        x1: f32,
+        /// End Y.
+        y1: f32,
+    },
+}
+
+impl OffsetPath {
+    /// Translation for `offset-distance` along this path.
+    #[must_use]
+    pub fn translation(self, distance: LengthPercentage) -> (f32, f32) {
+        match self {
+            Self::None => (0.0, 0.0),
+            Self::Line { x0, y0, x1, y1 } => {
+                let dx = x1 - x0;
+                let dy = y1 - y0;
+                let len = (dx * dx + dy * dy).sqrt();
+                let t = if len < 1e-6 {
+                    0.0
+                } else {
+                    (distance.resolve(len) / len).clamp(0.0, 1.0)
+                };
+                (x0 + dx * t, y0 + dy * t)
+            }
+        }
+    }
+}
+
+/// Computed `shape-outside` (`none` or `inset()`).
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum ShapeOutside {
+    /// No wrap shape.
+    #[default]
+    None,
+    /// `inset(top right bottom left)` from the float margin box.
+    Inset {
+        /// Top inset.
+        top: LengthPercentage,
+        /// Right inset.
+        right: LengthPercentage,
+        /// Bottom inset.
+        bottom: LengthPercentage,
+        /// Left inset.
+        left: LengthPercentage,
+    },
+}
+
+impl ShapeOutside {
+    /// Exclusion rectangle inside `margin`.
+    #[must_use]
+    pub fn wrap_rect(self, margin: ve_core::Rect) -> ve_core::Rect {
+        match self {
+            Self::None => margin,
+            Self::Inset {
+                top,
+                right,
+                bottom,
+                left,
+            } => {
+                let t = top.resolve(margin.height());
+                let r = right.resolve(margin.width());
+                let b = bottom.resolve(margin.height());
+                let l = left.resolve(margin.width());
+                ve_core::Rect::new(
+                    margin.x() + l,
+                    margin.y() + t,
+                    (margin.width() - l - r).max(0.0),
+                    (margin.height() - t - b).max(0.0),
+                )
+            }
+        }
+    }
+}
+
+keyword_enum! {
     /// The `content-visibility` property.
     ContentVisibility {
         /// Paint and lay out normally.

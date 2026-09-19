@@ -15,6 +15,8 @@ use ve_style::{Clear, Float};
 pub struct PlacedFloat {
     /// Margin box in document coordinates.
     pub rect: Rect,
+    /// Exclusion used for line wrapping (`shape-outside`; defaults to `rect`).
+    pub wrap: Rect,
     /// Which side it floats to.
     pub side: Float,
 }
@@ -65,10 +67,10 @@ impl FloatContext {
         let mut left = cb_left;
         let mut right = cb_right;
         for f in &self.floats {
-            if f.rect.y() < y1 && f.rect.bottom() > y && f.rect.height() > 0.0 {
+            if f.wrap.y() < y1 && f.wrap.bottom() > y && f.wrap.height() > 0.0 {
                 match f.side {
-                    Float::Left => left = left.max(f.rect.right()),
-                    Float::Right => right = right.min(f.rect.x()),
+                    Float::Left => left = left.max(f.wrap.right()),
+                    Float::Right => right = right.min(f.wrap.x()),
                     Float::None => {}
                 }
             }
@@ -128,8 +130,10 @@ impl FloatContext {
                     _ => left,
                 };
                 let origin = Point::new(x, y);
+                let rect = Rect::new(x, y, width, height);
                 self.floats.push(PlacedFloat {
-                    rect: Rect::new(x, y, width, height),
+                    rect,
+                    wrap: rect,
                     side,
                 });
                 self.last_top = y;
@@ -143,6 +147,13 @@ impl FloatContext {
                 }
             }
             guard += 1;
+        }
+    }
+
+    /// Replaces the last placed float's wrap rectangle (`shape-outside`).
+    pub fn set_last_wrap(&mut self, wrap: Rect) {
+        if let Some(last) = self.floats.last_mut() {
+            last.wrap = wrap;
         }
     }
 }
@@ -175,5 +186,14 @@ mod tests {
         assert_eq!(ctx.clearance(Clear::None), None);
         assert_eq!(ctx.bottom(), Some(50.0));
         assert_eq!(ctx.next_bottom_after(0.0), Some(30.0));
+    }
+
+    #[test]
+    fn shape_outside_wrap_narrows_edges() {
+        let mut ctx = FloatContext::new();
+        ctx.place(Float::Left, Size::new(100.0, 50.0), 0.0, 0.0, 400.0);
+        ctx.set_last_wrap(Rect::new(0.0, 0.0, 80.0, 50.0));
+        assert_eq!(ctx.edges(0.0, 10.0, 0.0, 400.0), (80.0, 400.0));
+        assert_eq!(ctx.floats()[0].rect.width(), 100.0, "margin box stays");
     }
 }

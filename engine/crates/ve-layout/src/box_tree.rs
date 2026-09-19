@@ -12,8 +12,8 @@ use ve_dom::{Document, NodeKind};
 
 use crate::block::{ContainingBlock, Forced};
 use ve_style::{
-    ComputedStyle, Content, Display, ListStylePosition, ListStyleType, PseudoElement, StyleTree,
-    WhiteSpace,
+    ComputedStyle, Content, Display, FieldSizing, ListStylePosition, ListStyleType, PseudoElement,
+    StyleTree, WhiteSpace,
 };
 
 /// What kind of formatting a box participates in / establishes.
@@ -352,7 +352,8 @@ pub fn build_element_box(doc: &Document, styles: &StyleTree, id: NodeId) -> Opti
                 bx.col_span = span_attr(doc, id, "colspan", 1);
                 bx.row_span = span_attr(doc, id, "rowspan", 1);
             }
-            bx.replaced = replaced_size(doc, id);
+            bx.replaced = replaced_size(doc, id)
+                .or_else(|| field_sizing_content_size(doc, id, &style));
             if display == Display::ListItem {
                 bx.marker = marker_for(doc, styles, id, &style);
             }
@@ -408,6 +409,34 @@ fn replaced_size(doc: &Document, id: NodeId) -> Option<Size> {
         (None, None, None) => Size::new(0.0, 0.0),
     };
     Some(size)
+}
+
+/// `field-sizing: content` sizes an `<input>` / `<textarea>` to its value.
+fn field_sizing_content_size(doc: &Document, id: NodeId, style: &ComputedStyle) -> Option<Size> {
+    if style.field_sizing != FieldSizing::Content {
+        return None;
+    }
+    let e = doc.element(id)?;
+    let is_input = e.is_html("input");
+    let is_textarea = e.is_html("textarea");
+    if !is_input && !is_textarea {
+        return None;
+    }
+    let value = if is_input {
+        doc.attribute(id, "value").unwrap_or("").to_string()
+    } else {
+        doc.text_content(id)
+    };
+    let em = style.font_size.max(1.0);
+    let ch = em * 0.5;
+    let mut cols = 0usize;
+    let mut lines = 0usize;
+    for line in value.split('\n') {
+        cols = cols.max(line.chars().count());
+        lines += 1;
+    }
+    lines = lines.max(1);
+    Some(Size::new(ch * cols as f32, em * 1.2 * lines as f32))
 }
 
 fn span_attr(doc: &Document, id: NodeId, name: &str, default: u32) -> u32 {
