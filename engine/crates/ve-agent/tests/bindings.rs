@@ -4956,6 +4956,47 @@ fn rtc_peer_connection_creates_offer() {
 }
 
 #[test]
+fn rtc_data_channel_opens_after_offer_answer() {
+    let mut page = open("<title>rtcdc</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__dc = null;
+          const a = new RTCPeerConnection();
+          const b = new RTCPeerConnection();
+          const ch = a.createDataChannel("chat");
+          let opened = 0;
+          ch.addEventListener("open", function () { opened++; });
+          a.createOffer().then(function (offer) {
+            return a.setLocalDescription(offer).then(function () {
+              return b.setRemoteDescription(offer);
+            }).then(function () {
+              return b.createAnswer();
+            }).then(function (answer) {
+              return b.setLocalDescription(answer).then(function () {
+                return a.setRemoteDescription(answer);
+              });
+            }).then(function () {
+              window.__dc = {
+                inst: ch instanceof RTCDataChannel,
+                label: ch.label === "chat",
+                open: ch.readyState === "open",
+                conn: a.connectionState === "connected",
+                opened: opened
+              };
+            });
+          }).catch(function (e) { window.__dc = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__dc").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["label"], true, "{v}");
+    assert_eq!(v["open"], true, "{v}");
+    assert_eq!(v["conn"], true, "{v}");
+}
+
+#[test]
 fn match_media_change_fires_on_resize() {
     let mut page = open("<title>mq</title>");
     let v = page

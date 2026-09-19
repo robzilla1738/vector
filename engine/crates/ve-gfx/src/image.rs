@@ -245,6 +245,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             svg_attr(tag, "y2").unwrap_or(0.0),
         );
         let (color, width) = svg_stroke(tag);
+        let color = with_opacity(color, world.opacity);
         let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
         let dashes = svg_dash(tag);
         let cap = svg_linecap(tag);
@@ -288,9 +289,13 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let fill = svg_fill(tag);
         if closed && !fill.eq_ignore_ascii_case("none") && coords.len() >= 3 {
             fill_polygon_with(&mut img, &coords, |x, y| {
-                paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
+                with_opacity(
+                    paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5),
+                    world.opacity,
+                )
             });
         }
+        let color = with_opacity(color, world.opacity);
         let dashes = svg_dash(tag);
         let cap = svg_linecap(tag);
         let join = svg_linejoin(tag);
@@ -330,17 +335,24 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                     .is_some_and(|s| s.eq_ignore_ascii_case("evenodd"));
                 if evenodd {
                     fill_contours_with(&mut img, &filled, |x, y| {
-                        paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
+                        with_opacity(
+                            paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5),
+                            world.opacity,
+                        )
                     });
                 } else {
                     for c in &filled {
                         fill_polygon_with(&mut img, c, |x, y| {
-                            paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
+                            with_opacity(
+                                paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5),
+                                world.opacity,
+                            )
                         });
                     }
                 }
             }
             if svg_attr_str(tag, "stroke").is_some() || !closed {
+                let color = with_opacity(color, world.opacity);
                 let dashes = svg_dash(tag);
                 let cap = svg_linecap(tag);
                 let join = svg_linejoin(tag);
@@ -375,6 +387,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 oy: g.oy + uy * g.sy,
                 sx: g.sx,
                 sy: g.sy,
+                opacity: g.opacity,
             }
             .then_tag(tag);
             if src.starts_with("<rect") {
@@ -394,8 +407,8 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag = &rest[i..i + tag_end];
         let after = &rest[i + tag_end + 1..];
         let content = after.split("</text>").next().unwrap_or("");
-        let color = parse_svg_color(svg_fill(tag));
         let world = svg_group_offset(full, abs).then_tag(tag);
+        let color = with_opacity(parse_svg_color(svg_fill(tag)), world.opacity);
         let (mut x, y) = world.map(
             svg_attr(tag, "x").unwrap_or(0.0),
             svg_attr(tag, "y").unwrap_or(0.0),
@@ -457,6 +470,7 @@ struct SvgXform {
     oy: f32,
     sx: f32,
     sy: f32,
+    opacity: f32,
 }
 
 impl SvgXform {
@@ -466,6 +480,7 @@ impl SvgXform {
             oy: 0.0,
             sx: 1.0,
             sy: 1.0,
+            opacity: 1.0,
         }
     }
 
@@ -485,7 +500,14 @@ impl SvgXform {
             oy: self.oy + ty * self.sy,
             sx: self.sx * sx,
             sy: self.sy * sy,
+            opacity: self.opacity,
         }
+    }
+
+    fn then_group(self, tag: &str) -> Self {
+        let mut next = self.then_tag(tag);
+        next.opacity *= svg_attr(tag, "opacity").unwrap_or(1.0).clamp(0.0, 1.0);
+        next
     }
 }
 
@@ -514,7 +536,7 @@ fn svg_group_offset(full: &str, pos: usize) -> SvgXform {
     for (_, open, tag) in events {
         if open {
             let parent = *stack.last().unwrap_or(&SvgXform::identity());
-            stack.push(parent.then_tag(&tag));
+            stack.push(parent.then_group(&tag));
         } else if stack.len() > 1 {
             stack.pop();
         }
@@ -765,16 +787,22 @@ fn paint_svg_rect(
         let y = y0.max(0.0) as u32;
         let ww = w.max(0.0) as u32;
         let hh = h.max(0.0) as u32;
-        for yy in y..(y + hh).min(img.height) {
-            for xx in x..(x + ww).min(img.width) {
-                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
-                    continue;
+        if !fill.eq_ignore_ascii_case("none") {
+            for yy in y..(y + hh).min(img.height) {
+                for xx in x..(x + ww).min(img.width) {
+                    if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                        continue;
+                    }
+                    let color = with_opacity(
+                        paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                        g.opacity,
+                    );
+                    let idx = ((yy * img.width + xx) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
                 }
-                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
-                let idx = ((yy * img.width + xx) * 4) as usize;
-                img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
         }
+        stroke_svg_rect_edges(img, tag, x0, y0, w, h, g.opacity);
         return;
     }
     let rad = ang.to_radians();
@@ -824,12 +852,42 @@ fn paint_svg_rect(
                 if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
                     continue;
                 }
-                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
-                let idx = ((yy * img.width + xx) * 4) as usize;
-                img.rgba[idx..idx + 4].copy_from_slice(&color);
+                if !fill.eq_ignore_ascii_case("none") {
+                    let color = with_opacity(
+                        paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                        g.opacity,
+                    );
+                    let idx = ((yy * img.width + xx) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
             }
         }
     }
+}
+
+fn stroke_svg_rect_edges(
+    img: &mut DecodedImage,
+    tag: &str,
+    x0: f32,
+    y0: f32,
+    w: f32,
+    h: f32,
+    opacity: f32,
+) {
+    let stroke = svg_attr_str(tag, "stroke").unwrap_or("");
+    if stroke.is_empty() || stroke.eq_ignore_ascii_case("none") {
+        return;
+    }
+    let (color, width) = svg_stroke(tag);
+    let color = with_opacity(color, opacity);
+    let dashes = svg_dash(tag);
+    let cap = svg_linecap(tag);
+    let x1 = x0 + w;
+    let y1 = y0 + h;
+    stroke_line(img, x0, y0, x1, y0, color, width, &dashes, cap);
+    stroke_line(img, x1, y0, x1, y1, color, width, &dashes, cap);
+    stroke_line(img, x1, y1, x0, y1, color, width, &dashes, cap);
+    stroke_line(img, x0, y1, x0, y0, color, width, &dashes, cap);
 }
 
 fn paint_svg_circle(
@@ -859,7 +917,10 @@ fn paint_svg_circle(
                 if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
                     continue;
                 }
-                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
+                let color = with_opacity(
+                    paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                    world.opacity,
+                );
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
@@ -894,7 +955,10 @@ fn paint_svg_ellipse(
                 if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
                     continue;
                 }
-                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
+                let color = with_opacity(
+                    paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                    world.opacity,
+                );
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
@@ -2327,5 +2391,26 @@ mod tests {
         .expect("svg linejoin bevel");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(2, 2), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_group_opacity_tints_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <g opacity='0.5'><rect x='0' y='0' width='8' height='8' fill='#00ff00'/></g></svg>",
+        )
+        .expect("svg group opacity");
+        assert_eq!(img.pixel(3, 3), Some([0, 255, 0, 128]));
+    }
+
+    #[test]
+    fn decode_svg_rect_stroke_paints_edge() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='2' y='2' width='4' height='4' fill='none' stroke='#ff0000' stroke-width='2' stroke-linecap='butt'/></svg>",
+        )
+        .expect("svg rect stroke");
+        assert_eq!(img.pixel(2, 4), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
     }
 }

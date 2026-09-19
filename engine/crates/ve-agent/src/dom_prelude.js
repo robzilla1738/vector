@@ -9393,6 +9393,34 @@
   }
   Object.defineProperty(WebGLRenderingContext.prototype, Symbol.toStringTag, { value: "WebGLRenderingContext", configurable: true });
 
+  class RTCDataChannel extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    send(data) {
+      if (this.readyState !== "open") {
+        throw new DOMException("RTCDataChannel.readyState is not 'open'", "InvalidStateError");
+      }
+      this.bufferedAmount = (this.bufferedAmount || 0) + String(data == null ? "" : data).length;
+    }
+    close() {
+      if (this.readyState === "closed") return;
+      this.readyState = "closed";
+      this.dispatchEvent(new Event("close"));
+    }
+  }
+  Object.defineProperty(RTCDataChannel.prototype, Symbol.toStringTag, { value: "RTCDataChannel", configurable: true });
+  function openRtcChannels(pc) {
+    if (!pc.localDescription || !pc.remoteDescription) return;
+    pc.connectionState = "connected";
+    pc.iceConnectionState = "connected";
+    pc.signalingState = "stable";
+    for (const ch of pc._channels || []) {
+      if (ch.readyState !== "connecting") continue;
+      ch.readyState = "open";
+      queueMicrotask(() => {
+        try { ch.dispatchEvent(new Event("open")); } catch (e) {}
+      });
+    }
+  }
   class RTCPeerConnection extends EventTarget {
     constructor(config) {
       super();
@@ -9403,6 +9431,7 @@
       this.localDescription = null;
       this.remoteDescription = null;
       this._config = config || {};
+      this._channels = [];
     }
     createOffer() {
       return Promise.resolve({
@@ -9422,21 +9451,32 @@
       this.iceGatheringState = "complete";
       const self = this;
       queueMicrotask(() => self.dispatchEvent(new Event("icecandidate")));
+      openRtcChannels(this);
       return Promise.resolve();
     }
     setRemoteDescription(desc) {
       this.remoteDescription = desc || null;
       this.signalingState = desc && desc.type === "offer" ? "have-remote-offer" : "stable";
+      openRtcChannels(this);
       return Promise.resolve();
     }
     addIceCandidate() { return Promise.resolve(); }
     createDataChannel(label) {
-      return { label: String(label || ""), readyState: "connecting", send() {}, close() {}, addEventListener() {} };
+      const ch = Object.create(RTCDataChannel.prototype);
+      ch.label = String(label || "");
+      ch.readyState = "connecting";
+      ch.bufferedAmount = 0;
+      ch.negotiated = false;
+      ch.ordered = true;
+      ch.id = this._channels.length;
+      this._channels.push(ch);
+      return ch;
     }
     close() {
       this.connectionState = "closed";
       this.iceConnectionState = "closed";
       this.signalingState = "closed";
+      for (const ch of this._channels) ch.close();
     }
   }
   Object.defineProperty(RTCPeerConnection.prototype, Symbol.toStringTag, { value: "RTCPeerConnection", configurable: true });
@@ -11279,7 +11319,7 @@
     AudioBuffer, AudioBufferSourceNode, AnalyserNode, BiquadFilterNode,
     DelayNode, DynamicsCompressorNode, StereoPannerNode, MediaStream, MediaStreamTrack, MediaStreamAudioSourceNode,
     PeriodicWave, ConstantSourceNode, ChannelMergerNode, ChannelSplitterNode, WaveShaperNode, ConvolverNode, PannerNode, IIRFilterNode,
-    WebGLRenderingContext, RTCPeerConnection,
+    WebGLRenderingContext, RTCPeerConnection, RTCDataChannel,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
     PaymentRequest, PublicKeyCredential, PresentationRequest, EyeDropper, BarcodeDetector, IdleDetector,
@@ -12096,6 +12136,7 @@
   brandWrap(TrustedHTML);
   brandWrap(PerformanceEntry);
   brandWrap(PerformanceResourceTiming);
+  brandWrap(RTCDataChannel);
   brandWrap(HTMLSelectedContentElement);
   brandWrap(Range);
   brandWrap(Selection);
