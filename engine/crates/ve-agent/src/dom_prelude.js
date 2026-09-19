@@ -6980,6 +6980,16 @@
     get cookieEnabled() { return true; }
     get pdfViewerEnabled() { return false; }
     get hardwareConcurrency() { return 4; }
+    get wakeLock() {
+      if (!this._wakeLock) {
+        this._wakeLock = {
+          request() {
+            return Promise.reject(new DOMException("Wake lock permission denied", "NotAllowedError"));
+          },
+        };
+      }
+      return this._wakeLock;
+    }
     get mediaDevices() {
       if (!this._mediaDevices) {
         this._mediaDevices = {
@@ -8647,6 +8657,14 @@
     Promise.try = function (fn) {
       const args = Array.prototype.slice.call(arguments, 1);
       return new Promise((res) => res(typeof fn === "function" ? fn.apply(undefined, args) : fn));
+    };
+  }
+  if (typeof Promise.allSettled !== "function") {
+    Promise.allSettled = function (ps) {
+      return Promise.all(Array.from(ps).map((p) => Promise.resolve(p).then(
+        (v) => ({ status: "fulfilled", value: v }),
+        (e) => ({ status: "rejected", reason: e })
+      )));
     };
   }
   ReadableStream.from = function (iterable) {
@@ -10930,6 +10948,15 @@
       window.scrollTo((document.documentElement.scrollLeft || 0) + dx, (document.documentElement.scrollTop || 0) + dy);
     },
     fetch: fetchImpl,
+    showOpenFilePicker() {
+      return Promise.reject(new DOMException("The user aborted a request.", "AbortError"));
+    },
+    showSaveFilePicker() {
+      return Promise.reject(new DOMException("The user aborted a request.", "AbortError"));
+    },
+    showDirectoryPicker() {
+      return Promise.reject(new DOMException("The user aborted a request.", "AbortError"));
+    },
     postMessage(data, targetOrigin) { deliverMessage(globalThis, data, targetOrigin, globalThis); },
     AbortController,
     AbortSignal,
@@ -11007,6 +11034,9 @@
       },
       _registered: new Map(),
       highlights: new HighlightRegistry(),
+      paintWorklet: {
+        addModule() { return Promise.resolve(); },
+      },
       registerProperty(def) {
         if (!def || def.name == null) {
           throw new TypeError("Failed to execute 'registerProperty' on 'CSS': 1 argument required.");

@@ -5383,6 +5383,38 @@ fn audio_buffer_and_get_user_media_denies() {
 }
 
 #[test]
+fn file_pickers_and_wake_lock_deny() {
+    let mut page = open("<title>fp</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__fp = null;
+          Promise.allSettled([
+            showOpenFilePicker(),
+            showSaveFilePicker(),
+            showDirectoryPicker(),
+            navigator.wakeLock.request("screen")
+          ]).then(function (rows) {
+            window.__fp = {
+              open: rows[0].status === "rejected" && rows[0].reason.name === "AbortError",
+              save: rows[1].status === "rejected" && rows[1].reason.name === "AbortError",
+              dir: rows[2].status === "rejected" && rows[2].reason.name === "AbortError",
+              wake: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError",
+              paint: !!(CSS.paintWorklet && typeof CSS.paintWorklet.addModule === "function")
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__fp").unwrap();
+    assert_eq!(v["open"], true, "{v}");
+    assert_eq!(v["save"], true, "{v}");
+    assert_eq!(v["dir"], true, "{v}");
+    assert_eq!(v["wake"], true, "{v}");
+    assert_eq!(v["paint"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
