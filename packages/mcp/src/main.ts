@@ -7,7 +7,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { PlanStepSchema, toErrorPayload, VectorError } from "@vector/contracts";
+import { PlanStepSchema, errorAdvice, toErrorPayload, VectorError } from "@vector/contracts";
 import { rpc } from "./client.js";
 
 const server = new McpServer({ name: "vector", version: "0.1.0" });
@@ -22,14 +22,11 @@ export const McpStepSchema = z.union([PlanStepSchema, FlattenedStepSchema]);
 
 const text = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
 const err = (e: unknown) => {
-  const payload = e instanceof VectorError
-    ? { code: e.code, message: e.message, details: e.detail ?? null, retryable: false, hint: null }
-    : {
-        ...toErrorPayload(e),
-        details: null,
-        retryable: false,
-        hint: null,
-      };
+  const base = e instanceof VectorError
+    ? { code: e.code, message: e.message, details: e.detail ?? null }
+    : { ...toErrorPayload(e), details: null as unknown };
+  const advice = errorAdvice(base.code);
+  const payload = { ...base, retryable: advice.retryable, hint: advice.hint };
   return {
     content: [{ type: "text" as const, text: JSON.stringify({ code: payload.code, message: payload.message, details: payload.details, retryable: payload.retryable, hint: payload.hint }, null, 2) }],
     isError: true,

@@ -60,6 +60,11 @@ impl Loader for Site {
             })
             .collect()
     }
+    fn preconnect(&mut self, urls: &[String]) {
+        self.batches
+            .borrow_mut()
+            .push(urls.iter().map(|u| format!("preconnect:{u}")).collect());
+    }
 }
 
 #[test]
@@ -275,5 +280,43 @@ fn css_animation_respects_delay_and_fill() {
     assert!(
         (page.style_tree().style(id).opacity - 1.0).abs() < 0.05,
         "forwards fill holds the last keyframe"
+    );
+}
+
+#[test]
+fn preconnect_and_prefetch_are_issued() {
+    let mut site = Site::default();
+    site.docs.insert(
+        "https://s.test/".into(),
+        r#"<!doctype html><html><head>
+             <link rel=preconnect href="https://cdn.test">
+             <link rel="dns-prefetch" href="https://fonts.test">
+             <link rel=prefetch href="/next.html">
+             <link rel=stylesheet href="/css/a.css">
+           </head><body><p id=p>ok</p></body></html>"#
+            .into(),
+    );
+    site.files.insert(
+        "https://s.test/css/a.css".into(),
+        (b"#p{color:rgb(1,2,3)}".to_vec(), "text/css"),
+    );
+    site.files.insert(
+        "https://s.test/next.html".into(),
+        (b"<p>next</p>".to_vec(), "text/html"),
+    );
+    let batches = site.batches.clone();
+    let page = Page::open(1, Box::new(site), "https://s.test/", DEFAULT_VIEWPORT).unwrap();
+    let stats = page.load_stats();
+    assert_eq!(stats.preconnects, 2, "{stats:?}");
+    assert_eq!(stats.prefetches, 1, "{stats:?}");
+    assert_eq!(stats.stylesheets, 1, "{stats:?}");
+    let b = batches.borrow();
+    assert!(
+        b.iter().any(|batch| batch.iter().any(|u| u.starts_with("preconnect:https://cdn.test"))),
+        "preconnect batch: {b:?}"
+    );
+    assert!(
+        b.iter().any(|batch| batch.iter().any(|u| u == "https://s.test/next.html")),
+        "prefetch in fetch batch: {b:?}"
     );
 }

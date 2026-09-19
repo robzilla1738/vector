@@ -347,6 +347,8 @@ impl Loader for NetLoader {
                         ve_agent::SubresourceKind::Script => "*/*",
                         ve_agent::SubresourceKind::Font => "font/woff2,font/woff,*/*;q=0.1",
                         ve_agent::SubresourceKind::Document => "text/html,*/*;q=0.1",
+                        ve_agent::SubresourceKind::Prefetch
+                        | ve_agent::SubresourceKind::Preconnect => "*/*",
                     };
                     let mut req = req
                         .for_page(r.page)
@@ -390,6 +392,12 @@ impl Loader for NetLoader {
         out.into_iter()
             .map(|r| r.unwrap_or_else(|| Err(Error::internal("subresource result missing"))))
             .collect()
+    }
+
+    fn preconnect(&mut self, urls: &[String]) {
+        for url in urls {
+            let _ = self.net.borrow().preconnect(url);
+        }
     }
 
     fn in_flight(&self, page: u64) -> Vec<InFlightSummary> {

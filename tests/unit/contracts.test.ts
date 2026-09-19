@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema } from "@vector/contracts";
+import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice } from "@vector/contracts";
 
 describe("StepSchema", () => {
   it("accepts every core op", () => {
@@ -97,6 +97,15 @@ describe("API schemas", () => {
     expect(P.safeParse({ program, returnObservation: { scope: "subtree", subtreeRef: "r2", format: "full" } }).success).toBe(true);
     expect(P.safeParse({ program, returnObservation: { scope: "everything" } }).success).toBe(false);
     expect(P.safeParse({ program, returnObservation: { format: "yaml" } }).success).toBe(false);
+  });
+
+  it("errorAdvice sets retryable and hint for MCP (H0-C2)", () => {
+    expect(errorAdvice("ref_stale")).toEqual({
+      retryable: true,
+      hint: "re-observe and retry with a fresh ref",
+    });
+    expect(errorAdvice("permission_denied")).toMatchObject({ retryable: false, hint: expect.stringMatching(/grant/) });
+    expect(errorAdvice("cancelled")).toEqual({ retryable: false, hint: null });
   });
 
   it("validates events", () => {

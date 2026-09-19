@@ -6,8 +6,8 @@
 //! lifetime and the status allows it. `no-store` responses (or requests) are
 //! never stored; `Vary: *` is treated as uncacheable. Validation
 //! (`If-None-Match` / `If-Modified-Since`) is exposed through
-//! [`CacheLookup::Stale`] but the revalidation round-trip is not yet wired
-//! into [`crate::NetworkContext::fetch`].
+//! [`CacheLookup::Stale`]. [`crate::NetworkContext::fetch`] issues the
+//! conditional request and a 304 refreshes the stored validators.
 
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, SystemTime};

@@ -38,7 +38,7 @@ pub mod websocket;
 pub mod wire;
 
 use std::collections::{HashMap, VecDeque};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Instant, SystemTime};
 
 use bytes::Bytes;
@@ -450,6 +450,19 @@ impl NetworkContext {
     /// Fetches `request`, following redirects, using the current time.
     pub fn fetch(&mut self, request: Request) -> Result<Response, NetError> {
         self.fetch_at(request, SystemTime::now())
+    }
+
+    /// DNS-warm `url` for `rel=preconnect` / `dns-prefetch`. No GET.
+    pub fn preconnect(&self, url: &str) -> Result<(), NetError> {
+        let request = Request::get(url)?;
+        self.policy.check_request(&request)?;
+        if self.transport.uses_live_dns()
+            && let Some(host) = request.url.host_str()
+        {
+            let port = request.url.port_or_known_default().unwrap_or(80);
+            let _ = (host, port).to_socket_addrs();
+        }
+        Ok(())
     }
 
     /// Like [`Self::fetch`] with an explicit clock (deterministic tests).
@@ -1214,6 +1227,17 @@ mod tests {
             2,
             "no round trip while the refreshed entry is fresh"
         );
+    }
+
+    #[test]
+    fn preconnect_checks_policy_without_a_get() {
+        let ctx = NetworkContext::offline(ContextId(1)).with_policy(NetworkPolicy::permissive());
+        ctx.preconnect("https://cdn.example/").unwrap();
+        assert!(ctx.completed(None).is_empty(), "preconnect is not a fetch");
+        assert!(matches!(
+            ctx.preconnect("mailto:x@y"),
+            Err(NetError::UnsupportedScheme(_))
+        ));
     }
 
     #[test]

@@ -207,6 +207,10 @@ pub enum SubresourceKind {
     Font,
     /// `<iframe>` / `<frame>` document (same-origin, plan A16).
     Document,
+    /// `<link rel=prefetch>` / `modulepreload` — Parser GET into the HTTP cache.
+    Prefetch,
+    /// `<link rel=preconnect>` / `dns-prefetch` — DNS only, no GET.
+    Preconnect,
 }
 
 /// A subresource fetch the page asks its [`Loader`] for.
@@ -274,6 +278,10 @@ pub struct LoadStats {
     pub failed: usize,
     /// Wall time of the subresource batches in milliseconds.
     pub fetch_ms: u64,
+    /// `<link rel=prefetch>` / `modulepreload` bodies stored in cache.
+    pub prefetches: usize,
+    /// `<link rel=preconnect>` / `dns-prefetch` origins warmed.
+    pub preconnects: usize,
 }
 
 /// Fetches documents for navigations and answers network questions for the
@@ -292,6 +300,8 @@ pub trait Loader {
             .map(|r| self.script_fetch(&r.url, "GET", &[], r.page, None))
             .collect()
     }
+    /// Warm DNS for `rel=preconnect` / `dns-prefetch`. Default: no-op.
+    fn preconnect(&mut self, _urls: &[String]) {}
     /// Requests currently in flight for `page`.
     fn in_flight(&self, _page: u64) -> Vec<InFlightSummary> {
         Vec::new()
@@ -1984,6 +1994,7 @@ impl Page {
         let resolve = |href: &str| base.join(href.trim()).ok().map(|u| u.to_string());
 
         let mut requests: Vec<(NodeId, SubresourceRequest)> = Vec::new();
+        let mut preconnects: Vec<String> = Vec::new();
         let mut data_images: Vec<(NodeId, u32, u32, String)> = Vec::new();
         let ids: Vec<NodeId> = self.doc.elements().collect();
         for id in ids {
@@ -1992,30 +2003,45 @@ impl Page {
             };
             if e.is_html("link") {
                 let rel = self.doc.attribute(id, "rel").unwrap_or("");
-                let is_sheet = rel
+                let rels: Vec<String> = rel
                     .split_ascii_whitespace()
-                    .any(|r| r.eq_ignore_ascii_case("stylesheet"));
-                let alternate = rel
-                    .split_ascii_whitespace()
-                    .any(|r| r.eq_ignore_ascii_case("alternate"));
-                if !is_sheet || alternate || self.doc.attribute(id, "disabled").is_some() {
-                    continue;
-                }
-                if let Some(m) = self.doc.attribute(id, "media")
-                    && !ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
-                {
+                    .map(str::to_ascii_lowercase)
+                    .collect();
+                let is_sheet = rels.iter().any(|r| r == "stylesheet");
+                let alternate = rels.iter().any(|r| r == "alternate");
+                if is_sheet && !alternate && self.doc.attribute(id, "disabled").is_none() {
+                    if let Some(m) = self.doc.attribute(id, "media")
+                        && !ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
+                    {
+                        continue;
+                    }
+                    if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Stylesheet,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
                     continue;
                 }
                 if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
-                    requests.push((
-                        id,
-                        SubresourceRequest {
-                            url,
-                            kind: SubresourceKind::Stylesheet,
-                            page,
-                            referrer: referrer.clone(),
-                        },
-                    ));
+                    if rels.iter().any(|r| r == "preconnect" || r == "dns-prefetch") {
+                        preconnects.push(url);
+                    } else if rels.iter().any(|r| r == "prefetch" || r == "modulepreload") {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Prefetch,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
                 }
             } else if e.is_html("style") {
                 let css = self.doc.text_content(id);
@@ -2123,6 +2149,13 @@ impl Page {
                 self.install_image(id, &bytes);
             }
         }
+        if has_loader && !preconnects.is_empty() {
+            self.loader
+                .as_mut()
+                .expect("loader")
+                .preconnect(&preconnects);
+            self.load_stats.preconnects += preconnects.len();
+        }
         if !has_loader || requests.is_empty() {
             self.collect_scripts(&HashMap::new());
             return sheets;
@@ -2208,6 +2241,9 @@ impl Page {
                 (SubresourceKind::Document, Ok(_) | Err(_)) => {
                     self.load_stats.failed += 1;
                 }
+                (SubresourceKind::Prefetch, Ok(res)) if res.status < 400 => {
+                    self.load_stats.prefetches += 1;
+                }
                 (_, Ok(res)) => {
                     tracing::debug!(url = %res.url, status = res.status, "subresource failed");
                     self.load_stats.failed += 1;
@@ -2262,6 +2298,8 @@ impl Page {
             stylesheets = self.load_stats.stylesheets,
             images = self.load_stats.images,
             scripts = self.load_stats.scripts,
+            prefetches = self.load_stats.prefetches,
+            preconnects = self.load_stats.preconnects,
             failed = self.load_stats.failed,
             fetch_ms = self.load_stats.fetch_ms,
             "subresources"
