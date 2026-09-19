@@ -1,36 +1,36 @@
 {
   "appleSilicon": false,
   "fullRepaint": {
-    "p50": 0.357412,
-    "p95": 0.364629,
+    "p50": 0.342674,
+    "p95": 0.351798,
     "samples": [
-      0.364629,
-      0.357412,
-      0.351437,
-      0.352725,
-      0.34926999999999997,
-      0.345538,
-      0.360645,
-      0.358311
+      0.343536,
+      0.342674,
+      0.340818,
+      0.340703,
+      0.341048,
+      0.35129699999999997,
+      0.351798,
+      0.34118
     ]
   },
   "host": "x86_64",
   "inputToPaint": {
-    "p50": 0.367315,
-    "p95": 0.398986,
+    "p50": 0.9845360000000001,
+    "p95": 2.304848,
     "samples": [
-      0.398986,
-      0.367315,
-      0.355273,
-      0.369635,
-      0.36543200000000003,
-      0.36928900000000003,
-      0.364811,
-      0.349621
+      2.304848,
+      1.049255,
+      0.9844159999999998,
+      0.9887450000000001,
+      0.9806350000000001,
+      0.9845360000000001,
+      0.983928,
+      0.9766320000000001
     ]
   },
   "n": 8,
-  "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score. Wheel/IME/full-repaint after first paint are compositor blits of cached chrome + page layers; SQLite persist is off this path.",
+  "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score. Wheel is a chrome+page-layer blit. IME invalidates the page layer and re-rasters. SQLite persist is off this path.",
   "os": "linux",
   "review": "ROADMAP §6",
   "rustcDebug": false,
@@ -38,17 +38,17 @@
   "test": "writes_section_6_human_timings",
   "unit": "ms",
   "wheelScroll": {
-    "p50": 0.37564400000000003,
-    "p95": 0.39075299999999996,
+    "p50": 0.344192,
+    "p95": 0.350785,
     "samples": [
-      0.39075299999999996,
-      0.37564400000000003,
-      0.37809600000000004,
-      0.373526,
-      0.369283,
-      0.38308,
-      0.361952,
-      0.36113
+      0.350785,
+      0.346214,
+      0.343711,
+      0.34529,
+      0.342655,
+      0.343975,
+      0.344192,
+      0.34361899999999995
     ]
   }
 }

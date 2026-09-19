@@ -1934,6 +1934,9 @@ impl NativeBrowser {
         let focused = page.focused();
         let _ = page.press(focused, key, 0);
         self.sync_active_tab();
+        self.list_cache = None;
+        self.page_layer = None;
+        self.page_layer_rev = 0;
         Ok(())
     }
 
@@ -1947,6 +1950,9 @@ impl NativeBrowser {
             let _ = page.type_text(id, text, 0);
         }
         self.sync_active_tab();
+        self.list_cache = None;
+        self.page_layer = None;
+        self.page_layer_rev = 0;
         Ok(())
     }
 
@@ -2876,7 +2882,7 @@ mod tests {
             "unit": "ms",
             "appleSilicon": false,
             "rustcDebug": cfg!(debug_assertions),
-            "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score. Wheel/IME/full-repaint after first paint are compositor blits of cached chrome + page layers; SQLite persist is off this path.",
+            "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score. Wheel is a chrome+page-layer blit. IME invalidates the page layer and re-rasters. SQLite persist is off this path.",
             "inputToPaint": { "p50": pct(input_ms.clone(), 0.5), "p95": pct(input_ms.clone(), 0.95), "samples": input_ms },
             "wheelScroll": { "p50": pct(scroll_ms.clone(), 0.5), "p95": pct(scroll_ms.clone(), 0.95), "samples": scroll_ms },
             "fullRepaint": { "p50": pct(repaint_ms.clone(), 0.5), "p95": pct(repaint_ms.clone(), 0.95), "samples": repaint_ms },
@@ -3380,7 +3386,19 @@ mod tests {
             }
         });
         if let Some(html) = live_html {
-            evidence["observe"]["liveHtml"] = html;
+            evidence["observe"]["liveHtml"] = html.clone();
+            if let Some(p50) = html.get("p50Ms").cloned() {
+                evidence["observe"]["p50Ms"] = p50;
+            }
+            if let Some(p95) = html.get("p95Ms").cloned() {
+                evidence["observe"]["p95Ms"] = p95;
+            }
+            if let Some(n) = html.get("n").cloned() {
+                evidence["observe"]["n"] = n;
+            }
+            evidence["observe"]["kind"] = serde_json::json!("fetched-html-bodies");
+            evidence["observe"]["standInP50Ms"] = serde_json::json!(p50);
+            evidence["observe"]["standInP95Ms"] = serde_json::json!(p95);
         }
         if let Some(fetch) = live_fetch {
             evidence["liveFetch"] = fetch;
@@ -3493,12 +3511,22 @@ mod tests {
         if let Ok(bytes) = std::fs::read(&ev_path)
             && let Ok(mut doc) = serde_json::from_slice::<serde_json::Value>(&bytes)
         {
+            let p95 = *samples
+                .get(((samples.len() as f64) * 0.95).floor() as usize)
+                .or(samples.last())
+                .unwrap_or(&0) as f64
+                / 1000.0;
             doc["observe"]["liveHtml"] = serde_json::json!({
                 "n": n,
                 "p50Ms": p50,
+                "p95Ms": p95,
                 "unsupported": unsupported,
                 "kind": "fetched-html-bodies"
             });
+            doc["observe"]["p50Ms"] = serde_json::json!(p50);
+            doc["observe"]["p95Ms"] = serde_json::json!(p95);
+            doc["observe"]["n"] = serde_json::json!(n);
+            doc["observe"]["kind"] = serde_json::json!("fetched-html-bodies");
             let _ = std::fs::write(&ev_path, serde_json::to_vec_pretty(&doc).unwrap());
         }
         assert!(n >= 1);

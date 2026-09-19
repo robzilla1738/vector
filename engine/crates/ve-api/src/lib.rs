@@ -376,6 +376,11 @@ impl Loader for NetLoader {
                         bytes: response.body.to_vec(),
                         content_type: response.content_type().map(str::to_owned),
                         status: response.status.as_u16(),
+                        corp: response
+                            .headers
+                            .get("cross-origin-resource-policy")
+                            .and_then(|v| v.to_str().ok())
+                            .map(str::to_owned),
                     }),
             );
         }
@@ -435,6 +440,11 @@ impl Loader for NetLoader {
             bytes: response.body.to_vec(),
             content_type: response.content_type().map(str::to_owned),
             status: response.status.as_u16(),
+            corp: response
+                .headers
+                .get("cross-origin-resource-policy")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned),
         })
     }
 }

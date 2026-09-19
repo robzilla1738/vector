@@ -48,12 +48,14 @@ impl Loader for Site {
                     bytes: bytes.clone(),
                     content_type: Some((*ct).to_owned()),
                     status: 200,
+                    corp: None,
                 }),
                 None => Ok(LoadedResource {
                     url: r.url.clone(),
                     bytes: Vec::new(),
                     content_type: None,
                     status: 404,
+                    corp: None,
                 }),
             })
             .collect()

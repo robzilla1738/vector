@@ -233,6 +233,8 @@ pub struct LoadedResource {
     pub content_type: Option<String>,
     /// HTTP status.
     pub status: u16,
+    /// `Cross-Origin-Resource-Policy` (H3-4 / COEP).
+    pub corp: Option<String>,
 }
 
 /// A script the parser found, external (fetched) or inline. Kept on the page
@@ -320,6 +322,7 @@ pub trait Loader {
                 bytes: loaded.bytes,
                 content_type: loaded.content_type,
                 status: loaded.status,
+                corp: None,
             });
         }
         let loaded = self.load(&NavigationRequest::get(url, page))?;
@@ -328,6 +331,7 @@ pub trait Loader {
             bytes: loaded.bytes,
             content_type: loaded.content_type,
             status: loaded.status,
+            corp: None,
         })
     }
 }
@@ -2065,6 +2069,16 @@ impl Page {
         let mut script_sources: HashMap<NodeId, Option<String>> = HashMap::new();
         let mut imports: Vec<(NodeId, usize, SubresourceRequest)> = Vec::new();
         for ((id, req), result) in requests.into_iter().zip(results) {
+            let result = result.and_then(|res| {
+                if self.coep_allows_resource(&res.url, res.corp.as_deref()) {
+                    Ok(res)
+                } else {
+                    Err(Error::coded(
+                        ve_core::ErrorCode::CapabilityUnsupported,
+                        format!("COEP blocked {}", res.url),
+                    ))
+                }
+            });
             match (req.kind, result) {
                 (SubresourceKind::Stylesheet, Ok(res)) if res.status < 400 => {
                     let css = decode_text(&res.bytes, res.content_type.as_deref());
@@ -2532,6 +2546,25 @@ impl Page {
     pub fn is_cross_origin_isolated(&self) -> bool {
         !matches!(self.coop, CoopPolicy::UnsafeNone)
             && !matches!(self.coep, CoepPolicy::UnsafeNone)
+    }
+
+    /// Whether a fetched subresource may be used under this document's COEP.
+    #[must_use]
+    pub fn coep_allows_resource(&self, url: &str, corp: Option<&str>) -> bool {
+        match self.coep {
+            CoepPolicy::UnsafeNone => true,
+            CoepPolicy::Credentialless => true,
+            CoepPolicy::RequireCorp => {
+                if same_origin_url(&self.url, url) {
+                    return true;
+                }
+                match corp.unwrap_or("").trim() {
+                    v if v.eq_ignore_ascii_case("cross-origin") => true,
+                    v if v.eq_ignore_ascii_case("same-site") => same_site_url(&self.url, url),
+                    _ => false,
+                }
+            }
+        }
     }
 
     /// Whether `window.open(url)` may share this browsing context (COOP).
@@ -5550,6 +5583,28 @@ fn same_origin_url(page: &str, other: &str) -> bool {
     match (url::Url::parse(page), url::Url::parse(other)) {
         (Ok(a), Ok(b)) => a.origin() == b.origin(),
         _ => false,
+    }
+}
+
+fn same_site_url(page: &str, other: &str) -> bool {
+    match (url::Url::parse(page), url::Url::parse(other)) {
+        (Ok(a), Ok(b)) => {
+            a.scheme() == b.scheme()
+                && registrable_site(a.host_str().unwrap_or(""))
+                    == registrable_site(b.host_str().unwrap_or(""))
+        }
+        _ => false,
+    }
+}
+
+fn registrable_site(host: &str) -> &str {
+    let mut parts = host.rsplit('.');
+    match (parts.next(), parts.next()) {
+        (Some(tld), Some(sld)) if !tld.is_empty() && !sld.is_empty() => {
+            let start = host.len().saturating_sub(sld.len() + 1 + tld.len());
+            &host[start..]
+        }
+        _ => host,
     }
 }
 

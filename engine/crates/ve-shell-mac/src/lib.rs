@@ -141,6 +141,28 @@ impl MacWindow {
         }
     }
 
+    /// Map AppKit `NSEvent.phase` / `momentumPhase` bits onto [`ScrollPhase`].
+    #[must_use]
+    pub fn scroll_phase_from_nsevent(phase: u8, momentum: u8) -> ScrollPhase {
+        match (phase, momentum) {
+            (1, _) => ScrollPhase::Began,
+            (2, _) => ScrollPhase::Changed,
+            (4, _) | (8, _) => ScrollPhase::Cancelled,
+            (_, 1 | 2 | 4) => ScrollPhase::Ended,
+            _ => ScrollPhase::Ended,
+        }
+    }
+
+    /// Map `NSAppearance` name onto [`Appearance`].
+    #[must_use]
+    pub fn appearance_from_ns_name(name: &str) -> Appearance {
+        if name.to_ascii_lowercase().contains("dark") {
+            Appearance::Dark
+        } else {
+            Appearance::Light
+        }
+    }
+
     /// Menu / IME / scroll-phase hook.
     pub fn set_scroll_phase(&mut self, phase: ScrollPhase) {
         self.scroll_phase = Some(phase);
@@ -201,7 +223,10 @@ mod macos {
         window.makeKeyAndOrderFront(None);
         let mut host = MacWindow::default();
         host.native = true;
-        host.appearance = Appearance::Dark;
+        let name = app.effectiveAppearance().name().to_string();
+        host.appearance = super::MacWindow::appearance_from_ns_name(&name);
+        host.set_ime(String::new(), false);
+        host.set_scroll_phase(super::MacWindow::scroll_phase_from_nsevent(0, 0));
         let _retained: Retained<NSWindow> = window;
         let _app: &AnyObject = app.as_ref();
         host
@@ -246,5 +271,21 @@ mod tests {
         assert_eq!(w.last_command.as_deref(), Some("find"));
         assert!(w.menus.iter().any(|(t, _)| t == "File"));
         assert!(!w.native);
+        assert_eq!(
+            MacWindow::scroll_phase_from_nsevent(1, 0),
+            ScrollPhase::Began
+        );
+        assert_eq!(
+            MacWindow::scroll_phase_from_nsevent(2, 0),
+            ScrollPhase::Changed
+        );
+        assert_eq!(
+            MacWindow::appearance_from_ns_name("NSAppearanceNameDarkAqua"),
+            Appearance::Dark
+        );
+        assert_eq!(
+            MacWindow::appearance_from_ns_name("NSAppearanceNameAqua"),
+            Appearance::Light
+        );
     }
 }

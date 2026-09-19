@@ -245,6 +245,19 @@ fn coop_same_origin_blocks_cross_origin_window_open() {
     assert!(open.coop_allows_open("https://b.test/"));
 }
 
+#[test]
+fn coep_require_corp_blocks_cross_origin_without_corp() {
+    let mut loaded = ve_agent::LoadedDocument::html("https://a.test/", "<p>x</p>");
+    loaded.coep = ve_agent::CoepPolicy::RequireCorp;
+    let page = ve_agent::Page::from_loaded(1, loaded, DEFAULT_VIEWPORT);
+    assert!(page.coep_allows_resource("https://a.test/img.png", None));
+    assert!(!page.coep_allows_resource("https://b.test/img.png", None));
+    assert!(page.coep_allows_resource("https://b.test/img.png", Some("cross-origin")));
+    assert!(page.coep_allows_resource("https://cdn.a.test/img.png", Some("same-site")));
+    assert!(!page.coep_allows_resource("https://cdn.b.test/img.png", Some("same-site")));
+    assert!(!page.coep_allows_resource("https://cdn.b.test/img.png", Some("same-origin")));
+}
+
 // ---------------------------------------------------------------------------
 // Forms
 // ---------------------------------------------------------------------------
