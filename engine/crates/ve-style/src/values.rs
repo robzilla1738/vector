@@ -1552,6 +1552,334 @@ keyword_enum! {
     }
 }
 
+keyword_enum! {
+    /// `text-align-last`.
+    TextAlignLast {
+        /// Use `text-align`.
+        Auto = "auto",
+        /// Start edge.
+        Start = "start",
+        /// End edge.
+        End = "end",
+        /// Left.
+        Left = "left",
+        /// Right.
+        Right = "right",
+        /// Center.
+        Center = "center",
+        /// Justify (treated as start).
+        Justify = "justify",
+    }
+}
+
+keyword_enum! {
+    /// `scroll-behavior`.
+    ScrollBehavior {
+        /// Instant scroll.
+        Auto = "auto",
+        /// Smooth scroll.
+        Smooth = "smooth",
+    }
+}
+
+keyword_enum! {
+    /// `appearance`.
+    Appearance {
+        /// UA widget.
+        Auto = "auto",
+        /// No native widget.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `hyphens`.
+    Hyphens {
+        /// No hyphenation.
+        None = "none",
+        /// Soft hyphens only.
+        Manual = "manual",
+        /// Automatic plus soft hyphens.
+        Auto = "auto",
+    }
+}
+
+keyword_enum! {
+    /// `text-wrap`.
+    TextWrap {
+        /// Wrap.
+        Wrap = "wrap",
+        /// Do not wrap.
+        Nowrap = "nowrap",
+        /// Balance line lengths.
+        Balance = "balance",
+    }
+}
+
+keyword_enum! {
+    /// `image-rendering`.
+    ImageRendering {
+        /// UA default.
+        Auto = "auto",
+        /// Crisp nearest-neighbour.
+        Pixelated = "pixelated",
+        /// Crisp edges.
+        CrispEdges = "crisp-edges",
+    }
+}
+
+keyword_enum! {
+    /// `color-scheme`.
+    PreferredColorScheme {
+        /// Normal.
+        Normal = "normal",
+        /// Light.
+        Light = "light",
+        /// Dark.
+        Dark = "dark",
+    }
+}
+
+keyword_enum! {
+    /// `overscroll-behavior`.
+    OverscrollBehavior {
+        /// Default rubber-band.
+        Auto = "auto",
+        /// Contain overscroll.
+        Contain = "contain",
+        /// No overscroll.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `touch-action`.
+    TouchAction {
+        /// Browser default.
+        Auto = "auto",
+        /// No panning.
+        None = "none",
+        /// Pan X.
+        PanX = "pan-x",
+        /// Pan Y.
+        PanY = "pan-y",
+        /// Manipulation.
+        Manipulation = "manipulation",
+    }
+}
+
+keyword_enum! {
+    /// `text-underline-position`.
+    TextUnderlinePosition {
+        /// UA default.
+        Auto = "auto",
+        /// Below the alphabetic baseline.
+        Under = "under",
+        /// Font metrics.
+        FromFont = "from-font",
+    }
+}
+
+keyword_enum! {
+    /// `font-stretch`.
+    FontStretch {
+        /// 50%.
+        UltraCondensed = "ultra-condensed",
+        /// 62.5%.
+        ExtraCondensed = "extra-condensed",
+        /// 75%.
+        Condensed = "condensed",
+        /// 87.5%.
+        SemiCondensed = "semi-condensed",
+        /// 100%.
+        Normal = "normal",
+        /// 112.5%.
+        SemiExpanded = "semi-expanded",
+        /// 125%.
+        Expanded = "expanded",
+        /// 150%.
+        ExtraExpanded = "extra-expanded",
+        /// 200%.
+        UltraExpanded = "ultra-expanded",
+    }
+}
+
+impl FontStretch {
+    /// Width multiplier applied to shaped advance.
+    #[must_use]
+    pub fn factor(self) -> f32 {
+        match self {
+            Self::UltraCondensed => 0.5,
+            Self::ExtraCondensed => 0.625,
+            Self::Condensed => 0.75,
+            Self::SemiCondensed => 0.875,
+            Self::Normal => 1.0,
+            Self::SemiExpanded => 1.125,
+            Self::Expanded => 1.25,
+            Self::ExtraExpanded => 1.5,
+            Self::UltraExpanded => 2.0,
+        }
+    }
+}
+
+keyword_enum! {
+    /// `font-variant-ligatures`.
+    FontVariantLigatures {
+        /// No ligatures.
+        None = "none",
+        /// Common ligatures.
+        Normal = "normal",
+        /// Common ligatures on.
+        CommonLigatures = "common-ligatures",
+        /// Common ligatures off.
+        NoCommonLigatures = "no-common-ligatures",
+    }
+}
+
+impl FontVariantLigatures {
+    /// Whether `fi`/`fl`/`ff` collapse to a ligature advance.
+    #[must_use]
+    pub fn collapses(self) -> bool {
+        matches!(self, Self::Normal | Self::CommonLigatures)
+    }
+}
+
+keyword_enum! {
+    /// `font-variant-numeric`.
+    FontVariantNumeric {
+        /// Default figures.
+        Normal = "normal",
+        /// Tabular figures.
+        TabularNums = "tabular-nums",
+        /// Oldstyle figures.
+        OldstyleNums = "oldstyle-nums",
+    }
+}
+
+keyword_enum! {
+    /// `font-kerning`.
+    FontKerning {
+        /// UA default (on).
+        Auto = "auto",
+        /// Enable kerning.
+        Normal = "normal",
+        /// Disable kerning.
+        None = "none",
+    }
+}
+
+impl FontKerning {
+    /// Whether pair kerning is applied.
+    #[must_use]
+    pub fn applies(self) -> bool {
+        !matches!(self, Self::None)
+    }
+}
+
+keyword_enum! {
+    /// `scroll-snap-type` (axis or `none`).
+    ScrollSnapType {
+        /// No snapping.
+        None = "none",
+        /// Snap on X.
+        X = "x",
+        /// Snap on Y.
+        Y = "y",
+        /// Snap on both axes.
+        Both = "both",
+        /// Mandatory Y snap.
+        Mandatory = "mandatory",
+    }
+}
+
+keyword_enum! {
+    /// `scroll-snap-align`.
+    ScrollSnapAlign {
+        /// No snap target.
+        None = "none",
+        /// Snap to start.
+        Start = "start",
+        /// Snap to center.
+        Center = "center",
+        /// Snap to end.
+        End = "end",
+    }
+}
+
+keyword_enum! {
+    /// `break-before` / `page-break-before`.
+    BreakBefore {
+        /// Auto.
+        Auto = "auto",
+        /// Force a column break.
+        Column = "column",
+        /// Force a page break.
+        Page = "page",
+        /// Avoid a break.
+        Avoid = "avoid",
+    }
+}
+
+keyword_enum! {
+    /// `break-inside` / `page-break-inside`.
+    BreakInside {
+        /// Auto.
+        Auto = "auto",
+        /// Avoid breaking.
+        Avoid = "avoid",
+    }
+}
+
+keyword_enum! {
+    /// `text-rendering`.
+    TextRendering {
+        /// UA default.
+        Auto = "auto",
+        /// Speed.
+        OptimizeSpeed = "optimizeSpeed",
+        /// Legibility.
+        OptimizeLegibility = "optimizeLegibility",
+        /// Geometric precision.
+        GeometricPrecision = "geometricPrecision",
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-font-smoothing` / `-moz-osx-font-smoothing`.
+    FontSmoothing {
+        /// UA default.
+        Auto = "auto",
+        /// Grayscale.
+        Antialiased = "antialiased",
+        /// Subpixel.
+        SubpixelAntialiased = "subpixel-antialiased",
+        /// Off.
+        None = "none",
+        /// macOS grayscale alias.
+        Grayscale = "grayscale",
+    }
+}
+
+keyword_enum! {
+    /// `transform-style`.
+    TransformStyle {
+        /// Flatten.
+        Flat = "flat",
+        /// Preserve 3D.
+        Preserve3d = "preserve-3d",
+    }
+}
+
+keyword_enum! {
+    /// `backface-visibility`.
+    BackfaceVisibility {
+        /// Paint the back face.
+        Visible = "visible",
+        /// Hide the back face.
+        Hidden = "hidden",
+    }
+}
+
 /// A specified length with its unit. Absolute units are normalised to pixels
 /// at parse time; relative units are resolved during computation.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

@@ -757,6 +757,7 @@ mod tests {
             position: ve_style::BackgroundPosition::default(),
             repeat: ve_style::BackgroundRepeat::NoRepeat,
             fixed: false,
+            pixelated: false,
         });
         let empty = DisplayList::new(Size::new(40.0, 20.0));
         let with = build_scene(&list, 1.0);
@@ -821,6 +822,7 @@ mod tests {
             position: ve_style::BackgroundPosition::default(),
             repeat: ve_style::BackgroundRepeat::NoRepeat,
             fixed: false,
+            pixelated: false,
         });
         let mut cpu = crate::SoftwareRenderer::new();
         let cpu_frame = cpu.render(&list, 32, 16, 1.0).unwrap();

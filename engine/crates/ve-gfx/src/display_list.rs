@@ -7,7 +7,8 @@ use ve_layout::LayoutTree;
 use ve_style::{
     BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
     BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
-    BackgroundAttachment, Color, ContentVisibility, Display, EmptyCells, MixBlendMode, ObjectFit,
+    BackfaceVisibility, BackgroundAttachment, Color, ContentVisibility, Display, EmptyCells,
+    MixBlendMode, ObjectFit,
     Rgba, StyleTree, TextDecorationLine, TextDecorationStyle, TransformOp,
 };
 
@@ -70,6 +71,8 @@ pub enum DisplayItem {
         repeat: BackgroundRepeat,
         /// `background-attachment: fixed` — do not scroll with the list.
         fixed: bool,
+        /// `image-rendering: pixelated` / `crisp-edges`.
+        pixelated: bool,
     },
     /// Linear gradient fill.
     LinearGradient {
@@ -204,6 +207,7 @@ impl DisplayItem {
                 position,
                 repeat,
                 fixed,
+                pixelated,
             } => Self::Image {
                 rect: if *fixed { *rect } else { rect.translate(dx, dy) },
                 handle: *handle,
@@ -212,6 +216,7 @@ impl DisplayItem {
                 position: *position,
                 repeat: *repeat,
                 fixed: *fixed,
+                pixelated: *pixelated,
             },
             Self::LinearGradient {
                 rect,
@@ -373,6 +378,20 @@ impl DisplayList {
         for item in layout.paint_order() {
             let Some(node) = item.node else { continue };
             let style = styles.style(node);
+            if style.backface_visibility == BackfaceVisibility::Hidden {
+                let mut angle = 0.0f32;
+                for op in style.transform.iter().chain(style.rotate.iter()) {
+                    if let TransformOp::Rotate(r) = op {
+                        angle += *r;
+                    }
+                }
+                let wrapped = angle.rem_euclid(std::f32::consts::TAU);
+                if wrapped > std::f32::consts::FRAC_PI_2
+                    && wrapped < 3.0 * std::f32::consts::FRAC_PI_2
+                {
+                    continue;
+                }
+            }
             let clip = layout.clip_of(node);
             let faded = style.opacity < 1.0 - f32::EPSILON;
             let blended = style.mix_blend_mode != MixBlendMode::Normal;
@@ -485,10 +504,17 @@ impl DisplayList {
                         family: style.font_family.clone(),
                     }));
                     if style.text_decoration_line == TextDecorationLine::Underline {
+                        let under = if style.text_underline_position
+                            == ve_style::TextUnderlinePosition::Under
+                        {
+                            style.font_size * 0.2
+                        } else {
+                            0.0
+                        };
                         push_line_decoration(
                             &mut list,
                             item.rect.x(),
-                            item.rect.y() + item.baseline + style.text_underline_offset,
+                            item.rect.y() + item.baseline + style.text_underline_offset + under,
                             item.rect.width().max(1.0),
                             style.text_decoration_thickness.max(1.0),
                             style.text_decoration_color.resolve(style.color),
@@ -554,7 +580,14 @@ impl DisplayList {
                     let (size, position, repeat) = if is_bg {
                         (
                             style.background_size,
-                            style.background_position,
+                            BackgroundPosition {
+                                x: style
+                                    .background_position_x
+                                    .unwrap_or(style.background_position.x),
+                                y: style
+                                    .background_position_y
+                                    .unwrap_or(style.background_position.y),
+                            },
                             style.background_repeat,
                         )
                     } else {
@@ -577,6 +610,10 @@ impl DisplayList {
                     if let Some(c) = clip {
                         list.push(DisplayItem::PushClip(c));
                     }
+                    let bg_blend = is_bg && style.background_blend_mode != MixBlendMode::Normal;
+                    if bg_blend {
+                        list.push(DisplayItem::PushBlend(style.background_blend_mode));
+                    }
                     list.push(DisplayItem::Image {
                         rect: dest,
                         handle: *handle,
@@ -586,7 +623,11 @@ impl DisplayList {
                         repeat,
                         fixed: is_bg
                             && style.background_attachment == BackgroundAttachment::Fixed,
+                        pixelated: style.image_rendering != ve_style::ImageRendering::Auto,
                     });
+                    if bg_blend {
+                        list.push(DisplayItem::PopBlend);
+                    }
                     if clip.is_some() {
                         list.push(DisplayItem::PopClip);
                     }
@@ -1134,6 +1175,56 @@ mod tests {
     }
 
     #[test]
+    fn from_layout_emits_background_blend_mode() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(x.png);background-blend-mode:multiply}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).background_blend_mode,
+            MixBlendMode::Multiply
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushBlend(MixBlendMode::Multiply))),
+            "background-blend-mode missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_hides_backface() {
+        let html = "<style>body{margin:0} #t{width:10px;height:10px;background:red;backface-visibility:hidden;rotate:180deg}</style><div id=t></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#t").unwrap()[0];
+        assert_eq!(
+            styles.style(id).backface_visibility,
+            ve_style::BackfaceVisibility::Hidden
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            !list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)
+            )),
+            "back face should be hidden: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
     fn from_layout_emits_column_rule() {
         let html = "<style>body{margin:0} #c{column-count:2;column-gap:16px;column-rule-width:2px;column-rule-color:blue;width:200px;height:40px}</style>\
                     <div id=c><div style='height:20px'></div><div style='height:20px'></div></div>";
@@ -1562,6 +1653,55 @@ mod tests {
     }
 
     #[test]
+    fn from_layout_uses_background_position_x() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(x.png);background-position-x:10px}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).background_position_x,
+            Some(ve_style::LengthPercentage::Px(10.0))
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image { position, pixelated: false, .. }
+                    if position.x == ve_style::LengthPercentage::Px(10.0)
+            )),
+            "background-position-x missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_marks_pixelated_image() {
+        let html = "<style>body{margin:0} #g{width:10px;height:10px;image-rendering:pixelated}</style><img id=g>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::Image { pixelated: true, .. })),
+            "pixelated missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
     fn fixed_background_does_not_translate() {
         let item = DisplayItem::Image {
             rect: Rect::new(10.0, 20.0, 8.0, 8.0),
@@ -1572,8 +1712,9 @@ mod tests {
                 x: ve_style::LengthPercentage::ZERO,
                 y: ve_style::LengthPercentage::ZERO,
             },
-            repeat: BackgroundRepeat::NoRepeat,
+            repeat:             BackgroundRepeat::NoRepeat,
             fixed: true,
+            pixelated: false,
         };
         let moved = item.translated(5.0, 7.0);
         assert!(

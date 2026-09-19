@@ -9,7 +9,7 @@
 //! [`FloatContext`]: crate::floats::FloatContext
 
 use ve_core::{NodeId, Point, Rect};
-use ve_style::{ComputedStyle, Direction, TextAlign};
+use ve_style::{ComputedStyle, Direction, TextAlign, TextAlignLast, TextWrap};
 
 use crate::block::{
     ContainingBlock, Forced, LayoutCtx, layout_box_at, layout_float, resolve_margins,
@@ -162,6 +162,23 @@ fn used_text_align(style: &ComputedStyle) -> TextAlign {
     }
 }
 
+fn used_text_align_last(style: &ComputedStyle) -> Option<TextAlign> {
+    let align = match style.text_align_last {
+        TextAlignLast::Auto => return None,
+        TextAlignLast::Start => TextAlign::Start,
+        TextAlignLast::End => TextAlign::End,
+        TextAlignLast::Left => TextAlign::Left,
+        TextAlignLast::Right => TextAlign::Right,
+        TextAlignLast::Center => TextAlign::Center,
+        TextAlignLast::Justify => TextAlign::Start,
+    };
+    Some(match (align, style.direction) {
+        (TextAlign::Start, Direction::Rtl) => TextAlign::End,
+        (TextAlign::End, Direction::Rtl) => TextAlign::Start,
+        (a, _) => a,
+    })
+}
+
 /// Lays out the inline-level children of `bx` into `bx.lines`. Returns the
 /// height of the inline formatting context.
 pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect) -> f32 {
@@ -187,7 +204,7 @@ pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect)
     state.line.advance = indent.max(0.0);
     let mut children = std::mem::take(&mut bx.children);
     flow_children(&mut children, &mut state, align);
-    state.finish_line(align);
+    state.finish_line(used_text_align_last(&bx.style).unwrap_or(align));
     bx.lines = state.lines;
     if let Some(n) = bx.style.line_clamp {
         bx.lines.truncate(n.max(1) as usize);
@@ -289,7 +306,7 @@ fn flow_float(child: &mut LayoutBox, state: &mut InlineState<'_, '_>) {
 
 fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>, align: TextAlign) {
     let style: &ComputedStyle = &child.style;
-    let wrap = style.white_space.wraps();
+    let wrap = style.white_space.wraps() && style.text_wrap != TextWrap::Nowrap;
     let mut lines = state
         .ctx
         .shaper

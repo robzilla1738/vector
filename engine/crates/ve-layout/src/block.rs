@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 use ve_core::{Edges, Point, Rect, Size};
 use ve_style::{
-    BoxSizing, ColumnSpan, ComputedStyle, Float, LengthPercentage, LengthPercentageAuto,
-    ListStylePosition, Position, PositionArea, PseudoElement, WritingMode,
+    BoxSizing, BreakBefore, ColumnSpan, ComputedStyle, Float, LengthPercentage,
+    LengthPercentageAuto, ListStylePosition, Position, PositionArea, PseudoElement, WritingMode,
 };
 
 use crate::box_tree::{BoxKind, Fragment, LayoutBox};
@@ -501,6 +501,13 @@ fn layout_block_flow_columns(
     for child in &mut bx.children {
         if child.is_out_of_flow() || child.is_float() {
             continue;
+        }
+        if child.style.break_before == BreakBefore::Column {
+            let y = col_y.iter().copied().fold(content.y(), f32::max);
+            for slot in &mut col_y {
+                *slot = y;
+            }
+            i = 0;
         }
         if child.style.column_span == ColumnSpan::All {
             let y = col_y.iter().copied().fold(content.y(), f32::max);

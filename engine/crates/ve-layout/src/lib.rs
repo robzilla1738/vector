@@ -1734,6 +1734,122 @@ mod tests {
     }
 
     #[test]
+    fn text_wrap_nowrap_keeps_one_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;text-wrap:nowrap;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        assert_eq!(
+            tree.root.find(p).unwrap().lines.len(),
+            1,
+            "text-wrap:nowrap"
+        );
+    }
+
+    #[test]
+    fn text_align_last_center_shifts_last_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:72px;font-size:16px;line-height:20px;text-align:left;text-align-last:right;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert!(lines.len() >= 2, "two lines, got {}", lines.len());
+        let first_x = lines[0].fragments[0].rect.x();
+        let last = lines.last().unwrap();
+        let last_x = last.fragments[0].rect.x();
+        assert!(
+            last_x > first_x + 8.0,
+            "last line right-aligned, first={first_x} last={last_x}"
+        );
+    }
+
+    #[test]
+    fn font_stretch_condensed_narrows_text() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{font-stretch:normal} #b{font-stretch:condensed}</style>\
+             <span id=a>aaaa</span><span id=b>aaaa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() * 0.85,
+            "condensed is narrower, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn font_kerning_tightens_av_pair() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{font-kerning:none} #b{font-kerning:normal}</style>\
+             <span id=a>AV</span><span id=b>AV</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() - 0.5,
+            "kerning tightens AV, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn font_variant_ligatures_collapses_fi() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{font-variant-ligatures:none} #b{font-variant-ligatures:common-ligatures}</style>\
+             <span id=a>fi</span><span id=b>fi</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() - 0.5,
+            "ligature fi is narrower, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn break_before_column_starts_new_row() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{column-count:2;column-gap:0;width:200px}\
+             #c>div{height:10px} #b{break-before:column}</style>\
+             <div id=c><div id=a></div><div id=b></div><div id=d></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (b.x() - a.x()).abs() < 1.0 && b.y() > a.y() + 5.0,
+            "break-before:column starts a new column row, a={a:?} b={b:?}"
+        );
+    }
+
+    #[test]
+    fn hyphens_manual_breaks_at_soft_hyphen() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;hyphens:manual;margin:0}</style>\
+             <p id=p>aa\u{00AD}bbbbbbbb</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "soft hyphen is a wrap opportunity, got {n} lines");
+    }
+
+    #[test]
     fn tab_size_widens_pre_tabs() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0;font-size:16px}\

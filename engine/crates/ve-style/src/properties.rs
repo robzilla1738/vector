@@ -27,7 +27,7 @@ use crate::values::{
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     AnimationDirection, AnimationFillMode, AnimationPlayState,
-    BackgroundAttachment, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontVariant, GridAutoFlow, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba, TextDecorationStyle,
+    Appearance, BackfaceVisibility, BackgroundAttachment, BreakBefore, BreakInside, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontKerning, FontSmoothing, FontStretch, FontVariant, FontVariantLigatures, FontVariantNumeric, GridAutoFlow, Hyphens, ImageRendering, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents, Position, PositionArea, PreferredColorScheme, Rgba, ScrollBehavior, ScrollSnapAlign, ScrollSnapType, TextAlignLast, TextDecorationStyle, TextRendering, TextUnderlinePosition, TextWrap, TouchAction, TransformStyle,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -561,6 +561,13 @@ mod conv {
         }
     }
 
+    pub fn counter(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<i32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(0),
+            _ => integer(v, ctx),
+        }
+    }
+
     pub fn font_size(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
         let parent = ctx.parent_font_size;
         let parent_ctx = LengthContext {
@@ -742,6 +749,18 @@ mod conv {
         }
     }
 
+    pub fn opt_lp(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<LengthPercentage>> {
+        lp(v, ctx).map(Some)
+    }
+
+    pub fn quotes(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" || k == "auto" => Some(String::new()),
+            SpecifiedValue::Str(s) | SpecifiedValue::Keyword(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
     pub fn background_image(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<BackgroundImage> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(BackgroundImage::None),
@@ -907,6 +926,13 @@ mod conv {
         }
     }
 
+    pub fn perspective(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(0.0),
+            _ => length_px(v, ctx),
+        }
+    }
+
     pub fn offset_path(v: &SpecifiedValue, _: &ConvertContext) -> Option<OffsetPath> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(OffsetPath::None),
@@ -1004,6 +1030,12 @@ macro_rules! property_table {
                     "word-wrap" => Some(Self::OverflowWrap),
                     "inset-area" => Some(Self::PositionArea),
                     "-webkit-line-clamp" => Some(Self::LineClamp),
+                    "-webkit-appearance" => Some(Self::Appearance),
+                    "-webkit-font-smoothing" => Some(Self::FontSmoothing),
+                    "-moz-osx-font-smoothing" => Some(Self::FontSmoothing),
+                    "page-break-before" => Some(Self::BreakBefore),
+                    "page-break-inside" => Some(Self::BreakInside),
+                    "page-break-after" => Some(Self::BreakAfter),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -1251,6 +1283,12 @@ property_table! {
     WordSpacing: "word-spacing" => word_spacing: f32 = 0.0, inherited = true, syntax = Single, convert = conv::spacing;
     /// `text-align`
     TextAlign: "text-align" => text_align: TextAlign = TextAlign::Start, inherited = true, syntax = Single, convert = conv::kw::<TextAlign>;
+    /// `text-align-last`
+    TextAlignLast: "text-align-last" => text_align_last: TextAlignLast = TextAlignLast::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextAlignLast>;
+    /// `text-wrap`
+    TextWrap: "text-wrap" => text_wrap: TextWrap = TextWrap::Wrap, inherited = true, syntax = Single, convert = conv::kw::<TextWrap>;
+    /// `hyphens`
+    Hyphens: "hyphens" => hyphens: Hyphens = Hyphens::Manual, inherited = true, syntax = Single, convert = conv::kw::<Hyphens>;
     /// `text-indent`
     TextIndent: "text-indent" => text_indent: LengthPercentage = LengthPercentage::ZERO, inherited = true, syntax = Single, convert = conv::lp;
     /// `text-decoration-line` (single keyword; `text-decoration` aliases to it)
@@ -1263,6 +1301,8 @@ property_table! {
     TextUnderlineOffset: "text-underline-offset" => text_underline_offset: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
     /// `text-decoration-style`
     TextDecorationStyle: "text-decoration-style" => text_decoration_style: TextDecorationStyle = TextDecorationStyle::Solid, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationStyle>;
+    /// `text-underline-position`
+    TextUnderlinePosition: "text-underline-position" => text_underline_position: TextUnderlinePosition = TextUnderlinePosition::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextUnderlinePosition>;
     /// `user-select`
     UserSelect: "user-select" => user_select: UserSelect = UserSelect::Auto, inherited = false, syntax = Single, convert = conv::kw::<UserSelect>;
     /// `will-change` (first ident)
@@ -1381,6 +1421,10 @@ property_table! {
         x: LengthPercentage::ZERO,
         y: LengthPercentage::ZERO,
     }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `background-position-x`
+    BackgroundPositionX: "background-position-x" => background_position_x: Option<LengthPercentage> = None, inherited = false, syntax = Single, convert = conv::opt_lp;
+    /// `background-position-y`
+    BackgroundPositionY: "background-position-y" => background_position_y: Option<LengthPercentage> = None, inherited = false, syntax = Single, convert = conv::opt_lp;
     /// `background-repeat`
     BackgroundRepeat: "background-repeat" => background_repeat: BackgroundRepeat = BackgroundRepeat::Repeat, inherited = false, syntax = Single, convert = conv::kw::<BackgroundRepeat>;
     /// `background-clip`
@@ -1446,6 +1490,36 @@ property_table! {
     Contain: "contain" => contain: Contain = Contain::None, inherited = false, syntax = Single, convert = conv::kw::<Contain>;
     /// `container-type`
     ContainerType: "container-type" => container_type: ContainerType = ContainerType::Normal, inherited = false, syntax = Single, convert = conv::kw::<ContainerType>;
+    /// `container-name`
+    ContainerName: "container-name" => container_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `scroll-margin` (pixels, first value)
+    ScrollMargin: "scroll-margin" => scroll_margin: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `scroll-padding` (pixels, first value)
+    ScrollPadding: "scroll-padding" => scroll_padding: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `scroll-behavior`
+    ScrollBehavior: "scroll-behavior" => scroll_behavior: ScrollBehavior = ScrollBehavior::Auto, inherited = false, syntax = Single, convert = conv::kw::<ScrollBehavior>;
+    /// `overscroll-behavior`
+    OverscrollBehavior: "overscroll-behavior" => overscroll_behavior: OverscrollBehavior = OverscrollBehavior::Auto, inherited = false, syntax = Single, convert = conv::kw::<OverscrollBehavior>;
+    /// `touch-action`
+    TouchAction: "touch-action" => touch_action: TouchAction = TouchAction::Auto, inherited = false, syntax = Single, convert = conv::kw::<TouchAction>;
+    /// `appearance`
+    Appearance: "appearance" => appearance: Appearance = Appearance::Auto, inherited = false, syntax = Single, convert = conv::kw::<Appearance>;
+    /// `image-rendering`
+    ImageRendering: "image-rendering" => image_rendering: ImageRendering = ImageRendering::Auto, inherited = false, syntax = Single, convert = conv::kw::<ImageRendering>;
+    /// `caret-color`
+    CaretColor: "caret-color" => caret_color: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::color;
+    /// `accent-color`
+    AccentColor: "accent-color" => accent_color: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::color;
+    /// `color-scheme`
+    PreferredColorScheme: "color-scheme" => color_scheme: PreferredColorScheme = PreferredColorScheme::Normal, inherited = true, syntax = Single, convert = conv::kw::<PreferredColorScheme>;
+    /// `quotes` (first open quote)
+    Quotes: "quotes" => quotes: String = String::new(), inherited = true, syntax = Single, convert = conv::quotes;
+    /// `list-style-image`
+    ListStyleImage: "list-style-image" => list_style_image: BackgroundImage = BackgroundImage::None, inherited = true, syntax = Single, convert = conv::background_image;
+    /// `counter-reset` (integer)
+    CounterReset: "counter-reset" => counter_reset: i32 = 0, inherited = false, syntax = Single, convert = conv::counter;
+    /// `counter-increment` (integer)
+    CounterIncrement: "counter-increment" => counter_increment: i32 = 0, inherited = false, syntax = Single, convert = conv::counter;
     /// `column-count` (`auto` is `None`)
     ColumnCount: "column-count" => column_count: Option<u32> = None, inherited = false, syntax = Single, convert = conv::column_count;
     /// `column-width` (`auto` is `None`)
@@ -1492,6 +1566,40 @@ property_table! {
     PositionAnchor: "position-anchor" => position_anchor: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
     /// `position-area` / `inset-area`.
     PositionArea: "position-area" => position_area: PositionArea = PositionArea::None, inherited = false, syntax = Single, convert = conv::kw::<PositionArea>;
+    /// `background-blend-mode`
+    BackgroundBlendMode: "background-blend-mode" => background_blend_mode: MixBlendMode = MixBlendMode::Normal, inherited = false, syntax = Single, convert = conv::kw::<MixBlendMode>;
+    /// `font-stretch`
+    FontStretch: "font-stretch" => font_stretch: FontStretch = FontStretch::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontStretch>;
+    /// `font-variant-ligatures`
+    FontVariantLigatures: "font-variant-ligatures" => font_variant_ligatures: FontVariantLigatures = FontVariantLigatures::None, inherited = true, syntax = Single, convert = conv::kw::<FontVariantLigatures>;
+    /// `font-variant-numeric`
+    FontVariantNumeric: "font-variant-numeric" => font_variant_numeric: FontVariantNumeric = FontVariantNumeric::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontVariantNumeric>;
+    /// `font-kerning`
+    FontKerning: "font-kerning" => font_kerning: FontKerning = FontKerning::None, inherited = true, syntax = Single, convert = conv::kw::<FontKerning>;
+    /// `scroll-snap-type`
+    ScrollSnapType: "scroll-snap-type" => scroll_snap_type: ScrollSnapType = ScrollSnapType::None, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapType>;
+    /// `scroll-snap-align`
+    ScrollSnapAlign: "scroll-snap-align" => scroll_snap_align: ScrollSnapAlign = ScrollSnapAlign::None, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapAlign>;
+    /// `orphans`
+    Orphans: "orphans" => orphans: u32 = 2, inherited = true, syntax = Single, convert = conv::tab_size;
+    /// `widows`
+    Widows: "widows" => widows: u32 = 2, inherited = true, syntax = Single, convert = conv::tab_size;
+    /// `break-before`
+    BreakBefore: "break-before" => break_before: BreakBefore = BreakBefore::Auto, inherited = false, syntax = Single, convert = conv::kw::<BreakBefore>;
+    /// `break-after`
+    BreakAfter: "break-after" => break_after: BreakBefore = BreakBefore::Auto, inherited = false, syntax = Single, convert = conv::kw::<BreakBefore>;
+    /// `break-inside`
+    BreakInside: "break-inside" => break_inside: BreakInside = BreakInside::Auto, inherited = false, syntax = Single, convert = conv::kw::<BreakInside>;
+    /// `text-rendering`
+    TextRendering: "text-rendering" => text_rendering: TextRendering = TextRendering::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextRendering>;
+    /// `-webkit-font-smoothing`
+    FontSmoothing: "font-smoothing" => font_smoothing: FontSmoothing = FontSmoothing::Auto, inherited = true, syntax = Single, convert = conv::kw::<FontSmoothing>;
+    /// `transform-style`
+    TransformStyle: "transform-style" => transform_style: TransformStyle = TransformStyle::Flat, inherited = false, syntax = Single, convert = conv::kw::<TransformStyle>;
+    /// `perspective` (pixels; `none` is 0)
+    Perspective: "perspective" => perspective: f32 = 0.0, inherited = false, syntax = Single, convert = conv::perspective;
+    /// `backface-visibility`
+    BackfaceVisibility: "backface-visibility" => backface_visibility: BackfaceVisibility = BackfaceVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<BackfaceVisibility>;
 }
 
 impl ComputedStyle {
@@ -1570,75 +1678,31 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
 pub const DEFERRED_PROPERTIES: &[&str] = &[
-    "background-position-x",
-    "background-position-y",
-    "background-blend-mode",
     "border-image",
-    "font-variant-ligatures",
-    "font-variant-numeric",
     "font-feature-settings",
-    "font-kerning",
-    "font-stretch",
     "font-display",
     "font-optical-sizing",
-    "text-rendering",
-    "text-underline-position",
     "text-size-adjust",
     "-webkit-text-size-adjust",
-    "-webkit-font-smoothing",
-    "-moz-osx-font-smoothing",
     "-webkit-tap-highlight-color",
-    "-webkit-appearance",
-    "appearance",
-    "scroll-behavior",
-    "scroll-margin",
-    "scroll-padding",
-    "scroll-snap-type",
-    "scroll-snap-align",
-    "overscroll-behavior",
-    "touch-action",
-    "image-rendering",
-    "quotes",
-    "counter-reset",
-    "counter-increment",
-    "hyphens",
-    "orphans",
-    "widows",
-    "page-break-before",
-    "page-break-after",
-    "page-break-inside",
-    "break-before",
-    "break-after",
-    "break-inside",
     "speak",
     "src",
     "unicode-range",
-    "transform-style",
     "transform-box",
-    "perspective",
     "perspective-origin",
-    "backface-visibility",
-    "container-name",
-    "container",
-    "accent-color",
-    "color-scheme",
     "forced-color-adjust",
     "print-color-adjust",
-    "text-wrap",
-    "text-align-last",
     "text-justify",
     "hanging-punctuation",
     "-webkit-box-orient",
     "view-transition-name",
     "text-emphasis",
     "ruby-position",
-    "caret-color",
     "font-synthesis",
     "font-language-override",
     "font-palette",
     "math-style",
     "math-depth",
-    "list-style-image",
     "marker-offset",
     "vector-effect",
 ];
@@ -2803,6 +2867,7 @@ pub const SHORTHANDS: &[&str] = &[
     "outline",
     "columns",
     "offset",
+    "container",
 ];
 
 /// Expands a shorthand into longhand `(property, value)` pairs. Returns
@@ -3091,13 +3156,17 @@ pub fn expand_shorthand<'i>(
                     return Some(vec![
                         (P::ListStyleType, values[0].clone()),
                         (P::ListStylePosition, values[0].clone()),
+                        (P::ListStyleImage, values[0].clone()),
                     ]);
                 }
                 let mut ty = SpecifiedValue::Keyword("disc".into());
                 let mut pos = SpecifiedValue::Keyword("outside".into());
+                let mut image = SpecifiedValue::Keyword("none".into());
                 for v in values {
                     if P::ListStylePosition.accepts(&v) {
                         pos = v;
+                    } else if matches!(v, SpecifiedValue::Url(_)) {
+                        image = v;
                     } else if matches!(v, SpecifiedValue::Unsupported) {
                         // `url(...)` image: no marker text change.
                     } else if P::ListStyleType.accepts(&v) {
@@ -3106,7 +3175,31 @@ pub fn expand_shorthand<'i>(
                         return None;
                     }
                 }
-                Some(vec![(P::ListStyleType, ty), (P::ListStylePosition, pos)])
+                Some(vec![
+                    (P::ListStyleType, ty),
+                    (P::ListStylePosition, pos),
+                    (P::ListStyleImage, image),
+                ])
+            }
+            "container" => {
+                let values = parse_components(input, 3)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ContainerName, values[0].clone()),
+                        (P::ContainerType, values[0].clone()),
+                    ]);
+                }
+                let mut name = SpecifiedValue::Keyword("none".into());
+                let mut ty = SpecifiedValue::Keyword("normal".into());
+                for v in values {
+                    if matches!(&v, SpecifiedValue::Keyword(k) if matches!(k.as_str(), "size" | "inline-size" | "normal"))
+                    {
+                        ty = v;
+                    } else if matches!(&v, SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_)) {
+                        name = v;
+                    }
+                }
+                Some(vec![(P::ContainerName, name), (P::ContainerType, ty)])
             }
             "font" => expand_font(input),
             "animation" => {
@@ -3700,11 +3793,52 @@ mod tests {
         ok("stroke", "red");
         ok("stroke-width", "2px");
         ok("font-variant", "small-caps");
+        ok("background-position-x", "10px");
+        ok("background-position-y", "20%");
+        ok("text-align-last", "center");
+        ok("text-wrap", "nowrap");
+        ok("hyphens", "manual");
+        ok("text-underline-position", "under");
+        ok("scroll-margin", "8px");
+        ok("scroll-padding", "12px");
+        ok("scroll-behavior", "smooth");
+        ok("overscroll-behavior", "none");
+        ok("touch-action", "none");
+        ok("appearance", "none");
+        ok("-webkit-appearance", "none");
+        ok("image-rendering", "pixelated");
+        ok("caret-color", "red");
+        ok("accent-color", "blue");
+        ok("color-scheme", "dark");
+        ok("quotes", "\"«\"");
+        ok("list-style-image", "none");
+        ok("container-name", "sidebar");
+        ok("counter-reset", "1");
+        ok("counter-increment", "none");
+        ok("background-blend-mode", "multiply");
+        ok("font-stretch", "condensed");
+        ok("font-variant-ligatures", "none");
+        ok("font-variant-numeric", "tabular-nums");
+        ok("font-kerning", "none");
+        ok("scroll-snap-type", "y");
+        ok("scroll-snap-align", "start");
+        ok("orphans", "3");
+        ok("widows", "3");
+        ok("break-before", "column");
+        ok("break-after", "avoid");
+        ok("break-inside", "avoid");
+        ok("page-break-before", "column");
+        ok("text-rendering", "optimizeLegibility");
+        ok("-webkit-font-smoothing", "antialiased");
+        ok("transform-style", "preserve-3d");
+        ok("perspective", "500px");
+        ok("perspective", "none");
+        ok("backface-visibility", "hidden");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 171);
+        assert_eq!(PropertyId::ALL.len(), 209);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
@@ -3884,7 +4018,14 @@ mod tests {
         );
 
         let out = expand("list-style", "none inside").unwrap();
-        assert_eq!(out[0].1, SpecifiedValue::Keyword("none".into()));
+        assert_eq!(
+            out[0],
+            (
+                PropertyId::ListStyleType,
+                SpecifiedValue::Keyword("none".into())
+            ),
+            "{out:?}"
+        );
         assert_eq!(out[1].1, SpecifiedValue::Keyword("inside".into()));
 
         let out = expand("border-spacing", "4px").unwrap();
@@ -3893,6 +4034,22 @@ mod tests {
             (
                 PropertyId::BorderSpacingY,
                 SpecifiedValue::Length(Length::Px(4.0))
+            )
+        );
+
+        let out = expand("container", "sidebar size").unwrap();
+        assert_eq!(
+            out[0],
+            (
+                PropertyId::ContainerName,
+                SpecifiedValue::Keyword("sidebar".into())
+            )
+        );
+        assert_eq!(
+            out[1],
+            (
+                PropertyId::ContainerType,
+                SpecifiedValue::Keyword("size".into())
             )
         );
 

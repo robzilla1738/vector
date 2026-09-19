@@ -214,7 +214,14 @@ impl MetricShaper {
                 width += style.word_spacing;
             }
         }
-        width + style.letter_spacing * chars as f32
+        let mut width = width + style.letter_spacing * chars as f32;
+        if style.font_variant_ligatures.collapses() {
+            width -= count_common_ligatures(text) as f32 * font_size * 0.15;
+        }
+        if style.font_kerning.applies() {
+            width -= count_kern_pairs(text) as f32 * font_size * 0.1;
+        }
+        width * style.font_stretch.factor()
     }
 
     /// Baseline offset from the top of a line of `line_height` for `style`.
@@ -223,6 +230,36 @@ impl MetricShaper {
         let half_leading = (line_height - style.font_size) / 2.0;
         half_leading + style.font_size * Self::ASCENT_RATIO
     }
+}
+
+fn count_common_ligatures(text: &str) -> usize {
+    let bytes = text.as_bytes();
+    let mut n = 0;
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'f' && matches!(bytes[i + 1], b'i' | b'l' | b'f') {
+            n += 1;
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+    n
+}
+
+fn count_kern_pairs(text: &str) -> usize {
+    let mut chars = text.chars().peekable();
+    let mut n = 0;
+    while let Some(a) = chars.next() {
+        let Some(&b) = chars.peek() else { break };
+        if matches!(
+            (a, b),
+            ('A', 'V') | ('V', 'A') | ('T', 'o') | ('W', 'e') | ('A', 'W') | ('W', 'A')
+        ) {
+            n += 1;
+        }
+    }
+    n
 }
 
 /// Whether `style` lets a word be broken anywhere when it would overflow.
@@ -244,6 +281,7 @@ fn greedy_wrap(
     available: f32,
     wrap: bool,
     break_words: bool,
+    hyphenate: bool,
     height: f32,
     baseline: f32,
     width_of: &dyn Fn(&str) -> f32,
@@ -263,7 +301,7 @@ fn greedy_wrap(
         });
     };
 
-    for (idx, word) in split_words(text) {
+    for (idx, word) in split_words(text, hyphenate) {
         if word == "\n" {
             push_line(line_start, line_end, &mut lines);
             line_start = idx + 1;
@@ -318,11 +356,18 @@ fn greedy_wrap(
 
 /// Splits into `(byte_offset, word)` where a word is a maximal run of
 /// non-space characters plus the following spaces, or a lone `"\n"`.
-fn split_words(text: &str) -> Vec<(usize, &str)> {
+fn split_words(text: &str, hyphenate: bool) -> Vec<(usize, &str)> {
     let mut out = Vec::new();
     let mut start: Option<usize> = None;
     let mut in_trailing_space = false;
     for (i, ch) in text.char_indices() {
+        if hyphenate && ch == '\u{00AD}' {
+            if let Some(s) = start.take() {
+                out.push((s, &text[s..i]));
+            }
+            in_trailing_space = false;
+            continue;
+        }
         if ch == '\n' {
             if let Some(s) = start.take() {
                 out.push((s, &text[s..i]));
@@ -369,6 +414,7 @@ impl TextShaper for MetricShaper {
             available,
             wrap,
             breaks_words(style),
+            style.hyphens != ve_style::Hyphens::None,
             height,
             baseline,
             &width_of,

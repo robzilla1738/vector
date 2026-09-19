@@ -3968,22 +3968,44 @@ impl Page {
 
     /// Scrolls the viewport so `rect` (document coordinates) is visible.
     pub(crate) fn scroll_into_view(&mut self, rect: Rect) {
-        let vw = self.viewport.width;
-        let vh = self.viewport.height;
+        self.scroll_into_view_inset(rect, 0.0, 0.0);
+    }
+
+    fn scroll_into_view_inset(&mut self, rect: Rect, margin: f32, padding: f32) {
+        let vh = (self.viewport.height - padding * 2.0).max(1.0);
+        let vw = (self.viewport.width - padding * 2.0).max(1.0);
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
         let mut changed = false;
-        if rect.y() < self.scroll.y || rect.bottom() > self.scroll.y + vh {
-            let max_y = (self.layout.content_height() - vh).max(0.0);
-            let target = (rect.y() + rect.height() / 2.0 - vh / 2.0).clamp(0.0, max_y);
-            if (target - self.scroll.y).abs() > 0.5 {
-                self.scroll.y = target;
+        let top = rect.y() - margin;
+        let bottom = rect.bottom() + margin;
+        let left = rect.x() - margin;
+        let right = rect.right() + margin;
+        let view_y = self.scroll.y + padding;
+        let view_x = self.scroll.x + padding;
+        if top < view_y {
+            let next = (top - padding).clamp(0.0, max_y);
+            if (next - self.scroll.y).abs() > 0.5 {
+                self.scroll.y = next;
+                changed = true;
+            }
+        } else if bottom > view_y + vh {
+            let next = (bottom - padding - vh).clamp(0.0, max_y);
+            if (next - self.scroll.y).abs() > 0.5 {
+                self.scroll.y = next;
                 changed = true;
             }
         }
-        if rect.x() < self.scroll.x || rect.right() > self.scroll.x + vw {
-            let max_x = (self.layout.root.rect.right() - vw).max(0.0);
-            let target = (rect.x() + rect.width() / 2.0 - vw / 2.0).clamp(0.0, max_x);
-            if (target - self.scroll.x).abs() > 0.5 {
-                self.scroll.x = target;
+        if left < view_x {
+            let next = (left - padding).clamp(0.0, max_x);
+            if (next - self.scroll.x).abs() > 0.5 {
+                self.scroll.x = next;
+                changed = true;
+            }
+        } else if right > view_x + vw {
+            let next = (right - padding - vw).clamp(0.0, max_x);
+            if (next - self.scroll.x).abs() > 0.5 {
+                self.scroll.x = next;
                 changed = true;
             }
         }
@@ -3996,7 +4018,8 @@ impl Page {
     /// point (after scrolling into view). Returns the dispatch point.
     pub fn prepare_pointer(&mut self, id: NodeId, timeout_ms: u64) -> Result<Point> {
         let rect = self.actionable(id, timeout_ms)?;
-        self.scroll_into_view(rect);
+        let style = self.style_tree.style(id);
+        self.scroll_into_view_inset(rect, style.scroll_margin, style.scroll_padding);
         let viewport = Rect::new(
             self.scroll.x,
             self.scroll.y,
@@ -5104,6 +5127,7 @@ impl Page {
             self.scroll.x.clamp(0.0, max_x),
             (self.scroll.y + dy).clamp(0.0, max_y),
         );
+        self.snap_scroll(max_y);
         self.doc.record_scrolled(None);
         ScrollState {
             x: self.scroll.x,
@@ -5111,6 +5135,42 @@ impl Page {
             max_x,
             max_y,
             container: None,
+        }
+    }
+
+    fn snap_scroll(&mut self, max_y: f32) {
+        let snapping = self.doc.elements().any(|id| {
+            self.style_tree.style(id).scroll_snap_type != ve_style::ScrollSnapType::None
+        });
+        if !snapping {
+            return;
+        }
+        let mut best: Option<f32> = None;
+        let mut best_d = f32::INFINITY;
+        for id in self.doc.elements() {
+            let style = self.style_tree.style(id);
+            if style.scroll_snap_align == ve_style::ScrollSnapAlign::None {
+                continue;
+            }
+            let Some(rect) = self.layout.rect_of(id) else {
+                continue;
+            };
+            let y = match style.scroll_snap_align {
+                ve_style::ScrollSnapAlign::Start => rect.y(),
+                ve_style::ScrollSnapAlign::Center => {
+                    rect.y() + rect.height() / 2.0 - self.viewport.height / 2.0
+                }
+                ve_style::ScrollSnapAlign::End => rect.bottom() - self.viewport.height,
+                ve_style::ScrollSnapAlign::None => continue,
+            };
+            let d = (y - self.scroll.y).abs();
+            if d < best_d {
+                best_d = d;
+                best = Some(y);
+            }
+        }
+        if let Some(y) = best {
+            self.scroll.y = y.clamp(0.0, max_y);
         }
     }
 
