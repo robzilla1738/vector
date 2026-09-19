@@ -9449,7 +9449,9 @@
       this.FLOAT = 5126;
       this.TRIANGLES = 4;
       this.UNSIGNED_SHORT = 5123;
+      this.UNPACK_FLIP_Y_WEBGL = 37440;
       this._clear = [0, 0, 0, 0];
+      this._flipY = false;
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
@@ -9544,6 +9546,18 @@
       if (cap === this.BLEND) this._blendOn = false;
     }
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
+    pixelStorei(pname, val) {
+      if (pname === this.UNPACK_FLIP_Y_WEBGL) this._flipY = !!val;
+    }
+    _flipRows(bytes, w, h) {
+      const stride = w * 4;
+      if (!bytes || stride <= 0 || h <= 0 || bytes.length < stride * h) return bytes;
+      let out = "";
+      for (let y = h - 1; y >= 0; y--) {
+        out += bytes.slice(y * stride, y * stride + stride);
+      }
+      return out;
+    }
     colorMask(r, g, b, a) {
       this._colorMask = [!!r, !!g, !!b, a == null ? true : !!a];
     }
@@ -9653,6 +9667,7 @@
         for (let i = 0; i < last.data.length; i++) s += String.fromCharCode(last.data[i]);
         tex._w = last.width;
         tex._h = last.height;
+        if (this._flipY) s = this._flipRows(s, tex._w, tex._h);
         tex._b64 = btoa(s);
       } else if (last instanceof Uint8Array || last instanceof Uint8ClampedArray) {
         const w = Number(arguments[3]) || 0;
@@ -9661,6 +9676,7 @@
         for (let i = 0; i < last.length; i++) s += String.fromCharCode(last[i]);
         tex._w = w;
         tex._h = h;
+        if (this._flipY) s = this._flipRows(s, w, h);
         tex._b64 = btoa(s);
       }
     }

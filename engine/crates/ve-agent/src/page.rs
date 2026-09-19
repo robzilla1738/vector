@@ -1613,6 +1613,9 @@ enum CanvasColorFilter {
     Grayscale(f32),
     Invert(f32),
     Brightness(f32),
+    Contrast(f32),
+    Sepia(f32),
+    Saturate(f32),
 }
 
 /// Software 2D canvas backing store.
@@ -1753,6 +1756,27 @@ impl CanvasSurface {
                     CanvasColorFilter::Brightness(amount) => {
                         let amount = amount.max(0.0);
                         (r * amount, g * amount, b * amount)
+                    }
+                    CanvasColorFilter::Contrast(amount) => {
+                        let amount = amount.max(0.0);
+                        let adj = |c: f32| ((c / 255.0 - 0.5) * amount + 0.5) * 255.0;
+                        (adj(r), adj(g), adj(b))
+                    }
+                    CanvasColorFilter::Sepia(amount) => {
+                        let amount = amount.clamp(0.0, 1.0);
+                        let sr = 0.393 * r + 0.769 * g + 0.189 * b;
+                        let sg = 0.349 * r + 0.686 * g + 0.168 * b;
+                        let sb = 0.272 * r + 0.534 * g + 0.131 * b;
+                        (
+                            r + (sr - r) * amount,
+                            g + (sg - g) * amount,
+                            b + (sb - b) * amount,
+                        )
+                    }
+                    CanvasColorFilter::Saturate(amount) => {
+                        let amount = amount.max(0.0);
+                        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        (y + (r - y) * amount, y + (g - y) * amount, y + (b - y) * amount)
                     }
                 };
                 self.pixels[i] = nr.round().clamp(0.0, 255.0) as u8;
@@ -2992,6 +3016,15 @@ impl Page {
         }
         if let Some(br) = parse_canvas_filter_fn(filter, "brightness") {
             c.color_filter_rect(x, y, w, h, CanvasColorFilter::Brightness(br));
+        }
+        if let Some(ct) = parse_canvas_filter_fn(filter, "contrast") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Contrast(ct));
+        }
+        if let Some(sp) = parse_canvas_filter_fn(filter, "sepia") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Sepia(sp));
+        }
+        if let Some(sat) = parse_canvas_filter_fn(filter, "saturate") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(sat));
         }
         c.ops
     }

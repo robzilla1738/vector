@@ -2187,6 +2187,77 @@ fn canvas_filter_brightness_scales_red() {
 }
 
 #[test]
+fn canvas_filter_contrast_flattens_to_mid_gray() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "contrast(0)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 128, "{v}");
+    assert_eq!(v["g"], 128, "{v}");
+    assert_eq!(v["b"], 128, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_filter_sepia_tints_red() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "sepia(1)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > v["g"].as_u64().unwrap_or(0), "{v}");
+    assert!(v["g"].as_u64().unwrap_or(0) > v["b"].as_u64().unwrap_or(0), "{v}");
+    assert!(v["g"].as_u64().unwrap_or(0) > 20, "{v}");
+}
+
+#[test]
+fn canvas_filter_saturate_zero_greys_red() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "saturate(0)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -5220,6 +5291,35 @@ fn computed_style_exposes_fill_rule_and_stroke_joins() {
 }
 
 #[test]
+fn computed_style_exposes_accent_and_caret_color() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="accent-color:#00ff00;caret-color:#0000ff">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              const accent = cs.accentColor || cs.getPropertyValue("accent-color");
+              const caret = cs.caretColor || cs.getPropertyValue("caret-color");
+              return { accent: String(accent), caret: String(caret) };
+            })()"##,
+        )
+        .unwrap();
+    let accent = v["accent"].as_str().unwrap_or("");
+    let caret = v["caret"].as_str().unwrap_or("");
+    assert!(
+        accent.contains("0, 255, 0") || accent.contains("#00ff00"),
+        "{v}"
+    );
+    assert!(
+        caret.contains("0, 0, 255") || caret.contains("#0000ff"),
+        "{v}"
+    );
+}
+
+#[test]
 fn match_media_change_fires_on_resize() {
     let mut page = open("<title>mq</title>");
     let v = page
@@ -5744,6 +5844,39 @@ fn webgl_color_mask_keeps_red_channel() {
     assert_eq!(v["g"], 255, "{v}");
     assert_eq!(v["b"], 0, "{v}");
     assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_unpack_flip_y_reverses_texture_rows() {
+    let mut page = open(r#"<body><canvas id="c" width="2" height="2"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const pixels = new Uint8Array([
+                255, 0, 0, 255, 255, 0, 0, 255,
+                0, 255, 0, 255, 0, 255, 0, 255
+              ]);
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const top = new Uint8Array(4);
+              const bot = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, top);
+              gl.readPixels(0, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, bot);
+              return { tr: top[0], tg: top[1], br: bot[0], bg: bot[1], cap: gl.UNPACK_FLIP_Y_WEBGL, flip: gl._flipY === true };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 37440, "{v}");
+    assert_eq!(v["flip"], true, "{v}");
+    assert_eq!(v["tr"], 0, "{v}");
+    assert_eq!(v["tg"], 255, "{v}");
+    assert_eq!(v["br"], 255, "{v}");
+    assert_eq!(v["bg"], 0, "{v}");
 }
 
 #[test]

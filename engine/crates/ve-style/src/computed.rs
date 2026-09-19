@@ -405,6 +405,14 @@ impl ComputedStyle {
             PropertyId::StrokeLinejoin => self.stroke_linejoin.to_string(),
             PropertyId::StrokeMiterlimit => format!("{}", self.stroke_miterlimit),
             PropertyId::StrokeDashoffset => format!("{}", self.stroke_dashoffset),
+            PropertyId::AccentColor => match self.accent_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::CaretColor => match self.caret_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
             _ => String::new(),
         }
     }

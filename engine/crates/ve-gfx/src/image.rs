@@ -610,6 +610,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 plot_px(&mut img, xx, y0, color);
             }
         }
+        if deco.contains("overline") {
+            let x0 = x.round() as i32;
+            let y0 = y.round() as i32 - (7.0 * scale).round() as i32;
+            let x1 = x0 + text_w.round() as i32;
+            for xx in x0..x1 {
+                plot_px(&mut img, xx, y0, color);
+            }
+        }
         rest = after;
     }
     rest = full;
@@ -4178,5 +4186,16 @@ mod tests {
         assert_eq!(img.pixel(1, 2), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(3, 2), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_decoration_overline_paints_top() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='7' fill='#ff0000' text-decoration='overline'>I</text></svg>",
+        )
+        .expect("svg overline");
+        assert_eq!(img.pixel(2, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
     }
 }
