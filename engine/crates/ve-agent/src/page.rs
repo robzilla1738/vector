@@ -4296,6 +4296,20 @@ impl Page {
             self.focus(None);
         }
         tracing::debug!(%id, ?point, ?button, "click");
+        let button_code = match button {
+            MouseButton::Left => 0.0,
+            MouseButton::Middle => 1.0,
+            MouseButton::Right => 2.0,
+        };
+        let extra = [("button", ve_script::JsValue::Number(button_code))];
+        let _ = self.dispatch_js_event_init(id, "pointerdown", true, true, Some(point), &extra);
+        let _ = self.dispatch_js_event_init(id, "mousedown", true, true, Some(point), &extra);
+        let _ = self.dispatch_js_event_init(id, "pointerup", true, true, Some(point), &extra);
+        let _ = self.dispatch_js_event_init(id, "mouseup", true, true, Some(point), &extra);
+        if button == MouseButton::Right {
+            let _ = self.dispatch_js_event_init(id, "contextmenu", true, true, Some(point), &extra);
+            return Ok(format!("{} contextmenu", ref_for(id)));
+        }
         if button != MouseButton::Left {
             return Ok(format!(
                 "{} {:?} click (no activation)",
@@ -4303,7 +4317,7 @@ impl Page {
                 button
             ));
         }
-        if self.dispatch_js_event(id, "click", true, true, Some(point)) {
+        if self.dispatch_js_event_init(id, "click", true, true, Some(point), &extra) {
             return Ok(format!("{} click default prevented", ref_for(id)));
         }
         self.activate(id)
@@ -4698,6 +4712,10 @@ impl Page {
         for n in &chain {
             self.doc.mark_dirty(*n, DirtyFlags::STYLE);
         }
+        let _ = self.dispatch_js_event(id, "pointerover", true, true, None);
+        let _ = self.dispatch_js_event(id, "pointerenter", false, false, None);
+        let _ = self.dispatch_js_event(id, "mouseover", true, true, None);
+        let _ = self.dispatch_js_event(id, "mouseenter", false, false, None);
         Ok(format!("hovering {}", ref_for(id)))
     }
 

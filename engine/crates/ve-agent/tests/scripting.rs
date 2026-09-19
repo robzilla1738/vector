@@ -5,7 +5,8 @@
 #![cfg(feature = "v8")]
 
 use ve_agent::{
-    DEFAULT_VIEWPORT, ObservationRequest, Page, Program, ProgramStatus, Step, StepBase, StepStatus,
+    DEFAULT_VIEWPORT, MouseButton, ObservationRequest, Page, Program, ProgramStatus, Step, StepBase,
+    StepStatus,
 };
 use ve_script::{JsVm, V8Vm};
 
@@ -287,4 +288,41 @@ fn program_fill_and_submit_sets_the_output() {
         .evaluate("document.getElementById('out').textContent")
         .unwrap();
     assert_eq!(out, serde_json::json!("submitted:Ada"));
+}
+
+#[test]
+fn events_log_human_and_agent_clicks_are_byte_identical() {
+    let html = include_str!("../../../../fixtures/events-log/index.html");
+    let run = |human: bool| {
+        let mut page = open(html, true);
+        let _ = page.settle(200);
+        let id = page.document().element_by_id("b").expect("#b");
+        if human {
+            let point = page.prepare_pointer(id, 5_000).unwrap();
+            let scroll = page.scroll_offset();
+            page.click_point(point.x - scroll.x, point.y - scroll.y, MouseButton::Left)
+                .unwrap();
+        } else {
+            page.click(id, MouseButton::Left, 5_000).unwrap();
+        }
+        page.evaluate("document.getElementById('log').textContent")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let agent = run(false);
+    let human = run(true);
+    assert!(!agent.is_empty(), "agent click produced no events-log");
+    assert_eq!(agent, human, "human={human} agent={agent}");
+    let parsed: Vec<serde_json::Value> = serde_json::from_str(&agent).unwrap();
+    let types: Vec<&str> = parsed
+        .iter()
+        .filter_map(|e| e.get("type").and_then(|t| t.as_str()))
+        .collect();
+    assert_eq!(
+        types,
+        ["pointerdown", "mousedown", "pointerup", "mouseup", "click"],
+        "{agent}"
+    );
 }
