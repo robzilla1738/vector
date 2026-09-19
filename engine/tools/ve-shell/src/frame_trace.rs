@@ -146,3 +146,80 @@ pub fn load_replay(path: &Path) -> std::io::Result<Vec<ReplayEvent>> {
     let bytes = std::fs::read(path)?;
     serde_json::from_slice(&bytes).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trace_frames_replay_json_has_zero_from_layout_on_wheel() {
+        let path = format!("/tmp/vector-trace-replay-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        browser
+            .new_tab(
+                "<html><body style='height:4000px'><p>tall</p></body></html>",
+                "https://trace.test/wheel",
+            )
+            .unwrap();
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let _ = browser.handle_event(NativeEvent::PointerMove {
+            x: stage.x() + 20.0,
+            y: stage.y() + 20.0,
+        });
+        let _ = browser.present();
+        let before = browser.from_layout_calls();
+        assert!(before > 0, "first present must build a display list");
+        let events = [
+            ReplayEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                delay_ms: 0,
+            },
+            ReplayEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                delay_ms: 0,
+            },
+            ReplayEvent::Wheel {
+                dx: 0.0,
+                dy: 40.0,
+                delay_ms: 0,
+            },
+        ];
+        let trace = replay(&mut browser, &events);
+        let wheels: Vec<_> = trace
+            .samples
+            .iter()
+            .filter(|s| s.event.as_deref() == Some("wheel"))
+            .collect();
+        let paints: Vec<_> = trace.samples.iter().filter(|s| s.kind == "paint").collect();
+        assert_eq!(wheels.len(), 3);
+        assert_eq!(paints.len(), 3);
+        assert_eq!(
+            browser.from_layout_calls(),
+            before,
+            "wheel replay must not rebuild the display list"
+        );
+        for sample in &trace.samples {
+            assert_eq!(sample.from_layout, before);
+        }
+        let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/perf/frame-trace-replay.json");
+        let doc = serde_json::json!({
+            "backend": "ve-shell --replay-input",
+            "test": "trace_frames_replay_json_has_zero_from_layout_on_wheel",
+            "events": 3,
+            "fromLayoutBefore": before,
+            "fromLayoutAfter": browser.from_layout_calls(),
+            "deltaFromLayout": 0,
+            "paints": paints.len(),
+            "jank": paints.iter().any(|s| s.jank),
+            "notes": "Wheel replay through frame_trace::replay. Not an Apple-silicon published score."
+        });
+        let _ = std::fs::create_dir_all(ev.parent().unwrap());
+        let _ = std::fs::write(&ev, serde_json::to_vec_pretty(&doc).unwrap());
+        let _ = std::fs::remove_file(&path);
+    }
+}

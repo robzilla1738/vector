@@ -1,0 +1,11 @@
+{
+  "backend": "ve-shell --replay-input",
+  "deltaFromLayout": 0,
+  "events": 3,
+  "fromLayoutAfter": 1,
+  "fromLayoutBefore": 1,
+  "jank": false,
+  "notes": "Wheel replay through frame_trace::replay. Not an Apple-silicon published score.",
+  "paints": 3,
+  "test": "trace_frames_replay_json_has_zero_from_layout_on_wheel"
+}
