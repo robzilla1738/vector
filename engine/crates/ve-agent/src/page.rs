@@ -907,6 +907,16 @@ fn sample_pattern(
         .unwrap_or([0, 0, 0, 0])
 }
 
+fn glyph5x7(ch: char) -> [u8; 5] {
+    match ch {
+        ' ' | '\t' => [0, 0, 0, 0, 0],
+        'I' | 'i' | '1' | '|' => [0x00, 0x00, 0x7F, 0x00, 0x00],
+        'X' | 'x' => [0x63, 0x14, 0x08, 0x14, 0x63],
+        'O' | 'o' | '0' => [0x3E, 0x41, 0x41, 0x41, 0x3E],
+        _ => [0x7F, 0x41, 0x41, 0x41, 0x7F],
+    }
+}
+
 fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
     let sa = u32::from(src[3]);
     let da = u32::from(dst[3]);
@@ -1392,10 +1402,16 @@ impl CanvasSurface {
     }
 
     fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4]) {
-        // 5×7 bitmap: one filled cell per glyph so fillText is not a no-op.
         let mut cx = x;
-        for _ in text.chars() {
-            self.fill_rect(cx, y - 7, 5, 7, color);
+        for ch in text.chars() {
+            let cols = glyph5x7(ch);
+            for (i, bits) in cols.iter().enumerate() {
+                for row in 0..7 {
+                    if bits & (1 << row) != 0 {
+                        self.fill_rect(cx + i as i32, y - 7 + row, 1, 1, color);
+                    }
+                }
+            }
             cx += 6;
         }
         self.ops += 1;
@@ -2012,6 +2028,21 @@ impl Page {
             .or_insert_with(|| CanvasSurface::new(300, 150));
         c.composite = CompositeOp::parse(op);
         c.ops
+    }
+
+    pub(crate) fn canvas_create_pattern_data(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    ) -> Option<u64> {
+        if width == 0 || height == 0 {
+            return None;
+        }
+        self.next_canvas_pattern += 1;
+        let id = self.next_canvas_pattern;
+        self.canvas_patterns.insert(id, (width, height, pixels));
+        Some(id)
     }
 
     pub(crate) fn canvas_create_pattern(&mut self, src: NodeId) -> Option<u64> {

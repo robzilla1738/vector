@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest"
         )
     );
     assert_eq!(
@@ -372,6 +372,42 @@ fn native_bindings_install_element_id_accessor() {
         )
         .unwrap(),
         serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').localName")
+            .unwrap(),
+        serde_json::json!("p")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').namespaceURI")
+            .unwrap(),
+        serde_json::json!("http://www.w3.org/1999/xhtml")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').prefix")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.querySelector('#y').id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').closest('body').tagName")
+            .unwrap(),
+        serde_json::json!("BODY")
+    );
+    page.evaluate("document.getElementById('y').setAttribute('data-c', '1')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').cloneNode(true).getAttribute('data-c')")
+            .unwrap(),
+        serde_json::json!("1")
+    );
+    assert_eq!(
+        page.evaluate("document.body.contains(document.getElementById('y').cloneNode(false))")
+            .unwrap(),
+        serde_json::json!(false)
     );
 }
 

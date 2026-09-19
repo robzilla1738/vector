@@ -934,6 +934,68 @@ fn canvas_destination_over_keeps_dst() {
 }
 
 #[test]
+fn canvas_create_pattern_from_image_data() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              var ctx = dst.getContext("2d");
+              var data = ctx.createImageData(2, 2);
+              for (var i = 0; i < data.data.length; i += 4) {
+                data.data[i] = 0;
+                data.data[i + 1] = 255;
+                data.data[i + 2] = 0;
+                data.data[i + 3] = 255;
+              }
+              var pat = ctx.createPattern(data, "repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 4, 4);
+              var a = ctx.getImageData(0, 0, 1, 1).data;
+              var b = ctx.getImageData(3, 3, 1, 1).data;
+              return { encoded: String(pat), ag: a[1], aa: a[3], bg: b[1], ba: b[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["encoded"].as_str().unwrap_or("").contains("ve-pat:"),
+        "{v}"
+    );
+    assert_eq!(v["ag"], 255, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+    assert_eq!(v["bg"], 255, "{v}");
+    assert_eq!(v["ba"], 255, "{v}");
+}
+
+#[test]
+fn canvas_fill_text_paints_distinct_glyphs() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.fillText("I", 0, 8);
+              ctx.fillText(" ", 8, 8);
+              var i = ctx.getImageData(2, 1, 1, 1).data;
+              var space = ctx.getImageData(10, 1, 1, 1).data;
+              var left = ctx.getImageData(0, 1, 1, 1).data;
+              return { ig: i[1], ia: i[3], sa: space[3], la: left[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ig"], 255, "{v}");
+    assert_eq!(v["ia"], 255, "{v}");
+    assert_eq!(v["sa"], 0, "{v}");
+    assert_eq!(v["la"], 0, "{v}");
+}
+
+#[test]
 fn canvas_is_point_in_path_hits_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

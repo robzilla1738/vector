@@ -653,6 +653,30 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeLookupNamespaceURI", lookup_ns)?;
+            let local_name = v8::FunctionTemplate::builder(native_element_local_name)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLocalName", local_name)?;
+            let prefix = v8::FunctionTemplate::builder(native_element_prefix)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativePrefix", prefix)?;
+            let ns_uri = v8::FunctionTemplate::builder(native_element_namespace_uri)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNamespaceURI", ns_uri)?;
+            let clone = v8::FunctionTemplate::builder(native_node_clone_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCloneNode", clone)?;
+            let qsa = v8::FunctionTemplate::builder(native_element_query_selector)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeQuerySelector", qsa)?;
+            let closest = v8::FunctionTemplate::builder(native_element_closest)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeClosest", closest)?;
             Some(())
         })?;
         self.eval(
@@ -697,6 +721,11 @@ impl JsVm for V8Vm {
     Node.prototype.compareDocumentPosition = globalThis.__veNativeCompareDocumentPosition;
     Node.prototype.lookupPrefix = globalThis.__veNativeLookupPrefix;
     Node.prototype.lookupNamespaceURI = globalThis.__veNativeLookupNamespaceURI;
+    Node.prototype.cloneNode = function (deep) {
+      var wrap = globalThis.__veWrap;
+      var h = globalThis.__veNativeCloneNode.call(this, !!deep);
+      return typeof wrap === "function" ? wrap(h) : h;
+    };
   }
   def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
   def(Element.prototype, "outerHTML", globalThis.__veNativeOuterHTMLGet, globalThis.__veNativeOuterHTMLSet);
@@ -706,7 +735,42 @@ impl JsVm for V8Vm {
   Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
   Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
   Element.prototype.matches = globalThis.__veNativeMatches;
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI";
+  Object.defineProperty(Element.prototype, "localName", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativeLocalName
+  });
+  Object.defineProperty(Element.prototype, "prefix", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativePrefix
+  });
+  Object.defineProperty(Element.prototype, "namespaceURI", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativeNamespaceURI
+  });
+  var wrapNode = function (h) {
+    var wrap = globalThis.__veWrap;
+    return typeof wrap === "function" ? wrap(h) : h;
+  };
+  Element.prototype.querySelector = function (s) {
+    return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
+  };
+  Element.prototype.closest = function (s) {
+    return wrapNode(globalThis.__veNativeClosest.call(this, s));
+  };
+  if (typeof Document !== "undefined") {
+    Document.prototype.querySelector = function (s) {
+      return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
+    };
+  }
+  if (typeof DocumentFragment !== "undefined") {
+    DocumentFragment.prototype.querySelector = function (s) {
+      return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
+    };
+  }
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1544,6 +1608,104 @@ fn native_node_lookup_namespace_uri(
     };
     let value = call_dom_host(scope, &[JsValue::from("lookupNamespaceURI"), handle, prefix]);
     native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_set_handle_or_null(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+) {
+    match value {
+        Some(JsValue::Number(n)) => {
+            rv.set(v8::Number::new(scope, n).into());
+        }
+        _ => rv.set_null(),
+    }
+}
+
+fn native_element_local_name(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("localName"), handle]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_element_prefix(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("prefix"), handle]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_element_namespace_uri(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("namespaceURI"), handle]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_node_clone_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let deep = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Bool(false)
+    };
+    let value = call_dom_host(scope, &[JsValue::from("cloneNode"), handle, deep]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_element_query_selector(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("querySelector"), handle, sel]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_element_closest(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("closest"), handle, sel]);
+    native_set_handle_or_null(scope, &mut rv, value);
 }
 
 fn looks_like_module(source: &str) -> bool {

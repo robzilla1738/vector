@@ -2203,6 +2203,14 @@ pub(crate) fn host_call(
                 .canvas_create_pattern(src)
                 .map_or(JsValue::Null, |id| JsValue::Number(id as f64)))
         }
+        "canvasCreatePatternData" => {
+            let w = arg_f64(args, 0) as u32;
+            let h = arg_f64(args, 1) as u32;
+            let bytes = ve_net::base64_decode(arg_str(args, 2).as_bytes()).unwrap_or_default();
+            Ok(page
+                .canvas_create_pattern_data(w, h, bytes)
+                .map_or(JsValue::Null, |id| JsValue::Number(id as f64)))
+        }
         "canvasDrawImage" => {
             let id = live(page, args, 0)?;
             let src = live(page, args, 1)?;

@@ -670,6 +670,7 @@
     return v.__h || 0;
   }
   globalThis.__veDomProfile = () => ({ nodes: nodes.size });
+  globalThis.__veWrap = wrap;
   class NodeList {}
   Object.defineProperty(NodeList, Symbol.hasInstance, {
     value(v) {
@@ -4367,8 +4368,14 @@
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'createPattern' on 'CanvasRenderingContext2D': 2 arguments required, but only " + arguments.length + " present.");
       }
-      if (!img || img.__h == null) return null;
-      const id = D("canvasCreatePattern", img.__h);
+      let id = null;
+      if (img && img.__h != null) {
+        id = D("canvasCreatePattern", img.__h);
+      } else if (img && img.data && img.width && img.height) {
+        let s = "";
+        for (let i = 0; i < img.data.length; i++) s += String.fromCharCode(img.data[i]);
+        id = D("canvasCreatePatternData", img.width, img.height, btoa(s));
+      }
       if (id == null) return null;
       const p = Object.create(CanvasPattern.prototype);
       p._id = id;
