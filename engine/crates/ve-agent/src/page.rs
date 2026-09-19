@@ -1861,6 +1861,7 @@ impl Page {
             ve_html::ParseOptions {
                 scripting_enabled: self.scripting.is_some(),
                 chunk_size: 16 * 1024,
+                max_bytes: Some(ve_html::HTML_BYTES_CAP),
             },
         );
         if self.doc.node_count() > 1 || !self.history.is_empty() {

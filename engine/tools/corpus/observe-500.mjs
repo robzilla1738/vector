@@ -22,6 +22,7 @@ const UA =
 const CONCURRENCY = Number(process.env.VECTOR_CORPUS_CONCURRENCY || 6);
 const TIMEOUT_MS = Number(process.env.VECTOR_CORPUS_TIMEOUT_MS || 8000);
 const RETRIES = Number(process.env.VECTOR_CORPUS_RETRIES || 1);
+const HTML_BYTES_CAP = 256_000;
 
 function readExisting() {
   if (!existsSync(out)) return {};
@@ -123,7 +124,9 @@ const results = await mapPool(corpus.urls, CONCURRENCY, async (url, idx) => {
   const r = await fetchWithRetry(url);
   if (r.ok && r.text) {
     const name = String(idx).padStart(3, "0");
-    writeFileSync(join(htmlDir, `${name}.html`), r.text);
+    const body =
+      r.text.length > HTML_BYTES_CAP ? r.text.slice(0, HTML_BYTES_CAP) : r.text;
+    writeFileSync(join(htmlDir, `${name}.html`), body);
   }
   return { url, ...r };
 });

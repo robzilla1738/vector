@@ -4414,6 +4414,7 @@ mod tests {
         let mut tokens = Vec::new();
         let mut unsupported = 0u32;
         let mut n = 0u32;
+        let mut slowest = (0u64, String::new());
         let mut engine = crate::VectorEngine::new(crate::EngineConfig {
             offline: true,
             security_profile: crate::SecurityProfile::Production,
@@ -4426,11 +4427,11 @@ mod tests {
             .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("html"))
             .collect();
         paths.sort();
-        // Cap: a full 500-body dir is hundreds of MB and OOMs the test process.
-        const LIVE_HTML_CAP: usize = 60;
-        if paths.len() > LIVE_HTML_CAP {
-            let step = (paths.len() / LIVE_HTML_CAP).max(1);
-            paths = paths.into_iter().step_by(step).take(LIVE_HTML_CAP).collect();
+        // Debug: even-sample 60. Release: every saved body (parse stops at 256 KB).
+        let live_html_cap = if cfg!(debug_assertions) { 60 } else { paths.len() };
+        if paths.len() > live_html_cap {
+            let step = (paths.len() / live_html_cap).max(1);
+            paths = paths.into_iter().step_by(step).take(live_html_cap).collect();
         }
         for path in paths {
             let html = std::fs::read_to_string(&path).unwrap_or_default();
@@ -4456,8 +4457,12 @@ mod tests {
             match engine.observe(opened.page, &crate::ObservationRequest::default()) {
                 Ok(obs) => {
                     samples.push(t_obs.elapsed().as_micros() as u64);
-                    open_to_obs.push(t_open.elapsed().as_micros() as u64);
+                    let opened_us = t_open.elapsed().as_micros() as u64;
+                    open_to_obs.push(opened_us);
                     tokens.push(obs.observation.content.stats.approx_tokens as u64);
+                    if opened_us > slowest.0 {
+                        slowest = (opened_us, stem);
+                    }
                 }
                 Err(_) => unsupported += 1,
             }
@@ -4506,14 +4511,18 @@ mod tests {
             doc["observe"]["p95Ms"] = serde_json::json!(p95);
             doc["observe"]["n"] = serde_json::json!(n);
             doc["observe"]["kind"] = serde_json::json!("fetched-html-bodies");
+            doc["observe"]["rustcDebug"] = serde_json::json!(cfg!(debug_assertions));
             doc["openToObserve"] = serde_json::json!({
                 "n": open_to_obs.len(),
                 "p50Ms": open_p50,
                 "p95Ms": open_p95,
                 "maxMs": open_max,
+                "slowest": slowest.1,
+                "htmlBytesCap": 256_000,
+                "rustcDebug": cfg!(debug_assertions),
                 "unit": "ms",
                 "kind": "fetched-html-bodies",
-                "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. Not an Apple-silicon published score."
+                "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. HTML parse stops at 256 KB so multi-MB specs do not take a full cascade. Not an Apple-silicon published score."
             });
             doc["snapshotTokens"] = serde_json::json!({
                 "n": tokens.len(),
@@ -4529,11 +4538,19 @@ mod tests {
             let _ = std::fs::write(&ev_path, serde_json::to_vec_pretty(&doc).unwrap());
         }
         assert!(n >= 1);
-        assert!(
-            open_p95 <= 300.0,
-            "open→observe p95 {open_p95} ms (target ≤ 300)"
-        );
         assert!(tok_p95 <= 3000, "snapshot tokens p95 {tok_p95} over 3000");
+        if !cfg!(debug_assertions) {
+            assert!(
+                open_p95 <= 300.0,
+                "open→observe p95 {open_p95} ms (target ≤ 300)"
+            );
+            assert!(
+                open_max <= 1000.0,
+                "open→observe max {open_max} ms on {} (target ≤ 1000)",
+                slowest.1
+            );
+            assert!(p95 <= 5.0, "compact observe p95 {p95} ms (target ≤ 5)");
+        }
     }
 
     #[test]
