@@ -857,6 +857,14 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeBoundingRect", bounding)?;
+            let dataset = v8::FunctionTemplate::builder(native_element_dataset)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeDataset", dataset)?;
+            let set_dataset = v8::FunctionTemplate::builder(native_element_set_dataset)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSetDataset", set_dataset)?;
             Some(())
         })?;
         self.eval(
@@ -981,6 +989,33 @@ impl JsVm for V8Vm {
   });
   Object.defineProperty(Element.prototype, "clientHeight", {
     configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "clientHeight"); }
+  });
+  Object.defineProperty(Element.prototype, "dataset", {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      if (!this || this.__h == null) throw new TypeError("Illegal invocation");
+      var html = typeof HTMLElement !== "undefined" && this instanceof HTMLElement;
+      var svg = typeof SVGElement !== "undefined" && this instanceof SVGElement;
+      var math = typeof MathMLElement !== "undefined" && this instanceof MathMLElement;
+      if (!html && !svg && !math) return undefined;
+      var self = this;
+      var raw = globalThis.__veNativeDataset.call(this) || {};
+      return new Proxy(raw, {
+        set: function (t, k, v) {
+          if (typeof k !== "string") return false;
+          t[k] = String(v);
+          globalThis.__veNativeSetDataset.call(self, k, String(v));
+          return true;
+        },
+        deleteProperty: function (t, k) {
+          delete t[k];
+          var attr = "data-" + String(k).replace(/[A-Z]/g, function (c) { return "-" + c.toLowerCase(); });
+          globalThis.__veNativeRemoveAttribute.call(self, attr);
+          return true;
+        }
+      });
+    }
   });
   Element.prototype.closest = function (s) {
     return wrapNode(globalThis.__veNativeClosest.call(this, s));
@@ -1162,7 +1197,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,getBoundingClientRect";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,getBoundingClientRect,dataset";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2668,6 +2703,33 @@ fn native_element_bounding_rect(
     };
     let value = call_dom_host(scope, &[JsValue::from("boundingRect"), handle]).unwrap_or(empty);
     rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_dataset(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let empty = JsValue::Object(Default::default());
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &empty));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("dataset"), handle]).unwrap_or(empty);
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_set_dataset(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let key = native_arg(scope, &args, 0);
+    let value = native_arg(scope, &args, 1);
+    let _ = call_dom_host(scope, &[JsValue::from("setDataset"), handle, key, value]);
 }
 
 fn looks_like_module(source: &str) -> bool {
