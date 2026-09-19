@@ -9485,6 +9485,19 @@
       this.FRAMEBUFFER = 36160;
       this.COLOR_ATTACHMENT0 = 36064;
       this.TEXTURE_2D = 3553;
+      this.TEXTURE_MAG_FILTER = 10240;
+      this.TEXTURE_MIN_FILTER = 10241;
+      this.TEXTURE_WRAP_S = 10242;
+      this.TEXTURE_WRAP_T = 10243;
+      this.NEAREST = 9728;
+      this.LINEAR = 9729;
+      this.NEAREST_MIPMAP_NEAREST = 9984;
+      this.LINEAR_MIPMAP_NEAREST = 9985;
+      this.NEAREST_MIPMAP_LINEAR = 9986;
+      this.LINEAR_MIPMAP_LINEAR = 9987;
+      this.REPEAT = 10497;
+      this.CLAMP_TO_EDGE = 33071;
+      this.MIRRORED_REPEAT = 33648;
       this.SCISSOR_TEST = 3089;
       this.VIEWPORT = 2978;
       this.LINE_WIDTH = 2849;
@@ -9532,6 +9545,7 @@
       this.INVERT = 5386;
       this.FRONT = 1028;
       this.BACK = 1029;
+      this.FRONT_AND_BACK = 1032;
       this.CCW = 2304;
       this.CW = 2305;
       this._clear = [0, 0, 0, 0];
@@ -9563,6 +9577,8 @@
       this._stencilFail = 7680;
       this._stencilZFail = 7680;
       this._stencilZPass = 7680;
+      this._stencilFront = null;
+      this._stencilBack = null;
       this._blendA = [1, 0];
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
@@ -9624,8 +9640,10 @@
       const [r, g, b, a] = this._clear;
       if (this._fb && this._fb._tex) {
         const tex = this._fb._tex;
-        const w = tex._w || this.drawingBufferWidth || 8;
-        const h = tex._h || this.drawingBufferHeight || 8;
+        const level = this._fb._level || 0;
+        const image = tex._levels && tex._levels[level];
+        const w = image ? image.w : (tex._w || this.drawingBufferWidth || 8);
+        const h = image ? image.h : (tex._h || this.drawingBufferHeight || 8);
         const cr = Math.max(0, Math.min(255, Math.round(r * 255)));
         const cg = Math.max(0, Math.min(255, Math.round(g * 255)));
         const cb = Math.max(0, Math.min(255, Math.round(b * 255)));
@@ -9635,6 +9653,7 @@
         tex._w = w;
         tex._h = h;
         tex._b64 = btoa(s);
+        tex._levels[level] = { w, h, b64: tex._b64 };
         return;
       }
       const c = this.canvas;
@@ -9648,6 +9667,23 @@
       });
     }
     readPixels(x, y, w, h, _format, _type, dst) {
+      if (this._fb && this._fb._tex && dst) {
+        const level = this._fb._level || 0;
+        const tex = this._fb._tex;
+        const image = tex._levels && tex._levels[level];
+        if (!image) return;
+        const bin = atob(image.b64 || "");
+        let out = 0;
+        for (let row = 0; row < (Number(h) || 0); row++) {
+          for (let col = 0; col < (Number(w) || 0); col++) {
+            const src = ((Number(y) + row) * image.w + Number(x) + col) * 4;
+            for (let channel = 0; channel < 4 && out < dst.length; channel++) {
+              dst[out++] = bin.charCodeAt(src + channel) || 0;
+            }
+          }
+        }
+        return;
+      }
       const c = this.canvas;
       if (!c || c.__h == null || !dst) return;
       const r = D("canvasGetImageData", c.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0) || {};
@@ -9729,6 +9765,18 @@
       this._stencilFunc = Number(func) || this.ALWAYS;
       this._stencilRef = Number(ref) || 0;
       this._stencilMask = mask == null ? 255 : (Number(mask) || 0);
+      this._stencilFront = null;
+      this._stencilBack = null;
+    }
+    stencilFuncSeparate(face, func, ref, mask) {
+      const update = (state) => ({
+        ...(state || this._stencilStateDefaults()),
+        func: Number(func) || this.ALWAYS,
+        ref: Number(ref) || 0,
+        mask: mask == null ? 255 : (Number(mask) || 0),
+      });
+      if (face === this.FRONT || face === this.FRONT_AND_BACK) this._stencilFront = update(this._stencilFront);
+      if (face === this.BACK || face === this.FRONT_AND_BACK) this._stencilBack = update(this._stencilBack);
     }
     stencilMask(mask) {
       this._stencilWriteMask = mask == null ? 255 : (Number(mask) || 0);
@@ -9740,6 +9788,18 @@
       this._stencilFail = Number(fail) || this.KEEP;
       this._stencilZFail = Number(zfail) || this.KEEP;
       this._stencilZPass = Number(zpass) || this.KEEP;
+      this._stencilFront = null;
+      this._stencilBack = null;
+    }
+    stencilOpSeparate(face, fail, zfail, zpass) {
+      const update = (state) => ({
+        ...(state || this._stencilStateDefaults()),
+        fail: Number(fail) || this.KEEP,
+        zfail: Number(zfail) || this.KEEP,
+        zpass: Number(zpass) || this.KEEP,
+      });
+      if (face === this.FRONT || face === this.FRONT_AND_BACK) this._stencilFront = update(this._stencilFront);
+      if (face === this.BACK || face === this.FRONT_AND_BACK) this._stencilBack = update(this._stencilBack);
     }
     lineWidth(w) { this._lineWidth = Math.max(1, Number(w) || 1); }
     pixelStorei(pname, val) {
@@ -9958,10 +10018,26 @@
       if (func === this.GEQUAL) return a >= b;
       return true;
     }
-    _applyStencilOp(di, op) {
+    _stencilStateDefaults() {
+      return {
+        func: this._stencilFunc,
+        ref: this._stencilRef,
+        mask: this._stencilMask,
+        fail: this._stencilFail,
+        zfail: this._stencilZFail,
+        zpass: this._stencilZPass,
+      };
+    }
+    _stencilStateFor(pts) {
+      const cross = (pts[1][0] - pts[0][0]) * (pts[2][1] - pts[0][1])
+        - (pts[1][1] - pts[0][1]) * (pts[2][0] - pts[0][0]);
+      const front = this._frontFace === this.CW ? cross < 0 : cross > 0;
+      return (front ? this._stencilFront : this._stencilBack) || this._stencilStateDefaults();
+    }
+    _applyStencilOp(di, op, ref) {
       let v = this._stencil[di] || 0;
       if (op === this.ZERO) v = 0;
-      else if (op === this.REPLACE) v = this._stencilRef & 255;
+      else if (op === this.REPLACE) v = ref & 255;
       else if (op === this.INCR) v = Math.min(255, v + 1);
       else if (op === this.DECR) v = Math.max(0, v - 1);
       else if (op === this.INVERT) v = (~v) & 255;
@@ -10010,6 +10086,7 @@
       const src = D("canvasGetImageData", c.__h, x, y, w, h) || {};
       const srcBin = atob(src.b64 || "");
       const z = this._triZ(pts);
+      const stencil = this._stencilStateFor(pts);
       const cw = c.width;
       let out = "";
       const n = Math.max(destBin.length, srcBin.length);
@@ -10041,21 +10118,21 @@
           }
         }
         if (this._stencilOn) {
-          const s = (this._stencil[di] || 0) & this._stencilMask;
-          const r = this._stencilRef & this._stencilMask;
-          if (!this._cmp(this._stencilFunc, s, r)) {
-            this._applyStencilOp(di, this._stencilFail);
+          const s = (this._stencil[di] || 0) & stencil.mask;
+          const r = stencil.ref & stencil.mask;
+          if (!this._cmp(stencil.func, s, r)) {
+            this._applyStencilOp(di, stencil.fail, stencil.ref);
             out += String.fromCharCode(dr, dg, db, da);
             continue;
           }
         }
         const depthPass = !this._depthOn || this._depthPass(z, this._depth[di] != null ? this._depth[di] : 1);
         if (!depthPass) {
-          if (this._stencilOn) this._applyStencilOp(di, this._stencilZFail);
+          if (this._stencilOn) this._applyStencilOp(di, stencil.zfail, stencil.ref);
           out += String.fromCharCode(dr, dg, db, da);
           continue;
         }
-        if (this._stencilOn) this._applyStencilOp(di, this._stencilZPass);
+        if (this._stencilOn) this._applyStencilOp(di, stencil.zpass, stencil.ref);
         if (this._depthOn && this._depthMask !== false) this._depth[di] = z;
         out += String.fromCharCode(sr, sg, sb, sa);
       }
@@ -10072,11 +10149,33 @@
       const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
       return u[3] >= 1 ? ("#" + hex(u[0]) + hex(u[1]) + hex(u[2])) : ("rgba(" + Math.round(u[0] * 255) + "," + Math.round(u[1] * 255) + "," + Math.round(u[2] * 255) + "," + u[3] + ")");
     }
-    createTexture() { return { _tex: true, _w: 0, _h: 0, _b64: "" }; }
+    createTexture() {
+      return {
+        _tex: true,
+        _w: 0,
+        _h: 0,
+        _b64: "",
+        _levels: [],
+        _params: {
+          [this.TEXTURE_MAG_FILTER]: this.LINEAR,
+          [this.TEXTURE_MIN_FILTER]: this.NEAREST_MIPMAP_LINEAR,
+          [this.TEXTURE_WRAP_S]: this.REPEAT,
+          [this.TEXTURE_WRAP_T]: this.REPEAT,
+        },
+      };
+    }
     bindTexture(_target, tex) { if (tex) this._tex = tex; }
+    texParameteri(_target, pname, param) {
+      if (this._tex) this._tex._params[pname] = Number(param);
+    }
+    texParameterf(target, pname, param) { this.texParameteri(target, pname, param); }
+    getTexParameter(_target, pname) {
+      return this._tex && this._tex._params[pname] != null ? this._tex._params[pname] : null;
+    }
     texImage2D() {
       const last = arguments[arguments.length - 1];
-      const tex = this._tex || (this._tex = { _tex: true, _w: 0, _h: 0, _b64: "" });
+      const level = Math.max(0, Number(arguments[1]) || 0);
+      const tex = this._tex || (this._tex = this.createTexture());
       if (last && last.data && last.width) {
         let s = "";
         for (let i = 0; i < last.data.length; i++) s += String.fromCharCode(last.data[i]);
@@ -10085,6 +10184,7 @@
         if (this._flipY) s = this._flipRows(s, tex._w, tex._h);
         if (this._premultiply) s = this._premultiplyBytes(s);
         tex._b64 = btoa(s);
+        tex._levels[level] = { w: tex._w, h: tex._h, b64: tex._b64 };
       } else if (last instanceof Uint8Array || last instanceof Uint8ClampedArray) {
         const w = Number(arguments[3]) || 0;
         const h = Number(arguments[4]) || 0;
@@ -10095,6 +10195,37 @@
         if (this._flipY) s = this._flipRows(s, w, h);
         if (this._premultiply) s = this._premultiplyBytes(s);
         tex._b64 = btoa(s);
+        tex._levels[level] = { w, h, b64: tex._b64 };
+      }
+    }
+    generateMipmap(_target) {
+      const tex = this._tex;
+      if (!tex || !tex._levels[0]) return;
+      let source = tex._levels[0];
+      let level = 1;
+      while (source.w > 1 || source.h > 1) {
+        const src = atob(source.b64 || "");
+        const w = Math.max(1, Math.floor(source.w / 2));
+        const h = Math.max(1, Math.floor(source.h / 2));
+        let bytes = "";
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            for (let channel = 0; channel < 4; channel++) {
+              let sum = 0;
+              let count = 0;
+              for (let dy = 0; dy < 2 && y * 2 + dy < source.h; dy++) {
+                for (let dx = 0; dx < 2 && x * 2 + dx < source.w; dx++) {
+                  const i = ((y * 2 + dy) * source.w + x * 2 + dx) * 4 + channel;
+                  sum += src.charCodeAt(i) || 0;
+                  count++;
+                }
+              }
+              bytes += String.fromCharCode(Math.round(sum / count));
+            }
+          }
+        }
+        source = { w, h, b64: btoa(bytes) };
+        tex._levels[level++] = source;
       }
     }
     drawArrays(mode, first, count) {
@@ -10206,10 +10337,13 @@
     getProgramInfoLog(prog) { return prog && prog._ok ? "" : "link failed"; }
     useProgram(prog) { if (prog && prog._ok) this._prog = prog; }
     getUniformLocation(prog, name) { return { _u: true, _name: String(name || ""), _prog: prog }; }
-    createFramebuffer() { return { _fb: true, _tex: null }; }
+    createFramebuffer() { return { _fb: true, _tex: null, _level: 0 }; }
     bindFramebuffer(_target, fb) { this._fb = fb || null; }
-    framebufferTexture2D(_target, _attach, _texTarget, tex) {
-      if (this._fb) this._fb._tex = tex || null;
+    framebufferTexture2D(_target, _attach, _texTarget, tex, level) {
+      if (this._fb) {
+        this._fb._tex = tex || null;
+        this._fb._level = Math.max(0, Number(level) || 0);
+      }
     }
     uniform4f(_loc, r, g, b, a) { this._uniform = [Number(r) || 0, Number(g) || 0, Number(b) || 0, a == null ? 1 : Number(a)]; }
     uniform4fv(_loc, v) {

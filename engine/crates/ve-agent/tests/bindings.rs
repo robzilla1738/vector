@@ -7006,6 +7006,92 @@ fn webgl_clear_stencil_sets_ref_for_equal() {
 }
 
 #[test]
+fn webgl_separate_stencil_state_distinguishes_front_and_back_faces() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const gl = document.getElementById("c").getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.stencilFuncSeparate(gl.FRONT, gl.ALWAYS, 1, 255);
+              gl.stencilFuncSeparate(gl.BACK, gl.ALWAYS, 2, 255);
+              gl.stencilOpSeparate(gl.FRONT, gl.KEEP, gl.KEEP, gl.REPLACE);
+              gl.stencilOpSeparate(gl.BACK, gl.KEEP, gl.KEEP, gl.KEEP);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0, -1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                0, -1, 1, 1, 1, -1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], rb: right[2], frontAndBack: gl.FRONT_AND_BACK };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["rb"], 255, "{v}");
+    assert_eq!(v["frontAndBack"], 1032, "{v}");
+}
+
+#[test]
+fn webgl_texture_parameters_and_generated_mipmaps_are_observable() {
+    let mut page = open(r#"<body><canvas id="c" width="4" height="4"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const gl = document.getElementById("c").getContext("webgl");
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+              gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+              const pixels = new Uint8Array(4 * 4 * 4);
+              for (let i = 0; i < pixels.length; i += 4) {
+                pixels[i] = 40;
+                pixels[i + 1] = 80;
+                pixels[i + 2] = 120;
+                pixels[i + 3] = 255;
+              }
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 4, 4, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+              gl.generateMipmap(gl.TEXTURE_2D);
+              const fb = gl.createFramebuffer();
+              gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+              gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 2);
+              const pixel = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+              return {
+                min: gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER),
+                wrap: gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S),
+                pixel: Array.from(pixel)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["min"], 9987, "{v}");
+    assert_eq!(v["wrap"], 33071, "{v}");
+    assert_eq!(v["pixel"], serde_json::json!([40, 80, 120, 255]), "{v}");
+}
+
+#[test]
 fn webgl_clear_depth_zero_rejects_default_z() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page
