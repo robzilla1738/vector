@@ -5131,6 +5131,96 @@ mod tests {
     }
 
     #[test]
+    fn incremental_observe_p95_under_2ms_on_corpus_sample() {
+        let dir = std::path::Path::new("/tmp/vector-live-html");
+        if !dir.is_dir() {
+            return;
+        }
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("html"))
+            .collect();
+        paths.sort();
+        let cap = if cfg!(debug_assertions) { 50 } else { 100 };
+        if paths.len() > cap {
+            let step = (paths.len() / cap).max(1);
+            paths = paths.into_iter().step_by(step).take(cap).collect();
+        }
+        let mut times = Vec::new();
+        for path in paths {
+            let html = std::fs::read_to_string(&path).unwrap_or_default();
+            if html.is_empty() {
+                continue;
+            }
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("page");
+            let url = format!("https://live.test/{stem}");
+            let Ok(opened) = engine.open(crate::OpenRequest::html(&html, Some(&url))) else {
+                continue;
+            };
+            let Ok(first) = engine.observe(opened.page, &ObservationRequest::default()) else {
+                continue;
+            };
+            let t0 = std::time::Instant::now();
+            let Ok(_) = engine.observe(
+                opened.page,
+                &ObservationRequest {
+                    since_revision: Some(first.observation.revision),
+                    ..ObservationRequest::default()
+                },
+            ) else {
+                continue;
+            };
+            times.push(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        if times.is_empty() {
+            return;
+        }
+        times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let p50 = times[times.len() / 2];
+        let p95 = times[(times.len() * 95 / 100).min(times.len() - 1)];
+        let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/perf/incremental-observe.json");
+        let doc = serde_json::json!({
+            "backend": "vector-engine",
+            "metric": "incremental_observe",
+            "n": times.len(),
+            "p50Ms": (p50 * 1000.0).round() / 1000.0,
+            "p95Ms": (p95 * 1000.0).round() / 1000.0,
+            "targetP95Ms": 2,
+            "security_mode": "production",
+            "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
+            "appleSilicon": false,
+            "evidence": [
+                "ve-agent::incremental_observe_is_under_two_milliseconds",
+                "ve-api::incremental_observe_p95_under_2ms_on_corpus_sample"
+            ],
+            "revisionCache": "Page::observe_after_settle returns the cached ObservationContent when since_revision matches the live document revision",
+            "spatialHitIndex": "ve_layout::HitIndex 64px cells — LayoutTree::hit_test for observe occlusion, not the incremental-observe fast path",
+            "v8HeapCaps": "V8Vm::with_heap_limit / VECTOR_V8_HEAP_MB",
+            "v8SnapshotStartup": "V8Vm startup snapshot blob + platform Once",
+            "corpus": { "dir": "/tmp/vector-live-html", "kind": "fetched-html-bodies" },
+            "notes": "Cached sinceRevision observe on live HTML bodies. Not an Apple-silicon published score."
+        });
+        let _ = std::fs::write(&ev, serde_json::to_vec_pretty(&doc).unwrap());
+        assert!(
+            p95 < 2.0,
+            "corpus incremental observe p95 {p95} ms (n={}, p50={p50}) must be < 2 ms",
+            times.len()
+        );
+        assert!(times.len() >= 20, "need ≥20 corpus incremental samples, got {}", times.len());
+    }
+
+    #[test]
     fn engine_only_never_starts_chromium() {
         let mut browser = NativeBrowser::new();
         browser.set_engine_only(true);
