@@ -2537,6 +2537,52 @@ mod tests {
     }
 
     #[test]
+    fn held_out_task_controls_are_in_the_top_forty() {
+        let cases = [
+            (
+                include_str!("../../../../tests/held-out/pages/increment.html"),
+                "Increment",
+            ),
+            (
+                include_str!("../../../../tests/held-out/pages/submit.html"),
+                "Name",
+            ),
+            (
+                include_str!("../../../../tests/held-out/pages/table.html"),
+                "Widget",
+            ),
+        ];
+        for (html, needle) in cases {
+            let p = page(html);
+            let obs = p.compact();
+            let top: Vec<String> = obs
+                .elements
+                .iter()
+                .take(40)
+                .map(|e| {
+                    format!(
+                        "{} {} {}",
+                        e.name.as_deref().unwrap_or(""),
+                        e.text.as_deref().unwrap_or(""),
+                        e.role.as_deref().unwrap_or("")
+                    )
+                })
+                .collect();
+            let hit = top.iter().any(|t| t.contains(needle))
+                || obs
+                    .form_fields
+                    .iter()
+                    .take(40)
+                    .any(|f| f.label.as_deref().unwrap_or("").contains(needle))
+                || obs
+                    .tables
+                    .iter()
+                    .any(|t| t.rows.iter().any(|r| r.iter().any(|c| c.contains(needle))));
+            assert!(hit, "task control {needle:?} missing from top 40: {top:?}");
+        }
+    }
+
+    #[test]
     fn ranking_puts_form_fields_before_links_and_below_fold_last() {
         let p = page_with_viewport(
             r#"<style>body{margin:0} div{height:400px}</style>

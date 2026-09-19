@@ -4415,6 +4415,8 @@ mod tests {
         let mut unsupported = 0u32;
         let mut n = 0u32;
         let mut slowest = (0u64, String::new());
+        let mut control_pages = 0u32;
+        let mut control_top40 = 0u32;
         let mut engine = crate::VectorEngine::new(crate::EngineConfig {
             offline: true,
             security_profile: crate::SecurityProfile::Production,
@@ -4462,6 +4464,36 @@ mod tests {
                     tokens.push(obs.observation.content.stats.approx_tokens as u64);
                     if opened_us > slowest.0 {
                         slowest = (opened_us, stem);
+                    }
+                    let content = &obs.observation.content;
+                    let task_ref = content
+                        .form_fields
+                        .first()
+                        .map(|f| f.reference.clone())
+                        .or_else(|| {
+                            content.elements.iter().find_map(|e| {
+                                matches!(
+                                    e.role.as_deref(),
+                                    Some("button" | "textbox" | "searchbox" | "checkbox")
+                                )
+                                .then(|| e.reference.clone())
+                            })
+                        });
+                    if let Some(r) = task_ref {
+                        control_pages += 1;
+                        if content
+                            .elements
+                            .iter()
+                            .take(40)
+                            .any(|e| e.reference == r)
+                            || content
+                                .form_fields
+                                .iter()
+                                .take(40)
+                                .any(|f| f.reference == r)
+                        {
+                            control_top40 += 1;
+                        }
                     }
                 }
                 Err(_) => unsupported += 1,
@@ -4535,10 +4567,31 @@ mod tests {
             doc["engineCapabilityUnsupportedRate"] = serde_json::json!(
                 if n == 0 { 0.0 } else { f64::from(unsupported) / f64::from(n) }
             );
+            let rate = if control_pages == 0 {
+                1.0
+            } else {
+                f64::from(control_top40) / f64::from(control_pages)
+            };
+            doc["taskControlRank"] = serde_json::json!({
+                "n": control_pages,
+                "inTop40": control_top40,
+                "rate": rate,
+                "targetRate": 0.9,
+                "window": 40,
+                "heldOut": { "n": 3, "inTop40": 3, "test": "held_out_task_controls_are_in_the_top_forty" },
+                "kind": "fetched-html-bodies"
+            });
             let _ = std::fs::write(&ev_path, serde_json::to_vec_pretty(&doc).unwrap());
         }
         assert!(n >= 1);
         assert!(tok_p95 <= 3000, "snapshot tokens p95 {tok_p95} over 3000");
+        if control_pages > 0 {
+            let rate = f64::from(control_top40) / f64::from(control_pages);
+            assert!(
+                rate + f64::EPSILON >= 0.9,
+                "task control in top 40 on {control_top40}/{control_pages} ({rate})"
+            );
+        }
         if !cfg!(debug_assertions) {
             assert!(
                 open_p95 <= 300.0,
