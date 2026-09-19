@@ -919,6 +919,8 @@ enum SvgFilterKind {
     Component { slope: f32 },
     Convolve([f32; 9]),
     Displace { scale: f32 },
+    MergeKeep,
+    Lighting { color: [u8; 4] },
 }
 
 #[derive(Clone, Copy)]
@@ -953,7 +955,34 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
             } else {
                 None
             };
-            if let Some(bi) = block.find("<feBlend") {
+            if block.contains("<feMerge") {
+                let last_in = block
+                    .rmatch_indices("<feMergeNode")
+                    .next()
+                    .map(|(mi, _)| {
+                        let me = block[mi..].find('>').unwrap_or(block.len() - mi);
+                        svg_attr_str(&block[mi..mi + me], "in").unwrap_or("SourceGraphic")
+                    })
+                    .unwrap_or("SourceGraphic");
+                if last_in.eq_ignore_ascii_case("SourceGraphic")
+                    || last_in.eq_ignore_ascii_case("SourceAlpha")
+                {
+                    out.insert(id.to_string(), SvgFilterKind::MergeKeep);
+                } else if let Some(color) = flood_color {
+                    out.insert(id.to_string(), SvgFilterKind::Flood { color });
+                } else {
+                    out.insert(id.to_string(), SvgFilterKind::MergeKeep);
+                }
+            } else if let Some(li) = block
+                .find("<feDiffuseLighting")
+                .or_else(|| block.find("<feSpecularLighting"))
+            {
+                let le = block[li..].find('>').unwrap_or(block.len() - li);
+                let light = &block[li..li + le];
+                let color =
+                    parse_svg_color(svg_attr_str(light, "lighting-color").unwrap_or("#ffffff"));
+                out.insert(id.to_string(), SvgFilterKind::Lighting { color });
+            } else if let Some(bi) = block.find("<feBlend") {
                 let be = block[bi..].find('>').unwrap_or(block.len() - bi);
                 let blend = &block[bi..bi + be];
                 let mode = match svg_attr_str(blend, "mode").unwrap_or("multiply") {
@@ -1211,6 +1240,33 @@ fn apply_svg_filter(
             displace_decoded_rect(img, bx0, by0, bx1, by1, *scale);
         }
         SvgFilterKind::Offset { .. } => {}
+        SvgFilterKind::MergeKeep => {}
+        SvgFilterKind::Lighting { color } => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            light_decoded_rect(img, bx0, by0, bx1, by1, *color);
+        }
+    }
+}
+
+fn light_decoded_rect(
+    img: &mut DecodedImage,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    color: [u8; 4],
+) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let Some([r, g, b, a]) = img.pixel(x as u32, y as u32) else {
+                continue;
+            };
+            if a == 0 {
+                continue;
+            }
+            let mix = |s: u8, l: u8| ((f32::from(s) * 0.3 + f32::from(l) * 0.7).round()) as u8;
+            plot_px(img, x, y, [mix(r, color[0]), mix(g, color[1]), mix(b, color[2]), a]);
+        }
     }
 }
 
@@ -3991,6 +4047,36 @@ mod tests {
         )
         .expect("svg flood");
         assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_merge_keeps_source_graphic() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feFlood flood-color='#00ff00'/><feMerge>\
+              <feMergeNode in='SourceGraphic'/></feMerge></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg merge");
+        assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_lighting_tints_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feDiffuseLighting lighting-color='#ffffff'>\
+              <feDistantLight/></feDiffuseLighting></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg lighting");
+        let px = img.pixel(4, 4).unwrap_or([0, 0, 0, 0]);
+        assert_eq!(px[3], 255, "{px:?}");
+        assert!(px[0] > 200, "{px:?}");
+        assert!(px[1] > 100 && px[1] < 230, "{px:?}");
+        assert_eq!(px[1], px[2], "{px:?}");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
     }
 
