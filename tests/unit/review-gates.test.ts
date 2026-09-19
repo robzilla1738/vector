@@ -445,6 +445,14 @@ describe("Gate D permissions and durable writes", () => {
     });
     expect(read.skip).toBe(false);
     expect(read.intentId).toBeUndefined();
+    const nextObserve = beginConsequentialWrite(ledger, {
+      runId: "run1",
+      pageId: "p1",
+      documentEpoch: 2,
+      revision: 3,
+      steps,
+    });
+    expect(nextObserve.skip).toBe(false);
   });
 
   it("does not reuse a skill on a different origin", () => {

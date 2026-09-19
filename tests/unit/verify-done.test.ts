@@ -83,3 +83,79 @@ describe("lying model cannot complete a run", () => {
     expect(repo.getRun(run.runId)!.status).toBe("failed");
   });
 });
+
+describe("successful click repeats still dispatch", () => {
+  it("clicks Increment three times when each plan is one click", async () => {
+    const repo = new Repo(openDb(":memory:"));
+    const events = new EventBus(repo);
+    let count = 0;
+    const clicks: string[] = [];
+    const model: ModelClient = {
+      generateStructured: async (o) => {
+        if (count < 3) {
+          return {
+            object: o.schema.parse({
+              status: "continue",
+              message: `Count ${count}`,
+              steps: [{ id: `c${count + 1}`, op: "click", target: "r1" }],
+            }),
+            durationMs: 1,
+          };
+        }
+        return {
+          object: o.schema.parse({
+            status: "done",
+            message: "Counter shows 3",
+            result: { counter: "3" },
+          }),
+          durationMs: 1,
+        };
+      },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const coordinator = new RunCoordinator({
+      repo,
+      events,
+      pages: {
+        observe: async () => {
+          const o = obs(`Count: ${count}`);
+          o.revision = count + 1;
+          return o;
+        },
+        execute: async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: { stepId: string; op: string; status: string; startedAt: number; durationMs: number }, s: PlanStep) => void }) => {
+          const steps = [];
+          for (const s of program.steps) {
+            if (s.op === "click") {
+              count += 1;
+              clicks.push(s.id);
+            }
+            const outcome = { stepId: s.id, op: s.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1 };
+            ctx?.onStep?.(outcome, s);
+            steps.push(outcome);
+          }
+          return { status: "completed" as const, steps };
+        },
+        capture: async () => ({ dataUrl: "data:image/png;base64,AA", width: 1, height: 1, scale: 1 }),
+        livePageIds: () => ["p1"],
+        get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/" }),
+      } as never,
+      model: () => model,
+      defaultModel: () => "m",
+      recoveryModel: () => undefined,
+      recordModelCall: () => {},
+      grants: ["effect:read", "effect:write", "effect:egress"],
+    });
+    const run = await coordinator.start({ goal: "Increment the counter until it shows 3", pageIds: ["p1"] });
+    for (let i = 0; i < 400 && !["completed", "failed"].includes(repo.getRun(run.runId)!.status); i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const finished = repo.getRun(run.runId)!;
+    expect({ clicks, count, status: finished.status, message: finished.statusMessage }).toEqual({
+      clicks: ["c1", "c2", "c3"],
+      count: 3,
+      status: "completed",
+      message: finished.statusMessage,
+    });
+  });
+});

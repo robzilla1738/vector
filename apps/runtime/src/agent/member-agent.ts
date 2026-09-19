@@ -95,6 +95,7 @@ export async function runMemberAgent(opts: {
       runId,
       pageId,
       documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      revision: obs.revision,
       steps,
     });
     if (write.skip) {

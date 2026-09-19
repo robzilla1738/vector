@@ -470,6 +470,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
                 runId,
                 pageId: activePageId!,
                 documentEpoch: epoch,
+                revision: obs.revision,
                 steps: prepared.program.steps ?? [],
               });
               if (write.skip) {
@@ -668,11 +669,10 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         modelErrorCount = 0;
 
         // Convergence guard: the same effectful op-sequence planned
-        // consecutively means the planner isn't learning from its own
-        // outcomes (params and refs churn between rounds, so the signature is
-        // op-only). Plans made only of observation-blind ops are exempt —
-        // repeated reads/computes are cheap and often legitimate polling.
-        // Nudge via repairNote without re-executing; hard-stop at the limit.
+        // consecutively. Observation-blind ops are exempt. A successful
+        // click/fill chunk must still run again — counters and steppers
+        // are the same op until the observed value matches the goal.
+        // Failed chunks keep the repair nudge. Hard-stop at the limit.
         if (plan.steps.every((s) => OBSERVATION_BLIND_OPS.has(s.op))) {
           lastPlanSig = "";
         } else {
@@ -689,14 +689,10 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
               }
               throw new VectorError("step_failed", "planner repeated the same steps without finishing");
             }
-            lastError = `You already ran this exact step sequence and it did not complete the goal. If the goal is met return status="done" with the result; if blocked, ask for input or request a different observation scope — do NOT repeat the same actions.`;
-            // After a failed chunk the same ops are a repair retry and must
-            // run so consecutive failures can reach MAX_REPAIRS.
-            if (!lastActionFailed && (!early || early.dispatchedCount === 0)) {
-              if (early) await early.finish([]);
-              continue;
+            if (lastActionFailed) {
+              lastError = `You already ran this exact step sequence and it did not complete the goal. If the goal is met return status="done" with the result; if blocked, ask for input or request a different observation scope — do NOT repeat the same actions.`;
+              repeatNudge = lastError;
             }
-            repeatNudge = lastError;
           } else {
             repeatCount = 0;
             lastPlanSig = planSig;
@@ -734,6 +730,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
           runId,
           pageId: activePageId,
           documentEpoch: obs.documentEpoch,
+          revision: obs.revision,
           steps: compiled.program.steps ?? [],
         });
         const program = compiled.program;
@@ -851,6 +848,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
                   runId,
                   pageId: activePageId,
                   documentEpoch: fresh.documentEpoch,
+                  revision: fresh.revision,
                   steps: compiled.program.steps ?? [],
                 });
                 if (!write.skip) {

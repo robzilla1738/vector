@@ -350,6 +350,7 @@ export class SetRunner {
       runId: opts.runId,
       pageId,
       documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      revision: obs.revision,
       steps,
     });
     if (write.skip) return { res: { status: "completed", extracted: {} } };
