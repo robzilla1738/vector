@@ -1219,6 +1219,131 @@ fn canvas_multiply_and_screen_blend_channels() {
 }
 
 #[test]
+fn canvas_overlay_and_difference_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                overlay: sample("overlay", "#400000", "#ffffff"),
+                diff: sample("difference", "#ff0000", "#00ff00")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["overlay"]["r"], 128, "{v}");
+    assert_eq!(v["diff"]["r"], 255, "{v}");
+    assert_eq!(v["diff"]["g"], 255, "{v}");
+    assert_eq!(v["diff"]["b"], 0, "{v}");
+}
+
+#[test]
+fn canvas_offscreen_and_image_bitmap_round_trip() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var off = new OffscreenCanvas(4, 4);
+              var ctx = off.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 4, 4);
+              var painted = ctx.getImageData(1, 1, 1, 1).data;
+              var bmp = off.transferToImageBitmap();
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              dst.getContext("2d").drawImage(bmp, 0, 0);
+              var copied = dst.getImageData(1, 1, 1, 1).data;
+              var cleared = ctx.getImageData(1, 1, 1, 1).data;
+              return {
+                pg: painted[1], pa: painted[3],
+                cg: copied[1], ca: copied[3],
+                ea: cleared[3],
+                w: bmp.width, h: bmp.height,
+                inst: bmp instanceof ImageBitmap
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["pg"], 255, "{v}");
+    assert_eq!(v["cg"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "transfer must clear the offscreen canvas: {v}");
+    assert_eq!(v["w"], 4, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+}
+
+#[test]
+fn canvas_create_image_bitmap_draws() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          var src = document.createElement("canvas");
+          src.width = 4;
+          src.height = 4;
+          var sctx = src.getContext("2d");
+          sctx.fillStyle = "#0000ff";
+          sctx.fillRect(0, 0, 4, 4);
+          createImageBitmap(src).then(function (bmp) {
+            var dst = document.createElement("canvas");
+            dst.width = 4;
+            dst.height = 4;
+            dst.getContext("2d").drawImage(bmp, 0, 0);
+            var p = dst.getImageData(1, 1, 1, 1).data;
+            window.__ib = { w: bmp.width, inst: bmp instanceof ImageBitmap, b: p[2], a: p[3] };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__ib").unwrap();
+    assert_eq!(v["w"], 4, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_draw_focus_if_needed_strokes_path() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.beginPath();
+              ctx.rect(2, 2, 12, 12);
+              ctx.drawFocusIfNeeded(c);
+              var ring = ctx.getImageData(2, 8, 1, 1).data;
+              return { b: ring[2], a: ring[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["a"].as_u64().unwrap_or(0) > 0,
+        "focus ring must paint: {v}"
+    );
+    assert!(
+        v["b"].as_u64().unwrap_or(0) > 100,
+        "focus ring is blue: {v}"
+    );
+}
+
+#[test]
 fn canvas_text_baseline_shifts_fill_text() {
     let mut page = open(r#"<body></body>"#);
     let v = page

@@ -3753,24 +3753,42 @@
       this._height = height >>> 0;
     }
     get width() { return this._width; }
-    set width(v) { this._width = v >>> 0; }
+    set width(v) {
+      this._width = v >>> 0;
+      if (this._el) this._el.width = this._width;
+    }
     get height() { return this._height; }
-    set height(v) { this._height = v >>> 0; }
+    set height(v) {
+      this._height = v >>> 0;
+      if (this._el) this._el.height = this._height;
+    }
     getContext(type) {
       if (String(type).toLowerCase() !== "2d") return null;
+      if (!this._el) {
+        this._el = document.createElement("canvas");
+        this._el.width = this._width;
+        this._el.height = this._height;
+        this.__h = this._el.__h;
+      }
       if (!this._ctx) {
-        this._ctx = Object.create(OffscreenCanvasRenderingContext2D.prototype);
+        this._ctx = this._el.getContext("2d");
         this._ctx._canvas = this;
-        this._ctx._fillStyle = "#000000";
-        this._ctx._strokeStyle = "#000000";
-        this._ctx._globalAlpha = 1;
-        this._ctx._path = new Path2D();
-        this._ctx._dash = [];
       }
       return this._ctx;
     }
-    transferToImageBitmap() { return {}; }
-    convertToBlob() { return Promise.resolve(new Blob()); }
+    transferToImageBitmap() {
+      this.getContext("2d");
+      const bmp = makeImageBitmapFromSource(this._el);
+      this.getContext("2d").clearRect(0, 0, this.width, this.height);
+      return bmp;
+    }
+    convertToBlob() {
+      const url = (this._el && this._el.toDataURL()) || "data:,";
+      const bin = atob((url.split(",")[1] || ""));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return Promise.resolve(new Blob([bytes], { type: "image/png" }));
+    }
   }
   Object.defineProperty(OffscreenCanvas.prototype, Symbol.toStringTag, { value: "OffscreenCanvas", configurable: true });
   class ImageData {
@@ -4496,6 +4514,13 @@
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'drawFocusIfNeeded' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
+      if (!element) return;
+      this.save();
+      this.strokeStyle = "#0000ff";
+      this.lineWidth = 1;
+      if (typeof this.setLineDash === "function") this.setLineDash([2, 2]);
+      this.stroke();
+      this.restore();
     }
     isPointInPath(a, b) {
       let path = this._path;
@@ -6638,11 +6663,44 @@
     toString() { return this._html || ""; }
     toJSON() { return this.toString(); }
   }
+  function makeImageBitmapFromSource(image, sx, sy, sw, sh) {
+    const c = document.createElement("canvas");
+    if (image && image.data && typeof image.width === "number" && typeof image.height === "number") {
+      const x = Number(sx) || 0;
+      const y = Number(sy) || 0;
+      const w = sw > 0 ? sw : image.width;
+      const h = sh > 0 ? sh : image.height;
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      ctx.putImageData(image, -x, -y);
+    } else if (image && image.__h != null) {
+      const srcW = Number(image.width || image.naturalWidth || 0);
+      const srcH = Number(image.height || image.naturalHeight || 0);
+      const x = Number(sx) || 0;
+      const y = Number(sy) || 0;
+      const w = sw > 0 ? sw : srcW;
+      const h = sh > 0 ? sh : srcH;
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      if (sw > 0 || sh > 0) ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
+      else ctx.drawImage(image, 0, 0);
+    } else {
+      throw new TypeError("Failed to execute 'createImageBitmap': the provided value cannot be converted to an ImageBitmap.");
+    }
+    const bmp = Object.create(ImageBitmap.prototype);
+    bmp.__h = c.__h;
+    bmp._w = c.width;
+    bmp._h = c.height;
+    bmp._closed = false;
+    return bmp;
+  }
   class ImageBitmap {
     constructor() { throw new TypeError("Illegal constructor"); }
-    get width() { return 0; }
-    get height() { return 0; }
-    close() {}
+    get width() { return this._closed ? 0 : (this._w || 0); }
+    get height() { return this._closed ? 0 : (this._h || 0); }
+    close() { this._closed = true; this.__h = null; }
   }
   class ImageBitmapRenderingContext {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -9053,7 +9111,15 @@
       if (arguments.length < 1) {
         return Promise.reject(new TypeError("Failed to execute 'createImageBitmap' on 'Window': 1 argument required, but only 0 present."));
       }
-      return Promise.resolve({});
+      try {
+        const sx = arguments[1];
+        const sy = arguments[2];
+        const sw = arguments[3];
+        const sh = arguments[4];
+        return Promise.resolve(makeImageBitmapFromSource(image, sx, sy, sw, sh));
+      } catch (e) {
+        return Promise.reject(e);
+      }
     };
     Object.defineProperty(wrapped, "length", { value: 1, configurable: true });
     return wrapped;

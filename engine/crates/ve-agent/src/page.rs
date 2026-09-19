@@ -826,6 +826,8 @@ enum CompositeOp {
     DestinationAtop,
     Multiply,
     Screen,
+    Overlay,
+    Difference,
 }
 
 impl CompositeOp {
@@ -837,6 +839,8 @@ impl CompositeOp {
             "lighter" => Self::Lighter,
             "multiply" => Self::Multiply,
             "screen" => Self::Screen,
+            "overlay" => Self::Overlay,
+            "difference" => Self::Difference,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
             "source-out" => Self::SourceOut,
@@ -1110,6 +1114,33 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
                 (255 - ((255 - u32::from(src[0])) * (255 - u32::from(dst[0])) / 255)) as u8,
                 (255 - ((255 - u32::from(src[1])) * (255 - u32::from(dst[1])) / 255)) as u8,
                 (255 - ((255 - u32::from(src[2])) * (255 - u32::from(dst[2])) / 255)) as u8,
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Overlay => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let s = u32::from(s);
+                let d = u32::from(d);
+                if d < 128 {
+                    ((2 * s * d) / 255) as u8
+                } else {
+                    (255 - (2 * (255 - s) * (255 - d)) / 255) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Difference => {
+            let a = sa + da * (255 - sa) / 255;
+            return [
+                src[0].abs_diff(dst[0]),
+                src[1].abs_diff(dst[1]),
+                src[2].abs_diff(dst[2]),
                 a.min(255) as u8,
             ];
         }
