@@ -1991,12 +1991,23 @@ impl Page {
         h: i32,
         color: &str,
         alpha: f32,
+        shadow_x: i32,
+        shadow_y: i32,
+        shadow: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
+        let shadow_style = if shadow_x != 0 || shadow_y != 0 {
+            Some(self.resolve_canvas_style(shadow))
+        } else {
+            None
+        };
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
+        if let Some(shadow_style) = shadow_style.as_ref() {
+            c.fill_rect_styled(x + shadow_x, y + shadow_y, w, h, shadow_style, alpha);
+        }
         c.fill_rect_styled(x, y, w, h, &style, alpha);
         c.ops
     }

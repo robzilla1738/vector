@@ -996,6 +996,41 @@ fn canvas_fill_text_paints_distinct_glyphs() {
 }
 
 #[test]
+fn canvas_fill_rect_paints_shadow_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 12;
+              c.height = 12;
+              var ctx = c.getContext("2d");
+              ctx.shadowOffsetX = 4;
+              ctx.shadowOffsetY = 4;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              var src = ctx.getImageData(1, 1, 1, 1).data;
+              var sh = ctx.getImageData(5, 5, 1, 1).data;
+              var empty = ctx.getImageData(10, 1, 1, 1).data;
+              return {
+                sr: src[0], sa: src[3],
+                sb: sh[2], sha: sh[3],
+                ea: empty[3],
+                tw: ctx.measureText("II").width
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+    assert_eq!(v["sb"], 255, "{v}");
+    assert_eq!(v["sha"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "{v}");
+    assert_eq!(v["tw"], 12, "{v}");
+}
+
+#[test]
 fn canvas_is_point_in_path_hits_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

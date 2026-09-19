@@ -4198,7 +4198,7 @@
     fillRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       const box = this._mapRect(x, y, w, h);
-      D("canvasFillRect", this.__h, box[0], box[1], box[2], box[3], String(this.fillStyle), Number(this._globalAlpha));
+      D("canvasFillRect", this.__h, box[0], box[1], box[2], box[3], String(this.fillStyle), Number(this._globalAlpha), Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
     }
     clearRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'clearRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
@@ -4400,7 +4400,7 @@
         throw new TypeError("Failed to execute 'measureText' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
       const m = Object.create(TextMetrics.prototype);
-      m._width = String(t).length * 8;
+      m._width = String(t).length * 6;
       return m;
     }
     createImageData(imageData) {
