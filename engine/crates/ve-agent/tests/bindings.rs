@@ -4433,6 +4433,125 @@ fn scheduler_post_task_runs_callback() {
 }
 
 #[test]
+fn popover_show_hide_fires_toggle_events() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.createElement("div");
+              el.popover = "auto";
+              document.body.appendChild(el);
+              const evs = [];
+              el.addEventListener("beforetoggle", function (e) {
+                evs.push(["before", e.oldState, e.newState, e instanceof ToggleEvent]);
+              });
+              el.addEventListener("toggle", function (e) {
+                evs.push(["toggle", e.oldState, e.newState]);
+              });
+              el.showPopover();
+              const open = el.togglePopover();
+              el.hidePopover();
+              let cancelled = 0;
+              el.addEventListener("beforetoggle", function (e) { e.preventDefault(); cancelled++; });
+              el.showPopover();
+              return { evs, open, cancelled, stillClosed: !el._popoverOpen };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["evs"][0][0], "before", "{v}");
+    assert_eq!(v["evs"][0][1], "closed", "{v}");
+    assert_eq!(v["evs"][0][2], "open", "{v}");
+    assert_eq!(v["evs"][0][3], true, "{v}");
+    assert_eq!(v["evs"][1][0], "toggle", "{v}");
+    assert_eq!(v["open"], false, "{v}");
+    assert_eq!(v["cancelled"], 1, "{v}");
+    assert_eq!(v["stillClosed"], true, "{v}");
+}
+
+#[test]
+fn caches_open_put_and_match_blob_url() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__cache = null;
+          const url = URL.createObjectURL(new Blob(["hi"], { type: "text/plain" }));
+          caches.open("v1").then(function (cache) {
+            return cache.add(url).then(function () {
+              return cache.match(url).then(function (res) {
+                return res.text().then(function (text) {
+                  return caches.has("v1").then(function (has) {
+                    window.__cache = {
+                      text,
+                      has,
+                      inst: cache instanceof Cache,
+                      storage: caches instanceof CacheStorage
+                    };
+                  });
+                });
+              });
+            });
+          }).catch(function (e) { window.__cache = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__cache").unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["storage"], true, "{v}");
+}
+
+#[test]
+fn request_fullscreen_sets_document_element() {
+    let mut page = open(r#"<body><div id="box">x</div></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__fs = null;
+          const el = document.getElementById("box");
+          el.requestFullscreen().then(function () {
+            const on = document.fullscreenElement === el && document.fullscreenEnabled;
+            return document.exitFullscreen().then(function () {
+              window.__fs = { on, off: document.fullscreenElement === null };
+            });
+          }).catch(function (e) { window.__fs = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__fs").unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["off"], true, "{v}");
+}
+
+#[test]
+fn navigator_share_and_locks_request() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__nav = null;
+          const can = navigator.canShare({ title: "t", text: "x" });
+          Promise.all([
+            navigator.share({ title: "t", text: "x" }),
+            navigator.locks.request("k", function (lock) { return lock.name + ":" + lock.mode; })
+          ]).then(function (vals) {
+            window.__nav = {
+              can,
+              shared: navigator._lastShare && navigator._lastShare.title,
+              lock: vals[1]
+            };
+          }).catch(function (e) { window.__nav = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__nav").unwrap();
+    assert_eq!(v["can"], true, "{v}");
+    assert_eq!(v["shared"], "t", "{v}");
+    assert_eq!(v["lock"], "k:exclusive", "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

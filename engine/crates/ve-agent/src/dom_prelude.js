@@ -38,6 +38,7 @@
   };
   const liveIntersectionObservers = new Set();
   const liveResizeObservers = new Set();
+  let documentFullscreenElement = null;
   function notifyGeometryObservers() {
     for (const o of liveIntersectionObservers) o._fire();
     for (const o of liveResizeObservers) o._fire();
@@ -2547,6 +2548,14 @@
       if (opts.checkOpacity && Number(cs.opacity) === 0) return false;
       return true;
     }
+    requestFullscreen() {
+      if (!this.isConnected) {
+        return Promise.reject(new TypeError("Failed to execute 'requestFullscreen' on 'Element': Invalid element."));
+      }
+      documentFullscreenElement = this;
+      document.dispatchEvent(new Event("fullscreenchange"));
+      return Promise.resolve();
+    }
   }
   applyChildNode(Element.prototype);
   Element.prototype.streamAppendHTMLUnsafe = function streamAppendHTMLUnsafe(opts) {
@@ -3068,13 +3077,21 @@
       if (this.popover == null) {
         throw new DOMException("Not a popover", "NotSupportedError");
       }
+      if (this._popoverOpen) return;
+      const before = new ToggleEvent("beforetoggle", { bubbles: true, cancelable: true, oldState: "closed", newState: "open" });
+      if (!this.dispatchEvent(before)) return;
       this._popoverOpen = true;
+      this.dispatchEvent(new ToggleEvent("toggle", { bubbles: true, oldState: "closed", newState: "open" }));
     }
     hidePopover() {
       if (this.popover == null) {
         throw new DOMException("Not a popover", "NotSupportedError");
       }
+      if (!this._popoverOpen) return;
+      const before = new ToggleEvent("beforetoggle", { bubbles: true, cancelable: true, oldState: "open", newState: "closed" });
+      if (!this.dispatchEvent(before)) return;
       this._popoverOpen = false;
+      this.dispatchEvent(new ToggleEvent("toggle", { bubbles: true, oldState: "open", newState: "closed" }));
     }
     togglePopover() {
       const opts = arguments.length ? arguments[0] : undefined;
@@ -3082,7 +3099,9 @@
         throw new DOMException("Not a popover", "NotSupportedError");
       }
       const force = opts && typeof opts === "object" ? opts.force : (typeof opts === "boolean" ? opts : undefined);
-      this._popoverOpen = force === undefined ? !this._popoverOpen : !!force;
+      const want = force === undefined ? !this._popoverOpen : !!force;
+      if (want) this.showPopover();
+      else this.hidePopover();
       return !!this._popoverOpen;
     }
     get innerText() { return innerTextOf(this); }
@@ -6619,6 +6638,15 @@
     get designMode() { return this._designMode || "off"; }
     set designMode(v) { this._designMode = String(v).toLowerCase() === "on" ? "on" : "off"; }
     hasFocus() { return this.__h === D("documentNode"); }
+    get fullscreenEnabled() { return true; }
+    get fullscreenElement() { return documentFullscreenElement; }
+    get fullscreen() { return !!documentFullscreenElement; }
+    exitFullscreen() {
+      if (!documentFullscreenElement) return Promise.resolve();
+      documentFullscreenElement = null;
+      this.dispatchEvent(new Event("fullscreenchange"));
+      return Promise.resolve();
+    }
     execCommand(commandId, _showUI, value) {
       if (arguments.length < 1) throw new TypeError("Not enough arguments");
       const cmd = String(commandId).toLowerCase();
@@ -6950,6 +6978,51 @@
     taintEnabled() { return false; }
     javaEnabled() { return false; }
     sendBeacon() { return true; }
+    canShare(data) {
+      return !!(data && (data.url || data.text || data.title || (data.files && data.files.length)));
+    }
+    share(data) {
+      if (!this.canShare(data)) {
+        return Promise.reject(new TypeError("Failed to execute 'share' on 'Navigator': Insufficient number of arguments or no supported share data was provided."));
+      }
+      this._lastShare = { title: data.title || "", text: data.text || "", url: data.url || "" };
+      return Promise.resolve();
+    }
+    get locks() {
+      if (!this._locks) {
+        const held = new Map();
+        this._locks = {
+          request(name, options, callback) {
+            if (typeof options === "function") { callback = options; options = {}; }
+            if (typeof callback !== "function") {
+              return Promise.reject(new TypeError("Failed to execute 'request' on 'LockManager': parameter is not a Function."));
+            }
+            name = String(name);
+            const mode = options && options.mode ? String(options.mode) : "exclusive";
+            return new Promise((res, rej) => {
+              queueMicrotask(() => {
+                const info = { name, mode };
+                held.set(name, info);
+                Promise.resolve(callback(info)).then((v) => {
+                  held.delete(name);
+                  res(v);
+                }, (e) => {
+                  held.delete(name);
+                  rej(e);
+                });
+              });
+            });
+          },
+          query() {
+            return Promise.resolve({
+              held: Array.from(held.values()),
+              pending: [],
+            });
+          },
+        };
+      }
+      return this._locks;
+    }
     get clipboard() {
       if (!this._clipboard) {
         this._clipboard = {
@@ -8600,6 +8673,72 @@
     });
   }
 
+  function cacheRequestUrl(request) {
+    if (request == null) return "";
+    if (typeof request === "string") return request;
+    if (request.url != null) return String(request.url);
+    return String(request);
+  }
+  class Cache {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    match(request) {
+      const hit = this._map.get(cacheRequestUrl(request));
+      return Promise.resolve(hit && hit.clone ? hit.clone() : hit);
+    }
+    matchAll(request) {
+      if (arguments.length < 1) {
+        return Promise.resolve(Array.from(this._map.values()).map((r) => (r && r.clone ? r.clone() : r)));
+      }
+      return this.match(request).then((r) => (r ? [r] : []));
+    }
+    put(request, response) {
+      this._map.set(cacheRequestUrl(request), response && response.clone ? response.clone() : response);
+      return Promise.resolve();
+    }
+    delete(request) {
+      return Promise.resolve(this._map.delete(cacheRequestUrl(request)));
+    }
+    keys() {
+      return Promise.resolve(Array.from(this._map.keys()));
+    }
+    add(request) {
+      const self = this;
+      return fetchImpl(request).then((res) => self.put(request, res));
+    }
+    addAll(requests) {
+      const self = this;
+      return Promise.all(Array.from(requests).map((r) => self.add(r)));
+    }
+  }
+  Object.defineProperty(Cache.prototype, Symbol.toStringTag, { value: "Cache", configurable: true });
+  class CacheStorage {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    open(name) {
+      name = String(name);
+      if (!this._stores.has(name)) {
+        const cache = Object.create(Cache.prototype);
+        cache._map = new Map();
+        this._stores.set(name, cache);
+      }
+      return Promise.resolve(this._stores.get(name));
+    }
+    has(name) { return Promise.resolve(this._stores.has(String(name))); }
+    delete(name) { return Promise.resolve(this._stores.delete(String(name))); }
+    keys() { return Promise.resolve(Array.from(this._stores.keys())); }
+    match(request) {
+      const self = this;
+      return (async () => {
+        for (const cache of self._stores.values()) {
+          const hit = await cache.match(request);
+          if (hit) return hit;
+        }
+      })();
+    }
+  }
+  Object.defineProperty(CacheStorage.prototype, Symbol.toStringTag, { value: "CacheStorage", configurable: true });
+  const caches = Object.create(CacheStorage.prototype);
+  caches._stores = new Map();
+
   class URLSearchParams {
     constructor(init) {
       this._ = [];
@@ -9885,7 +10024,7 @@
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];
