@@ -5249,6 +5249,33 @@ fn css_typed_units_and_scheduler_yield() {
 }
 
 #[test]
+fn promise_with_resolvers_and_try() {
+    let mut page = open("<title>pr</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__pr = null;
+          const w = Promise.withResolvers();
+          Promise.try(function (n) { return n + 1; }, 2).then(function (v) {
+            w.resolve("ok");
+            return w.promise.then(function (got) {
+              window.__pr = {
+                tryVal: v,
+                resolved: got,
+                prerender: document.prerendering
+              };
+            });
+          }).catch(function (e) { window.__pr = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__pr").unwrap();
+    assert_eq!(v["tryVal"], 3, "{v}");
+    assert_eq!(v["resolved"], "ok", "{v}");
+    assert_eq!(v["prerender"], false, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

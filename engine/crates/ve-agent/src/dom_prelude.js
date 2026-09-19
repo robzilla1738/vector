@@ -6639,6 +6639,7 @@
     set domain(v) { this._domain = String(v); }
     get hidden() { return false; }
     get visibilityState() { return "visible"; }
+    get prerendering() { return false; }
     get referrer() { return this.__h === D("documentNode") ? (D("referrer") || "") : ""; }
     get designMode() { return this._designMode || "off"; }
     set designMode(v) { this._designMode = String(v).toLowerCase() === "on" ? "on" : "off"; }
@@ -8622,6 +8623,19 @@
     }
   }
   Object.defineProperty(ReadableStream.prototype, Symbol.toStringTag, { value: "ReadableStream", configurable: true });
+  if (typeof Promise.withResolvers !== "function") {
+    Promise.withResolvers = function () {
+      let resolve, reject;
+      const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+      return { promise, resolve, reject };
+    };
+  }
+  if (typeof Promise.try !== "function") {
+    Promise.try = function (fn) {
+      const args = Array.prototype.slice.call(arguments, 1);
+      return new Promise((res) => res(typeof fn === "function" ? fn.apply(undefined, args) : fn));
+    };
+  }
   ReadableStream.from = function (iterable) {
     const items = Array.from(iterable || []);
     return new ReadableStream({
