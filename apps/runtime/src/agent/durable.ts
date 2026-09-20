@@ -1,9 +1,9 @@
-/**
- * Durable write ledger (Gate D). Persist intent before dispatch so a lost
- * response cannot issue a second external write with the same key.
- */
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+/** Persist intent before dispatch; uncertainty never authorizes a retry. */
+import { readFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { resolve } from "node:path";
+import type { DatabaseSync } from "node:sqlite";
+import { openDb } from "../store/db.js";
 import { classifyStep } from "./permissions.js";
 
 export interface WriteIntent {
@@ -12,114 +12,129 @@ export interface WriteIntent {
   pageId: string;
   documentEpoch: number;
   idempotencyKey: string;
-  status: "pending" | "confirmed" | "failed";
+  status: "pending" | "confirmed" | "uncertain" | "not_applied";
 }
 
-interface LedgerFile {
-  seq: number;
-  intents: WriteIntent[];
-}
+const SELECT = `SELECT id, run_id AS runId, page_id AS pageId,
+  document_epoch AS documentEpoch, idempotency_key AS idempotencyKey, status FROM action_intents`;
 
 export class DurableWriteLedger {
-  private byKey = new Map<string, WriteIntent>();
-  private seq = 0;
-  private readonly persistPath?: string;
+  private readonly db: DatabaseSync;
+  private readonly ownsDb: boolean;
 
-  constructor(persistPath?: string) {
-    this.persistPath = persistPath;
-    if (persistPath) this.load();
+  constructor(storage?: DatabaseSync | string, legacyPath?: string) {
+    this.ownsDb = !storage || typeof storage === "string";
+    // Preserve the historical path-based API without overwriting its JSON file.
+    this.db = typeof storage === "string" ? openDb(`${storage}.sqlite`) : storage ?? openDb(":memory:");
+    const source = typeof storage === "string" ? storage : legacyPath;
+    try { if (source) this.importLegacy(source); }
+    catch (error) { if (this.ownsDb) this.db.close(); throw error; }
   }
 
+  close(): void { if (this.ownsDb) this.db.close(); }
+
   key(runId: string, pageId: string, epoch: number, signature: string, revision = 0): string {
-    return `${runId}|${pageId}|${epoch}|r${revision}|${signature}`;
+    return createHash("sha256").update(JSON.stringify([runId, pageId, epoch, revision, signature])).digest("hex");
   }
 
   begin(opts: {
-    runId: string;
-    pageId: string;
-    documentEpoch: number;
-    signature: string;
-    revision?: number;
+    runId: string; pageId: string; documentEpoch: number;
+    signature: string; revision?: number; logicalActionId?: string;
   }): { intent: WriteIntent; duplicate: boolean } {
-    const idempotencyKey = this.key(
-      opts.runId,
-      opts.pageId,
-      opts.documentEpoch,
-      opts.signature,
-      opts.revision ?? 0,
-    );
-    const existing = this.byKey.get(idempotencyKey);
-    if (existing && (existing.status === "confirmed" || existing.status === "pending")) {
-      return { intent: existing, duplicate: true };
-    }
-    const intent: WriteIntent = {
-      id: `w${++this.seq}`,
-      runId: opts.runId,
-      pageId: opts.pageId,
-      documentEpoch: opts.documentEpoch,
-      idempotencyKey,
-      status: "pending",
-    };
-    this.byKey.set(idempotencyKey, intent);
-    this.flush();
-    return { intent, duplicate: false };
+    const idempotencyKey = opts.logicalActionId
+      ? createHash("sha256").update(JSON.stringify([opts.runId, opts.logicalActionId])).digest("hex")
+      : this.key(opts.runId, opts.pageId, opts.documentEpoch, opts.signature, opts.revision);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      // A new observation, target ref, or repair plan cannot bypass an unresolved
+      // effect. Reads can still establish what happened before another write.
+      const existing = this.db.prepare(`${SELECT} WHERE idempotency_key=? OR
+        (run_id=? AND page_id=? AND status IN ('pending','uncertain'))
+        ORDER BY CASE WHEN status IN ('pending','uncertain') THEN 0 ELSE 1 END LIMIT 1`)
+        .get(idempotencyKey, opts.runId, opts.pageId) as unknown as WriteIntent | undefined;
+      if (existing) {
+        this.db.exec("COMMIT");
+        return { intent: existing, duplicate: true };
+      }
+      const intent: WriteIntent = { id: randomUUID(), runId: opts.runId, pageId: opts.pageId,
+        documentEpoch: opts.documentEpoch, idempotencyKey, status: "pending" };
+      this.insert(intent);
+      this.db.exec("COMMIT");
+      return { intent, duplicate: false };
+    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
   }
 
-  confirm(id: string) {
-    for (const intent of this.byKey.values()) {
-      if (intent.id === id) intent.status = "confirmed";
-    }
-    this.flush();
-  }
+  confirm(id: string): void { this.transition(id, "confirmed"); }
+  // A failed browser response is not proof that the external effect failed.
+  fail(id: string): void { this.transition(id, "uncertain"); }
 
-  fail(id: string) {
-    for (const intent of this.byKey.values()) {
-      if (intent.id === id) intent.status = "failed";
-    }
-    this.flush();
+  /** Trusted reconciliation only; callers must supply independent evidence. */
+  reconcile(id: string, outcome: "applied" | "not_applied", evidence: string): void {
+    if (!evidence.trim()) throw new Error("Reconciliation requires evidence");
+    this.transition(id, outcome === "applied" ? "confirmed" : "not_applied", evidence);
   }
 
   get(idempotencyKey: string): WriteIntent | undefined {
-    return this.byKey.get(idempotencyKey);
+    return this.db.prepare(`${SELECT} WHERE idempotency_key=?`).get(idempotencyKey) as unknown as WriteIntent | undefined;
   }
 
-  private load() {
-    const path = this.persistPath;
-    if (!path) return;
+  unresolved(runId: string): WriteIntent[] {
+    return this.db.prepare(`${SELECT} WHERE run_id=? AND status IN ('pending','uncertain') ORDER BY created_at,id`)
+      .all(runId) as unknown as WriteIntent[];
+  }
+
+  private insert(intent: WriteIntent): void {
+    const now = Date.now();
+    this.db.prepare(`INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,status,created_at)
+      VALUES(?,?,?,?,?,?,?)`).run(intent.id, intent.idempotencyKey, intent.runId, intent.pageId, intent.documentEpoch, intent.status, now);
+    this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)").run(intent.id, intent.status, now);
+  }
+
+  private transition(id: string, status: WriteIntent["status"], evidence?: string): void {
+    this.db.exec("BEGIN IMMEDIATE");
     try {
-      const parsed = JSON.parse(readFileSync(path, "utf8")) as LedgerFile;
-      this.seq = parsed.seq ?? 0;
-      for (const intent of parsed.intents ?? []) {
-        this.byKey.set(intent.idempotencyKey, intent);
+      const prior = this.db.prepare("SELECT status FROM action_intents WHERE id=?").get(id) as { status: string } | undefined;
+      if (!prior) throw new Error("Unknown action intent");
+      if (!evidence && prior.status !== "pending") throw new Error("Settled action requires reconciliation evidence");
+      this.db.prepare("UPDATE action_intents SET status=?, evidence=? WHERE id=?").run(status, evidence ?? null, id);
+      this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
+        .run(id, status, Date.now(), evidence ?? null);
+      this.db.exec("COMMIT");
+    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
+
+  private importLegacy(path: string): void {
+    const source = resolve(path);
+    if (this.db.prepare("SELECT 1 FROM journal_imports WHERE source=?").get(source)) return;
+    let text: string;
+    try { text = readFileSync(source, "utf8"); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+    const parsed = JSON.parse(text) as { seq: number; intents: WriteIntent[] };
+    if (!parsed || !Number.isSafeInteger(parsed.seq) || parsed.seq < 0 || !Array.isArray(parsed.intents)) throw new Error("Invalid legacy action journal; recovery is required");
+    for (const intent of parsed.intents) {
+      if (!intent || ![intent.id, intent.runId, intent.pageId, intent.idempotencyKey].every(v => typeof v === "string" && v.length > 0)
+        || !Number.isSafeInteger(intent.documentEpoch) || !["pending", "confirmed", "failed"].includes(intent.status)) {
+        throw new Error("Invalid legacy action intent; recovery is required");
       }
-    } catch {
-      /* first use or unreadable file — start empty */
     }
-  }
-
-  private flush() {
-    if (!this.persistPath) return;
-    const payload: LedgerFile = {
-      seq: this.seq,
-      intents: [...this.byKey.values()],
-    };
-    mkdirSync(dirname(this.persistPath), { recursive: true });
-    const tmp = `${this.persistPath}.tmp`;
-    writeFileSync(tmp, JSON.stringify(payload));
-    renameSync(tmp, this.persistPath);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      for (const intent of parsed.intents) {
+        // Legacy keys cannot be matched reliably after replanning. Preserve every
+        // row as uncertain until independent reconciliation, including 'failed'.
+        const key = createHash("sha256").update(JSON.stringify(["legacy", source, intent.idempotencyKey])).digest("hex");
+        this.insert({ ...intent, id: randomUUID(), idempotencyKey: key, status: "uncertain" });
+      }
+      this.db.prepare("INSERT INTO journal_imports VALUES(?,?)").run(source, Date.now());
+      this.db.exec("COMMIT");
+    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
   }
 }
 
-export function stepSignature(ops: Array<{ op: string; target?: string; value?: string }>): string {
-  return ops.map((s) => `${s.op}:${s.target ?? ""}:${s.value ?? ""}`).join("|");
-}
-
-function stepsForSignature(steps: Array<{ op: string; target?: unknown; value?: unknown }>): Array<{ op: string; target?: string; value?: string }> {
-  return steps.map((s) => ({
-    op: s.op,
-    target: typeof s.target === "string" ? s.target : "",
-    value: typeof s.value === "string" ? s.value : "",
-  }));
+export function stepSignature(ops: Array<{ op: string; target?: unknown; value?: unknown }>): string {
+  const canonical = JSON.stringify(ops, (_key, value) => value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value);
+  return createHash("sha256").update(canonical).digest("hex");
 }
 
 /** Persist a write/egress intent. `skip` means do not dispatch. */
@@ -133,11 +148,11 @@ export function beginConsequentialWrite(
     revision?: number;
     steps: Array<{ op: string; target?: unknown; value?: unknown }>;
   },
-): { skip: boolean; intentId?: string } {
+): { skip: boolean; intentId?: string; reason?: string } {
   if (!ledger) return { skip: false };
   const writes = opts.steps.some((s) => {
     const effect = classifyStep(s.op);
-    return effect === "write" || effect === "egress";
+    return effect !== "read";
   });
   if (!writes) return { skip: false };
   const began = ledger.begin({
@@ -145,9 +160,9 @@ export function beginConsequentialWrite(
     pageId: opts.pageId,
     documentEpoch: opts.documentEpoch,
     revision: opts.revision,
-    signature: stepSignature(stepsForSignature(opts.steps)),
+    signature: stepSignature(opts.steps),
   });
-  if (began.duplicate) return { skip: true };
+  if (began.duplicate) return { skip: true, reason: `Action ${began.intent.id} is ${began.intent.status}; reconcile its outcome before dispatch. No new action was executed.` };
   return { skip: false, intentId: began.intent.id };
 }
 

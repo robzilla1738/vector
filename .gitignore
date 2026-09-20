@@ -11,3 +11,4 @@ tests/benchmarks/reports/
 *.tsbuildinfo
 /index.js
 fixtures/dist-types/
+*.local-before-main-*.md

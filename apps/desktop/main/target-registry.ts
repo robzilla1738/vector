@@ -1,14 +1,20 @@
-import type { WebContentsView } from "electron";
+import type { BrowserWindow, WebContentsView } from "electron";
 
-export interface ViewEntry {
+interface ViewIdentity {
   pageId: string;
+  windowId?: string;
   marker: string;
-  view: WebContentsView;
   owned: boolean;
+  runtimeOwned?:boolean;
   kind?: "chromium" | "engine";
   lastPreview?: string;
   visibleBounds?: { x: number; y: number; width: number; height: number };
 }
+
+export type ViewEntry = ViewIdentity & (
+  { popup?: undefined; view: WebContentsView } |
+  { popup: BrowserWindow; view: Pick<WebContentsView, "webContents"> }
+);
 
 /**
  * The authoritative pageId/marker -> native view map inside the main
@@ -39,7 +45,10 @@ export class TargetRegistry {
     if (!e) return;
     this.byPageId.delete(pageId);
     this.byMarker.delete(e.marker);
-    this.byWcId.delete(e.view.webContents.id);
+    // Removal also runs from `destroyed`; Electron properties are unavailable then.
+    for (const [id, entry] of this.byWcId) {
+      if (entry === e) this.byWcId.delete(id);
+    }
   }
   all() {
     return [...this.byPageId.values()];

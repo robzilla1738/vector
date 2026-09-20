@@ -1,5 +1,7 @@
 # Vector — State of the Project and Excellence Roadmap
 
+> Historical engine evidence only. Implement from [Aux roadmap](AUX-ROADMAP.md).
+
 **macOS, own engine · 18 September 2026**  
 **Status:** historical engine roadmap. Product strategy and release gates moved to [`PRODUCT-ARCHITECTURE.md`](PRODUCT-ARCHITECTURE.md) after the architecture review on 19 September 2026. Checkmarks below are evidence about individual engine capabilities, not a product-readiness claim.
 **Scope:** make Vector the fastest, smoothest browser for agents and humans on macOS, built on the own engine. Release and Windows work are out of scope.

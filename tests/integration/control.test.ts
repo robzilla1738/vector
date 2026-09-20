@@ -3,7 +3,7 @@
  * after a fresh observation; saved programs replay across pages.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
@@ -22,6 +22,9 @@ beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
   dataDir = mkdtempSync(join(tmpdir(), "vector-ctrl-"));
+  // This fixture deliberately exercises reload after control returns. Keep the
+  // production default read-only and grant egress only inside this isolated run.
+  writeFileSync(join(dataDir, "settings.json"), JSON.stringify({ effectGrants: ["effect:read", "effect:egress"] }));
   rt = await startRuntime({ ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "", VECTOR_ENGINE_MODE: "off" });
 }, 60_000);
 

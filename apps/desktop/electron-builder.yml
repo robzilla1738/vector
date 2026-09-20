@@ -1,6 +1,8 @@
+# Keep the installed bundle ID and package app.name stable for saved data.
+# productName changes only the visible package; do not add it to package.json.
 appId: dev.vector.browser
-productName: Vector
-copyright: Vector
+productName: Aux Browser
+copyright: Aux
 
 directories:
   output: ../../release
@@ -15,6 +17,10 @@ asar: true
 
 # the forked runtime + its production deps are staged by scripts/package-local.mjs
 extraResources:
+  - from: "dist/mcp"
+    to: "mcp"
+    filter:
+      - "**/*"
   - from: "../../release/.staging/runtime"
     to: "runtime"
     filter:
@@ -27,6 +33,8 @@ extraResources:
       - "**/*"
 
 mac:
+  extendInfo:
+    CFBundleDisplayName: Aux
   category: public.app-category.productivity
   icon: icon.icns
   target:

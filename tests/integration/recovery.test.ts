@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, openDb, Repo, type RuntimeHandle } from "@vector/runtime";
 import type { PageTarget, Run } from "@vector/contracts";
+import { resolveDatabasePath } from "@vector/contracts/installation";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import type { ChildProcess } from "node:child_process";
 
@@ -36,7 +37,7 @@ describe("restart recovery", () => {
     await rt1.close(); // graceful stop BEFORE the fake run exists — no shutdown marking
 
     // a real crash leaves a "running" row behind; insert one directly
-    const repo = new Repo(openDb(join(dataDir, "vector.sqlite")));
+    const repo = new Repo(openDb(resolveDatabasePath(dataDir)));
     repo.saveRun({
       runId: "run-crashed",
       goal: "was running when the process died",
@@ -50,6 +51,13 @@ describe("restart recovery", () => {
     const rt2 = await startRuntime(env);
     const { run } = await rt2.invoke("runs.get", { runId: "run-crashed" }) as { run: Run };
     expect(run.status).toBe("interrupted");
+
+    const retried = await rt2.invoke("runs.retry", { runId: "run-crashed" }) as Run;
+    expect(retried.goal).toBe(run.goal);
+    expect(retried.pageIds).toEqual(run.pageIds);
+    expect(retried.config?.chatId).toBe(run.runId);
+    expect(retried.config?.retryOfRunId).toBe(run.runId);
+    await expect(rt2.invoke("runs.retry", { runId: "run-crashed" })).rejects.toThrow(/newer turn/i);
 
     const pages = await rt2.invoke("pages.list", { includeDetached: true }) as PageTarget[];
     const restored = pages.find((p) => p.pageId === page.pageId);

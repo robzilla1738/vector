@@ -1,4 +1,4 @@
-import { VectorError, type RpcChannel } from "@vector/contracts";
+import { VectorError, type RpcChannel, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport } from "@vector/contracts";
 
 /**
  * Calls into the Electron main process, which owns all native surfaces.
@@ -6,11 +6,14 @@ import { VectorError, type RpcChannel } from "@vector/contracts";
  * vector page creation returns an explicit error.
  */
 export interface NativeBridge {
-  createPage(opts: { pageId: string; marker: string; url: string; background: boolean; kind?: "chromium" | "engine" }): Promise<{ ok: true }>;
+  listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean }[] }>;
+  createPage(opts: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean; kind?: "chromium" | "engine" }): Promise<{ ok: true }>;
   closePage(pageId: string): Promise<{ ok: boolean }>;
   showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<{ ok: boolean }>;
   hidePage(pageId: string): Promise<{ ok: boolean }>;
   focusPage(pageId: string): Promise<{ ok: boolean }>;
+  /** Recover a crashed native renderer on its existing tab. */
+  recoverPage?(pageId: string, url: string): Promise<{ ok: boolean }>;
   /** Stop an in-flight load without needing the renderer's event loop. */
   stopPage(pageId: string): Promise<{ ok: boolean }>;
   /** Temporarily show a hidden page's view while pointer steps run — serialized. */
@@ -27,6 +30,25 @@ export interface NativeBridge {
   /** Persist a secret via Electron safeStorage (plan A22). */
   storeSecret(name: string, value: string): Promise<{ ok: true }>;
   readSecret(name: string): Promise<{ value?: string }>;
+  developmentProjects?(projectIds:string[]):Promise<LocalProject[]>;
+  inspectProject?(projectId:string):Promise<ProjectInspection>;
+  githubProject?(projectId:string):Promise<{owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string}>;
+  recordGithubStatus?(projectId:string,status:ProjectGithubStatus):Promise<ProjectGithubStatus>;
+  writeIncidentReport?(input:{projectId:string;task:ProjectCommandTask;page:{pageId:string;url:string;title:string};console:{level:string;message:string;atMs?:number}[];network:{method:string;status?:number;url:string;durationMs?:number;startedAt?:number}[];operations?:string}):Promise<ProjectIncidentReport>;
+  listProjectFiles?(projectId:string):Promise<string[]>;
+  readProjectFile?(projectId:string,name:string):Promise<ProjectFile>;
+  projectSnapshotTree?(projectId:string):Promise<string>;
+  writeProjectFile?(input:{projectId:string;name:string;expectedHash:string;content:string;task:ProjectCommandTask}):Promise<(ProjectFile&{recoveryPath:string})|null>;
+  createProjectFile?(input:{projectId:string;name:string;content:string;task:ProjectCommandTask}):Promise<(ProjectFile&{recoveryPath?:string})|null>;
+  renameProjectFile?(input:{projectId:string;name:string;nextName:string;expectedHash:string;task:ProjectCommandTask}):Promise<(ProjectFile&{recoveryPath:string})|null>;
+  deleteProjectFile?(input:{projectId:string;name:string;expectedHash:string;task:ProjectCommandTask}):Promise<{name:string;recoveryPath:string}|null>;
+  projectCommands?(projectId:string):Promise<ProjectCommand[]>;
+  runProjectCommand?(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask}):Promise<ProjectCommand|null>;
+  approveProjectPreview?(input:{projectId:string;url:string;task:ProjectCommandTask}):Promise<LocalPreviewCheck|null>;
+  stopProjectCommand?(projectId:string,commandId:string):Promise<ProjectCommand>;
+  prepareProjectReview?(projectId:string,task:ProjectReviewContext):Promise<ProjectReviewSummary>;
+  commitProject?(projectId:string,request:ProjectCommitRequest,task:ProjectReviewContext):Promise<ProjectCommitResult|null>;
+  approveCloudCommand?(input:{task:ProjectCommandTask;environment:{remoteName:string;runtime:string;region:string};executable:string;args:string[];mode:'command'|'service';timeoutMinutes?:number}):Promise<boolean>;
   available(): boolean;
 }
 
@@ -35,11 +57,14 @@ export class ChannelNativeBridge implements NativeBridge {
   available() {
     return true;
   }
-  createPage(o: { pageId: string; marker: string; url: string; background: boolean; kind?: "chromium" | "engine" }) {
+  listPages() {
+    return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean }[] }>("native.listPages", {});
+  }
+  createPage(o: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean; kind?: "chromium" | "engine" }) {
     return this.channel.call<{ ok: true }>("native.createPage", o);
   }
   closePage(pageId: string) {
-    return this.channel.call<{ ok: boolean }>("native.closePage", { pageId });
+    return this.channel.call<{ ok: boolean }>("native.closePage", { pageId }, 55_000);
   }
   showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }) {
     return this.channel.call<{ ok: boolean }>("native.showPage", { pageId, bounds });
@@ -49,6 +74,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   focusPage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.focusPage", { pageId });
+  }
+  recoverPage(pageId: string, url: string) {
+    return this.channel.call<{ ok: boolean }>("native.recoverPage", { pageId, url }, 60_000);
   }
   stopPage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.stopPage", { pageId });
@@ -86,6 +114,25 @@ export class ChannelNativeBridge implements NativeBridge {
   readSecret(name: string) {
     return this.channel.call<{ value?: string }>("native.readSecret", { name });
   }
+  developmentProjects(projectIds:string[]){return this.channel.call<LocalProject[]>("native.developmentProjects",{projectIds});}
+  inspectProject(projectId:string){return this.channel.call<ProjectInspection>("native.inspectProject",{projectId});}
+  githubProject(projectId:string){return this.channel.call<{owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string}>("native.githubProject",{projectId});}
+  recordGithubStatus(projectId:string,status:ProjectGithubStatus){return this.channel.call<ProjectGithubStatus>("native.recordGithubStatus",{projectId,status});}
+  writeIncidentReport(input:{projectId:string;task:ProjectCommandTask;page:{pageId:string;url:string;title:string};console:{level:string;message:string;atMs?:number}[];network:{method:string;status?:number;url:string;durationMs?:number;startedAt?:number}[];operations?:string}){return this.channel.call<ProjectIncidentReport>("native.writeIncidentReport",input,120_000);}
+  listProjectFiles(projectId:string){return this.channel.call<string[]>("native.listProjectFiles",{projectId});}
+  readProjectFile(projectId:string,name:string){return this.channel.call<ProjectFile>("native.readProjectFile",{projectId,name});}
+  projectSnapshotTree(projectId:string){return this.channel.call<string>('native.projectSnapshotTree',{projectId});}
+  writeProjectFile(input:{projectId:string;name:string;expectedHash:string;content:string;task:ProjectCommandTask}){return this.channel.call<(ProjectFile&{recoveryPath:string})|null>("native.writeProjectFile",input,120_000);}
+  createProjectFile(input:{projectId:string;name:string;content:string;task:ProjectCommandTask}){return this.channel.call<(ProjectFile&{recoveryPath?:string})|null>("native.createProjectFile",input,120_000);}
+  renameProjectFile(input:{projectId:string;name:string;nextName:string;expectedHash:string;task:ProjectCommandTask}){return this.channel.call<(ProjectFile&{recoveryPath:string})|null>("native.renameProjectFile",input,120_000);}
+  deleteProjectFile(input:{projectId:string;name:string;expectedHash:string;task:ProjectCommandTask}){return this.channel.call<{name:string;recoveryPath:string}|null>("native.deleteProjectFile",input,120_000);}
+  projectCommands(projectId:string){return this.channel.call<ProjectCommand[]>("native.projectCommands",{projectId});}
+  runProjectCommand(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask}){return this.channel.call<ProjectCommand|null>("native.runProjectCommand",input,120_000);}
+  approveProjectPreview(input:{projectId:string;url:string;task:ProjectCommandTask}){return this.channel.call<LocalPreviewCheck|null>("native.approveProjectPreview",input,120_000);}
+  stopProjectCommand(projectId:string,commandId:string){return this.channel.call<ProjectCommand>("native.stopProjectCommand",{projectId,commandId});}
+  prepareProjectReview(projectId:string,task:ProjectReviewContext){return this.channel.call<ProjectReviewSummary>("native.prepareProjectReview",{projectId,task});}
+  commitProject(projectId:string,request:ProjectCommitRequest,task:ProjectReviewContext){return this.channel.call<ProjectCommitResult|null>("native.commitProject",{projectId,request,task},120_000);}
+  approveCloudCommand(input:{task:ProjectCommandTask;environment:{remoteName:string;runtime:string;region:string};executable:string;args:string[];mode:'command'|'service';timeoutMinutes?:number}){return this.channel.call<boolean>('native.approveCloudCommand',input,120_000);}
 }
 
 export class NullNativeBridge implements NativeBridge {
@@ -98,6 +145,7 @@ export class NullNativeBridge implements NativeBridge {
       "No native surface: the runtime is not attached to a Vector desktop shell",
     );
   }
+  listPages(): never { this.fail(); }
   createPage(): never { this.fail(); }
   closePage(): never { this.fail(); }
   showPage(): never { this.fail(); }
@@ -113,6 +161,25 @@ export class NullNativeBridge implements NativeBridge {
   stopFind(): never { this.fail(); }
   setZoom(): never { this.fail(); }
   setCookies(): never { this.fail(); }
-  async storeSecret() { return { ok: true as const }; }
+  async storeSecret(): Promise<{ ok: true }> { throw new Error("Secure credential storage is unavailable without the desktop"); }
   async readSecret() { return { value: undefined as string | undefined }; }
+  developmentProjects(): never { this.fail(); }
+  inspectProject(): never { this.fail(); }
+  githubProject(): never { this.fail(); }
+  recordGithubStatus(): never { this.fail(); }
+  writeIncidentReport(): never { this.fail(); }
+  listProjectFiles(): never { this.fail(); }
+  readProjectFile(): never { this.fail(); }
+  projectSnapshotTree():never{this.fail();}
+  writeProjectFile(): never { this.fail(); }
+  createProjectFile(): never { this.fail(); }
+  renameProjectFile(): never { this.fail(); }
+  deleteProjectFile(): never { this.fail(); }
+  projectCommands(): never { this.fail(); }
+  runProjectCommand(): never { this.fail(); }
+  approveProjectPreview(): never { this.fail(); }
+  stopProjectCommand(): never { this.fail(); }
+  prepareProjectReview(): never { this.fail(); }
+  commitProject(): never { this.fail(); }
+  approveCloudCommand(): never { this.fail(); }
 }

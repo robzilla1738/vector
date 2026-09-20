@@ -1,16 +1,36 @@
 #!/usr/bin/env node
 /**
- * vector-mcp — MCP stdio server wrapping the Vector loopback API.
+ * aux-mcp — MCP stdio server wrapping the Aux loopback API.
  * Lets MCP-capable agents drive the user's local browser through the same
  * execution service the built-in agent uses.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { PlanStepSchema, errorAdvice, toErrorPayload, VectorError } from "@vector/contracts";
+import { MethodSchemas, PlanStepSchema, errorAdvice, toErrorPayload, VectorError } from "@vector/contracts";
 import { rpc } from "./client.js";
 
-const server = new McpServer({ name: "vector", version: "0.1.0" });
+const server = new McpServer({ name: "aux", version: "0.1.0" });
+// Existing clients keep vector_* names. The desktop-generated configuration opts
+// into canonical Aux names without doubling the advertised tool catalog.
+const canonicalNames=process.env.AUX_MCP_TOOL_PREFIX === 'aux';
+const toolName = (name: string) => canonicalNames ? name.replace(/^vector_/, 'aux_') : name;
+const resourceUri=(path:string)=>`${canonicalNames?'aux':'vector'}://${path}`;
+const scopedCatalog=!!process.env.AUX_MCP_TOKEN;
+const scopedKind=process.env.AUX_MCP_SCOPE_KIND;
+const scopedTools=new Set([
+  'aux_pages_list','aux_page_observe','aux_page_execute','aux_page_takeover','aux_page_resume','aux_page_capture',
+  'aux_run_get','aux_run_control','aux_run_answer','aux_extract','aux_wait_for','aux_console','aux_dialog','aux_network',
+  'aux_workspaces_list','aux_tasks_list','aux_task_get','aux_task_update','aux_task_archive','aux_task_start',
+  'aux_task_record_evidence','aux_task_capture_evidence','aux_task_receipt',
+]);
+const catalogAllows=(name:string)=>!scopedCatalog||scopedTools.has(name)||name.startsWith('aux_development_')||name.startsWith('aux_cloud_')||(name==='aux_task_create'&&(scopedKind==='workspace'||scopedKind==='task'));
+const registerToolOriginal=server.registerTool.bind(server);
+server.registerTool=((name:string,config:Parameters<typeof server.registerTool>[1],handler:Parameters<typeof server.registerTool>[2])=>{
+  const tool=registerToolOriginal(name,config,handler);
+  if(!catalogAllows(name))tool.disable();
+  return tool;
+}) as typeof server.registerTool;
 
 const FlattenedStepSchema = z
   .object({
@@ -33,7 +53,7 @@ const err = (e: unknown) => {
   };
 };
 
-server.registerTool("vector_pages_list", { description: "List open browser pages (tabs, background workers, attached Chrome tabs)." }, async () => {
+server.registerTool(toolName("vector_pages_list"), { description: "List open browser pages (tabs, background workers, attached Chrome tabs)." }, async () => {
   try {
     return text(await rpc("pages.list"));
   } catch (e) {
@@ -42,9 +62,9 @@ server.registerTool("vector_pages_list", { description: "List open browser pages
 });
 
 server.registerTool(
-  "vector_page_open",
+  toolName("vector_page_open"),
   {
-    description: "Open a new page. Omit backend for policy routing; vector selects Vector's embedded Chromium, chrome adopts an attached Chrome tab, and vector-engine forces the Vector Engine.",
+    description: "Open a new page. Omit backend for policy routing; vector selects Aux's embedded Chromium compatibility backend, chrome adopts an attached Chrome tab, and vector-engine forces the experimental engine.",
     inputSchema: {
       url: z.string().describe("URL to open"),
       backend: z.enum(["vector", "chrome", "vector-engine"]).optional().describe("omit for policy routing; vector, chrome, or vector-engine to force a backend"),
@@ -77,7 +97,7 @@ const observationOut = (v: unknown) => {
 };
 
 server.registerTool(
-  "vector_page_observe",
+  toolName("vector_page_observe"),
   {
     description:
       "Structured observation of a page: title, url, element refs (r1, r2, …), forms, tables, headings, text. " +
@@ -104,7 +124,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_page_execute",
+  toolName("vector_page_execute"),
   {
     description:
       "Execute a typed program (array of steps) on a page; steps run in order and stop at the first non-optional failure. " +
@@ -149,7 +169,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_page_takeover",
+  toolName("vector_page_takeover"),
   {
     description: "Human takeover: stop subsequent agent dispatch on this page. Resume with vector_page_resume after revalidating page and authorization state.",
     inputSchema: { pageId: z.string() },
@@ -164,7 +184,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_page_resume",
+  toolName("vector_page_resume"),
   {
     description: "Release human takeover on a page so an authorized agent can dispatch again.",
     inputSchema: { pageId: z.string() },
@@ -179,7 +199,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_page_capture",
+  toolName("vector_page_capture"),
   {
     description:
       "Screenshot a page. Default returns the PNG as MCP image content (so a vision-capable model sees it) plus its size and scale; format=artifact stores it and returns the artifact id; format=dataUrl returns the base64 data URL as text. Coordinates for clickPoint are screenshot pixels divided by `scale`.",
@@ -210,7 +230,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_set_create",
+  toolName("vector_set_create"),
   {
     description: "Create a page set from URLs, open tabs, or records.",
     inputSchema: {
@@ -229,7 +249,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_set_map",
+  toolName("vector_set_map"),
   {
     description: "Run a program or an agent goal across every member of a set (bounded parallelism). Returns a runId — poll vector_run_get / vector_set_results.",
     inputSchema: {
@@ -249,7 +269,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_set_results",
+  toolName("vector_set_results"),
   { description: "Result records collected for a set.", inputSchema: { setId: z.string() } },
   async ({ setId }) => {
     try {
@@ -261,7 +281,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_run_start",
+  toolName("vector_run_start"),
   {
     description: "Start an agent run with a natural-language goal (plans, executes, verifies).",
     inputSchema: { goal: z.string(), pageId: z.string().optional(), setId: z.string().optional() },
@@ -276,7 +296,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_run_get",
+  toolName("vector_run_get"),
   { description: "Get run status and step records.", inputSchema: { runId: z.string() } },
   async ({ runId }) => {
     try {
@@ -288,7 +308,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_run_control",
+  toolName("vector_run_control"),
   {
     description: "Pause, resume, or cancel a run.",
     inputSchema: { runId: z.string(), action: z.enum(["pause", "resume", "cancel"]) },
@@ -303,7 +323,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_run_answer",
+  toolName("vector_run_answer"),
   {
     description: "Answer a run waiting on human input (needs_input).",
     inputSchema: { runId: z.string(), answer: z.string() },
@@ -318,7 +338,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_events",
+  toolName("vector_events"),
   {
     description: "Read the event stream since a sequence number.",
     inputSchema: { sinceSeq: z.number().int().nonnegative().optional() },
@@ -333,7 +353,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_chrome_attach",
+  toolName("vector_chrome_attach"),
   {
     description: "Attach to the user's Chrome (started with --remote-debugging-port).",
     inputSchema: { port: z.number().int().positive().optional() },
@@ -347,7 +367,7 @@ server.registerTool(
   },
 );
 
-server.registerTool("vector_chrome_tabs", { description: "List attachable Chrome tabs." }, async () => {
+server.registerTool(toolName("vector_chrome_tabs"), { description: "List attachable Chrome tabs." }, async () => {
   try {
     return text(await rpc("chrome.tabs"));
   } catch (e) {
@@ -356,10 +376,10 @@ server.registerTool("vector_chrome_tabs", { description: "List attachable Chrome
 });
 
 server.registerTool(
-  "vector_chrome_import_cookies",
+  toolName("vector_chrome_import_cookies"),
   {
     description:
-      "Import Chrome's cookies into Vector's session so signed-in sites work. Prefers an attached Chrome (covers app-bound cookies); falls back to decrypting the on-disk profile store (macOS keychain prompt). Returns counts only — never cookie values.",
+      "Import Chrome's cookies into Aux's session so signed-in sites work. Prefers an attached Chrome (covers app-bound cookies); falls back to decrypting the on-disk profile store (macOS keychain prompt). Returns counts only — never cookie values.",
     inputSchema: { source: z.enum(["auto", "attached", "profile"]).optional() },
   },
   async ({ source }) => {
@@ -372,7 +392,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_artifacts",
+  toolName("vector_artifacts"),
   { description: "List artifacts (screenshots, downloads, exports).", inputSchema: { runId: z.string().optional() } },
   async ({ runId }) => {
     try {
@@ -384,7 +404,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_artifact_read",
+  toolName("vector_artifact_read"),
   { description: "Read an artifact as base64.", inputSchema: { artifactId: z.string() } },
   async ({ artifactId }) => {
     try {
@@ -398,7 +418,7 @@ server.registerTool(
 // ---- runtime-vnext surface ----
 
 server.registerTool(
-  "vector_state_query",
+  toolName("vector_state_query"),
   {
     description:
       "Structured query over the runtime's state index — captured responses, results, controls, datasets, artifacts, operations. No inference; reads persisted state.",
@@ -420,7 +440,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_responses_list",
+  toolName("vector_responses_list"),
   {
     description: "HTTP responses captured on a page (metadata; bodies via vector_response_body).",
     inputSchema: { pageId: z.string(), urlIncludes: z.string().optional(), limit: z.number().int().positive().optional() },
@@ -435,7 +455,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_response_body",
+  toolName("vector_response_body"),
   { description: "Body of a captured response as base64.", inputSchema: { requestId: z.string() } },
   async ({ requestId }) => {
     try {
@@ -447,7 +467,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_operations_list",
+  toolName("vector_operations_list"),
   {
     description: "List registered operations (validated ways to do things on sites) with their implementations.",
     inputSchema: { siteKey: z.string().optional() },
@@ -462,7 +482,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_operation_invoke",
+  toolName("vector_operation_invoke"),
   {
     description:
       "Invoke a registered operation with zero model involvement — picks the cheapest eligible implementation (direct request or browser program).",
@@ -483,7 +503,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_operation_explain",
+  toolName("vector_operation_explain"),
   {
     description: "Explain which implementation an invoke would pick and why (route selection).",
     inputSchema: { siteKey: z.string(), name: z.string(), pageId: z.string().optional() },
@@ -498,7 +518,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_operation_save_program",
+  toolName("vector_operation_save_program"),
   {
     description: "Register a proven program as a named operation on a site so future invokes need no model.",
     inputSchema: {
@@ -519,7 +539,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_operation_compile",
+  toolName("vector_operation_compile"),
   {
     description: "Compile a replayable operation candidate from a finished run's step trace (trace-derived, §10.3).",
     inputSchema: { runId: z.string(), siteKey: z.string().optional(), name: z.string().optional() },
@@ -534,7 +554,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_program_validate",
+  toolName("vector_program_validate"),
   {
     description: "Validate a program (steps or control-flow nodes) without executing it.",
     inputSchema: { program: z.record(z.string(), z.unknown()) },
@@ -549,7 +569,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_program_run",
+  toolName("vector_program_run"),
   {
     description: "Run a saved program (typed steps or control-flow nodes) on a page — zero model.",
     inputSchema: {
@@ -568,7 +588,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_traces",
+  toolName("vector_traces"),
   {
     description: "List structured execution spans (program.execute, run, model calls) — optionally scoped to a run.",
     inputSchema: { runId: z.string().optional(), since: z.number().optional(), limit: z.number().int().positive().optional() },
@@ -583,7 +603,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_extract",
+  toolName("vector_extract"),
   {
     description: "Extract structured fields from the current observation.",
     inputSchema: { pageId: z.string(), fields: z.array(z.string()).optional() },
@@ -598,7 +618,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_wait_for",
+  toolName("vector_wait_for"),
   {
     description: "Wait until a condition holds on the page.",
     inputSchema: { pageId: z.string(), condition: z.record(z.string(), z.unknown()) },
@@ -613,7 +633,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_console",
+  toolName("vector_console"),
   {
     description: "Read page console lines.",
     inputSchema: { pageId: z.string(), since: z.number().optional(), limit: z.number().int().positive().optional() },
@@ -628,7 +648,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_dialog",
+  toolName("vector_dialog"),
   {
     description: "List or accept/dismiss the current page dialog (alert/confirm/prompt).",
     inputSchema: {
@@ -647,7 +667,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "vector_network",
+  toolName("vector_network"),
   {
     description: "List captured HTTP responses for a page (url, status, type, timing).",
     inputSchema: {
@@ -672,44 +692,97 @@ async function activePageId(): Promise<string | null> {
 }
 
 server.registerResource(
-  "vector://page/observation",
-  "vector://page/observation",
+  resourceUri("page/observation"),
+  resourceUri("page/observation"),
   { description: "Latest compact observation for the active page." },
   async () => {
     const pageId = await activePageId();
-    if (!pageId) return { contents: [{ uri: "vector://page/observation", text: JSON.stringify({ error: "no active page" }) }] };
+    if (!pageId) return { contents: [{ uri: resourceUri("page/observation"), text: JSON.stringify({ error: "no active page" }) }] };
     return {
-      contents: [{ uri: "vector://page/observation", text: JSON.stringify(await rpc("pages.observe", { pageId, format: "compact" })) }],
+      contents: [{ uri: resourceUri("page/observation"), text: JSON.stringify(await rpc("pages.observe", { pageId, format: "compact" })) }],
     };
   },
 );
 
 server.registerResource(
-  "vector://page/console",
-  "vector://page/console",
+  resourceUri("page/console"),
+  resourceUri("page/console"),
   { description: "Console lines for the active page." },
   async () => {
     const pageId = await activePageId();
-    if (!pageId) return { contents: [{ uri: "vector://page/console", text: JSON.stringify({ lines: [] }) }] };
+    if (!pageId) return { contents: [{ uri: resourceUri("page/console"), text: JSON.stringify({ lines: [] }) }] };
     return {
-      contents: [{ uri: "vector://page/console", text: JSON.stringify(await rpc("pages.console", { pageId })) }],
+      contents: [{ uri: resourceUri("page/console"), text: JSON.stringify(await rpc("pages.console", { pageId })) }],
     };
   },
 );
 
 server.registerResource(
-  "vector://page/network",
-  "vector://page/network",
+  resourceUri("page/network"),
+  resourceUri("page/network"),
   { description: "Captured HTTP responses for the active page." },
   async () => {
     const pageId = await activePageId();
-    if (!pageId) return { contents: [{ uri: "vector://page/network", text: "[]" }] };
+    if (!pageId) return { contents: [{ uri: resourceUri("page/network"), text: "[]" }] };
     return {
-      contents: [{ uri: "vector://page/network", text: JSON.stringify(await rpc("pages.network", { pageId })) }],
+      contents: [{ uri: resourceUri("page/network"), text: JSON.stringify(await rpc("pages.network", { pageId })) }],
     };
   },
 );
 
+const taskTools = [
+  ["aux_workspaces_list", "workspaces.list", "List persistent Aux workspaces."],
+  ["aux_workspace_create", "workspaces.create", "Create a persistent workspace for related tasks."],
+  ["aux_tasks_list", "tasks.list", "List saved tasks, optionally by workspace."],
+  ["aux_task_create", "tasks.create", "Save an objective and explicit acceptance criteria. A task-scoped connection must create a resource-free child under an authorized task; descendants stay within the original scope."],
+  ["aux_task_get", "tasks.get", "Read a task, its revisions, and associated Aux runs."],
+  ["aux_task_update", "tasks.update", "Revise a task using its expected current revision. Earlier evidence does not carry acceptance to a new revision."],
+  ["aux_task_archive", "tasks.archive", "Archive or restore a task. Requires its current revision."],
+  ["aux_task_start", "tasks.start", "Start Aux's configured built-in agent on a saved task. Requires an Aux model connection and explicit page scope; this does not start this MCP client's own agent."],
+  ["aux_task_record_evidence", "tasks.recordEvidence", "Record an external-client claim for a task criterion. This is not human acceptance or independent verification."],
+  ["aux_task_capture_evidence", "tasks.captureEvidence", "Capture a dated page-text observation from a current task resource or run. Content is stored locally as evidence."],
+  ["aux_task_receipt", "tasks.receipt", "Read criterion evidence, human review, unresolved actions, run history, and recorded model costs. Optional revision reads an earlier definition; freshness is assessed now, not as of that revision date. External client model costs are not included."],
+] as const;
+for (const [name, method, description] of taskTools) {
+  server.registerTool(name, { description, inputSchema: MethodSchemas[method].shape }, async (params: unknown) => {
+    try { return text(await rpc(method, params)); } catch (error) { return err(error); }
+  });
+}
+
+const developmentTools = [
+  ['aux_development_projects','development.projects','List only managed checkouts attached to the authorized saved task.'],
+  ['aux_development_inspect','development.inspect','Inspect one attached checkout and compare it with its saved baseline.'],
+  ['aux_development_github_status','development.githubStatus','Use the explicitly connected GitHub account to inspect the attached checkout repository, permissions, remote commit presence and current commit status. This is read-only and does not push or create a pull request.'],
+  ['aux_development_operations_status','development.operationsStatus','Read the selected Vercel deployment and Sentry unresolved-issue health for an attached project. This is read-only and cannot deploy, roll back, resolve, assign, or delete.'],
+  ['aux_development_incident_report','development.incidentReport','Create a durable local incident snapshot from an authorized task page or verified project preview, checkout changes, recent project commands, browser console and network responses. Query values are redacted. This records evidence; it does not prove root cause or resolution.'],
+  ['aux_development_files','development.files','List tracked and untracked, non-ignored files in one attached checkout.'],
+  ['aux_development_read_file','development.readFile','Read one listed UTF-8 checkout file up to 256 KB. Returns a SHA-256 required for conflict-safe saving.'],
+  ['aux_development_write_file','development.writeFile','Propose replacing one listed file at its expected SHA-256. Aux shows a native content preview for human approval, preserves recovery data, and rejects outside changes.'],
+  ['aux_development_create_file','development.createFile','Propose a new non-ignored text file inside an attached checkout. Aux shows a native content preview for human approval and never replaces an existing path.'],
+  ['aux_development_rename_file','development.renameFile','Propose renaming one file inside an attached checkout at its expected SHA-256. Aux requires native human approval, refuses replacement, and keeps recovery data.'],
+  ['aux_development_delete_file','development.deleteFile','Propose deleting one file from an attached checkout at its expected SHA-256. Aux requires native human approval and keeps a recovery copy outside the checkout.'],
+  ['aux_development_commands','development.commands','Read saved command and service records for one attached checkout.'],
+  ['aux_development_run_command','development.runCommand','Propose an exact local command or service in an attached checkout. Aux requires native human approval; execution is not sandboxed and receives no model credentials.'],
+  ['aux_development_open_preview','development.openPreview','Propose checking and opening a localhost preview for an attached checkout. Aux requires native human approval, sends a cookie-free loopback check, and grants this connection access only to the opened preview tab for the current Aux runtime session.'],
+  ['aux_development_stop_command','development.stopCommand','Stop a command or service that belongs to the attached checkout.'],
+  ['aux_development_review','development.review','Write a durable local Markdown handoff containing the fresh diff, untracked names, recent command evidence and last preview check. This does not commit, push, publish or create a pull request.'],
+  ['aux_development_commit','development.commit','Propose one local commit of the exact reviewed snapshot. Aux requires native human approval and explicit author identity; hooks, signing, credential helpers and network protocols stay disabled. This does not push, publish or create a pull request.'],
+  ['aux_cloud_environments','cloud.environments','List durable Vercel Sandbox environments belonging to the authorized task, including lifecycle, region, preview, expiry, snapshot and resource usage. Environment creation, stop and deletion remain desktop-only.'],
+  ['aux_cloud_command_history','cloud.commands','Read and reconcile the bounded durable command history for one task-owned Vercel Sandbox environment.'],
+  ['aux_cloud_run_command','cloud.runCommand','Propose an exact command in an existing task-owned Vercel Sandbox. Aux must be open and requires native human approval before dispatch; the result is durable and uncertain outcomes are never retried automatically.'],
+  ['aux_cloud_start_service','cloud.startService','Propose an exact bounded service in an existing task-owned Vercel Sandbox. Aux must be open and requires native human approval before dispatch.'],
+  ['aux_cloud_refresh_command','cloud.refreshCommand','Refresh the provider status and bounded logs for one durable task-owned cloud command without dispatching work.'],
+  ['aux_cloud_stop_command','cloud.stopCommand','Stop a running command or service that belongs to the authorized task and environment. This does not stop or delete the environment.'],
+  ['aux_cloud_files','cloud.files','List one bounded directory inside the task-owned remote workspace. Paths remain rooted in the sandbox workspace.'],
+  ['aux_cloud_read_file','cloud.readFile','Read one bounded UTF-8 file inside the task-owned remote workspace.'],
+  ['aux_cloud_task_result','cloud.taskResult','Read and validate the detached cloud worker result against the exact authorized task revision and uploaded source tree. The result is evidence for human review, not automatic acceptance.'],
+] as const;
+for(const [name,method,description] of developmentTools){
+  server.registerTool(name,{description,inputSchema:MethodSchemas[method].shape},async(params:unknown)=>{
+    try{return text(await rpc(method,params));}catch(error){return err(error);}
+  });
+}
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("vector-mcp: connected on stdio");
+console.error("aux-mcp: connected on stdio");

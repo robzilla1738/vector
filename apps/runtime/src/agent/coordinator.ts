@@ -78,7 +78,7 @@ export class RunCoordinator {
 
   constructor(deps: CoordinatorDeps) {
     this.deps = deps;
-    this.durable = deps.durableWrites ?? new DurableWriteLedger();
+    this.durable = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
   }
 
   seedSkills(skills: CompiledSkill[]) {
@@ -89,8 +89,8 @@ export class RunCoordinator {
     return this.skills;
   }
 
-  list(limit = 50): Run[] {
-    return this.deps.repo.listRuns(limit);
+  list(limit = 50, options: Parameters<Repo["listRuns"]>[1] = {}): Run[] {
+    return this.deps.repo.listRuns(limit, options);
   }
 
   get(runId: string): Run {
@@ -101,6 +101,8 @@ export class RunCoordinator {
 
   async start(opts: {
     goal: string;
+    taskId?: string;
+    taskRevision?: number;
     pageIds: string[];
     setId?: string;
     modelId?: string;
@@ -108,7 +110,13 @@ export class RunCoordinator {
     maxModelCalls?: number;
     deadlineMs?: number;
     context?: string;
+    contextRunIds?: string[];
+    contextAttachmentIds?: string[];
+    contextArtifactIds?: string[];
+    contextWorkspaceId?: string;
+    contextWorkspaceRevision?: number;
     chatId?: string;
+    retryOfRunId?: string;
   }): Promise<Run> {
     const run: Run = {
       runId: newRunId(),
@@ -122,7 +130,15 @@ export class RunCoordinator {
         maxModelCalls: opts.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS,
         deadlineMs: opts.deadlineMs,
         context: opts.context,
+        contextRunIds: opts.contextRunIds,
+        contextAttachmentIds: opts.contextAttachmentIds,
+        contextArtifactIds: opts.contextArtifactIds,
+        contextWorkspaceId: opts.contextWorkspaceId,
+        contextWorkspaceRevision: opts.contextWorkspaceRevision,
         chatId: opts.chatId,
+        taskId: opts.taskId,
+        taskRevision: opts.taskRevision,
+        retryOfRunId: opts.retryOfRunId,
         implementation: opts.modelId ? `agent:${opts.modelId}` : "agent",
       },
       createdAt: Date.now(),
@@ -199,7 +215,10 @@ export class RunCoordinator {
   }
 
   persistCheckpoint(run: Run) {
-    const unresolvedEffects = this.unresolvedByRun.get(run.runId) ?? [];
+    const unresolvedEffects = [...new Set([
+      ...(this.unresolvedByRun.get(run.runId) ?? []),
+      ...this.durable.unresolved(run.runId).map(intent => intent.id),
+    ])];
     const checkpoint = {
       planBoundary: run.status,
       unresolvedEffects,
@@ -212,15 +231,24 @@ export class RunCoordinator {
     this.deps.repo.saveCheckpoint(`run:${run.runId}`, "coordinator", checkpoint);
   }
 
-  finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string) {
+  finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
     const run = this.get(runId);
+    const unresolved = this.durable.unresolved(runId);
+    if (unresolved.length) {
+      if (status === "completed") result = undefined;
+      if (["completed", "partially_completed", "failed"].includes(status)) status = "interrupted";
+      error = `Uncertain action outcome (${unresolved.map(intent => intent.id).join(", ")}). Reconciliation is required.${error ? ` ${error}` : ""}`;
+      message = "Stopped with an uncertain outcome; no automatic retry";
+    }
     run.status = status;
     run.result = result;
     run.error = error;
+    run.failure = failure;
     run.endedAt = Date.now();
     if (message !== undefined) run.statusMessage = message;
     run.config = { ...(run.config ?? {}), modelCalls: this.deps.repo.listModelCalls(runId).length };
     this.deps.repo.saveRun(run);
+    this.persistCheckpoint(run);
     this.deps.events.emit(EventTypes.RunStatus, { runId, status, error }, runId);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
     const span = this.controls.get(runId)?.span;

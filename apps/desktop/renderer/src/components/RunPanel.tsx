@@ -5,6 +5,8 @@ import { hostOf } from "../workspace";
 import { ObservationPanel } from "./ObservationPanel";
 import { StepTimeline, fmtMs } from "./StepTimeline";
 import { I } from "./icons";
+import { openSavedTask } from "../task-navigation";
+import { AnswerMarkdown } from "./AnswerMarkdown";
 
 const STATUS_LABEL: Record<Run["status"], string> = {
   queued: "Queued",
@@ -52,7 +54,7 @@ function Answer({ run }: { run: Run }) {
     const parts: string[] = [];
     if (run.statusMessage) parts.push(run.statusMessage);
     if (run.result) for (const [k, v] of Object.entries(run.result)) parts.push(`${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
-    if (run.error) parts.push(`Error: ${run.error}`);
+    if (run.error && !run.failure) parts.push(`Error: ${run.error}`);
     return parts.join("\n");
   }, [run]);
   const copy = () => {
@@ -70,7 +72,7 @@ function Answer({ run }: { run: Run }) {
           {copied ? I.check : I.copy}
         </button>
       )}
-      {run.statusMessage && <p className="answer-text">{run.statusMessage}</p>}
+      {run.statusMessage && <AnswerMarkdown text={run.statusMessage}/>}
       {run.result && Object.keys(run.result).length > 0 && (
         <dl className="answer-result">
           {Object.entries(run.result).map(([k, v]) => (
@@ -82,20 +84,27 @@ function Answer({ run }: { run: Run }) {
                 ) : typeof v === "object" && v !== null ? (
                   <pre>{JSON.stringify(v, null, 2)}</pre>
                 ) : (
-                  String(v)
+                  typeof v === "string" ? <AnswerMarkdown text={v}/> : String(v)
                 )}
               </dd>
             </div>
           ))}
         </dl>
       )}
-      {run.error && <p className="answer-text err">{run.error}</p>}
+      {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
     </section>
   );
 }
 
-export function RunPanel({ runId }: { runId: string }) {
+export function RunPanel({ runId, conversation = false }: { runId: string; conversation?: boolean }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
+  const latestConversationTurn = useStore((s) => {
+    const target = s.runs.find((item) => item.runId === runId);
+    if (!target) return false;
+    const chatId = target.config?.chatId ?? target.runId;
+    return s.runs.filter(item => (item.config?.chatId ?? item.runId) === chatId)
+      .sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId))[0]?.runId === runId;
+  });
   const steps = useStore((s) => s.steps[runId]);
   const stats = useStore((s) => s.modelStats[runId]);
   const obs = useStore((s) => s.observations[runId]);
@@ -106,15 +115,17 @@ export function RunPanel({ runId }: { runId: string }) {
   const answerRun = useStore((s) => s.answerRun);
   const returnControl = useStore((s) => s.returnControl);
   const startRun = useStore((s) => s.startRun);
+  const retryRun = useStore((s) => s.retryRun);
   const activate = useStore((s) => s.activate);
   const [answer, setAnswer] = useState("");
   const [showObs, setShowObs] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
+  const [controlBusy, setControlBusy] = useState<"take" | "return" | "stop" | null>(null);
 
   useEffect(() => {
     setShowObs(false);
     const r = useStore.getState().runs.find((x) => x.runId === runId);
-    setShowSteps(!!r && isLive(r));
+    setShowSteps(!conversation && !!r && isLive(r));
     if (!steps || (!obs && steps.length)) void loadRun(runId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
@@ -124,11 +135,34 @@ export function RunPanel({ runId }: { runId: string }) {
 
   const live = isLive(run);
   const page = pages.find((p) => p.pageId === run.pageIds[0]);
-  const humanHolds = page?.controller === "human";
+  const humanPages = pages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
+  const humanPage = humanPages[0];
+  const humanHolds = humanPages.length > 0;
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";
   const question = prompt?.runId === run.runId ? prompt.question : run.statusMessage;
   const calls = stats?.calls ?? run.config?.modelCalls;
   const act = (m: string) => void call(m, { runId: run.runId }).catch(errToast);
+  const takeControl = async () => {
+    if (!page || controlBusy) return;
+    setControlBusy("take");
+    try { await call("pages.takeover", { pageId: page.pageId }); await activate(page.pageId); }
+    catch (error) { errToast(error); }
+    finally { setControlBusy(null); }
+  };
+  const handBack = async () => {
+    if (!humanPage || controlBusy) return;
+    setControlBusy("return");
+    try { await returnControl(humanPage.pageId); }
+    finally { setControlBusy(null); }
+  };
+  const stopRun = async () => {
+    if (controlBusy) return;
+    setControlBusy("stop");
+    try { await call("runs.cancel", { runId: run.runId }); }
+    catch (error) { errToast(error); }
+    finally { setControlBusy(null); }
+  };
+  const openModelSettings = () => useStore.setState({ overlay: "settings", settingsCategory: "Models", railOpen: true });
 
   const inspect = async (artifactId: string) => {
     try {
@@ -162,19 +196,31 @@ export function RunPanel({ runId }: { runId: string }) {
         <span className="run-acts">
           {run.status === "running" && <button className="icon-btn sm" title="Pause" aria-label="Pause run" onClick={() => act("runs.pause")}>{I.pause}</button>}
           {run.status === "paused" && !humanHolds && <button className="icon-btn sm" title="Resume" aria-label="Resume run" onClick={() => act("runs.resume")}>{I.play}</button>}
-          {live && <button className="icon-btn sm danger" title="Stop" aria-label="Stop run" onClick={() => act("runs.cancel")}>{I.square}</button>}
-          {!live && <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>}
+          {live && page && !humanHolds && <button className="icon-btn sm" disabled={!!controlBusy} title="Take control of browser tab" aria-label="Take control of browser tab" onClick={() => void takeControl()}>{I.handSm}</button>}
+          {live && <button className="icon-btn sm danger" disabled={!!controlBusy} title={controlBusy === "stop" ? "Stopping" : "Stop"} aria-label={controlBusy === "stop" ? "Stopping run" : "Stop run"} onClick={() => void stopRun()}>{I.square}</button>}
+          {!live && (run.config?.taskId
+            ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{I.layersSm}</button>
+            : conversation && latestConversationTurn && !run.failure
+              ? <button className="icon-btn sm" title="Retry this turn" aria-label="Retry this turn" disabled={!page} onClick={() => void retryRun(run.runId)}>{I.reload}</button>
+              : !conversation && !run.failure
+                ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>
+                : null)}
         </span>
       </div>
 
-      {humanHolds && page && (
+      {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
+        <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
+        <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
+      </details>}
+
+      {humanHolds && humanPage && (
         <div className="takeover" role="status">
           <span className="takeover-ico">{I.hand}</span>
           <div className="takeover-main">
-            <b>You're in control</b>
-            <span>The agent paused when you touched the page. Finish what you're doing, then hand it back.</span>
+            <b>You're in control{humanPages.length > 1 ? ` of ${humanPages.length} pages` : ""}</b>
+            <span>The agent remains paused until every held page is returned. Finish what you're doing, then hand {humanPages.length > 1 ? "this page" : "it"} back.</span>
           </div>
-          <button className="btn primary sm" onClick={() => void returnControl(page.pageId)}>Return control</button>
+          <button className="btn primary sm" disabled={!!controlBusy} onClick={() => void handBack()}>{controlBusy === "return" ? "Returning…" : humanPages.length > 1 ? "Return this page" : "Return control"}</button>
         </div>
       )}
 
@@ -205,10 +251,26 @@ export function RunPanel({ runId }: { runId: string }) {
 
       <Answer run={run} />
 
+      {run.failure && (
+        <section className="run-failure" role="status">
+          <span className="run-failure-icon">{I.alert}</span>
+          <div className="run-failure-copy">
+            <strong>{run.failure.action === "model_settings" ? "Connection needs attention" : "This turn stopped"}</strong>
+            <p>{run.failure.message}</p>
+          </div>
+          {latestConversationTurn && run.failure.action === "retry" && page && (
+            <button className="btn sm" onClick={() => void retryRun(run.runId)}>{I.reload}Retry turn</button>
+          )}
+          {run.failure.action === "model_settings" && (
+            <button className="btn sm" onClick={openModelSettings}>{I.gearSm}Model settings</button>
+          )}
+        </section>
+      )}
+
       <section className="run-section">
         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{I.right}</span>
-          <span>Steps</span>
+          <span>{conversation ? "Work history" : "Steps"}</span>
           <span className="count nums">{steps?.length ?? 0}</span>
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
         </button>

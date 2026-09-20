@@ -1,14 +1,18 @@
+import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
 import {
   ArtifactSchema,
   BackendSchema,
   BookmarkSchema,
   BrowserSessionSchema,
+  ConversationSummarySchema,
   DownloadSchema,
   HistoryEntrySchema,
   ModelCallSchema,
+  ModelUsageSummarySchema,
   PageSetSchema,
   PageTargetSchema,
+  ResponseRecordSchema,
   ResultRecordSchema,
   RunSchema,
   SavedProgramSchema,
@@ -19,6 +23,11 @@ import { EventSchema } from "./events.js";
 import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
+import { TaskSchema, TaskCreateParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
+  TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema } from "./tasks.js";
+import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
+import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
+import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema} from "./local-projects.js";
 
 const id = z.string().min(1);
 
@@ -33,6 +42,8 @@ export const PagesListParams = z.object({
 });
 export const PagesOpenParams = z.object({
   url: z.string().min(1),
+  /** Desktop shell owner. Ordinary API clients omit this. */
+  windowId: z.string().min(1).optional(),
   /**
    * Omit for routing. `vector` explicitly selects embedded Chromium.
    * `vector-engine` forces the engine (no fallback); `chrome` needs an attached Chrome.
@@ -202,7 +213,88 @@ export const RunsEventsParams = z.object({
   limit: z.number().int().positive().max(2000).default(500),
 });
 export const RunsAnswerParams = z.object({ runId: id, answer: z.string() });
-export const RunsListParams = z.object({ limit: z.number().int().positive().max(500).default(50) });
+export const RunsListParams = z.object({
+  limit: z.number().int().positive().max(500).default(50),
+  before: z.object({ createdAt: z.number().finite(), runId: z.string().min(1) }).optional(),
+  chatId: z.string().min(1).optional(),
+  query: z.string().max(500).optional(),
+  groupByChat: z.boolean().optional(),
+});
+export const ConversationContextEntrySchema = z.object({
+  runId: id,
+  goal: z.string(),
+  summary: z.string(),
+  status: z.string(),
+  createdAt: z.number(),
+  included: z.boolean(),
+});
+export const ConversationContextSchema = z.object({
+  chatId: id,
+  historyEnabled: z.boolean(),
+  entries: z.array(ConversationContextEntrySchema),
+});
+export type ConversationContext = z.infer<typeof ConversationContextSchema>;
+export const RunsContextGetParams = z.object({ chatId: id });
+export const RunsContextSetParams = z.object({
+  chatId: id,
+  historyEnabled: z.boolean().optional(),
+  runId: id.optional(),
+  included: z.boolean().optional(),
+}).refine(value => value.historyEnabled !== undefined || (value.runId && value.included !== undefined), { message: "historyEnabled or runId/included is required" });
+export const ConversationsListParams = z.object({
+  limit: z.number().int().positive().max(200).default(40),
+  before: z.object({ updatedAt: z.number().finite(), chatId: id }).optional(),
+  query: z.string().max(500).optional(),
+  archived: z.boolean().default(false),
+});
+export const ConversationRenameParams = z.object({ chatId: id, title: z.string().trim().min(1).max(160) });
+export const ConversationArchiveParams = z.object({ chatId: id, archived: z.boolean() });
+export const ConversationDeleteParams = z.object({ chatId: id });
+export const ConversationAttachmentSchema = z.object({
+  attachmentId: id,
+  filename: z.string().min(1).max(255),
+  excerpt: z.string().max(1000),
+  byteLength: z.number().int().nonnegative(),
+  createdAt: z.number(),
+  included: z.boolean(),
+});
+export type ConversationAttachment = z.infer<typeof ConversationAttachmentSchema>;
+export const ConversationAttachmentsSchema = z.object({ chatId: id, attachments: z.array(ConversationAttachmentSchema) });
+export const ConversationAttachmentAddParams = z.object({
+  chatId: id,
+  filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json)$/i),
+  content: z.string().max(512 * 1024).refine(value => !value.includes("\0") && new TextEncoder().encode(value).length <= 512 * 1024, "Use a UTF-8 text document up to 512 KB"),
+});
+export const ConversationAttachmentControlParams = z.object({ chatId: id, attachmentId: id });
+export const ConversationAttachmentToggleParams = ConversationAttachmentControlParams.extend({ included: z.boolean() });
+export const ConversationArtifactSchema = z.object({
+  artifactId: id,
+  runId: id,
+  filename: z.string().min(1).max(255),
+  mediaType: z.string().min(1).max(120),
+  excerpt: z.string().max(1000),
+  byteLength: z.number().int().nonnegative(),
+  createdAt: z.number(),
+  turnGoal: z.string().max(400),
+  included: z.boolean(),
+});
+export type ConversationArtifact = z.infer<typeof ConversationArtifactSchema>;
+export const ConversationArtifactsSchema = z.object({ chatId: id, artifacts: z.array(ConversationArtifactSchema) });
+export const ConversationArtifactToggleParams = z.object({ chatId: id, artifactId: id, included: z.boolean() });
+export const ConversationSourceSchema = z.object({
+  sourceId: id,
+  runId: id,
+  pageId: id,
+  url: z.string().url().max(4000),
+  title: z.string().max(1000),
+  observedAt: z.number(),
+  documentEpoch: z.number(),
+  revision: z.number(),
+});
+export type ConversationSource = z.infer<typeof ConversationSourceSchema>;
+export const ConversationSourcesSchema = z.object({ chatId: id, sources: z.array(ConversationSourceSchema).max(200) });
+export const ConversationWorkspaceSchema = z.object({ chatId: id, workspace: WorkspaceSchema.nullable(), memory: WorkspaceMemorySchema.nullable() });
+export const ConversationWorkspaceSetParams = z.object({ chatId: id, workspaceId: id.nullable() });
 
 /** artifacts.* */
 export const ArtifactsListParams = z.object({ runId: z.string().optional(), pageId: z.string().optional() });
@@ -235,7 +327,17 @@ export const ChromeOpenLiveParams = z.object({ pageId: id });
 /** models / settings */
 export const ModelsProbeParams = z.object({ modelId: id.optional() });
 export const SettingsSetParams = z.object({
+  modelProvider: ModelProviderSchema.optional(),
+  modelCredential: ModelCredentialSchema.optional(),
+  compatibleEndpoint: z.string().trim().max(2048).optional(),
   gatewayApiKey: z.string().optional(),
+  githubCredential: z.string().max(1000).optional(),
+  vercelCredential: z.string().max(1000).optional(),
+  vercelTeamId: z.string().max(200).optional(),
+  vercelProjectId: z.string().max(200).optional(),
+  sentryCredential: z.string().max(1000).optional(),
+  sentryOrganization: z.string().max(200).optional(),
+  sentryProject: z.string().max(200).optional(),
   plannerModel: z.string().optional(),
   recoveryModel: z.string().optional(),
   visionModel: z.string().optional(),
@@ -244,7 +346,10 @@ export const SettingsSetParams = z.object({
   perOrigin: z.number().int().min(1).max(8).optional(),
   /** `0` = no per-run cap. */
   maxModelCalls: z.number().int().min(0).max(256).optional(),
-  theme: z.enum(["dark", "light"]).optional(),
+  theme: z.enum(["system", "dark", "light"]).optional(),
+  sidebarAppearance: z.enum(["solid", "translucent"]).optional(),
+  sidebarBlur: z.number().min(0).max(40).optional(),
+  tabLayout: z.enum(["vertical", "horizontal"]).optional(),
   zoomFactor: z.number().optional(),
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
   engineMode: EngineModeSchema.optional(),
@@ -279,6 +384,74 @@ export const EventsSinceParams = RunsEventsParams;
 export const WorkspaceGetParams = z.object({});
 
 export const MethodSchemas = {
+  "tasks.recordEvidence": EvidenceNoteParams,
+  "tasks.captureEvidence": EvidenceCaptureParams,
+  "tasks.importDocumentEvidence": EvidenceDocumentParams,
+  "tasks.importCommandEvidence": EvidenceCommandParams,
+  "tasks.prepareLocalCommand": z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "tasks.reviewCriterion": CriterionReviewParams,
+  "tasks.reconcileAction": TaskReconcileParams,
+  "tasks.reconcileOperation": TaskReconcileOperationParams,
+  "tasks.receipt": z.object({ taskId: id, revision: z.number().int().positive().optional() }),
+  "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
+  "workspaces.list": z.object({}),
+  "workspaces.memory.get": z.object({ workspaceId: id }),
+  "workspaces.memory.set": z.object({ workspaceId: id, expectedRevision: z.number().int().nonnegative(), content: z.string().max(16_000) }),
+  "tasks.create": TaskCreateParams,
+  "tasks.update": TaskUpdateParams,
+  "tasks.get": z.object({ taskId: id }),
+  "tasks.list": z.object({ workspaceId: id.optional(), includeArchived: z.boolean().default(false), limit: z.number().int().min(1).max(500).default(100) }),
+  "tasks.archive": z.object({ taskId: id, expectedRevision: z.number().int().positive(), archived: z.boolean() }),
+  "tasks.start": RunsStartParams.omit({ goal: true, setId: true }).extend({ taskId: id, expectedRevision: z.number().int().positive() }),
+  "development.projects": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
+  "development.inspect": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "development.githubStatus": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "development.operationsStatus": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "development.incidentReport": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),pageId:id}).strict(),
+  "development.files": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "development.readFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024)}).strict(),
+  "development.writeFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/),content:z.string().max(256*1024)}).strict(),
+  "development.createFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),content:z.string().max(256*1024)}).strict(),
+  "development.renameFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),nextName:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),
+  "development.deleteFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),
+  "development.commands": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "development.runCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),command:z.string().min(1).max(8000),mode:z.enum(['command','service']).default('command')}).strict(),
+  "development.openPreview": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),url:z.string().min(1).max(2048)}).strict(),
+  "development.stopCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
+  "development.review": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
+  "development.commit": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).extend(ProjectCommitRequestSchema.shape).strict(),
+  "cloud.environments": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
+  "cloud.create": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),runtime:z.enum(['universal','node24','node22','python3.13']).default('universal'),region:z.string().regex(/^[a-z]{3}\d$/).default('iad1'),port:z.number().int().min(1024).max(65535).default(3000),timeoutMinutes:z.number().int().min(5).max(45).default(15),cleanupHours:z.number().int().min(1).max(72).default(24)}).strict(),
+  "cloud.runCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),executable:z.string().regex(/^[A-Za-z0-9._/+:-]{1,200}$/),args:z.array(z.string().max(2000)).max(100).default([])}).strict(),
+  "cloud.startService": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),executable:z.string().regex(/^[A-Za-z0-9._/+:-]{1,200}$/),args:z.array(z.string().max(2000)).max(100).default([]),timeoutMinutes:z.number().int().min(5).max(45).default(15)}).strict(),
+  "cloud.commands": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.refreshCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
+  "cloud.stopCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
+  "cloud.refresh": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.resume": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.files": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),path:z.string().max(1024).default('')}).strict(),
+  "cloud.readFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),path:z.string().min(1).max(1024)}).strict(),
+  "cloud.taskResult": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.handoff": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.handoffAndStart": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),executable:z.string().regex(/^[A-Za-z0-9._/+:-]{1,200}$/),args:z.array(z.string().max(2000)).max(100).default([]),timeoutMinutes:z.number().int().min(5).max(45).default(15)}).strict(),
+  "cloud.importTaskResult": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.preserveTaskResult": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.downloadResultArtifact": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),artifactPath:z.string().min(1).max(1024),expectedResultUpdatedAt:z.number().int().nonnegative()}).strict(),
+  "cloud.openTerminal": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.openPreview": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.exportWorkspace": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.inventory": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
+  "cloud.cleanupOrphan": z.object({taskId:id,expectedRevision:z.number().int().positive(),remoteName:z.string().regex(/^aux-[A-Za-z0-9-]{1,100}$/),expectedUpdatedAt:z.number().int().nonnegative()}).strict(),
+  "cloud.forgetMissing": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),expectedUpdatedAt:z.number().int().nonnegative()}).strict(),
+  "cloud.syncProject": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.stop": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.delete": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "installation.createBackup": z.object({}).strict(),
+  "installation.stageRestore": z.object({path:z.string().min(1).max(4096)}).strict(),
+  "installation.cancelRestore": z.object({}).strict(),
+  "agentConnections.list": z.object({}),
+  "agentConnections.create": AgentConnectionCreateParams,
+  "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "pages.list": PagesListParams,
   "pages.open": PagesOpenParams,
   "pages.close": PagesCloseParams,
@@ -310,8 +483,24 @@ export const MethodSchemas = {
   "sets.map": SetsMapParams,
   "sets.results": SetsResultsParams,
   "runs.start": RunsStartParams,
+  "runs.retry": RunsControlParams,
   "runs.get": RunsGetParams,
   "runs.list": RunsListParams,
+  "runs.context.get": RunsContextGetParams,
+  "runs.context.set": RunsContextSetParams,
+  "conversations.list": ConversationsListParams,
+  "conversations.rename": ConversationRenameParams,
+  "conversations.archive": ConversationArchiveParams,
+  "conversations.delete": ConversationDeleteParams,
+  "conversations.attachments.get": z.object({ chatId: id }),
+  "conversations.attachments.add": ConversationAttachmentAddParams,
+  "conversations.attachments.toggle": ConversationAttachmentToggleParams,
+  "conversations.attachments.remove": ConversationAttachmentControlParams,
+  "conversations.artifacts.get": z.object({ chatId: id }),
+  "conversations.artifacts.toggle": ConversationArtifactToggleParams,
+  "conversations.sources.get": z.object({ chatId: id }),
+  "conversations.workspace.get": z.object({ chatId: id }),
+  "conversations.workspace.set": ConversationWorkspaceSetParams,
   "runs.pause": RunsControlParams,
   "runs.resume": RunsControlParams,
   "runs.cancel": RunsControlParams,
@@ -334,12 +523,21 @@ export const MethodSchemas = {
   "chrome.openLive": ChromeOpenLiveParams,
   "models.list": z.object({}),
   "models.probe": ModelsProbeParams,
+  "github.probe": z.object({}),
+  "vercel.probe": z.object({}),
+  "vercel.projects": z.object({teamId:z.string().max(200).optional()}).strict(),
+  "sentry.probe": z.object({}),
+  "sentry.projects": z.object({organization:z.string().min(1).max(200)}).strict(),
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
   "history.list": HistoryListParams,
   "history.clear": z.object({}),
   "bookmarks.list": z.object({}),
   "bookmarks.add": BookmarkAddParams,
+  "bookmarks.import": z.object({ bookmarks: z.array(z.object({
+    url: z.string().url().max(8192).refine(value => { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password; }, "Import requires a web URL without embedded credentials"),
+    title: z.string().max(1000),
+  })).max(10000) }),
   "bookmarks.remove": BookmarkRemoveParams,
   "downloads.list": z.object({}),
   "workspace.get": WorkspaceGetParams,
@@ -426,6 +624,74 @@ export type MethodName = keyof typeof MethodSchemas;
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
+  "tasks.recordEvidence": TaskEvidenceSchema,
+  "tasks.captureEvidence": TaskEvidenceSchema,
+  "tasks.importDocumentEvidence": TaskEvidenceSchema,
+  "tasks.importCommandEvidence": TaskEvidenceSchema,
+  "tasks.prepareLocalCommand": TaskSchema,
+  "tasks.reviewCriterion": CriterionReviewSchema,
+  "tasks.reconcileAction": z.object({ ok: z.literal(true) }),
+  "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
+  "tasks.receipt": TaskReceiptSchema,
+  "workspaces.create": WorkspaceSchema,
+  "workspaces.list": z.array(WorkspaceSchema),
+  "workspaces.memory.get": WorkspaceMemorySchema,
+  "workspaces.memory.set": WorkspaceMemorySchema,
+  "tasks.create": TaskSchema,
+  "tasks.update": TaskSchema,
+  "tasks.archive": TaskSchema,
+  "tasks.list": z.array(TaskSchema),
+  "tasks.get": z.object({ task: TaskSchema, revisions: z.array(TaskSchema), runs: z.array(z.object({ run: RunSchema, currentRevision: z.boolean() })), children:z.array(z.object({task:TaskSchema,depth:z.number().int().min(1).max(4),latestRun:z.object({runId:z.string(),status:z.string(),taskRevision:z.number().int().positive().optional()}).optional(),cloudAuthority:z.object({environmentId:z.string().uuid(),remoteName:z.string()}).optional(),receiptStatus:z.enum(['in_progress','uncertain','accepted','not_met','needs_review']).optional()})).default([]) }),
+  "tasks.start": RunSchema,
+  "development.projects": z.array(LocalProjectSchema),
+  "development.inspect": ProjectInspectionSchema,
+  "development.githubStatus": ProjectGithubStatusSchema,
+  "development.operationsStatus": z.object({checkedAt:z.number(),vercel:z.object({project:z.object({id:z.string(),name:z.string(),framework:z.string().nullable(),updatedAt:z.number(),teamId:z.string().nullable()}),deployments:z.array(z.object({id:z.string(),name:z.string(),url:z.string().url(),state:z.string(),target:z.string().nullable(),createdAt:z.number(),readyAt:z.number().nullable()}))}).optional(),sentry:z.object({organization:z.string(),project:z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()}),issues:z.array(z.object({id:z.string(),shortId:z.string(),title:z.string(),level:z.string(),status:z.string(),count:z.number(),users:z.number(),firstSeen:z.string(),lastSeen:z.string(),permalink:z.string()}))}).optional(),unavailable:z.array(z.string())}),
+  "development.incidentReport": ProjectIncidentReportSchema,
+  "development.files": z.array(z.string()),
+  "development.readFile": ProjectFileSchema,
+  "development.writeFile": ProjectFileSchema.extend({recoveryPath:z.string()}).nullable(),
+  "development.createFile": ProjectFileSchema.extend({recoveryPath:z.string().optional()}).nullable(),
+  "development.renameFile": ProjectFileSchema.extend({recoveryPath:z.string()}).nullable(),
+  "development.deleteFile": z.object({name:z.string(),recoveryPath:z.string()}).nullable(),
+  "development.commands": z.array(ProjectCommandSchema),
+  "development.runCommand": ProjectCommandSchema.nullable(),
+  "development.openPreview": z.object({check:LocalPreviewCheckSchema,page:PageTargetSchema.optional()}).nullable(),
+  "development.stopCommand": ProjectCommandSchema,
+  "development.review": ProjectReviewSummarySchema,
+  "development.commit": ProjectCommitResultSchema.nullable(),
+  "cloud.environments": z.array(CloudEnvironmentSchema),
+  "cloud.create": CloudEnvironmentSchema,
+  "cloud.runCommand": CloudCommandResultSchema,
+  "cloud.startService": CloudCommandRecordSchema,
+  "cloud.commands": z.array(CloudCommandRecordSchema),
+  "cloud.refreshCommand": CloudCommandRecordSchema,
+  "cloud.stopCommand": CloudCommandRecordSchema,
+  "cloud.refresh": CloudEnvironmentSchema,
+  "cloud.resume": CloudEnvironmentSchema,
+  "cloud.files": z.array(CloudFileEntrySchema),
+  "cloud.readFile": CloudFileSchema,
+  "cloud.taskResult": CloudTaskResultSchema.nullable(),
+  "cloud.handoff": CloudEnvironmentSchema,
+  "cloud.handoffAndStart": z.object({environment:CloudEnvironmentSchema,command:CloudCommandRecordSchema}),
+  "cloud.importTaskResult": z.object({evidence:z.array(TaskEvidenceSchema),imported:z.number().int().nonnegative()}),
+  "cloud.preserveTaskResult": z.object({result:PreservedCloudResultSchema,preserved:z.boolean()}),
+  "cloud.downloadResultArtifact": CloudResultArtifactExportSchema,
+  "cloud.openTerminal": CloudTerminalSessionSchema,
+  "cloud.openPreview": CloudPreviewSessionSchema,
+  "cloud.exportWorkspace": CloudWorkspaceExportSchema,
+  "cloud.inventory": CloudProviderInventorySchema,
+  "cloud.cleanupOrphan": z.object({remoteName:z.string(),deleted:z.literal(true)}),
+  "cloud.forgetMissing": CloudEnvironmentSchema,
+  "cloud.syncProject": CloudEnvironmentSchema,
+  "cloud.stop": CloudEnvironmentSchema,
+  "cloud.delete": CloudEnvironmentSchema,
+  "installation.createBackup": z.object({path:z.string(),createdAt:z.number(),bytes:z.number().int().nonnegative(),schemaVersion:z.number().int().positive(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
+  "installation.stageRestore": z.object({staged:z.literal(true),schemaVersion:z.number().int().positive(),bytes:z.number().int().nonnegative(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
+  "installation.cancelRestore": z.object({cancelled:z.literal(true)}),
+  "agentConnections.list": z.array(AgentConnectionSchema),
+  "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
+  "agentConnections.revoke": AgentConnectionSchema,
   "pages.list": z.array(PageTargetSchema),
   "pages.open": PageTargetSchema,
   "pages.close": z.object({ ok: z.boolean() }),
@@ -461,7 +727,7 @@ export const ResultSchemas = {
     dialogs: z.array(z.object({ type: z.string(), message: z.string() })).optional(),
     pending: z.object({ type: z.string(), message: z.string() }).nullable().optional(),
   }),
-  "pages.network": z.array(z.unknown()),
+  "pages.network": z.array(ResponseRecordSchema),
   "pages.engineInput": z.object({ ok: z.boolean() }),
   "pages.scene": z.object({
     kind: z.literal("displayList"),
@@ -493,8 +759,24 @@ export const ResultSchemas = {
   "sets.map": z.object({ runId: z.string() }),
   "sets.results": z.array(ResultRecordSchema),
   "runs.start": RunSchema,
-  "runs.get": z.object({ run: RunSchema, steps: z.array(StepRecordSchema), modelCalls: z.number() }),
+  "runs.retry": RunSchema,
+  "runs.get": z.object({ run: RunSchema, steps: z.array(StepRecordSchema), modelCalls: z.number(), usage: ModelUsageSummarySchema }),
   "runs.list": z.array(RunSchema),
+  "runs.context.get": ConversationContextSchema,
+  "runs.context.set": ConversationContextSchema,
+  "conversations.list": z.array(ConversationSummarySchema),
+  "conversations.rename": ConversationSummarySchema,
+  "conversations.archive": ConversationSummarySchema,
+  "conversations.delete": z.object({ ok: z.literal(true), deletedRuns: z.number().int().nonnegative() }),
+  "conversations.attachments.get": ConversationAttachmentsSchema,
+  "conversations.attachments.add": ConversationAttachmentsSchema,
+  "conversations.attachments.toggle": ConversationAttachmentsSchema,
+  "conversations.attachments.remove": ConversationAttachmentsSchema,
+  "conversations.artifacts.get": ConversationArtifactsSchema,
+  "conversations.artifacts.toggle": ConversationArtifactsSchema,
+  "conversations.sources.get": ConversationSourcesSchema,
+  "conversations.workspace.get": ConversationWorkspaceSchema,
+  "conversations.workspace.set": ConversationWorkspaceSchema,
   "runs.pause": RunSchema,
   "runs.resume": RunSchema,
   "runs.cancel": RunSchema,
@@ -522,7 +804,7 @@ export const ResultSchemas = {
   "chrome.openLive": z.object({ ok: z.boolean() }),
   "models.list": z.object({
     models: z.array(z.object({ id: z.string(), name: z.string().optional() })),
-    source: z.enum(["gateway", "static"]),
+    source: z.enum(["gateway", "static", "configured"]),
   }),
   "models.probe": z.object({
     ok: z.boolean(),
@@ -531,12 +813,18 @@ export const ResultSchemas = {
     vision: z.boolean().optional(),
     error: z.string().optional(),
   }),
+  "github.probe": z.object({login:z.string(),accountId:z.number().int(),name:z.string().nullable(),avatarUrl:z.string().url(),scopes:z.array(z.string()),checkedAt:z.number()}),
+  "vercel.probe": z.object({user:z.object({id:z.string(),name:z.string(),email:z.string()}),teams:z.array(z.object({id:z.string(),name:z.string(),slug:z.string()})),checkedAt:z.number()}),
+  "vercel.projects": z.array(z.object({id:z.string(),name:z.string(),framework:z.string().nullable(),updatedAt:z.number(),teamId:z.string().nullable()})),
+  "sentry.probe": z.object({organizations:z.array(z.object({id:z.string(),name:z.string(),slug:z.string(),regionUrl:z.string().url()})),checkedAt:z.number()}),
+  "sentry.projects": z.array(z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()})),
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
   "history.list": z.array(HistoryEntrySchema),
   "history.clear": z.object({ ok: z.boolean() }),
   "bookmarks.list": z.array(BookmarkSchema),
   "bookmarks.add": z.object({ ok: z.boolean() }),
+  "bookmarks.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
   "bookmarks.remove": z.object({ ok: z.boolean() }),
   "downloads.list": z.array(DownloadSchema),
   "workspace.get": z.object({
@@ -549,7 +837,7 @@ export const ResultSchemas = {
     lastSeq: z.number(),
   }),
   "bench.run": z.object({ reportPath: z.string() }),
-  "responses.list": z.array(z.unknown()),
+  "responses.list": z.array(ResponseRecordSchema),
   "responses.body": z.object({ mediaType: z.string(), dataBase64: z.string() }),
   "state.query": z.unknown(),
   "state.datasets": z.array(z.unknown()),
@@ -572,3 +860,6 @@ export const ResultSchemas = {
   "traces.counters": z.record(z.string(), z.number()),
   "runtime.describe": z.unknown(),
 } as const;
+
+export type MethodParams<M extends MethodName> = z.input<(typeof MethodSchemas)[M]>;
+export type MethodResult<M extends MethodName> = z.output<(typeof ResultSchemas)[M]>;

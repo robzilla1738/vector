@@ -1,0 +1,26 @@
+import { afterEach, expect, it } from "vitest";
+import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { readEvidenceDocument } from "../../apps/desktop/main/document-evidence.js";
+const dirs: string[] = [];
+afterEach(async () => { await Promise.all(dirs.splice(0).map(path => rm(path, { recursive: true, force: true }))); });
+it("reads only bounded UTF-8 regular documents and preserves exact bytes including BOM", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "aux-evidence-")); dirs.push(dir);
+  const path = join(dir, "record.md"), bytes = Buffer.from("\ufeff# Receipt\r\nCafé ✓\n");
+  await writeFile(path, bytes);
+  const document = await readEvidenceDocument(path);
+  expect(document.filename).toBe("record.md");
+  expect(Buffer.from(document.content)).toEqual(bytes);
+  expect(createHash("sha256").update(document.content).digest("hex")).toBe(createHash("sha256").update(bytes).digest("hex"));
+  await writeFile(path, Buffer.from([0xff, 0xfe]));
+  await expect(readEvidenceDocument(path)).rejects.toThrow("UTF-8");
+  await writeFile(path, "binary\0text");
+  await expect(readEvidenceDocument(path)).rejects.toThrow("binary");
+  await writeFile(path, Buffer.alloc(512 * 1024 + 1));
+  await expect(readEvidenceDocument(path)).rejects.toThrow("512 KB");
+  await expect(readEvidenceDocument(join(dir, "record.pdf"))).rejects.toThrow("Choose a text");
+  const folder = join(dir, "folder.txt"); await mkdir(folder);
+  await expect(readEvidenceDocument(folder)).rejects.toThrow("regular document");
+});

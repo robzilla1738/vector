@@ -54,7 +54,8 @@ const fakePages = (over: { executeResult?: unknown; elements?: typeof ELEMENTS; 
 
 const svc = (pages = fakePages()) => {
   const r = repo();
-  return new OperationService({ repo: r, events: new EventBus(r), pages, translateSteps: (_p, s) => s });
+  return new OperationService({ repo: r, events: new EventBus(r), pages, translateSteps: (_p, s) => s,
+    grants: ["effect:read", "effect:write", "effect:egress", "effect:destructive"] });
 };
 
 const program = (): Omit<Program, "pageId"> & { pageId?: string } => ({
@@ -210,7 +211,7 @@ describe("OperationService", () => {
     };
     const s = svc(pages);
     s.saveRequestImpl({
-      siteKey: "app.test", name: "read", url: "http://app.test/api/state?x={input:q}", validated: true,
+      siteKey: "app.test", name: "read", url: "http://app.test/api/state?x={input:q}", validated: true,guards:{session:'required'},
     });
     const r = await s.invoke({ siteKey: "app.test", name: "read", pageId: "p1", inputs: { q: "a b" } });
     expect(r.status).toBe("completed");
@@ -274,7 +275,7 @@ describe("OperationService", () => {
     expect(executeCalls).toBe(0);
   });
 
-  it("denies cross-host session-request fallback egress", async () => {
+  it("rejects cross-host and persisted session credentials before saving", async () => {
     const r = repo();
     const s = new OperationService({
       repo: r,
@@ -282,15 +283,13 @@ describe("OperationService", () => {
       pages: fakePages(),
       egressAllowlist: () => ["app.test"],
     });
-    s.saveRequestImpl({
+    expect(()=>s.saveRequestImpl({
       siteKey: "app.test",
       name: "exfil",
       url: "https://evil.test/x",
       method: "GET",
       validated: true,
-    });
-    const out = await s.invoke({ siteKey: "app.test", name: "exfil", pageId: "p1" });
-    expect(out.status).toBe("failed");
-    expect(out.error).toMatch(/egress denied/);
+    })).toThrow(/does not match/);
+    expect(()=>s.saveRequestImpl({siteKey:'app.test',name:'secret',url:'https://app.test/x',headers:{Authorization:'Bearer secret'}})).toThrow(/Do not save Authorization/);
   });
 });

@@ -11,9 +11,11 @@ import { z } from "zod";
 
 export const NativeCreatePageParams = z.object({
   pageId: z.string(),
+  windowId: z.string().min(1).optional(),
   marker: z.string().describe("target marker injected into every document"),
   url: z.string(),
   background: z.boolean().default(false),
+  ownedByRuntime: z.boolean().default(false),
   kind: z.enum(["chromium", "engine"]).default("chromium"),
 });
 export const NativeSetBoundsParams = z.object({
@@ -38,9 +40,18 @@ export const NativeZoomParams = z.object({
   delta: z.number().optional(),
   reset: z.boolean().optional(),
 });
+export const NativePageSnapshot = z.object({
+  pageId: z.string(),
+  windowId: z.string().min(1).optional(),
+  marker: z.string(),
+  url: z.string(),
+  title: z.string(),
+  active: z.boolean(),
+});
 
 /** runtime -> main requests (main implements these) */
 export const NativeMethods = {
+  "native.listPages": z.object({}),
   "native.createPage": NativeCreatePageParams,
   "native.closePage": NativePageIdParams,
   "native.showPage": NativeSetBoundsParams,

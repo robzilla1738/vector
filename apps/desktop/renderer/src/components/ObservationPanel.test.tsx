@@ -17,9 +17,9 @@ afterEach(() => {
 describe("compact observation parsing", () => {
   it("splits the runtime's compact text into header and ## sections", () => {
     const p = parseCompact(OBSERVATION.text);
-    expect(p.header[0]).toMatch(/Vector Engine M0/);
+    expect(p.header[0]).toMatch(/Aux Engine M0/);
     expect(p.sections.map((s) => s.name)).toEqual(["Headings", "Form fields", "Interactive", "Text"]);
-    expect(p.sections[2]!.lines[0]).toBe("r1 link “vector-browser / vector”");
+    expect(p.sections[2]!.lines[0]).toBe("r1 link “aux-browser / aux”");
   });
 });
 
@@ -29,7 +29,7 @@ describe("ObservationPanel", () => {
     document.body.appendChild(host);
     root = createRoot(host);
     act(() => root!.render(<ObservationPanel obs={OBSERVATION} />));
-    expect(host.querySelector(".obs-title")!.textContent).toContain("Vector Engine M0");
+    expect(host.querySelector(".obs-title")!.textContent).toContain("Aux Engine M0");
     expect(host.querySelector(".obs-meta")!.textContent).toContain(`${OBSERVATION.refs.length} refs`);
     const refs = host.querySelectorAll(".obs-ref");
     expect(refs.length).toBeGreaterThanOrEqual(OBSERVATION.refs.length);

@@ -1,10 +1,16 @@
+import type { LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult } from "@vector/contracts";
 /**
  * Preload for the Vector shell renderer. Compiled to index.cjs (CommonJS)
  * so Electron loads it as a classic preload regardless of package type.
  */
 import { contextBridge, ipcRenderer } from "electron";
 
+const windowArg = process.argv.find(value => value.startsWith("--aux-window-id="));
+const windowId = windowArg ? decodeURIComponent(windowArg.slice("--aux-window-id=".length)) : "main";
+
 const vector = {
+  privateMode: process.argv.includes("--aux-private") || process.argv.includes("--aux-private-renderer"),
+  windowId,
   /** call a versioned runtime method */
   invoke: (method: string, params?: unknown) =>
     ipcRenderer.invoke("api.invoke", method, params ?? {}) as Promise<unknown>,
@@ -14,6 +20,11 @@ const vector = {
     const l = (_e: unknown, ev: unknown) => cb(ev);
     ipcRenderer.on("event", l);
     return () => ipcRenderer.removeListener("event", l);
+  },
+  onRuntimeStatus: (cb: (status: { connected: boolean; detail?: string }) => void) => {
+    const listener = (_event: unknown, status: { connected: boolean; detail?: string }) => cb(status);
+    ipcRenderer.on("runtime-status", listener);
+    return () => ipcRenderer.removeListener("runtime-status", listener);
   },
   /** app shortcuts forwarded from focused native page views */
   onShortcut: (cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => void) => {
@@ -26,6 +37,14 @@ const vector = {
     ipcRenderer.on("download", l);
     return () => ipcRenderer.removeListener("download", l);
   },
+  retryDownload: (id:string) => ipcRenderer.invoke("ui.retryDownload",id) as Promise<void>,
+  tabAudio:()=>ipcRenderer.invoke('ui.tabAudio') as Promise<Record<string,{muted:boolean;audible:boolean}>>,
+  setTabMuted:(pageId:string,muted:boolean)=>ipcRenderer.invoke('ui.setTabMuted',pageId,muted) as Promise<void>,
+  onAudio:(cb:(state:{pageId:string;muted:boolean;audible:boolean;removed?:boolean})=>void)=>{const handler=(_event:Electron.IpcRendererEvent,state:{pageId:string;muted:boolean;audible:boolean;removed?:boolean})=>cb(state);ipcRenderer.on('view.audio',handler);return()=>{ipcRenderer.removeListener('view.audio',handler);};},
+  downloadFolder: () => ipcRenderer.invoke("ui.downloadFolder") as Promise<{path:string;custom:boolean;error?:string}>,
+  chooseDownloadFolder: (reset=false) => ipcRenderer.invoke("ui.chooseDownloadFolder",reset) as Promise<{path:string;custom:boolean;error?:string}>,
+  downloadsSnapshot: () => ipcRenderer.invoke("ui.downloadsSnapshot"),
+  controlDownload: (id: string, action: "pause" | "resume" | "cancel") => ipcRenderer.invoke("ui.controlDownload", id, action),
   onLoading: (cb: (s: { pageId: string; loading: boolean }) => void) => {
     const l = (_e: unknown, s: { pageId: string; loading: boolean }) => cb(s);
     ipcRenderer.on("view.loading", l);
@@ -41,23 +60,71 @@ const vector = {
   preview: (pageId: string) => ipcRenderer.invoke("ui.preview", pageId) as Promise<string | null>,
   contextMenu: (pageId: string | null) => ipcRenderer.invoke("ui.contextMenu", pageId),
   openExternal: (url: string) => ipcRenderer.invoke("ui.openExternal", url),
+  registerCloudPreview:(url:string,token:string)=>ipcRenderer.invoke('ui.registerCloudPreview',url,token) as Promise<boolean>,
   revealPath: (p: string) => ipcRenderer.invoke("ui.revealPath", p),
   openPath: (p: string) => ipcRenderer.invoke("ui.openPath", p) as Promise<string>,
   saveFile: (name: string, content: string) => ipcRenderer.invoke("ui.saveFile", name, content) as Promise<string | null>,
+  saveCloudExport:(sourcePath:string,suggestedName:string)=>ipcRenderer.invoke('ui.saveCloudExport',sourcePath,suggestedName) as Promise<string|null>,
+  saveStoredArtifact:(artifactId:string,suggestedName:string)=>ipcRenderer.invoke('ui.saveStoredArtifact',artifactId,suggestedName) as Promise<string|null>,
   /** print the native page (⌘P) */
+  savePagePdf: (pageId: string) => ipcRenderer.invoke("ui.savePagePdf", pageId) as Promise<string | null>,
   printPage: (pageId: string) => ipcRenderer.invoke("ui.print", pageId),
   /** Chromium devtools for the native page (⌥⌘I) */
   devTools: (pageId: string) => ipcRenderer.invoke("ui.devTools", pageId),
   /** reload bypassing cache (⇧⌘R) */
+  readArticle: (pageId: string) => ipcRenderer.invoke("ui.readArticle", pageId),
   hardReload: (pageId: string) => ipcRenderer.invoke("ui.hardReload", pageId),
   /** close the whole window (⇧⌘W, or ⌘W on the last tab) */
   closeWindow: () => ipcRenderer.invoke("ui.closeWindow"),
   /** file picker for ⌘O — returns a path or null */
+  selectRepository: () => ipcRenderer.invoke("ui.selectRepository") as Promise<RepositorySelection | null>,
+  createProject: (id: string) => ipcRenderer.invoke("ui.createProject", id) as Promise<LocalProject>,
+  createBlankProject: (name: string) => ipcRenderer.invoke("ui.createBlankProject", name) as Promise<LocalProject>,
+  checkLocalPreview: (id: string,url: string) => ipcRenderer.invoke("ui.checkLocalPreview",id,url) as Promise<LocalPreviewCheck>,
+  projectFileHistory: (id:string,name:string) => ipcRenderer.invoke("ui.projectFileHistory",id,name) as Promise<ProjectFileHistory>,
+  readProjectFileVersion: (id:string,name:string,versionId:string) => ipcRenderer.invoke("ui.readProjectFileVersion",id,name,versionId) as Promise<ProjectFileVersionSnapshot>,
+  listProjectFiles: (id: string) => ipcRenderer.invoke("ui.listProjectFiles",id) as Promise<string[]>,
+  createProjectFile: (id:string,name:string) => ipcRenderer.invoke("ui.createProjectFile",id,name) as Promise<ProjectFile>,
+  readProjectFile: (id: string,name: string) => ipcRenderer.invoke("ui.readProjectFile",id,name) as Promise<ProjectFile>,
+  saveProjectFile: (id: string,name: string,hash: string,content: string) => ipcRenderer.invoke("ui.saveProjectFile",id,name,hash,content) as Promise<ProjectFile&{recoveryPath:string}>,
+  renameProjectFile: (id: string,name: string,nextName:string,hash: string) => ipcRenderer.invoke("ui.renameProjectFile",id,name,nextName,hash) as Promise<ProjectFile&{recoveryPath:string}>,
+  deleteProjectFile: (id: string,name: string,hash: string) => ipcRenderer.invoke("ui.deleteProjectFile",id,name,hash) as Promise<{name:string;recoveryPath:string}|null>,
+  openProjectFileExternal: (id:string,name:string,context:ProjectCommandContext) => ipcRenderer.invoke("ui.openProjectFileExternal",id,name,context) as Promise<boolean>,
+  prepareProjectReview: (id:string,context:ProjectCommandContext) => ipcRenderer.invoke("ui.prepareProjectReview",id,context) as Promise<ProjectReviewSummary>,
+  commitProject: (id:string,request:ProjectCommitRequest,context:ProjectCommandContext) => ipcRenderer.invoke("ui.commitProject",id,request,context) as Promise<ProjectCommitResult|null>,
+  listProjectCommands: (id: string) => ipcRenderer.invoke("ui.listProjectCommands", id) as Promise<ProjectCommand[]>,
+  runProjectCommand: (id: string, command: string, context: ProjectCommandContext, mode: "command"|"service" = "command") => ipcRenderer.invoke("ui.runProjectCommand", id, command, context, mode) as Promise<ProjectCommand|null>,
+  stopProjectCommand: (projectId: string, id: string) => ipcRenderer.invoke("ui.stopProjectCommand", projectId, id) as Promise<ProjectCommand>,
+  runProjectServiceStack: (id:string,request:ProjectServiceStackRequest,context:ProjectCommandContext) => ipcRenderer.invoke("ui.runProjectServiceStack",id,request,context) as Promise<ProjectCommand[]|null>,
+  stopProjectServiceStack: (projectId:string,stackId:string) => ipcRenderer.invoke("ui.stopProjectServiceStack",projectId,stackId) as Promise<ProjectCommand[]>,
+  listProjects: () => ipcRenderer.invoke("ui.listProjects") as Promise<LocalProject[]>,
+  inspectProject: (id: string) => ipcRenderer.invoke("ui.inspectProject", id) as Promise<ProjectInspection>,
+  pickEvidenceDocument: () => ipcRenderer.invoke("ui.pickEvidenceDocument") as Promise<{ filename: string; content: string } | null>,
   openFile: () => ipcRenderer.invoke("ui.openFile") as Promise<string | null>,
+  agentConfig: (input:unknown) => ipcRenderer.invoke("app.agentConfig",input),
+  agentConnections:()=>ipcRenderer.invoke("app.agentConnections"),
+  agentClients:()=>ipcRenderer.invoke("app.agentClients"),
+  revokeAgentConnection:(connectionId:string)=>ipcRenderer.invoke("app.revokeAgentConnection",connectionId),
+  extensions:()=>ipcRenderer.invoke("app.extensions"),
+  installUnpackedExtension:()=>ipcRenderer.invoke("app.installUnpackedExtension"),
+  setExtensionEnabled:(key:string,enabled:boolean)=>ipcRenderer.invoke("app.setExtensionEnabled",key,enabled),
+  removeExtension:(key:string)=>ipcRenderer.invoke("app.removeExtension",key),
   dataDir: () => ipcRenderer.invoke("app.dataDir") as Promise<string>,
+  exportDiagnostics:()=>ipcRenderer.invoke('app.exportDiagnostics') as Promise<string|null>,
+  exportRuntimeBackup:()=>ipcRenderer.invoke('app.exportRuntimeBackup') as Promise<{path:string;bytes:number;sha256:string;artifactFiles:number;missingArtifacts:number}|null>,
+  stageRuntimeRestore:()=>ipcRenderer.invoke('app.stageRuntimeRestore') as Promise<{staged:true;schemaVersion:number;bytes:number;sha256:string;artifactFiles:number;missingArtifacts:number}|null>,
+  cancelRuntimeRestore:()=>ipcRenderer.invoke('app.cancelRuntimeRestore') as Promise<{cancelled:true}>,
+  runtimeRestoreStatus:()=>ipcRenderer.invoke('app.runtimeRestoreStatus') as Promise<{pending:boolean;lastAppliedAt?:number}>,
+  healthSummary:()=>ipcRenderer.invoke('app.healthSummary'),
+  clearHealth:()=>ipcRenderer.invoke('app.clearHealth'),
+  httpAuthRequests: () => ipcRenderer.invoke("ui.httpAuthRequests"),
+  respondHttpAuth: (id:string,credentials:{username:string;password:string}|null) => ipcRenderer.invoke("ui.respondHttpAuth",id,credentials),
+  onHttpAuthChanged: (cb:()=>void) => { const listener=()=>cb(); ipcRenderer.on('http-auth-changed',listener); return ()=>ipcRenderer.removeListener('http-auth-changed',listener); },
+  clearSiteData: (pageId: string) => ipcRenderer.invoke("app.clearSiteData", pageId) as Promise<boolean>,
+  siteInfo: (pageId: string) => ipcRenderer.invoke("app.siteInfo", pageId),
   sitePermissions: () => ipcRenderer.invoke("app.sitePermissions") as Promise<Record<string, Record<string, "allow" | "deny">>>,
   clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
-  setAppearance: (theme: "dark" | "light") => ipcRenderer.invoke("ui.setAppearance", theme),
+  setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true) => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls),
 };
 
 export type VectorBridge = typeof vector;

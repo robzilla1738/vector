@@ -26,7 +26,7 @@ export function addressNavigate(input: string, searchEngine?: string): { action:
 
 /** Scrim overlays cover the stage and must hide WebContentsView. In-flow strips shrink the stage instead. */
 export function isScrimOverlay(overlay: string | null): boolean {
-  return overlay === "palette" || overlay === "settings" || overlay === "history" || overlay === "observe";
+  return overlay === "reader" || overlay === "bookmarks" || overlay === "palette" || overlay === "settings" || overlay === "history" || overlay === "observe" || overlay === "tasks" || overlay === "site";
 }
 
 export function isFlowOverlay(overlay: string | null): boolean {
@@ -34,19 +34,21 @@ export function isFlowOverlay(overlay: string | null): boolean {
 }
 
 export function nativePageId(input: {
-  mode: "focus" | "overview" | "table";
+  mode: "focus" | "overview" | "table" | "conversation";
   overlay: string | null;
   activePageId: string | null;
   url: string | null | undefined;
   backend?: string | null;
+  viewStatus?: string;
+  navigationError?: unknown;
 }): string | null {
-  if (input.mode !== "focus") return null;
+  if (input.mode !== "focus" || input.viewStatus === "crashed" || input.navigationError) return null;
   if (isScrimOverlay(input.overlay)) return null;
   if (!input.activePageId) return null;
   const url = input.url?.trim() ?? "";
   if (!url || url === "about:blank") return null;
   if (input.backend === "chrome") return null;
-  // EngineView paints the Vector document. A Chromium WebContentsView must
+  // EngineView paints the Aux document. A Chromium WebContentsView must
   // not sit on top of that surface.
   if (input.backend === "vector-engine") return null;
   return input.activePageId;

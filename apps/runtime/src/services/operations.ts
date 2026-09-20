@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
-import { USER_RUN_GRANTS, type GrantSource } from "../agent/permissions.js";
+import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
 import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
@@ -47,6 +47,8 @@ const KIND_COST: Record<string, number> = {
 };
 
 const STATE_RANK: Record<string, number> = { validated: 0, candidate: 1, shadow: 2, quarantined: 9 };
+const MAX_REQUEST_RESPONSE_BYTES=1024*1024;
+const SECRET_HEADER=/^(authorization|proxy-authorization|cookie|set-cookie)$/i;
 
 /**
  * Error codes that mean the impl never got to act — nothing was dispatched,
@@ -151,6 +153,13 @@ export class OperationService {
     guards?: Record<string, unknown>;
     validated?: boolean;
   }) {
+    let destination:URL;try{destination=new URL(opts.url);}catch{throw new VectorError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
+    if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new VectorError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
+    if(destination.host!==opts.siteKey)throw new VectorError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
+    for(const [name,value] of Object.entries(opts.headers??{})){
+      if(SECRET_HEADER.test(name))throw new VectorError('permission_denied',`Do not save ${name} in an operation. Session credentials stay inside the browser.`);
+      if(/[\r\n]/.test(name)||/[\r\n]/.test(value))throw new VectorError('invalid_params','Session request headers cannot contain line breaks.');
+    }
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
     this.deps.repo.saveOperation({
@@ -296,8 +305,10 @@ export class OperationService {
         // direct HTTP — eligible whenever the runtime can reach the site;
         // session-bound APIs additionally require guards.session
         if (op.guards["session"] === "required") {
-          eligible = false;
-          why = "requires a bound session (not implemented)";
+          const host=this.siteKeyOf(ctx.pageId);
+          if(!host){eligible=false;why='requires a live signed-in page';}
+          else if(host!==op.siteKey){eligible=false;why=`session page is on ${host}, not ${op.siteKey}`;}
+          else why='live same-site browser session available';
         }
       } else {
         eligible = false;
@@ -430,7 +441,7 @@ export class OperationService {
         });
       record("running");
       try {
-        const result = await this.executeImpl(impl, opts);
+        const result = await this.executeImpl(impl, opts,op.guards);
         const failed = result && typeof result === "object" && (result as ProgramResult).status === "failed";
 
         // postcondition: guards.verify predicate over {result, extracted, inputs}
@@ -517,6 +528,7 @@ export class OperationService {
   private async executeImpl(
     impl: ImplRow,
     opts: { pageId?: string; runId?: string; inputs?: Record<string, unknown> },
+    guards:Record<string,unknown>,
   ): Promise<unknown> {
     if (impl.kind === "browser-program") {
       if (!opts.pageId) throw new VectorError("invalid_params", "browser-program impl requires pageId");
@@ -530,7 +542,7 @@ export class OperationService {
         steps: saved.steps ?? [],
         observation: obs.content,
         url: live.url ?? obs.content.url,
-        grants: this.deps.grants ?? USER_RUN_GRANTS,
+        grants: this.deps.grants ?? DEFAULT_GRANTS,
       });
       if ("rejected" in prepared) throw new VectorError("conflict", prepared.rejected);
       if ("denied" in prepared) throw new VectorError("permission_denied", prepared.denied);
@@ -543,7 +555,7 @@ export class OperationService {
     }
     if (impl.kind === "session-request") {
       const req = JSON.parse(impl.executable) as { method: string; url: string; body?: unknown; headers?: Record<string, string> };
-      return this.runSessionRequest(req, opts.inputs ?? {}, opts.pageId, opts.runId);
+      return this.runSessionRequest(req, opts.inputs ?? {}, opts.pageId, opts.runId,guards['session']==='required');
     }
     throw new VectorError("backend_unavailable", `unknown impl kind ${impl.kind}`);
   }
@@ -559,44 +571,54 @@ export class OperationService {
     inputs: Record<string, unknown>,
     pageId?: string,
     runId?: string,
+    requireSession=false,
   ) {
     const sub = (s: string) => s.replace(/\{input:([A-Za-z0-9_.]+)\}/g, (_m, k: string) => encodeURIComponent(String(inputs[k] ?? "")));
     const url = sub(req.url);
     const body = req.body === undefined ? undefined : JSON.parse(sub(JSON.stringify(req.body)));
 
-    // in-page execution: same host as the live page → the browser's session
-    // (cookies, storage auth) applies — this is what makes it a SESSION request
-    if (pageId) {
-      try {
-        const pageHost = new URL(this.deps.pages.get(pageId).url).host;
-        if (pageHost === new URL(url).host) {
-          const expr = `(async () => {
-            const res = await fetch(${JSON.stringify(url)}, {
-              method: ${JSON.stringify(req.method)},
-              headers: ${JSON.stringify({ ...(req.headers ?? {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) })},
-              body: ${body !== undefined ? JSON.stringify(JSON.stringify(body)) : "undefined"},
-            });
-            const text = await res.text();
-            return { status: res.status, ok: res.ok, body: text };
-          })()`;
-          const result = await this.deps.pages.execute(
-            { pageId, steps: [{ id: "req", op: "evaluate", expression: expr, as: "response" } as never] },
-            // the expression is built here from a validated request template,
-            // not from model output — a trusted source
-            { runId, allowEval: true },
-          );
-          const r = (result as ProgramResult).extracted?.response as { status: number; ok: boolean; body: string } | undefined;
-          if (!r) throw new VectorError("step_failed", `in-page request ${req.method} ${url} returned no result`);
-          let json: unknown;
-          try { json = JSON.parse(r.body); } catch { json = r.body; }
-          if (!r.ok) throw new VectorError("step_failed", `${req.method} ${url} → ${r.status}`, json);
-          return json;
-        }
-      } catch (e) {
-        if (e instanceof VectorError) throw e;
-        // page gone or not readable — fall through to runtime fetch
+    const destination = new URL(url);
+    if (!["http:", "https:"].includes(destination.protocol)) throw new VectorError("permission_denied", "request protocol denied");
+    const grants = resolveGrants(this.deps.grants).map(parseGrant).filter(g => g !== null);
+    const effect = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase()) ? "read" : req.method.toUpperCase() === "DELETE" ? "destructive" : "write";
+    for (const needed of [effect, "egress"] as const) {
+      if (!grants.some(g => grantAllows(g, needed, destination.origin, Date.now()))) {
+        throw new VectorError("permission_denied", `agent ${needed} denied for ${url}`);
       }
     }
+    let pageOrigin: string | undefined;
+    if (pageId) {
+      try { pageOrigin = new URL(this.deps.pages.get(pageId).url).origin; } catch { /* no live session */ }
+    }
+
+    // In-page execution requires the exact origin; the browser session
+    // (cookies, storage auth) applies — this is what makes it a SESSION request
+    if (pageId && pageOrigin === destination.origin) {
+      const expr = `(async () => {
+        const res = await fetch(${JSON.stringify(url)}, {
+          method: ${JSON.stringify(req.method)},
+          redirect: "error",
+          headers: ${JSON.stringify({ ...(req.headers ?? {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) })},
+          body: ${body !== undefined ? JSON.stringify(JSON.stringify(body)) : "undefined"},
+        });
+        const text = await res.text();
+        return { status: res.status, ok: res.ok, body: text.slice(0, ${MAX_REQUEST_RESPONSE_BYTES}), truncated: text.length > ${MAX_REQUEST_RESPONSE_BYTES} };
+      })()`;
+      const result = await this.deps.pages.execute(
+        { pageId, steps: [{ id: "req", op: "evaluate", expression: expr, as: "response" } as never] },
+        // the expression is built here from a validated request template,
+        // not from model output — a trusted source
+        { runId, allowEval: true },
+      );
+      const r = (result as ProgramResult).extracted?.response as { status: number; ok: boolean; body: string;truncated?:boolean } | undefined;
+      if (!r) throw new VectorError("step_failed", `in-page request ${req.method} ${url} returned no result`);
+      let json: unknown;
+      try { json = JSON.parse(r.body); } catch { json = r.body; }
+      if (!r.ok) throw new VectorError("step_failed", `${req.method} ${url} → ${r.status}`, json);
+      return r.truncated?{value:json,truncated:true}:json;
+    }
+
+    if(requireSession)throw new VectorError('permission_denied','This operation requires a live page on the exact destination origin. Aux did not export or replay browser credentials.');
 
     let pageHost: string | undefined;
     if (pageId) {
@@ -614,10 +636,11 @@ export class OperationService {
 
     const res = await fetch(url, {
       method: req.method,
+      redirect: "error",
       headers: { ...(req.headers ?? {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    const text = await res.text();
+    const bytes=new Uint8Array(await res.arrayBuffer());const truncated=bytes.byteLength>MAX_REQUEST_RESPONSE_BYTES;const text=new TextDecoder().decode(bytes.slice(0,MAX_REQUEST_RESPONSE_BYTES));
     let json: unknown;
     try {
       json = JSON.parse(text);
@@ -625,6 +648,6 @@ export class OperationService {
       json = text;
     }
     if (!res.ok) throw new VectorError("step_failed", `${req.method} ${url} → ${res.status}`, json);
-    return json;
+    return truncated?{value:json,truncated:true}:json;
   }
 }

@@ -1,10 +1,11 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { toErrorPayload, type VectorEvent } from "@vector/contracts";
+import { toErrorPayload, type AgentConnectionScope, type VectorEvent } from "@vector/contracts";
 import { MethodSchemas } from "@vector/contracts";
 import type { EventBus } from "../events.js";
 
-export type InvokeFn = (method: string, params: unknown, client: { external: boolean }) => Promise<unknown>;
+export type ClientContext = { external: boolean; connectionId?: string; scope?: AgentConnectionScope };
+export type InvokeFn = (method: string, params: unknown, client: ClientContext) => Promise<unknown>;
 
 /** Largest accepted /rpc or WS request body. Programs top out well under this. */
 export const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -25,13 +26,15 @@ export class ApiServer {
   port = 0;
 
   constructor(
-    private opts: { token: string; invoke: InvokeFn; events: EventBus },
+    private opts: { token: string; invoke: InvokeFn; events: EventBus; authorizeScopedToken?: (token: string) => ClientContext | null },
   ) {
     this.server = createServer((req, res) => void this.handle(req, res));
     this.wss = new WebSocketServer({ noServer: true, maxPayload: MAX_BODY_BYTES });
     this.server.on("upgrade", (req, socket, head) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
-      const authed = this.bearerOk(req) || url.searchParams.get("token") === this.opts.token;
+      // Scoped connectors use request/response RPC only. The global event stream
+      // cannot be safely filtered without changing event payload contracts.
+      const authed = this.masterBearer(req) || url.searchParams.get("token") === this.opts.token;
       if (url.pathname !== "/ws" || !authed) {
         socket.destroy();
         return;
@@ -50,8 +53,14 @@ export class ApiServer {
     });
   }
 
-  private bearerOk(req: IncomingMessage): boolean {
+  private masterBearer(req: IncomingMessage): boolean {
     return req.headers.authorization === `Bearer ${this.opts.token}`;
+  }
+
+  private client(req: IncomingMessage): ClientContext | null {
+    if (this.masterBearer(req)) return { external: true };
+    const match = /^Bearer ([^\s]+)$/.exec(req.headers.authorization ?? "");
+    return match ? this.opts.authorizeScopedToken?.(match[1]!) ?? null : null;
   }
 
   /**
@@ -61,6 +70,7 @@ export class ApiServer {
    */
   private async dispatch(
     payload: unknown,
+    client: ClientContext = { external: true },
   ): Promise<{ id?: unknown; result?: unknown; error?: ReturnType<typeof toErrorPayload> }> {
     const env = (payload ?? {}) as { id?: unknown; method?: unknown; params?: unknown };
     const id = env.id;
@@ -68,7 +78,7 @@ export class ApiServer {
       return { id, error: { code: "not_found", message: `unknown method ${String(env.method)}` } };
     }
     try {
-      const result = await this.opts.invoke(env.method, env.params ?? {}, { external: true });
+      const result = await this.opts.invoke(env.method, env.params ?? {}, client);
       return { id, result };
     } catch (e) {
       return { id, error: toErrorPayload(e) };
@@ -86,7 +96,7 @@ export class ApiServer {
         ws.send(JSON.stringify({ error: { code: "invalid_params", message: "bad JSON" } }));
         return;
       }
-      const out = await this.dispatch(msg);
+      const out = await this.dispatch(msg, { external: true });
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(out));
     });
   }
@@ -104,7 +114,8 @@ export class ApiServer {
     };
 
     if (url.pathname === "/health") return send(200, { ok: true, service: "vector-runtime" });
-    if (!this.bearerOk(req)) return send(401, { error: { code: "unauthorized", message: "missing or bad bearer token" } });
+    const client = this.client(req);
+    if (!client) return send(401, { error: { code: "unauthorized", message: "missing, revoked, or invalid bearer token" } });
 
     if (url.pathname === "/rpc" && req.method === "POST") {
       const declared = Number(req.headers["content-length"] ?? 0);
@@ -128,7 +139,7 @@ export class ApiServer {
       } catch {
         return send(400, { error: { code: "invalid_params", message: "bad JSON" } });
       }
-      const out = await this.dispatch(payload);
+      const out = await this.dispatch(payload, client);
       if (out.error?.code === "not_found" && !("result" in out) && /^unknown method/.test(out.error.message)) {
         return send(404, { error: out.error });
       }

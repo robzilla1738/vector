@@ -74,6 +74,8 @@ describe("API schemas", () => {
       "pages.extract", "pages.waitFor", "pages.console", "pages.dialog", "pages.network",
       "sets.create", "sets.map", "sets.results",
       "runs.start", "runs.pause", "runs.resume", "runs.cancel", "runs.events",
+      "conversations.artifacts.get", "conversations.artifacts.toggle", "conversations.sources.get",
+      "conversations.workspace.get", "conversations.workspace.set", "workspaces.memory.get", "workspaces.memory.set",
       "artifacts.list", "artifacts.read",
     ]) {
       expect(MethodSchemas, m).toHaveProperty(m);

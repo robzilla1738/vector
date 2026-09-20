@@ -1,5 +1,9 @@
 # Vector product architecture
 
+> Implementation direction is now maintained in [Aux roadmap](AUX-ROADMAP.md).
+> This document describes the existing architecture and historical gates; its
+> implemented labels are not evidence that the complete Aux product is ready.
+
 **Decision date:** 19 September 2026
 **Status:** authoritative product architecture and release gates
 

@@ -55,7 +55,7 @@ export const newFolderId = () => `folder-${Date.now().toString(36)}-${(seq++).to
 
 /** Tabs the sidebar shows: human-facing, not worker pages. */
 export function isTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime">): boolean {
-  return p.viewStatus !== "background" && p.viewStatus !== "detached" && !p.ownedByRuntime;
+  return p.viewStatus !== "detached" && !p.ownedByRuntime;
 }
 
 /** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. */

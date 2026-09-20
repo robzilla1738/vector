@@ -1,20 +1,45 @@
-# Vector
+# Aux
+
+**Aux is the browser that works with you. Delegate real work, take over whenever
+you want, and know what actually happened.**
+
+The full product roadmap and implementation evidence are maintained in
+[Aux roadmap](docs/AUX-ROADMAP.md) and [progress](docs/AUX-PROGRESS.md).
+The private Aux development build is ready for founder review; legacy names below
+describe existing compatibility interfaces, not separate products. No packaged or
+external release is authorized at this stage.
+
+`AUX_*` runtime configuration is canonical; `VECTOR_*` is accepted for compatibility.
+Within one source, a nonempty Aux value wins; process environment overrides `.env`
+files regardless of spelling. New runtime data uses `Aux Browser/aux-state.sqlite`
+under the OS data root. Existing legacy data is used in place until an explicit
+backed-up migration is available. Ambiguous installations fail with instructions
+to select `AUX_DATA_DIR`, rather than silently choosing or merging profiles.
+The browser's separate Chromium profile is not moved by this change.
 
 A local agent-first browser with one desktop window, workspace, permission
 model, and agent contract. Chromium is the compatibility backend for ordinary
-browsing. Vector's Rust engine is a qualified accelerator for semantic,
+browsing. Aux's Rust engine is a qualified accelerator for semantic,
 agent-heavy workloads; the active backend and routing reason are always shown.
 
-- **Vector Engine** — Vector's own browser engine in Rust (`engine/`), built
+- **Aux Engine** — Aux's own browser engine in Rust (`engine/`), built
   for agents: the semantic observation, stable refs, batched step execution
   and readiness come from the engine's own trees. V8 runs page scripts.
 - **Chromium** — Electron `WebContentsView` or headless Chrome, used by default
   for broad web, media, and extension compatibility.
 
 A router (`apps/runtime/src/services/router.ts`) decides per `pages.open`.
-`engineMode`: `off` (Chromium only), `auto` (Chromium by default and Vector
+`engineMode`: `off` (Chromium only), `auto` (Chromium by default and Aux
 Engine for qualified cohorts), `always` (engine only). Every decision records
 a `routeReason`. Native `ve-shell` remains an engine development harness.
+
+## Private hands-on preview
+
+Run `pnpm dev` for the current private development build. `pnpm preview` opens a
+separate persistent Aux Preview profile. Follow the [private build handoff](docs/AUX-PRIVATE-BUILD.md)
+and [first review walkthrough](docs/AUX-FIRST-REVIEW.md) for browsing, tasks,
+development, cloud setup and the known compatibility limits. Founder feedback now
+defines the next roadmap.
 
 ## Quickstart
 
@@ -22,7 +47,7 @@ a `routeReason`. Native `ve-shell` remains an engine development harness.
 pnpm install
 pnpm build
 pnpm dev            # coherent hybrid desktop product
-pnpm dev:native-engine # Vector Engine development shell
+pnpm dev:native-engine # Aux Engine development shell
 pnpm fixtures       # fixture sites only (http://127.0.0.1:4810–4812)
 pnpm test           # unit + integration suites (engine tests skip without the addon)
 pnpm test:e2e       # Electron hybrid end-to-end
@@ -61,7 +86,7 @@ The runtime loads the addon at startup whenever it is present (set
 
 Configuration is otherwise optional — copy `.env.example` to `.env` (in the
 repo root you launch from, or in the data dir
-`~/Library/Application Support/Vector`) and set `AI_GATEWAY_API_KEY` to
+`~/Library/Application Support/Aux Browser`) and set `AI_GATEWAY_API_KEY` to
 enable agent goals (`runs.start`, `sets.map --goal`). The planner defaults
 to `alibaba/qwen3.8-27b` through Vercel AI Gateway; Settings also offers
 `openai/gpt-5.6-luna-fast`. The runtime loads
@@ -75,12 +100,12 @@ runtime over [MCP](docs/mcp.md) or the [loopback API](docs/api.md).
 `pnpm bench --backend both`, records fixture (`http://127.0.0.1:4810/records`),
 same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
 darwin arm64 (2026-09-16). Chromium is the headless standalone driver with
-`engineMode: off`; Vector Engine is `engineMode: always` (process isolation).
+`engineMode: off`; Aux Engine is `engineMode: always` (process isolation).
 Held-out mock 5.32× / 8.35× tokens is retired (`MockModelClient`, n=1). Live
 GPT 5.6 Luna rows (5 trials, competitor included) are in `docs/BENCHMARKS.md`
 and `docs/engine/evidence/held-out-latest.json`.
 
-| Metric | Chromium | Vector Engine |
+| Metric | Chromium | Aux Engine |
 |---|---:|---:|
 | `pages.open` | 103.9 ms | 7.8 ms |
 | `pages.observe` (full) | 14.3 ms | 1.5 ms |
@@ -96,13 +121,13 @@ Engine-side numbers for the static corpus (`cargo run --release -p perf --
 Speedometer 3.0 / JetStream / MotionMark GPU: `cargo run --release -p
 browserbench --features v8,gpu`.
 
-Same fixtures, published competitor numbers (Sep 2026) plus Vector's own
+Same fixtures, published competitor numbers (Sep 2026) plus Aux's own
 `pnpm bench` / `pnpm bench:tasks` (same model `alibaba/qwen3.8-27b`):
 
 | System | Navigate+snapshot (warm) | Memory vs Chrome | Task success |
 |---|---|---|---|
-| Vector Engine | 3.8 ms navigate+observe | in-process / `ve-host`, no Chrome | local suite 6/8 (`vector-engine`) |
-| Vector Chromium | 60.4 ms navigate+observe | Electron/headless Chrome | local suite 6/8 (`vector`) |
+| Aux Engine | 3.8 ms navigate+observe | in-process / `ve-host`, no Chrome | local suite 6/8 (`vector-engine`) |
+| Aux Chromium | 60.4 ms navigate+observe | Electron/headless Chrome | local suite 6/8 (`vector`) |
 | agent-browser (raw CDP) | 8 ms warm navigate+snapshot | one Chrome per daemon | not measured here; adapter `agent-browser` |
 | Lightpanda (Zig+V8) | 9–11× Chrome (their claim) | 16× less memory (their claim) | 69.7% AssistantBench / 83% GAIA-L1 (published) |
 
@@ -113,7 +138,7 @@ model, 2026-09-15):
 |---|---:|---:|---:|---:|
 | `vector` (runtime loop, Chromium) | 6/8 | 1.5 s | 2.8 | 5.7 k |
 | `vector-engine` (runtime loop) | 6/8 | 1.0 s | 4.8 | 11.1 k |
-| `vector-mcp` | 8/8 | 2.6 s | 5.5 | 32.7 k |
+| `aux-mcp` | 8/8 | 2.6 s | 5.5 | 32.7 k |
 | `playwright-mcp` | 8/8 | 4.0 s | 5.4 | 36.1 k |
 
 `pnpm bench:tasks --adapter agent-browser,lightpanda-mcp` records those
@@ -135,8 +160,8 @@ Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
   `⌘S` collapse the sidebar · `⌘F` find · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom ·
   `⌘[`/`⌘]` back/forward · `⌘Y` history · `⌘⇧J` downloads · `⌘,` settings
 - The stage card carries an **engine badge** — Chromium, Your Chrome or
-  Vector Engine — with the router's `routeReason` in its hover card.
-  Settings → Vector Engine switches `engineMode`.
+  Aux Engine — with the router's `routeReason` in its hover card.
+  Settings → Aux Engine switches `engineMode`.
 - Type or click inside an agent-driven page (when the agent is not
   mid-program) to take it over; the run pauses and the toolbar chip
   (*You're in control · Return*) hands it back. Agent clicks on the
@@ -153,11 +178,11 @@ Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
 ```
 apps/desktop     Electron main + React renderer (native WebContentsView tabs)
 apps/runtime     the authoritative runtime: pages, router, programs, runs, sets, API
-engine/          Vector Engine — Rust cargo workspace (crates/, tools/, fixtures/, conformance/)
+engine/          Aux Engine — Rust cargo workspace (crates/, tools/, fixtures/, conformance/)
 engine/crates/ve-napi   @vector/engine-native — napi-rs 3 addon the runtime loads
 packages/contracts      zod schemas shared by every surface
 packages/engine-client  `@vector/engine-client` (`EnginePage`); Chromium adapters stay in `packages/browser-driver`
-packages/cli            `vector` CLI over the loopback API
+packages/cli            `auxctl` CLI over the loopback API
 packages/mcp            MCP stdio server over the loopback API
 fixtures/               deterministic test sites (records, forms, interaction-lab)
 tests/                  unit, integration, e2e, benchmarks

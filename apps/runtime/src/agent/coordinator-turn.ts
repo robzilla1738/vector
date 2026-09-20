@@ -21,6 +21,7 @@ import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions
 import { promptCannotGrant } from "./policy.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, settleWrite } from "./durable.js";
+import { classifyModelFailure, ModelFailureError } from "./model-failure.js";
 import { reduce, type Machine } from "./machine.js";
 import { emptyRepairState, noteRepair, type RepairState } from "./repair.js";
 import {
@@ -79,7 +80,7 @@ export function resetGuards(s: TurnState): void {
   s.doneChallenged = false;
 }
 
-export function giveUpRepair(s: TurnState, error?: string): void {
+export function giveUpRepair(s: TurnState, error?: string, failure?: Run["failure"]): void {
   const partial = s.outcomes.some((o) => o.status === "ok" && (o.extracted !== undefined || o.detail !== undefined));
   s.self.finish(
     s.runId,
@@ -87,6 +88,7 @@ export function giveUpRepair(s: TurnState, error?: string): void {
     partial ? harvestResults(s.outcomes) : undefined,
     error,
     partial ? "Couldn't fully finish — here's what I found" : undefined,
+    failure,
   );
 }
 
@@ -118,12 +120,13 @@ export async function structuredCall<T>(
     });
     return call;
   } catch (e) {
+    const safe = classifyModelFailure(e);
     s.self.deps.recordModelCall({
       runId: s.runId,
       role,
       modelId: args.modelId,
       durationMs: Date.now() - started,
-      error: e instanceof Error ? e.message : String(e),
+      error: `${safe.category}: ${safe.message}`,
     });
     throw e;
   }
@@ -278,7 +281,7 @@ export async function planTurn(
           revision: obs.revision,
           steps: prepared.program.steps ?? [],
         });
-        if (write.skip) return Promise.resolve({ status: "completed" as const, steps: [] });
+        if (write.skip) return Promise.reject(new VectorError("conflict", write.reason!));
         return s.self.deps.pages
           .execute(
             { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
@@ -374,6 +377,8 @@ export async function handlePlannerFailure(
     if (partial.steps.length) s.stepsRun += partial.steps.length;
   }
   if (s.c.abort.signal.aborted) throw e;
+  const failure = classifyModelFailure(e);
+  if (!failure.automaticRetry) throw new ModelFailureError(failure);
   s.modelErrorCount++;
   if (s.modelErrorCount >= MODEL_ERROR_LIMIT) {
     const verdict = await tryFinalDecision(s, `model calls kept failing (${e instanceof Error ? e.message : String(e)})`, obs);
@@ -382,7 +387,7 @@ export async function handlePlannerFailure(
       resetGuards(s);
       return "continue";
     }
-    throw e;
+    throw new ModelFailureError(failure);
   }
   if (s.modelErrorCount === 2 && !s.visionUsed) s.visionPending = true;
   s.lastError = `model call failed (${e instanceof Error ? e.message : String(e)}) — respond with a valid PlanChunk`;
@@ -488,17 +493,16 @@ export async function dispatchPlan(
     return "continue";
   }
   s.machine = reduce(s.machine, { type: "authorized", ok: true });
-  const write = beginConsequentialWrite(s.self.durable, {
+  const streamed = early && early.dispatchedCount > 0;
+  const write = streamed ? { skip: false, intentId: undefined } : beginConsequentialWrite(s.self.durable, {
     runId: s.runId,
     pageId: s.activePageId!,
     documentEpoch: obs.documentEpoch,
     revision: obs.revision,
     steps: compiled.program.steps ?? [],
   });
-  const streamed = early && early.dispatchedCount > 0;
-  const result = write.skip
-    ? { status: "completed" as const, steps: [] }
-    : streamed
+  if (write.skip) throw new VectorError("conflict", write.reason!);
+  const result = streamed
       ? await early!.finish(plan.steps ?? [])
       : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
   if (early && !streamed) early.halt();
@@ -607,7 +611,8 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
           revision: fresh.revision,
           steps: compiled.program.steps ?? [],
         });
-        if (!write.skip) {
+        if (write.skip) throw new VectorError("conflict", write.reason!);
+        {
           const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, signal: s.c.abort.signal });
           settleWrite(s.self.durable, write.intentId, r2.status === "completed");
           s.stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;

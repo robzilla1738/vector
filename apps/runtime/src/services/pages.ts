@@ -114,10 +114,16 @@ export interface PageServiceDeps {
  */
 export class PageService {
   private live = new Map<string, LivePage>();
+  private pendingExternal = new Map<string, { removed: boolean }>();
+  /** Foreground tabs/popups return to the tab that launched them when closed. */
+  private returnTargets = new Map<string, string>();
   private revCounters = new Map<string, number>();
   private activeId: string | null = null;
+  /** Each regular browser window owns an independent selected tab. */
+  private activeByWindow = new Map<string, string>();
   /** set on app teardown — view.removed storms must not touch the restore list */
   private closing = false;
+  private restoring = false;
   /** pages with an in-flight program — Playwright input is not a human takeover */
   private programInflight = new Set<string>();
 
@@ -129,7 +135,14 @@ export class PageService {
     return this.activeId;
   }
 
+  activePageIdFor(windowId = "main"): string | null {
+    return this.activeByWindow.get(windowId) ?? null;
+  }
+
+  get isRestoringTabs() { return this.restoring; }
+
   constructor(private deps: PageServiceDeps) {
+    this.restoring = deps.native.available() && deps.repo.loadTabs().some(tab => tab.backend === "vector");
     // restore persisted page rows as detached history entries
     for (const p of deps.repo.listPages({ includeDetached: true })) {
       p.viewStatus = "detached";
@@ -219,6 +232,7 @@ export class PageService {
    */
   async open(opts: {
     url: string;
+    windowId?: string;
     backend?: Backend;
     background: boolean;
     ownedByRuntime: boolean;
@@ -253,11 +267,13 @@ export class PageService {
     pageId: string,
     initialUrl: string,
     background: boolean,
+    windowId?: string,
+    ownedByRuntime=false,
   ): Promise<{ targetId: string; nativeCreated: boolean }> {
     if (backend === "vector") {
       const marker = `vtab-${pageId}`;
       if (this.deps.native.available()) {
-        await this.deps.native.createPage({ pageId, marker, url: initialUrl, background });
+        await this.deps.native.createPage({ pageId, windowId, marker, url: initialUrl, background,ownedByRuntime });
         return { targetId: marker, nativeCreated: true };
       }
       if (driver.createTarget) {
@@ -279,9 +295,10 @@ export class PageService {
 
   private async openOn(
     backend: Backend,
-    opts: { url: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string },
+    opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string },
     routeReason: string,
     fallbackAllowed = false,
+    restored?: PageTarget,
   ): Promise<PageTarget> {
     const driver = this.driverFor(backend);
     // a dropped socket is recovered lazily here rather than failing every
@@ -290,7 +307,7 @@ export class PageService {
     if (!driver?.isConnected())
       throw new VectorError("backend_unavailable", `${backend} backend is not connected`);
 
-    const pageId = newPageId();
+    const pageId = restored?.pageId ?? newPageId();
     let targetId: string;
     let nativeCreated = false;
     // Chromium: open on about:blank, then navigate AFTER response listeners
@@ -300,7 +317,7 @@ export class PageService {
     if (opts.targetId && backend === "chrome") {
       targetId = opts.targetId;
     } else {
-      ({ targetId, nativeCreated } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background));
+      ({ targetId, nativeCreated } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
     }
 
     // engine post-parse classification → capability_unsupported → the caller
@@ -318,7 +335,9 @@ export class PageService {
 
     let dp: DriverPage;
     try {
-      dp = await driver.attach(targetId, pageId);
+      dp = restored && driver.recoverPage
+        ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
+        : await driver.attach(targetId, pageId);
     } catch (e) {
       // the shell view already exists — destroy it rather than leaking a
       // driverless zombie tab in the strip
@@ -334,26 +353,29 @@ export class PageService {
     ) {
       await this.deps.native.createPage({
         pageId,
+        windowId: opts.windowId,
         marker: `vetab-${pageId}`,
         url: opts.url,
         background: false,
+        ownedByRuntime:opts.ownedByRuntime,
         kind: "engine",
       });
       nativeCreated = true;
     }
     const target: PageTarget = {
       pageId,
+      windowId: opts.windowId,
       backend,
       targetId,
       url: opts.url,
       title: "",
-      documentEpoch: 0,
+      documentEpoch: restored ? restored.documentEpoch + 1 : 0,
       lastRevision: 0,
       viewStatus: backend === "chrome" ? "hidden" : opts.background ? "background" : "visible",
       controller: "none",
-      controllerEpoch: 0,
+      controllerEpoch: restored ? restored.controllerEpoch + 1 : 0,
       ownedByRuntime: opts.ownedByRuntime,
-      createdAt: Date.now(),
+      createdAt: restored?.createdAt ?? Date.now(),
       lastActiveAt: Date.now(),
       routeReason,
     };
@@ -361,17 +383,19 @@ export class PageService {
     this.live.set(pageId, lp);
     this.wireDriverEvents(lp);
     this.persist(lp);
-    this.deps.events.emit(EventTypes.PageAdded, { page: target });
+    if (!this.restoring) this.deps.events.emit(EventTypes.PageAdded, { page: target });
     this.deps.tracer?.incr(`router.open.${backend}`);
+    // Select the requested foreground tab before loading. A slow response must
+    // not steal focus later or leave commands targeting the previous tab.
+    if (opts.activate ?? !opts.background) await this.activate(pageId).catch(() => {});
     // the real navigation happens with listeners attached — captured like
     // any later navigation (metadata + bodies)
     if (dp && opts.url !== initialUrl) {
-      await lp.driver!.navigate(opts.url).catch(() => {});
+      const navigation = lp.driver!.navigate(opts.url).catch(() => {});
+      if (!restored) await navigation;
     }
     void this.refreshMeta(lp);
     if (nativeCreated && backend === "vector-engine") void this.paintEngine(pageId);
-    // pages default to surfacing in the shell unless explicitly backgrounded
-    if (opts.activate ?? !opts.background) await this.activate(pageId).catch(() => {});
     return target;
   }
 
@@ -387,7 +411,7 @@ export class PageService {
     const pageId = lp.target.pageId;
     const url = lp.driver?.url() ?? lp.target.url;
     await lp.driver?.dispose().catch(() => {});
-    const { targetId } = await this.createSurface("vector", driver, pageId, "about:blank", true);
+    const { targetId } = await this.createSurface("vector", driver, pageId, "about:blank", true, lp.target.windowId);
     const dp = await driver.attach(targetId, pageId);
     lp.driver = dp;
     lp.target.backend = "vector";
@@ -410,48 +434,71 @@ export class PageService {
   /** Register a page created natively outside the open() path (popups, restored tabs). */
   async registerExternal(opts: {
     pageId?: string;
+    windowId?: string;
     marker: string;
     url: string;
     backend: Backend;
     title?: string;
+    active?: boolean;
+    restored?: PageTarget;
   }): Promise<PageTarget> {
     const driver = this.driverFor(opts.backend);
     const pageId = opts.pageId ?? newPageId();
-    const dp = driver ? await driver.attach(opts.marker, pageId) : null;
+    const pending = { removed: false };
+    this.pendingExternal.set(pageId, pending);
+    let dp: DriverPage | null;
+    try {
+      dp = driver ? await driver.attach(opts.marker, pageId) : null;
+      if (pending.removed || this.closing) {
+        await dp?.dispose().catch(() => {});
+        throw new VectorError("not_found", "Page closed while it was being attached");
+      }
+    } finally {
+      this.pendingExternal.delete(pageId);
+    }
     const target: PageTarget = {
       pageId,
+      windowId: opts.windowId,
       backend: opts.backend,
       targetId: opts.marker,
-      url: opts.url,
+      url: dp?.url() || opts.url,
       title: opts.title ?? "",
-      documentEpoch: 0,
+      documentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : 0,
       lastRevision: 0,
-      viewStatus: "visible",
+      viewStatus: opts.active === false ? "background" : "visible",
       controller: "none",
-      controllerEpoch: 0,
+      controllerEpoch: opts.restored ? opts.restored.controllerEpoch + 1 : 0,
       ownedByRuntime: false,
-      createdAt: Date.now(),
+      createdAt: opts.restored?.createdAt ?? Date.now(),
       lastActiveAt: Date.now(),
     };
     const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [], consoleLines: [] };
     this.live.set(pageId, lp);
     if (dp) this.wireDriverEvents(lp);
     this.persist(lp);
+    if (opts.active) {
+      const previous = this.activeByWindow.get(target.windowId ?? "main");
+      if (previous && previous !== pageId) this.returnTargets.set(pageId, previous);
+      this.activeId = pageId;
+      this.activeByWindow.set(target.windowId ?? "main", pageId);
+    }
     this.deps.events.emit(EventTypes.PageAdded, { page: target });
+    void this.refreshMeta(lp);
     return target;
   }
 
   private wireDriverEvents(lp: LivePage) {
     lp.driver?.setEvents({
       onNavigated: (url, epoch) => {
-        lp.target.url = url;
+        if (!url.startsWith("chrome-error://")) lp.target.url = url;
         lp.target.documentEpoch = epoch;
         this.deps.repo.markDatasetsStale(lp.target.pageId, epoch);
         this.persist(lp);
-        this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, url, documentEpoch: epoch });
+        this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, url: lp.target.url, documentEpoch: epoch });
         void this.refreshMeta(lp);
       },
       onTitleChanged: (title) => {
+        if (lp.target.navigationError || lp.driver?.url().startsWith("chrome-error://")) return;
         lp.target.title = title;
         this.persist(lp);
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, title });
@@ -460,7 +507,7 @@ export class PageService {
         lp.target.viewStatus = reason === "crashed" ? "crashed" : "detached";
         lp.target.controller = "none";
         this.persist(lp);
-        this.deps.events.emit(reason === "crashed" ? EventTypes.PageCrashed : EventTypes.PageRemoved, {
+        if (!this.closing) this.deps.events.emit(reason === "crashed" ? EventTypes.PageCrashed : EventTypes.PageRemoved, {
           pageId: lp.target.pageId,
           reason,
         });
@@ -493,16 +540,17 @@ export class PageService {
 
   /** Persist the human-facing tab strip so a restart restores it. */
   private saveTabsSnapshot() {
-    if (this.closing) return;
+    if (this.closing || this.restoring) return;
     const tabs = [...this.live.values()]
       .filter((x) => !x.target.ownedByRuntime && x.target.backend === "vector" && x.target.viewStatus !== "detached")
       .map((x, i) => ({
         pageId: x.target.pageId,
+        windowId: x.target.windowId ?? "main",
         ordinal: i,
         url: x.target.url,
         title: x.target.title,
         backend: x.target.backend,
-        active: x.target.pageId === this.activeId,
+        active: this.activeByWindow.get(x.target.windowId ?? "main") === x.target.pageId,
       }));
     try {
       this.deps.repo.saveTabs(tabs);
@@ -514,31 +562,71 @@ export class PageService {
   /** Reopen the tabs that were live when the app last shut down. */
   async restoreTabs() {
     if (!this.deps.native.available() || this.live.size > 0) return;
+    const existing = await (this.deps.native.listPages?.() ?? Promise.resolve({ pages: [] })).catch(() => ({ pages: [] }));
+    if (existing.pages.length) {
+      this.restoring = true;
+      try {
+        for (const page of existing.pages) {
+          const previous = this.deps.repo.getPage(page.pageId);
+          try {
+            await this.registerExternal({ ...page, backend: "vector", restored: previous });
+          } catch {
+            /* one stale native target must not block the other live tabs */
+          }
+        }
+        const byWindow = new Map<string, (typeof existing.pages)[number]>();
+        for (const page of existing.pages) {
+          const windowId = page.windowId ?? "main";
+          if (page.active || !byWindow.has(windowId)) byWindow.set(windowId, page);
+        }
+        for (const page of byWindow.values()) {
+          await this.activate(page.pageId).catch(() => {});
+        }
+      } finally {
+        this.restoring = false;
+        this.deps.events.emit(EventTypes.PageUpdated, {});
+      }
+      return;
+    }
     const tabs = this.deps.repo.loadTabs().filter((t) => t.backend === "vector");
     if (!tabs.length) return;
-    let activateId: string | null = null;
-    for (const t of tabs) {
-      try {
-        const p = await this.open({
-          url: t.url || "about:blank",
-          backend: "vector",
-          background: false,
-          ownedByRuntime: false,
-          activate: false,
-        });
-        if (t.active) activateId = p.pageId;
-      } catch {
-        /* an unrestorable tab shouldn't block the rest */
+    const activateIds = new Map<string, string>();
+    this.restoring = true;
+    try {
+      for (const t of tabs) {
+        try {
+          const previous = this.deps.repo.listPages({ includeDetached: true }).find(page => page.pageId === t.page_id);
+          // Tab identity is durable; document/controller authority is not.
+          // The native driver must start beyond the prior document epoch.
+          if (!previous || !this.driverFor("vector")?.recoverPage) continue;
+          const p = await this.openOn("vector", {
+            url: t.url || "about:blank", windowId: t.window_id || "main", background: false,
+            ownedByRuntime: false, activate: false,
+          }, "session-restore", false, previous);
+          this.deps.repo.markDatasetsStale(p.pageId, p.documentEpoch);
+          const windowId = t.window_id || "main";
+          if (t.active || !activateIds.has(windowId)) activateIds.set(windowId, p.pageId);
+        } catch {
+          /* an unrestorable tab shouldn't block the rest */
+        }
       }
+      for (const pageId of activateIds.values()) await this.activate(pageId).catch(() => {});
+    } finally {
+      this.restoring = false;
+      this.deps.events.emit(EventTypes.PageUpdated, {});
+      // Keep the original durable snapshot until all surfaces are restored.
+      // Normal later tab mutations resume snapshotting.
     }
-    if (activateId) await this.activate(activateId).catch(() => {});
   }
 
   private async refreshMeta(lp: LivePage) {
     if (!lp.driver?.isAttached()) return;
     try {
-      lp.target.title = await lp.driver.title();
-      lp.target.url = lp.driver.url();
+      const title = await lp.driver.title();
+      const url = lp.driver.url();
+      if (lp.target.navigationError || url.startsWith("chrome-error://")) return;
+      lp.target.title = title;
+      lp.target.url = url;
       this.persist(lp);
       this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, title: lp.target.title, url: lp.target.url });
       if (lp.target.url.startsWith("http")) this.deps.repo.addHistory(lp.target.url, lp.target.title, lp.target.pageId);
@@ -549,21 +637,31 @@ export class PageService {
 
   async close(pageId: string) {
     const lp = this.live.get(pageId);
-    if (lp) {
+    if ((lp?.target.backend === "vector" || lp?.target.backend === "vector-engine") && this.deps.native.available()) {
+      const result = await this.deps.native.closePage(pageId);
+      if (!result.ok) return { ok: false };
+      if (this.live.get(pageId) !== lp) return { ok: true };
+    }
+    if (lp && this.live.get(pageId) === lp) {
       lp.target.viewStatus = "detached";
       this.persist(lp);
       this.live.delete(pageId);
       await lp.driver?.dispose().catch(() => {});
     }
-    if ((lp?.target.backend === "vector" || lp?.target.backend === "vector-engine") && this.deps.native.available()) {
-      await this.deps.native.closePage(pageId).catch(() => {});
-    }
+    const windowId = lp?.target.windowId ?? "main";
+    const wasWindowActive = this.activeByWindow.get(windowId) === pageId;
+    if (wasWindowActive) this.activeByWindow.delete(windowId);
     if (this.activeId === pageId) {
       this.activeId = null;
       // surface the next open page, if any
-      const next = [...this.live.values()].find((x) => x.target.viewStatus === "visible" || x.target.backend === "vector");
+      const next = [...this.live.values()].find((x) =>
+        (x.target.windowId ?? "main") === windowId &&
+        (x.target.viewStatus === "visible" || x.target.backend === "vector"));
       if (next) void this.activate(next.target.pageId).catch(() => {});
       else this.deps.events.emit(EventTypes.PageUpdated, { pageId, activePageId: null });
+    } else if (wasWindowActive) {
+      const next = [...this.live.values()].find((x) => (x.target.windowId ?? "main") === windowId && x.target.pageId !== pageId);
+      if (next) void this.activate(next.target.pageId).catch(() => {});
     }
     this.deps.events.emit(EventTypes.PageRemoved, { pageId });
     return { ok: true };
@@ -574,9 +672,11 @@ export class PageService {
     if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
     if ((lp.target.backend === "vector" || lp.target.backend === "vector-engine") && this.deps.native.available()) {
       await this.deps.native.focusPage(pageId);
-      lp.target.viewStatus = "visible";
+      if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "visible";
     }
     this.activeId = pageId;
+    this.activeByWindow.set(lp.target.windowId ?? "main", pageId);
+    lp.target.lastActiveAt = Date.now();
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageUpdated, { pageId, viewStatus: lp.target.viewStatus, activePageId: pageId });
     return lp.target;
@@ -617,7 +717,30 @@ export class PageService {
   }
   async reload(pageId: string) {
     return this.enqueue(pageId, async () => {
-      await this.driverPageLenient(pageId).reload();
+      const lp = this.live.get(pageId);
+      if (lp?.target.viewStatus === "crashed" && lp.target.backend === "vector" && this.deps.native.recoverPage) {
+        const recovered = await this.deps.native.recoverPage(pageId, lp.target.url);
+        if (!recovered.ok) throw new VectorError("target_detached", "The native tab is no longer available");
+        const driver = this.driverFor("vector");
+        if (!driver) throw new VectorError("backend_unavailable", "Browser connection is unavailable");
+        await lp.driver?.dispose();
+        try {
+          lp.driver = await (driver.recoverPage ? driver.recoverPage(lp.target.targetId, pageId, lp.target.documentEpoch) : driver.attach(lp.target.targetId, pageId));
+        } catch (error) {
+          lp.target.viewStatus = "crashed";
+          lp.target.error = "The page reloaded, but its browser connection could not be restored.";
+          this.persist(lp);
+          if (!this.restoring) this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+          throw error;
+        }
+        lp.lastObs = undefined;
+        lp.lastObservationId = undefined;
+        lp.history = [];
+        this.wireDriverEvents(lp);
+      } else {
+        const driver = lp?.target.viewStatus === "crashed" && lp.driver ? lp.driver : this.driverPageLenient(pageId);
+        await driver.reload();
+      }
       return this.get(pageId);
     });
   }
@@ -1284,39 +1407,76 @@ export class PageService {
   }
 
   onNativeNavigated(pageId: string, url: string) {
+    if (url.startsWith("chrome-error://")) return;
     const lp = this.live.get(pageId);
     if (!lp) return;
     lp.target.url = url;
     lp.target.documentEpoch++;
+    if (lp.target.viewStatus === "crashed") lp.target.viewStatus = lp.target.ownedByRuntime ? "background" : this.activeByWindow.get(lp.target.windowId ?? "main") === pageId ? "visible" : "hidden";
+    lp.target.error = undefined;
+    lp.target.navigationError = null;
     this.persist(lp);
-    this.deps.events.emit(EventTypes.PageUpdated, { pageId, url, documentEpoch: lp.target.documentEpoch });
+    if (!this.restoring) this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
     void this.refreshMeta(lp);
+  }
+
+  onNativeNavigationError(pageId: string, error: { url: string; code: number; message: string } | null) {
+    const lp = this.live.get(pageId);
+    if (!lp) return;
+    lp.target.navigationError = error;
+    if (error) { lp.target.url = error.url; lp.target.title = "Page couldn’t load"; lp.target.loading = false; }
+    this.persist(lp);
+    if (!this.restoring) this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
   }
 
   onNativeCrashed(pageId: string) {
     const lp = this.live.get(pageId);
     if (!lp) return;
     lp.target.viewStatus = "crashed";
-    lp.target.error = "Renderer process crashed";
+    lp.target.error = "The renderer process crashed.";
+    lp.target.loading = false;
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageCrashed, { pageId });
   }
 
   /** main -> runtime: a native webContents was destroyed out-of-band (popup close). */
   onNativeRemoved(pageId: string) {
+    const pending = this.pendingExternal.get(pageId);
+    if (pending) pending.removed = true;
     const lp = this.live.get(pageId);
     if (!lp) return;
     if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "detached";
     lp.target.controller = "none";
     this.persist(lp);
     this.live.delete(pageId);
+    const returnTarget = this.returnTargets.get(pageId);
+    this.returnTargets.delete(pageId);
+    for (const [child, parent] of this.returnTargets) if (parent === pageId) this.returnTargets.delete(child);
     void lp.driver?.dispose().catch(() => {});
-    this.deps.events.emit(EventTypes.PageRemoved, { pageId });
+    if (!this.closing) {
+      let next: LivePage | undefined;
+      const windowId = lp.target.windowId ?? "main";
+      const wasWindowActive = this.activeByWindow.get(windowId) === pageId;
+      if (wasWindowActive) this.activeByWindow.delete(windowId);
+      if (this.activeId === pageId || wasWindowActive) {
+        this.activeId = null;
+        const returned = returnTarget ? this.live.get(returnTarget) : undefined;
+        const preferred = returned && (returned.target.windowId ?? "main") === windowId ? returned : undefined;
+        const candidates = [...this.live.values()].filter(page =>
+          page.target.viewStatus !== "detached" && (page.target.windowId ?? "main") === windowId);
+        next = preferred ?? candidates
+          .filter(page => page.target.viewStatus === "visible")
+          .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0] ?? candidates
+          .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0];
+      }
+      this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+      if (next) void this.activate(next.target.pageId).catch(() => {});
+    }
   }
 
   onNativeTitle(pageId: string, title: string) {
     const lp = this.live.get(pageId);
-    if (!lp) return;
+    if (!lp || lp.target.navigationError) return;
     lp.target.title = title;
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageUpdated, { pageId, title });
@@ -1342,14 +1502,14 @@ export class PageService {
   onNativeLoading(pageId: string, loading: boolean) {
     const lp = this.live.get(pageId);
     if (!lp) return;
-    lp.target.loading = loading;
-    this.deps.events.emit(EventTypes.PageLoading, { pageId, loading });
+    lp.target.loading = loading && !lp.target.navigationError && lp.target.viewStatus !== "crashed";
+    this.deps.events.emit(EventTypes.PageLoading, { pageId, loading: lp.target.loading });
   }
 
   /** main -> runtime: a profile-session download began (authoritative record). */
   onNativeDownloadStarted(
     pageId: string | undefined,
-    info: { id: string; filename: string; path: string; size: number; totalBytes?: number; startedAt: number },
+    info: { id: string; sourceUrl?: string; filename: string; path: string; size: number; totalBytes?: number; startedAt: number },
   ) {
     this.deps.repo.saveDownload({ ...info, pageId, state: "started" });
     this.deps.events.emit(EventTypes.DownloadStarted, { pageId, ...info, state: "started" });
@@ -1357,7 +1517,7 @@ export class PageService {
 
   onNativeDownload(
     pageId: string | undefined,
-    info: { id: string; filename: string; path: string; state: string; size: number; totalBytes?: number; startedAt: number; endedAt?: number },
+    info: { id: string; sourceUrl?: string; filename: string; path: string; state: string; size: number; totalBytes?: number; startedAt: number; endedAt?: number },
   ) {
     this.deps.repo.saveDownload({ ...info, pageId });
     const lp = pageId ? this.live.get(pageId) : undefined;

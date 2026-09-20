@@ -235,8 +235,14 @@ export class Router {
     if (!ENGINE_SCHEMES.has(scheme)) return done({ backend: "vector", reason: `unsupported-scheme:${scheme}`, fallbackAllowed: false });
     const hit = this.needsChromium(url);
     if (hit) return done({ backend: "vector", reason: `needs-chromium-table:${hit.reason}`, fallbackAllowed: false });
+    // A blank/data document is often only the temporary surface for a human
+    // new tab. Putting it on the specialized engine pins later arbitrary
+    // navigation to that backend and can turn an ordinary search into an
+    // engine network-policy failure. Auto mode keeps these shell-created
+    // surfaces on Chromium; callers that truly require the engine can request
+    // it explicitly.
     if (scheme === "data:" || scheme === "about:") {
-      return done({ backend: "vector-engine", reason: `hybrid:engine-safe-scheme:${scheme}`, fallbackAllowed: true });
+      return done({ backend: "vector", reason: `hybrid:transient-document:${scheme}`, fallbackAllowed: false });
     }
     const cohort = this.qualifiedCohort(parsed);
     if (!cohort) {

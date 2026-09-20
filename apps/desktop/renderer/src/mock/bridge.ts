@@ -22,6 +22,7 @@ import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, 
 type Listener<T> = (v: T) => void;
 
 export function installMockBridge(q: URLSearchParams) {
+  let bookmarks = [...BOOKMARKS];
   const scenario = q.get("scenario") ?? "browsing";
   const live = q.get("live") === "1";
   const theme = q.get("theme") ?? "dark";
@@ -115,7 +116,7 @@ export function installMockBridge(q: URLSearchParams) {
   const sets = scenario === "set" || withRun ? [SET] : [];
   const members = sets.length ? MEMBERS : [];
 
-  const workspace = () => ({ pages, sets, members, runs, sessions: [{ sessionId: "sess-1", backend: "vector", label: "Vector", status: "connected" }], activePageId, lastSeq: seq });
+  const workspace = () => ({ pages, sets, members, runs, sessions: [{ sessionId: "sess-1", backend: "vector", label: "Aux", status: "connected" }], activePageId, lastSeq: seq });
 
   const page = (id: string) => {
     const p = pages.find((x) => x.pageId === id);
@@ -146,7 +147,7 @@ export function installMockBridge(q: URLSearchParams) {
         emit("settings.changed", { settings });
         return { ok: true };
       case "bookmarks.list":
-        return BOOKMARKS;
+        return bookmarks;
       case "downloads.list":
         return [];
       case "programs.list":
@@ -252,14 +253,26 @@ export function installMockBridge(q: URLSearchParams) {
           itemCount: 2,
           items: [
             { kind: "rect", x: 0, y: 0, w: 800, h: 600, color: "rgb(255,255,255)" },
-            { kind: "text", x: 16, y: 32, text: "Vector", size: 18, color: "rgb(0,0,0)" },
+            { kind: "text", x: 16, y: 32, text: "Aux", size: 18, color: "rgb(0,0,0)" },
           ],
         };
       case "pages.find":
         return { matches: 7, activeMatch: 2 };
-      case "pages.stopFind":
-      case "bookmarks.add":
-      case "bookmarks.remove":
+      case "pages.stopFind": return { ok: true };
+      case "bookmarks.add": {
+        bookmarks = [{ url: String(p.url), title: String(p.title) }, ...bookmarks.filter(item => item.url !== p.url)];
+        emit("bookmarks.changed", { bookmarks }); return { ok: true };
+      }
+      case "bookmarks.remove": {
+        bookmarks = bookmarks.filter(item => item.url !== p.url);
+        emit("bookmarks.changed", { bookmarks }); return { ok: true };
+      }
+      case "bookmarks.import": {
+        const incoming = p.bookmarks as { url: string; title: string }[];
+        let added = 0;
+        for (const item of incoming) if (!bookmarks.some(old => old.url === item.url)) { bookmarks.push(item); added++; }
+        emit("bookmarks.changed", { bookmarks }); return { added, skipped: incoming.length - added };
+      }
       case "history.clear":
         return { ok: true };
       case "pages.zoom":
@@ -271,11 +284,32 @@ export function installMockBridge(q: URLSearchParams) {
         if (!run) throw new Error("no such run");
         return { run, steps: steps[run.runId] ?? [], modelCalls: run.config?.modelCalls ?? 3 };
       }
-      case "runs.list":
-        return runs;
+      case "runs.list": {
+        const key = (run: Run) => run.config?.chatId ?? run.runId;
+        const query = String(p.query ?? "").trim().toLowerCase();
+        const matches = new Set(runs.filter(run => `${run.goal} ${run.statusMessage ?? ""}`.toLowerCase().includes(query)).map(key));
+        const seen = new Set<string>();
+        const before = p.before as { createdAt: number; runId: string } | undefined;
+        return [...runs].sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId)).filter(run => {
+          if (p.groupByChat && seen.has(key(run))) return false;
+          seen.add(key(run));
+          return (!p.chatId || key(run) === p.chatId) && matches.has(key(run)) && (!before || run.createdAt < before.createdAt || (run.createdAt === before.createdAt && run.runId < before.runId));
+        }).slice(0, Number(p.limit ?? 50));
+      }
       case "runs.start": {
         const id = `run-${Math.random().toString(36).slice(2, 6)}`;
         const run: Run = { runId: id, goal: p.goal as string, status: "planning", pageIds: (p.pageIds as string[]) ?? [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Observing the page" };
+        runs = [run, ...runs];
+        emit("run.status", { run }, id);
+        steps[id] = [];
+        void scriptRun(id);
+        return run;
+      }
+      case "runs.retry": {
+        const prior = runs.find((r) => r.runId === p.runId);
+        if (!prior) throw new Error("no such run");
+        const id = `run-${Math.random().toString(36).slice(2, 6)}`;
+        const run: Run = { runId: id, goal: prior.goal, status: "planning", pageIds: prior.pageIds, config: { ...prior.config, chatId: prior.config?.chatId ?? prior.runId, retryOfRunId: prior.runId }, createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Retrying the turn" };
         runs = [run, ...runs];
         emit("run.status", { run }, id);
         steps[id] = [];
@@ -341,9 +375,20 @@ export function installMockBridge(q: URLSearchParams) {
   }
 
   const bridge: VectorBridge = {
+    privateMode: false,
+    windowId: "main",
     invoke,
     onEvent: (cb) => (eventListeners.add(cb), () => eventListeners.delete(cb)),
+    onRuntimeStatus: () => () => {},
     onShortcut: () => () => {},
+    retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
+    tabAudio:async()=>({}),
+    setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
+    onAudio:()=>()=>{},
+    downloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
+    chooseDownloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
+    downloadsSnapshot: async () => [],
+    controlDownload: async () => { throw new Error("No live download in this preview"); },
     onDownload: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     setStage: async () => true,
@@ -351,15 +396,63 @@ export function installMockBridge(q: URLSearchParams) {
     preview: async () => null,
     contextMenu: async () => true,
     openExternal: async () => true,
+    registerCloudPreview:async()=>true,
     revealPath: async () => true,
     openPath: async () => "",
     saveFile: async () => null,
+    saveCloudExport:async()=>null,
+    saveStoredArtifact:async()=>null,
+    savePagePdf: async () => { throw new Error("PDF export requires the desktop browser"); },
     printPage: async () => true,
     devTools: async () => true,
+    readArticle:async()=>{throw new Error("No article is available in this preview");},
     hardReload: async () => true,
     closeWindow: async () => true,
     openFile: async () => null,
-    dataDir: async () => "/Users/you/Library/Application Support/Vector",
+    selectRepository: async () => null,
+    createProject: async () => { throw new Error("Local projects require Aux desktop"); },
+    createBlankProject: async () => { throw new Error("Local projects require Aux desktop"); },
+    checkLocalPreview: async () => {throw new Error('Preview checks require Aux desktop');},
+    projectFileHistory: async () => {throw new Error('File recovery requires Aux desktop');},
+    readProjectFileVersion: async () => {throw new Error('File recovery requires Aux desktop');},
+    listProjectFiles: async () => [],
+    createProjectFile: async () => {throw new Error("File creation requires Aux desktop");},
+    readProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
+    saveProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
+    renameProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
+    deleteProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
+    openProjectFileExternal: async () => {throw new Error('External editing requires Aux desktop');},
+    prepareProjectReview: async () => {throw new Error('Project review requires Aux desktop');},
+    commitProject: async () => {throw new Error('Local commits require Aux desktop');},
+    listProjectCommands: async () => [],
+    runProjectCommand: async () => { throw new Error("Local commands require Aux desktop"); },
+    stopProjectCommand: async () => { throw new Error("Local commands require Aux desktop"); },
+    runProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
+    stopProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
+    listProjects: async () => [],
+    inspectProject: async () => { throw new Error("Local projects require Aux desktop"); },
+    pickEvidenceDocument: async () => null,
+    agentConfig: async input => ({ command: "/Applications/Aux.app/Contents/MacOS/Aux", args: ["/mock/aux-mcp.mjs"], env: { ELECTRON_RUN_AS_NODE: "1", AUX_DATA_DIR: "/mock/aux", AUX_MCP_TOKEN:"auxc_mock" }, connection:{connectionId:"11111111-1111-4111-8111-111111111111",name:input.name,client:input.client,scope:input.scope,createdAt:Date.now()} }),
+    agentConnections:async()=>[],
+    agentClients:async()=>[{client:'codex',installed:true,version:'codex-cli mock'},{client:'claude',installed:false}],
+    revokeAgentConnection:async connectionId=>({connectionId,name:"Revoked",client:"codex",scope:{kind:"workspace",workspaceId:"mock"},createdAt:Date.now(),revokedAt:Date.now()}),
+    extensions:async()=>[],
+    installUnpackedExtension:async()=>null,
+    setExtensionEnabled:async()=>{throw new Error("No mock extension");},
+    removeExtension:async()=>false,
+    dataDir: async () => "/Users/you/Library/Application Support/Aux Browser",
+    exportDiagnostics:async()=>null,
+    exportRuntimeBackup:async()=>null,
+    stageRuntimeRestore:async()=>null,
+    cancelRuntimeRestore:async()=>({cancelled:true}),
+    runtimeRestoreStatus:async()=>({pending:false}),
+    healthSummary:async()=>({recordingSince:Date.now()-86_400_000,latestAt:Date.now(),samples:1440,sessions:3,observedMinutes:520,spanDays:1,sevenDaySpan:false,startupMs:820,cpuPercent:{p50:1.8,p95:14.2,max:35.1},memoryMb:{p50:410,p95:612,max:680},eventLoopLagMs:{p50:2,p95:18,max:90},maxWindows:2,maxPages:12,maxSuspendedPages:7,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0}),
+    clearHealth:async()=>({samples:0,sessions:0,observedMinutes:0,spanDays:0,sevenDaySpan:false,cpuPercent:{p50:0,p95:0,max:0},memoryMb:{p50:0,p95:0,max:0},eventLoopLagMs:{p50:0,p95:0,max:0},maxWindows:0,maxPages:0,maxSuspendedPages:0,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0}),
+    httpAuthRequests: async()=>[],
+    respondHttpAuth: async()=>false,
+    onHttpAuthChanged: ()=>()=>{},
+    clearSiteData: async () => { throw new Error("Website data controls require the desktop browser."); },
+    siteInfo: async (pageId: string) => ({pageId,url:"https://example.com/",origin:"https://example.com",title:"Example",security:"secure" as const,cookieCount:2,permissions:{notifications:"deny" as const}}),
     sitePermissions: async () => ({}),
     clearSitePermission: async () => true,
     setAppearance: async () => true,

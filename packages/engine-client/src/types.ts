@@ -216,6 +216,8 @@ export interface BrowserDriver {
    * the CDP target id.
    */
   attach(targetId: string, pageId: string): Promise<DriverPage>;
+  /** Reattach a recovered renderer without reusing a crashed protocol handle. */
+  recoverPage?(targetId: string, pageId: string, documentEpoch?: number): Promise<DriverPage>;
   /** Look up the registered element entry for an observation ref. */
   refEntry?(pageId: string, ref: string): ElementRef | undefined;
   /** Create a new tab in the backend browser; returns its target id. */

@@ -127,7 +127,7 @@ function fakeEngine() {
   return { driver, calls };
 }
 
-function harness() {
+function harness(grants: string[] = ["effect:read"]) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const engine = fakeEngine();
@@ -145,6 +145,7 @@ function harness() {
     drivers: () => drivers,
     router,
     responses,
+    grants,
   });
   return { pages, repo, events, responses, engine };
 }
@@ -167,7 +168,7 @@ describe("H2-C7 pages inspect RPCs", () => {
   });
 
   it("waitFor and dialog dispatch real program steps", async () => {
-    const { pages } = harness();
+    const { pages } = harness(["effect:read", "effect:write"]);
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     const waited = await pages.waitFor(page.pageId, { kind: "textVisible", text: "Save" });
     expect(waited).toEqual({ ok: true, timedOut: false, detail: "textVisible", status: "completed" });
@@ -176,6 +177,13 @@ describe("H2-C7 pages inspect RPCs", () => {
     const accepted = await pages.dialog(page.pageId, "accept");
     expect(accepted.ok).toBe(true);
     expect(accepted.action).toBe("accept");
+  });
+
+  it("can inspect dialogs with read authority but cannot accept one", async () => {
+    const { pages } = harness();
+    const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
+    expect((await pages.dialog(page.pageId, "list")).dialogs).toHaveLength(1);
+    await expect(pages.dialog(page.pageId, "accept")).rejects.toMatchObject({ code: "permission_denied" });
   });
 
   it("console and network return captured lines and responses", async () => {
@@ -235,5 +243,28 @@ describe("H2-C7 pages inspect RPCs", () => {
       const result = await invoke(method, params);
       expect(ResultSchemas[method].safeParse(result).success, `${method} ${JSON.stringify(result)}`).toBe(true);
     }
+  });
+});
+
+describe("external page attachment lifecycle", () => {
+  it("does not resurrect a native page removed while driver attachment is pending", async () => {
+    const { pages, engine } = harness();
+    const attach = engine.driver.attach.bind(engine.driver);
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let disposed = false;
+    engine.driver.attach = async (marker, id) => {
+      await gate;
+      const page = await attach(marker, id);
+      const dispose = page.dispose.bind(page);
+      page.dispose = async () => { disposed = true; await dispose(); };
+      return page;
+    };
+    const pending = pages.registerExternal({ pageId: "popup-race", marker: "popup-marker", url: "https://a.test/", backend: "vector-engine" });
+    pages.onNativeRemoved("popup-race");
+    release();
+    await expect(pending).rejects.toMatchObject({ code: "not_found" });
+    expect(disposed).toBe(true);
+    expect(pages.list({ includeDetached: true })).toEqual([]);
   });
 });

@@ -4,7 +4,7 @@ import { engineOf, type EngineInfo } from "../engine";
 import { I } from "./icons";
 
 /**
- * Which engine renders a tab — Chromium, the user's Chrome, or Vector Engine —
+ * Which engine renders a tab — Chromium, the user's Chrome, or Aux Engine —
  * with a hover/focus card carrying the route reason and timings when the
  * runtime reports them.
  */

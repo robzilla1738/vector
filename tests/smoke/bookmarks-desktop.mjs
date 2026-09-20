@@ -1,0 +1,47 @@
+import {sidebarAction} from "./sidebar-action.mjs";
+// Development Library import/export with synthetic files and a temporary profile.
+import {createRequire} from 'node:module';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import assert from 'node:assert/strict';
+const root=resolve(import.meta.dirname,'../..');
+const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
+const dir=mkdtempSync(join(tmpdir(),'aux-bookmarks-ui-'));
+let app;
+try {
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ await page.locator('.aux-home').waitFor();
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
+ await page.evaluate(()=>window.vector.invoke('bookmarks.add',{url:'https://example.test/',title:'My existing title'}));
+ await sidebarAction(page, "Library");
+ const file={name:'bookmarks.html',mimeType:'text/html',buffer:Buffer.from('<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><DT><H3>Research</H3><DL><DT><A HREF="https://example.test/">Replacement title</A><DT><A HREF="https://research.test/?a=1&amp;b=2">Research &amp; notes</A><DT><A HREF="javascript:alert(1)">Unsafe link</A></DL></DL>')};
+ await page.getByLabel('Import bookmark file').setInputFiles(file);
+ await page.getByRole('region',{name:'Bookmark import preview'}).waitFor();
+ await page.getByText('2 web bookmarks ready',{exact:true}).waitFor();
+ await page.getByRole('dialog',{name:'Library'}).evaluate(async el=>{await Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished));});
+ await page.screenshot({path:join(root,'release/test-artifacts/aux-bookmark-import.png')});
+ await page.getByRole('button',{name:'Import bookmarks',exact:true}).click();
+ await page.getByText('Imported 1 bookmarks. 1 already saved.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'My existing title https://example.test/'}).waitFor();
+ const saved=await page.evaluate(()=>window.vector.invoke('bookmarks.list',{}));
+ assert.equal(saved.length,2);
+ assert.equal(saved.find(item=>item.url==='https://example.test/').title,'My existing title');
+ const destination=join(dir,'aux-bookmarks.html');
+ await app.evaluate(({dialog},destination)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:destination});},destination);
+ await page.getByRole('button',{name:'Export HTML',exact:true}).click();
+ await page.getByText('Bookmarks exported.',{exact:true}).waitFor();
+ const exported=readFileSync(destination,'utf8');
+ assert.ok(exported.includes('NETSCAPE-Bookmark-file-1'));
+ assert.ok(exported.includes('Research &amp; notes'));
+ assert.ok(!exported.includes('javascript:'));
+ await page.getByLabel('Import bookmark file').setInputFiles({name:'roundtrip.html',mimeType:'text/html',buffer:Buffer.from(exported)});
+ await page.getByRole('button',{name:'Import bookmarks',exact:true}).click();
+ await page.getByText('Imported 0 bookmarks. 2 already saved.',{exact:true}).waitFor();
+ await page.screenshot({path:join(root,'release/test-artifacts/aux-bookmark-library.png')});
+ await page.reload();await sidebarAction(page, "Library");
+ await page.getByRole('button',{name:'My existing title https://example.test/'}).waitFor();
+ console.log('Library imports browser HTML, preserves existing titles, exports safely, and round-trips without duplicates.');
+} finally {await app?.close();rmSync(dir,{recursive:true,force:true});}

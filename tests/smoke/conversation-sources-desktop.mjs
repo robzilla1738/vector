@@ -1,0 +1,135 @@
+// Durable, inspectable browser-source provenance in the real desktop shell.
+// Uses isolated local pages and profile; no provider or credential access.
+import { createRequire } from "node:module";
+import { createServer } from "node:http";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import assert from "node:assert/strict";
+import { sidebarAction } from "./sidebar-action.mjs";
+
+const root = resolve(import.meta.dirname, "../..");
+const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
+const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
+const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
+const temporary = mkdtempSync(join(tmpdir(), "aux-conversation-sources-"));
+const dataDir = join(temporary, "data");
+const artifactsDir = join(root, "release/test-artifacts");
+mkdirSync(artifactsDir, { recursive: true });
+const fixture = createServer((request, response) => {
+  const alpha = request.url?.includes("alpha");
+  response.setHeader("content-type", "text/html");
+  response.end(`<!doctype html><title>Research ${alpha ? "Alpha" : "Beta"}</title><h1>${alpha ? "Alpha private body" : "Beta private body"}</h1>`);
+});
+await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
+const base = `http://127.0.0.1:${fixture.address().port}`;
+const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" };
+let app;
+const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
+async function shell() {
+  for (let attempt = 0; attempt < 150; attempt++) {
+    const page = app.windows().find(candidate => candidate.url().includes("renderer/index.html"));
+    if (page) { page.setDefaultTimeout(20_000); await page.locator(".app").waitFor(); return page; }
+    await new Promise(resolveWait => setTimeout(resolveWait, 100));
+  }
+  throw new Error("Aux shell did not start");
+}
+async function openRepo() {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try { return new Repo(openDb(resolveDatabasePath(dataDir))); }
+    catch (error) {
+      if (!String(error).includes("database is locked")) throw error;
+      await new Promise(resolveWait => setTimeout(resolveWait, 50));
+    }
+  }
+  throw new Error("runtime database did not unlock");
+}
+async function waitActiveUrl(page, url) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const workspace = await page.evaluate(() => window.vector.invoke("workspace.get", {}));
+    if (workspace.pages.find(item => item.pageId === workspace.activePageId)?.url === url) return workspace;
+    await new Promise(resolveWait => setTimeout(resolveWait, 50));
+  }
+  throw new Error(`Aux did not activate ${url}`);
+}
+function observation({ id, pageId, url, title, observedAt, revision }) {
+  return { observationId: id, pageId, documentEpoch: 1, revision, observedAt, scope: "full", content: {
+    url, title, viewport: { width: 1000, height: 700, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 }, frames: [], text: `${title} PRIVATE_PAGE_BODY`, headings: [title], elements: [], formFields: [], tables: [], links: [], dialogs: [], truncated: false,
+    stats: { elementsTotal: 0, elementsShown: 0, textChars: title.length, approxTokens: 4 },
+  } };
+}
+
+try {
+  app = await launch();
+  let page = await shell();
+  const alpha = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), `${base}/alpha`);
+  const beta = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), `${base}/beta`);
+  await page.waitForFunction(ids => window.vector.invoke("pages.list", {}).then(pages => ids.every(id => pages.some(item => item.pageId === id && !item.loading))), [alpha.pageId, beta.pageId]);
+  await app.close(); app = undefined;
+
+  const repo = await openRepo();
+  const now = Date.now();
+  repo.saveRun({ runId: "source-run", goal: "Compare the two research sources", status: "completed", pageIds: [alpha.pageId, beta.pageId], config: { chatId: "source-chat" }, result: { answer: "Alpha and Beta were compared from observed pages." }, createdAt: now, endedAt: now + 5 });
+  const dir = join(dataDir, "artifacts", "source-run");
+  mkdirSync(dir, { recursive: true });
+  const records = [
+    ["source-alpha-old", observation({ id: "obs-alpha-old", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha old", observedAt: now + 1, revision: 1 })],
+    ["source-alpha-latest", observation({ id: "obs-alpha-latest", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha", observedAt: now + 3, revision: 2 })],
+    ["source-beta", observation({ id: "obs-beta", pageId: beta.pageId, url: `${base}/beta`, title: "Research Beta", observedAt: now + 2, revision: 1 })],
+    ["source-local", observation({ id: "obs-local", pageId: beta.pageId, url: "file:///Users/example/private.txt", title: "Private local path", observedAt: now + 4, revision: 2 })],
+  ];
+  for (const [artifactId, record] of records) {
+    const path = join(dir, `${artifactId}.json`);
+    const content = JSON.stringify(record);
+    writeFileSync(path, content);
+    repo.saveArtifact({ artifactId, runId: "source-run", pageId: record.pageId, path, mediaType: "application/json", size: Buffer.byteLength(content), status: "complete", createdAt: record.observedAt });
+  }
+  repo.db.close();
+
+  app = await launch(); page = await shell();
+  await sidebarAction(page, "Chats");
+  await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
+  const sourcesSummary = page.locator(".conversation-sources summary");
+  await sourcesSummary.waitFor();
+  await sourcesSummary.click();
+  const sourceList = page.locator(".conversation-sources");
+  await sourceList.getByRole("button", { name: /Research Alpha/ }).waitFor();
+  await sourceList.getByRole("button", { name: /Research Beta/ }).waitFor();
+  assert.equal(await page.locator(".conversation-sources button").count(), 2, "same-turn URL revisions should collapse to the latest source");
+  const sources = await page.evaluate(() => window.vector.invoke("conversations.sources.get", { chatId: "source-chat" }));
+  assert.deepEqual(sources.sources.map(source => source.sourceId), ["source-beta", "source-alpha-latest"]);
+  assert.equal(JSON.stringify(sources).includes(temporary), false, "source API must not expose artifact paths");
+  assert.equal(JSON.stringify(sources).includes("PRIVATE_PAGE_BODY"), false, "source API must not expose captured page text");
+  await page.screenshot({ path: join(artifactsDir, "aux-conversation-sources.png") });
+
+  await sourceList.getByRole("button", { name: /Research Alpha/ }).click();
+  assert.equal((await waitActiveUrl(page, `${base}/alpha`)).activePageId, alpha.pageId, "live source should open its original tab");
+  await page.evaluate(pageId => window.vector.invoke("pages.close", { pageId }), beta.pageId);
+  await sidebarAction(page, "Chats");
+  await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
+  await page.locator(".conversation-sources summary").click();
+  await page.locator(".conversation-sources").getByRole("button", { name: /Research Beta/ }).click();
+  const reopened = await waitActiveUrl(page, `${base}/beta`);
+  assert.notEqual(reopened.activePageId, beta.pageId, "closed source should receive a new page identity");
+  assert.equal(reopened.pages.find(item => item.pageId === reopened.activePageId)?.url, `${base}/beta`);
+
+  await sidebarAction(page, "Chats");
+  await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
+  const exportedPath = join(temporary, "source-report.md");
+  await app.evaluate(({ dialog }, filePath) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath }); }, exportedPath);
+  await page.getByRole("button", { name: "Export conversation as Markdown", exact: true }).click();
+  await page.waitForFunction(() => document.body.textContent?.includes("Conversation exported"));
+  const exported = readFileSync(exportedPath, "utf8");
+  assert.match(exported, /Sources observed by Aux/);
+  assert.match(exported, /source-alpha-latest revision 2/);
+  assert.doesNotMatch(exported, /source-alpha-old/);
+  assert.doesNotMatch(exported, /PRIVATE_PAGE_BODY/);
+  assert.doesNotMatch(exported, new RegExp(temporary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  console.log("Conversation sources survive restart, deduplicate observations, open live or restored tabs, and export path-free provenance.");
+} finally {
+  await app?.close().catch(() => {});
+  fixture.closeAllConnections();
+  await new Promise(resolveClose => fixture.close(resolveClose));
+  rmSync(temporary, { recursive: true, force: true });
+}

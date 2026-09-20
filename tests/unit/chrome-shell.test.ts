@@ -62,6 +62,11 @@ describe("overlay → native-view visibility", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: null, url })).toBeNull();
   });
 
+  it("keeps recovery controls above crashed or failed native views", () => {
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, viewStatus: "crashed" })).toBeNull();
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, navigationError: { message: "ERR_CONNECTION_REFUSED" } })).toBeNull();
+  });
+
   it("hides the native page for a missing or about:blank URL so the start page is visible", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "about:blank" })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "" })).toBeNull();

@@ -1,5 +1,5 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
-import { VectorError } from "@vector/contracts";
+import { normalizeAuxEnvironment, VectorError } from "@vector/contracts";
 import { PlaywrightDriverPage } from "./playwright-page.js";
 import { RefRegistry } from "./ref-registry.js";
 import type { BrowserDriver, DiscoveredTarget, DriverPage } from "./types.js";
@@ -34,7 +34,8 @@ export class StandaloneDriver implements BrowserDriver {
       { channel: "chrome-headless-shell", headless: true },
       { channel: "chromium", headless: true },
     ];
-    if (process.env.VECTOR_BROWSER_PATH) attempts.unshift({ executablePath: process.env.VECTOR_BROWSER_PATH, headless: true });
+    const browserPath = normalizeAuxEnvironment(process.env).AUX_BROWSER_PATH;
+    if (browserPath) attempts.unshift({ executablePath: browserPath, headless: true });
     let lastErr: unknown;
     for (const a of attempts) {
       try {
@@ -47,7 +48,7 @@ export class StandaloneDriver implements BrowserDriver {
     if (!this.browser) {
       throw new VectorError(
         "backend_unavailable",
-        `standalone browser launch failed (install Chrome or set VECTOR_BROWSER_PATH): ${lastErr instanceof Error ? lastErr.message : lastErr}`,
+        `standalone browser launch failed (install Chrome or set AUX_BROWSER_PATH): ${lastErr instanceof Error ? lastErr.message : lastErr}`,
       );
     }
     const browser = this.browser;

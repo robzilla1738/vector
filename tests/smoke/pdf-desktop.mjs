@@ -1,0 +1,44 @@
+// Real Chromium PDF output from a synthetic page; explicit temporary destinations.
+import {createRequire} from 'node:module';
+import {mkdtempSync,rmSync,readFileSync,existsSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {createServer} from 'node:http';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+const root=resolve(import.meta.dirname,'../..');
+const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
+const dir=mkdtempSync(join(tmpdir(),'aux-pdf-'));
+const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Aux export fixture</title><style>@page{size:A4} .second{break-before:page}</style><h1>Aux PDF verification</h1><p>First page content.</p><h1 class="second">Second page evidence</h1>');});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${server.address().port}`;
+let app;
+try {
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ await page.locator('.aux-home').waitFor();
+ const tab=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),url);
+ const destination=join(dir,'export.pdf');
+ await app.evaluate(({dialog},destination)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:destination});},destination);
+ const exportMenu=()=>app.evaluate(({Menu})=>{const item=Menu.getApplicationMenu().items.find(i=>i.label==='File').submenu.items.find(i=>i.label==='Save Page as PDF…');item.click();});
+ await exportMenu();await page.getByText('Page saved as PDF',{exact:true}).waitFor();
+ assert.ok(readFileSync(destination).subarray(0,5).toString()==='%PDF-');
+ const content=JSON.parse(execFileSync('python3',['-c','import sys,json;from pypdf import PdfReader;r=PdfReader(sys.argv[1]);print(json.dumps([p.extract_text() for p in r.pages]))',destination],{encoding:'utf8'}));
+ assert.equal(content.length,2);assert.ok(content[0].normalize('NFKC').includes('Aux PDF verification'));assert.ok(content[1].includes('Second page evidence'));
+ await app.evaluate(({dialog})=>{dialog.showSaveDialog=async()=>({canceled:true});});
+ await exportMenu();await page.getByText('PDF export canceled',{exact:true}).waitFor();
+ const missing=join(dir,'missing/export.pdf');
+ await app.evaluate(({dialog},missing)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:missing});},missing);
+ await exportMenu();await page.locator('.toast').filter({hasText:'Choose a writable destination'}).waitFor();
+ assert.equal(existsSync(missing),false);
+ const pages=await page.evaluate(()=>window.vector.invoke('pages.list',{}));assert.equal(pages.length,1);assert.equal(pages[0].pageId,tab.pageId);
+ assert.equal(pages[0].url,url+'/');
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
+ await page.keyboard.press('Meta+k');
+ await page.getByPlaceholder('Type a command, address, or a task for the agent…').fill('Save page as PDF');
+ await page.getByText('Save page as PDF…',{exact:true}).waitFor();
+ assert.equal(await page.locator('[role=option]').first().getAttribute('aria-selected'),'true');
+ assert.ok((await page.locator('[role=option]').first().innerText()).includes('Save page as PDF'));
+ await page.screenshot({path:join(root,'release/test-artifacts/aux-pdf-command.png')});
+ console.log('File-menu PDF export contains both printed pages; cancel and write failure preserve the browser tab.');
+} finally {await app?.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}

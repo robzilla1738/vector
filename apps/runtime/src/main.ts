@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { EventTypes, VectorError, isElementRef, type Step } from "@vector/contracts";
+import { EventTypes, VectorError, isElementRef, normalizeAuxEnvironment, type Step } from "@vector/contracts";
 import { RpcChannel, type Transport } from "@vector/contracts";
 import {
   AttachedChromeDriver,
@@ -37,6 +37,8 @@ import { StateService } from "./services/state.js";
 import { Tracer } from "./services/tracing.js";
 import { makeInvoker } from "./api/handlers.js";
 import { ApiServer } from "./api/server.js";
+import { AgentConnectionService } from "./services/agent-connections.js";
+import { canResumeAfterPageRelease } from "./agent/control-authority.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
@@ -51,7 +53,8 @@ export interface RuntimeHandle {
 export async function startRuntime(processEnv = process.env): Promise<RuntimeHandle> {
   // `.env` in the data dir, then in the cwd — real environment variables
   // always win. The README promised this; nothing loaded it before.
-  const env = loadDotEnv(processEnv, dotEnvCandidates(processEnv));
+  const configured = normalizeAuxEnvironment(processEnv);
+  const env = configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
   repo.pruneEvents();
@@ -79,13 +82,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
-  type InvokeFn = (m: string, p: unknown) => Promise<unknown>;
+  type InvokeFn = (m: string, p: unknown, client?: { external: boolean; connectionId?: string; scope?: import("@vector/contracts").AgentConnectionScope }) => Promise<unknown>;
   let resolveInvoker: (fn: InvokeFn) => void;
   const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
   channel?.onMethod("api.invoke", (p) => {
-    const { method, params } = p as { method: string; params: unknown };
-    return invokerReady.then((fn) => fn(method, params));
+    const { method, params, desktopUser } = p as { method: string; params: unknown; desktopUser?: boolean };
+    return invokerReady.then((fn) => fn(method, params, { external: desktopUser !== true }));
   });
+  await settings.initializeCredentials();
 
   // ---- drivers ----
   const drivers: DriverSet = {
@@ -308,6 +312,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     pages,
     translateSteps,
+    grants: () => settings.effectGrants(),
     egressAllowlist: () =>
       (env.VECTOR_ENGINE_ALLOWLIST ?? "")
         .split(",")
@@ -338,7 +343,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (controller === "human") {
         if (run.status === "running" || run.status === "planning") runs.pause(run.runId);
       } else if (run.status === "paused") {
-        runs.resume(run.runId);
+        if (canResumeAfterPageRelease(run.pageIds, pageId, pages.list())) runs.resume(run.runId);
       }
     }
   });
@@ -371,8 +376,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
   const cookies = new CookieService({ drivers: () => drivers, native });
+  const agentConnections = new AgentConnectionService(repo);
 
   const invoke = makeInvoker({
+    native,
     pages,
     sets,
     runs,
@@ -380,6 +387,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     settings,
     events,
     repo,
+    agentConnections,
     responses,
     operations,
     state,
@@ -402,7 +410,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // ---- loopback API ----
   const token = config.apiToken || randomUUID();
-  const api = new ApiServer({ token, invoke, events });
+  const api = new ApiServer({ token, invoke, events, authorizeScopedToken: scopedToken => agentConnections.authorize(scopedToken) });
   const port = await api.listen(config.apiPort);
   // the bearer token lives here — owner-only, and re-chmod'd because
   // writeFileSync's mode applies only when the file is first created
@@ -428,6 +436,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.faviconChanged": return pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
       case "view.navState": return pages.onNativeNavState(str(pl.pageId)!, truthy(pl.canGoBack), truthy(pl.canGoForward));
       case "view.loading": return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
+      case "view.navigationError": return pages.onNativeNavigationError(str(pl.pageId)!, pl.error as { url: string; code: number; message: string } | null);
       case "view.crashed": return pages.onNativeCrashed(str(pl.pageId)!);
       case "view.takeover": return pages.onNativeTakeover(str(pl.pageId)!);
       case "view.engineInput":
@@ -448,6 +457,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.downloadStarted":
         return pages.onNativeDownloadStarted(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
+          sourceUrl: str(pl.sourceUrl),
           filename: str(pl.filename) ?? "download",
           path: str(pl.path) ?? "",
           size: Number(pl.size ?? 0),
@@ -457,6 +467,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.downloadFinished":
         return pages.onNativeDownload(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
+          sourceUrl: str(pl.sourceUrl),
           filename: str(pl.filename) ?? "download",
           path: str(pl.path) ?? "",
           state: str(pl.state) ?? "completed",
@@ -468,10 +479,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.popup":
         // a native window/tab appeared outside pages.open (window.open allowed)
         void pages.registerExternal({
+          pageId: str(pl.pageId),
+          windowId: str(pl.windowId),
           marker: str(pl.marker)!,
           url: str(pl.url) ?? "about:blank",
+          title: str(pl.title),
           backend: "vector",
-        }).catch(() => {});
+          active: pl.activate === true,
+        }).then(page => pl.activate === true ? pages.activate(page.pageId) : undefined).catch(() => {});
         return;
       case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!);
       case "app.closing": return pages.shuttingDown();
@@ -531,7 +546,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   repo.markRunningInvocationsInterrupted();
 
   // bring back the tabs that were open when the app last quit
-  void pages.restoreTabs().catch(() => {});
+  await pages.restoreTabs().catch(() => {});
 
   channel?.notify("runtime.ready", { port });
   return {
@@ -543,7 +558,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 }
 
 const isDirectRun = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
-if (isDirectRun || process.env.VECTOR_RUNTIME_AUTOSTART === "1") {
+if (isDirectRun || normalizeAuxEnvironment(process.env).AUX_RUNTIME_AUTOSTART === "1") {
   startRuntime().then((h) => {
     console.log(`[vector-runtime] api=http://127.0.0.1:${h.port}`);
   }).catch((e) => {

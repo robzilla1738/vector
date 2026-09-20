@@ -1,3 +1,4 @@
+import { savePagePdf } from "../page-export";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, call, toast, errToast } from "../store";
 import { bridge } from "../bridge";
@@ -5,6 +6,7 @@ import { detectIntent } from "../intent";
 import { hostOf } from "../workspace";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
+import { localFileUrl } from "../local-file-url";
 
 interface Cmd {
   id: string;
@@ -119,7 +121,7 @@ export function Palette() {
 
     const w: Cmd[] = [
       { id: "new", section: "window", t: "New tab", k: "⌘T", icon: I.plusSm, run: () => newTab() },
-      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: "⌘⇧T", icon: I.reopen, run: async () => { useStore.setState((s) => ({ closedTabs: s.closedTabs.slice(0, -1) })); await newTab(lastClosed.url); } }] : []),
+      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: "⌘⇧T", icon: I.reopen, run: async () => { await useStore.getState().reopenClosedTab(); } }] : []),
       { id: "ov", section: "window", t: "Tab overview", k: "⌘⇧O", icon: I.grid, run: async () => setMode("overview") },
       { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: "⌘⇧A", icon: I.agentSm, run: () => useStore.getState().toggleRail() },
       { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: I.obs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
@@ -147,13 +149,15 @@ export function Palette() {
       { id: "open", section: "window", t: "Open file…", k: "⌘O", icon: I.folder, run: async () => {
         const path = await bridge.openFile();
         if (!path) return;
-        const url = `file://${encodeURI(path)}`;
+        const url = localFileUrl(path);
         if (activePageId) await call("pages.navigate", { pageId: activePageId, url });
         else await newTab(url);
       } },
+      ...(activePage?.backend === "vector" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: "⌘⇧P", icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
       { id: "print", section: "window", t: "Print…", k: "⌘P", icon: I.print, run: async () => { if (activePageId) await bridge.printPage(activePageId); } },
       { id: "dev", section: "window", t: "Developer tools", k: "⌥⌘I", icon: I.code, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
       { id: "settings", section: "window", t: "Settings", k: "⌘,", icon: I.gear, run: async () => setOverlay("settings") },
+      { id: "bookmarks", section: "window", t: "Bookmarks and history", icon: I.bookmark, run: async () => setOverlay("bookmarks") },
       { id: "history", section: "window", t: "History", k: "⌘Y", icon: I.clockSm, run: async () => setOverlay("history") },
       { id: "downloads", section: "window", t: "Downloads", k: "⌘⇧J", icon: I.downloadSm, run: async () => setOverlay("downloads") },
       { id: "attach", section: "chrome", t: "Attach Chrome", d: "your signed-in Chrome, port 9222", icon: I.chromeSm, run: async () => { await call("chrome.attach", { port: 9222 }); toast("Chrome attached"); } },
@@ -174,7 +178,8 @@ export function Palette() {
 
     const ORDER: Cmd["section"][] = ["go", "tabs", "agent", "window", "spaces", "sets", "chrome", "bookmarks"];
     const rest = (v ? w.filter((c) => match(`${c.t} ${c.d ?? ""}`)) : w).sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section));
-    return [...out, ...rest];
+    const exact = rest.filter(c => c.t.replace(/[…]+$/g, "").toLowerCase() === v.toLowerCase());
+    return [...exact, ...out, ...rest.filter(c => !exact.includes(c))];
   }, [q, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
 
   useEffect(() => setSel(0), [q, chromeTabs, splitPick]);

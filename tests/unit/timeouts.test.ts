@@ -118,12 +118,12 @@ describe("run deadline as an abort signal", () => {
 });
 
 describe("model call accounting", () => {
-  it("counts and records failed calls, so a run cannot burn past its budget on errors", async () => {
+  it("stops on rate limits without amplifying requests and persists only safe recovery state", async () => {
     let attempts = 0;
     const model: ModelClient = {
       generateStructured: async () => {
         attempts++;
-        throw apiErr(429, "rate limited");
+        throw apiErr(429, "rate limited: private provider response body");
       },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
@@ -132,10 +132,12 @@ describe("model call accounting", () => {
     const run = await h.coordinator.start({ goal: "g", pageIds: ["p1"], maxModelCalls: 10 });
     const done = await waitForRun(h.repo, run.runId);
     expect(done.status).toBe("failed");
-    // 3 planner failures trip MODEL_ERROR_LIMIT, then one final-answer attempt also fails
-    expect(attempts).toBe(4);
+    expect(attempts).toBe(1);
     expect(h.recorded).toHaveLength(attempts);
     expect(h.recorded.every((c) => c.error)).toBe(true);
-    expect(h.recorded.map((c) => c.role)).toEqual(["planner", "planner", "planner", "final"]);
+    expect(h.recorded.map((c) => c.role)).toEqual(["planner"]);
+    expect(h.recorded[0]?.error).not.toContain("private provider response body");
+    expect(done.error).not.toContain("private provider response body");
+    expect(done.failure).toMatchObject({ category: "rate_limit", retryable: true, action: "retry" });
   });
 });

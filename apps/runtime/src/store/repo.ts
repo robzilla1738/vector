@@ -9,7 +9,7 @@ import type {
   PageSet,
   PageTarget,
   ResultRecord,
-  Run,
+  Run, ConversationSummary,
   SavedProgram,
   SetMember,
   StepRecord,
@@ -116,20 +116,21 @@ export class Repo {
   }
 
   // ---- tabs (restart persistence) ----
-  saveTabs(tabs: { pageId: string; ordinal: number; url: string; title: string; backend: string; active: boolean }[]) {
+  saveTabs(tabs: { pageId: string; windowId?: string; ordinal: number; url: string; title: string; backend: string; active: boolean }[]) {
     const del = this.db.prepare("DELETE FROM tabs");
     const ins = this.db.prepare(
-      "INSERT INTO tabs(page_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?)",
+      "INSERT INTO tabs(page_id,window_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?,?)",
     );
     // atomic: a crash between the delete and the inserts must not lose the restore list
     this.transaction(() => {
       del.run();
-      for (const t of tabs) ins.run(t.pageId, t.ordinal, t.url, t.title, t.backend, t.active ? 1 : 0);
+      for (const t of tabs) ins.run(t.pageId, t.windowId ?? "main", t.ordinal, t.url, t.title, t.backend, t.active ? 1 : 0);
     });
   }
   loadTabs() {
     return this.db.prepare("SELECT * FROM tabs ORDER BY ordinal").all() as {
       page_id: string;
+      window_id: string;
       ordinal: number;
       url: string;
       title: string;
@@ -225,29 +226,123 @@ export class Repo {
 
   // ---- runs / steps / results ----
   saveRun(r: Run) {
-    this.db
-      .prepare(
-        `INSERT INTO runs(run_id,goal,status,page_ids,set_id,config,status_message,result,error,started_at,ended_at,created_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-         ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,config=excluded.config,status_message=excluded.status_message,result=excluded.result,error=excluded.error,started_at=excluded.started_at,ended_at=excluded.ended_at`,
-      )
-      .run(r.runId, r.goal, r.status, J(r.pageIds), r.setId ?? null, r.config ? J(r.config) : null, r.statusMessage ?? null, r.result ? J(r.result) : null, r.error ?? null, r.startedAt ?? null, r.endedAt ?? null, r.createdAt);
+    this.transaction(() => {
+      this.db.prepare(
+        `INSERT INTO runs(run_id,goal,status,page_ids,set_id,config,status_message,result,error,failure,started_at,ended_at,created_at)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,config=excluded.config,status_message=excluded.status_message,result=excluded.result,error=excluded.error,failure=excluded.failure,started_at=excluded.started_at,ended_at=excluded.ended_at`,
+      ).run(r.runId, r.goal, r.status, J(r.pageIds), r.setId ?? null, r.config ? J(r.config) : null, r.statusMessage ?? null, r.result ? J(r.result) : null, r.error ?? null, r.failure ? J(r.failure) : null, r.startedAt ?? null, r.endedAt ?? null, r.createdAt);
+      const chatId = r.config?.chatId ?? r.runId;
+      const taskRow = r.config?.taskId ? this.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as { json: string } | undefined : undefined;
+      let title = r.goal.slice(0, 160);
+      if (taskRow) {
+        try { title = String((JSON.parse(taskRow.json) as { title?: string }).title || title).slice(0, 160); } catch { /* retain run goal */ }
+      }
+      this.db.prepare(`INSERT INTO conversations(chat_id,title,archived,created_at,updated_at) VALUES(?,?,0,?,?)
+        ON CONFLICT(chat_id) DO UPDATE SET title=CASE WHEN ? THEN excluded.title ELSE conversations.title END,
+          updated_at=max(conversations.updated_at,excluded.updated_at)`)
+        .run(chatId, title, r.createdAt, r.createdAt, r.config?.taskId ? 1 : 0);
+    });
   }
   getRun(runId: string): Run | undefined {
     const r = this.db.prepare("SELECT * FROM runs WHERE run_id=?").get(runId) as any;
     return r ? this.rowToRun(r) : undefined;
   }
-  listRuns(limit = 50): Run[] {
-    return (this.db.prepare("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?").all(limit) as any[]).map((r) =>
-      this.rowToRun(r),
-    );
+  listRuns(limit = 50, options: { before?: { createdAt: number; runId: string }; chatId?: string; query?: string; groupByChat?: boolean; includeArchived?: boolean } = {}): Run[] {
+    const where: string[] = [];
+    const values: (string | number)[] = [];
+    if (options.groupByChat) where.push("chat_rank = 1");
+    if (options.chatId) { where.push("chat_key = ?"); values.push(options.chatId); }
+    if (!options.chatId && !options.includeArchived) where.push("chat_key NOT IN (SELECT chat_id FROM conversations WHERE archived=1)");
+    if (options.query?.trim()) {
+      where.push("chat_key IN (SELECT chat_key FROM keyed WHERE instr(lower(goal || ' ' || coalesce(status_message, '')), lower(?)) > 0)");
+      values.push(options.query.trim());
+    }
+    if (options.before) {
+      where.push("(created_at < ? OR (created_at = ? AND run_id < ?))");
+      values.push(options.before.createdAt, options.before.createdAt, options.before.runId);
+    }
+    return (this.db.prepare(`WITH keyed AS (
+      SELECT *, coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END, '$.chatId'), run_id) AS chat_key FROM runs
+    ), ranked AS (
+      SELECT *, row_number() OVER (PARTITION BY chat_key ORDER BY created_at DESC, run_id DESC) AS chat_rank FROM keyed
+    ) SELECT * FROM ${options.groupByChat ? "ranked" : "keyed"}
+      ${where.length ? "WHERE " + where.join(" AND ") : ""}
+      ORDER BY created_at DESC, run_id DESC LIMIT ?`).all(...values, limit) as any[]).map(r => this.rowToRun(r));
+  }
+
+  listConversations(limit = 40, options: { before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {
+    const where = ["c.archived=?"];
+    const values: (string | number)[] = [options.archived ? 1 : 0];
+    if (options.query?.trim()) {
+      where.push(`(instr(lower(c.title),lower(?))>0 OR EXISTS (
+        SELECT 1 FROM runs qr WHERE coalesce(json_extract(CASE WHEN json_valid(qr.config) THEN qr.config ELSE '{}' END,'$.chatId'),qr.run_id)=c.chat_id
+        AND instr(lower(qr.goal||' '||coalesce(qr.status_message,'')),lower(?))>0))`);
+      values.push(options.query.trim(), options.query.trim());
+    }
+    if (options.before) {
+      where.push("(c.updated_at<? OR (c.updated_at=? AND c.chat_id<?))");
+      values.push(options.before.updatedAt, options.before.updatedAt, options.before.chatId);
+    }
+    const rows = this.db.prepare(`SELECT c.*, (
+      SELECT run_id FROM runs r WHERE coalesce(json_extract(CASE WHEN json_valid(r.config) THEN r.config ELSE '{}' END,'$.chatId'),r.run_id)=c.chat_id
+      ORDER BY created_at DESC,run_id DESC LIMIT 1) latest_run_id,
+      (SELECT count(*) FROM runs r WHERE coalesce(json_extract(CASE WHEN json_valid(r.config) THEN r.config ELSE '{}' END,'$.chatId'),r.run_id)=c.chat_id) turn_count
+      FROM conversations c WHERE ${where.join(" AND ")} ORDER BY c.updated_at DESC,c.chat_id DESC LIMIT ?`).all(...values, limit) as any[];
+    return rows.flatMap(row => {
+      const latestRun = this.getRun(row.latest_run_id);
+      return latestRun ? [{ chatId: row.chat_id, taskId: latestRun.config?.taskId, title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: row.turn_count, latestRun }] : [];
+    });
+  }
+
+  getConversation(chatId: string): ConversationSummary | undefined {
+    return this.listConversationById(chatId);
+  }
+
+  private listConversationById(chatId: string): ConversationSummary | undefined {
+    const row = this.db.prepare("SELECT * FROM conversations WHERE chat_id=?").get(chatId) as any;
+    if (!row) return undefined;
+    const turns = this.listRuns(500, { chatId });
+    const latestRun = turns[0];
+    return latestRun ? { chatId, taskId: latestRun.config?.taskId, title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: turns.length, latestRun } : undefined;
+  }
+
+  renameConversation(chatId: string, title: string): ConversationSummary | undefined {
+    this.db.prepare("UPDATE conversations SET title=? WHERE chat_id=?").run(title, chatId);
+    return this.listConversationById(chatId);
+  }
+
+  archiveConversation(chatId: string, archived: boolean): ConversationSummary | undefined {
+    this.db.prepare("UPDATE conversations SET archived=? WHERE chat_id=?").run(archived ? 1 : 0, chatId);
+    return this.listConversationById(chatId);
+  }
+
+  deleteConversation(chatId: string): { deletedRuns: number; artifactPaths: string[] } {
+    const runIds = this.listRuns(500, { chatId }).map(run => run.runId);
+    if (!runIds.length) return { deletedRuns: 0, artifactPaths: [] };
+    const placeholders = runIds.map(() => "?").join(",");
+    const artifactPaths = (this.db.prepare(`SELECT path FROM artifacts WHERE run_id IN (${placeholders})`).all(...runIds) as { path: string }[]).map(row => row.path);
+    this.transaction(() => {
+      const intentIds = (this.db.prepare(`SELECT id FROM action_intents WHERE run_id IN (${placeholders})`).all(...runIds) as { id: string }[]).map(row => row.id);
+      if (intentIds.length) this.db.prepare(`DELETE FROM action_transitions WHERE intent_id IN (${intentIds.map(() => "?").join(",")})`).run(...intentIds);
+      for (const table of ["action_intents", "operation_invocations", "response_metadata", "datasets", "spans", "events", "model_calls", "artifacts", "results", "steps"])
+        this.db.prepare(`DELETE FROM ${table} WHERE run_id IN (${placeholders})`).run(...runIds);
+      for (const runId of runIds) this.db.prepare("DELETE FROM kv WHERE key LIKE ? ESCAPE '\\'").run(`ckpt:run:${runId}:%`);
+      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationContext:${chatId}`);
+      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationAttachments:${chatId}`);
+      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationArtifacts:${chatId}`);
+      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationWorkspace:${chatId}`);
+      this.db.prepare(`DELETE FROM runs WHERE run_id IN (${placeholders})`).run(...runIds);
+      this.db.prepare("DELETE FROM conversations WHERE chat_id=?").run(chatId);
+    });
+    return { deletedRuns: runIds.length, artifactPaths };
   }
   private rowToRun(r: any): Run {
     return {
       runId: r.run_id, goal: r.goal, status: r.status, pageIds: P(r.page_ids, []),
       setId: r.set_id ?? undefined, config: P(r.config, undefined as never),
       statusMessage: r.status_message ?? undefined, result: P(r.result, undefined as never),
-      error: r.error ?? undefined, startedAt: r.started_at ?? undefined, endedAt: r.ended_at ?? undefined,
+      error: r.error ?? undefined, failure: P(r.failure, undefined as never), startedAt: r.started_at ?? undefined, endedAt: r.ended_at ?? undefined,
       createdAt: r.created_at,
     };
   }
@@ -437,6 +532,14 @@ export class Repo {
   addBookmark(url: string, title: string) {
     this.db.prepare("INSERT OR REPLACE INTO bookmarks(url,title,created_at) VALUES(?,?,?)").run(url, title, now());
   }
+  importBookmarks(bookmarks: { url: string; title: string }[]) {
+    return this.transaction(() => {
+      const insert = this.db.prepare("INSERT OR IGNORE INTO bookmarks(url,title,created_at) VALUES(?,?,?)");
+      let added = 0;
+      for (const bookmark of bookmarks) added += Number(insert.run(bookmark.url, bookmark.title, now()).changes);
+      return { added, skipped: bookmarks.length - added };
+    });
+  }
   removeBookmark(url: string) {
     this.db.prepare("DELETE FROM bookmarks WHERE url=?").run(url);
   }
@@ -445,6 +548,7 @@ export class Repo {
   }
   saveDownload(d: {
     id: string;
+    sourceUrl?: string;
     pageId?: string;
     filename: string;
     path: string;
@@ -460,10 +564,12 @@ export class Repo {
          ON CONFLICT(id) DO UPDATE SET state=excluded.state,size=excluded.size,total_bytes=excluded.total_bytes,ended_at=excluded.ended_at`,
       )
       .run(d.id, d.pageId ?? null, d.filename, d.path, d.state, d.size, d.totalBytes ?? null, d.startedAt, d.endedAt ?? null);
+    if(d.sourceUrl)kvSetJson(this.db, `download-source:${d.id}`, d.sourceUrl);
   }
   listDownloads(limit = 100): Download[] {
     return (this.db.prepare("SELECT * FROM downloads ORDER BY started_at DESC LIMIT ?").all(limit) as any[]).map((r) => ({
       id: r.id,
+      sourceUrl: kvGetJson<string>(this.db, `download-source:${r.id}`) ?? undefined,
       pageId: r.page_id ?? undefined,
       filename: r.filename,
       path: r.path,
@@ -487,8 +593,14 @@ export class Repo {
   getSetting<T>(key: string): T | undefined {
     return kvGetJson<T>(this.db, `setting:${key}`);
   }
+  hasSetting(key: string): boolean {
+    return this.db.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${key}`) !== undefined;
+  }
   setSetting(key: string, value: unknown) {
     kvSetJson(this.db, `setting:${key}`, value);
+  }
+  deleteSetting(key: string): void {
+    this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:${key}`);
   }
 
   // ---- response capture (§8) ----

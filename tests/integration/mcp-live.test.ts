@@ -4,7 +4,7 @@
  * take over, and resume without Chromium.
  */
 import { spawn, execSync, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdtempSync, existsSync } from "node:fs";
+import { mkdtempSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -72,6 +72,10 @@ describeIfEngine("Gate F live MCP + vector-engine", () => {
 
   beforeAll(async () => {
     dataDir = mkdtempSync(join(tmpdir(), "vector-mcp-live-"));
+    writeFileSync(
+      join(dataDir, "settings.json"),
+      JSON.stringify({ effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"] }),
+    );
     rt = await startRuntime({
       ...process.env,
       VECTOR_DATA_DIR: dataDir,

@@ -24,6 +24,8 @@ export type Controller = z.infer<typeof ControllerSchema>;
 
 export const PageTargetSchema = z.object({
   pageId: z.string(),
+  /** Durable owner for human tabs; worker/borrowed pages may omit it. */
+  windowId: z.string().min(1).optional(),
   backend: BackendSchema,
   targetId: z.string(),
   sessionId: z.string().optional(),
@@ -44,6 +46,7 @@ export const PageTargetSchema = z.object({
   canGoBack: z.boolean().optional(),
   canGoForward: z.boolean().optional(),
   error: z.string().optional(),
+  navigationError: z.object({ url: z.string(), code: z.number(), message: z.string() }).nullable().optional(),
   /**
    * Why the router placed this page on its backend (architecture §11):
    * `engine-mode-off`, `explicit-backend:<b>`, `needs-chromium-table`,
@@ -55,6 +58,25 @@ export const PageTargetSchema = z.object({
   routeReason: z.string().optional(),
 });
 export type PageTarget = z.infer<typeof PageTargetSchema>;
+
+/** Metadata captured for one completed page response. Response bodies stay in the artifact store. */
+export const ResponseRecordSchema = z.object({
+  requestId: z.string(),
+  pageId: z.string(),
+  url: z.string(),
+  method: z.string(),
+  status: z.number().int().optional(),
+  contentType: z.string().optional(),
+  resourceType: z.string().optional(),
+  startedAt: z.number(),
+  endedAt: z.number().optional(),
+  durationMs: z.number().optional(),
+  bodyArtifactId: z.string().optional(),
+  bodyBytes: z.number().optional(),
+  truncated: z.boolean().optional(),
+  runId: z.string().optional(),
+});
+export type ResponseRecord = z.infer<typeof ResponseRecordSchema>;
 
 export const RunStatusSchema = z.enum([
   "queued",
@@ -70,6 +92,15 @@ export const RunStatusSchema = z.enum([
 ]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
+export const RunFailureSchema = z.object({
+  category: z.enum(["configuration", "authentication", "quota", "rate_limit", "network", "timeout", "provider", "model_output", "capability", "unknown"]),
+  /** Safe, user-facing summary. Provider response bodies are never stored here. */
+  message: z.string(),
+  retryable: z.boolean(),
+  action: z.enum(["retry", "model_settings", "none"]),
+});
+export type RunFailure = z.infer<typeof RunFailureSchema>;
+
 export const RunSchema = z.object({
   runId: z.string(),
   goal: z.string(),
@@ -84,6 +115,15 @@ export const RunSchema = z.object({
       deadlineMs: z.number().optional(),
       /** prior-turn context for conversational runs — prompt-only, never shown */
       context: z.string().optional(),
+      /** exact prior turns used to assemble context, for provenance and inspection */
+      contextRunIds: z.array(z.string()).optional(),
+      /** exact user-selected local document snapshots used for this turn */
+      contextAttachmentIds: z.array(z.string()).optional(),
+      /** exact Aux-generated text artifacts used for this turn */
+      contextArtifactIds: z.array(z.string()).optional(),
+      /** explicitly selected workspace memory revision used for this turn */
+      contextWorkspaceId: z.string().optional(),
+      contextWorkspaceRevision: z.number().int().nonnegative().optional(),
       /** how this run executes — shown as a badge on cards (§10 route label) */
       implementation: z.string().optional(),
       /** route-selection reason when an operation impl drove the run */
@@ -92,6 +132,10 @@ export const RunSchema = z.object({
       modelCalls: z.number().optional(),
       /** chat thread id — runs started from the same conversation share it */
       chatId: z.string().optional(),
+      taskId: z.string().optional(),
+      taskRevision: z.number().int().positive().optional(),
+      /** terminal turn this run deliberately retries; used for audit and UI continuity */
+      retryOfRunId: z.string().optional(),
       /** VEC-017 durable coordinator snapshot. */
       checkpoint: z
         .object({
@@ -111,11 +155,24 @@ export const RunSchema = z.object({
   statusMessage: z.string().optional(),
   result: z.record(z.string(), z.unknown()).optional(),
   error: z.string().optional(),
+  failure: RunFailureSchema.optional(),
   startedAt: z.number().optional(),
   endedAt: z.number().optional(),
   createdAt: z.number(),
 });
 export type Run = z.infer<typeof RunSchema>;
+
+export const ConversationSummarySchema = z.object({
+  chatId: z.string(),
+  taskId: z.string().optional(),
+  title: z.string(),
+  archived: z.boolean(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  turnCount: z.number().int().nonnegative(),
+  latestRun: RunSchema,
+});
+export type ConversationSummary = z.infer<typeof ConversationSummarySchema>;
 
 export const StepRecordSchema = z.object({
   stepId: z.string(),
@@ -217,6 +274,18 @@ export const ModelCallSchema = z.object({
 });
 export type ModelCall = z.infer<typeof ModelCallSchema>;
 
+export const ModelUsageSummarySchema = z.object({
+  calls: z.number().int().nonnegative(),
+  modelIds: z.array(z.string()),
+  providers: z.array(z.string()),
+  destinations: z.array(z.string()),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  knownCostUsd: z.number().nonnegative(),
+  costComplete: z.boolean(),
+});
+export type ModelUsageSummary = z.infer<typeof ModelUsageSummarySchema>;
+
 export const HistoryEntrySchema = z.object({
   url: z.string(),
   title: z.string(),
@@ -234,11 +303,15 @@ export type Bookmark = z.infer<typeof BookmarkSchema>;
 
 export const DownloadSchema = z.object({
   id: z.string(),
+  sourceUrl: z.string().optional(),
   pageId: z.string().optional(),
   filename: z.string(),
   path: z.string(),
   size: z.number(),
   totalBytes: z.number().optional(),
+  paused: z.boolean().optional(),
+  canResume: z.boolean().optional(),
+  canCancel: z.boolean().optional(),
   state: z.enum(["started", "progressing", "completed", "interrupted", "cancelled"]),
   startedAt: z.number(),
   endedAt: z.number().optional(),

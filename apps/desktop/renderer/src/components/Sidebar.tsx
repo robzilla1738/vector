@@ -1,11 +1,15 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PageTarget } from "@vector/contracts";
-import { inElectron } from "../bridge";
+import { bridge, inElectron } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
 import { MAX_PINS, SPACE_COLORS, foldersInSpace, hostOf, isPinned, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Space, type SpaceColor } from "../workspace";
-import { CommandBar } from "./CommandBar";
+
+import { isScrimOverlay } from "../chrome";
+import { moveListFocus } from "../keyboard-list";
 import { ResizeHandle } from "./ResizeHandle";
 import { FavIcon, SiteTile } from "./SiteTile";
+import { CommandBar } from "./CommandBar";
+import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
@@ -124,6 +128,7 @@ const TabRow = memo(function TabRow({ p, active, index, folderId, dragging, drop
         {crashed ? I.alert : p.loading ? <span className="spin" /> : <FavIcon url={p.url} src={p.favicon} size="sm" />}
       </span>
       <span className="tab-title">{title}</span>
+      <TabAudioButton pageId={p.pageId} title={title}/>
       {p.controller === "agent" || p.controller === "external" ? (
         <span className="tab-state agent" title="The agent is driving this tab">{I.agentSm}</span>
       ) : p.controller === "human" ? (
@@ -178,7 +183,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
     };
   }, [onClose]);
   return (
-    <div className="menu space-menu pop-in" role="menu" ref={ref}>
+    <div className="menu space-menu pop-in" role="menu" ref={ref} onKeyDown={event => moveListFocus(event, '[role="menuitem"]')}>
       {spaces.map((s) => (
         <div key={s.id} className={`menu-item ${s.id === active ? "on" : ""}`} role="menuitem" tabIndex={0} data-space={s.color}
           onClick={() => { onPick(s.id); onClose(); }}
@@ -197,7 +202,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
         <span className="t">New space</span>
       </div>
       <div className="menu-item" role="menuitem" tabIndex={0} onClick={() => { onNewFolder(); onClose(); }} onKeyDown={(e) => { if (e.key === "Enter") { onNewFolder(); onClose(); } }}>
-        <span className="menu-ico emo" aria-hidden>📁</span>
+        <span className="menu-ico" aria-hidden>{I.folderClosed}</span>
         <span className="t">New folder</span>
       </div>
       <div className="menu-sep" />
@@ -211,11 +216,11 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
         <span className="t">Downloads</span>
         <kbd>⌘⇧J</kbd>
       </div>
-      <div className="menu-item" role="menuitem" tabIndex={0} onClick={() => { onSettings(); onClose(); }} onKeyDown={(e) => { if (e.key === "Enter") { onSettings(); onClose(); } }}>
+      {!bridge.privateMode && <div className="menu-item" role="menuitem" tabIndex={0} onClick={() => { onSettings(); onClose(); }} onKeyDown={(e) => { if (e.key === "Enter") { onSettings(); onClose(); } }}>
         <span className="menu-ico">{I.gearSm}</span>
         <span className="t">Settings</span>
         <kbd>⌘,</kbd>
-      </div>
+      </div>}
       <div className="menu-sep" />
       <div className="menu-item" role="menuitem" tabIndex={0} onClick={() => { onCollapse(); onClose(); }} onKeyDown={(e) => { if (e.key === "Enter") { onCollapse(); onClose(); } }}>
         <span className="menu-ico">{I.sidebarCloseSm}</span>
@@ -229,12 +234,29 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
 function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: (name: string, color: SpaceColor) => void; onClose: () => void }) {
   const [name, setName] = useState(space?.name ?? "");
   const [color, setColor] = useState<SpaceColor>(space?.color ?? "violet");
+  const previous = useRef(document.activeElement as HTMLElement | null);
+  useEffect(() => {
+    void bridge.overlay(true);
+    return () => {
+      void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
+      const target = previous.current?.isConnected ? previous.current : document.querySelector<HTMLElement>('.space-switch');
+      target?.focus();
+    };
+  }, []);
+  const onDialogKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); }
+    if (event.key !== 'Tab') return;
+    const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')];
+    const first = items[0], last = items.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  };
   return (
     <div className="scrim-soft" onMouseDown={onClose}>
-      <div className="sheet pop-in" role="dialog" aria-label={space ? "Edit space" : "New space"} onMouseDown={(e) => e.stopPropagation()}>
+      <div className="sheet pop-in" role="dialog" aria-modal="true" onKeyDown={onDialogKey} aria-label={space ? "Edit space" : "New space"} onMouseDown={(e) => e.stopPropagation()}>
         <h3>{space ? "Edit space" : "New space"}</h3>
         <input autoFocus className="field-input" value={name} placeholder="Name" onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { onSave(name, color); onClose(); } if (e.key === "Escape") onClose(); }} />
+          onKeyDown={(e) => { if (e.key === "Enter") { onSave(name, color); onClose(); } }} />
         <div className="swatches" role="radiogroup" aria-label="Colour">
           {SPACE_COLORS.map((c) => (
             <button key={c} role="radio" aria-checked={color === c} aria-label={c} data-space={c} className={`swatch ${color === c ? "on" : ""}`} onClick={() => setColor(c)} />
@@ -277,7 +299,7 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
-      <span className="tab-fav emo" aria-hidden>📁</span>
+      <span className="tab-fav" aria-hidden>{I.folderClosed}</span>
       {renaming ? (
         <input
           className="folder-name-input"
@@ -306,14 +328,12 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
 
 export function Sidebar() {
   const sidebarPref = useStore((s) => s.sidebar);
-  const narrow = useStore((s) => s.narrow);
-  const railOpenNow = useStore((s) => s.railOpen);
-  const sidebar: typeof sidebarPref = sidebarPref === "expanded" && narrow && railOpenNow ? "rail" : sidebarPref;
-  const peek = useStore((s) => s.sidebarPeek);
-  const setPeek = useStore((s) => s.setSidebarPeek);
+  const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
+  const sidebar = sidebarPref;
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
+  const bookmarks = useStore(s => s.bookmarks);
   const pages = useStore((s) => s.pages);
   const activePageId = useStore((s) => s.activePageId);
   const mode = useStore((s) => s.mode);
@@ -353,19 +373,13 @@ export function Sidebar() {
   const [ctx, setCtx] = useState<{ p: PageTarget; x: number; y: number } | null>(null);
   const [folderCtx, setFolderCtx] = useState<{ folder: Folder; x: number; y: number } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-
-  const peekTimer = useRef<number | null>(null);
-  const railEnter = () => {
-    if (sidebar !== "rail") return;
-    peekTimer.current = window.setTimeout(() => setPeek(true), 260);
-  };
-  const railLeave = () => {
-    if (peekTimer.current) window.clearTimeout(peekTimer.current);
-    peekTimer.current = null;
-  };
   useEffect(() => {
-    if (sidebar !== "rail") setPeek(false);
-  }, [sidebar, setPeek]);
+    const close = (event: PointerEvent) => {
+      if (!(event.target as Element).closest(".sb-more")) document.querySelectorAll<HTMLDetailsElement>(".sb-more[open]").forEach(menu => { menu.open = false; });
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
 
   const onActivate = useCallback((id: string) => void activate(id).catch(errToast), [activate]);
   const onClose = useCallback((id: string) => void closeTab(id), [closeTab]);
@@ -417,14 +431,7 @@ export function Sidebar() {
     [layout, loose, pages, reorderGroup, space.id],
   );
 
-  const onListKey = (e: React.KeyboardEvent) => {
-    if (e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
-    const rows = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[role=tab]") ?? []);
-    const i = rows.indexOf(document.activeElement as HTMLElement);
-    if (i === -1) return;
-    e.preventDefault();
-    rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === "ArrowUp" ? -1 : 1)))]?.focus();
-  };
+  const onListKey = (e: React.KeyboardEvent<HTMLElement>) => moveListFocus(e, '[role="tab"]');
 
   const renderRow = (p: PageTarget, index: number, folderId: string | null, groupLen: number) => (
     <TabRow
@@ -446,7 +453,6 @@ export function Sidebar() {
     />
   );
 
-  const collapsed = sidebar === "rail" && !peek;
 
   const chromeNav = (
     <>
@@ -465,7 +471,7 @@ export function Sidebar() {
 
   const full = (
     <>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}>{chromeNav}</div>
+      <div className={`sb-head ${inElectron ? "electron" : ""}`}>{chromeNav}<button className="icon-btn" aria-label="Collapse sidebar" onClick={toggleSidebar}>{I.sidebar}</button></div>
 
       <div className="sb-cmd">
         <CommandBar compact />
@@ -508,7 +514,7 @@ export function Sidebar() {
       </div>
 
       <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
-        <div className="tab-list" role="tablist" aria-label="Tabs">
+        <div className="tab-list" role="tablist" aria-label="Tabs" aria-orientation="vertical">
           {folders.map((f) => {
             const kids = tabsInFolder(layout, pages, f.id);
             return (
@@ -549,61 +555,53 @@ export function Sidebar() {
           ))}
 
           {tabs.length === 0 && folders.length === 0 && (
-            <div className="sb-empty">No tabs in {space.name}. Press ⌘T or type in the field above.</div>
+            <div className="sb-empty">No tabs in {space.name}</div>
           )}
         </div>
       </div>
 
       <div className="sb-foot">
-        <button className="icon-btn" title="Downloads (⌘⇧J)" aria-label="Downloads" onClick={() => setOverlay("downloads")}>{I.archive}</button>
-        <button className="icon-btn" title="New tab (⌘T)" aria-label="New tab" onClick={() => void newTab()}>{I.plus}</button>
+        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{I.grid}</button></> : <>
+        <button className="sb-new-chat" onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>
+        <span className="sp" />
+        {page?.controller === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(page.pageId)}>{I.handSm}</button>}
+        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
+        <details className="sb-more" onKeyDown={event => { if (event.key === "Escape") event.currentTarget.open = false; }}>
+          <summary className="icon-btn" aria-label="More" title="More">{I.more}</summary>
+          <div className="sb-more-menu" onClick={event => { const details = event.currentTarget.closest("details"); if (details) details.open = false; }}>
+            <button onClick={() => { useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{I.agentSm}<span>Chats</span></button>
+            <button onClick={() => setOverlay("tasks")}>{I.layersSm}<span>Tasks</span></button>
+            <button aria-label="Library" onClick={() => setOverlay("bookmarks")}>{I.bookmark}<span>Library</span><kbd>⌘Y</kbd></button>
+            <button onClick={() => setOverlay("downloads")}>{I.downloadSm}<span>Downloads</span></button>
+            <hr />
+            <button disabled={!web} onClick={() => {
+              if (!page) return;
+              const saved = bookmarks.some(b => b.url === page.url);
+              void call(saved ? "bookmarks.remove" : "bookmarks.add", {url:page.url,title:page.title}).then(() => useStore.getState().refresh()).catch(errToast);
+            }}>{I.bookmark}<span>{bookmarks.some(b => b.url === page?.url) ? "Remove bookmark" : "Bookmark this page"}</span><kbd>⌘D</kbd></button>
+            <button onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}<span>Tab overview</span></button>
+            <button aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span><kbd>⌘,</kbd></button>
+          </div>
+        </details>
+        </>}
       </div>
     </>
   );
 
-  const rail = (
-    <div className="sb-rail" onMouseEnter={railEnter} onMouseLeave={railLeave}>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}>
-        {sidebarPref === "expanded" ? (
-          <button className="icon-btn" title="Expand sidebar — closes the agent rail in this narrow window" aria-label="Expand sidebar" onClick={toggleRail}>{I.sidebar}</button>
-        ) : (
-          <button className="icon-btn" title="Expand sidebar (⌘S)" aria-label="Expand sidebar" onClick={toggleSidebar}>{I.sidebar}</button>
-        )}
-      </div>
-      <div className="rail-tiles" role="tablist" aria-label="Tabs">
-        {tabs.slice(0, 40).map((p) => (
-          <SiteTile key={p.pageId} url={p.url} title={p.title || hostOf(p.url)} favicon={p.favicon} size="sm" role="tab" aria-selected={p.pageId === activePageId}
-            active={p.pageId === activePageId} onClick={() => onActivate(p.pageId)} />
-        ))}
-        <button className="site-tile sm add" title="New tab (⌘T)" aria-label="New tab" onClick={() => void newTab()}><span className="tile-face">{I.plus}</span></button>
-      </div>
-      <div className="rail-foot">
-        <button className="icon-btn" title="Search or ask (⌘L)" aria-label="Search, address, or ask the agent" onClick={() => useStore.getState().focusCommandBar()}>{I.search}</button>
-      </div>
-    </div>
-  );
-
-  if (sidebar === "hidden") return null;
-
   return (
     <>
       <aside
-        className={`sidebar ${sidebar === "rail" ? "collapsed" : sidebar} ${peek ? "peek" : ""}`}
+        className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"}`}
+        inert={sidebar !== "expanded" ? true : undefined}
+        aria-hidden={sidebar !== "expanded"}
         data-space={space.color}
         style={{ "--sb-w": `${sidebarWidth}px` } as React.CSSProperties}
-        onMouseLeave={() => sidebar === "rail" && !menuOpen && !editing && setPeek(false)}
         aria-label="Sidebar"
       >
-        {sidebar === "rail" ? (
-          <>
-            {rail}
-            {!collapsed && <div className="sb-peek-panel" onMouseLeave={() => !menuOpen && !editing && setPeek(false)}>{full}</div>}
-          </>
-        ) : (
-          full
-        )}
-        {sidebar === "expanded" && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={260} onResize={setSidebarWidth} />}
+        <div className="sidebar-content">{full}</div>
+        {sidebar === "expanded" && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
       </aside>
+      {sidebar !== "expanded" && <button className="sidebar-reveal" aria-label="Expand sidebar" title="Show sidebar (⌘S)" onClick={() => useStore.getState().setSidebar("expanded")} />}
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
           onSave={(name, color) => (editing === "new" ? addSpace(name, color) : editSpace(editing.id, name, color))} />
@@ -687,8 +685,9 @@ function TabContextMenu({ p, x, y, spaces, folders, currentSpace, currentFolder,
   const web = /^https?:/.test(p.url);
   const top = Math.min(y, window.innerHeight - 360);
   return (
-    <div ref={ref} className="menu ctx-menu pop-in" role="menu" style={{ left: Math.min(x, window.innerWidth - 240), top }}>
+    <div ref={ref} className="menu ctx-menu pop-in" role="menu" onKeyDown={event => moveListFocus(event, '[role="menuitem"]')} style={{ left: Math.min(x, window.innerWidth - 240), top }}>
       {item("Reload", "reload", undefined, "⌘R")}
+      <TabAudioButton pageId={p.pageId} title={p.title || "New Tab"} menu onDone={onClose}/>
       {web && item("Duplicate", "duplicate")}
       {web && item("Copy URL", "copy")}
       {web && item(pinned ? "Unpin" : "Pin to space", "pin")}
@@ -698,7 +697,7 @@ function TabContextMenu({ p, x, y, spaces, folders, currentSpace, currentFolder,
           <div className="menu-label">Move to folder</div>
           {folders.filter((f) => f.id !== currentFolder).map((f) => (
             <div key={f.id} className="menu-item" role="menuitem" tabIndex={0} onClick={() => { onAction("folder", f.id); onClose(); }} onKeyDown={(e) => { if (e.key === "Enter") { onAction("folder", f.id); onClose(); } }}>
-              <span className="menu-ico emo" aria-hidden>📁</span>
+              <span className="menu-ico" aria-hidden>{I.folderClosed}</span>
               <span className="t">{f.name}</span>
             </div>
           ))}
@@ -740,7 +739,7 @@ function FolderContextMenu({ folder, x, y, onClose, onRename, onDelete }: {
     };
   }, [onClose]);
   return (
-    <div ref={ref} className="menu ctx-menu pop-in" role="menu" style={{ left: Math.min(x, window.innerWidth - 200), top: Math.min(y, window.innerHeight - 120) }}>
+    <div ref={ref} className="menu ctx-menu pop-in" role="menu" onKeyDown={event => moveListFocus(event, '[role="menuitem"]')} style={{ left: Math.min(x, window.innerWidth - 200), top: Math.min(y, window.innerHeight - 120) }}>
       <div className="menu-item" role="menuitem" tabIndex={0} onClick={() => { onRename(); onClose(); }} onKeyDown={(e) => { if (e.key === "Enter") { onRename(); onClose(); } }}>
         <span className="t">Rename</span>
       </div>

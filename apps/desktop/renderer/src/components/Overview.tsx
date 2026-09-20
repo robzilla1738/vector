@@ -8,7 +8,7 @@ import { I } from "./icons";
 
 /** ⌘⇧O — every tab as a card with a preview; captures once on entry, not on a timer. */
 export function Overview() {
-  const pages = useStore(useShallow((s) => s.pages.filter((p) => p.viewStatus !== "background" && !p.ownedByRuntime)));
+  const pages = useStore(useShallow((s) => s.pages.filter((p) => p.viewStatus !== "detached" && !p.ownedByRuntime)));
   const activePageId = useStore((s) => s.activePageId);
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);

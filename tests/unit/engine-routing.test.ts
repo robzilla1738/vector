@@ -136,6 +136,15 @@ const okResult = (steps: Step[]): ExecuteProgramResult => ({
 });
 
 describe("pages.open routing", () => {
+  it("auto: transient new-tab documents stay on Chromium for later navigation", async () => {
+    const h = harness("auto", { execute: okResult });
+    const blank = await h.pages.open({ url: "about:blank", background: false, ownedByRuntime: false });
+    expect(blank.backend).toBe("vector");
+    expect(blank.routeReason).toBe("hybrid:transient-document:about:");
+    expect(h.engine.calls).toEqual([]);
+    expect(h.vector.calls[0]).toBe("vector:createTarget:about:blank");
+  });
+
   it("off: Chromium as before, with routeReason", async () => {
     const h = harness("off");
     const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });

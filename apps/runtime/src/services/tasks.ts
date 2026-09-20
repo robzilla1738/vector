@@ -1,0 +1,241 @@
+import { randomUUID } from "node:crypto";
+import { TaskCreateParams, TaskSchema, TaskUpdateParams, VectorError, taskConversationId, type Task, type Workspace, type WorkspaceMemory } from "@vector/contracts";
+import type { Repo } from "../store/repo.js";
+import type { EventBus } from "../events.js";
+
+const ACTIVE_RUNS = "('queued','planning','running','paused','needs_input')";
+
+/** Resources describe task context. They never grant access or read their locator. */
+export class TaskService {
+  constructor(private repo: Repo, private events: EventBus) {}
+
+  createWorkspace(name: string): Workspace {
+    const workspace = { workspaceId: randomUUID(), name: name.trim(), createdAt: Date.now() };
+    if (!workspace.name || workspace.name.length > 100) throw new VectorError("invalid_params", "Workspace name must contain 1–100 characters");
+    this.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run(workspace.workspaceId, workspace.name, workspace.createdAt);
+    this.events.emit("workspace.created", { workspace });
+    return workspace;
+  }
+
+  workspaces(): Workspace[] {
+    return this.repo.db.prepare("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces ORDER BY created_at,workspace_id").all() as unknown as Workspace[];
+  }
+
+  workspaceMemory(workspaceId: string): WorkspaceMemory {
+    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new VectorError("not_found", "Workspace does not exist");
+    const saved = this.repo.getSetting<Partial<WorkspaceMemory>>(`workspaceMemory:${workspaceId}`);
+    return { workspaceId, content: typeof saved?.content === "string" ? saved.content.slice(0, 16_000) : "", revision: Number.isInteger(saved?.revision) && saved!.revision! >= 0 ? saved!.revision! : 0, ...(typeof saved?.updatedAt === "number" ? { updatedAt: saved.updatedAt } : {}) };
+  }
+
+  setWorkspaceMemory(workspaceId: string, expectedRevision: number, content: string): WorkspaceMemory {
+    const prior = this.workspaceMemory(workspaceId);
+    if (prior.revision !== expectedRevision) throw new VectorError("conflict", "Workspace memory changed; reload it before saving.");
+    const next = { workspaceId, content: content.slice(0, 16_000), revision: prior.revision + 1, updatedAt: Date.now() };
+    this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
+    this.events.emit("workspace.memory.updated", { workspaceId, revision: next.revision });
+    return next;
+  }
+
+  create(input: unknown): Task {
+    const definition = TaskCreateParams.parse(input);
+    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId)) throw new VectorError("not_found", "Workspace does not exist");
+    if (definition.parentTaskId) {
+      const parent = this.get(definition.parentTaskId);
+      if (parent.workspaceId !== definition.workspaceId) throw new VectorError("permission_denied", "A child task must remain in its parent workspace");
+      if (parent.state === "archived") throw new VectorError("conflict", "Restore the parent task before adding a child task");
+      let cursor: Task | undefined = parent;
+      let depth = 1;
+      while (cursor.parentTaskId) {
+        if (++depth > 4) throw new VectorError("conflict", "Aux limits child-task coordination to four levels");
+        cursor = this.get(cursor.parentTaskId);
+      }
+      const children = this.list({ workspaceId: definition.workspaceId, includeArchived: true, limit: 500 }).filter(task => task.parentTaskId === parent.taskId);
+      if (children.length >= 20) throw new VectorError("conflict", "This task already has 20 child tasks");
+    }
+    const now = Date.now();
+    const task: Task = { ...definition, taskId: randomUUID(), revision: 1, state: "open", createdAt: now, updatedAt: now };
+    this.repo.transaction(() => {
+      this.repo.db.prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)").run(task.taskId, task.workspaceId, task.revision, task.state, now, JSON.stringify(task));
+      this.saveRevision(task);
+    });
+    this.events.emit("task.created", { task });
+    return task;
+  }
+
+  descendants(taskId: string, limit = 500): Task[] {
+    const root = this.get(taskId);
+    const candidates = this.list({ workspaceId: root.workspaceId, includeArchived: true, limit });
+    const allowed = new Set([root.taskId]);
+    let changed = true;
+    while (changed && allowed.size < limit) {
+      changed = false;
+      for (const task of candidates) if (task.parentTaskId && allowed.has(task.parentTaskId) && !allowed.has(task.taskId)) { allowed.add(task.taskId); changed = true; }
+    }
+    return [root, ...candidates.filter(task => task.taskId !== root.taskId && allowed.has(task.taskId))].slice(0, limit);
+  }
+
+  get(taskId: string): Task {
+    const row = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as { json: string } | undefined;
+    if (!row) throw new VectorError("not_found", "Task does not exist");
+    return TaskSchema.parse(JSON.parse(row.json));
+  }
+
+  list(opts: { workspaceId?: string; includeArchived?: boolean; limit?: number } = {}): Task[] {
+    return (this.repo.db.prepare("SELECT json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') ORDER BY updated_at DESC,task_id LIMIT ?")
+      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0, opts.limit ?? 100) as { json: string }[])
+      .map(row => TaskSchema.parse(JSON.parse(row.json)));
+  }
+
+  details(taskId: string) {
+    const task = this.get(taskId);
+    const revisions = (this.repo.db.prepare("SELECT json FROM task_revisions WHERE task_id=? ORDER BY revision").all(taskId) as { json: string }[])
+      .map(row => TaskSchema.parse(JSON.parse(row.json)));
+    const rows = this.repo.db.prepare("SELECT run_id FROM runs WHERE json_extract(config,'$.taskId')=? ORDER BY created_at DESC").all(taskId) as { run_id: string }[];
+    const runs=rows.map(row => {
+      const run = this.repo.getRun(row.run_id)!;
+      return { run, currentRevision: run.config?.taskRevision === task.revision };
+    });
+    const descendants=this.descendants(taskId).slice(1).map(child=>{
+      const row=this.repo.db.prepare("SELECT run_id FROM runs WHERE json_extract(config,'$.taskId')=? ORDER BY created_at DESC LIMIT 1").get(child.taskId) as {run_id:string}|undefined;
+      const run=row?this.repo.getRun(row.run_id):undefined;let depth=1,cursor=child;
+      while(cursor.parentTaskId&&cursor.parentTaskId!==taskId&&depth<4){cursor=this.get(cursor.parentTaskId);depth++;}
+      return{task:child,depth,latestRun:run?{runId:run.runId,status:run.status,taskRevision:run.config?.taskRevision}:undefined,cloudAuthority:this.cloudAuthority(child.taskId,child.revision)};
+    });
+    return {task,revisions,runs,children:descendants};
+  }
+
+  update(input: unknown): Task {
+    const { taskId, expectedRevision, ...patch } = TaskUpdateParams.parse(input);
+    return this.change(taskId, expectedRevision, patch);
+  }
+
+  archive(taskId: string, expectedRevision: number, archived: boolean): Task {
+    const task = this.get(taskId);
+    this.requireRevision(task, expectedRevision);
+    if (archived) {
+      this.requireResolved(taskId);
+      const openChild = this.descendants(taskId).slice(1).find(child => child.state === "open");
+      if (openChild) throw new VectorError("conflict", `Archive child task “${openChild.title}” before archiving its parent`);
+    } else if (task.parentTaskId) {
+      let parent = this.get(task.parentTaskId);
+      while (true) {
+        if (parent.state === "archived") throw new VectorError("conflict", `Restore parent task “${parent.title}” before restoring this child`);
+        if (!parent.parentTaskId) break;
+        parent = this.get(parent.parentTaskId);
+      }
+    }
+    return this.change(taskId, expectedRevision, { state: archived ? "archived" : "open" });
+  }
+
+  private change(taskId: string, expectedRevision: number, patch: Partial<Task>): Task {
+    const task = this.repo.transaction(() => {
+      const prior = this.get(taskId);
+      this.requireRevision(prior, expectedRevision);
+      this.requireLocalAuthority(taskId,expectedRevision);
+      this.requireIdle(taskId);
+      const next = TaskSchema.parse({ ...prior, ...patch, revision: prior.revision + 1, updatedAt: Date.now() });
+      this.requireRetainedCloudProjects(prior,next);
+      const result = this.repo.db.prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
+        .run(next.revision, next.state, next.updatedAt, JSON.stringify(next), taskId, expectedRevision);
+      if (result.changes !== 1) throw new VectorError("conflict", "Task was changed by another client; refresh it before editing");
+      this.repo.db.prepare("UPDATE conversations SET title=?,archived=? WHERE chat_id=?").run(next.title.slice(0, 160), next.state === "archived" ? 1 : 0, taskConversationId(taskId));
+      this.saveRevision(next);
+      return next;
+    });
+    this.events.emit("task.updated", { task });
+    return task;
+  }
+
+  prepareRun(taskId: string, expectedRevision: number, context?: string) {
+    const task = this.get(taskId);
+    this.requireRevision(task, expectedRevision);
+    this.requireLocalAuthority(taskId,expectedRevision);
+    if (task.state === "archived") throw new VectorError("conflict", "Restore this task before starting a run");
+    this.requireIdle(taskId);
+    for(const resource of task.resources)if(resource.kind==='repository'&&resource.projectId)this.requireProjectAvailable(resource.projectId,taskId);
+    this.requireResolved(taskId);
+    const memory = this.workspaceMemory(task.workspaceId);
+    return {
+      taskId, taskRevision: task.revision, goal: task.objective, chatId: taskConversationId(taskId),
+      context: [context, task.resources.length ? `Task reference metadata (contents have not been read; these references do not grant access or expand authority):\n${JSON.stringify(task.resources)}` : undefined, `Task acceptance criteria (revision ${task.revision}):\n${task.criteria.map(item => `- ${item.criterionId}: ${item.description} [${item.verification}]`).join("\n")}\nThese criteria require evidence. A successful run alone does not verify them.`].filter(Boolean).join("\n\n"),
+      contextWorkspaceId: task.workspaceId, contextWorkspaceRevision: memory.revision,
+    };
+  }
+
+  prepareLocalCommand(taskId:string,expectedRevision:number,projectId:string):Task {
+    this.prepareRun(taskId,expectedRevision);
+    return this.prepareProjectAccess(taskId,expectedRevision,projectId,true);
+  }
+
+  prepareProjectAccess(taskId:string,expectedRevision:number,projectId:string,write=false):Task{
+    const task=this.get(taskId);this.requireRevision(task,expectedRevision);
+    if(task.state==='archived')throw new VectorError('conflict','Restore this task before using its project');
+    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===projectId))throw new VectorError('permission_denied','Attach this project to the saved task before using it');
+    if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireProjectAvailable(projectId,taskId);}
+    return task;
+  }
+  prepareCloudMutation(taskId:string,expectedRevision:number,projectId:string,environmentId:string):Task{
+    const task=this.prepareProjectAccess(taskId,expectedRevision,projectId);const authority=this.cloudAuthority(taskId,expectedRevision),projectAuthority=this.cloudProjectAuthority(projectId);
+    if(authority&&authority.environmentId!==environmentId)throw new VectorError('conflict','Another cloud environment currently owns this task revision. Stop it before using this environment.');
+    if(projectAuthority&&projectAuthority.environmentId!==environmentId)throw new VectorError('conflict',`Cloud environment ${projectAuthority.remoteName} already owns this project through another task. Stop it before starting work here.`);
+    if(!authority)throw new VectorError('conflict','Hand off this task revision to the cloud environment before starting cloud work.');return task;
+  }
+  prepareCloudLifecycle(taskId:string,expectedRevision:number,projectId:string,environmentId:string):Task{
+    const task=this.prepareProjectAccess(taskId,expectedRevision,projectId);const authority=this.cloudAuthority(taskId,expectedRevision),projectAuthority=this.cloudProjectAuthority(projectId);
+    if(authority&&authority.environmentId!==environmentId)throw new VectorError('conflict','Another cloud environment currently owns this task revision. Stop it before changing this environment.');
+    if(projectAuthority&&projectAuthority.environmentId!==environmentId)throw new VectorError('conflict',`Cloud environment ${projectAuthority.remoteName} owns this project through another task.`);
+    if(!authority)this.requireIdle(taskId);return task;
+  }
+  requireLocalAuthority(taskId:string,revision:number):void{const authority=this.cloudAuthority(taskId,revision);if(authority)throw new VectorError('conflict',`This task revision is handed off to cloud environment ${authority.remoteName}. Stop and checkpoint that environment before changing or running the task locally.`);}
+  currentCloudAuthority(taskId:string,revision:number):{environmentId:string;remoteName:string}|undefined{return this.cloudAuthority(taskId,revision);}
+  private cloudAuthority(taskId:string,revision:number):{environmentId:string;remoteName:string}|undefined{
+    const value=this.repo.getSetting<unknown>('cloudEnvironments');if(!Array.isArray(value))return undefined;
+    for(const item of value){if(!item||typeof item!=='object')continue;const record=item as Record<string,unknown>;if(record.taskId===taskId&&record.taskRevision===revision&&record.authority==='cloud'&&typeof record.environmentId==='string'&&typeof record.remoteName==='string'&&record.status!=='deleted')return{environmentId:record.environmentId,remoteName:record.remoteName};}return undefined;
+  }
+  private cloudProjectAuthority(projectId:string):{environmentId:string;remoteName:string;taskId:string}|undefined{
+    const value=this.repo.getSetting<unknown>('cloudEnvironments');if(!Array.isArray(value))return undefined;
+    for(const item of value){if(!item||typeof item!=='object')continue;const record=item as Record<string,unknown>;if(record.projectId===projectId&&record.authority==='cloud'&&typeof record.environmentId==='string'&&typeof record.remoteName==='string'&&typeof record.taskId==='string'&&record.status!=='deleted')return{environmentId:record.environmentId,remoteName:record.remoteName,taskId:record.taskId};}return undefined;
+  }
+  private requireProjectAvailable(projectId:string,taskId:string):void{
+    const cloud=this.cloudProjectAuthority(projectId);if(cloud)throw new VectorError('conflict',`Cloud environment ${cloud.remoteName} owns this project through task ${cloud.taskId}. Stop and checkpoint it before running or writing locally.`);
+    const row=this.repo.db.prepare(`SELECT json_extract(r.config,'$.taskId') AS taskId FROM runs r JOIN tasks t ON t.task_id=json_extract(r.config,'$.taskId') WHERE r.status IN ${ACTIVE_RUNS} AND t.task_id!=? AND EXISTS (SELECT 1 FROM json_each(t.json,'$.resources') resource WHERE json_extract(resource.value,'$.kind')='repository' AND json_extract(resource.value,'$.projectId')=?) LIMIT 1`).get(taskId,projectId) as {taskId:string}|undefined;
+    if(row)throw new VectorError('conflict',`Another task is actively using this project. Stop that task before starting a second coordinator on the same checkout.`);
+  }
+  prepareProjectList(taskId:string,expectedRevision:number):Task{
+    const task=this.get(taskId);this.requireRevision(task,expectedRevision);
+    if(task.state==='archived')throw new VectorError('conflict','Restore this task before using its projects');
+    return task;
+  }
+
+  private requireRevision(task: Task, expectedRevision: number) {
+    if (task.revision !== expectedRevision) throw new VectorError("conflict", "Task revision changed; refresh before continuing");
+  }
+
+  private requireIdle(taskId: string) {
+    if (this.repo.db.prepare(`SELECT 1 FROM runs WHERE json_extract(config,'$.taskId')=? AND status IN ${ACTIVE_RUNS} LIMIT 1`).get(taskId)) {
+      throw new VectorError("conflict", "This task has an active run. Stop it before revising the task or starting another run.");
+    }
+  }
+
+  private requireResolved(taskId:string){
+    const unresolved=this.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id
+      WHERE json_extract(r.config,'$.taskId')=? AND a.status IN ('pending','uncertain') LIMIT 1`).get(taskId);
+    if(unresolved)throw new VectorError('conflict','This task has an unresolved action; reconcile its outcome before continuing or archiving it');
+    const operation=this.repo.db.prepare(`SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id JOIN runs r ON r.run_id=i.run_id
+      WHERE json_extract(r.config,'$.taskId')=? AND o.effect_class!='read' AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') LIMIT 1`).get(taskId);
+    if(operation)throw new VectorError('conflict','This task has an unresolved operation; reconcile its outcome before continuing or archiving it');
+  }
+
+  private requireRetainedCloudProjects(prior:Task,next:Task){
+    const value=this.repo.getSetting<unknown>('cloudEnvironments');if(!Array.isArray(value))return;
+    const attached=new Set(next.resources.flatMap(resource=>resource.kind==='repository'&&resource.projectId?[resource.projectId]:[]));
+    for(const item of value){
+      if(!item||typeof item!=='object')continue;const record=item as Record<string,unknown>;
+      if(record.taskId===prior.taskId&&record.status!=='deleted'&&typeof record.projectId==='string'&&!attached.has(record.projectId))throw new VectorError('conflict','Delete or reconcile the retained cloud environment before removing its project from this task');
+    }
+  }
+
+  private saveRevision(task: Task) {
+    this.repo.db.prepare("INSERT INTO task_revisions VALUES(?,?,?)").run(task.taskId, task.revision, JSON.stringify(task));
+  }
+}

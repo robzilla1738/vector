@@ -454,6 +454,34 @@ describe("VectorEngineDriver", () => {
     expect(driver.isConnected()).toBe(false);
   });
 
+  it("uses the authenticated in-process developer engine when an older addon listener has no token API", async () => {
+    let listenerClosed = false;
+    let engineClosed = false;
+    const engine = {
+      newContext: () => 1,
+      open: async () => JSON.stringify({ ok: true, page: 1, context: 1, generation: 1, revision: 1, settled: true }),
+      observe: async () => JSON.stringify({ ok: true }), execute: async () => JSON.stringify({ ok: true }),
+      screenshot: async () => JSON.stringify({ ok: true }), close: async () => JSON.stringify({ ok: true }),
+      getCookies: async () => JSON.stringify({ ok: true }), setCookies: async () => JSON.stringify({ ok: true }),
+      pages: () => [], shutdown: () => { engineClosed = true; },
+    };
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      config: { securityProfile: "developer" },
+      load: async () => ({
+        Engine: class { constructor() { return engine; } },
+        BrowserServiceHandle: { listen: () => ({ addr: () => "127.0.0.1:1", shutdown: () => { listenerClosed = true; } }) },
+        describe: () => JSON.stringify({ engine: "legacy", abiVersion: 1 }), version: () => "legacy",
+      }) as unknown as NativeModule,
+    });
+    await driver.connect();
+    expect(listenerClosed).toBe(true);
+    expect(driver.describe()).toMatchObject({ available: true, version: "legacy" });
+    expect(driver.describe().capabilities?.service).not.toBe(true);
+    await driver.disconnect();
+    expect(engineClosed).toBe(true);
+  });
+
   it("Finding 1: BrowserService execute unwraps nested result.steps", async () => {
     expect(
       flattenExecuteResult({

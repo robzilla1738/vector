@@ -39,7 +39,7 @@ const obs = (): Observation => ({
   },
 });
 
-function harness() {
+function harness(readOnly = false) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const roles: string[] = [];
@@ -49,7 +49,7 @@ function harness() {
       object: {
         status: "continue",
         message: "retry",
-        steps: [{ id: `s-${roles.length}`, op: "click", target: "r1" }],
+        steps: readOnly ? [{ id: `s-${roles.length}`, op: "extract", fields: [{ name: "text", selector: "h1" }] }] : [{ id: `s-${roles.length}`, op: "click", target: "r1" }],
       },
       durationMs: 5,
     };
@@ -132,12 +132,22 @@ describe("H2-C3 repair taxonomy", () => {
 });
 
 describe("repair escalation", () => {
-  it("invokes the recovery model exactly once after three consecutive failed chunks", async () => {
-    const h = harness();
-    const run = await h.coordinator.start({ goal: "click go", pageIds: ["p1"], maxModelCalls: 20, maxSteps: 40 });
+  it("invokes the recovery model exactly once after three consecutive failed read chunks", async () => {
+    const h = harness(true);
+    const run = await h.coordinator.start({ goal: "read heading", pageIds: ["p1"], maxModelCalls: 20, maxSteps: 40 });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("failed");
     expect(h.roles.filter((id) => id === "test/recovery")).toHaveLength(1);
+  });
+
+  it("does not repair an uncertain write by issuing another write", async () => {
+    const h = harness();
+    const run = await h.coordinator.start({ goal: "click go", pageIds: ["p1"], maxModelCalls: 20 });
+    const final = await waitForRun(h.repo, run.runId);
+    expect(final.status).toBe("interrupted");
+    expect(final.error).toContain("Uncertain action outcome");
+    expect(h.executeCalls).toBe(1);
+    expect(h.roles.filter(id => id === "test/recovery")).toHaveLength(0);
   });
 
   it("gives up on permission_denied without spending the miss budget or calling recovery", async () => {

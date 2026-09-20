@@ -20,11 +20,12 @@ function block(theme: "dark" | "light"): string {
 }
 
 describe("shipped stylesheet — native macOS chrome", () => {
-  it("leads the UI stack with Inter Variable", () => {
+  it("leads the UI stack with the native macOS system font and keeps Inter as fallback", () => {
     expect(tokens).not.toMatch(/PP Mori/);
     const font = tokens.match(/--font-ui:\s*([^;]+);/);
     expect(font, "--font-ui").toBeTruthy();
-    expect(font![1]!.trim().startsWith('"Inter Variable"')).toBe(true);
+    expect(font![1]!.trim().startsWith("-apple-system")).toBe(true);
+    expect(font![1]).toContain('"Inter Variable"');
   });
 
   it("defines surface, ink, accent, and agent tokens in both appearances", () => {
@@ -69,8 +70,8 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect((r + g + b) / 3).toBeGreaterThan(24);
   });
 
-  it("keeps the toolbar compact at 52px and exposes motion durations as tokens", () => {
-    expect(tokens).toMatch(/--toolbar-h:\s*52px/);
+  it("keeps the toolbar compact at 48px and exposes motion durations as tokens", () => {
+    expect(tokens).toMatch(/--toolbar-h:\s*48px/);
     expect(styles).toMatch(/\.toolbar\s*\{[^}]*height:\s*var\(--toolbar-h\)/s);
     expect(tokens).toMatch(/--t-fast:\s*120ms/);
     expect(tokens).toMatch(/--t-med:\s*180ms/);
@@ -88,11 +89,11 @@ describe("shipped stylesheet — native macOS chrome", () => {
   it("uses a gray Arc sidebar with a raised selected pill in both appearances", () => {
     const dark = block("dark");
     const light = block("light");
-    expect(dark).toMatch(/--sb-bg:\s*#1f1f1f/);
+    expect(dark).toMatch(/--sb-bg:\s*#292929/);
     expect(dark).toMatch(/--bg-window:\s*#1f1f1f/);
     expect(dark).toMatch(/--sb-selected:\s*#323230/);
     expect(dark).toMatch(/--sb-selected-ink:\s*#f4f4f2/);
-    expect(light).toMatch(/--sb-bg:\s*#eeeeec/);
+    expect(light).toMatch(/--sb-bg:\s*#e7e7e7/);
     expect(light).toMatch(/--bg-window:\s*#eeeeec/);
     expect(light).toMatch(/--sb-selected:\s*#ffffff/);
     expect(light).toMatch(/--sb-selected-ink:\s*#1a1a18/);

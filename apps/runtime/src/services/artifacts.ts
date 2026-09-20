@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { EventTypes, newArtifactId, type Artifact } from "@vector/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
@@ -77,6 +77,22 @@ export class ArtifactStore {
     return written;
   }
 
+  /** Writes every file before committing any row; a failed batch leaves no partial files. */
+  async saveManyStrict(items: ArtifactInput[]): Promise<Artifact[]> {
+    if (!items.length) return [];
+    const placed = items.map(item => this.place(item));
+    await Promise.all([...new Set(placed.map(item => item.dir))].map(dir => mkdir(dir, {recursive:true})));
+    try {
+      await Promise.all(placed.map((item,index) => writeFile(item.artifact.path,items[index]!.buffer)));
+      this.repo.transaction(() => { for (const item of placed) this.repo.saveArtifact(item.artifact); });
+    } catch (error) {
+      for (const item of placed) rmSync(item.artifact.path,{force:true});
+      throw error;
+    }
+    for (const item of placed) this.events.emit(EventTypes.ArtifactAdded,{artifact:item.artifact},item.artifact.runId);
+    return placed.map(item => item.artifact);
+  }
+
   list(filter: { runId?: string; pageId?: string }): Artifact[] {
     return this.repo.listArtifacts(filter);
   }
@@ -86,6 +102,16 @@ export class ArtifactStore {
     if (!artifact) throw new Error(`no artifact ${artifactId}`);
     const data = readFileSync(artifact.path);
     return { artifact, dataBase64: data.toString("base64") };
+  }
+
+  removeFiles(paths: string[]): void {
+    const root = resolve(this.dir);
+    for (const path of paths) {
+      const target = resolve(path);
+      const within = relative(root, target);
+      if (!within || within.startsWith("..") || within.includes("../") || within.includes("..\\")) continue;
+      rmSync(target, { force: true });
+    }
   }
 
   static sha1(b: Buffer) {

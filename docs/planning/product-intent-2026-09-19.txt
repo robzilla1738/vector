@@ -1,0 +1,698 @@
+Vector: Product Intent and Strategic Direction
+Purpose of this document
+This document captures the intended direction for Vector after the current implementation plan is complete. It is a planning brief, not an assumption that every idea below should be built immediately.
+The goal is to determine how Vector can become meaningfully better than Dia, Aside, Cursor, cloud IDEs, and conventional browsers by creating one coherent environment where humans and agents can perform consequential digital work together.
+
+1. Product ambition
+Vector should become the best browser and agentic workspace for getting real work done across the web, code, tools, services, and generated artifacts.
+It should feel like one product:
+* One native browser window and chrome
+* One workspace model
+* One agent contract
+* One permission and authority system
+* One task history
+* One verification model
+* One human takeover experience
+* Multiple execution backends when useful, always made explicit
+* Support for multiple AI providers and agent systems
+Vector should not become another Chromium browser with an AI sidebar. It should also avoid becoming an overloaded collection of browser, IDE, terminal, and chat features.
+Its defining capability should be:
+Delegate an entire task, take over whenever you want, and know what actually happened.
+The broader long-term ambition is:
+Vector is a trusted workspace where humans and agents complete consequential work across the web, code, and connected services.
+
+2. Strategic thesis
+Dia primarily helps users understand and interact with browser context.
+Aside primarily gives agents strong browser automation capabilities.
+Cursor primarily gives agents a powerful environment for working inside codebases.
+Cloud IDEs primarily give users and agents environments in which code can be edited and executed.
+Vector can connect these categories into one coherent task environment:
+* Browse and research
+* Use authenticated websites
+* Connect external services
+* Inspect and modify code
+* Run commands
+* Create and edit artifacts
+* Start development environments
+* Preview applications
+* Verify behavior through a real browser
+* Create pull requests
+* Produce preview deployments
+* Request human judgment when needed
+* Prove which intended outcomes occurred
+The browser is valuable because so much modern work happens through web applications. Vector should use that position to connect human browsing, agent execution, code, and external services under one shared model of authority and verification.
+
+3. Product positioning
+External promise
+Vector is the browser that gets work done with you.
+A more specific explanation:
+Give Vector a complete task. It can work across your browser, files, code, and connected tools. You can take over at any moment, and Vector shows you what it actually accomplished.
+Initial market wedge
+The strongest initial audience is developers and technical operators who already use AI agents and regularly work across:
+* Browsers
+* Repositories
+* Terminals
+* Cloud dashboards
+* Documentation
+* Issue trackers
+* Observability tools
+* Deployment systems
+* Authenticated internal applications
+This audience has high-value workflows, understands permissions, and can evaluate whether Vector is meaningfully more capable than existing tools.
+Longer-term expansion
+Once the execution model is reliable, Vector can expand into:
+* Research
+* Operations
+* Finance and procurement
+* Sales
+* Recruiting
+* Marketing
+* Travel
+* Personal administration
+* Business process automation
+* Software creation for non-developers
+“Best browser for humans and agents” is the destination. It is too broad to serve as the initial wedge.
+
+4. The core product loop
+Every meaningful Vector task should follow the same loop.
+1. The user states an outcome.
+2. Vector assembles the relevant context.
+3. Vector establishes the task’s authority and limits.
+4. The agent works across the permitted surfaces.
+5. The user can observe, redirect, pause, or take over.
+6. Vector checkpoints progress and recovers from interruption.
+7. Vector verifies intended outcomes where possible.
+8. Vector reports completed, prepared, uncertain, and blocked results clearly.
+Examples:
+“Investigate why checkout conversion dropped, inspect our analytics and deployment history, reproduce the problem, fix it, and prepare a pull request.”
+“Compare our software subscriptions with actual usage, identify waste, prepare cancellations, and ask before committing anything above $500.”
+“Build a working version of this idea, connect it to a database, publish a preview, and let me review the result.”
+“Plan the conference trip within this budget, prepare the best bookings, and ask me before purchasing.”
+The product should optimize for successful outcomes rather than the number of agent actions performed.
+
+5. Vector as an agentic workspace
+A Vector workspace should collect everything needed to complete a body of work:
+* Browser tabs and authenticated sessions
+* Tasks and agent sessions
+* Repositories and branches
+* Local or cloud execution environments
+* Terminals and processes
+* Documents and generated artifacts
+* Connected accounts and tools
+* Workspace-specific memory
+* Decisions and user preferences
+* Permissions and spending limits
+* Checkpoints
+* Verification evidence
+* Final results and receipts
+The workspace should provide continuity across tasks without becoming an opaque pool of personal data. Users need to understand:
+* What Vector remembers
+* Why that information is relevant
+* Which workspace can access it
+* Where it is stored
+* How to remove or restrict it
+The task, rather than the tab or repository, should become Vector’s central unit of work.
+
+6. Development work inside Vector
+Vector should support real software development through local and cloud environments.
+A user should be able to:
+1. Connect GitHub.
+2. Select a repository and issue.
+3. Create an isolated environment.
+4. Ask an agent to investigate or implement the request.
+5. Watch code changes, terminal activity, and logs.
+6. Open the running application in a normal Vector tab.
+7. Take over the browser or development environment.
+8. Have Vector test the behavior against acceptance criteria.
+9. Create a branch and pull request.
+10. Publish a Vercel preview.
+11. Verify the preview through the browser.
+12. Review one receipt connecting the request, changes, tests, preview, and observed behavior.
+Example:
+“Implement this GitHub issue, run the application, verify every acceptance criterion in the browser, and prepare a pull request and preview deployment.”
+Vector should not rebuild Cursor unnecessarily
+Vector should provide enough native development capability for a coherent experience:
+* File browsing
+* Diffs
+* Lightweight editing
+* Terminal sessions
+* Process and log inspection
+* Preview surfaces
+* Agent-generated changes
+* Review and approval
+For intensive manual coding, Vector should integrate with Cursor, VS Code, Xcode, or other mature editors. The same repository, task, branch, and environment should remain connected when users move between tools.
+Vector’s differentiation comes from coordinating and verifying the complete task, not from having the most sophisticated text editor.
+
+7. Cloud sandbox
+Vector should support isolated cloud sandboxes for development and agent execution.
+Desired experience
+A user connects a repository and requests a task. Vector:
+* Creates an isolated sandbox
+* Clones the permitted repository
+* Injects narrowly scoped credentials
+* Installs dependencies
+* Starts required services
+* Exposes a preview to the Vector browser
+* Lets agents modify and run the project
+* Captures checkpoints
+* Runs validation
+* Produces persistent source changes
+* Disposes of temporary runtime state when appropriate
+Sandbox capabilities
+The eventual system should support:
+* Reproducible environment definitions
+* CPU, memory, storage, and execution limits
+* Timeouts and idle suspension
+* Network policies
+* Secret injection by reference
+* Workspace and task isolation
+* Checkpoints and rollback
+* Sleep and resume
+* Persistent branches and artifacts
+* Export to a local checkout
+* Shareable application previews
+* Parallel agent environments
+* Observable processes and logs
+Build versus integrate
+Vector does not initially need to build its own global compute platform. It can integrate with existing sandbox and infrastructure providers while owning:
+* Sandbox orchestration
+* Workspace integration
+* Permissions
+* Agent interaction
+* Browser previews
+* Checkpoints
+* Verification
+* User-facing task history
+Infrastructure can be replaced later if scale, security, latency, or economics justify owning more of the stack.
+
+8. GitHub, Vercel, and external tools
+Vector should connect to services such as:
+* GitHub
+* GitLab
+* Vercel
+* Cloudflare
+* AWS
+* Linear
+* Jira
+* Sentry
+* Datadog
+* Supabase
+* Slack
+* Notion
+* Google Drive
+* Microsoft 365
+* Internal company tools
+Connections should use official APIs and scoped authorization whenever available. Browser automation should cover gaps, legacy systems, and workflows where APIs do not provide the required interaction.
+Example GitHub capabilities
+A workspace might permit an agent to:
+* Read selected repositories
+* Read issues and pull requests
+* Create a branch
+* Push commits to that branch
+* Create or update a pull request
+* Read checks and review comments
+Additional authority could be required to:
+* Merge a pull request
+* Modify repository settings
+* Access other repositories
+* Change workflow configuration
+* Read sensitive environments or secrets
+Example Vercel capabilities
+A workspace might permit an agent to:
+* Read selected projects
+* Inspect deployments and logs
+* Create preview deployments
+* Associate a preview with a pull request
+* Verify the deployed application
+Additional authority could be required to:
+* Change project settings
+* Read or modify secret configuration
+* Promote to production
+* Modify domains
+* Roll back production
+The user should understand which system performed an action and which account and environment were affected.
+
+9. AI providers, subscriptions, API keys, and external agents
+Vector should not force users into one model provider or one bundled assistant.
+Users should be able to choose among several ways of providing intelligence.
+Managed Vector AI
+Vector can offer a hosted, paid AI service with:
+* Simple onboarding
+* Curated model routing
+* Predictable defaults
+* Usage controls
+* Support for non-technical users
+Bring your own API key
+Advanced users and organizations should be able to connect supported providers using their own API credentials.
+Potential providers include:
+* OpenAI
+* Anthropic
+* Google
+* xAI
+* OpenRouter
+* Compatible enterprise or self-hosted endpoints
+Vector should show:
+* Which provider and model are being used
+* Whether execution is local or remote
+* Which context will be transmitted
+* Estimated or actual usage where available
+* Any relevant capability limitations
+Keys should be stored through secure system facilities or an encrypted credential broker. They should never be placed into prompts, logs, repositories, or sandbox environment variables unless the user explicitly grants that sandbox access.
+Existing subscriptions and authenticated agent products
+Where providers officially support it, users should be able to authenticate with an existing subscription or account rather than obtaining a separate API key.
+Possible integrations might include:
+* Codex
+* Claude Code
+* Gemini tooling
+* Grok CLI
+* Other authenticated agent clients
+However, Vector must not assume that a consumer subscription automatically includes API access or permits third-party reuse. Each integration needs to follow the provider’s supported authentication and licensing model.
+The interface should clearly distinguish:
+* Subscription-backed authentication
+* API-key usage
+* Enterprise credentials
+* Local model execution
+* Vector-managed usage
+Local agent and CLI integration
+Vector should let installed agents and CLIs operate through its agent contract.
+Examples include:
+* Codex
+* Claude Code
+* Grok CLI
+* Gemini CLI
+* Custom company agents
+* Local scripts
+* MCP clients
+* CI agents
+An external agent should be able to request browser perception and actions without receiving unrestricted access to the user’s entire browser or credential store.
+Vector should remain the authority boundary:
+* The external agent proposes or requests actions.
+* Vector checks task scope and permissions.
+* Vector performs or delegates the action.
+* Vector records the result.
+* Vector verifies outcomes.
+* The user sees one coherent history regardless of which agent participated.
+Model and agent routing
+A task may involve different models or agents for different stages. Vector should make this behavior explicit.
+For example:
+* One model plans the task.
+* A coding agent modifies the repository.
+* A browser agent validates the application.
+* A smaller model summarizes results.
+* A local model handles private document classification.
+The user should always be able to determine:
+* Which agent is currently acting
+* Which model or provider it uses
+* What context it can access
+* What authority it has
+* Where execution occurs
+* How much it costs when known
+Provider flexibility is an adoption advantage. Transparency and shared governance are the differentiators.
+
+10. One agent contract
+Every built-in or external agent should use one stable Vector contract.
+The contract should eventually cover:
+* Structured browser perception
+* Stable references to page elements and resources
+* Task objectives and completion conditions
+* Scoped capabilities
+* Workspace context
+* Transaction boundaries
+* Idempotency and retry safety
+* Human takeover
+* Checkpoints
+* Interruption and recovery
+* Artifacts
+* Outcome evidence
+* Verification status
+* Explicit execution backend identity
+* Replay and debugging
+This contract should work across:
+* Chromium-backed browsing
+* Vector’s specialized engine
+* Local execution
+* Cloud sandboxes
+* Connected services
+* Built-in agents
+* External agent systems
+The contract and execution history can become more defensible than any individual model integration.
+
+11. Human takeover
+Human and agent interaction should occur in the same live environment.
+When a user takes over, they should inherit:
+* The exact page
+* Current authentication
+* Scroll position
+* Form contents
+* Selected account
+* Unsaved state
+* Task objective
+* Relevant prior actions
+* The reason intervention is needed
+When control returns, the agent should observe what changed and continue safely.
+Common takeover moments include:
+* Passkeys
+* CAPTCHAs
+* Identity verification
+* Subjective choices
+* Ambiguous forms
+* Sensitive communication
+* Final financial decisions
+* Visual review
+Human takeover should feel like briefly grabbing the controls, not switching into a separate automation browser.
+
+12. Authority and permissions
+Vector should support bounded task authority.
+A task can define:
+* Allowed websites and services
+* Accounts
+* Repositories
+* Projects and environments
+* Local or cloud files
+* Permitted actions
+* Spending limits
+* Time limits
+* Communication limits
+* Actions requiring explicit approval
+* Completion conditions
+A user’s task instruction can grant authority within these boundaries.
+Example:
+“Review these subscriptions and cancel any unused plan costing less than $100 per month. Ask before canceling anything else.”
+Vector should be able to execute qualifying cancellations without asking about every click while still stopping at the user’s stated boundary.
+Permissions must be understandable. Users should see meaningful capabilities such as “create preview deployments” rather than internal protocol-level permissions.
+
+13. Verification and receipts
+Vector must distinguish between different levels of completion:
+* Proposed
+* Prepared
+* Dispatched
+* Observed
+* Submitted
+* Confirmed by the interface
+* Verified through an independent signal
+* Uncertain
+* Failed
+* Needs user action
+Examples:
+* Prepared: Cancellation form completed but not submitted
+* Submitted: Request sent successfully
+* Observed: Website displayed a success message
+* Verified: Account now shows the subscription ending October 31
+* Uncertain: Request was submitted, but no confirmation or state change was available
+* Needs you: Passkey authentication is required
+Receipts should be concise and useful rather than exhaustive event logs.
+For development work, a receipt might connect:
+* Original issue
+* Branch and commit
+* Checks performed
+* Build and test results
+* Browser acceptance criteria
+* Screenshots or recordings
+* Pull request
+* Preview deployment
+* Production deployment
+* Remaining uncertainty
+Truthful uncertainty should be treated as a core product feature.
+
+14. Browser and rendering architecture
+The product should use the best execution backend for each workload while presenting one coherent browser.
+Chromium-backed browsing
+Chromium should remain the default for ordinary live browsing while it provides the best compatibility for:
+* Extensions
+* Authentication
+* Passkeys
+* Video conferencing
+* Media and DRM
+* Accessibility
+* Developer tools
+* Complex web applications
+* Enterprise identity systems
+Vector’s specialized engine
+Vector’s own engine should be retained and developed where it provides measurable advantages:
+* Deterministic replay
+* Controlled execution
+* Semantic extraction
+* Agent evaluation
+* Reproducible testing
+* Offline or synthetic content
+* Security isolation
+* High-volume structured workloads
+* Efficient perception
+The specialized engine should earn every workload it receives. General web-engine completeness should not be pursued as an end in itself.
+Backend behavior must never change silently when it affects compatibility, privacy, permissions, or task semantics.
+
+15. What regular users should experience
+Regular users will not choose Vector because of its internal architecture. They will choose it because of visible outcomes.
+Complete jobs
+Vector should finish substantial work rather than merely offering instructions.
+Persistent but controlled context
+Workspaces should remember relevant preferences, documents, tabs, decisions, and unfinished work.
+Low-interruption autonomy
+Vector should resolve routine details independently and request help for judgment, credentials, or authority.
+Immediate takeover
+Users should be able to step into the exact live state and return control naturally.
+Honest status
+Vector should state what happened, what it could verify, and what remains uncertain.
+Familiar browsing
+Normal browsing must remain fast, compatible, and understandable. Agent features should not make ordinary browser use feel heavier.
+Gradual trust
+Users should progress naturally from assistance to delegation:
+1. Understand
+2. Prepare
+3. Act with review
+4. Delegate within limits
+5. Automate trusted recurring work
+
+16. Signature experiences
+Vector needs a small number of experiences that clearly demonstrate its advantage.
+Development
+“Fix this issue, verify it in the running application, create a PR, and publish a preview.”
+Production investigation
+“Investigate this alert across Sentry, logs, recent deployments, and the repository. Reproduce the problem and prepare a fix.”
+Application creation
+“Build this small product, connect the required services, deploy a preview, and let me revise it visually.”
+Procurement
+“Compare these vendors against our requirements and usage, prepare a recommendation, and stage any necessary account changes.”
+Research
+“Research this decision across the sources in this workspace, verify important claims, and produce a reviewable report.”
+Personal administration
+“Collect what is needed for this claim, complete the available forms, and show me exactly what still requires my attention.”
+Each experience should traverse multiple surfaces while remaining one understandable task.
+
+17. Competitive differentiation
+Relative to Dia
+Vector should offer deeper execution, bounded delegation, development workflows, external agent support, recovery, and outcome verification.
+Dia may remain easier to understand and better positioned for casual assistance. Vector must preserve comparable browsing polish while demonstrating much greater task completion.
+Relative to Aside
+Vector should match strong browser-agent execution while providing a deeper human workspace, shared live sessions, task authority, cross-tool coordination, cloud development, and verified outcomes.
+Aside may remain simpler and faster for direct automation. Vector must ensure its broader architecture produces greater reliability rather than additional complexity.
+Relative to Cursor
+Vector should let coding agents operate across authenticated web systems and verify the running product in the same environment.
+Cursor will likely remain stronger for intensive manual editing. Vector should integrate with it instead of competing everywhere.
+Relative to cloud IDEs
+Vector should treat the repository and runtime as components of a broader task workspace. Its advantage should be live browser use, authenticated services, human takeover, cross-service authority, and end-to-end verification.
+
+18. Durable competitive advantage
+The long-term moat should be accumulated execution knowledge:
+* Which observations establish that an outcome occurred
+* Which actions can be retried safely
+* How workflows recover from interruption
+* Where websites and external services produce ambiguity
+* Which permissions tasks actually require
+* How users intervene and return control
+* How site changes affect task reliability
+* Which semantic representations work across backends
+* Which verification methods produce trustworthy results
+* How code changes relate to observed application behavior
+This data can improve:
+* Verification policies
+* Recovery logic
+* Site and service adapters
+* Planning
+* Model routing
+* Permission suggestions
+* Evaluations
+* Task reliability
+The moat is not a Chromium wrapper, prompt, sidebar, or custom renderer. It is the trusted execution system and the evidence accumulated from real work.
+
+19. Product principles
+1. Outcomes over activity. Optimize for completed and verified work.
+2. One coherent workspace. Browser, code, tools, and agents must feel like one system.
+3. Explicit execution. Show which agent, model, backend, account, and environment are acting.
+4. Bounded autonomy. Give agents useful authority within understandable limits.
+5. Truthful uncertainty. Never represent an attempted action as a verified outcome.
+6. Human control without reset. Users can take over and return control without losing continuity.
+7. Open agent ecosystem. Built-in and external agents use the same contract.
+8. Provider choice. Support managed AI, API keys, subscriptions where officially supported, local models, and external agents.
+9. Compatibility first for daily browsing. Use Chromium where compatibility matters.
+10. Specialized engines must earn their use. Route workloads according to demonstrated product value.
+11. Integrate mature tools. Do not rebuild editors, compute platforms, or deployment systems without a clear advantage.
+12. Complexity stays underneath. Greater capability should produce a calmer user experience.
+
+20. What Vector should avoid
+Vector should avoid:
+* Building a complete general-purpose web engine without demonstrated product need
+* Recreating Cursor, VS Code, GitHub, or Vercel
+* Becoming a dashboard of loosely connected tools
+* Adding agents without a shared authority and verification system
+* Claiming success from tool dispatch alone
+* Hiding model or execution backend behavior
+* Passing browser credentials directly into sandboxes
+* Treating consumer AI subscriptions as reusable API authorization without official support
+* Supporting many workflows at mediocre reliability
+* Optimizing primarily for benchmark demonstrations
+* Requiring approval for every routine action
+* Asking for excessive permanent permissions
+* Making ordinary browsing worse
+* Building broad consumer features before the core delegation loop works
+* Using “agent-native” language as a substitute for clear user value
+
+21. Recommended sequencing
+Stage 1: Establish the trusted browser foundation
+Complete and validate:
+* High-quality Chromium-backed daily browsing
+* Unified workspace and task model
+* Agent authority
+* Structured perception
+* Human takeover
+* Checkpoints and recovery
+* Verification and receipts
+* Explicit backend behavior
+Stage 2: Prove the technical-work wedge
+Deliver a small set of reliable workflows involving:
+* Browser
+* Repository
+* Terminal
+* Local execution
+* GitHub
+* Browser-based acceptance verification
+* Pull requests
+Stage 3: Add cloud sandboxes and previews
+Introduce:
+* Isolated cloud environments
+* Reproducible setup
+* Vercel preview deployment
+* Secure secret brokering
+* Checkpoints
+* Shareable results
+* Parallel task execution
+Stage 4: Open the agent ecosystem
+Support:
+* Managed Vector AI
+* BYOK providers
+* Official subscription-backed integrations where permitted
+* Local models
+* Codex and other agent clients
+* CLIs
+* MCP
+* Enterprise agents
+* Stable SDKs
+Stage 5: Expand beyond development
+Use the proven authority and verification system for selected workflows in research, operations, finance, sales, and personal administration.
+Expansion should be driven by observed task reliability and retention rather than feature breadth.
+
+22. Measures of success
+The primary product metric should be:
+Verified valuable tasks completed per active user.
+Supporting metrics should include:
+* Task completion rate
+* Verified completion rate
+* Time saved
+* Time to first valuable task
+* User intervention rate
+* Recovery success rate
+* Duplicate consequential action rate
+* Incorrect success claim rate
+* Unresolved uncertainty rate
+* Human takeover success
+* Cost per completed task
+* Task latency
+* Weekly retained users
+* Repeated delegated workflows
+* Percentage of users who adopt Vector as a regular browser
+* Pull requests or artifacts accepted without major rework
+* Preview-to-production conversion where relevant
+The incorrect-success and duplicate-action rates should be treated as critical safety and trust metrics, even when the absolute numbers are low.
+
+23. Standard for determining whether Vector is better
+Vector should be evaluated against Dia, Aside, Cursor, and relevant cloud environments using real users and realistic workflows.
+Users should receive the same objectives without being told why Vector is expected to perform better.
+Vector wins only if users independently find that it:
+* Completes more meaningful work correctly
+* Requires less supervision
+* Recovers better from failure
+* Makes consequential actions easier to trust
+* Connects browsing and development more naturally
+* Supports immediate human takeover
+* Produces more useful and verifiable results
+* Works well as an ordinary browser
+* Saves enough time that they return voluntarily
+Roadmap completion, architecture diagrams, and benchmark scores are insufficient evidence.
+
+24. Questions for the planning session
+The planning session should produce concrete answers to these questions:
+1. What three workflows can demonstrate Vector’s advantage most clearly?
+2. Which user segment experiences those workflows frequently enough to adopt a new browser?
+3. What reliability threshold must each workflow reach before release?
+4. What is the precise workspace and task data model?
+5. What authority can a task carry, and how is it communicated?
+6. What evidence qualifies an outcome as verified?
+7. How does human takeover work across browser, terminal, and sandbox?
+8. Which parts run locally, in Vector-managed infrastructure, or through third parties?
+9. Which cloud sandbox provider or architecture should be used initially?
+10. How are browser credentials, service integrations, and sandbox secrets separated?
+11. Which GitHub and Vercel capabilities belong in the first development release?
+12. Which AI providers and authentication methods should launch first?
+13. How will subscription-backed agents, BYOK models, and Vector-managed AI coexist?
+14. What is the stable contract for external agents such as Codex and Grok CLI?
+15. What should remain native inside Vector, and what should open in an external editor?
+16. How will Vector measure verified task completion on live workflows?
+17. What work should stop because it does not improve reliability, adoption, or differentiation?
+18. What can be shipped as a narrow, exceptional product before broadening the platform?
+
+25. Final product intent
+Vector should not attempt to win by containing more AI features than every other browser.
+It should win by making the browser the trusted environment in which humans and agents perform real work together.
+A successful Vector allows users to connect their preferred models and agents, open a workspace, grant bounded authority, and delegate an outcome spanning the browser, code, cloud environments, and external services. The user can observe or take over at any time. Vector preserves state, recovers safely, and produces clear evidence of what happened.
+The defining user experience is:
+I gave Vector meaningful work, it used the tools and agents I chose, I remained in control, and I could trust the result.
+
+Copy and paste this after the planning document:
+
+Brand decision: rename Vector to Aux
+Treat Aux as the final working name for the entire product and technical platform. Do not preserve “Vector” as the name of an internal engine, subsystem, or public-facing concept.
+Update the plan so that:
+* Aux is the browser, agentic workspace, and platform.
+* Aux Engine is the specialized rendering, semantic perception, replay, and controlled-execution engine.
+* Aux Agent Runtime is the shared agent execution and orchestration layer.
+* Aux Sandbox provides local and cloud development environments.
+* Aux Connect covers GitHub, Vercel, model providers, external agents, and other integrations.
+* Aux Tasks represents delegated work and its persistent state.
+* Aux Receipts represents action evidence, verification, and explicit uncertainty.
+* Aux SDK, CLI, and API expose the platform to developers and external agents.
+Use this central product statement:
+Aux is the browser that works with you. Delegate real work, take over whenever you want, and know what actually happened.
+Include a complete rename and migration workstream in the implementation plan. It should inventory and update:
+* Product names and user-facing copy
+* Application names, bundle identifiers, icons, and metadata
+* Repository and package names where appropriate
+* Source identifiers and namespaces where changing them is safe and valuable
+* Build targets, scripts, environment variables, and configuration
+* CLI commands and executable names
+* APIs, SDKs, schemas, and protocol identifiers
+* Local storage paths, databases, preferences, caches, and user profiles
+* Logging, telemetry, analytics, and crash-reporting identifiers
+* Documentation, tests, fixtures, examples, and screenshots
+* Domains, deep links, update channels, signing, and distribution configuration
+* Backward compatibility for existing user data and installations
+Do not perform a blind global text replacement. Classify each occurrence of “Vector” before changing it. Preserve compatibility aliases or migrations where existing persisted data, protocols, package consumers, or installations could otherwise break.
+The final product should present one coherent Aux identity. “Vector” may appear only in migration code or historical compatibility notes when technically required, and those remaining references should be explicitly documented.
+Before treating the external rename as final, include validation for:
+* Trademark and naming conflicts
+* Domains and social handles
+* App-store conflicts
+* Package and executable naming conflicts
+* Pronunciation and recall
+* International meanings
+* Search discoverability
+Do not let naming work distract from the primary product objective. Sequence the migration to minimize implementation churn, and keep the core priority on verified task completion, human takeover, daily browser quality, cloud development, provider choice, and secure agent execution.

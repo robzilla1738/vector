@@ -80,10 +80,10 @@ describe("tab order", () => {
     expect(moveTab(layout, "a", "a")).toBe(layout);
   });
 
-  it("hides worker and detached pages from the tab list", () => {
+  it("shows human background tabs while hiding worker and detached pages", () => {
     const pages = [page("a"), page("w", { ownedByRuntime: true }), page("bg", { viewStatus: "background" }), page("d", { viewStatus: "detached" })];
     const layout = syncSpaces({ ...emptyLayout(), order: syncOrder([], pages) }, pages);
-    expect(tabsInSpace(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["a"]);
+    expect(tabsInSpace(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["a", "bg"]);
   });
 });
 

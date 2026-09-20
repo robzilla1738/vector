@@ -1,4 +1,5 @@
 import {
+  type LanguageModel,
   APICallError,
   generateObject,
   generateText,
@@ -181,15 +182,17 @@ export function gatewayProviderOptions(only?: string[], modelId?: string) {
 }
 
 export class GatewayModelClient implements ModelClient {
-  private gateway: ReturnType<typeof createGateway>;
+  private gateway: ReturnType<typeof createGateway> | undefined;
+  private resolveModel: (id: string) => LanguageModel;
   private readonly callTimeoutMs: number;
   private readonly only: string[] | undefined;
 
-  constructor(apiKey: string, opts: { callTimeoutMs?: number; only?: string[] } = {}) {
+  constructor(apiKey: string, opts: { callTimeoutMs?: number; only?: string[]; model?: (id: string) => LanguageModel } = {}) {
     if (!apiKey) throw new VectorError("invalid_params", "AI_GATEWAY_API_KEY is required");
-    this.gateway = createGateway({ apiKey });
+    this.gateway = opts.model ? undefined : createGateway({ apiKey });
+    this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.callTimeoutMs = opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
-    this.only = opts.only?.length ? opts.only : undefined;
+    this.only = this.gateway && opts.only?.length ? opts.only : undefined;
   }
 
   async generateStructured<T>(opts: {
@@ -207,14 +210,14 @@ export class GatewayModelClient implements ModelClient {
     if (!schemaNeedsJsonFallback(opts.schema)) {
       try {
         const res = await generateObject({
-          model: this.gateway(opts.modelId),
+          model: this.resolveModel(opts.modelId),
           schema: opts.schema,
           system: opts.system,
           prompt: opts.prompt,
           abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
           maxRetries: 0,
           maxOutputTokens: opts.maxOutputTokens ?? 2000,
-          providerOptions: gatewayProviderOptions(this.only, opts.modelId),
+          providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
         });
         return {
           object: res.object,
@@ -255,13 +258,13 @@ export class GatewayModelClient implements ModelClient {
       : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(opts.schema))}`;
     const parse = (text: string): T => opts.schema.parse(normalizePlannerObject(extractJson(text)));
     const stream = streamText({
-      model: this.gateway(opts.modelId),
+      model: this.resolveModel(opts.modelId),
       system: `${opts.system}${schemaHint}`,
       messages: [{ role: "user", content: opts.prompt }],
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 2000,
-      providerOptions: gatewayProviderOptions(this.only, opts.modelId),
+      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
     });
     let text = "";
     for await (const delta of stream.textStream) {
@@ -354,7 +357,7 @@ export class GatewayModelClient implements ModelClient {
       throw new VectorError("capability_unsupported", "vision is not available on the Cerebras planner");
     }
     const res = await generateText({
-      model: this.gateway(opts.modelId),
+      model: this.resolveModel(opts.modelId),
       system: opts.system,
       messages: opts.imageDataUrl
         ? [
@@ -370,7 +373,7 @@ export class GatewayModelClient implements ModelClient {
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 1200,
-      providerOptions: gatewayProviderOptions(this.only, opts.modelId),
+      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
     });
     return {
       text: res.text,
@@ -381,6 +384,7 @@ export class GatewayModelClient implements ModelClient {
   }
 
   async listModels(): Promise<{ id: string; name?: string }[]> {
+    if (!this.gateway) return [];
     const catalog = await this.gateway.getAvailableModels();
     return catalog.models.map((m) => ({ id: m.id, name: m.name }));
   }

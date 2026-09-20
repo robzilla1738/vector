@@ -110,7 +110,7 @@ async function waitForRun(repo: Repo, runId: string, ms = 5000) {
 }
 
 describe("vision fallback", () => {
-  it("re-plans from a screenshot after a chunk fails, using the vision model", async () => {
+  it("uses vision after a failed write but refuses completion without reconciliation", async () => {
     const h = harness({
       executeFails: 1,
       structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
@@ -118,8 +118,9 @@ describe("vision fallback", () => {
     });
     const run = await h.coordinator.start({ goal: "do it", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
-    expect(final.status).toBe("completed");
-    expect(final.result).toEqual({ ok: true });
+    expect(final.status).toBe("interrupted");
+    expect(final.result).toBeUndefined();
+    expect(final.error).toContain("Uncertain action outcome");
     expect(h.generateText).toHaveBeenCalledOnce();
     const call = h.generateText.mock.calls[0]?.[0];
     expect(call?.imageDataUrl).toMatch(/^data:image\/png/);
@@ -188,8 +189,9 @@ describe("vision fallback", () => {
     });
     const run = await coord.start({ goal: "do it", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
-    expect(final.status).toBe("completed");
-    expect(final.result).toEqual({ ok: true });
+    expect(final.status).toBe("interrupted");
+    expect(final.result).toBeUndefined();
+    expect(final.error).toContain("Uncertain action outcome");
     expect(h.generateText).not.toHaveBeenCalled();
     expect(h.pages.capture).not.toHaveBeenCalled();
   });
@@ -203,8 +205,9 @@ describe("vision fallback", () => {
     });
     const run = await h.coordinator.start({ goal: "do it again", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
-    expect(final.status).toBe("completed");
-    expect(final.result).toEqual({ ok: true });
+    expect(final.status).toBe("interrupted");
+    expect(final.result).toBeUndefined();
+    expect(final.error).toContain("Uncertain action outcome");
     expect(h.modelCalls.filter((c) => c.role === "vision")).toHaveLength(1);
     expect(h.generateStructured).toHaveBeenCalled();
   });

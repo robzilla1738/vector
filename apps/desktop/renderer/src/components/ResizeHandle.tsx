@@ -42,6 +42,15 @@ export function ResizeHandle({ side, value, min, max, reset, onResize }: {
       className={`resize-handle ${side}`}
       role="separator"
       aria-orientation="vertical"
+      aria-label={side === "left" ? "Sidebar width" : "Agent panel width"}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); const direction = (e.key === "ArrowRight" ? 1 : -1) * (side === "left" ? 1 : -1); onResize(Math.min(max, Math.max(min, value + direction * 16))); }
+        if (e.key === "Home") { e.preventDefault(); onResize(reset); }
+      }}
       title="Drag to resize · double-click resets"
       onPointerDown={onDown}
       onDoubleClick={() => onResize(reset)}

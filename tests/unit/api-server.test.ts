@@ -20,6 +20,7 @@ beforeAll(async () => {
       if (method === "runs.get") throw new VectorError("not_found", "no run");
       return { echo: method, params };
     },
+    authorizeScopedToken: token => token === "scoped" ? { external: true, connectionId: "connection", scope: { kind: "workspace", workspaceId: "workspace" } } : null,
   });
   const port = await server.listen(0);
   base = `http://127.0.0.1:${port}`;
@@ -59,6 +60,13 @@ describe("ApiServer over HTTP", () => {
     expect(body.result.params).toEqual({ backend: "vector" });
   });
 
+  it("accepts a valid scoped token for HTTP and rejects revoked or unknown tokens", async () => {
+    const response = await rpc({ method: "pages.list", params: {} }, { authorization: "Bearer scoped" });
+    expect(response.status).toBe(200);
+    const revoked = await rpc({ method: "pages.list", params: {} }, { authorization: "Bearer revoked" });
+    expect(revoked.status).toBe(401);
+  });
+
   it("returns 413 for oversized bodies", async () => {
     const big = JSON.stringify({ method: "pages.list", params: { pad: "x".repeat(MAX_BODY_BYTES + 16) } });
     const r = await rpc(big, bearer);
@@ -94,6 +102,7 @@ describe("ApiServer over WebSocket", () => {
 
   it("accepts the token on the upgrade query and refuses without it", async () => {
     await expect(connect(base.replace("http", "ws") + "/ws")).rejects.toThrow();
+    await expect(connect(base.replace("http", "ws") + "/ws?token=scoped")).rejects.toThrow();
     const ws = await connect(`${base.replace("http", "ws")}/ws?token=${TOKEN}`);
     const ok = await roundtrip(ws, JSON.stringify({ id: 7, method: "pages.list", params: {} }));
     expect(ok.id).toBe(7);

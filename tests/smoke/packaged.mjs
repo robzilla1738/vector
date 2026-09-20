@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
  * R9.5 packaged-build smoke — boots the runtime bundled inside the packaged
- * app (release/<platform>/Vector.app/Contents/Resources/runtime) exactly as the
+ * app (release/<platform>/Aux Browser.app/Contents/Resources/runtime) exactly as the
  * packaged Electron shell would, then verifies the loopback API, a real
  * page open+observe against a fixture, persistence across restart, and
  * migration idempotency. Exits non-zero on any failure.
  *
  *   node tests/smoke/packaged.mjs
  */
-import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, existsSync, readdirSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { mkdtempSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -18,25 +19,20 @@ import http from "node:http";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const release = join(root, "release");
 
-const fail = (msg) => { console.error(`✗ ${msg}`); process.exit(1); };
+const children = new Set();
+process.on("exit", () => { for (const child of children) child.kill("SIGTERM"); });
+const fail = (msg) => { throw new Error(msg); };
 const ok = (msg) => console.log(`✓ ${msg}`);
 
-const nativeBin = join(release, process.platform === "win32" ? "ve-shell.exe" : "ve-shell");
-if (existsSync(nativeBin)) ok(`native product: ${nativeBin}`);
-
-// locate the packaged runtime entry (Electron hybrid, if present)
+// Locate the desktop runtime; a standalone engine binary cannot satisfy this smoke.
 let entry;
 for (const dir of ["mac-arm64", "mac", "linux-unpacked", "win-unpacked"]) {
-  const p = join(release, dir, "Vector.app", "Contents", "Resources", "runtime", "dist", "main.js");
+  const p = join(release, dir, "Aux Browser.app", "Contents", "Resources", "runtime", "dist", "main.js");
   if (existsSync(p)) { entry = p; break; }
   const alt = join(release, dir, "resources", "runtime", "dist", "main.js");
   if (existsSync(alt)) { entry = alt; break; }
 }
 if (!entry) {
-  if (existsSync(nativeBin)) {
-    ok("native product packaged; Electron hybrid not present (pnpm package:electron)");
-    process.exit(0);
-  }
   fail(`no packaged runtime under ${release} — run pnpm package:electron`);
 }
 ok(`packaged runtime: ${entry}`);
@@ -53,27 +49,47 @@ const probeFixture = () =>
   });
 if (!(await probeFixture())) {
   fx = spawn(process.execPath, [join(root, "scripts", "fixtures.mjs")], { stdio: "ignore" });
+  children.add(fx);
   for (let i = 0; i < 40 && !(await probeFixture()); i++) await new Promise((r) => setTimeout(r, 500));
   if (!(await probeFixture())) fail("records fixture did not come up on :4810");
 }
 ok(`records fixture up on :${fixturePort}`);
 
 const TOKEN = "smoke-token";
-const dataDir = mkdtempSync(join(tmpdir(), "vector-smoke-"));
+const dataDir = mkdtempSync(join(tmpdir(), "aux-smoke-"));
+// Dotenv discovery checks cwd and two ancestors. Keep every candidate inside
+// the temporary fixture, and do not inherit provider credentials or app config.
+const runtimeCwd = join(dataDir, "isolated", "runtime");
+mkdirSync(runtimeCwd, { recursive: true });
 
 function boot() {
   const port = 15200 + Math.floor(Math.random() * 500);
   const proc = spawn(process.execPath, [entry], {
+    cwd: runtimeCwd,
     env: {
-      ...process.env,
-      VECTOR_DATA_DIR: dataDir,
-      VECTOR_API_PORT: String(port),
-      VECTOR_API_TOKEN: TOKEN,
-      VECTOR_RUNTIME_AUTOSTART: "1",
+      PATH: process.env.PATH,
+      HOME: dataDir,
+      TMPDIR: dataDir,
+      AUX_DATA_DIR: dataDir,
+      AUX_API_PORT: String(port),
+      AUX_API_TOKEN: TOKEN,
+      AUX_RUNTIME_AUTOSTART: "1",
+      AUX_ENGINE: "0",
+      AUX_ENGINE_ALLOWLIST: `127.0.0.1:${fixturePort}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
+  children.add(proc);
+  proc.stdout.resume();
   return { proc, port };
+}
+
+async function stop(proc) {
+  if (proc.exitCode !== null || proc.signalCode !== null) return;
+  const exited = once(proc, "exit");
+  proc.kill("SIGTERM");
+  const timeout = setTimeout(() => proc.kill("SIGKILL"), 10000);
+  try { await exited; } finally { clearTimeout(timeout); children.delete(proc); }
 }
 
 const rpc = (port, method, params) =>
@@ -95,6 +111,7 @@ const rpc = (port, method, params) =>
       },
     );
     req.on("error", reject);
+    req.setTimeout(10000, () => req.destroy(new Error(`${method} timed out`)));
     req.end(JSON.stringify({ id: 1, method, params }));
   });
 
@@ -134,8 +151,7 @@ await rpc(first.port, "operations.saveRequest", {
 });
 ok("operation saved in packaged db");
 
-first.proc.kill("SIGTERM");
-await new Promise((r) => setTimeout(r, 1200));
+await stop(first.proc);
 
 // ---- boot 2: same dataDir — migrations idempotent, state survived ----
 const second = boot();
@@ -144,11 +160,18 @@ const ops = await rpc(second.port, "operations.list", {});
 if (!ops.some((o) => o.name === "smoke.op")) fail("operation lost across packaged restart");
 ok("operation persisted across restart (migrations idempotent)");
 
+const denied = await rpc(second.port, "operations.invoke", { siteKey: `127.0.0.1:${fixturePort}`, name: "smoke.op" });
+if (denied.status === "completed" || !denied.error?.includes("egress denied")) fail("request unexpectedly bypassed its egress grant");
+ok("request without an egress grant blocked");
+await rpc(second.port, "settings.set", {
+  effectGrants: ["effect:read", { effect: "egress", origin: `http://127.0.0.1:${fixturePort}`, scope: "*", expiresAt: 0 }],
+});
 const inv = await rpc(second.port, "operations.invoke", { siteKey: `127.0.0.1:${fixturePort}`, name: "smoke.op" });
 if (inv.status !== "completed") fail(`invoke failed: ${inv.error}`);
 ok(`zero-model invoke: ${inv.route.kind}`);
 
-second.proc.kill("SIGTERM");
-fx?.kill();
+await stop(second.proc);
+if (fx) await stop(fx);
+rmSync(dataDir, { recursive: true, force: true });
 console.log("\n✓ packaged smoke passed");
 process.exit(0);

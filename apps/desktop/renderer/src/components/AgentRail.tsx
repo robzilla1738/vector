@@ -1,6 +1,7 @@
+import { draftKey } from "../conversation-drafts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Run } from "@vector/contracts";
-import { isLive, useStore } from "../store";
+import { call, errToast, isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { ResizeHandle } from "./ResizeHandle";
 import { RunPanel } from "./RunPanel";
@@ -110,16 +111,22 @@ export function AgentRail() {
   const setRailWidth = useStore((s) => s.setRailWidth);
   const startRun = useStore((s) => s.startRun);
   const connected = useStore((s) => s.connected);
+  const needsSetup = useStore((s) => s.settings.modelConfigured === false);
+  const setOverlay = useStore((s) => s.setOverlay);
   const pages = useStore((s) => s.pages);
   const activePageId = useStore((s) => s.activePageId);
   const runs = useStore((s) => s.runs);
-  const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const page = pages.find((p) => p.pageId === activePageId);
   const hasPage = !!page && page.url !== "about:blank" && !!page.url;
   const live = runs.filter(isLive);
+  const selectedRun = view.kind === "run" ? runs.find(r => r.runId === view.runId) : undefined;
+  const chatId = selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : null;
+  const text = useStore(s => chatId ? s.conversationDrafts[draftKey(chatId)] ?? "" : s.agentDraft);
+  const setText = (value: string) => chatId ? useStore.getState().setConversationDraft(chatId, value) : useStore.getState().setAgentDraft(value);
+  const replyBlocked = !!selectedRun && ((isLive(selectedRun) && selectedRun.status !== "needs_input") || (!!selectedRun.config?.taskId && selectedRun.status !== "needs_input"));
 
   // when a run finishes streaming, keep the newest step in view unless the user scrolled up to read
   const steps = useStore((s) => (view.kind === "run" ? s.steps[view.runId]?.length ?? 0 : 0));
@@ -137,13 +144,19 @@ export function AgentRail() {
 
   const send = async () => {
     const t = text.trim();
-    if (!t || sending) return;
+    if (!t || sending || replyBlocked) return;
     setSending(true);
-    setText("");
-    if (inputRef.current) inputRef.current.style.height = "auto";
-    await startRun(t, { scope: hasPage ? "page" : "new" });
+    if (selectedRun?.status === "needs_input") {
+      try { await call("runs.answer", { runId: selectedRun.runId, answer: t }); setText(""); } catch (error) { errToast(error); }
+      setSending(false); return;
+    }
+    const run = await startRun(t, { scope: hasPage ? "page" : "new", pageId: selectedRun?.pageIds[0], chatId: selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : undefined });
+    if (run) {
+      setText("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
+    }
     setSending(false);
-    inputRef.current?.focus();
+    if (!useStore.getState().overlay) inputRef.current?.focus();
   };
 
   return (
@@ -159,6 +172,7 @@ export function AgentRail() {
           {!connected && <span className="rail-sub offline">offline</span>}
           {connected && live.length > 0 && view.kind === "home" && <span className="rail-sub nums">{live.length} live</span>}
           <span className="sp" />
+          {selectedRun && <button className="icon-btn" aria-label="Open full conversation" onClick={() => useStore.getState().openConversation(selectedRun.runId)}>{I.open}</button>}
           <button className="icon-btn" title="New task" aria-label="New task" onClick={() => { setRailView({ kind: "home" }); inputRef.current?.focus(); }}>{I.plus}</button>
           <button className="icon-btn" title="Hide (⌘⇧A)" aria-label="Hide agent rail" onClick={toggleRail}>{I.rail}</button>
         </div>
@@ -170,6 +184,8 @@ export function AgentRail() {
         </div>
 
         <div className="composer">
+          {replyBlocked && <p className="hint">{selectedRun?.config?.taskId ? "Continue this saved task in Tasks to preserve its scope." : "Wait for this turn, or stop it before replying."}</p>}
+          {needsSetup && <div className="field"><span className="hint">Connect a model to run the agent. Browsing and saved tasks work without one.</span><button className="btn sm" onClick={() => setOverlay("settings")}>Set up agent</button></div>}
           {hasPage && (
             <div className="composer-ctx" title={page!.url}>
               <FavIcon url={page!.url} src={page!.favicon} size="sm" />
@@ -183,7 +199,7 @@ export function AgentRail() {
               rows={1}
               aria-label="Ask the agent"
               placeholder={hasPage ? "Ask about this page, or give a task…" : "Tell the agent what to do…"}
-              disabled={!connected}
+              disabled={!connected || sending}
               onChange={(e) => {
                 setText(e.target.value);
                 e.target.style.height = "auto";
@@ -196,7 +212,7 @@ export function AgentRail() {
                 }
               }}
             />
-            <button className="composer-send" title="Send (↵)" aria-label="Send" disabled={!text.trim() || sending || !connected} onClick={() => void send()}>{I.send}</button>
+            <button className="composer-send" title="Send (↵)" aria-label="Send" disabled={!text.trim() || sending || !connected || replyBlocked} onClick={() => void send()}>{I.send}</button>
           </div>
         </div>
       </div>

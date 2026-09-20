@@ -24,6 +24,7 @@ import {
   type PlanAttempt,
   type TurnState,
 } from "./coordinator-turn.js";
+import { ModelFailureError } from "./model-failure.js";
 
 export {
   DEFAULT_MAX_MODEL_CALLS,
@@ -39,7 +40,8 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   const c = self.controls.get(runId)!;
   const model = self.deps.model();
   if (!model) {
-    self.finish(runId, "failed", undefined, "No model configured — set a Gateway API key in Settings");
+    const failure = { category: "configuration", message: "Set up a model connection in Settings before starting this turn.", retryable: false, action: "model_settings" } as const;
+    self.finish(runId, "failed", undefined, failure.message, undefined, failure);
     return;
   }
   const s: TurnState = {
@@ -137,7 +139,8 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   } catch (e) {
     if (e instanceof VectorError && e.code === "cancelled") return;
     if (c.abort.signal.aborted) return;
-    giveUpRepair(s, e instanceof Error ? e.message : String(e));
+    if (e instanceof ModelFailureError) giveUpRepair(s, e.failure.message, e.failure);
+    else giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       const partial = s.outcomes.some((o) => o.status === "ok" && (o.extracted !== undefined || o.detail !== undefined));

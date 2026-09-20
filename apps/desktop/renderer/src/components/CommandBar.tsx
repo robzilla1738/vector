@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { HistoryEntry, PageTarget, Run, SavedProgram } from "@vector/contracts";
+import { toUrl } from "../chrome";
 import { detectIntent, intentLabel, type Intent } from "../intent";
 import { isLive, useStore, call, errToast, toast } from "../store";
 import { hostOf } from "../workspace";
 import { EngineBadge } from "./EngineBadge";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
+import { bridge } from "../bridge";
 
 interface Suggestion {
   id: string;
@@ -35,6 +37,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const activate = useStore((s) => s.activate);
   const newTab = useStore((s) => s.newTab);
   const setOverlay = useStore((s) => s.setOverlay);
+  const agentDraft = useStore((s) => s.agentDraft);
   const page = pages.find((p) => p.pageId === activePageId);
   const hasPage = !!page && !!page.url && page.url !== "about:blank";
   const searchEngine = settings.searchEngine as string | undefined;
@@ -42,10 +45,15 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState("");
   const [sel, setSel] = useState(0);
+  const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
+    if(!hero||bridge.privateMode)return "search";try{return localStorage.getItem("aux.home.entry-mode.v1")==="ask"?"ask":"search";}catch{return "search";}
+  });
+  const setEntryMode=(next:"search"|"ask")=>{setEntryModeState(next);if(!bridge.privateMode)try{localStorage.setItem("aux.home.entry-mode.v1",next);}catch{/* Mode remains available for this window. */}};
   const [scopeFlip, setScopeFlip] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
 
   // ⌘L and friends land here
   useEffect(() => {
@@ -70,7 +78,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   // a new tab starts empty; otherwise seed with the URL and select it
   const onFocus = () => {
     setEditing(true);
-    const seed = hasPage ? page!.url : "";
+    const seed = hero&&entryMode==="ask"?agentDraft:hasPage ? page!.url : "";
     setVal(seed);
     setSel(0);
     requestAnimationFrame(() => inputRef.current?.select());
@@ -89,9 +97,10 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const raw = val.trim();
   const baseIntent = useMemo(() => detectIntent(raw, { hasPage, searchEngine }), [raw, hasPage, searchEngine]);
   const intent: Intent = useMemo(() => {
+    if (hero && raw) return entryMode === "ask" ? { kind: "run", goal: raw, scope: "new" } : { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     if (baseIntent.kind === "run" && scopeFlip) return { ...baseIntent, scope: baseIntent.scope === "page" ? "new" : "page" };
     return baseIntent;
-  }, [baseIntent, scopeFlip]);
+  }, [baseIntent, scopeFlip, hero, raw, entryMode, searchEngine]);
   const typedSomething = editing && raw.length > 0 && raw !== (page?.url ?? "");
 
   // recent pages — debounced history query while typing
@@ -119,7 +128,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           break;
         }
         case "run":
-          await startRun(i.goal, { scope: alt ? (i.scope === "page" ? "new" : "page") : i.scope });
+          if (hero) { const run = await startRun(i.goal, { scope: "new", chatId: crypto.randomUUID() }); if (run) useStore.getState().openConversation(run.runId); }
+          else await startRun(i.goal, { scope: alt ? (i.scope === "page" ? "new" : "page") : i.scope });
           break;
         case "command":
           setOverlay("palette");
@@ -128,7 +138,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           break;
       }
     },
-    [page, newTab, startRun, setOverlay],
+    [page, newTab, startRun, setOverlay, hero],
   );
 
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -180,7 +190,16 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     listRef.current?.querySelectorAll<HTMLElement>("[role=option]")[sel]?.scrollIntoView({ block: "nearest" });
   }, [sel]);
 
+  const switchEntryMode=(next:"search"|"ask")=>{
+    if(next==="ask"){
+      if(val)useStore.getState().setAgentDraft(val);
+      else if(agentDraft)setVal(agentDraft);
+    }
+    setEntryMode(next);requestAnimationFrame(()=>inputRef.current?.focus());
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (hero && !bridge.privateMode && e.key === "Tab" && !e.shiftKey) { e.preventDefault(); switchEntryMode(entryMode==="search"?"ask":"search"); return; }
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -207,19 +226,20 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const secure = page?.url.startsWith("https://");
   const showIntent = typedSomething && intent.kind !== "empty";
   const title = page?.title || (hasPage ? hostOf(page!.url) : "");
-  const placeholder = hero ? "Search, ask, or go…" : compact ? "Search, address, or ask…" : "Search, enter an address, or ask the agent";
+  const placeholder = hero ? (entryMode === "ask" ? "Ask Aux…" : "Search or type a URL") : compact ? "Search, address, or ask…" : "Search, enter an address, or ask the agent";
 
   return (
-    <div className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`} role="combobox" aria-expanded={suggestions.length > 0} aria-haspopup="listbox" aria-owns="cmdbar-list">
+    <div className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>
       <span className="cb-lead">
         {compact ? (
-          <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : hasPage && !editing ? I.globe : I.search}</span>
+          hasPage && !editing ? <button type="button" className="cb-ico cb-site-trigger" title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={()=>setOverlay("site")}>{I.globe}</button> :
+          <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.search}</span>
         ) : page && hasPage && !hero ? (
           <EngineBadge page={page as PageTarget} compact />
         ) : (
           <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.searchLg}</span>
         )}
-        {hasPage && !editing && !hero && !compact && <span className={`cb-lock ${secure ? "secure" : ""}`} title={secure ? "Secure connection" : "Not secure"}>{secure ? I.lock : I.alert}</span>}
+        {hasPage && !editing && !hero && !compact && <button type="button" className={`cb-lock ${secure ? "secure" : ""}`} title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={()=>setOverlay("site")}>{secure ? I.lock : I.alert}</button>}
       </span>
       <div className="cb-field">
         {!editing && (
@@ -242,9 +262,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           ref={inputRef}
           className={editing ? "" : "ghost"}
           value={editing ? val : ""}
-          aria-label="Address, search, and agent prompt"
+          role="combobox"
+          aria-label={hero ? `${entryMode === "search" ? "Search or address" : "Ask Aux"}. Press Tab to switch mode.` : "Address, search, and agent prompt"}
+          aria-expanded={suggestions.length > 0}
+          aria-haspopup="listbox"
           aria-autocomplete="list"
-          aria-controls="cmdbar-list"
+          aria-controls={suggestions.length > 0 ? listId : undefined}
           aria-activedescendant={suggestions[sel] ? `cb-opt-${suggestions[sel]!.id}` : undefined}
           placeholder={editing ? placeholder : ""}
           spellCheck={false}
@@ -252,11 +275,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           autoCapitalize="off"
           onFocus={onFocus}
           onBlur={onBlur}
-          onChange={(e) => setVal(e.target.value)}
+          onChange={(e) => {setVal(e.target.value);if(hero&&entryMode==="ask")useStore.getState().setAgentDraft(e.target.value);}}
           onKeyDown={onKeyDown}
         />
       </div>
-      {showIntent ? (
+      {hero && bridge.privateMode ? <span className="private-search-label">Private</span> : hero ? <div className="home-mode"><span><kbd>Tab</kbd> to switch</span><div role="group" aria-label="Search or Ask">{(["search", "ask"] as const).map(m => <button key={m} aria-pressed={entryMode === m} onMouseDown={e => e.preventDefault()} onClick={() => switchEntryMode(m)}>{m === "search" ? "Search" : "Ask"}</button>)}</div></div> : showIntent ? (
         <button
           type="button"
           className={`cb-chip ${intent.kind}`}
@@ -270,7 +293,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           {intent.kind === "run" && <kbd>⇥</kbd>}
         </button>
       ) : (
-        !editing && !compact && !hero && (
+        !editing && !compact && !hero && !bridge.privateMode && (
           <button type="button" className="cb-kbd" tabIndex={-1} title="Command palette (⌘K)" aria-label="Open command palette" onMouseDown={(e) => e.preventDefault()} onClick={() => setOverlay("palette")}>
             ⌘K
           </button>
@@ -293,7 +316,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         </button>
       )}
       {suggestions.length > 0 && (
-        <div className="cb-pop pop-in" ref={listRef} role="listbox" id="cmdbar-list" onMouseDown={(e) => e.preventDefault()}>
+        <div className="cb-pop pop-in" ref={listRef} role="listbox" id={listId} onMouseDown={(e) => e.preventDefault()}>
           {suggestions.map((s, i) => {
             const first = i === 0 || suggestions[i - 1]!.section !== s.section;
             return (

@@ -1,4 +1,4 @@
-# MCP server
+# Aux MCP server
 
 `packages/mcp` is a stdio MCP server that exposes the loopback API to any
 MCP-capable agent (Cursor, Codex, Claude, and others). It reads
@@ -9,22 +9,46 @@ MCP-capable agent (Cursor, Codex, Claude, and others). It reads
 node packages/mcp/dist/main.js          # stdio transport
 ```
 
-Register it in your MCP client config:
+Create a scoped connection in Aux Settings → External agents. Aux generates the command, token, scope, and canonical `aux_*` catalog. Do not copy credentials between clients.
+
+The direct unscoped development entry point below retains the legacy catalog during the migration:
 
 ```json
-{ "mcpServers": { "vector": {
+{ "mcpServers": { "aux-legacy-development": {
     "command": "node",
     "args": ["/path/to/web/packages/mcp/dist/main.js"],
-    "env": { "VECTOR_DATA_DIR": "~/Library/Application Support/Vector" }
+    "env": { "AUX_DATA_DIR": "~/Library/Application Support/Aux Browser" }
 } } }
 ```
 
-## Tools (34)
+## Scoped Aux catalog
+
+Connections created in Aux Settings use the canonical `aux_*` catalog. Alongside
+task, browser and local-development tools, cloud-capable task scopes expose:
+
+| Tool | Purpose |
+|---|---|
+| `aux_cloud_environments` | list only the authorized task's durable environments |
+| `aux_cloud_command_history` | reconcile and read bounded command history |
+| `aux_cloud_run_command` | propose an exact command; Aux must be open and the user must approve the native review before dispatch |
+| `aux_cloud_start_service` | propose an exact time-bounded service with the same native review |
+| `aux_cloud_refresh_command` | refresh provider status and bounded logs without dispatching work |
+| `aux_cloud_stop_command` | stop one running task-owned command or service without stopping or deleting the environment |
+| `aux_cloud_files` | list a bounded directory rooted in the task's remote workspace |
+| `aux_cloud_read_file` | read one bounded UTF-8 remote-workspace file |
+| `aux_cloud_task_result` | validate the detached worker result against the exact task revision and uploaded source tree |
+
+Cloud resource creation/deletion, environment stop/resume, terminal and preview
+access, exports, account inventory and orphan cleanup remain desktop-only. If Aux is
+closed, proposals that need native review fail explicitly. A transport failure after
+dispatch is recorded as uncertain and is never retried automatically.
+
+## Legacy direct catalog
 
 | Tool | Purpose |
 |---|---|
 | `vector_pages_list` | list open pages |
-| `vector_page_open` | open a page. Omit `backend` for policy routing. `vector` forces Vector's embedded Chromium, `chrome` adopts an attached Chrome tab, and `vector-engine` forces the engine without fallback. `background` opens without activation. The result's `routeReason` says where it landed and why (`docs/api.md` → Backends and routing) |
+| `vector_page_open` | open a page. Omit `backend` for policy routing. `vector` selects Aux's embedded Chromium compatibility backend, `chrome` adopts an attached Chrome tab, and `vector-engine` forces the engine without fallback. `background` opens without activation. The result's `routeReason` says where it landed and why (`docs/api.md` → Backends and routing) |
 | `vector_page_observe` | observation → element refs. `format` `compact` (default) returns the rendered text view (one line per ref, ~5–10× smaller than `full` JSON); `scope` (`full`/`forms`/`links`/`tables`/`subtree` + `subtreeRef`), `maxElements`, `maxTextChars` |
 | `vector_page_execute` | run a typed program on a page. `steps` use string targets (`"r3"`, `"css:#save"`); `documentEpoch` fails fast on a navigated page; `returnObservation { scope?, subtreeRef?, format? }` appends the post-action observation to the result so act + observe is one tool call. A trusted source: `evaluate` is allowed here |
 | `vector_page_capture` | screenshot as MCP image content (default), data URL, or stored artifact |
@@ -38,7 +62,7 @@ Register it in your MCP client config:
 | `vector_events` | event log (`events.since`) |
 | `vector_chrome_attach` | attach the user's Chrome (debug port) |
 | `vector_chrome_tabs` | list attachable chrome tabs |
-| `vector_chrome_import_cookies` | import Chrome cookies into Vector's session |
+| `vector_chrome_import_cookies` | import Chrome cookies into Aux's session |
 | `vector_artifacts` | list run artifacts |
 | `vector_artifact_read` | read artifact bytes (base64) |
 | `vector_state_query` | query the state index (responses, records, controls, datasets, artifacts, operations) |
@@ -101,7 +125,7 @@ Things an MCP client should expect:
   and marks unfinished members `skipped`; the run stays `cancelled`.
 - Runs are crash-safe but not resumable across a runtime restart
   (`runtime.describe` → `checkpointResume: false`).
-- A page may be served by the **Vector Engine** (`backend: "vector-engine"`
+- A page may be served by the **Aux Engine** (`backend: "vector-engine"`
   on the page, `routeReason` on the open result). Its refs work the same
   way. `evaluate`, `dialog`, downloads, `javascript:` URLs, HTML5 `dragTo`
   and `vector_page_capture` run in-engine. `xpath:` targets still fail with
@@ -111,5 +135,4 @@ Things an MCP client should expect:
   refSteps }`. `repair: true` means ref-targeted steps could not be replayed
   — re-observe and retry with fresh refs.
 
-Resources: `vector://page/observation`, `vector://page/console`, and
-`vector://page/network` read the active page (`workspace.get.activePageId`).
+Scoped Aux connections expose `aux://page/observation`, `aux://page/console`, and `aux://page/network`. The direct legacy development entry point retains the corresponding `vector://` resource aliases.

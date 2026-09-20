@@ -1,6 +1,7 @@
 import type { BrowserContext, Dialog, ElementHandle, Frame, Locator, Page, Response } from "playwright-core";
 import {
   VectorError,
+  normalizeAuxEnvironment,
   type Condition,
   type ElementRef,
   type FrameInfo,
@@ -42,7 +43,7 @@ export function bounded<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
 }
 
 /** Passive response capture — env-off switch; the body policy lives in response-capture.ts. */
-const CAPTURE_RESPONSES = process.env.VECTOR_CAPTURE_RESPONSES !== "0";
+const CAPTURE_RESPONSES = normalizeAuxEnvironment(process.env).AUX_CAPTURE_RESPONSES !== "0";
 
 interface FrameKeys {
   /** 'main' or 'f1'..'fN' in page.frames() order at observe time. */
@@ -73,6 +74,7 @@ export class PlaywrightDriverPage implements DriverPage {
     context: BrowserContext;
     identity: PageIdentity;
     refs: RefRegistry;
+    initialDocumentEpoch?: number;
     /** override which response bodies are captured (default: xhr/fetch JSON+text) */
     responseCapture?: Partial<ResponseCaptureOptions>;
   }) {
@@ -80,6 +82,7 @@ export class PlaywrightDriverPage implements DriverPage {
     this.context = opts.context;
     this.identity = opts.identity;
     this.refs = opts.refs;
+    this.documentEpoch = opts.initialDocumentEpoch ?? 0;
     this.capture = { ...defaultResponseCaptureOptions(), ...opts.responseCapture };
     this.wireEvents();
     // readiness signal (P1-8): every new document tracks in-flight fetch/XHR
@@ -197,6 +200,12 @@ export class PlaywrightDriverPage implements DriverPage {
     this.lastDialog = info;
     this.events.onDialog?.(info);
     try {
+      if (dialog.type() === "beforeunload" && this.identity.backend === "vector") {
+        // Veto at the automation boundary. Electron's will-prevent-unload handler
+        // owns the human Stay/Leave decision, including native close and reload.
+        await dialog.dismiss();
+        return;
+      }
       const handler = this.dialogHandler;
       if (handler?.action === "accept") await dialog.accept(handler.promptText);
       else await dialog.dismiss();
@@ -249,6 +258,8 @@ export class PlaywrightDriverPage implements DriverPage {
   }
   async reload(timeoutMs = 30_000) {
     await this.page.reload({ timeout: timeoutMs, waitUntil: "domcontentloaded" });
+    // A successful explicit reload recovers a crashed renderer on this same tab.
+    this.attached = true;
     await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
 

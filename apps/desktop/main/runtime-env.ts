@@ -4,6 +4,7 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { normalizeAuxEnvironment } from "@vector/contracts";
 
 function veName(base: string): string {
   return process.platform === "win32" ? `${base}.exe` : base;
@@ -15,7 +16,7 @@ export function resolveDesktopEngineBins(opts: {
   workspaceRoot?: string;
   env?: NodeJS.ProcessEnv;
 }): { shell?: string; host?: string; resources?: string } {
-  const src = opts.env ?? process.env;
+  const src = normalizeAuxEnvironment(opts.env ?? process.env);
   const shellName = veName("ve-shell");
   const hostName = veName("ve-host");
   const search: string[] = [];
@@ -56,7 +57,7 @@ export function desktopRuntimeEnv(opts: {
   resourcesPath?: string;
   workspaceRoot?: string;
 }): NodeJS.ProcessEnv {
-  const src = opts.env ?? process.env;
+  const src = normalizeAuxEnvironment(opts.env ?? process.env);
   const bins = resolveDesktopEngineBins({
     packaged: opts.packaged,
     resourcesPath: opts.resourcesPath,
@@ -66,17 +67,17 @@ export function desktopRuntimeEnv(opts: {
   const out: NodeJS.ProcessEnv = {
     ...src,
     ELECTRON_RUN_AS_NODE: "1",
-    VECTOR_DATA_DIR: opts.dataDir,
-    VECTOR_IPC: "1",
-    VECTOR_ELECTRON_CDP: `http://127.0.0.1:${opts.cdpPort}`,
-    VECTOR_ELECTRON_VERSION: opts.electronVersion ?? "dev",
+    AUX_DATA_DIR: opts.dataDir,
+    AUX_IPC: "1",
+    AUX_ELECTRON_CDP: `http://127.0.0.1:${opts.cdpPort}`,
+    AUX_ELECTRON_VERSION: opts.electronVersion ?? "dev",
   };
-  // Compatibility-first hybrid. Qualified cohorts can use the Vector Engine;
+  // Compatibility-first hybrid. Qualified cohorts can use the Aux Engine;
   // every decision remains visible through PageTarget.routeReason.
   if (!src.VECTOR_ENGINE_MODE) out.VECTOR_ENGINE_MODE = "auto";
   if (opts.packaged && !src.VECTOR_ENGINE_PROFILE) out.VECTOR_ENGINE_PROFILE = "production";
   if (!src.VECTOR_SHELL && bins.shell) out.VECTOR_SHELL = bins.shell;
   if (!src.VECTOR_ENGINE_HOST && bins.host) out.VECTOR_ENGINE_HOST = bins.host;
   if (!src.VECTOR_RESOURCES && bins.resources) out.VECTOR_RESOURCES = bins.resources;
-  return out;
+  return normalizeAuxEnvironment(out);
 }

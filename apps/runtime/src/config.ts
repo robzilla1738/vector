@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { normalizeAuxEnvironment } from "@vector/contracts";
+import { resolveDataDirectory, resolveDatabasePath } from "@vector/contracts/installation";
 
-/** Default data dir when VECTOR_DATA_DIR is unset (shared with the desktop shell). */
-export const defaultDataDir = () => join(homedir(), "Library", "Application Support", "Vector");
+export const defaultDataDir = () => resolveDataDirectory({});
 
 /**
  * Parse a dotenv-style file: `KEY=value` lines, `#` comments, optional
@@ -37,16 +37,17 @@ export function parseDotEnv(text: string): Record<string, string> {
  * first file that defines a key wins among the files. Returns a new object.
  */
 export function loadDotEnv(env: NodeJS.ProcessEnv, files: string[]): NodeJS.ProcessEnv {
-  const merged: NodeJS.ProcessEnv = { ...env };
+  const merged = normalizeAuxEnvironment(env);
   for (const f of files) {
     if (!existsSync(f)) continue;
     let parsed: Record<string, string>;
     try {
       parsed = parseDotEnv(readFileSync(f, "utf8"));
-    } catch {
-      continue;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
     }
-    for (const [k, v] of Object.entries(parsed)) {
+    for (const [k, v] of Object.entries(normalizeAuxEnvironment(parsed))) {
       if (merged[k] === undefined || merged[k] === "") merged[k] = v;
     }
   }
@@ -55,7 +56,7 @@ export function loadDotEnv(env: NodeJS.ProcessEnv, files: string[]): NodeJS.Proc
 
 /** The files startRuntime consults: dataDir, cwd, then parent folders (pnpm dev cwd is apps/desktop). */
 export function dotEnvCandidates(env: NodeJS.ProcessEnv, cwd = process.cwd()): string[] {
-  const dataDir = env.VECTOR_DATA_DIR || defaultDataDir();
+  const dataDir = resolveDataDirectory(env);
   const out: string[] = [];
   for (const p of [join(dataDir, ".env"), join(cwd, ".env"), join(cwd, "..", ".env"), join(cwd, "..", "..", ".env")]) {
     if (!out.includes(p)) out.push(p);
@@ -78,8 +79,10 @@ export interface RuntimeConfig {
   apiToken: string;
 }
 
-export function loadConfig(env = process.env): RuntimeConfig {
-  const dataDir = env.VECTOR_DATA_DIR || defaultDataDir();
+export function loadConfig(source = process.env): RuntimeConfig {
+  const env = normalizeAuxEnvironment(source);
+  const dataDir = resolveDataDirectory(env);
+  const dbPath = resolveDatabasePath(dataDir);
   const artifactsDir = join(dataDir, "artifacts");
   const downloadsDir = join(dataDir, "downloads");
   const previewsDir = join(dataDir, "previews");
@@ -98,7 +101,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
     previewsDir,
     logsDir,
     benchmarksDir,
-    dbPath: join(dataDir, "vector.sqlite"),
+    dbPath,
     settingsPath: join(dataDir, "settings.json"),
     electronCdp: env.VECTOR_ELECTRON_CDP ?? null,
     apiPort: Number(env.VECTOR_API_PORT ?? 0),

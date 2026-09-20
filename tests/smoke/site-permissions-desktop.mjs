@@ -1,0 +1,46 @@
+import {sidebarAction} from "./sidebar-action.mjs";
+// Explicitly seeded synthetic permissions; no personal profile or hardware access.
+import {createRequire} from 'node:module';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import assert from 'node:assert/strict';
+const root=resolve(import.meta.dirname,'../..');
+const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
+const dir=mkdtempSync(join(tmpdir(),'aux-site-permissions-'));
+const file=join(dir,'data/site-permissions.json');mkdirSync(join(dir,'data'));
+writeFileSync(file,JSON.stringify({'https://meet.example.test':{media:'allow',notifications:'deny'},'https://maps.example.test':{geolocation:'allow'}}));
+let app;
+try {
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ await page.locator('.aux-home').waitFor();await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
+ await sidebarAction(page, "Settings");
+ await page.getByRole('button',{name:'Site permissions',exact:true}).click();
+ await page.getByRole('button',{name:'Reset Camera and microphone for https://meet.example.test'}).waitFor();
+ await page.screenshot({path:join(root,'release/test-artifacts/aux-site-permissions.png')});
+ await page.getByLabel('Search site permissions').fill('location');
+ assert.equal(await page.locator('.site-permission-group').count(),1);
+ await page.getByLabel('Search site permissions').fill('missing');
+ await page.getByText('No matching websites.',{exact:true}).waitFor();
+ await page.getByLabel('Search site permissions').fill('');
+ mkdirSync(file+'.tmp');
+ await page.getByRole('button',{name:'Reset Camera and microphone for https://meet.example.test'}).click();
+ await page.locator('.site-permissions [role=alert]').waitFor();
+ assert.equal((await page.evaluate(()=>window.vector.sitePermissions()))['https://meet.example.test'].media,'allow');
+ assert.equal(JSON.parse(readFileSync(file,'utf8'))['https://meet.example.test'].media,'allow');
+ rmSync(file+'.tmp',{recursive:true});
+ await page.getByRole('button',{name:'Reset Camera and microphone for https://meet.example.test'}).click();
+ await page.getByText('Decision reset.',{exact:false}).waitFor();
+ assert.deepEqual(JSON.parse(readFileSync(file,'utf8'))['https://meet.example.test'],{notifications:'deny'});
+ await page.reload();await page.locator('.aux-home').waitFor();
+ await sidebarAction(page, "Settings");
+ await page.getByRole('button',{name:'Site permissions',exact:true}).click();
+ await page.getByRole('button',{name:'Reset Notifications for https://meet.example.test'}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Reset Camera and microphone for https://meet.example.test'}).count(),0);
+ await page.getByRole('region',{name:'https://meet.example.test',exact:true}).getByRole('button',{name:'Reset site',exact:true}).click();
+ await page.getByRole('region',{name:'https://meet.example.test',exact:true}).waitFor({state:'detached'});
+ assert.deepEqual(JSON.parse(readFileSync(file,'utf8')),{'https://maps.example.test':{geolocation:'allow'}});
+ console.log('Site permissions search and individual/site resets persist while preserving unrelated decisions.');
+} finally {await app?.close();rmSync(dir,{recursive:true,force:true});}

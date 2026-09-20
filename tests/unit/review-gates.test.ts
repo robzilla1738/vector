@@ -190,7 +190,8 @@ describe("Gate F page query and action compiler", () => {
       grants: ["effect:read", "effect:write"],
       durable: ledger,
     });
-    expect(replay.result.status).toBe("ok");
+    expect(replay.result.status).toBe("partial");
+    expect(replay.result.error).toContain("No new action was executed");
     expect(executes).toBe(1);
   });
 
@@ -553,7 +554,7 @@ describe("Gate D fixture write counter", () => {
     }
   });
 
-  it("kill-9 mid-write is exactly one POST", async () => {
+  it("restart before confirmation preserves the unresolved POST intent", async () => {
     const fixture = await spawnFormsWriteCounter();
     try {
       const path = join(fixture.dir, "ledger-kill9.json");

@@ -1,19 +1,7 @@
-/**
- * Engine identity for a page. The runtime contract today exposes
- * `PageTarget.backend: "vector" | "chrome"`. A parallel track is adding the
- * Rust "vector-engine" backend plus `settings.engineMode` and a `routeReason`
- * on `pages.open` results.
- *
- * TODO(contracts): replace these local unions with `BackendT` / `EngineMode`
- * from @vector/contracts once PageIdentity.backend gains "vector-engine" and
- * SettingsSetParams gains `engineMode`. Until then the UI reads the wider type
- * defensively so it compiles against the current contract and lights up
- * automatically when the runtime starts emitting the new values.
- */
-import type { PageTarget } from "@vector/contracts";
+import type { BackendT, EngineMode as ContractEngineMode, PageTarget } from "@vector/contracts";
 
-export type EngineBackend = "vector" | "chrome" | "vector-engine";
-export type EngineMode = "off" | "auto" | "always";
+export type EngineBackend = BackendT;
+export type EngineMode = ContractEngineMode;
 
 /** Extra per-page routing detail the engine track will attach to pages.open results. */
 export interface EngineRoute {
@@ -35,9 +23,9 @@ export interface EngineInfo {
 }
 
 const LABELS: Record<EngineBackend, { label: string; short: string; description: string }> = {
-  vector: { label: "Chromium", short: "Cr", description: "Rendered by Vector's embedded Chromium view." },
+  vector: { label: "Chromium", short: "Cr", description: "Rendered by Aux's embedded Chromium view." },
   chrome: { label: "Your Chrome", short: "Ch", description: "Borrowed from your signed-in Chrome over CDP." },
-  "vector-engine": { label: "Vector Engine", short: "VE", description: "Rendered by the native Vector Engine — built for agents first." },
+  "vector-engine": { label: "Aux Engine", short: "AE", description: "Rendered by Aux Engine for specialized workloads." },
 };
 
 /** Read the engine identity of a page, tolerating the pre-contract shape. */
@@ -54,9 +42,9 @@ export function engineOf(page: Pick<PageTarget, "backend"> & { route?: EngineRou
 export function engineModeLabel(mode: EngineMode | undefined): string {
   switch (mode) {
     case "always":
-      return "Vector Engine only. Missing addon or host is an error — Chromium is never substituted.";
+      return "Aux Engine only. Missing addon or host is an error — Chromium is never substituted.";
     case "auto":
-      return "Hybrid: Vector Engine where it helps, Chromium elsewhere";
+      return "Hybrid: Aux Engine for qualified workloads, Chromium elsewhere";
     default:
       return "Chromium for every page";
   }

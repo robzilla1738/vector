@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MethodSchemas } from "@vector/contracts";
@@ -55,7 +55,7 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults effect grants to read-only and sanitizes settings.set", () => {
+  it("defaults effect grants to read-only and sanitizes settings.set", async () => {
     const { dir, settings } = harness();
     try {
       expect(settings.effectGrants()).toEqual([
@@ -65,11 +65,11 @@ describe("settings defaults for a real test pass", () => {
         "effect:read",
         "effect:write",
       ]);
-      expect(settings.all().effectGrants).toEqual(settings.effectGrants());
-      settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
+      expect(settings.all().effectGrants).toEqual(settings.effectGrantsForRun());
+      await settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
       expect(settings.effectGrants()).toEqual(["effect:write", "effect:*"]);
       expect(settings.effectGrantsForRun()).toEqual(["effect:write", "effect:*"]);
-      settings.set({ effectGrants: ["effect:read"] });
+      await settings.set({ effectGrants: ["effect:read"] });
       expect(settings.effectGrants()).toEqual(["effect:read"]);
       expect(settings.effectGrantsForRun()).toEqual(["effect:read"]);
       const parsed = MethodSchemas["settings.set"].parse({
@@ -94,17 +94,33 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("stores the gateway key in a 0600 file, not sqlite", () => {
+  it("refuses plaintext storage without a desktop vault", async () => {
     const { dir, repo, settings } = harness();
     try {
-      settings.set({ gatewayApiKey: "sk-test-secret" });
-      const keyFile = join(dir, "gateway.key");
-      expect(existsSync(keyFile)).toBe(true);
-      expect(readFileSync(keyFile, "utf8")).toBe("sk-test-secret");
-      expect(statSync(keyFile).mode & 0o777).toBe(0o600);
+      await expect(settings.set({ gatewayApiKey: "synthetic-key" })).rejects.toThrow("requires the desktop");
+      expect(existsSync(join(dir, "gateway.key"))).toBe(false);
       expect(repo.getSetting("gatewayApiKey")).toBeUndefined();
-      expect(settings.gatewayKey()).toBe("sk-test-secret");
-      expect(settings.all().gatewayApiKey).toBe("••••••••");
+      expect(settings.gatewayKey()).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("persists only nonsecret connection health and clears it when the model changes", async () => {
+    const { dir, repo, settings } = harness();
+    try {
+      settings.modelOverride = {
+        generateStructured: async () => ({ object: { ok: true }, durationMs: 12 }),
+        generateText: async () => ({ text: "white", durationMs: 3 }),
+        listModels: async () => [],
+      } as never;
+      const result = await settings.probe("fixture-model");
+      expect(result).toMatchObject({ ok: true, modelId: "fixture-model", latencyMs: 12, vision: true });
+      const saved = repo.getSetting<Record<string, unknown>>("modelProbe");
+      expect(saved).toMatchObject({ provider: "gateway", modelId: "fixture-model", ok: true, latencyMs: 12, vision: true });
+      expect(JSON.stringify(saved)).not.toContain("key");
+      await settings.set({ plannerModel: "different-model" });
+      expect(repo.getSetting("modelProbe")).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

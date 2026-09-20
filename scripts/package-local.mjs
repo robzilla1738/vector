@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * `pnpm package:electron` — hybrid Electron desktop (not the product).
- * Native product: `pnpm package:local`.
- * production deps (pnpm deploy), build the renderer, and run electron-builder
+ * `pnpm package:local` — private Chromium desktop build.
+ * Stage production deps, build the renderer, and run electron-builder
  * for the current platform (unsigned dir target).
  */
 import { spawnSync } from "node:child_process";
@@ -47,7 +46,7 @@ const vendor = (pkgDir, destName) => {
 };
 
 vendor("packages/contracts", "contracts");
-vendor("packages/browser-driver", "browser-driver");
+vendor("packages/engine-client", "engine-client");
 {
   const src = join(root, "engine/crates/ve-napi");
   const dest = join(rtOut, "vendor", "engine-native");
@@ -72,14 +71,14 @@ const rewriteFileDeps = (pkgPath, mapping) => {
   delete pkg.devDependencies;
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 };
-rewriteFileDeps(join(rtOut, "vendor/browser-driver/package.json"), {
+rewriteFileDeps(join(rtOut, "vendor/engine-client/package.json"), {
   "@vector/contracts": "file:../contracts",
   "@vector/engine-native": "file:../engine-native",
 });
 // npm treats file:-directory deps as links and does NOT install their deps —
 // hoist vendor packages' registry deps into the runtime manifest instead.
 const vendorDeps = {};
-for (const name of ["contracts", "browser-driver", "engine-native"]) {
+for (const name of ["contracts", "engine-client", "engine-native"]) {
   const pkgFile = join(rtOut, "vendor", name, "package.json");
   if (!existsSync(pkgFile)) continue;
   const vp = JSON.parse(readFileSync(pkgFile, "utf8"));
@@ -110,7 +109,7 @@ run("npm", ["install", "--omit=dev", "--no-package-lock", "--no-audit", "--no-fu
 
 // npm file: deps install as symlinks into ./vendor — replace with real
 // copies so resolution stays inside runtime/node_modules.
-for (const name of ["contracts", "browser-driver", "engine-native"]) {
+for (const name of ["contracts", "engine-client", "engine-native"]) {
   const link = join(rtOut, "node_modules", "@vector", name);
   const real = join(rtOut, "vendor", name);
   if (!existsSync(real)) continue;
@@ -164,14 +163,23 @@ mkdirSync(engineStage, { recursive: true });
 console.log("▸ electron-builder");
 run(join(desktopDir, "node_modules", ".bin", "electron-builder"), ["--config", "electron-builder.yml"], {
   cwd: desktopDir,
+  env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: "false" },
 });
 
 // electron-builder always excludes node_modules from extraResources
 // (app-builder-lib fileMatcher injects "!**/node_modules/**"), so the
 // bundled runtime's deps are copied in after packaging.
 console.log("▸ inject runtime node_modules");
-const appResources = join(root, "release", "mac-arm64", "Vector.app", "Contents", "Resources");
-if (existsSync(appResources)) {
+const platformOutput = process.platform === "darwin"
+  ? (process.arch === "x64" ? "mac" : `mac-${process.arch}`)
+  : `${process.platform === "win32" ? "win" : "linux"}${process.arch === "x64" ? "" : `-${process.arch}`}-unpacked`;
+const appResources = process.platform === "darwin"
+  ? join(root, "release", platformOutput, "Aux Browser.app", "Contents", "Resources")
+  : join(root, "release", platformOutput, "resources");
+if (!existsSync(appResources)) {
+  throw new Error(`Packaged resources missing at ${appResources}; runtime dependency injection cannot complete.`);
+}
+{
   rmSync(join(appResources, "runtime", "node_modules"), { recursive: true, force: true });
   run("cp", ["-R", join(rtOut, "node_modules"), join(appResources, "runtime", "node_modules")]);
   if (existsSync(engineStage)) {
@@ -182,4 +190,4 @@ if (existsSync(appResources)) {
 
 const out = join(root, "release");
 console.log(`\n✓ packaged app in ${out}`);
-if (existsSync(join(out, "mac-arm64", "Vector.app"))) console.log(`  → ${join(out, "mac-arm64", "Vector.app")}`);
+if (process.platform === "darwin") console.log(`  → ${join(out, platformOutput, "Aux Browser.app")}`);

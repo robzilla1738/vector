@@ -1,9 +1,10 @@
-import { inElectron } from "../bridge";
+import { bridge, inElectron } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
 
 export function Toolbar() {
+  const sidebar = useStore(s => s.sidebar);
   const pages = useStore((s) => s.pages);
   const activePageId = useStore((s) => s.activePageId);
   const mode = useStore((s) => s.mode);
@@ -28,9 +29,9 @@ export function Toolbar() {
   };
 
   return (
-    <header className={`toolbar ${inElectron ? "traffic" : ""}`}>
+    <header className={`toolbar ${inElectron && sidebar !== "expanded" ? "traffic" : ""}`}>
       <div className="tb-left">
-        <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebar}</button>
+        {sidebar !== "expanded" && <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebar}</button>}
         <div className="nav-btns">
           <button className="icon-btn" title="Back (⌘[)" aria-label="Back" disabled={!page?.canGoBack} onClick={() => page && void call("pages.back", { pageId: page.pageId }).catch(errToast)}>{I.back}</button>
           <button className="icon-btn" title="Forward (⌘])" aria-label="Forward" disabled={!page?.canGoForward} onClick={() => page && void call("pages.forward", { pageId: page.pageId }).catch(errToast)}>{I.fwd}</button>
@@ -45,6 +46,8 @@ export function Toolbar() {
       <CommandBar />
 
       <div className="tb-right">
+        {sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
+        {sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}
         {page?.controller === "human" && (
           <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
             {I.handSm}
@@ -59,12 +62,12 @@ export function Toolbar() {
           </span>
         )}
         <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title="Tab overview (⌘⇧O)" aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
-        <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={bookmarked ? "Remove bookmark (⌘D)" : "Bookmark this page (⌘D)"} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web} onClick={toggleBookmark}>
+        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={bookmarked ? "Remove bookmark (⌘D)" : "Bookmark this page (⌘D)"} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web} onClick={toggleBookmark}>
           {bookmarked ? I.bookmarkFill : I.bookmark}
-        </button>
-        <button className={`icon-btn ${railOpen ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
+        </button>}
+        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
           {I.agent}
-        </button>
+        </button>}
       </div>
     </header>
   );

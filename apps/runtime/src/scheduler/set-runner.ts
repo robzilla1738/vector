@@ -353,7 +353,7 @@ export class SetRunner {
       revision: obs.revision,
       steps,
     });
-    if (write.skip) return { res: { status: "completed", extracted: {} } };
+    if (write.skip) return { blocked: write.reason! };
     const program: Program = { ...prepared.program, nodes: learned.nodes };
     const res = await this.deps.pages.execute(program, {
       runId: opts.runId,

@@ -18,6 +18,22 @@ export class VectorElectronDriver extends CdpAttachedDriver {
     return this.markerOf(page, VECTOR_MARKER_GLOBAL);
   }
 
+  async recoverPage(targetId: string, pageId: string, documentEpoch = 0) {
+    // Playwright retains the crashed flag on its old Page proxy. A fresh CDP
+    // connection observes the recovered renderer without disturbing other tabs.
+    const browser = await this.connectOverCDP(this.endpoint, { timeout: 15_000 });
+    try {
+      for (const context of browser.contexts()) for (const page of context.pages()) {
+        if (await this.markerOf(page, VECTOR_MARKER_GLOBAL) !== targetId) continue;
+        const { PlaywrightDriverPage } = await import("./playwright-page.js");
+        this.refs.clear(pageId);
+        const driver = new PlaywrightDriverPage({ page, context, identity: { pageId, targetId, backend: this.backend }, refs: this.refs, initialDocumentEpoch: documentEpoch });
+        return this.trackDirect(targetId, browser, page, driver);
+      }
+      throw new Error("Recovered tab could not be identified on the browser connection");
+    } catch (error) { await browser.close().catch(() => {}); throw error; }
+  }
+
   /** attachDirect fallback matches by marker too — /json/list only has ids. */
   protected override async attachDirect(targetId: string, pageId: string) {
     const targets = await this.jsonTargets().catch(() => []);

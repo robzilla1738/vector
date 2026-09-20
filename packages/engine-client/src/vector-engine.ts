@@ -69,7 +69,8 @@ export interface NativeEngine {
 
 export interface BrowserServiceHandle {
   addr(): string;
-  token(): string;
+  /** Added after the first browser-service addon release. */
+  token?: () => string;
   shutdown(): void;
 }
 
@@ -736,11 +737,21 @@ export class VectorEngineDriver implements BrowserDriver {
         "127.0.0.1:0",
         JSON.stringify(this.config),
       );
-      if (handle) return {
-        addr: handle.addr(),
-        token: handle.token(),
-        shutdown: () => handle.shutdown(),
-      };
+      if (handle) {
+        // Older development addons exposed the listener before its bearer
+        // token. Never attach without authentication; close it and use the
+        // existing in-process developer engine instead. Production never
+        // reaches this path because it requires the isolated host.
+        if (typeof handle.token !== "function") {
+          handle.shutdown();
+          return undefined;
+        }
+        return {
+          addr: handle.addr(),
+          token: handle.token(),
+          shutdown: () => handle.shutdown(),
+        };
+      }
     }
     const spawned = await spawnVeShellService();
     if (spawned) return spawned;

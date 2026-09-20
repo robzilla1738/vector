@@ -15,12 +15,12 @@ interface Site {
 }
 
 export const SITES: Site[] = [
-  { url: "https://github.com/vector-browser/vector/pull/3", title: "Vector Engine M0 — agent-first browser engine foundation · Pull Request #3", letter: "G", color: "#24292f" },
+  { url: "https://github.com/aux-browser/aux/pull/3", title: "Aux Engine M0 — agent-first browser engine foundation · Pull Request #3", letter: "G", color: "#24292f" },
   { url: "https://linear.app/vector/issue/VEC-142/unified-command-bar", title: "VEC-142 Unified command bar — Linear", letter: "L", color: "#5e6ad2" },
   { url: "https://stripe.com/docs/api/checkout/sessions/create", title: "Create a Checkout Session | Stripe API Reference", letter: "S", color: "#635bff" },
   { url: "https://www.notion.so/vector/Shell-redesign-notes", title: "Shell redesign notes", letter: "N", color: "#111111" },
   { url: "https://news.ycombinator.com/", title: "Hacker News", letter: "Y", color: "#ff6600" },
-  { url: "https://www.figma.com/design/vector-shell/Vector-Shell?node-id=12-4", title: "Vector Shell – Figma", letter: "F", color: "#a259ff" },
+  { url: "https://www.figma.com/design/aux-shell/Aux-Shell?node-id=12-4", title: "Aux Shell – Figma", letter: "F", color: "#a259ff" },
   { url: "https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver", title: "ResizeObserver - Web APIs | MDN", letter: "M", color: "#1b1b1b" },
   { url: "https://www.are.na/vector/browser-references", title: "Browser references — Are.na", letter: "A", color: "#4a4a4a" },
   { url: "https://vercel.com/vector/vector-web/deployments", title: "Deployments – vector-web – Vercel", letter: "▲", color: "#000000" },
@@ -72,7 +72,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
 
 export function makeSteps(runId = RUN_ID, count = 6): StepRecord[] {
   const all: Omit<StepRecord, "runId">[] = [
-    { stepId: "s1", pageId: "page-1", op: "navigate", inputs: { url: "https://github.com/vector-browser/vector/pull/3/files" }, expected: "Files tab opens", outcome: { stepId: "s1", op: "navigate", status: "ok", startedAt: T0 - 46_000, durationMs: 812, detail: "github.com/…/pull/3/files" }, startedAt: T0 - 46_000 },
+    { stepId: "s1", pageId: "page-1", op: "navigate", inputs: { url: "https://github.com/aux-browser/aux/pull/3/files" }, expected: "Files tab opens", outcome: { stepId: "s1", op: "navigate", status: "ok", startedAt: T0 - 46_000, durationMs: 812, detail: "github.com/…/pull/3/files" }, startedAt: T0 - 46_000 },
     { stepId: "s2", pageId: "page-1", op: "waitFor", inputs: { condition: { kind: "settled" } }, outcome: { stepId: "s2", op: "waitFor", status: "ok", startedAt: T0 - 45_000, durationMs: 340 }, startedAt: T0 - 45_000 },
     { stepId: "s3", pageId: "page-1", op: "click", inputs: { target: "r18", obsArtifactId: "art-obs-1" }, expected: "Conversation tab shows all review threads", outcome: { stepId: "s3", op: "click", status: "ok", startedAt: T0 - 44_000, durationMs: 128, detail: "tab “Conversation”", receipt: { observed: "tab “Conversation”", remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false } }, startedAt: T0 - 44_000 },
     { stepId: "s4", pageId: "page-1", op: "extract", inputs: { fields: [{ name: "comments", selector: ".review-comment", all: true }], obsArtifactId: "art-obs-1" }, outcome: { stepId: "s4", op: "extract", status: "ok", startedAt: T0 - 43_000, durationMs: 96, detail: "23 comments", extracted: { comments: 23 } }, startedAt: T0 - 43_000 },
@@ -87,16 +87,16 @@ export function makeSteps(runId = RUN_ID, count = 6): StepRecord[] {
 
 export const OBSERVATION: CompactObservation = {
   pageId: "page-1",
-  url: "https://github.com/vector-browser/vector/pull/3",
-  title: "Vector Engine M0 — agent-first browser engine foundation · Pull Request #3",
+  url: "https://github.com/aux-browser/aux/pull/3",
+  title: "Aux Engine M0 — agent-first browser engine foundation · Pull Request #3",
   documentEpoch: 1,
   revision: 4,
   text: [
-    "# Vector Engine M0 — agent-first browser engine foundation · Pull Request #3",
-    "url: https://github.com/vector-browser/vector/pull/3  viewport 1180×860  scroll 1240/6410",
+    "# Aux Engine M0 — agent-first browser engine foundation · Pull Request #3",
+    "url: https://github.com/aux-browser/aux/pull/3  viewport 1180×860  scroll 1240/6410",
     "",
     "## Headings",
-    "- Vector Engine M0 — agent-first browser engine foundation #3",
+    "- Aux Engine M0 — agent-first browser engine foundation #3",
     "- Conversation (31) · Commits (12) · Checks (8) · Files changed (46)",
     "- Review comments",
     "",
@@ -105,7 +105,7 @@ export const OBSERVATION: CompactObservation = {
     "- r4 checkbox “Notify me” checked",
     "",
     "## Interactive",
-    "r1 link “vector-browser / vector”",
+    "r1 link “aux-browser / aux”",
     "r2 button “Code”",
     "r5 tab “Conversation” selected",
     "r6 tab “Commits”",
@@ -123,7 +123,7 @@ export const OBSERVATION: CompactObservation = {
     "31 review comments · 4 unresolved · 2 mention accessibility …",
   ].join("\n"),
   refs: [
-    { ref: "r1", role: "link", name: "vector-browser / vector" },
+    { ref: "r1", role: "link", name: "aux-browser / aux" },
     { ref: "r2", role: "button", name: "Code" },
     { ref: "r3", role: "textbox", name: "Leave a comment" },
     { ref: "r4", role: "checkbox", name: "Notify me" },

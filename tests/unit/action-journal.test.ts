@@ -1,0 +1,118 @@
+import { afterEach, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { spawn } from "node:child_process";
+import { createServer } from "node:http";
+import { once } from "node:events";
+import { DurableWriteLedger, openDb, beginConsequentialWrite, stepSignature, Repo, RunCoordinator, EventBus } from "@vector/runtime";
+
+const cleanup: (() => void)[] = [];
+afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
+function fixture() {
+  const directory = mkdtempSync(join(tmpdir(), "aux-journal-"));
+  cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
+  const path = join(directory, "state.sqlite");
+  const db = openDb(path);
+  cleanup.push(() => db.close());
+  return { directory, path, db, ledger: new DurableWriteLedger(db) };
+}
+const action = { runId: "run", pageId: "page", documentEpoch: 1, signature: "send", revision: 1 };
+
+it("blocks uncertain effects across changed observations, refs, epochs and repair plans", () => {
+  const f = fixture();
+  const first = f.ledger.begin(action);
+  f.ledger.fail(first.intent.id);
+  const secondDb = openDb(f.path);
+  cleanup.push(() => secondDb.close());
+  const restarted = new DurableWriteLedger(secondDb);
+  expect(restarted.begin({ ...action, documentEpoch: 20, revision: 30, signature: "different-ref" })).toMatchObject({ duplicate: true, intent: { id: first.intent.id, status: "uncertain" } });
+  expect(() => restarted.reconcile(first.intent.id, "not_applied", "")).toThrow("evidence");
+  restarted.reconcile(first.intent.id, "not_applied", "provider lookup: no matching transaction");
+  expect(restarted.begin({ ...action, logicalActionId: "explicit-new-attempt" }).duplicate).toBe(false);
+  const history = f.db.prepare("SELECT status,evidence FROM action_transitions WHERE intent_id=? ORDER BY seq").all(first.intent.id);
+  expect(history.map(row => row.status)).toEqual(["pending", "uncertain", "not_applied"]);
+  expect(history[2]?.evidence).toContain("provider lookup");
+});
+
+it("keeps explicit logical action identity stable and includes all parameters in signatures", () => {
+  const f = fixture();
+  const first = f.ledger.begin({ ...action, logicalActionId: "invoice-123" });
+  f.ledger.confirm(first.intent.id);
+  expect(f.ledger.begin({ ...action, pageId: "new-page", documentEpoch: 4, revision: 99, logicalActionId: "invoice-123" }).duplicate).toBe(true);
+  expect(stepSignature([{ op: "navigate", ...{ url: "https://one.test" } }])).not.toBe(stepSignature([{ op: "navigate", ...{ url: "https://two.test" } }]));
+  expect(stepSignature([{ op: "fill", target: { name: "a", role: "textbox" } }])).toBe(stepSignature([{ target: { role: "textbox", name: "a" }, op: "fill" }]));
+  const destructive = beginConsequentialWrite(f.ledger, { ...action, runId: "another", steps: [{ op: "evaluate", ...{ expression: "mutate()" } }] });
+  expect(destructive.intentId).toBeTruthy();
+});
+
+it("rolls back intent creation if its transition record cannot be committed", () => {
+  const f = fixture();
+  f.db.exec("CREATE TRIGGER reject_transition BEFORE INSERT ON action_transitions BEGIN SELECT RAISE(ABORT, 'injected storage failure'); END");
+  expect(() => f.ledger.begin(action)).toThrow("storage failure");
+  expect(f.db.prepare("SELECT count(*) AS n FROM action_intents").get()?.n).toBe(0);
+  f.db.exec("DROP TRIGGER reject_transition");
+  expect(f.ledger.begin(action).duplicate).toBe(false);
+});
+
+it("cannot report completion while the persistent journal contains an unresolved effect", () => {
+  const f = fixture();
+  const repo = new Repo(f.db);
+  repo.saveRun({ runId: "run", goal: "submit", status: "running", pageIds: ["page"], createdAt: Date.now() });
+  f.ledger.begin(action);
+  const coordinator = new RunCoordinator({ repo, events: new EventBus(repo), pages: {} as never,
+    model: () => null, defaultModel: () => "test", recoveryModel: () => undefined, recordModelCall: () => {} });
+  coordinator.finish("run", "completed", { sent: true });
+  const run = repo.getRun("run")!;
+  expect(run.status).toBe("interrupted");
+  expect(run.result).toBeUndefined();
+  expect(run.error).toContain("Uncertain action outcome");
+  expect((run.config?.checkpoint as { unresolvedEffects: string[] }).unresolvedEffects).toHaveLength(1);
+});
+
+it("fails closed on corrupt legacy state and imports valid legacy state once without changing the file", () => {
+  const f = fixture();
+  const path = join(f.directory, "durable-writes.json");
+  writeFileSync(path, "{bad");
+  expect(() => new DurableWriteLedger(f.db, path)).toThrow();
+  expect(f.db.prepare("SELECT count(*) AS n FROM journal_imports").get()?.n).toBe(0);
+  const legacy = JSON.stringify({ seq: 1, intents: [{ id: "w1", ...action, idempotencyKey: "legacy-key", status: "failed" }] });
+  writeFileSync(path, legacy);
+  const imported = new DurableWriteLedger(f.db, path);
+  expect(imported.begin(action)).toMatchObject({ duplicate: true, intent: { status: "uncertain" } });
+  new DurableWriteLedger(f.db, path);
+  expect(f.db.prepare("SELECT count(*) AS n FROM action_intents").get()?.n).toBe(1);
+  expect(readFileSync(path, "utf8")).toBe(legacy);
+});
+
+it("retains a committed intent after actual SIGKILL following a remote write", async () => {
+  const f = fixture();
+  let writes = 0;
+  const server = createServer((_req, res) => { writes++; res.end("accepted"); });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    const module = pathToFileURL(join(process.cwd(), "apps/runtime/dist/index.js")).href;
+    const source = `import {openDb,DurableWriteLedger} from ${JSON.stringify(module)};
+      const ledger=new DurableWriteLedger(openDb(process.argv[1]));
+      ledger.begin(${JSON.stringify(action)});
+      await fetch(process.argv[2], {method:'POST'});
+      process.kill(process.pid,'SIGKILL');`;
+    const child = spawn(process.execPath, ["--input-type=module", "-e", source, f.path, origin], { env: { PATH: process.env.PATH }, stdio: "ignore" });
+    const timeout = setTimeout(() => child.kill("SIGKILL"), 10000);
+    let signal: string | null;
+    try { [, signal] = await once(child, "exit") as [number | null, string | null]; }
+    finally { clearTimeout(timeout); }
+    expect(signal).toBe("SIGKILL");
+    expect(writes).toBe(1);
+    const replay = f.ledger.begin({ ...action, revision: 8, documentEpoch: 9 });
+    expect(replay).toMatchObject({ duplicate: true, intent: { status: "pending" } });
+    if (!replay.duplicate) await fetch(origin, { method: "POST" });
+    expect(writes).toBe(1);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
