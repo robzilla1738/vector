@@ -23,6 +23,7 @@ import type {
   StepRecord,
   VectorEvent,
 } from "@vector/contracts";
+import { nextSidebarMode, readSidebarMode, sidebarFocusSelector, type SidebarMode } from "./sidebar-mode";
 import { bridge } from "./bridge";
 import { isScrimOverlay } from "./chrome";
 import {
@@ -57,7 +58,7 @@ const zoomRequests = new Map<string,symbol>();
 
 export type Mode = "focus" | "overview" | "table" | "conversation";
 export type Overlay = null | "reader" | "palette" | "settings" | "find" | "downloads" | "history" | "clear-history" | "observe" | "tasks" | "bookmarks" | "site";
-export type SidebarMode = "expanded" | "rail" | "hidden";
+export type { SidebarMode } from "./sidebar-mode";
 export type CommandSlot = "sidebar" | "hero" | "toolbar";
 export type RailView = { kind: "home" } | { kind: "draft"; chatId: string } | { kind: "run"; runId: string } | { kind: "set"; setId: string };
 
@@ -290,7 +291,7 @@ export const useStore = create<Workspace>((set, get) => ({
   memoryWorkspaceId: null,
   railOpen: false,
   railView: { kind: "home" },
-  sidebar: storage?.getItem("vector.sidebar") === "rail" ? "hidden" : (storage?.getItem("vector.sidebar") as SidebarMode | null) ?? "expanded",
+  sidebar: readSidebarMode(storage?.getItem("vector.sidebar")),
   sidebarPeek: false,
   findText: "",
   findMatches: null,
@@ -403,16 +404,15 @@ export const useStore = create<Workspace>((set, get) => ({
   setRailView: (railView) => set({ railView }),
   setSidebar: (sidebar) => {
     const focused = typeof document === 'undefined' ? null : document.activeElement;
-    const moveFocus = focused && focused instanceof HTMLElement && !!focused.closest('.sidebar, .sidebar-reveal');
+    const moveFocus = focused && focused instanceof HTMLElement && !!focused.closest('.sidebar, .sidebar-reveal, .sidebar-rail');
     storage?.setItem("vector.sidebar", sidebar);
     set({ sidebar, sidebarPeek: false });
     if (moveFocus) requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(sidebar === 'expanded' ? '.space-switch' : '.sidebar-reveal')?.focus();
+      document.querySelector<HTMLElement>(sidebarFocusSelector(sidebar))?.focus();
     });
   },
   toggleSidebar: () => {
-    const next: SidebarMode = get().sidebar === "expanded" ? "hidden" : "expanded";
-    get().setSidebar(next);
+    get().setSidebar(nextSidebarMode(get().sidebar));
   },
   setSidebarPeek: (sidebarPeek) => set({ sidebarPeek }),
   focusCommandBar: (slot) => {

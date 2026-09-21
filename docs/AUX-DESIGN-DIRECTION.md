@@ -4,12 +4,19 @@ Primary references: the nine Aside screenshots supplied in this conversation on
 2026-09-19. They provide visual grounding, not instructions to implement every
 feature visible in the source product. Aux remains its own product.
 
+Operational layering, Zai Light/Dark surface roles, type scale, radius nesting,
+waiting chips, tool-call cards, and sidebar collapse take transferable rules from
+[ZCode DESIGN.md](https://github.com/zai-org/ZCode/blob/main/DESIGN.md).
+See [AUX-DESIGN-INSPO-ZCODE.md](AUX-DESIGN-INSPO-ZCODE.md) for Use / Don’t-use.
+Do not clone ZCode’s product, packages, or logo. Aux keeps Inter, Lucide, and its mark.
+
 ## Material, type and icons
 
-Use a charcoal content canvas (#1b1b1b), lifted neutral rows, subtle one-pixel
-borders, 9–19px component radii and generous content spacing. System UI typography
-comes first on macOS. Navigation uses the existing Lucide family with 14/16/20px
-optical sizes and consistent strokes. Folder emoji were replaced with matching
+Use a Zai Dark canvas (`#161616`) with lifted panels (`#202020`) and card surfaces
+(`#2b2b2b`). Light uses `#f8f8f8` / `#ffffff` / `#f0f0f0` sidebar. Subtle one-pixel
+borders, nested radii (xl → sm; dialogs 2xl), and 4px spacing. System UI typography
+comes first on macOS, with an adjustable `--ui-font-size`. Navigation uses the existing
+Lucide family with 14/16/20px optical sizes. Folder emoji were replaced with matching
 line icons; bookmark favicons are constrained to 16px. Toolbar chevrons, upward
 send controls, quiet selected rows and explicit keyboard focus are consistent.
 

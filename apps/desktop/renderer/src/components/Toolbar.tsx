@@ -27,7 +27,7 @@ export function Toolbar() {
   return (
     <header className={`toolbar ${inElectron && sidebar !== "expanded" ? "traffic" : ""}`}>
       <div className="tb-left">
-        {sidebar !== "expanded" && <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebar}</button>}
+        {sidebar !== "expanded" && <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebarOpen}</button>}
         <div className="nav-btns">
           <NavigationButtons page={page} />
         </div>

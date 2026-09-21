@@ -24,6 +24,7 @@ import { Downloads } from "./components/Downloads";
 import { HorizontalTabs } from "./components/HorizontalTabs";
 import { SiteControls } from "./components/SiteControls";
 import { I } from "./components/icons";
+import { applyUiFontSize } from "./ui-font-size";
 import { openLocalFile } from "./open-local-file";
 
 const ReaderView = deferSurface(async () => { const module = await import("./components/ReaderView"); return {default:module.ReaderView}; }, "Reader");
@@ -117,6 +118,8 @@ export function App() {
   const setMode = useStore((s) => s.setMode);
   const stageRef = useRef<HTMLDivElement>(null);
   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
+
+  useEffect(() => { applyUiFontSize(); }, []);
 
   // theme + space tint on the root so tokens cascade everywhere, including
   // the native window (vibrancy was why light mode never showed)
@@ -388,7 +391,7 @@ export function App() {
       {overlay === "observe" && <Inspector />}
       {overlay === "site" && <SiteControls />}
       <HttpAuthPrompt />
-      <div className={`toasts ${sidebar === "hidden" ? "top" : ""}`} aria-live="polite">
+      <div className={`toasts ${sidebar === "hidden" || sidebar === "rail" ? "top" : ""}`} aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast rise ${t.kind}`}>
             {t.kind === "error" ? I.alert : I.check}

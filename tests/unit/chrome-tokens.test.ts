@@ -31,8 +31,10 @@ describe("shipped stylesheet — native macOS chrome", () => {
   it("defines surface, ink, accent, and agent tokens in both appearances", () => {
     for (const theme of ["dark", "light"] as const) {
       const b = block(theme);
-      for (const t of ["--bg-0", "--ink-0", "--accent", "--agent", "--engine", "--ok", "--warn", "--err", "--ring"]) expect(b, `${theme} ${t}`).toMatch(new RegExp(`${t}\\s*:`));
+      for (const t of ["--bg-0", "--ink-0", "--accent", "--agent", "--engine", "--ok", "--warn", "--err", "--wait", "--diff-add", "--find-match", "--ring"]) expect(b, `${theme} ${t}`).toMatch(new RegExp(`${t}\\s*:`));
     }
+    expect(tokens).toMatch(/--surface-panel:\s*var\(--bg-1\)/);
+    expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
   });
 
   it("keeps all tokens in tokens.css — styles.css never restates a theme block", () => {
@@ -59,15 +61,11 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/\.ci svg path\s*\{[^}]*fill:\s*currentColor/);
   });
 
-  it("ships a lifted charcoal dark, not OLED black", () => {
-    const window = tokens.match(/--bg-window:\s*(#[0-9a-fA-F]{6})/);
-    expect(window, "--bg-window").toBeTruthy();
-    const hex = window![1]!;
-    const n = parseInt(hex.slice(1), 16);
-    const r = (n >> 16) & 255;
-    const g = (n >> 8) & 255;
-    const b = n & 255;
-    expect((r + g + b) / 3).toBeGreaterThan(24);
+  it("ships Zai Dark canvas under a lifted panel, not OLED black", () => {
+    const dark = block("dark");
+    expect(dark).toMatch(/--bg-window:\s*#161616/);
+    expect(dark).toMatch(/--bg-1:\s*#202020/);
+    expect(dark).not.toMatch(/--bg-window:\s*#000000/);
   });
 
   it("keeps the toolbar compact at 48px and exposes motion durations as tokens", () => {
@@ -78,25 +76,26 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(tokens).toMatch(/--t-slow:\s*240ms/);
   });
 
-  it("uses Inter’s product scale: 12 caption, 12 control, 13 body, 15 title", () => {
-    expect(tokens).toMatch(/--fs-xs:\s*12px/);
-    expect(tokens).toMatch(/--fs-sm:\s*12px/);
-    expect(tokens).toMatch(/--fs-md:\s*13px/);
-    expect(tokens).toMatch(/--fs-lg:\s*15px/);
-    expect(tokens).toMatch(/--fs-xl:\s*18px/);
+  it("uses an adjustable UI scale from --ui-font-size, never html font-size", () => {
+    expect(tokens).toMatch(/--ui-font-size:\s*13px/);
+    expect(tokens).toMatch(/--fs-xl:\s*calc\(var\(--ui-font-size\) \+ 4px\)/);
+    expect(tokens).toMatch(/--fs-lg:\s*calc\(var\(--ui-font-size\) \+ 2px\)/);
+    expect(tokens).toMatch(/--fs-md:\s*var\(--ui-font-size\)/);
+    expect(tokens).toMatch(/--fs-caption:\s*calc\(var\(--ui-font-size\) - 1px\)/);
+    expect(styles).not.toMatch(/html\s*\{[^}]*font-size\s*:/);
   });
 
-  it("uses a gray Arc sidebar with a raised selected pill in both appearances", () => {
+  it("uses a gray sidebar with a raised selected pill in both appearances", () => {
     const dark = block("dark");
     const light = block("light");
-    expect(dark).toMatch(/--sb-bg:\s*#292929/);
-    expect(dark).toMatch(/--bg-window:\s*#1f1f1f/);
-    expect(dark).toMatch(/--sb-selected:\s*#323230/);
-    expect(dark).toMatch(/--sb-selected-ink:\s*#f4f4f2/);
-    expect(light).toMatch(/--sb-bg:\s*#e7e7e7/);
-    expect(light).toMatch(/--bg-window:\s*#eeeeec/);
+    expect(dark).toMatch(/--sb-bg:\s*#161616/);
+    expect(dark).toMatch(/--bg-window:\s*#161616/);
+    expect(dark).toMatch(/--sb-selected:\s*#2b2b2b/);
+    expect(dark).toMatch(/--sb-selected-ink:\s*#f8f8f8/);
+    expect(light).toMatch(/--sb-bg:\s*#f0f0f0/);
+    expect(light).toMatch(/--bg-window:\s*#f8f8f8/);
     expect(light).toMatch(/--sb-selected:\s*#ffffff/);
-    expect(light).toMatch(/--sb-selected-ink:\s*#1a1a18/);
+    expect(light).toMatch(/--sb-selected-ink:\s*#0d0d0d/);
     expect(tokens).toMatch(/--sb-selected-shadow:/);
     expect(tokens).toMatch(/--stage-radius:\s*var\(--r-2xl\)/);
     expect(styles).toMatch(/\.stage-wrap\s*\{[^}]*padding:\s*var\(--stage-inset\)/s);
@@ -115,5 +114,16 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/inset:\s*3px\s+0\s+0/);
     expect(styles).not.toMatch(/inset\s+3px\s+0\s+0/);
     expect(styles).not.toMatch(/inset\s+0\s+-2px\s+0\s+var\(--ok\)/);
+  });
+
+  it("keeps waiting chips on --wait, distinct from success, and diffs off status green/red", () => {
+    expect(tokens).toMatch(/--wait:\s*#87d9a4/);
+    expect(tokens).not.toMatch(/--wait:\s*var\(--ok\)/);
+    expect(styles).toMatch(/\.ctl-chip\.human\s*\{[^}]*color:\s*var\(--wait\)/s);
+    expect(styles).toMatch(/\.takeover\s*\{[^}]*background:\s*var\(--wait-soft\)/s);
+    expect(styles).toMatch(/\.project-diff \.diff-added\s*\{[^}]*background:\s*var\(--diff-add\)/);
+    expect(styles).toMatch(/::highlight\(aux-conversation-matches\)\s*\{[^}]*background:\s*var\(--find-match\)/);
+    expect(styles).toMatch(/\.sidebar-rail\s*\{/s);
+    expect(styles).toMatch(/\.tl-nest\s*\{/s);
   });
 });

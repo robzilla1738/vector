@@ -1,5 +1,16 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21 (ZCode design pass)
+
+Transferable ZCode UX on `cursor/aux-remaining-implementation-4932`. Not a clone. B1–B7 unchanged.
+
+- **Palette:** Zai Dark/Light surface roles mapped onto Aux tokens (`#161616` canvas, `#202020` panel, `#2b2b2b` card/menu/input). Sparse `#4099ff` / `#0b7fff` links. Confirmation `--wait` is not `--ok`. Diff and find tokens are dedicated.
+- **Type:** `--ui-font-size` 13px with Appearance → Interface text 12/13/14. Never `html` font-size.
+- **Tool cards:** Step timeline is summary-first, expandable, nests `fillCredential`, redacts secrets, chips for url/path/target/ref, one-shot live entrance.
+- **Sidebar:** `⌘S` toggles expanded ↔ slim Aux-mark rail outside the aside. Palette can still hide completely. 7px edge hit remains for hidden.
+
+See `docs/AUX-DESIGN-INSPO-ZCODE.md`.
+
 ## Continuation — 2026-09-21 (CI typecheck and restart retry)
 
 CI on `cursor/aux-remaining-implementation-4932` failed two jobs. Policy was not weakened.

@@ -10,6 +10,7 @@ import { useStore, call, toast, errToast } from "../store";
 import { bridge, emptyBrowserHealthSummary, type BrowserHealthSummary } from "../bridge";
 import { engineModeLabel, readEngineMode, type EngineMode } from "../engine";
 import { I } from "./icons";
+import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from "../ui-font-size";
 import { SitePermissions } from "./SitePermissions";
 import { ExternalAgents } from "./ExternalAgents";
 import { Extensions } from "./Extensions";
@@ -92,6 +93,7 @@ export function Settings() {
     ? category === "Connections" && connectionTab === (name === "Models" ? "Models" : name === "External agents" ? "Agents" : name === "Vault" ? "Vault" : "Services")
     : category === name);
   const [destination, setDestination] = useState<SettingsDestination | null>(null);
+  const [uiFont, setUiFont] = useState<UiFontSize>(readUiFontSize);
   const settings = useStore((s) => s.settings);
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -430,6 +432,14 @@ export function Settings() {
           <div className="seg" role="radiogroup" aria-label="Theme" onKeyDown={activateRadioOnArrow}>
             {(["system", "dark", "light"] as const).map((t) => (
               <button key={t} role="radio" aria-checked={theme === t} tabIndex={theme === t ? 0 : -1} className={theme === t ? "on" : ""} onClick={() => void set({ theme: t })}>{t === "system" ? "System" : t === "dark" ? "Dark" : "Light"}</button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Interface text" hint="Shell type size only. Does not change website zoom or the html root font size.">
+          <div className="seg" role="radiogroup" aria-label="Interface text" onKeyDown={activateRadioOnArrow}>
+            {UI_FONT_SIZES.map((size) => (
+              <button key={size} role="radio" aria-checked={uiFont === size} tabIndex={uiFont === size ? 0 : -1} className={uiFont === size ? "on" : ""} onClick={() => { writeUiFontSize(size); setUiFont(size); }}>{size}</button>
             ))}
           </div>
         </Field>

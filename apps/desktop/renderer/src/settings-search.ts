@@ -16,6 +16,7 @@ export const settingsDestinations: SettingsDestination[] = [
   entry('General', 'Support report', 'Export diagnostics without private content.'),
   entry('General', 'Clear browsing history', 'Remove browsing records.', 'clear-history'),
   entry('Appearance', 'Theme', 'Use light, dark or the system appearance.'),
+  entry('Appearance', 'Interface text', 'Set the shell type size to 12, 13 or 14 pixels. Does not change website zoom.'),
   entry('Appearance', 'Sidebar appearance', 'Solid or custom surfaces, with opacity and blur controls.'),
   entry('Appearance', 'Tab layout', 'Choose horizontal or vertical tabs.'),
   entry('Models', 'Model provider', 'Choose an AI provider or a compatible local endpoint.'),

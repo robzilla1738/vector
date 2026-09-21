@@ -15,6 +15,7 @@ import { backgroundLink, openBrowserLink } from "../browser-links";
 import { PinMenu } from "./PinMenu";
 import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
+import { AuxMark } from "./AuxMark";
 import { I } from "./icons";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
@@ -565,7 +566,7 @@ export function Sidebar() {
 
   const full = (
     <>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}>{chromeNav}<button className="icon-btn" aria-label="Collapse sidebar" onClick={toggleSidebar}>{I.sidebar}</button></div>
+      <div className={`sb-head ${inElectron ? "electron" : ""}`}>{chromeNav}<button className="icon-btn" aria-label="Collapse sidebar" title="Collapse sidebar (⌘S)" onClick={toggleSidebar}>{I.sidebarClose}</button></div>
 
       <div className="sb-cmd">
         <CommandBar compact />
@@ -706,7 +707,13 @@ export function Sidebar() {
         <div className="sidebar-content">{full}</div>
         {sidebar === "expanded" && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
       </aside>
-      {sidebar !== "expanded" && <button className="sidebar-reveal" aria-label="Expand sidebar" title="Show sidebar (⌘S)" onClick={() => useStore.getState().setSidebar("expanded")} />}
+      {sidebar === "rail" && (
+        <button className="sidebar-rail" aria-label="Show sidebar" title="Show sidebar (⌘S)" onClick={() => useStore.getState().setSidebar("expanded")}>
+          <span className="sidebar-rail-mark"><AuxMark /></span>
+          <span className="sidebar-rail-open">{I.sidebarOpen}</span>
+        </button>
+      )}
+      {sidebar === "hidden" && <button className="sidebar-reveal" aria-label="Expand sidebar" title="Show sidebar (⌘S)" onClick={() => useStore.getState().setSidebar("expanded")} />}
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
           onSave={(name, color) => (editing === "new" ? addSpace(name, color) : editSpace(editing.id, name, color))} />

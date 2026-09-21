@@ -3,13 +3,14 @@
  * radii, motion, and semantic color in both appearances. Components consume
  * tokens only; literal px/colour values outside this file are a bug.
  *
- * Grid: 4px. Type: 11 / 12 / 13 / 15 / 18 / 22 / 28. Icons: 14 / 16 / 20.
- * Controls: 20 badge / 24 chip / 28 button / 32 field. Radii: 4 / 6 / 8 / 10 / 12 / 16.
+ * Grid: 4px. Type: --ui-font-size 13px → xl +4 / lg +2 / base / caption -1 / sm -2 / xs -4.
+ * Icons: 14 / 16 / 20. Controls: 20 badge / 24 chip / 28 button / 32 field.
+ * Radii: 4 / 6 / 8 / 10 / 12 / 16 — nest xl → lg → md → sm; dialogs 2xl; no casual pills.
  * Motion: 120 / 180 / 240 ms on a spring-ish out-curve; reduced-motion collapses to 0.
  *
- * Colour is charcoal + ink. Inter Variable for UI type. Lucide for icons.
- * One accent (the inverse of the canvas). No purple agent tint, no rainbow
- * space washes, no decorative gradients.
+ * Colour maps Zai Dark/Light surface roles onto Aux names. Inter Variable for UI
+ * type. Lucide for icons. Inverse ink is the primary control fill. Restrained blue
+ * is --accent-blue / --link only. No purple idle-task chrome, no brand page fills.
  */
 
 :root {
@@ -17,14 +18,17 @@
   --font-ui: -apple-system, BlinkMacSystemFont, "Inter Variable", Inter, "Helvetica Neue", sans-serif;
   --font-mono: "SF Mono", ui-monospace, Menlo, "JetBrains Mono", monospace;
 
-  --fs-2xs: 11px;
-  --fs-xs: 12px;
-  --fs-sm: 12px;
-  --fs-md: 13px;
-  --fs-lg: 15px;
-  --fs-xl: 18px;
-  --fs-2xl: 22px;
-  --fs-3xl: 28px;
+  /* Adjust Appearance → Interface text. Never set html { font-size }. */
+  --ui-font-size: 13px;
+  --fs-xl: calc(var(--ui-font-size) + 4px);
+  --fs-lg: calc(var(--ui-font-size) + 2px);
+  --fs-md: var(--ui-font-size);
+  --fs-caption: calc(var(--ui-font-size) - 1px);
+  --fs-sm: calc(var(--ui-font-size) - 2px);
+  --fs-xs: calc(var(--ui-font-size) - 2px);
+  --fs-2xs: calc(var(--ui-font-size) - 4px);
+  --fs-2xl: calc(var(--ui-font-size) + 9px);
+  --fs-3xl: calc(var(--ui-font-size) + 15px);
 
   --lh-tight: 1.22;
   --lh-normal: 1.45;
@@ -96,48 +100,63 @@
   --z-drawer: 45;
   --z-toast: 60;
 
-  /* ---- dark (default, so first paint is never unstyled) ---- */
+  /* ---- dark (Zai Dark roles; first paint is never unstyled) ---- */
   color-scheme: dark;
 
-  --bg-window: #1f1f1f;
-  --bg-0: #1b1b1b;
-  --bg-1: #242424;
-  --bg-2: #2c2c2c;
-  --bg-3: #373737;
-  --bg-hover: rgba(255, 255, 255, 0.07);
-  --bg-active: rgba(255, 255, 255, 0.11);
-  --glass: #2c2c2e;
-  --glass-strong: #2c2c2e;
-  --stage-bg: #242426;
-  --stage-frame: #1f1f1f;
+  --bg-window: #161616;
+  --bg-0: #161616;
+  --bg-1: #202020;
+  --bg-2: #2b2b2b;
+  --bg-3: #363636;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.1);
+  --glass: #2b2b2b;
+  --glass-strong: #2b2b2b;
+  --stage-bg: #202020;
+  --stage-frame: #161616;
 
   --line: rgba(255, 255, 255, 0.1);
-  --line-strong: rgba(255, 255, 255, 0.18);
+  --line-strong: rgba(255, 255, 255, 0.15);
   --line-inset: inset 0 0 0 1px var(--line);
 
-  --ink-0: #f5f5f3;
-  --ink-1: #b4b4b0;
-  --ink-2: #a0a09c;
-  --ink-3: #5c5c5a;
-  --ink-inverse: #1c1c1e;
+  --ink-0: #f8f8f8;
+  --ink-1: #adadad;
+  --ink-2: #888888;
+  --ink-3: #5c5c5c;
+  --ink-inverse: #000000;
 
-  --accent: #f5f5f3;
-  --accent-ink: #1c1c1e;
-  --accent-soft: rgba(245, 245, 243, 0.1);
-  --accent-line: rgba(245, 245, 243, 0.28);
-  --ring: rgba(245, 245, 243, 0.28);
-  --selection: rgba(245, 245, 243, 0.18);
+  --accent: #f8f8f8;
+  --accent-ink: #000000;
+  --accent-soft: rgba(248, 248, 248, 0.1);
+  --accent-line: rgba(248, 248, 248, 0.28);
+  --ring: rgba(248, 248, 248, 0.28);
+  --selection: rgba(64, 153, 255, 0.28);
   --focus-line: #929292;
-  --link: #6bb6ec;
+  --link: #4099ff;
+  --accent-blue: var(--link);
+  --accent-blue-soft: rgba(64, 153, 255, 0.16);
+  --accent-blue-line: rgba(64, 153, 255, 0.32);
+  --icon-blue: #80beff;
 
-  --ok: #7dba8a;
-  --ok-soft: rgba(125, 186, 138, 0.12);
-  --warn: #c4a35a;
-  --warn-soft: rgba(196, 163, 90, 0.14);
-  --warn-line: rgba(196, 163, 90, 0.32);
-  --err: #d98989;
-  --err-soft: rgba(217, 137, 137, 0.12);
-  --err-line: rgba(217, 137, 137, 0.32);
+  --ok: #46bf72;
+  --ok-soft: rgba(70, 191, 114, 0.12);
+  --warn: #ff8a30;
+  --warn-soft: rgba(255, 138, 48, 0.14);
+  --warn-line: rgba(255, 138, 48, 0.32);
+  --err: #ff5c5c;
+  --err-soft: rgba(255, 92, 92, 0.12);
+  --err-line: rgba(255, 92, 92, 0.32);
+  --wait: #87d9a4;
+  --wait-soft: rgba(70, 191, 114, 0.16);
+  --wait-line: rgba(70, 191, 114, 0.32);
+  --wait-ink: #000000;
+  --diff-add: rgba(70, 191, 114, 0.28);
+  --diff-add-fg: #d2eadc;
+  --diff-remove: rgba(255, 92, 92, 0.28);
+  --diff-remove-fg: #f0d4d4;
+  --find-match: #542500;
+  --find-active: #ff8a30;
+  --find-active-ink: #171717;
   --agent: var(--ink-0);
   --agent-soft: var(--bg-3);
   --agent-line: var(--line-strong);
@@ -160,96 +179,120 @@
   --chrome-bg-3: var(--bg-3);
   --chrome-hover: var(--bg-hover);
 
-  /* sidebar is inverted Arc: charcoal sheet, lifted selected pill */
-  --sb-bg: #292929;
-  --sb-ink-0: #f4f4f2;
+  /* sidebar: Zai Dark canvas, lifted selected card */
+  --sb-bg: #161616;
+  --sb-ink-0: #f8f8f8;
   --sb-ink-1: #c8c8c4;
-  --sb-ink-2: #aaaaaa;
-  --sb-ink-3: #5c5c58;
-  --sb-hover: rgba(255, 255, 255, 0.06);
-  --sb-field: #2a2a28;
-  --sb-line: rgba(255, 255, 255, 0.08);
-  --sb-selected: #323230;
-  --sb-selected-ink: #f4f4f2;
+  --sb-ink-2: #adadad;
+  --sb-ink-3: #5c5c5c;
+  --sb-hover: rgba(255, 255, 255, 0.05);
+  --sb-field: #2b2b2b;
+  --sb-line: rgba(255, 255, 255, 0.1);
+  --sb-selected: #2b2b2b;
+  --sb-selected-ink: #f8f8f8;
   --sb-glow: #000000;
   --sb-selected-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 14px rgba(0, 0, 0, 0.38);
-  --sb-pin-face: #323230;
+  --sb-pin-face: #2b2b2b;
   --sb-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --surface-window: var(--bg-window);
+  --surface-canvas: var(--bg-0);
+  --surface-panel: var(--bg-1);
+  --surface-card: var(--bg-2);
+  --surface-sidebar: var(--sb-bg);
+  --surface-popover: var(--bg-2);
+  --surface-menu: var(--bg-2);
+  --surface-input: var(--bg-2);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 }
 
-/* ---------- light ---------- */
+/* ---------- light (Zai Light roles) ---------- */
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg-window: #eeeeec;
-  --bg-0: #fafaf9;
-  --bg-1: #f2f2f1;
-  --bg-2: #e9e9e8;
-  --bg-3: #dfdfdd;
-  --bg-hover: rgba(0, 0, 0, 0.045);
-  --bg-active: rgba(0, 0, 0, 0.08);
-  --glass: #f3f3f1;
-  --glass-strong: #f3f3f1;
-  --stage-bg: #fafaf8;
-  --stage-frame: #eeeeec;
+  --bg-window: #f8f8f8;
+  --bg-0: #f8f8f8;
+  --bg-1: #ffffff;
+  --bg-2: #ffffff;
+  --bg-3: #e6e6e6;
+  --bg-hover: rgba(13, 13, 13, 0.05);
+  --bg-active: rgba(13, 13, 13, 0.08);
+  --glass: #ffffff;
+  --glass-strong: #ffffff;
+  --stage-bg: #ffffff;
+  --stage-frame: #f8f8f8;
 
-  --line: rgba(0, 0, 0, 0.1);
-  --line-strong: rgba(0, 0, 0, 0.18);
+  --line: rgba(13, 13, 13, 0.1);
+  --line-strong: rgba(13, 13, 13, 0.15);
   --line-inset: inset 0 0 0 1px var(--line);
 
-  --ink-0: #141413;
-  --ink-1: #4a4a47;
-  --ink-2: #62625f;
-  --ink-3: #a3a3a0;
-  --ink-inverse: #fafaf8;
+  --ink-0: #0d0d0d;
+  --ink-1: #5c5c5c;
+  --ink-2: #747474;
+  --ink-3: #adadad;
+  --ink-inverse: #ffffff;
 
-  --accent: #141413;
-  --accent-ink: #fafaf8;
-  --accent-soft: rgba(20, 20, 19, 0.08);
-  --accent-line: rgba(20, 20, 19, 0.22);
-  --ring: rgba(20, 20, 19, 0.2);
-  --selection: rgba(20, 20, 19, 0.12);
+  --accent: #0d0d0d;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(13, 13, 13, 0.08);
+  --accent-line: rgba(13, 13, 13, 0.22);
+  --ring: rgba(13, 13, 13, 0.2);
+  --selection: rgba(11, 127, 255, 0.22);
   --focus-line: #656565;
-  --link: #126a9e;
+  --link: #0b7fff;
+  --accent-blue: var(--link);
+  --accent-blue-soft: rgba(11, 127, 255, 0.12);
+  --accent-blue-line: rgba(11, 127, 255, 0.28);
+  --icon-blue: #0066dd;
 
-  --ok: #2f7a45;
-  --ok-soft: rgba(47, 122, 69, 0.1);
-  --warn: #8a6a1f;
-  --warn-soft: rgba(138, 106, 31, 0.1);
-  --warn-line: rgba(138, 106, 31, 0.28);
-  --err: #b04545;
-  --err-soft: rgba(176, 69, 69, 0.1);
-  --err-line: rgba(176, 69, 69, 0.28);
+  --ok: #1e8a3e;
+  --ok-soft: rgba(30, 138, 62, 0.1);
+  --warn: #e07b00;
+  --warn-soft: rgba(224, 123, 0, 0.1);
+  --warn-line: rgba(224, 123, 0, 0.28);
+  --err: #e03131;
+  --err-soft: rgba(224, 49, 49, 0.1);
+  --err-line: rgba(224, 49, 49, 0.28);
+  --wait: #166b32;
+  --wait-soft: #eaf7ee;
+  --wait-line: rgba(22, 107, 50, 0.28);
+  --wait-ink: #ffffff;
+  --diff-add: rgba(30, 138, 62, 0.16);
+  --diff-add-fg: #1a4a2a;
+  --diff-remove: rgba(224, 49, 49, 0.16);
+  --diff-remove-fg: #5a2020;
+  --find-match: #fff4eb;
+  --find-active: #ffb26b;
+  --find-active-ink: #171717;
   --agent: var(--ink-0);
   --agent-soft: var(--bg-3);
   --agent-line: var(--line-strong);
   --engine: var(--ink-1);
   --engine-soft: var(--bg-3);
 
-  --shadow-card: 0 1px 2px rgba(20, 20, 19, 0.08), 0 8px 24px rgba(20, 20, 19, 0.08);
-  --shadow-pop: 0 1px 2px rgba(20, 20, 19, 0.08), 0 16px 40px rgba(20, 20, 19, 0.14);
-  --shadow-sm: 0 1px 1px rgba(20, 20, 19, 0.06);
+  --shadow-card: 0 1px 2px rgba(13, 13, 13, 0.08), 0 8px 24px rgba(13, 13, 13, 0.08);
+  --shadow-pop: 0 1px 2px rgba(13, 13, 13, 0.08), 0 16px 40px rgba(13, 13, 13, 0.14);
+  --shadow-sm: 0 1px 1px rgba(13, 13, 13, 0.06);
   --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7);
   --img-outline: rgba(0, 0, 0, 0.08);
 
   --space-color: #5c5c58;
 
-  --sb-bg: #e7e7e7;
-  --sb-ink-0: #1a1a18;
+  --sb-bg: #f0f0f0;
+  --sb-ink-0: #0d0d0d;
   --sb-ink-1: #3f3f3c;
-  --sb-ink-2: #585854;
-  --sb-ink-3: #b0b0ac;
-  --sb-hover: rgba(20, 20, 19, 0.05);
+  --sb-ink-2: #5c5c5c;
+  --sb-ink-3: #adadad;
+  --sb-hover: rgba(13, 13, 13, 0.05);
   --sb-field: #ffffff;
-  --sb-line: rgba(20, 20, 19, 0.08);
+  --sb-line: rgba(13, 13, 13, 0.1);
   --sb-selected: #ffffff;
-  --sb-selected-ink: #1a1a18;
-  --sb-glow: rgba(20, 20, 19, 0.18);
-  --sb-selected-shadow: 0 1px 2px rgba(20, 20, 19, 0.08), 0 6px 16px rgba(20, 20, 19, 0.06);
+  --sb-selected-ink: #0d0d0d;
+  --sb-glow: rgba(13, 13, 13, 0.18);
+  --sb-selected-shadow: 0 1px 2px rgba(13, 13, 13, 0.08), 0 6px 16px rgba(13, 13, 13, 0.06);
   --sb-pin-face: #ffffff;
   --sb-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }

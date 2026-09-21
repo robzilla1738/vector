@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { StepRecord } from "@vector/contracts";
-import { StepTimeline, fmtMs, opLabel, receiptKind, receiptLabel, stepSummary } from "./StepTimeline";
+import { StepTimeline, fmtMs, nestSteps, opLabel, receiptKind, receiptLabel, redactedInputs, stepSummary } from "./StepTimeline";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -101,6 +101,18 @@ describe("StepTimeline", () => {
     expect(el.querySelectorAll("[data-testid=tl-step]")[3]!.querySelector("[data-testid=tl-receipt]")).toBeNull();
   });
 
+  it("never shows fillCredential secrets and nests those steps under the previous card", () => {
+    const secret = step("s5", "fillCredential", { durationMs: 12 }, { credentialRef: "cref_abc", value: "s3cret-value", target: "r9" });
+    expect(stepSummary(secret)).toBe("cref_abc");
+    expect(stepSummary(secret)).not.toContain("s3cret");
+    expect(redactedInputs(secret).value).toBe("[redacted]");
+    expect(nestSteps([step("s1", "fill", { durationMs: 10 }, { target: "r1" }), secret]).map(group => [group.step.op, group.children.map(child => child.op)])).toEqual([["fill", ["fillCredential"]]]);
+    const el = render(<StepTimeline live={false} steps={[step("s1", "fill", { durationMs: 10 }, { target: "r1" }), secret]} />);
+    expect(el.querySelector(".tl-nest")?.textContent).toContain("Fill credential");
+    expect(el.textContent).toContain("cref_abc");
+    expect(el.textContent).not.toContain("s3cret-value");
+  });
+
   it("offers an inspect button only for steps that carry an observation artifact", () => {
     const seen: string[] = [];
     const el = render(
@@ -128,7 +140,7 @@ describe("timeline helpers", () => {
 
   it("labels ops as verbs and falls back to the raw op", () => {
     expect(opLabel("navigate")).toBe("Open");
-    expect(opLabel("waitFor")).toBe("Wait");
+    expect(opLabel("fillCredential")).toBe("Fill credential");
     expect(opLabel("frobnicate")).toBe("frobnicate");
   });
 
