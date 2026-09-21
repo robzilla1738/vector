@@ -136,6 +136,7 @@
   --accent-blue: var(--link);
   --accent-blue-soft: rgba(64, 153, 255, 0.16);
   --accent-blue-line: rgba(64, 153, 255, 0.32);
+  --accent-surface: #001d3d;
   --icon-blue: #80beff;
 
   --ok: #46bf72;
@@ -246,6 +247,7 @@
   --accent-blue: var(--link);
   --accent-blue-soft: rgba(11, 127, 255, 0.12);
   --accent-blue-line: rgba(11, 127, 255, 0.28);
+  --accent-surface: #ebf4ff;
   --icon-blue: #0066dd;
 
   --ok: #1e8a3e;

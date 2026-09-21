@@ -116,7 +116,10 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   const [obsError,setObsError]=useState("");
   const [inspectedArtifact,setInspectedArtifact]=useState<string|null>(null);
   const observationRequest=useRef(0);
-  const [showSteps, setShowSteps] = useState(false);
+  const [showSteps, setShowSteps] = useState(() => {
+    const current = useStore.getState().runs.find((item) => item.runId === runId);
+    return !!current && isLive(current);
+  });
   type Control = "take" | "return" | "stop" | "pause" | "resume";
   const [controlBusy, setControlBusy] = useState<Control | null>(null);
   const pendingControl = useRef<{kind:Control;token:symbol}|null>(null);
@@ -125,7 +128,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   useEffect(() => {
     setShowObs(false); setObsLoading(false); setObsError(""); setInspectedArtifact(null); setControlBusy(null); setControlError("");
     const r = useStore.getState().runs.find((x) => x.runId === runId);
-    setShowSteps(!conversation && !!r && isLive(r));
+    setShowSteps(!!r && isLive(r));
     if (!steps) void loadRun(runId);
     return () => { pendingControl.current=null; ++observationRequest.current; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

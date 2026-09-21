@@ -883,7 +883,7 @@ body.resizing .rail { transition: none; }
   background: var(--bg-3); color: var(--ink-1); font: var(--fs-2xs)/1 var(--font-mono);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-a.tl-chip { text-decoration: none; color: var(--link); }
+a.tl-chip, button.tl-chip { text-decoration: none; color: var(--link); cursor: pointer; }
 .tl-json { margin: 0; max-height: 160px; overflow: auto; font: var(--fs-2xs)/1.45 var(--font-mono); color: var(--ink-1); white-space: pre-wrap; }
 .tl-nest {
   margin: var(--space-1) 0 0 var(--space-2); padding-left: 14px;

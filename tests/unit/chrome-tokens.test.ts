@@ -117,8 +117,12 @@ describe("shipped stylesheet — native macOS chrome", () => {
   });
 
   it("keeps waiting chips on --wait, distinct from success, and diffs off status green/red", () => {
+    const dark = block("dark");
+    const light = block("light");
     expect(tokens).toMatch(/--wait:\s*#87d9a4/);
     expect(tokens).not.toMatch(/--wait:\s*var\(--ok\)/);
+    expect(dark).toMatch(/--accent-surface:\s*#001d3d/);
+    expect(light).toMatch(/--accent-surface:\s*#ebf4ff/);
     expect(styles).toMatch(/\.ctl-chip\.human\s*\{[^}]*color:\s*var\(--wait\)/s);
     expect(styles).toMatch(/\.takeover\s*\{[^}]*background:\s*var\(--wait-soft\)/s);
     expect(styles).toMatch(/\.project-diff \.diff-added\s*\{[^}]*background:\s*var\(--diff-add\)/);

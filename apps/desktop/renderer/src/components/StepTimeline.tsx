@@ -1,5 +1,8 @@
 import { memo, useEffect, useState, type ReactNode } from "react";
 import type { ActionReceipt, StepRecord } from "@vector/contracts";
+import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
+import { bridge } from "../bridge";
+import { errToast } from "../store";
 import { I } from "./icons";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
@@ -106,6 +109,11 @@ export function stepSummary(s: StepRecord): string {
 
 export type StepChip = { kind: "url" | "path" | "id" | "ref"; value: string };
 
+/** Absolute filesystem paths Aux can already open. Locators and relative names stay inert. */
+export function isOpenablePath(value: string): boolean {
+  return /^(?:~|\/|[A-Za-z]:[\\/])/.test(value);
+}
+
 export function stepChips(s: StepRecord): StepChip[] {
   const inputs = inputsOf(s);
   const chips: StepChip[] = [];
@@ -137,9 +145,45 @@ export function nestSteps(steps: StepRecord[]): { step: StepRecord; children: St
 }
 
 function Chip({ chip }: { chip: StepChip }) {
-  const href = chip.kind === "url" && /^https?:\/\//.test(chip.value) ? chip.value : "";
-  if (href) {
-    return <a className="tl-chip" href={href} title={chip.value} onClick={event => event.preventDefault()}>{chip.value.replace(/^https?:\/\//, "")}</a>;
+  if (chip.kind === "url") {
+    const href = browserLinkUrl(chip.value);
+    if (href) {
+      return (
+        <a
+          className="tl-chip"
+          href={href}
+          title={chip.value}
+          onClick={event => {
+            event.preventDefault();
+            void openBrowserLink(href, backgroundLink(event)).catch(errToast);
+          }}
+          onAuxClick={event => {
+            if (event.button === 1) {
+              event.preventDefault();
+              void openBrowserLink(href, true).catch(errToast);
+            }
+          }}
+        >
+          {chip.value.replace(/^https?:\/\//, "")}
+        </a>
+      );
+    }
+  }
+  if (chip.kind === "path" && isOpenablePath(chip.value)) {
+    return (
+      <button
+        type="button"
+        className="tl-chip"
+        title={chip.value}
+        onClick={() => {
+          void bridge.openPath(chip.value).then(error => {
+            if (error) errToast(new Error(error));
+          });
+        }}
+      >
+        {chip.value}
+      </button>
+    );
   }
   return <code className="tl-chip" title={chip.value}>{chip.value}</code>;
 }

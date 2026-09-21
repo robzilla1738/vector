@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { StepRecord } from "@vector/contracts";
-import { StepTimeline, fmtMs, nestSteps, opLabel, receiptKind, receiptLabel, redactedInputs, stepSummary } from "./StepTimeline";
+import { StepTimeline, fmtMs, isOpenablePath, nestSteps, opLabel, receiptKind, receiptLabel, redactedInputs, stepSummary } from "./StepTimeline";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -101,6 +101,28 @@ describe("StepTimeline", () => {
     expect(el.querySelectorAll("[data-testid=tl-step]")[3]!.querySelector("[data-testid=tl-receipt]")).toBeNull();
   });
 
+  it("turns url and absolute-path artifacts into chips, keeping secrets out of the card", () => {
+    const el = render(
+      <StepTimeline
+        live={false}
+        steps={[
+          step("s1", "navigate", { durationMs: 10, detail: "example.com" }, { url: "https://example.com/x" }),
+          step("s2", "upload", { durationMs: 10 }, { path: "/tmp/report.pdf" }),
+          step("s3", "fillCredential", { durationMs: 10 }, { credentialRef: "cref_hide", value: "s3cret-value" }),
+        ]}
+      />,
+    );
+    const summaries = el.querySelectorAll<HTMLButtonElement>(".tl-summary");
+    act(() => summaries[0]!.click());
+    act(() => summaries[1]!.click());
+    const url = el.querySelector("a.tl-chip");
+    expect(url?.getAttribute("href")).toBe("https://example.com/x");
+    expect(url?.textContent).toBe("example.com/x");
+    expect(el.querySelector("button.tl-chip")?.textContent).toBe("/tmp/report.pdf");
+    expect(el.textContent).toContain("cref_hide");
+    expect(el.textContent).not.toContain("s3cret-value");
+  });
+
   it("never shows fillCredential secrets and nests those steps under the previous card", () => {
     const secret = step("s5", "fillCredential", { durationMs: 12 }, { credentialRef: "cref_abc", value: "s3cret-value", target: "r9" });
     expect(stepSummary(secret)).toBe("cref_abc");
@@ -149,6 +171,14 @@ describe("timeline helpers", () => {
     expect(receiptLabel(receiptKind({ remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false }))).toBe("Uncertain");
     expect(receiptLabel(receiptKind({ remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }))).toBe("Confirmed");
     expect(receiptLabel(receiptKind({ remoteConfirmed: true, uncertain: true, dispatchedBeforeTakeover: true }))).toBe("Takeover-interrupted");
+  });
+
+  it("opens only absolute filesystem paths, not locators", () => {
+    expect(isOpenablePath("/tmp/file.pdf")).toBe(true);
+    expect(isOpenablePath("~/Notes.md")).toBe(true);
+    expect(isOpenablePath("C:\\Users\\a\\file.txt")).toBe(true);
+    expect(isOpenablePath("r18")).toBe(false);
+    expect(isOpenablePath("report.pdf")).toBe(false);
   });
 
   it("summarises a step from outcome, expectation, or inputs in that order", () => {
