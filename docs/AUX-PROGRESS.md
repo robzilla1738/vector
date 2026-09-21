@@ -6,6 +6,7 @@ CI on `cursor/aux-remaining-implementation-4932` failed two jobs. Policy was not
 
 - **Desktop typecheck:** `conversationEntryChange` now returns `{kind:"draft"|"context"}` instead of a widened `string`. Incident prepared-fix `openPath` only runs when a path exists.
 - **Integration recovery:** after restart, a crashed run’s original tab is detached and treated as missing. `runs.retry` without a replacement tab refuses with “Reopen or choose a browser tab”. Retry with a newly opened tab preserves chat identity and retry lineage. This matches the existing unit contract in `set-run-lifecycle.test.ts`.
+- **Engine fallback:** a mid-program `xpath:` miss after a completed write does not migrate or replay remaining writes. The origin is recorded for the next Chromium open. This matches `engine-routing` unit coverage; the integration assertion was the stale complete-and-migrate expectation from PR 13.
 
 B1–B7 remain unproven.
 

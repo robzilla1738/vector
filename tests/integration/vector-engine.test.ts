@@ -5,10 +5,10 @@
  *      the observation is a real ObservationContent with `r<n>` refs, and a
  *      select/click/fill program runs as ONE native call (act-and-observe).
  *   2. engineMode "auto" — a mid-program `capability_unsupported` (`xpath:`
- *      targets) migrates the page to Chromium,
- *      replays the selector-targeted remainder, records the origin in the
- *      needs-chromium table, and the next open of that origin skips the
- *      engine. Skipped with a reason when no Chromium can be launched.
+ *      targets) after a completed write does not migrate or replay remaining
+ *      writes. The origin is recorded in the needs-chromium table so the next
+ *      open of that origin skips the engine. Read-only remainders still replay
+ *      in unit coverage. Skipped with a reason when no Chromium can be launched.
  *
  * The whole file is skipped (with the loader's diagnostic) when the native
  * addon has not been built: `cd engine && cargo build -p ve-napi --features napi --release`.
@@ -156,7 +156,7 @@ describeIfEngine("vector-engine backend", () => {
     await invoke("pages.close", { pageId: page.pageId });
   }, 60_000);
 
-  itIfChromium("auto: a mid-program capability_unsupported falls back to Chromium and records the origin", async () => {
+  itIfChromium("auto: a mid-program capability_unsupported after a write records Chromium need without replaying", async () => {
     await invoke("settings.set", { engineMode: "auto", engineCohorts: ["127.0.0.1"] });
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
     expect(page.backend).toBe("vector-engine");
@@ -173,14 +173,13 @@ describeIfEngine("vector-engine backend", () => {
         ],
       },
     });
-    expect(res.fallback, JSON.stringify(res)).toMatchObject({ from: "vector-engine", to: "vector", replayedFrom: 1, repair: false });
-    expect(res.status, JSON.stringify(res.steps)).toBe("completed");
+    expect(res.status, JSON.stringify(res)).toBe("failed");
+    expect(res.error, JSON.stringify(res)).toMatch(/^REPAIR:/);
+    expect(res.fallback, JSON.stringify(res)).toMatchObject({ from: "vector-engine", to: "vector", replayedFrom: 1, repair: true });
     expect(res.steps.map((s) => s.stepId)).toEqual(["s1", "s2", "s3", "s4"]);
     const moved = (await invoke<PageTarget[]>("pages.list")).find((p) => p.pageId === page.pageId);
-    expect(moved?.backend).toBe("vector");
-    expect(moved?.routeReason).toMatch(/^fallback:/);
+    expect(moved?.backend).toBe("vector-engine");
 
-    // the origin is now Chromium-only for the TTL
     const next = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records/rec-01`, background: true });
     expect(next.backend).toBe("vector");
     expect(next.routeReason).toMatch(/^needs-chromium-table:/);
