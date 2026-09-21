@@ -1,5 +1,9 @@
 # Aux implementation handoff — 2026-09-21
 
+**Current remaining-work document for a local-Mac AI:
+[AUX-LOCAL-HANDOFF.md](AUX-LOCAL-HANDOFF.md).** This file is the earlier
+checkpoint history. Do not treat it as the active founder-Mac brief.
+
 This PR captures the complete current working tree for the ongoing Aux implementation.
 It is a development checkpoint, **not completion of the five-phase roadmap**. Continue
 from this branch; do not rebuild already-working flows or treat old delivery gates as

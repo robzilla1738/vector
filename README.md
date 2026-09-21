@@ -5,6 +5,8 @@ you want, and know what actually happened.**
 
 The full product roadmap and implementation evidence are maintained in
 [Aux roadmap](docs/AUX-ROADMAP.md) and [progress](docs/AUX-PROGRESS.md).
+Remaining founder-Mac work is in
+[local handoff](docs/AUX-LOCAL-HANDOFF.md).
 The private Aux development build is ready for founder review; legacy names below
 describe existing compatibility interfaces, not separate products. No packaged or
 external release is authorized at this stage.
@@ -35,10 +37,12 @@ a `routeReason`. Native `ve-shell` remains an engine development harness.
 
 ## Private hands-on preview
 
-Run `pnpm dev` for the current private development build. `pnpm preview` opens a
-separate persistent Aux Preview profile. Follow the [private build handoff](docs/AUX-PRIVATE-BUILD.md)
+Run `AUX_LOAD_DOTENV=0 pnpm dev` for the current private development build. `pnpm preview` opens a
+separate persistent Aux Preview profile. Follow the [local Mac handoff](docs/AUX-LOCAL-HANDOFF.md),
+[private build handoff](docs/AUX-PRIVATE-BUILD.md)
 and [first review walkthrough](docs/AUX-FIRST-REVIEW.md) for browsing, tasks,
-development, cloud setup and the known compatibility limits. Founder feedback now
+development, cloud setup and the known compatibility limits. Founder-device work
+that remains is B1–B7 in the local handoff. Founder feedback now
 defines the next roadmap.
 
 ## Quickstart

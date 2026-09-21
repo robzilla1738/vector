@@ -32,8 +32,18 @@ fn incremental_observe_is_under_two_milliseconds() {
         true,
     );
     let first = page.observe(&ObservationRequest::default()).unwrap();
+    // Warm so the first JIT/cache observe is not in the sample set.
+    for _ in 0..4 {
+        let _ = page
+            .observe(&ObservationRequest {
+                since_revision: Some(first.revision),
+                ..ObservationRequest::default()
+            })
+            .unwrap();
+    }
     let mut times = Vec::new();
-    for _ in 0..8 {
+    // n=8 made integer p95 the max, so one GHA hitch failed a ~0.04 ms path.
+    for _ in 0..40 {
         let t0 = std::time::Instant::now();
         let _ = page
             .observe(&ObservationRequest {

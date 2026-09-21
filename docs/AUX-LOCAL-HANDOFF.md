@@ -1,0 +1,233 @@
+# Aux local Mac handoff
+
+Give this document to an AI on the founder Mac. It is the remaining work after
+the software-only Aux stack landed on `main`. This is not completion of the
+five-phase roadmap and not proof of B1–B7.
+
+Related: [AUX-HANDOFF.md](AUX-HANDOFF.md) (checkpoint history),
+[AUX-ROADMAP.md](AUX-ROADMAP.md), [AUX-PROGRESS.md](AUX-PROGRESS.md),
+[AUX-DESIGN-INSPO-ZCODE.md](AUX-DESIGN-INSPO-ZCODE.md),
+[AUX-PRIVATE-BUILD.md](AUX-PRIVATE-BUILD.md),
+[AUX-FIRST-REVIEW.md](AUX-FIRST-REVIEW.md).
+
+## Current state
+
+Landed from PR 14 (`cursor/aux-remaining-implementation-4932`) onto `main`.
+PR 13 remains an earlier handoff-only draft and is superseded.
+
+### Implementation on main
+
+- Aux browser/agent shell: spaces, tabs, profiles, private windows, conversation,
+  task promotion, documents/results, values-only Excel with optional http(s) source
+  hyperlinks.
+- Locked agent vault with opaque `cref_` grants. `fillCredential` never batches
+  secrets through engine IPC and never writes secret values into steps, observations,
+  or results.
+- Parameterized routines, occurrence identity, uncertain-write block, honest missed
+  runs when the desktop is closed.
+- Schema 13: coordinator leases and criterion verifications. Additive migration with
+  `VACUUM INTO` backup. Newer schemas fail closed.
+- Task-level logical action IDs hashed without run id, so the same write cannot be
+  re-issued from a later run.
+- Agent replace, resource access (`reference` / `read` / `write`; CLI/MCP cannot set
+  write), task search (title/objective/criteria/labels, not locators), exportable
+  receipts, honest local `tasks.verifyCriterion`.
+- Fail-closed Vector→Aux copy: skip secrets/cookies/password stores; retained
+  `persist:vector-*` and `@vector` / `vector_*` identities.
+- Backup list/retention/restore; incomplete folders skipped.
+- MCP scoped catalog grouping/filter; Preview vs Console split; incident companion
+  markdown local-only.
+- Cloud reconnect status is local bookkeeping. GitHub / Vercel / Sentry inspection
+  is GET-only.
+- Download retry after restart is a new transfer (`canResumePartialDownload() === false`).
+- After crash/restart, detached originals are missing: `runs.retry` requires a live
+  replacement tab.
+- Mid-program engine `capability_unsupported` after a completed write does not migrate
+  or replay remaining writes. The origin is recorded so the next open uses Chromium.
+
+### ZCode-inspired design (not a clone)
+
+Mapped from [ZCode DESIGN.md](https://github.com/zai-org/ZCode/blob/main/DESIGN.md)
+into Aux tokens and shell. Aux mark, Inter, and Lucide stay. Do not import ZCode
+packages or become an IDE.
+
+- **Palette:** Zai Dark/Light roles as Aux CSS (`#161616` canvas, `#202020` panel,
+  `#2b2b2b` card/menu/input, `#001d3d` / `#ebf4ff` accent surface). Sparse `#4099ff`
+  / `#0b7fff` links. Confirmation `--wait` is not `--ok`. Dedicated diff and find
+  tokens. Never a brand page fill.
+- **Tool cards:** summary-first step cards in conversation and the agent rail.
+  Nested `fillCredential` with a left-border rail, redacted secrets, HTTP(S) chips
+  open Aux tabs, absolute paths use `openPath`. Live runs expand so streaming cards
+  show. One-shot entrance per `stepId`.
+- **Sidebar:** `⌘S` toggles expanded ↔ slim Aux-mark rail outside the aside. Palette
+  can still hide completely. 7px hidden-edge hit remains.
+
+Visual founder acceptance and VoiceOver are still B4. Design polish is not Chrome
+Web Store, 1Password, Apple Passwords, or passkey parity.
+
+## Validate on the founder Mac
+
+Use a fresh isolated profile. Do not use personal profiles or hunt for personal
+credentials.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm --filter @vector/desktop typecheck
+pnpm --filter @vector/desktop build
+pnpm test:unit
+AUX_LOAD_DOTENV=0 AUX_ENGINE=0 pnpm dev
+```
+
+Desktop typecheck force-emits unbundled main output: run the desktop build afterward
+before launching Electron.
+
+Optional isolated data:
+
+```sh
+AUX_LOAD_DOTENV=0 AUX_ENGINE=0 AUX_DATA_DIR=/tmp/aux-review AUX_PROFILE_DIR=/tmp/aux-review-profile pnpm dev
+```
+
+`AUX_LOAD_DOTENV=0` prevents loading `.env` keys into the founder session.
+`AUX_ENGINE=0` keeps Chromium as the browsing backend for compatibility review.
+
+Mock `?scenario=results` is not native permission, account, file, voice, or cloud
+success. Node engines want `>=22.18.0`; a 22.14 warning does not fail tests.
+
+## Remaining work that requires the founder Mac
+
+Do these in order. Software-only product work is already on `main`. Do not re-open
+vault, routines, journal fencing, or the design token pass as missing.
+
+### B1 — Founder SSO / MFA on real accounts
+
+**Needs:** founder accounts, real IdP, this Mac.
+
+**Do:** complete a real sign-in with popup/redirect, MFA, and session restore after
+quit. Record the exact provider and outcome. Synthetic login fixtures are not this gate.
+
+**Done when:** a real account signs in, MFA completes, cookies stay in the regular
+profile, private windows stay empty of that session, and the founder accepts the
+path. Failures are reported honestly, not papered over.
+
+### B2 — 1Password / Apple Passwords / platform passkeys / signed app identity
+
+**Needs:** signed Aux identity, real 1Password or Apple Passwords, Touch ID / iCloud
+passkeys.
+
+**Do:** attempt fill from the signed password manager and a platform passkey on a
+real site. Virtual WebAuthn in CI is not this gate. Unsigned `pnpm dev` cannot prove
+it.
+
+**Done when:** the signed build fills from the real manager or passkey, or the
+founder records a specific unsupported API. Do not claim parity from Electron APIs
+or design polish.
+
+### B3 — Chrome Web Store / full extension API parity
+
+**Needs:** Web Store install path or a documented host that is not CEF Alloy.
+
+**Do:** install a real Web Store extension, prove the APIs it needs, keep extensions
+out of private windows. Managed unpacked MV3 copies already exist and are not this
+gate.
+
+**Done when:** a real Store extension installs, updates, and runs the APIs Aux
+claims, without Alloy website content. **CEF Alloy remains rejected.** If a
+Chromium browser-layer host is pursued, it must keep the React shell, native tab
+lifecycle, trusted bridge, and profile separation, and prove tab/sidebar
+controllability before any profile migration. Stop rather than substitute Alloy
+for website content.
+
+### B4 — VoiceOver and visual founder acceptance
+
+**Needs:** founder eyes and VoiceOver on this Mac.
+
+**Do:** VoiceOver through sidebar, conversation, agent rail, Settings, takeover,
+needs-input, and live tool cards. Visual pass of dark/light, expanded/rail/hidden
+sidebar, 1024 / 1280 / 1512 conversation widths.
+
+**Done when:** the founder accepts or files concrete defects. CSS unit checks and
+mock screenshots are not this gate.
+
+### B5 — Native TCC, pickers, and layout walkthroughs
+
+**Needs:** macOS permission dialogs on this Mac.
+
+**Do:** microphone (and camera if reviewing conferencing), native screen-share
+picker, Open File, download-folder picker, print/PDF, crash/restart with a live
+replacement tab. Cross-window transfer and extension × media × private combinations
+have code; they need an isolated-profile walkthrough.
+
+**Done when:** each dialog is the real OS prompt, decisions persist in Site
+permissions, private windows do not inherit regular grants, and picker titles match
+the product. Synthetic media fixtures are not TCC proof.
+
+### B6 — Paid cloud mutation and remote takeover
+
+**Needs:** explicit founder authorization plus paid GitHub / Vercel / Sentry / cloud
+provider accounts.
+
+**Do nothing until that authorization exists.** Current Connections inspection is
+GET-only. Cloud reconnect status is local bookkeeping. Remote browser takeover is
+unavailable. Provider-side spend budgets and hosted deletion schedulers are
+unavailable.
+
+**Done when:** the founder authorizes specific write APIs, each mutation is
+reviewable and reversible, and Aux never silently pushes, opens a PR, deploys,
+promotes, files an issue, or takes over a remote browser.
+
+### B7 — Packaging, signing, notarization, seven-day pilot
+
+**Needs:** Apple signing identity, notarization, a seven-day founder pilot.
+
+**Do:** signed/notarized Aux Browser.app, launch from `/Applications`, seven days of
+real browsing and tasks on an isolated profile.
+
+**Done when:** Gatekeeper accepts the signed app, TCC prompts name Aux, B2 passkeys
+can be re-attempted on that identity, and the founder finishes the pilot notes.
+`pnpm package:local` is not this gate.
+
+## Do not
+
+- Import ZCode `packages/ui`, clone ZCode’s product, or turn Aux into an IDE/TUI.
+- Revive CEF Alloy as the website content host.
+- Claim Chrome Web Store, 1Password, Apple Passwords, or passkey parity from
+  unsigned builds or design polish.
+- Hunt for personal credentials, `.env` secrets, password-manager vaults, or cookie
+  databases. Use isolated `AUX_DATA_DIR` / `AUX_PROFILE_DIR`.
+- Copy Chromium Cookies, Login Data, Web Data, or similar stores. They stay in
+  place (`profileBackupAction` is `refuse`).
+- Perform unauthorized remote mutation: no GitHub push/PR, Vercel deploy/promote/
+  rollback, Sentry issue write, or remote browser takeover.
+- Weaken tests or policy to greenwash CI.
+- Treat local `tasks.verifyCriterion` or routine alerts as business-outcome proof.
+- Journal human address-bar `pages.navigate` as agent writes.
+- Batch `fillCredential` through engine IPC or render secret values in tool cards.
+- Merge spaces/workspaces by name. IDs stay distinct.
+- Let CLI/MCP set resource `write` access.
+- Fake B1–B7 complete.
+
+## Code map
+
+| Area | Where |
+| --- | --- |
+| Shell, drafts, conversation | `apps/desktop/renderer/src/App.tsx`, `store.ts`, `components/Conversation.tsx`, `AgentRail.tsx`, `QuickAsk.tsx` |
+| Tool cards / steps | `components/StepTimeline.tsx`, `RunPanel.tsx` |
+| Sidebar rail | `components/Sidebar.tsx`, `sidebar-mode.ts`, `styles.css` (`.sidebar-rail`) |
+| Tokens / type | `tokens.css`, `ui-font-size.ts`, `docs/AUX-DESIGN-INSPO-ZCODE.md` |
+| Vault / fillCredential | `apps/runtime/src/services/vault.ts`, `execution/executor.ts`, `services/pages.ts` |
+| Journal / leases | `apps/runtime/src/store/{repo,db}.ts`, `DurableWriteLedger`, schema 13 |
+| GitHub/Vercel/Sentry GET | `apps/runtime/src/services/settings.ts` (`fetch` with no method; `serviceJson`) |
+| CEF experiment (rejected as product) | `experiments/cef-shell/README.md` |
+| Downloads | `apps/desktop/main/download-retry.ts` |
+| Private shell | `apps/desktop/main/private-main.ts`, `browser-profiles.ts` |
+| Compatibility claims | `docs/AUX-COMPATIBILITY.md`, `docs/AUX-BROWSER-COMPATIBILITY.md` |
+
+## How to know an item is done
+
+- B1–B7: founder-recorded outcome on this Mac, not a unit test or screenshot from
+  another machine.
+- Design: waiting chips share `--wait`; diffs/find do not reuse status green/red;
+  collapsed sidebar still has a reopen control; secrets never appear in step cards.
+- Policy: new GitHub/Vercel/Sentry calls stay GET unless B6 is explicitly authorized;
+  Cookies/Login Data remain `refuse`; CEF Alloy is still not the content host.
