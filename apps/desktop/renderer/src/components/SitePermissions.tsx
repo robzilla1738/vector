@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { bridge } from "../bridge";
 
@@ -21,48 +21,74 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [loadError,setLoadError]=useState("");
+  const request=useRef(0);
+  const pending=useRef(false);
+  const root=useRef<HTMLDivElement>(null);
   async function load() {
-    setLoading(true); setError("");
-    try { setDecisions(await bridge.sitePermissions()); }
-    catch (error) { setError(error instanceof Error ? error.message : String(error)); }
-    finally { setLoading(false); }
+    const version=++request.current;
+    setLoading(true);setLoadError("");
+    try { const result=await bridge.sitePermissions();if(version===request.current)setDecisions(result); }
+    catch (error) { if(version===request.current)setLoadError(error instanceof Error ? error.message : String(error)); }
+    finally { if(version===request.current)setLoading(false); }
   }
-  useEffect(() => { void load(); }, []);
-  async function reset(origin: string, permission?: string) {
-    setBusy(origin); setError(""); setNotice("");
-    try {
-      await bridge.clearSitePermission(origin, permission);
-      setDecisions(await bridge.sitePermissions());
-      setNotice("Decision reset. Reload this site to request access again. An active capture may continue until you stop it or close the tab.");
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
-    finally { setBusy(""); }
+  useEffect(() => {
+    void load();
+    const refresh=()=>{if(!pending.current&&document.visibilityState!=="hidden")void load();};
+    window.addEventListener("focus",refresh);
+    document.addEventListener("visibilitychange",refresh);
+    return()=>{++request.current;window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",refresh);};
+  }, []);
+  async function action(id:string,work:()=>Promise<void>){
+    if(pending.current)return;
+    pending.current=true;++request.current;setLoading(false);
+    setBusy(id);setError("");setNotice("");
+    const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    try{await work();}
+    catch(error){setError(error instanceof Error?error.message:String(error));}
+    finally{
+      pending.current=false;setBusy("");
+      requestAnimationFrame(()=>{
+        if(!root.current||document.activeElement!==document.body)return;
+        if(trigger?.isConnected)trigger.focus();else root.current.querySelector<HTMLInputElement>('[aria-label="Search site permissions"]')?.focus();
+      });
+    }
   }
-  async function clearData() {
-    if (!chosenPage) return;
-    setBusy(chosenPage.pageId); setError(""); setNotice("");
-    try {
-      if (await bridge.clearSiteData(chosenPage.pageId)) setNotice("Cookies and stored website data cleared. Reload the site's open tabs. Cached files and permission decisions remain.");
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
-    finally { setBusy(""); }
-  }
+  const reset=(origin:string,permission?:string)=>action(origin,async()=>{
+    if(!await bridge.clearSitePermission(origin,permission))throw new Error("The permission reset was not confirmed. Refresh permissions before trying again.");
+    setDecisions(current=>{
+      const next={...current};
+      if(permission){
+        next[origin]={...next[origin]};delete next[origin][permission];
+        if(!Object.keys(next[origin]).length)delete next[origin];
+      }else delete next[origin];
+      return next;
+    });
+    setNotice("Decision reset. Reload this site to request access again. An active capture may continue until you stop it or close the tab.");
+    await load();
+  });
+  const clearData=()=>chosenPage&&action(chosenPage.pageId,async()=>{
+    if(await bridge.clearSiteData(chosenPage.pageId))setNotice("Cookies and stored website data cleared. Reload the site's open tabs. Cached files and permission decisions remain.");
+  });
   const terms = `${search} ${/site|permission/i.test(query) ? "" : query}`.trim().toLowerCase();
   const sites = Object.entries(decisions).sort(([a], [b]) => a.localeCompare(b)).filter(([origin, permissions]) =>
     `${origin} ${Object.keys(permissions).map(key => labels[key] ?? key).join(" ")}`.toLowerCase().includes(terms));
-  return <div className="site-permissions">
+  return <div ref={root} className="site-permissions">
     <p className="hint">Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
     <section className="site-data-group" aria-label="Website data">
       <header><strong>Website data</strong></header>
       <p className="hint">Clear cookies and stored data for an open website. This can sign you out; cookies for related subdomains are included.</p>
       {chosenPage ? <div className="site-permission-row">
         <select aria-label="Website to clear" value={chosenPage.pageId} disabled={!!busy} onChange={event => setSelectedPage(event.target.value)}>{openSites.map(page => <option key={page.pageId} value={page.pageId}>{new URL(page.url).origin}</option>)}</select>
-        <button className="btn sm" disabled={!!busy} onClick={() => void clearData()}>Clear website data…</button>
+        <button className="btn sm" disabled={!!busy} onClick={() => void clearData()}>{busy===chosenPage.pageId?"Clearing…":"Clear website data…"}</button>
       </div> : <p className="hint">Open a website to manage its stored data.</p>}
     </section>
     <input aria-label="Search site permissions" placeholder="Search websites or permissions" value={search} onChange={event => setSearch(event.target.value)} />
     {loading && <p role="status">Loading site permissions…</p>}
-    {error && <div role="alert"><p>{error}</p><button className="btn sm" onClick={() => void load()}>Refresh permissions</button></div>}
+    {error && <p role="alert">{error}</p>}
+    {loadError && <div role="alert"><p>Couldn’t refresh permissions. {loadError}</p><button className="btn sm" disabled={loading||!!busy} onClick={() => void load()}>Refresh permissions</button></div>}
     {notice && <p className="hint" role="status">{notice}</p>}
-    {!loading && !error && !sites.length && <p className="hint">{Object.keys(decisions).length ? "No matching websites." : "No saved website permissions. Websites ask when they need access."}</p>}
+    {!loading && !loadError && !sites.length && <p className="hint">{Object.keys(decisions).length ? "No matching websites." : "No saved website permissions. Websites ask when they need access."}</p>}
     {sites.map(([origin, permissions]) => <section className="site-permission-group" key={origin} aria-label={origin}>
       <header><strong>{origin}</strong><button className="btn sm" disabled={!!busy} onClick={() => void reset(origin)}>Reset site</button></header>
       {Object.entries(permissions).map(([permission, decision]) => <div className="site-permission-row" key={permission}>

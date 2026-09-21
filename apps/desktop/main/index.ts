@@ -1,3 +1,12 @@
+import { saveWorkbookSnapshot } from "./save-workbook.js";
+import { showNavigationMenu } from "./navigation-menu.js";
+import { splitRatio, splitWidths } from "@vector/contracts/split-layout";
+import { dictationStatus, startDictation, stopDictation, cancelDictation } from "./dictation.js";
+import { SiteZoomPreferences } from "./site-zoom.js";
+import { installSitePermissions, permissionOrigin } from "./site-permissions.js";
+import { BrowserProfiles } from "./browser-profiles.js";
+import { offerExternalLink } from "./external-links.js";
+import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
 import { popupCommand } from './popup-commands.js';
 import { approveWindowUnload } from './window-unload.js';
 import { installHttpAuth } from "./http-auth.js";
@@ -10,23 +19,31 @@ import { installHttpAuth } from "./http-auth.js";
  * exposes native.* methods to it over fork IPC and forwards its event
  * stream to the renderer.
  */
-import { app, BaseWindow, dialog, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, shell, webContents as electronWebContents, WebContentsView } from "electron";
+import { app, BaseWindow, dialog, globalShortcut, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, shell, webContents as electronWebContents, WebContentsView } from "electron";
 import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync, renameSync, lstatSync, realpathSync } from "node:fs";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { copyFile, cp, rm, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { ChildProcess } from "node:child_process";
-import { normalizeAuxEnvironment, RpcChannel, type Transport } from "@vector/contracts";
+import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, type Transport } from "@vector/contracts";
 import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@vector/contracts/installation";
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
 import { createPageView, destroyPageView, downloadsSession, profileSession, setEngineFrame } from "./native-views.js";
+import { interruptedDownloadHistory } from "./download-recovery.js";
+import { controlDownload } from "./download-control.js";
+import { hasPageWork } from "./page-suspension.js";
+import { setPageZoom } from "./page-zoom.js";
+import { PageFinder } from "./page-find.js";
+import { printPage, savePagePdf } from "./page-output.js";
+import { readArticle } from "./read-article.js";
 import { ProjectFiles } from "./project-files.js";
 import { DownloadLocation } from "./download-location.js";
 import { retrySource } from "./download-retry.js";
 import { ProjectCommands } from "./project-commands.js";
 import { ProjectCommandSchema, ProjectCommandContextSchema, ProjectCommandTaskSchema, ProjectServiceStackRequestSchema, ProjectReviewContextSchema, ProjectCommitRequestSchema, ProjectGithubStatusSchema, DownloadSchema, TaskSchema, EvidenceCommandSelectionParams } from "@vector/contracts";
 import { LocalProjects } from "./local-projects.js";
+import { readEvidenceImage } from "./image-evidence.js";
 import { readEvidenceDocument } from "./document-evidence.js";
 import { SecretStore } from "./secret-store.js";
 import { isShellDocument } from "./shell-origin.js";
@@ -53,6 +70,8 @@ if (!app.requestSingleInstanceLock()) app.exit(0);
 const DATA_DIR = resolveDataDirectory(desktopEnv);
 mkdirSync(DATA_DIR, { recursive: true });
 applyPendingRuntimeRestore(DATA_DIR);
+const browserProfiles=new BrowserProfiles(desktopEnv.AUX_PROFILE_CATALOG_DIR??join(DATA_DIR,"browser-profiles"),desktopEnv.AUX_BROWSER_PROFILE_ID??"default",{dataDir:DATA_DIR,profileDir:PROFILE_DIR});
+let currentProfileName = browserProfiles.read(browserProfiles.currentId).name;
 const extensionManager = new ExtensionManager(DATA_DIR);
 const downloadLocation = new DownloadLocation(DATA_DIR);
 const localProjects = new LocalProjects(join(DATA_DIR, "projects"));
@@ -129,8 +148,10 @@ async function flushExternalUrls() {
       const url = pendingExternalUrls.shift()!;
       try {
         const owner = focusedRegularWindow();
-        const target = await channel.call("api.invoke", { method: "pages.open", params: { url, windowId: owner?.id ?? PRIMARY_WINDOW_ID } }) as { pageId: string };
-        await channel.call("api.invoke", { method: "pages.activate", params: { pageId: target.pageId } });
+        if(owner?.win.isMinimized())owner.win.restore();
+        owner?.win.show();owner?.win.focus();
+        const target = await channel.call("api.invoke", { method: "pages.open", params: { url, windowId: owner?.id ?? PRIMARY_WINDOW_ID }, desktopUser:true }) as { pageId: string };
+        await channel.call("api.invoke", { method: "pages.activate", params: { pageId: target.pageId }, desktopUser:true });
       } catch (error) {
         log("external URL failed", new URL(url).origin, error instanceof Error ? error.message : String(error));
       }
@@ -156,6 +177,9 @@ let shellView: WebContentsView | null = null;
 const registry = new TargetRegistry();
 const browserHealth = new BrowserHealthRecorder(DATA_DIR,desktopStartedAt,()=>app.getAppMetrics(),()=>({windows:regularWindows.size,pages:registry.all().length,suspendedPages:frozenPages.size}));
 interface RegularWindowState {
+  /** Native page requested by the renderer; null while shell content owns the stage. */
+  stagePageId: string | null;
+  quickAsk: boolean;
   id: string;
   win: BaseWindow;
   shellView: WebContentsView;
@@ -163,6 +187,7 @@ interface RegularWindowState {
   stageBounds: { x: number; y: number; width: number; height: number } | null;
   focusedPageId: string | null;
   splitPageId: string | null;
+  splitRatio: number;
   stageRadius: number;
   closeApproved: boolean;
 }
@@ -210,6 +235,21 @@ function setPageFrozen(entry:ViewEntry,frozen:boolean){
   const previous=lifecycleOperations.get(entry.pageId)??Promise.resolve();
   const operation=previous.catch(()=>{}).then(async()=>{
     const shouldFreeze=desiredFrozenPages.has(entry.pageId);if(entry.view.webContents.isDestroyed()||frozenPages.has(entry.pageId)===shouldFreeze)return;
+    if (shouldFreeze) {
+      const busy = await hasPageWork(entry.view.webContents);
+      const state = stateForEntry(entry);
+      const wc = entry.view.webContents;
+      let mediaAllowed = false;
+      try { mediaAllowed = Object.entries(sitePermissions[new URL(wc.getURL()).origin] ?? {}).some(([permission, decision]) => permission.startsWith("media:") && decision === "allow"); } catch { /* no website origin */ }
+      const protectedPage = !state || state.focusedPageId === entry.pageId || state.splitPageId === entry.pageId
+        || entry.runtimeOwned || offscreenActive.has(entry.pageId)
+        || [...liveDownloads.values()].some(download => download.snapshot().pageId === entry.pageId);
+      if (busy || protectedPage || mediaAllowed || wc.isDestroyed() || wc.isLoading() || wc.isCurrentlyAudible() || wc.isBeingCaptured() || !desiredFrozenPages.has(entry.pageId)) {
+        desiredFrozenPages.delete(entry.pageId);
+        if (state && state.focusedPageId !== entry.pageId && state.splitPageId !== entry.pageId) scheduleIdleFreeze(entry);
+        return;
+      }
+    }
     try{await entry.view.webContents.debugger.sendCommand('Page.setWebLifecycleState',{state:shouldFreeze?'frozen':'active'});if(shouldFreeze)frozenPages.add(entry.pageId);else frozenPages.delete(entry.pageId);}catch{browserHealth.noteSuspensionFailure();desiredFrozenPages.delete(entry.pageId);frozenPages.delete(entry.pageId);}
   }).finally(()=>{if(lifecycleOperations.get(entry.pageId)===operation)lifecycleOperations.delete(entry.pageId);});
   lifecycleOperations.set(entry.pageId,operation);
@@ -221,9 +261,7 @@ function scheduleIdleFreeze(entry:ViewEntry){
   const timer=setTimeout(()=>{idleFreezeTimers.delete(entry.pageId);const state=stateForEntry(entry),wc=entry.view.webContents;if(!state||wc.isDestroyed()||entry.runtimeOwned)return;if(state.focusedPageId===entry.pageId||state.splitPageId===entry.pageId||offscreenActive.has(entry.pageId))return;if(wc.isCurrentlyAudible()||wc.isLoading()){scheduleIdleFreeze(entry);return;}void setPageFrozen(entry,true);},IDLE_FREEZE_MS);timer.unref();idleFreezeTimers.set(entry.pageId,timer);
 }
 function forgetPageLifecycle(pageId:string){const timer=idleFreezeTimers.get(pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(pageId);desiredFrozenPages.delete(pageId);frozenPages.delete(pageId);lifecycleOperations.delete(pageId);}
-// pages whose find session has emitted found-in-page at least once —
-// cold sessions need a re-issue, warm ones must not be reset
-const pendingFind = new Map<string, () => void>();
+const pageFinder = new PageFinder();
 
 function log(...args: unknown[]) {
   process.stdout.write(`[main] ${args.join(" ")}\n`);
@@ -238,7 +276,7 @@ function sendRuntimeEvent(event: unknown) {
   const pageId = value.payload?.page?.pageId ?? value.payload?.pageId;
   const windowId = value.payload?.page?.windowId ?? (pageId ? pageWindowOwners.get(pageId) : undefined);
   const owner = windowId ? regularWindows.get(windowId) : undefined;
-  if (owner) owner.shellView.webContents.send("event", event);
+  if (owner && value.type !== "page.moved") owner.shellView.webContents.send("event", event);
   else for (const state of regularWindows.values()) state.shellView.webContents.send("event", event);
   if (value.type === "page.removed" && pageId) pageWindowOwners.delete(pageId);
 }
@@ -406,23 +444,13 @@ function scopeRuntimeResult(method: string, result: unknown, state: RegularWindo
   };
   if (method === "pages.list" && Array.isArray(result)) return result.filter(owns);
   if (method === "workspace.get" && result && typeof result === "object") {
-    const workspace = result as { pages?: unknown[]; activePageId?: string | null };
-    return { ...workspace, pages: (workspace.pages ?? []).filter(owns), activePageId: state.focusedPageId };
+    const workspace = result as { pages?: unknown[]; activePageId?: string | null; pendingRestoreTabs?: {pageId:string;windowId:string}[] };
+    return { ...workspace, pages: (workspace.pages ?? []).filter(owns), pendingRestoreTabs:workspace.pendingRestoreTabs?.filter(tab=>tab.windowId===state.id), activePageId: state.focusedPageId };
   }
   return result;
 }
 
-const AUTO_PAGE_PERMISSIONS = new Set(["fullscreen"]);
-const PROMPTABLE_PAGE_PERMISSIONS = new Set([
-  "clipboard-read",
-  "clipboard-sanitized-write",
-  "media",
-  "geolocation",
-  "notifications",
-  "display-capture",
-  "pointerLock",
-  "idle-detection",
-]);
+const siteZoom = new SiteZoomPreferences(join(DATA_DIR, "site-zoom.json"));
 const SITE_PERMISSIONS_FILE = join(DATA_DIR, "site-permissions.json");
 type PermissionDecision = "allow" | "deny";
 let sitePermissions: Record<string, Record<string, PermissionDecision>> = (() => {
@@ -433,15 +461,6 @@ let sitePermissions: Record<string, Record<string, PermissionDecision>> = (() =>
   }
 })();
 
-function permissionOrigin(url: string): string | undefined {
-  try {
-    const origin = new URL(url).origin;
-    return origin === "null" ? undefined : origin;
-  } catch {
-    return undefined;
-  }
-}
-
 function saveSitePermissions(next: typeof sitePermissions) {
   const temporary = `${SITE_PERMISSIONS_FILE}.tmp`;
   writeFileSync(temporary, JSON.stringify(next, null, 2), { mode: 0o600 });
@@ -449,13 +468,6 @@ function saveSitePermissions(next: typeof sitePermissions) {
   renameSync(temporary, SITE_PERMISSIONS_FILE);
   sitePermissions = next;
 }
-
-const PAGE_PERMISSION_LABELS: Record<string, string> = {
-  "media:audio": "microphone", "media:video": "camera",
-  "clipboard-read": "clipboard contents", "clipboard-sanitized-write": "clipboard writing",
-  geolocation: "location", notifications: "notifications", "display-capture": "screen sharing",
-  pointerLock: "pointer lock", "idle-detection": "idle detection",
-};
 
 function configurePagePermissions() {
   const ses = profileSession();
@@ -477,63 +489,10 @@ function configurePagePermissions() {
     // Never choose or enumerate a source on the site's behalf.
     callback({});
   }, { useSystemPicker: process.platform === "darwin" });
-  ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
-    if (webContents.isDestroyed() || !registry.byWebContentsId(webContents.id)) { callback(false); return; }
-    if (AUTO_PAGE_PERMISSIONS.has(permission)) { callback(true); return; }
-    const origin = permissionOrigin(("securityOrigin" in details && details.securityOrigin) || details.requestingUrl || webContents.getURL());
-    // A microphone grant must never silently grant camera access (or vice versa).
-    // Legacy combined `media` decisions remain visible for reset, but are not grants.
-    // Electron 43.6.0 sends mediaTypes: [] for BOTH getDisplayMedia and legacy
-    // desktop getUserMedia. Do not allow empty types to enable a system picker:
-    // the legacy path bypasses setDisplayMediaRequestHandler. See the native
-    // screen-sharing-boundary smoke before changing this deny-by-default rule.
-    const mediaTypes = "mediaTypes" in details ? details.mediaTypes : undefined;
-    const keys = permission === "media"
-      ? [...new Set(mediaTypes ?? [])].filter(type => type === "audio" || type === "video").map(type => `media:${type}`)
-      : [permission];
-    const owner = stateForEntry(registry.byWebContentsId(webContents.id));
-    if (!origin || !keys.length || !PROMPTABLE_PAGE_PERMISSIONS.has(permission) || !owner) { callback(false); return; }
-    const decisions = sitePermissions[origin] ?? {};
-    if (keys.some(key => decisions[key] === "deny")) { callback(false); return; }
-    const missing = keys.filter(key => decisions[key] !== "allow");
-    if (!missing.length) { callback(true); return; }
-    const initialPermissions = sitePermissions;
-    const controller = new AbortController();
-    let finished = false;
-    const finish = (allowed: boolean) => {
-      if (finished) return;
-      finished = true;
-      webContents.removeListener("did-start-navigation", navigated);
-      webContents.removeListener("destroyed", cancel);
-      controller.abort();
-      callback(allowed);
-    };
-    const cancel = () => finish(false);
-    const navigated = (_event: unknown, _url: string, inPlace: boolean) => { if (!inPlace) cancel(); };
-    webContents.on("did-start-navigation", navigated);
-    webContents.once("destroyed", cancel);
-    void dialog.showMessageBox(owner.win, {
-      type: "question", buttons: ["Don’t Allow", "Allow"], defaultId: 0, cancelId: 0,
-      title: "Site permission", signal: controller.signal,
-      message: `${origin} wants to use your ${missing.map(key => PAGE_PERMISSION_LABELS[key] ?? key).join(" and ")}.`,
-      detail: "This decision is saved for this website in the shared human and agent browsing profile. Change it in Settings → Site permissions.",
-    }).then(({ response }) => {
-      if (finished) return;
-      // A reset or another decision while this dialog was open invalidates it.
-      if (webContents.isDestroyed() || sitePermissions !== initialPermissions) { finish(false); return; }
-      const decision: PermissionDecision = response === 1 ? "allow" : "deny";
-      const updated = { ...sitePermissions[origin] };
-      if (permission === "media") delete updated.media;
-      for (const key of missing) updated[key] = decision;
-      saveSitePermissions({ ...sitePermissions, [origin]: updated });
-      finish(decision === "allow");
-    }).catch(() => finish(false));
-  });
-  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
-    if (AUTO_PAGE_PERMISSIONS.has(permission)) return true;
-    const origin = permissionOrigin(details.securityOrigin || requestingOrigin || webContents?.getURL() || "");
-    const key = permission === "media" ? `media:${details.mediaType}` : permission;
-    return origin ? sitePermissions[origin]?.[key] === "allow" : false;
+  installSitePermissions(ses, {
+    owner: contents => stateForEntry(registry.byWebContentsId(contents.id))?.win,
+    read: () => sitePermissions,
+    save: saveSitePermissions,
   });
 }
 
@@ -572,8 +531,30 @@ function notifyRuntime(type: string, payload: unknown) {
 }
 
 const viewHooks = {
-  onNavigated: (pageId: string, url: string) => notifyRuntime("view.navigated", { pageId, url }),
-  onTitle: (pageId: string, title: string) => notifyRuntime("view.titleChanged", { pageId, title }),
+  onExternalLink: (entry: ViewEntry, url: string) => {
+    const state=stateForEntry(entry);
+    // Hidden task pages cannot open applications over the user's current work.
+    if(entry.runtimeOwned || (!entry.popup && state?.stagePageId!==entry.pageId))return offerExternalLink(entry.view.webContents,undefined,url);
+    return offerExternalLink(entry.view.webContents,entry.popup??state?.win,url);
+  },
+  onFullscreenReady: (entry: ViewEntry) => {
+    if(entry.popup || entry.kind === "engine")return;
+    wirePageFullscreen(entry.view.webContents,()=>{
+      const state=stateForEntry(entry);
+      return state?{window:state.win,canEnter:()=>!state.overlayOpen&&state.stagePageId===entry.pageId&&!entry.runtimeOwned,changed:()=>applyStage(state)}:undefined;
+    });
+  },
+  onBrowserShortcut: (entry: ViewEntry) => {const state=stateForEntry(entry);if(state&&!entry.popup)exitPageFullscreen(state.win);},
+  onNavigated: (pageId: string, url: string) => {
+    const entry = registry.get(pageId);
+    if (entry && entry.kind !== "engine") siteZoom.apply(entry.view.webContents, url);
+    notifyRuntime("view.navigated", { pageId, url });
+  },
+  onTitle: (pageId: string, title: string) => {
+    notifyRuntime("view.titleChanged", { pageId, title });
+    const state = stateForEntry(registry.get(pageId));
+    if (state?.focusedPageId === pageId) updateWindowTitle(state, title);
+  },
   onFavicon: (pageId: string, favicon: string) => notifyRuntime("view.faviconChanged", { pageId, favicon }),
   confirmUnload: (entry: ViewEntry) => {
     if (exitApproved || stateForEntry(entry)?.closeApproved) return true;
@@ -599,13 +580,13 @@ const viewHooks = {
   onNavigationError: (pageId: string, error: { url: string; code: number; message: string } | null) => notifyRuntime("view.navigationError", { pageId, error }),
   onCrashed: (pageId: string) => { browserHealth.notePageCrash(); notifyRuntime("view.crashed", { pageId }); },
   onUnresponsive:()=>browserHealth.notePageUnresponsive(),
-  onDestroyed: (pageId: string) => { const owner=shellForPage(pageId);forgetPageLifecycle(pageId); registry.remove(pageId); owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true});pendingFind.get(pageId)?.(); notifyRuntime("view.removed", { pageId }); },
+  onDestroyed: (pageId: string) => { const owner=shellForPage(pageId);forgetPageLifecycle(pageId); registry.remove(pageId); owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true});notifyRuntime("view.removed", { pageId }); },
   onPopup: (entry: ViewEntry, activate = false) => {
     registry.add(entry);
     pageWindowOwners.set(entry.pageId, entry.windowId ?? PRIMARY_WINDOW_ID);
     const state = stateForEntry(entry);
     if (!entry.popup && state) { state.win.contentView.addChildView(entry.view); applyStage(state); }
-    notifyRuntime("view.popup", { pageId: entry.pageId, windowId: entry.windowId ?? PRIMARY_WINDOW_ID, marker: entry.marker, url: entry.view.webContents.getURL(), title: entry.view.webContents.getTitle(), activate });
+    notifyRuntime("view.popup", { showBlankDocument: entry.showBlankDocument, pageId: entry.pageId, windowId: entry.windowId ?? PRIMARY_WINDOW_ID, marker: entry.marker, url: entry.view.webContents.getURL(), title: entry.view.webContents.getTitle(), activate });
   },
   onTakeover: (pageId: string) => {
     // acquireStage is held for the whole program, including when the human is
@@ -665,6 +646,12 @@ const viewHooks = {
   },
   sendShortcut: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }, pageId: string) =>
     shellForPage(pageId)?.webContents.send("shortcut", s),
+  onPageAction: (action: import("@vector/contracts").PageQuickAction) => {
+    const shell = shellForPage(action.pageId);
+    if (!shell || shell.webContents.isDestroyed()) return;
+    shell.webContents.send("page.quickAction", action);
+    shell.webContents.focus();
+  },
 };
 
 function registerNativeHandlers(ch: RpcChannel) {
@@ -675,6 +662,7 @@ function registerNativeHandlers(ch: RpcChannel) {
         pageId: entry.pageId,
         windowId: entry.windowId ?? PRIMARY_WINDOW_ID,
         marker: entry.marker,
+        showBlankDocument: entry.showBlankDocument,
         url: entry.view.webContents.getURL() || "about:blank",
         title: entry.view.webContents.getTitle(),
         active: entry.popup ? entry.popup.isFocused() : entry.pageId === stateForEntry(entry)?.focusedPageId,
@@ -698,6 +686,27 @@ function registerNativeHandlers(ch: RpcChannel) {
     const wc = registry.get(pageId)?.view.webContents;
     if (wc) notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
     return { ok: true };
+  });
+  ch.onMethod("native.movePage", async (raw) => {
+    const { pageId, windowId, activate = true } = raw as { pageId: string; windowId?: string; activate?: boolean };
+    const entry = registry.get(pageId);
+    const source = stateForEntry(entry);
+    if (!entry || entry.popup || !source || entry.runtimeOwned) throw new Error("This tab cannot be moved to another window.");
+    const destination = windowId ? regularWindows.get(windowId) : await createRegularWindow();
+    if (!destination || destination.win.isDestroyed() || source.win.isDestroyed() || entry.view.webContents.isDestroyed()) throw new Error("The source or destination window was closed.");
+    if (source.id === destination.id) return { windowId: destination.id, sourceActivePageId: source.focusedPageId };
+    source.win.contentView.removeChildView(entry.view);
+    try { destination.win.contentView.addChildView(entry.view); }
+    catch (error) { source.win.contentView.addChildView(entry.view); throw error; }
+    entry.windowId = destination.id;
+    pageWindowOwners.set(pageId, destination.id);
+    notifyHttpAuthChanged();
+    if (source.focusedPageId === pageId) source.focusedPageId = registry.all().find(candidate => !candidate.popup && !candidate.runtimeOwned && (candidate.windowId ?? PRIMARY_WINDOW_ID) === source.id)?.pageId ?? null;
+    if (source.splitPageId === pageId) source.splitPageId = null;
+    if (activate || !destination.focusedPageId) { destination.focusedPageId = pageId; destination.splitPageId = null; }
+    applyStage(source); applyStage(destination);
+    if (activate) { destination.win.show(); destination.win.focus(); }
+    return { windowId: destination.id, sourceActivePageId: source.focusedPageId, activePageId: destination.focusedPageId };
   });
   ch.onMethod("native.closePage", async (p) => {
     const { pageId } = p as { pageId: string };
@@ -791,10 +800,11 @@ function registerNativeHandlers(ch: RpcChannel) {
     const entry = registry.get(pageId);
     if (!entry) throw new Error(`no view for ${pageId}`);
     await wakePage(entry);
-    const img = await entry.view.webContents.capturePage();
+    const img = await entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true });
+    if (img.isEmpty()) throw new Error("The page has no image available yet. Open the tab and try again.");
     const size = img.getSize();
     const resized = scale < 1 ? img.resize({ width: Math.round(size.width * scale) }) : img;
-    return { dataUrl: resized.toDataURL() };
+    return { dataUrl: resized.toDataURL(), width: resized.getSize().width, height: resized.getSize().height, scale: 1 };
   });
   ch.onMethod("native.setEngineFrame", (p) => {
     const { pageId, dataUrl } = p as { pageId: string; dataUrl: string };
@@ -811,77 +821,34 @@ function registerNativeHandlers(ch: RpcChannel) {
   });
   ch.onMethod("native.findInPage", async (p) => {
     const { pageId, text, forward, findNext } = p as { pageId: string; text: string; forward: boolean; findNext: boolean };
-    pendingFind.get(pageId)?.();
     const entry = registry.get(pageId);
-    if (!entry || !text) return { matches: 0 };
-    const wc = entry.view.webContents;
-    // Background pages can provide a text count, but have no active highlighted match.
-    // Visible pages use Chromium's request-specific search results.
-    const domScan = () =>
-      wc
-        .executeJavaScript(
-          `(() => { const t = ${JSON.stringify(text.toLowerCase())};
-             if (!document.body) return 0;
-             const v = document.body.innerText.toLowerCase();
-             let c = 0, i = 0; while ((i = v.indexOf(t, i)) !== -1) { c++; i += t.length; } return c; })()`,
-          true,
-        )
-        .catch(() => 0);
+    if (!entry) return { matches: 0 };
     const bounds = entry.popup ? entry.popup.getContentBounds() : entry.view.getBounds();
-    const laidOut = (entry.popup ? entry.popup.isVisible() : entry.view.getVisible()) && bounds.width > 0 && bounds.height > 0;
-    if (!laidOut) return { matches: await domScan() };
-    return new Promise((resolve) => {
-      let done = false;
-      let requestId = -1;
-      let giveUp: ReturnType<typeof setTimeout> | undefined;
-      const cancel = () => finish({ matches: 0 });
-      const navigated = (_event: unknown, _url: string, _inPlace: boolean, mainFrame: boolean) => { if (mainFrame) cancel(); };
-      const finish = (r: { matches: number; activeMatch?: number }) => {
-        if (done) return;
-        done = true;
-        wc.removeListener("found-in-page", handler);
-        wc.removeListener("did-start-navigation", navigated);
-        wc.removeListener("destroyed", cancel);
-        if (pendingFind.get(pageId) === cancel) pendingFind.delete(pageId);
-        clearTimeout(giveUp);
-        resolve(r);
-      };
-      const handler = (_e: unknown, result: { requestId: number; matches: number; activeMatchOrdinal: number; finalUpdate: boolean }) => {
-        if (result.requestId !== requestId) return;
-        if (!result.finalUpdate) return;
-        finish({ matches: result.matches, activeMatch: result.activeMatchOrdinal });
-      };
-      wc.on("found-in-page", handler);
-      pendingFind.set(pageId, cancel);
-      wc.on("did-start-navigation", navigated);
-      wc.once("destroyed", cancel);
-      // Electron calls its new-session flag findNext; our API means advance a match.
-      requestId = wc.findInPage(text, { forward, findNext: !findNext });
-      // if Chromium never reports, answer honestly from the DOM
-      giveUp = setTimeout(() => void domScan().then((m) => finish({ matches: m })), 1200);
-    });
+    const visible = (entry.popup ? entry.popup.isVisible() : entry.view.getVisible()) && bounds.width > 0 && bounds.height > 0;
+    return pageFinder.find(entry.view.webContents, text, { forward, findNext, visible });
   });
   ch.onMethod("native.stopFind", (p) => {
     const { pageId, action } = p as { pageId: string; action: "clear" | "keep" };
     const entry = registry.get(pageId);
-    pendingFind.get(pageId)?.();
-    entry?.view.webContents.stopFindInPage(action === "clear" ? "clearSelection" : "keepSelection");
+    if (entry) pageFinder.stop(entry.view.webContents, action);
     return { ok: true };
   });
   ch.onMethod("native.setZoom", (p) => {
-    const { pageId, level, delta, reset } = p as { pageId: string; level?: number; delta?: number; reset?: boolean };
+    const { pageId, level, delta, reset, direction } = p as { pageId: string; level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" };
     const entry = registry.get(pageId);
-    if (!entry) return { level: 0 };
-    const wc = entry.view.webContents;
-    if (reset) wc.setZoomLevel(0);
-    else if (level !== undefined) wc.setZoomLevel(level);
-    else if (delta !== undefined) wc.setZoomLevel(wc.getZoomLevel() + delta);
-    return { level: wc.getZoomLevel() };
+    if (!entry) throw new Error("This tab is no longer available.");
+    const result = setPageZoom(entry.view.webContents, { level, delta, reset, direction });
+    if (level !== undefined || delta !== undefined || reset || direction) {
+      try { siteZoom.remember(entry.view.webContents.getURL(), result.level); broadcastToShells("site-zoom-changed", {}); }
+      catch { throw new Error("Page size changed, but Aux could not save this site’s zoom preference."); }
+    }
+    return result;
   });
-  ch.onMethod("native.print", (p) => {
+  ch.onMethod("native.print", async (p) => {
     const { pageId } = p as { pageId: string };
-    registry.get(pageId)?.view.webContents.print();
-    return { ok: true };
+    const entry = registry.get(pageId);
+    if (!entry) throw new Error("This tab is no longer available.");
+    return { ok: await printPage(entry.view.webContents, entry.showBlankDocument) };
   });
   ch.onMethod("native.setCookies", async (p) => {
     // cookie values flow through but are never logged or persisted to disk
@@ -1057,14 +1024,52 @@ function registerNativeHandlers(ch: RpcChannel) {
 
 // ---------- stage layout ----------
 
+function windowPageTitle(state: RegularWindowState, title?: string) {
+  const contents = registry.get(state.focusedPageId ?? "")?.view.webContents;
+  if (!contents || contents.isDestroyed()) return "New Tab";
+  const url = contents.getURL();
+  if (!url || url === "about:blank") return "New Tab";
+  const label = (title ?? contents.getTitle()).replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  if (label && label !== url) return label.slice(0, 160);
+  try { return new URL(url).hostname || "New Tab"; } catch { return "New Tab"; }
+}
+
+function updateWindowTitle(state: RegularWindowState, pageTitle?: string) {
+  if (state.win.isDestroyed()) return;
+  const profile = currentProfileName;
+  const title = state.quickAsk ? `Ask Aux — ${profile}` : `${windowPageTitle(state, pageTitle)} — Aux — ${profile}`;
+  if (state.win.getTitle() !== title) state.win.setTitle(title);
+}
+
 function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
   if (!state) return;
+  updateWindowTitle(state);
   const { win } = state;
   const bounds = state.stageBounds ?? win.getContentBounds();
-  const shown = state.focusedPageId;
+  const shown = state.stagePageId;
+  let fullscreen=fullscreenContents(win);
+  if(fullscreen && (state.overlayOpen || registry.get(shown??"")?.view.webContents!==fullscreen)) {
+    exitPageFullscreen(win);fullscreen=undefined;
+  }
+  if(fullscreen) {
+    const size=win.getContentBounds();
+    for(const entry of registry.all()) {
+      if(entry.popup || (entry.windowId??PRIMARY_WINDOW_ID)!==state.id)continue;
+      const shown=entry.view.webContents===fullscreen;
+      entry.view.setVisible(shown);
+      if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);}
+    }
+    return;
+  }
   // Deliberate two-page inspection: a split companion shares the stage beside
   // the focused page.
-  const split = !state.overlayOpen && state.splitPageId && state.splitPageId !== shown ? state.splitPageId : null;
+  const companion = state.splitPageId ? registry.get(state.splitPageId) : undefined;
+  const split = shown && !state.overlayOpen && companion && companion.pageId !== shown
+    && !companion.popup && !companion.runtimeOwned && companion.kind !== "engine"
+    && (companion.windowId ?? PRIMARY_WINDOW_ID) === state.id
+    && !companion.view.webContents.isDestroyed() && !companion.view.webContents.isCrashed()
+    && (companion.showBlankDocument || (!!companion.view.webContents.getURL() && companion.view.webContents.getURL() !== "about:blank"))
+    ? companion.pageId : null;
   // Working pages that are not on the stage render at stage bounds *beneath*
   // the shell view (child index 0): laid out, producing frames, receiving
   // trusted input, covered by the opaque shell. A view outside the window
@@ -1084,7 +1089,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
     if (entry.pageId === shown && !state.overlayOpen) {
       wakePage(entry);
       if (split) {
-        const w = Math.floor(bounds.width / 2);
+        const w = splitWidths(bounds.width, state.splitRatio).left;
         entry.view.setBounds({ x: bounds.x, y: bounds.y, width: w, height: bounds.height });
       } else {
         entry.view.setBounds(bounds);
@@ -1092,7 +1097,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       entry.view.setVisible(true);
     } else if (split && entry.pageId === split) {
       wakePage(entry);
-      const w = bounds.width - Math.floor(bounds.width / 2);
+      const w = splitWidths(bounds.width, state.splitRatio).right;
       entry.view.setBounds({ x: bounds.x + bounds.width - w, y: bounds.y, width: w, height: bounds.height });
       entry.view.setVisible(true);
     } else if (offscreenActive.has(entry.pageId)) {
@@ -1116,7 +1121,57 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
     return state;
   };
 
+const profileLaunches=new Map<string,Promise<void>>();
 function wireRendererIpc() {
+  ipcMain.handle("ui.dictationStatus", event => { requireShellUi(event); return dictationStatus(); });
+  ipcMain.handle("ui.startDictation", (event, id: unknown) => { const state = requireShellUi(event); return startDictation(event.sender, id, state.win); });
+  ipcMain.handle("ui.stopDictation", (event, id: unknown) => { requireShellUi(event); return stopDictation(event.sender, id); });
+  ipcMain.handle("ui.cancelDictation", (event, id: unknown) => { requireShellUi(event); cancelDictation(event.sender, id); });
+
+  ipcMain.handle("ui.quickAskShortcut",(event,enabled?:unknown)=>{requireShellUi(event);if(enabled===undefined)return quickAskShortcutStatus();if(typeof enabled!=="boolean")throw new Error("Invalid shortcut preference.");return configureQuickAskShortcut(enabled);});
+  ipcMain.handle("ui.quickAsk", async (event, action: string) => {
+    const state = requireShellUi(event);
+    if (action === "open") { await openQuickAsk(); return state.quickAsk; }
+    if (action === "expand" && state.quickAsk) {
+      state.quickAsk = false;
+      updateWindowTitle(state);
+      state.win.setMinimumSize(900,640); state.win.setSize(1200,800); state.win.center();
+      state.shellView.webContents.send("quick-ask.state", false);
+    } else if (action === "dismiss" && state.quickAsk) state.win.hide();
+    else if (!["status","expand","dismiss"].includes(action)) throw new Error("Unknown quick assistance action.");
+    return state.quickAsk;
+  });
+  ipcMain.handle("ui.browserProfiles",event=>{requireShellUi(event);const profiles=browserProfiles.list();const current=profiles.find(profile=>profile.current);if(current){currentProfileName=current.name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
+  ipcMain.handle("ui.archiveBrowserProfile",(event,id:string,archived:boolean)=>{requireShellUi(event);return browserProfiles.archive(id,archived);});
+  ipcMain.handle("ui.createBrowserProfile",(event,name:unknown)=>{requireShellUi(event);return browserProfiles.create(name);});
+  ipcMain.handle("ui.renameBrowserProfile",(event,id:string,name:unknown)=>{requireShellUi(event);const profiles=browserProfiles.rename(id,name);if(id===browserProfiles.currentId){currentProfileName=browserProfiles.read(id).name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
+  ipcMain.handle("ui.openBrowserProfile",async(event,id:string)=>{
+    requireShellUi(event);
+    const env=browserProfiles.environment(id,process.env);
+    if(id===browserProfiles.currentId){const state=focusedRegularWindow();state?.win.show();state?.win.focus();return true;}
+    let launch=profileLaunches.get(id);
+    if(!launch){
+      launch=new Promise<void>((resolve,reject)=>{
+        const child=spawnProcess(process.execPath,app.isPackaged?[]:[app.getAppPath()],{env,detached:true,stdio:["ignore","ignore","ignore","ipc"]});
+        let settled=false;
+        const finish=(error?:Error)=>{
+          if(settled)return;settled=true;clearTimeout(timeout);
+          if(child.connected)child.disconnect();child.unref();
+          if(error)reject(error);else resolve();
+        };
+        const timeout=setTimeout(()=>finish(new Error("This profile is taking longer to start. Check its window before trying again.")),60_000);
+        child.once("error",error=>finish(error));
+        child.on("message",message=>{
+          if(message&&typeof message==="object"&&"type" in message&&message.type==="aux-profile-ready"&&"profileId" in message&&message.profileId===id)finish();
+        });
+        // A clean early exit hands the request to that profile's existing instance.
+        child.once("exit",code=>finish(code===0?undefined:new Error("The profile could not start. Its browsing data has been kept; try opening it again.")));
+      }).finally(()=>profileLaunches.delete(id));
+      profileLaunches.set(id,launch);
+    }
+    await launch;
+    return true;
+  });
   ipcMain.on("engine-input", (event, payload: { type?: string; x?: number; y?: number; button?: number; key?: string }) => {
     const entry = registry.byWebContentsId(event.sender.id);
     if (!entry) return;
@@ -1131,6 +1186,15 @@ function wireRendererIpc() {
     if (typeof requestedPageId === "string") {
       const entry = registry.get(requestedPageId);
       if (entry && (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) throw new Error("That tab belongs to another Aux window.");
+    }
+    if (method === "workspaces.browsingMemory.record") {
+      const entry = typeof requestedPageId === "string" ? registry.get(requestedPageId) : undefined;
+      if (!entry || entry.popup || entry.runtimeOwned || !state.win.isFocused() || state.overlayOpen || state.stagePageId !== requestedPageId || !entry.view.getVisible()) return { recorded: false };
+    }
+    if (method === "downloads.remove") {
+      const selection = MethodSchemas["downloads.remove"].parse(params);
+      params = { ids: selection.ids.filter(id => !liveDownloads.has(id)) };
+      if (!(params as { ids: string[] }).ids.length) return { removed: [] };
     }
     if (method === "tasks.importCommandEvidence") {
       const selection = EvidenceCommandSelectionParams.parse(params);
@@ -1150,8 +1214,22 @@ function wireRendererIpc() {
     cloudPreviewTokens.set(parsed.origin,token);return true;
   });
 
-  ipcMain.handle("ui.downloadsSnapshot", event => {
+  ipcMain.handle("ui.windows", event => {
+    const current = requireShellUi(event);
+    return [...regularWindows.values()].filter(state => state.id !== current.id && !state.quickAsk).map(state => {
+      const entries = registry.all().filter(entry => !entry.popup && !entry.runtimeOwned && (entry.windowId ?? PRIMARY_WINDOW_ID) === state.id);
+      return { id: state.id, title: windowPageTitle(state), tabCount: entries.length };
+    });
+  });
+  ipcMain.handle("ui.downloadsSnapshot", async event => {
     requireShellUi(event);
+    if (channel) {
+      const records = DownloadSchema.array().parse(await channel.call("api.invoke", { method: "downloads.list", params: {}, desktopUser: true }));
+      for (const recovered of interruptedDownloadHistory(records, new Set(liveDownloads.keys()), desktopStartedAt)) {
+        notifyRuntime("view.downloadFinished", recovered);
+        broadcastToShells("download", recovered);
+      }
+    }
     return [...liveDownloads.values()].map(download => download.snapshot());
   });
   ipcMain.handle("ui.downloadFolder", event=>{requireShellUi(event);return downloadLocation.status();});
@@ -1182,22 +1260,19 @@ function wireRendererIpc() {
   ipcMain.handle("ui.controlDownload", (event, id: unknown, action: unknown) => {
     requireShellUi(event);
     const download = typeof id === "string" ? liveDownloads.get(id) : undefined;
-    if (!download) throw new Error("This download is no longer active.");
-    const item = download.item;
-    if (action === "pause" && item.getState() === "progressing") item.pause();
-    else if (action === "resume" && item.canResume()) item.resume();
-    else if (action === "cancel") item.cancel();
-    else throw new Error("This download cannot perform that action.");
-    if (liveDownloads.has(id as string)) broadcastToShells("download", download.snapshot());
+    controlDownload(download?.item, action);
+    if (download && liveDownloads.has(id as string)) broadcastToShells("download", download.snapshot());
   });
-  ipcMain.handle("ui.setStage", (event, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number) => {
+  ipcMain.handle("ui.setStage", (event, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number, ratio?: number) => {
     const state = requireShellUi(event);
     state.stageBounds = bounds;
+    state.stagePageId = pageId;
     // `null` means the selected tab currently renders shell-owned content
     // (start page, settings, overview, or renderer bootstrap). It must not
     // erase that window's durable tab selection during a shell reload.
     if (pageId) state.focusedPageId = pageId;
     state.splitPageId = split ?? null;
+    state.splitRatio = splitRatio(ratio);
     if (typeof radius === "number" && Number.isFinite(radius)) state.stageRadius = Math.max(0, Math.min(24, Math.round(radius)));
     applyStage(state);
     return true;
@@ -1208,6 +1283,7 @@ function wireRendererIpc() {
     applyStage(state);
     return true;
   });
+  ipcMain.handle("ui.focusShell", event => { requireShellUi(event).shellView.webContents.focus(); });
   ipcMain.handle("ui.preview", async (event, pageId: string) => {
     const state = requireShellUi(event);
     let entry: ViewEntry;
@@ -1253,36 +1329,21 @@ function wireRendererIpc() {
     if (!isWebUrl(url)) return false;
     return shell.openExternal(url).then(() => true);
   });
-  const pdfExports = new Set<string>();
   ipcMain.handle("ui.savePagePdf", async (event, pageId: unknown) => {
-    const state=requireShellUi(event);
-    if (typeof pageId !== "string") throw new Error("Select a browser page to export");
-    const contents = requireOwnedEntry(state, pageId).view.webContents;
-    if (!contents || contents.isDestroyed() || contents.isCrashed()) throw new Error("This page is unavailable. Reload it before exporting.");
-    if (pdfExports.has(pageId)) throw new Error("A PDF export is already in progress for this page");
-    pdfExports.add(pageId);
-    try {
-      const title = contents.getTitle().replace(/[\\/:*?"<>|\x00-\x1f]/g, "-").replace(/[. ]+$/g, "").slice(0, 120) || "Aux page";
-      // Capture the requested document before the save dialog; later navigation
-      // must not silently change which page is exported.
-      const pdf = await contents.printToPDF({ printBackground: true, preferCSSPageSize: true });
-      const result = await dialog.showSaveDialog(state.win, {
-        title: "Save Page as PDF", defaultPath: join(app.getPath("downloads"), `${title}.pdf`),
-        filters: [{ name: "PDF document", extensions: ["pdf"] }],
-      });
-      if (result.canceled || !result.filePath) return null;
-      try { await writeFile(result.filePath, pdf); }
-      catch { throw new Error("Couldn’t save the PDF. Choose a writable destination and try again."); }
-      return result.filePath;
-    } finally { pdfExports.delete(pageId); }
+    const state = requireShellUi(event);
+    if (typeof pageId !== "string") throw new Error("Select a browser page to export.");
+    const entry=requireOwnedEntry(state,pageId);
+    return savePagePdf(entry.view.webContents, state.win, false, entry.showBlankDocument);
   });
-  ipcMain.handle("ui.print", (event, pageId: string) => {
-    requireOwnedEntry(requireShellUi(event), pageId).view.webContents.print();
-    return true;
-  });
+  ipcMain.handle("ui.print", (event, pageId: string) => {const entry=requireOwnedEntry(requireShellUi(event),pageId);return printPage(entry.view.webContents,entry.showBlankDocument);});
   ipcMain.handle("ui.devTools", (event, pageId: string) => {
     requireOwnedEntry(requireShellUi(event), pageId).view.webContents.openDevTools({ mode: "detach" });
     return true;
+  });
+  ipcMain.handle("ui.navigationMenu",(event,pageId:string,direction:unknown)=>{
+    const entry=requireOwnedEntry(requireShellUi(event),pageId);
+    if(direction!=="back"&&direction!=="forward")throw new Error("Choose a history direction.");
+    return showNavigationMenu(entry.view.webContents,direction);
   });
   ipcMain.handle("ui.hardReload", (event, pageId: string) => {
     requireOwnedEntry(requireShellUi(event), pageId).view.webContents.reloadIgnoringCache();
@@ -1400,10 +1461,17 @@ function wireRendererIpc() {
     const current=await localProjects.inspect(id);const task=await prepare();if(savingProjects.has(id))throw new Error('Wait for the file save before starting services.');
     return projectCommands.startStack(current.project,request.commands,{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId},request.label);
   });
+  ipcMain.handle("ui.pickEvidenceImage", async event => {
+    const state = requireShellUi(event);
+    const result = await dialog.showOpenDialog(state.win, { title: "Choose an image", properties: ["openFile"],
+      filters: [{ name: "Images (up to 16 MB)", extensions: ["png", "jpg", "jpeg", "webp"] }] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    return readEvidenceImage(result.filePaths[0]);
+  });
   ipcMain.handle("ui.pickEvidenceDocument", async event => {
     const state=requireShellUi(event);
-    const result = await dialog.showOpenDialog(state.win, { title: "Import document evidence", properties: ["openFile"],
-      filters: [{ name: "Text documents (up to 512 KB)", extensions: ["txt", "md", "csv", "json"] }] });
+    const result = await dialog.showOpenDialog(state.win, { title: "Attach a document", properties: ["openFile"],
+      filters: [{ name: "Documents", extensions: ["txt", "md", "csv", "json", "docx", "xlsx", "pdf"] }, { name: "PDF, Word & Excel (up to 16 MB)", extensions: ["pdf", "docx", "xlsx"] }, { name: "Text documents (up to 512 KB)", extensions: ["txt", "md", "csv", "json"] }] });
     if (result.canceled || !result.filePaths[0]) return null;
     return readEvidenceDocument(result.filePaths[0]);
   });
@@ -1417,6 +1485,7 @@ function wireRendererIpc() {
     return true;
   });
   ipcMain.handle("ui.openPath", async (_e, p: string) => shell.openPath(p));
+  ipcMain.handle("ui.saveWorkbook",(event,content:unknown,format:unknown)=>{const state=requireShellUi(event);return saveWorkbookSnapshot(state.win,content,false,format);});
   ipcMain.handle("ui.saveFile", async (event, name: string, content: string) => {
     const state=requireShellUi(event);
     if (typeof name !== "string" || typeof content !== "string") throw new Error("Invalid export content");
@@ -1480,19 +1549,36 @@ function wireRendererIpc() {
     const state = requireShellUi(event);
     const selected = await dialog.showOpenDialog(state.win, { title: "Choose an unpacked Chrome extension", properties: ["openDirectory"] });
     if (selected.canceled || !selected.filePaths[0]) return null;
-    const details = extensionManager.inspect(selected.filePaths[0]);
-    const permissionDetail = details.permissions.length ? details.permissions.join("\n") : "No permissions declared in the manifest.";
-    const { response } = await dialog.showMessageBox(state.win, {
-      type: "warning",
-      title: "Install unpacked extension?",
-      message: `${details.name} ${details.version}`,
-      detail: `Extensions can read or change browser data according to their manifest. Aux copies this folder into its private data directory.\n\nDeclared access:\n${permissionDetail}`,
-      buttons: ["Cancel", "Install extension"],
-      defaultId: 1,
-      cancelId: 0,
-      noLink: true,
+    return extensionManager.install(selected.filePaths[0], profileSession(), async details => {
+      const permissionDetail = details.permissions.length ? details.permissions.join("\n") : "No permissions declared in the manifest.";
+      const { response } = await dialog.showMessageBox(state.win, {
+        type: "warning",
+        title: "Install unpacked extension?",
+        message: `${details.name} ${details.version}`,
+        detail: `Extensions can read or change browser data according to their manifest. Aux installs the reviewed copy in this profile.\n\nDeclared access:\n${permissionDetail}`,
+        buttons: ["Cancel", "Install extension"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      return response === 1;
     });
-    return response === 1 ? extensionManager.install(selected.filePaths[0], profileSession()) : null;
+  });
+  ipcMain.handle("app.updateUnpackedExtension", async (event, key: unknown) => {
+    const state = requireShellUi(event);
+    if (typeof key !== "string") throw new Error("Invalid extension.");
+    const selected = await dialog.showOpenDialog(state.win, { title: "Choose the updated extension folder", properties: ["openDirectory"] });
+    if (selected.canceled || !selected.filePaths[0]) return null;
+    return extensionManager.update(key, selected.filePaths[0], profileSession(), async details => {
+      const added = details.addedPermissions.length ? details.addedPermissions.join("\n") : "No additional declared access.";
+      const declared = details.permissions.length ? details.permissions.join("\n") : "No permissions declared.";
+      const decision = await dialog.showMessageBox(state.win, {
+        type: "warning", title: "Update extension?", message: `${details.name}: ${details.fromVersion} → ${details.version}`,
+        detail: `Aux will replace its installed copy. ${details.enabled ? "The extension will restart; reload affected pages if needed." : "The extension will remain disabled."}\n\nAdditional declared access:\n${added}\n\nAll declared access:\n${declared}`,
+        buttons: ["Cancel", "Update extension"], defaultId: 0, cancelId: 0, noLink: true,
+      });
+      return decision.response === 1;
+    });
   });
   ipcMain.handle("app.setExtensionEnabled", async (event, key: unknown, enabled: unknown) => {
     requireShellUi(event);
@@ -1553,8 +1639,9 @@ function wireRendererIpc() {
     const wc = entry.view.webContents;
     const url = new URL(wc.getURL());
     if (!["http:", "https:"].includes(url.protocol)) throw new Error("Site controls are available for HTTP and HTTPS websites.");
-    const local = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
     const cookies = await wc.session.cookies.get({ url: url.href });
+    if (wc.isDestroyed() || registry.get(entry.pageId) !== entry || wc.getURL() !== url.href) throw new Error("The page changed. Open site controls again.");
     return {
       pageId: entry.pageId, url: url.href, origin: url.origin, title: wc.getTitle(),
       security: url.protocol === "https:" ? "secure" : local ? "local" : "insecure",
@@ -1566,21 +1653,21 @@ function wireRendererIpc() {
     const state = requireShellUi(event);
     const entry = typeof pageId === "string" ? requireOwnedEntry(state, pageId) : undefined;
     if (!entry || entry.kind === "engine") throw new Error("Open a webpage to use Reader view.");
-    const wc = entry.view.webContents;
-    if (wc.isDestroyed() || !isWebUrl(wc.getURL())) throw new Error("Reader view is available for webpages.");
-    let changed = false;
-    const invalidate = () => { changed = true; };
-    wc.on("did-start-navigation", invalidate);
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const source = readFileSync(join(import.meta.dirname, "reader-extract.js"), "utf8");
-      const article = await Promise.race([
-        wc.executeJavaScriptInIsolatedWorld(997, [{code: source + ";AuxReader.extractArticle();"}]),
-        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("This page did not respond. Try Reader view again.")), 10000); }),
-      ]);
-      if (changed || wc.isDestroyed() || registry.get(entry.pageId) !== entry) throw new Error("The page changed. Open Reader view again.");
-      return article;
-    } finally { clearTimeout(timer); wc.removeListener("did-start-navigation", invalidate); }
+    return readArticle(entry.view.webContents, () => registry.get(entry.pageId) === entry);
+  });
+  ipcMain.handle("app.siteZoom", (event, origin?: unknown) => {
+    requireShellUi(event);
+    if (origin !== undefined) {
+      if (typeof origin !== "string") throw new Error("Choose a saved website size.");
+      siteZoom.reset(origin);
+      for (const entry of registry.all()) {
+        const contents = entry.view.webContents;
+        if (entry.kind === "engine" || contents.isDestroyed()) continue;
+        try { if (new URL(contents.getURL()).origin === origin) siteZoom.apply(contents, origin); } catch {}
+      }
+      broadcastToShells("site-zoom-changed", {});
+    }
+    return siteZoom.list();
   });
   ipcMain.handle("app.sitePermissions", event => { requireShellUi(event); return sitePermissions; });
   ipcMain.handle("app.clearSitePermission", (event, origin: unknown, permission?: unknown) => {
@@ -1653,24 +1740,58 @@ function wireDownloads() {
 
 // ---------- boot ----------
 
-async function createRegularWindow(id = `window-${randomUUID()}`): Promise<RegularWindowState> {
+const QUICK_ASK_ACCELERATOR = "CommandOrControl+Shift+Space";
+const quickAskPreferences = join(DATA_DIR,"quick-ask.json");
+let quickAskShortcutEnabled = false, quickAskShortcutError = "";
+try { quickAskShortcutEnabled = JSON.parse(readFileSync(quickAskPreferences,"utf8")).enabled === true; } catch {}
+function quickAskShortcutStatus() { return {enabled:quickAskShortcutEnabled,registered:globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR),error:quickAskShortcutError}; }
+function configureQuickAskShortcut(enabled:boolean, persist=true) {
+  const previouslyEnabled=quickAskShortcutEnabled, previouslyRegistered=globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR);
+  if(enabled && !globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR)) {
+    if(!globalShortcut.register(QUICK_ASK_ACCELERATOR,()=>{void openQuickAsk().catch(error=>log("Quick Ask could not open",String(error)));})) {
+      quickAskShortcutError="This shortcut is unavailable, possibly because another app is using it.";
+      throw new Error(quickAskShortcutError);
+    }
+  }
+  if(!enabled)globalShortcut.unregister(QUICK_ASK_ACCELERATOR);
+  quickAskShortcutEnabled=enabled;quickAskShortcutError="";
+  if(persist)try{const temp=`${quickAskPreferences}.tmp`;writeFileSync(temp,JSON.stringify({enabled}),{mode:0o600});renameSync(temp,quickAskPreferences);}
+  catch(error){
+    quickAskShortcutEnabled=previouslyEnabled;
+    if(!previouslyRegistered)globalShortcut.unregister(QUICK_ASK_ACCELERATOR);
+    else if(!globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR))globalShortcut.register(QUICK_ASK_ACCELERATOR,()=>{void openQuickAsk().catch(reason=>log(String(reason)));});
+    quickAskShortcutError="The shortcut preference could not be saved.";throw new Error(quickAskShortcutError,{cause:error});
+  }
+  return quickAskShortcutStatus();
+}
+
+let openingQuickAsk: Promise<RegularWindowState> | null = null;
+async function openQuickAsk() {
+  const existing = [...regularWindows.values()].find(state => state.quickAsk);
+  if (existing) { existing.win.show(); existing.win.focus(); existing.shellView.webContents.focus(); return; }
+  if (!openingQuickAsk) openingQuickAsk = createRegularWindow(`quick-${randomUUID()}`, true);
+  try { const state = await openingQuickAsk; state.win.show(); state.win.focus(); state.shellView.webContents.focus(); }
+  finally { openingQuickAsk = null; }
+}
+
+async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = false): Promise<RegularWindowState> {
   const existing = regularWindows.get(id);
   if (existing) { existing.win.show(); existing.win.focus(); return existing; }
   const theme = readStoredTheme();
   nativeTheme.themeSource = theme;
   const regularWindow = new BaseWindow({
-    width: 1440, height: 960, minWidth: 1100, minHeight: 720,
+    width: quickAsk ? 580 : 1440, height: quickAsk ? 640 : 960, minWidth: quickAsk ? 420 : 900, minHeight: quickAsk ? 400 : 640,
     backgroundColor: WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"],
-    title: "Aux", titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 18 }, roundedCorners: true,
+    title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 18 }, roundedCorners: true,
   });
   const regularShell = new WebContentsView({ webPreferences: {
     preload: join(import.meta.dirname, "..", "preload", "index.cjs"),
-    additionalArguments: [`--aux-window-id=${encodeURIComponent(id)}`],
+    additionalArguments: [`--aux-window-id=${encodeURIComponent(id)}`, ...(quickAsk ? ["--aux-quick-ask"] : [])],
     contextIsolation: true, sandbox: true, nodeIntegration: false,
   }});
   regularShell.setBackgroundColor(WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"]);
-  const state: RegularWindowState = { id, win: regularWindow, shellView: regularShell, overlayOpen: false,
-    stageBounds: null, focusedPageId: null, splitPageId: null, stageRadius: 0, closeApproved: false };
+  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false,
+    stageBounds: null, stagePageId: null, focusedPageId: null, splitPageId: null, splitRatio: .5, stageRadius: 0, closeApproved: false };
   regularWindows.set(id, state);
   if (id === PRIMARY_WINDOW_ID || !win || !shellView) { win = regularWindow; shellView = regularShell; }
 
@@ -1696,12 +1817,13 @@ async function createRegularWindow(id = `window-${randomUUID()}`): Promise<Regul
   void regularShell.webContents.executeJavaScript(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`);
   if (desktopEnv.AUX_DEVTOOLS === "1") regularShell.webContents.openDevTools({ mode: "detach" });
   regularWindow.on("focus", () => {
-    if (state.focusedPageId && channel) void channel.call("api.invoke", { method: "pages.activate", params: { pageId: state.focusedPageId }, desktopUser: true }).catch(() => {});
+    if (state.focusedPageId) notifyRuntime("view.windowFocused", {pageId: state.focusedPageId, windowId: state.id});
   });
   regularWindow.on("close", event => {
     if (exitApproved || state.closeApproved) return;
     event.preventDefault();
-    if (regularWindows.size === 1) void requestExit();
+    if (state.quickAsk && [...regularWindows.values()].some(window => !window.quickAsk)) { state.win.hide(); return; }
+    if ([...regularWindows.values()].filter(window => !window.quickAsk).length <= 1) void requestExit();
     else void requestRegularWindowClose(state);
   });
   regularWindow.on("closed", () => {
@@ -1729,6 +1851,7 @@ async function boot() {
   await loadProfileExtensions();
 
   await createRegularWindow(PRIMARY_WINDOW_ID);
+  if(quickAskShortcutEnabled)try{configureQuickAskShortcut(true,false);}catch(error){log(String(error));}
   browserHealth.start();
   // The runtime is supervised independently from native page views. Start it
   // only after the primary owner exists so restored native pages have a host.
@@ -1788,6 +1911,7 @@ function installMenu() {
     {
       label: "File",
       submenu: [
+        { label: "Quick Ask", accelerator: "CmdOrCtrl+Shift+Space", click: () => { void openQuickAsk().catch(error => log("Quick Ask could not open", String(error))); } },
         { id: "new-window", label: "New Window", accelerator: "CmdOrCtrl+N", click: () => { void createRegularWindow(); } },
         cmd("New Tab", "t", "CmdOrCtrl+T"),
         { id: "new-private-window", label: "New Private Window", accelerator: "CmdOrCtrl+Shift+N", click: openPrivateWindow },
@@ -1830,7 +1954,7 @@ function installMenu() {
         { type: "separator" },
         cmd("Reader View", "r", "CmdOrCtrl+Alt+R", { alt: true }),
         cmd("Toggle Sidebar", "s", "CmdOrCtrl+S"),
-        cmd("Tab Overview", "a", "CmdOrCtrl+Shift+A", { shift: true }),
+        cmd("Tab Overview", "o", "CmdOrCtrl+Shift+O", { shift: true }),
         { type: "separator" },
         cmd("Developer Tools", "i", "CmdOrCtrl+Alt+I", { alt: true }),
         cmd("View Source", "u", "CmdOrCtrl+Alt+U", { alt: true }),
@@ -1862,13 +1986,21 @@ function installMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function notifyHttpAuthChanged() {
+  for (const state of regularWindows.values()) {
+    if (!state.shellView.webContents.isDestroyed()) state.shellView.webContents.send('http-auth-changed');
+  }
+}
 installHttpAuth({
-  isPage: contents => !!registry.byWebContentsId(contents.id),
-  requireShell: requireShellUi,
-  changed: () => { for (const state of regularWindows.values()) if (!state.shellView.webContents.isDestroyed()) state.shellView.webContents.send('http-auth-changed'); },
+  owner: contents => {
+    const entry = registry.byWebContentsId(contents.id);
+    return entry ? entry.windowId ?? PRIMARY_WINDOW_ID : null;
+  },
+  requireShell: event => requireShellUi(event).id,
+  changed: notifyHttpAuthChanged,
 });
 
-app.whenReady().then(boot).catch((e) => {
+app.whenReady().then(boot).then(()=>{if(process.connected)process.send?.({type:"aux-profile-ready",profileId:browserProfiles.currentId},()=>{});}).catch((e) => {
   console.error("boot failed:", e);
   app.exit(1);
 });
@@ -1955,6 +2087,7 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
   browserHealth.stop();
   projectCommands.shutdown();
   // the forked runtime gets SIGTERM via process tree teardown; make it explicit
@@ -1964,3 +2097,5 @@ app.on("will-quit", () => {
     /* already gone */
   }
 });
+
+app.on("will-quit", () => cancelDictation());

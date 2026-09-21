@@ -23,6 +23,7 @@ export const TaskDefinitionSchema = z.object({
   resources: ResourceList.default([]),
 });
 export const TaskSchema = TaskDefinitionSchema.extend({
+  conversationId: text.optional(),
   taskId: text,
   workspaceId: text,
   parentTaskId: text.optional(),
@@ -32,8 +33,15 @@ export const TaskSchema = TaskDefinitionSchema.extend({
   updatedAt: z.number(),
 });
 export const WorkspaceSchema = z.object({ workspaceId: text, name: text.max(100), createdAt: z.number() });
-export const WorkspaceMemorySchema = z.object({ workspaceId: text, content: z.string().max(16_000), revision: z.number().int().nonnegative(), updatedAt: z.number().optional() });
+export const WorkspaceMemoryItemSchema = z.object({
+  itemId: text, content: z.string().trim().min(1).max(2000), enabled: z.boolean(),
+  sourceUrl: z.string().max(2048).refine(value => { try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password; } catch { return false; } }, "Use a web address without credentials").optional(),
+  createdAt: z.number(), updatedAt: z.number(), expiresAt: z.number().optional(),
+});
+export type WorkspaceMemoryItem = z.infer<typeof WorkspaceMemoryItemSchema>;
+export const WorkspaceMemorySchema = z.object({ workspaceId: text, excludedOrigins: z.array(z.string().max(2048)).max(100).optional(), items: z.array(WorkspaceMemoryItemSchema).max(40).optional(), enabled:z.boolean().optional(), content: z.string().max(16_000), revision: z.number().int().nonnegative(), updatedAt: z.number().optional() });
 export const TaskCreateParams = TaskDefinitionSchema.extend({ workspaceId: text, parentTaskId: text.optional() });
+export const TaskPromoteParams = TaskDefinitionSchema.extend({ workspaceId: text, chatId: text, expectedRunId: text });
 export const TaskUpdateParams = TaskDefinitionSchema.partial().extend({ taskId: text, expectedRevision: z.number().int().positive(), resources: ResourceList.optional() });
 export type Task = z.infer<typeof TaskSchema>;
 export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
@@ -63,7 +71,7 @@ export const EvidenceCaptureParams = z.object({ taskId: text, expectedRevision: 
 export const DOCUMENT_EVIDENCE_MAX_BYTES = 512 * 1024;
 export const EvidenceDocumentParams = z.object({
   taskId: text, expectedRevision: z.number().int().positive(), criterionId: text,
-  filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json)$/i),
+  filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
   content: z.string().max(DOCUMENT_EVIDENCE_MAX_BYTES).refine(value => !value.includes("\0") && new TextEncoder().encode(value).length <= DOCUMENT_EVIDENCE_MAX_BYTES, "Use a UTF-8 text document up to 512 KB"),
 }).strict();
 export const CriterionReviewParams = z.object({ taskId: text, expectedRevision: z.number().int().positive(), criterionId: text,
@@ -98,3 +106,9 @@ export type TaskReceipt = z.infer<typeof TaskReceiptSchema>;
 /** Desktop hydrates the selected identity from its own saved command record. */
 export const EvidenceCommandSelectionParams=z.object({taskId:text,expectedRevision:z.number().int().positive(),criterionId:text,projectId:z.string().uuid(),commandId:z.string().uuid()}).strict();
 export const EvidenceCommandParams=EvidenceCommandSelectionParams.extend({command:ProjectCommandSchema}).strict();
+
+export const BrowsingMemoryPolicySchema = z.object({ enabled: z.boolean(), retentionDays: z.union([z.literal(7), z.literal(30), z.literal(90)]) });
+export const BrowsingMemoryPageSchema = z.object({ memoryId: text, url: z.string(), title: z.string(), firstVisitedAt: z.number(), lastVisitedAt: z.number() });
+export const WorkspaceBrowsingMemorySchema = z.object({ workspaceId: text, policy: BrowsingMemoryPolicySchema, pages: z.array(BrowsingMemoryPageSchema) });
+export type BrowsingMemoryPolicy = z.infer<typeof BrowsingMemoryPolicySchema>;
+export type BrowsingMemoryPage = z.infer<typeof BrowsingMemoryPageSchema>;

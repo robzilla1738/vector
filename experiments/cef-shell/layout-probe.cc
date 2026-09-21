@@ -1,6 +1,8 @@
 // Source-level CEF candidate probe, not the Aux product entry point.
 // Page content must remain Chrome style; only trusted Aux UI may use Alloy.
+#include <cstdio>
 #include "include/cef_browser.h"
+#include "include/cef_command_line.h"
 #include "include/cef_client.h"
 #include "include/cef_request_context.h"
 #include "include/views/cef_box_layout.h"
@@ -46,10 +48,14 @@ class WindowLayout final : public CefWindowDelegate {
     settings.horizontal = true;
     settings.between_child_spacing = 0;
     auto layout = window->SetToBoxLayout(settings);
-    window->AddChildView(sidebar_);
     window->AddChildView(content_);
+    if (sidebar_) {
+      window->AddChildView(sidebar_);
+      window->ReorderChildView(sidebar_, 0);
+    }
     layout->SetFlexForView(content_, 1);
     window->Show();
+    content_->RequestFocus();
   }
   bool CanClose(CefRefPtr<CefWindow>) override {
     auto browser = content_->GetBrowser();
@@ -77,14 +83,15 @@ CefRefPtr<CefWindow> CreateLayoutProbe(
     const CefString& trusted_shell_url,
     const CefString& fixture_url) {
   CefBrowserSettings settings;
-  auto sidebar = CefBrowserView::CreateBrowserView(
+  const bool content_only = CefCommandLine::GetGlobalCommandLine()->HasSwitch("content-only");
+  auto sidebar = content_only ? nullptr : CefBrowserView::CreateBrowserView(
       shell_client, trusted_shell_url, settings, nullptr, shell_context,
       new BrowserStyle(true));
   auto content = CefBrowserView::CreateBrowserView(
       content_client, fixture_url, settings, nullptr, content_context,
       new BrowserStyle(false));
-  if (!sidebar || !content ||
-      sidebar->GetRuntimeStyle() != CEF_RUNTIME_STYLE_ALLOY ||
+  fprintf(stderr, "Candidate view styles: shell=%d content=%d (alloy=%d chrome=%d)\n", sidebar ? sidebar->GetRuntimeStyle() : -1, content ? content->GetRuntimeStyle() : -1, CEF_RUNTIME_STYLE_ALLOY, CEF_RUNTIME_STYLE_CHROME);
+  if ((!content_only && (!sidebar || sidebar->GetRuntimeStyle() != CEF_RUNTIME_STYLE_ALLOY)) || !content ||
       content->GetRuntimeStyle() != CEF_RUNTIME_STYLE_CHROME) {
     return nullptr;
   }

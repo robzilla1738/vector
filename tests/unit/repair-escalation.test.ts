@@ -157,6 +157,8 @@ describe("repair escalation", () => {
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("failed");
     expect(final.error).toMatch(/permission denied/i);
+    expect(final.failure).toMatchObject({ category: "permission", action: "permission_settings", retryable: true });
+    expect(final.failure?.message).toContain("interact with pages");
     expect(h.executeCalls).toBe(0);
     expect(h.roles.filter((id) => id === "test/recovery")).toHaveLength(0);
   });

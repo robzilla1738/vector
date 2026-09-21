@@ -31,6 +31,7 @@ export interface Settings {
   theme?: "system" | "dark" | "light";
   sidebarAppearance?: "solid" | "translucent";
   sidebarBlur?: number;
+  sidebarOpacity?: number;
   tabLayout?: "vertical" | "horizontal";
   zoomFactor?: number;
   dataDir?: string;
@@ -170,8 +171,9 @@ export class SettingsService {
       perOrigin: this.perOrigin(),
       maxModelCalls: this.maxModelCalls(),
       theme: (this.get("theme") as "system" | "dark" | "light") ?? "dark",
-      sidebarAppearance: (this.get("sidebarAppearance") as "solid" | "translucent") ?? "translucent",
-      sidebarBlur: Number(this.get("sidebarBlur") ?? 24),
+      sidebarAppearance: (this.get("sidebarAppearance") as "solid" | "translucent") ?? "solid",
+      sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
+      sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "vertical",
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
       engineMode: this.engineMode(),

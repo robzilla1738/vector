@@ -41,6 +41,7 @@ export interface CoordinatorDeps {
   events: EventBus;
   pages: PageService;
   model: () => ModelClient | null;
+  imageReferences?: (run: Run) => string[];
   defaultModel: () => string;
   recoveryModel: () => string | undefined;
   visionModel?: () => string | undefined;
@@ -113,6 +114,7 @@ export class RunCoordinator {
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
     contextArtifactIds?: string[];
+    contextImageArtifactIds?: string[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
     chatId?: string;
@@ -133,6 +135,7 @@ export class RunCoordinator {
         contextRunIds: opts.contextRunIds,
         contextAttachmentIds: opts.contextAttachmentIds,
         contextArtifactIds: opts.contextArtifactIds,
+        contextImageArtifactIds: opts.contextImageArtifactIds,
         contextWorkspaceId: opts.contextWorkspaceId,
         contextWorkspaceRevision: opts.contextWorkspaceRevision,
         chatId: opts.chatId,

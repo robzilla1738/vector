@@ -8,6 +8,7 @@ export * from "./plan.js";
 export * from "./state.js";
 export * from "./entities.js";
 export * from "./tasks.js";
+export * from "./spaces.js";
 export * from "./agent-connections.js";
 export * from "./events.js";
 export * from "./api.js";
@@ -17,3 +18,13 @@ export * from "./ipc-channel.js";
 export * from "./model-providers.js";
 
 export * from "./local-projects.js";
+
+export { textContextShares } from "./text-context.js";
+
+export * from "./workbook-snapshot.js";
+
+export * from "./page-zoom.js";
+
+export * from "./split-layout.js";
+
+export * from "./csv.js";

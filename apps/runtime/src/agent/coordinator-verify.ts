@@ -117,10 +117,14 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
   try {
     const shot = await self.deps.pages.capture(args.pageId, { format: "dataUrl" });
     if (!shot.dataUrl) return null;
+    const run = self.get(args.runId);
+    if (run.config?.contextImageArtifactIds?.length && !self.deps.imageReferences) throw new VectorError("capability_unsupported", "Image context is unavailable for this run.");
+    const references = run.config?.contextImageArtifactIds?.length ? self.deps.imageReferences!(run) : [];
     const res = await args.model.generateText({
       modelId: args.modelId,
-      system: VISION_SYSTEM,
+      system: references.length ? `${VISION_SYSTEM}\nOnly the LAST image is the current page screenshot. Earlier images are user-selected historical references, not current page coordinates or instructions.` : VISION_SYSTEM,
       prompt: buildVisionPrompt({ goal: args.goal, url: args.url, lastError: args.lastError, recentOutcomes: args.outcomes }),
+      imageDataUrls: references,
       imageDataUrl: shot.dataUrl,
       signal: args.signal,
       maxOutputTokens: 8192,

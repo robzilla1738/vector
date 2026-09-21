@@ -1,9 +1,13 @@
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
+
+import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
+export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
+
 import {
   ArtifactSchema,
   BackendSchema,
-  BookmarkSchema,
+  BookmarkSchema, BookmarkFolderPathSchema,
   BrowserSessionSchema,
   ConversationSummarySchema,
   DownloadSchema,
@@ -23,9 +27,10 @@ import { EventSchema } from "./events.js";
 import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
-import { TaskSchema, TaskCreateParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
+import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
+import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema} from "./local-projects.js";
 
@@ -115,6 +120,7 @@ export const PagesNetworkParams = z.object({
 });
 export const PagesCaptureParams = z.object({
   pageId: id,
+  expectedDocumentEpoch: z.number().int().nonnegative().optional(),
   fullPage: z.boolean().optional(),
   /** data url for transport; file for artifact storage */
   format: z.enum(["dataUrl", "artifact"]).default("dataUrl"),
@@ -155,7 +161,7 @@ export const PagesFindParams = z.object({
   findNext: z.boolean().default(false),
 });
 export const PagesStopFindParams = z.object({ pageId: id, action: z.enum(["clear", "keep"]).default("clear") });
-export const PagesZoomParams = z.object({ pageId: id, level: z.number().optional(), delta: z.number().optional(), reset: z.boolean().optional() });
+export const PagesZoomParams = z.object({ pageId: id, level: z.number().optional(), delta: z.number().optional(), reset: z.boolean().optional(), direction: z.enum(["in", "out"]).optional() });
 export const PagesTakeoverParams = z.object({ pageId: id });
 export const PagesResumeParams = z.object({ pageId: id });
 export const PagesOpenLiveParams = z.object({ pageId: id }).describe("focus a borrowed Chrome tab in real Chrome");
@@ -202,6 +208,8 @@ export const RunsStartParams = z.object({
   deadlineMs: z.number().int().positive().optional(),
   /** prior turns / notes the planner should see ("EARLIER IN THIS SESSION") */
   context: z.string().max(20_000).optional(),
+  /** Desktop default for a new conversation; never reassigns an existing conversation. */
+  defaultWorkspaceId: id.optional(),
   /** chat thread this run belongs to — groups turns into conversations */
   chatId: z.string().optional(),
 });
@@ -241,7 +249,12 @@ export const RunsContextSetParams = z.object({
   runId: id.optional(),
   included: z.boolean().optional(),
 }).refine(value => value.historyEnabled !== undefined || (value.runId && value.included !== undefined), { message: "historyEnabled or runId/included is required" });
+export const PreparedConversationSchema = z.object({
+  chatId: id, title: z.string(), attachmentCount: z.number().int().positive(), updatedAt: z.number().finite(),
+});
+export type PreparedConversation = z.infer<typeof PreparedConversationSchema>;
 export const ConversationsListParams = z.object({
+  workspaceId: id.optional(),
   limit: z.number().int().positive().max(200).default(40),
   before: z.object({ updatedAt: z.number().finite(), chatId: id }).optional(),
   query: z.string().max(500).optional(),
@@ -251,6 +264,8 @@ export const ConversationRenameParams = z.object({ chatId: id, title: z.string()
 export const ConversationArchiveParams = z.object({ chatId: id, archived: z.boolean() });
 export const ConversationDeleteParams = z.object({ chatId: id });
 export const ConversationAttachmentSchema = z.object({
+  sourceUrl: z.string().optional(),
+  sourceTruncated: z.boolean().optional(),
   attachmentId: id,
   filename: z.string().min(1).max(255),
   excerpt: z.string().max(1000),
@@ -262,11 +277,18 @@ export type ConversationAttachment = z.infer<typeof ConversationAttachmentSchema
 export const ConversationAttachmentsSchema = z.object({ chatId: id, attachments: z.array(ConversationAttachmentSchema) });
 export const ConversationAttachmentAddParams = z.object({
   chatId: id,
-  filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json)$/i),
+  filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
   content: z.string().max(512 * 1024).refine(value => !value.includes("\0") && new TextEncoder().encode(value).length <= 512 * 1024, "Use a UTF-8 text document up to 512 KB"),
 });
 export const ConversationAttachmentControlParams = z.object({ chatId: id, attachmentId: id });
 export const ConversationAttachmentToggleParams = ConversationAttachmentControlParams.extend({ included: z.boolean() });
+export const ConversationImageSchema = z.object({
+  imageId:id, artifactId:id, filename:z.string(), width:z.number().int().positive(), height:z.number().int().positive(),
+  byteLength:z.number().int().nonnegative(), sourceUrl:z.string().optional(), createdAt:z.number(), included:z.boolean(),
+});
+export type ConversationImage = z.infer<typeof ConversationImageSchema>;
+const ConversationImagesSchema = z.object({chatId:id,images:z.array(ConversationImageSchema)});
+const ConversationImageControl = z.object({chatId:id,imageId:id});
 export const ConversationArtifactSchema = z.object({
   artifactId: id,
   runId: id,
@@ -279,6 +301,8 @@ export const ConversationArtifactSchema = z.object({
   included: z.boolean(),
 });
 export type ConversationArtifact = z.infer<typeof ConversationArtifactSchema>;
+export const SavedResultSchema = z.object({ artifactId:id,runId:id,chatId:id,filename:z.string(),mediaType:z.string(),byteLength:z.number(),createdAt:z.number(),conversationTitle:z.string(),turnGoal:z.string() });
+export type SavedResult = z.infer<typeof SavedResultSchema>;
 export const ConversationArtifactsSchema = z.object({ chatId: id, artifacts: z.array(ConversationArtifactSchema) });
 export const ConversationArtifactToggleParams = z.object({ chatId: id, artifactId: id, included: z.boolean() });
 export const ConversationSourceSchema = z.object({
@@ -293,7 +317,7 @@ export const ConversationSourceSchema = z.object({
 });
 export type ConversationSource = z.infer<typeof ConversationSourceSchema>;
 export const ConversationSourcesSchema = z.object({ chatId: id, sources: z.array(ConversationSourceSchema).max(200) });
-export const ConversationWorkspaceSchema = z.object({ chatId: id, workspace: WorkspaceSchema.nullable(), memory: WorkspaceMemorySchema.nullable() });
+export const ConversationWorkspaceSchema = z.object({ memoryPreview: z.string().optional(), browsingPreview: z.string().optional(), chatId: id, taskId: id.optional(), assigned: z.boolean().optional(), workspace: WorkspaceSchema.nullable(), memory: WorkspaceMemorySchema.nullable() });
 export const ConversationWorkspaceSetParams = z.object({ chatId: id, workspaceId: id.nullable() });
 
 /** artifacts.* */
@@ -341,7 +365,7 @@ export const SettingsSetParams = z.object({
   plannerModel: z.string().optional(),
   recoveryModel: z.string().optional(),
   visionModel: z.string().optional(),
-  searchEngine: z.string().optional(),
+  searchEngine: SearchEngineTemplateSchema.optional(),
   maxWorkers: z.number().int().min(1).max(16).optional(),
   perOrigin: z.number().int().min(1).max(8).optional(),
   /** `0` = no per-run cap. */
@@ -349,6 +373,7 @@ export const SettingsSetParams = z.object({
   theme: z.enum(["system", "dark", "light"]).optional(),
   sidebarAppearance: z.enum(["solid", "translucent"]).optional(),
   sidebarBlur: z.number().min(0).max(40).optional(),
+  sidebarOpacity: z.number().min(40).max(100).optional(),
   tabLayout: z.enum(["vertical", "horizontal"]).optional(),
   zoomFactor: z.number().optional(),
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
@@ -373,9 +398,33 @@ export const SettingsSetParams = z.object({
 export const SettingsGetParams = z.object({});
 
 /** history/bookmarks */
-export const HistoryListParams = z.object({ query: z.string().optional(), limit: z.number().int().positive().max(500).default(100) });
-export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string() });
+export const HistoryListParams = z.object({
+  query: z.string().max(1000).optional(),
+  limit: z.number().int().positive().max(500).default(100),
+  since: z.number().finite().nonnegative().optional(),
+  before: z.object({ visitedAt: z.number().finite().nonnegative(), url: z.string().min(1) }).optional(),
+});
+const WebBookmarkSchema = z.object({
+  url: z.string().url().max(8192).refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
+  title: z.string().max(1000), folderPath: BookmarkFolderPathSchema.optional(),
+});
+export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string(), folderPath: BookmarkFolderPathSchema.optional() });
+export const BookmarkUpdateParams = BookmarkAddParams.extend({
+  originalUrl: z.string().url(),
+  url: z.string().max(8192).url().refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
+  title: z.string().trim().min(1).max(1000),
+  expected: z.object({ title: z.string(), folderPath: BookmarkFolderPathSchema.optional() }),
+});
 export const BookmarkRemoveParams = z.object({ url: z.string().url() });
+
+export const PageWindowMoveParams = z.object({
+  pageId: id,
+  activate: z.boolean().optional(),
+  windowId: id.optional(),
+  spaceId: id,
+  folder: z.object({ id: id, name: z.string().max(200), spaceId: id, collapsed: z.boolean() }).optional(),
+});
+export type PageWindowMove = z.infer<typeof PageWindowMoveParams>;
 
 /** events */
 export const EventsSinceParams = RunsEventsParams;
@@ -394,13 +443,23 @@ export const MethodSchemas = {
   "tasks.reconcileOperation": TaskReconcileOperationParams,
   "tasks.receipt": z.object({ taskId: id, revision: z.number().int().positive().optional() }),
   "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
+  "spaces.list": z.object({}),
+  "spaces.import": z.object({ spaces: z.array(SpaceInputSchema).max(500) }),
+  "spaces.create": z.object({ name: z.string().trim().min(1).max(100), color: SpaceColorSchema }),
+  "spaces.update": z.object({ id: id, name: z.string().trim().min(1).max(100).optional(), color: SpaceColorSchema.optional(), archived: z.boolean().optional() }),
   "workspaces.list": z.object({}),
+  "workspaces.browsingMemory.get": z.object({ workspaceId: id }),
+  "workspaces.browsingMemory.set": z.object({ workspaceId: id, policy: BrowsingMemoryPolicySchema }),
+  "workspaces.browsingMemory.record": z.object({ workspaceId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }),
+  "workspaces.browsingMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.memory.get": z.object({ workspaceId: id }),
-  "workspaces.memory.set": z.object({ workspaceId: id, expectedRevision: z.number().int().nonnegative(), content: z.string().max(16_000) }),
+  "workspaces.memory.search": z.object({query:z.string().trim().min(1).max(1000)}),
+  "workspaces.memory.set": z.object({ workspaceId: id, expectedRevision: z.number().int().nonnegative(), content: z.string().max(16_000), enabled:z.boolean().optional(), items:z.array(WorkspaceMemoryItemSchema).max(40).optional(), excludedOrigins:z.array(z.string().max(2048)).max(100).optional() }),
   "tasks.create": TaskCreateParams,
+  "tasks.promote": TaskPromoteParams,
   "tasks.update": TaskUpdateParams,
   "tasks.get": z.object({ taskId: id }),
-  "tasks.list": z.object({ workspaceId: id.optional(), includeArchived: z.boolean().default(false), limit: z.number().int().min(1).max(500).default(100) }),
+  "tasks.list": z.object({ query:z.string().trim().max(1000).optional(), workspaceId: id.optional(), includeArchived: z.boolean().default(false), limit: z.number().int().min(1).max(500).default(100) }),
   "tasks.archive": z.object({ taskId: id, expectedRevision: z.number().int().positive(), archived: z.boolean() }),
   "tasks.start": RunsStartParams.omit({ goal: true, setId: true }).extend({ taskId: id, expectedRevision: z.number().int().positive() }),
   "development.projects": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
@@ -456,6 +515,7 @@ export const MethodSchemas = {
   "pages.open": PagesOpenParams,
   "pages.close": PagesCloseParams,
   "pages.activate": PagesActivateParams,
+  "pages.moveToWindow": PageWindowMoveParams,
   "pages.navigate": PagesNavigateParams,
   "pages.back": PagesCloseParams,
   "pages.forward": PagesCloseParams,
@@ -483,19 +543,30 @@ export const MethodSchemas = {
   "sets.map": SetsMapParams,
   "sets.results": SetsResultsParams,
   "runs.start": RunsStartParams,
-  "runs.retry": RunsControlParams,
+  "runs.retry": RunsControlParams.extend({pageId:id.optional()}),
   "runs.get": RunsGetParams,
   "runs.list": RunsListParams,
   "runs.context.get": RunsContextGetParams,
   "runs.context.set": RunsContextSetParams,
   "conversations.list": ConversationsListParams,
+  "conversations.prepared": z.object({}),
+  "conversations.get": z.object({chatId:id}),
   "conversations.rename": ConversationRenameParams,
   "conversations.archive": ConversationArchiveParams,
   "conversations.delete": ConversationDeleteParams,
+  "conversations.images.get": z.object({chatId:id}),
+  "conversations.images.add": z.object({chatId:id,filename:z.string().trim().min(1).max(255).default("Page capture.png"),dataUrl:z.string().max(4_200_000),sourceUrl:z.string().max(8192).optional()}),
+  "conversations.images.read": ConversationImageControl,
+  "conversations.images.toggle": ConversationImageControl.extend({included:z.boolean()}),
+  "conversations.images.remove": ConversationImageControl,
   "conversations.attachments.get": z.object({ chatId: id }),
+  "conversations.attachments.read": ConversationAttachmentControlParams,
   "conversations.attachments.add": ConversationAttachmentAddParams,
+  "conversations.attachments.page": z.object({ chatId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }),
   "conversations.attachments.toggle": ConversationAttachmentToggleParams,
   "conversations.attachments.remove": ConversationAttachmentControlParams,
+  "results.search": z.object({query:z.string().trim().min(1).max(300),limit:z.number().int().min(1).max(30).default(12)}),
+  "results.read": z.object({artifactId:id}),
   "conversations.artifacts.get": z.object({ chatId: id }),
   "conversations.artifacts.toggle": ConversationArtifactToggleParams,
   "conversations.sources.get": z.object({ chatId: id }),
@@ -530,16 +601,31 @@ export const MethodSchemas = {
   "sentry.projects": z.object({organization:z.string().min(1).max(200)}).strict(),
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
+  "browser.recovery.list": z.object({}),
+  "browser.recovery.retry": z.object({pageId:id}),
   "history.list": HistoryListParams,
-  "history.clear": z.object({}),
+  "history.clear": z.object({
+    since: z.number().finite().nonnegative().optional(),
+    before: z.number().finite().nonnegative().optional(),
+  }).strict().refine(value => value.since === undefined || value.before === undefined || value.since <= value.before, "History range must end after it starts"),
+  "history.remove": z.object({ url: z.string().min(1), visitedAt: z.number().finite().nonnegative() }),
   "bookmarks.list": z.object({}),
+  "bookmarks.folders.list": z.object({}),
+  "bookmarks.folders.create": z.object({ path: BookmarkFolderPathSchema.min(1) }),
+  "bookmarks.folders.rename": z.object({ path: BookmarkFolderPathSchema.min(1), name: z.string().trim().min(1).max(200) }),
+  "bookmarks.folders.remove": z.object({ path: BookmarkFolderPathSchema.min(1) }),
   "bookmarks.add": BookmarkAddParams,
-  "bookmarks.import": z.object({ bookmarks: z.array(z.object({
-    url: z.string().url().max(8192).refine(value => { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password; }, "Import requires a web URL without embedded credentials"),
-    title: z.string().max(1000),
-  })).max(10000) }),
+  "bookmarks.update": BookmarkUpdateParams,
+  "bookmarks.move": z.object({
+    bookmarks: z.array(z.object({ url: z.string().min(1).max(8192), folderPath: BookmarkFolderPathSchema })).min(1).max(10000),
+    folderPath: BookmarkFolderPathSchema,
+    createFolder: z.boolean().optional(),
+  }),
+  "bookmarks.import": z.object({ bookmarks: z.array(WebBookmarkSchema).max(10000), folders: z.array(BookmarkFolderPathSchema.min(1)).max(10000).optional() }),
+  "bookmarks.saveFolder": z.object({ name:z.string().trim().min(1).max(200), bookmarks:z.array(WebBookmarkSchema.omit({folderPath:true})).min(1).max(10000) }),
   "bookmarks.remove": BookmarkRemoveParams,
   "downloads.list": z.object({}),
+  "downloads.remove": z.object({ ids: z.array(z.string().min(1).max(200)).min(1).max(200) }),
   "workspace.get": WorkspaceGetParams,
   "bench.run": z.object({ task: z.string().optional(), repeats: z.number().int().positive().max(200).optional() }),
 
@@ -634,10 +720,20 @@ export const ResultSchemas = {
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
   "tasks.receipt": TaskReceiptSchema,
   "workspaces.create": WorkspaceSchema,
+  "spaces.list": z.array(BrowserSpaceSchema),
+  "spaces.import": z.array(BrowserSpaceSchema),
+  "spaces.create": z.array(BrowserSpaceSchema),
+  "spaces.update": z.array(BrowserSpaceSchema),
   "workspaces.list": z.array(WorkspaceSchema),
+  "workspaces.browsingMemory.get": WorkspaceBrowsingMemorySchema,
+  "workspaces.browsingMemory.set": WorkspaceBrowsingMemorySchema,
+  "workspaces.browsingMemory.record": z.object({ recorded: z.boolean() }),
+  "workspaces.browsingMemory.forget": WorkspaceBrowsingMemorySchema,
   "workspaces.memory.get": WorkspaceMemorySchema,
+  "workspaces.memory.search": z.array(z.object({workspaceId:id,name:z.string(),excerpt:z.string(),enabled:z.boolean()})),
   "workspaces.memory.set": WorkspaceMemorySchema,
   "tasks.create": TaskSchema,
+  "tasks.promote": TaskSchema,
   "tasks.update": TaskSchema,
   "tasks.archive": TaskSchema,
   "tasks.list": z.array(TaskSchema),
@@ -696,6 +792,7 @@ export const ResultSchemas = {
   "pages.open": PageTargetSchema,
   "pages.close": z.object({ ok: z.boolean() }),
   "pages.activate": PageTargetSchema,
+  "pages.moveToWindow": PageTargetSchema,
   "pages.navigate": PageTargetSchema,
   "pages.back": PageTargetSchema,
   "pages.forward": PageTargetSchema,
@@ -765,13 +862,24 @@ export const ResultSchemas = {
   "runs.context.get": ConversationContextSchema,
   "runs.context.set": ConversationContextSchema,
   "conversations.list": z.array(ConversationSummarySchema),
+  "conversations.prepared": z.array(PreparedConversationSchema),
+  "conversations.get": ConversationSummarySchema.nullable(),
   "conversations.rename": ConversationSummarySchema,
   "conversations.archive": ConversationSummarySchema,
   "conversations.delete": z.object({ ok: z.literal(true), deletedRuns: z.number().int().nonnegative() }),
+  "conversations.images.get": ConversationImagesSchema,
+  "conversations.images.add": ConversationImagesSchema,
+  "conversations.images.read": z.object({image:ConversationImageSchema,dataUrl:z.string()}),
+  "conversations.images.toggle": ConversationImagesSchema,
+  "conversations.images.remove": ConversationImagesSchema,
   "conversations.attachments.get": ConversationAttachmentsSchema,
+  "conversations.attachments.read": z.object({ attachment: ConversationAttachmentSchema, content: z.string(), contextCharacters: z.number().int().nonnegative(), contextText: z.string().optional(), contextTotalCharacters: z.number().int().nonnegative().optional() }),
   "conversations.attachments.add": ConversationAttachmentsSchema,
+  "conversations.attachments.page": ConversationAttachmentsSchema,
   "conversations.attachments.toggle": ConversationAttachmentsSchema,
   "conversations.attachments.remove": ConversationAttachmentsSchema,
+  "results.search": z.array(SavedResultSchema),
+  "results.read": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number()}),
   "conversations.artifacts.get": ConversationArtifactsSchema,
   "conversations.artifacts.toggle": ConversationArtifactsSchema,
   "conversations.sources.get": ConversationSourcesSchema,
@@ -820,14 +928,28 @@ export const ResultSchemas = {
   "sentry.projects": z.array(z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()})),
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
+  "browser.recovery.list": z.array(z.object({pageId:id,url:z.string(),title:z.string(),windowId:id,error:z.string().optional(),retrying:z.boolean()})),
+  "browser.recovery.retry": z.object({ok:z.boolean(),pageId:id}),
   "history.list": z.array(HistoryEntrySchema),
-  "history.clear": z.object({ ok: z.boolean() }),
+  "history.clear": z.object({ ok: z.boolean(), removed: z.number().int().nonnegative() }),
+  "history.remove": z.object({ removed: z.boolean() }),
   "bookmarks.list": z.array(BookmarkSchema),
+  "bookmarks.folders.list": z.array(BookmarkFolderPathSchema),
+  "bookmarks.folders.create": z.array(BookmarkFolderPathSchema),
+  "bookmarks.folders.rename": z.array(BookmarkFolderPathSchema),
+  "bookmarks.folders.remove": z.array(BookmarkFolderPathSchema),
   "bookmarks.add": z.object({ ok: z.boolean() }),
+  "bookmarks.update": z.object({ ok: z.boolean() }),
+  "bookmarks.move": z.object({ moved: z.number().int().nonnegative() }),
   "bookmarks.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
+  "bookmarks.saveFolder": z.object({ added: z.number().int(), skipped: z.number().int() }),
   "bookmarks.remove": z.object({ ok: z.boolean() }),
   "downloads.list": z.array(DownloadSchema),
+  "downloads.remove": z.object({ removed: z.array(z.string()) }),
   "workspace.get": z.object({
+    restoringTabs:z.boolean().optional(),
+    pendingRestoreTabs:z.array(z.object({pageId:id,windowId:id})).optional(),
+    tabPlacements: z.record(z.string(), PageWindowMoveParams.pick({ spaceId: true, folder: true })).optional(),
     pages: z.array(PageTargetSchema),
     sets: z.array(PageSetSchema),
     members: z.array(SetMemberSchema),

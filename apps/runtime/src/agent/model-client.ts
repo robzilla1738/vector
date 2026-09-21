@@ -25,6 +25,8 @@ export interface ModelClient {
     modelId: string;
     system: string;
     prompt: string;
+    /** Explicit image references; never fetched from remote URLs. */
+    imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
@@ -40,6 +42,8 @@ export interface ModelClient {
     modelId: string;
     system: string;
     prompt: string;
+    /** Explicit image references; never fetched from remote URLs. */
+    imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
@@ -50,6 +54,8 @@ export interface ModelClient {
     modelId: string;
     system?: string;
     prompt: string;
+    /** Explicit image references; never fetched from remote URLs. */
+    imageDataUrls?: string[];
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;

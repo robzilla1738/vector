@@ -1,13 +1,13 @@
-import { draftKey } from "../conversation-drafts";
+import { STATUS_LABEL } from "../run-status";
+import { recentConversations } from "../conversations";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Run } from "@vector/contracts";
-import { call, errToast, isLive, useStore } from "../store";
+import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { ResizeHandle } from "./ResizeHandle";
-import { RunPanel } from "./RunPanel";
+import { Conversation } from "./Conversation";
 import { SetPanel } from "./SetPanel";
 import { VirtualList } from "./VirtualList";
-import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 
 const ago = (ts: number) => {
@@ -29,7 +29,7 @@ function RunRow({ r, onOpen, selected }: { r: Run; onOpen: () => void; selected:
       <span className="run-row-main">
         <span className="run-row-title">{r.goal}</span>
         <span className="run-row-sub">
-          <span className={`st mini ${r.status}`}>{r.status.replace("_", " ")}</span>
+          <span className={`st mini ${r.status}`}>{STATUS_LABEL[r.status]}</span>
           {page && <span className="h">{hostOf(page.url)}</span>}
           <span className="nums">{ago(r.createdAt)}</span>
         </span>
@@ -38,18 +38,20 @@ function RunRow({ r, onOpen, selected }: { r: Run; onOpen: () => void; selected:
   );
 }
 
-/** Home: live runs, sets, and a searchable history of everything the agent did. */
+/** One entry per recent conversation; full history remains searchable from Chats. */
 function RailHome() {
   const runs = useStore((s) => s.runs);
   const sets = useStore((s) => s.sets);
   const members = useStore((s) => s.members);
   const setRailView = useStore((s) => s.setRailView);
   const [q, setQ] = useState("");
-  const live = runs.filter(isLive);
+  const conversations = useMemo(() => recentConversations(runs), [runs]);
+  const live = conversations.filter(isLive);
   const past = useMemo(() => {
     const f = q.trim().toLowerCase();
-    return runs.filter((r) => !isLive(r) && (!f || r.goal.toLowerCase().includes(f) || (r.statusMessage ?? "").toLowerCase().includes(f)));
-  }, [runs, q]);
+    const matches = new Set(runs.filter(run => run.goal.toLowerCase().includes(f) || (run.statusMessage ?? "").toLowerCase().includes(f)).map(run => run.config?.chatId ?? run.runId));
+    return conversations.filter(run => !isLive(run) && (!f || matches.has(run.config?.chatId ?? run.runId)));
+  }, [runs, conversations, q]);
 
   return (
     <div className="rail-home">
@@ -82,138 +84,66 @@ function RailHome() {
       )}
       <section className="rail-block grow">
         <div className="rail-label">
-          <span>Past runs</span>
+          <span>Recent conversations</span>
           <span className="count nums">{past.length}</span>
         </div>
         <div className="rail-search">
           {I.search}
-          <input value={q} placeholder="Search runs" aria-label="Search runs" onChange={(e) => setQ(e.target.value)} />
+          <input value={q} placeholder="Find a recent conversation" aria-label="Find a recent conversation" onChange={(e) => setQ(e.target.value)} />
           {q && <button className="icon-btn xs" aria-label="Clear" onClick={() => setQ("")}>{I.close}</button>}
         </div>
         {past.length === 0 ? (
-          <div className="rail-empty small">{q ? "No runs match." : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}</div>
+          <div className="rail-empty small">{q ? "No recent conversations match." : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}</div>
         ) : past.length > 30 ? (
           <VirtualList items={past} rowHeight={56} className="run-list virtual" keyOf={(r) => r.runId} renderRow={(r) => <RunRow r={r} selected={false} onOpen={() => setRailView({ kind: "run", runId: r.runId })} />} />
         ) : (
           <div className="run-list">{past.map((r) => <RunRow key={r.runId} r={r} selected={false} onOpen={() => setRailView({ kind: "run", runId: r.runId })} />)}</div>
         )}
+        <button className="btn sm ghost" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Browse all conversations</button>
       </section>
     </div>
   );
 }
 
 export function AgentRail() {
-  const railOpen = useStore((s) => s.railOpen);
-  const view = useStore((s) => s.railView);
-  const setRailView = useStore((s) => s.setRailView);
-  const toggleRail = useStore((s) => s.toggleRail);
-  const railWidth = useStore((s) => s.railWidth);
-  const setRailWidth = useStore((s) => s.setRailWidth);
-  const startRun = useStore((s) => s.startRun);
-  const connected = useStore((s) => s.connected);
-  const needsSetup = useStore((s) => s.settings.modelConfigured === false);
-  const setOverlay = useStore((s) => s.setOverlay);
-  const pages = useStore((s) => s.pages);
-  const activePageId = useStore((s) => s.activePageId);
-  const runs = useStore((s) => s.runs);
-  const [sending, setSending] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const page = pages.find((p) => p.pageId === activePageId);
-  const hasPage = !!page && page.url !== "about:blank" && !!page.url;
-  const live = runs.filter(isLive);
-  const selectedRun = view.kind === "run" ? runs.find(r => r.runId === view.runId) : undefined;
-  const chatId = selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : null;
-  const text = useStore(s => chatId ? s.conversationDrafts[draftKey(chatId)] ?? "" : s.agentDraft);
-  const setText = (value: string) => chatId ? useStore.getState().setConversationDraft(chatId, value) : useStore.getState().setAgentDraft(value);
-  const replyBlocked = !!selectedRun && ((isLive(selectedRun) && selectedRun.status !== "needs_input") || (!!selectedRun.config?.taskId && selectedRun.status !== "needs_input"));
-
-  // when a run finishes streaming, keep the newest step in view unless the user scrolled up to read
-  const steps = useStore((s) => (view.kind === "run" ? s.steps[view.runId]?.length ?? 0 : 0));
-  const prevSteps = useRef<{ key: string; n: number }>({ key: "", n: 0 });
+  const railOpen = useStore(s => s.railOpen);
+  const view = useStore(s => s.railView);
+  const setRailView = useStore(s => s.setRailView);
+  const toggleRail = useStore(s => s.toggleRail);
+  const railWidth = useStore(s => s.railWidth);
+  const setRailWidth = useStore(s => s.setRailWidth);
+  const connected = useStore(s => s.connected);
+  const runs = useStore(s => s.runs);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const root = useRef<HTMLElement>(null);
+  const selectedRun = view.kind === "run" ? runs.find(run => run.runId === view.runId) : undefined;
+  const chatId = view.kind === "draft" ? view.chatId : selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : view.kind === "run" ? view.runId : null;
+  useEffect(() => { setRecentOpen(false); }, [view]);
   useEffect(() => {
-    const el = bodyRef.current;
-    const key = JSON.stringify(view);
-    const prev = prevSteps.current;
-    prevSteps.current = { key, n: steps };
-    // only follow *new* steps on the same run — never yank a freshly opened panel to the bottom
-    if (!el || prev.key !== key || prev.n === 0 || steps <= prev.n) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
-    if (nearBottom) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [steps, view]);
-
-  const send = async () => {
-    const t = text.trim();
-    if (!t || sending || replyBlocked) return;
-    setSending(true);
-    if (selectedRun?.status === "needs_input") {
-      try { await call("runs.answer", { runId: selectedRun.runId, answer: t }); setText(""); } catch (error) { errToast(error); }
-      setSending(false); return;
-    }
-    const run = await startRun(t, { scope: hasPage ? "page" : "new", pageId: selectedRun?.pageIds[0], chatId: selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : undefined });
-    if (run) {
-      setText("");
-      if (inputRef.current) inputRef.current.style.height = "auto";
-    }
-    setSending(false);
-    if (!useStore.getState().overlay) inputRef.current?.focus();
+    if (!railOpen || recentOpen || view.kind === "set") return;
+    const frame = requestAnimationFrame(() => root.current?.querySelector<HTMLTextAreaElement>('.conversation-input textarea')?.focus({preventScroll:true}));
+    return () => cancelAnimationFrame(frame);
+  }, [railOpen, recentOpen, view.kind]);
+  const expand = () => {
+    if (selectedRun) useStore.getState().openConversation(selectedRun.runId);
+    else useStore.getState().openConversationDraft(chatId);
   };
-
   return (
-    <aside className={`rail ${railOpen ? "open" : ""}`} style={{ "--rail-w": `${railWidth}px` } as React.CSSProperties} aria-label="Agent" aria-hidden={!railOpen}>
+    <aside ref={root} className={`rail ${railOpen ? "open" : ""}`} style={{ "--rail-w": `${railWidth}px` } as React.CSSProperties} aria-label="Aux assistant" aria-hidden={!railOpen}>
       <div className="rail-inner">
         <div className="rail-head">
-          {view.kind !== "home" ? (
-            <button className="icon-btn" title="All runs" aria-label="Back to all runs" onClick={() => setRailView({ kind: "home" })}>{I.left}</button>
-          ) : (
-            <span className="rail-title">{I.agent}<span>Agent</span></span>
-          )}
-          {view.kind !== "home" && <span className="rail-title">{view.kind === "run" ? "Run" : "Set"}</span>}
-          {!connected && <span className="rail-sub offline">offline</span>}
-          {connected && live.length > 0 && view.kind === "home" && <span className="rail-sub nums">{live.length} live</span>}
+          <span className="rail-title">{recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}</span>
+          {!connected && <span className="rail-sub offline" role="status">Connecting…</span>}
           <span className="sp" />
-          {selectedRun && <button className="icon-btn" aria-label="Open full conversation" onClick={() => useStore.getState().openConversation(selectedRun.runId)}>{I.open}</button>}
-          <button className="icon-btn" title="New task" aria-label="New task" onClick={() => { setRailView({ kind: "home" }); inputRef.current?.focus(); }}>{I.plus}</button>
-          <button className="icon-btn" title="Hide (⌘⇧A)" aria-label="Hide agent rail" onClick={toggleRail}>{I.rail}</button>
+          <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? I.left : I.chats}</button>
+          {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{I.open}</button>}
+          <button className="icon-btn" title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{I.plus}</button>
+          <button className="icon-btn" title="Hide (⌘⇧A)" aria-label="Hide assistant" onClick={toggleRail}>{I.rail}</button>
         </div>
-
-        <div className="rail-body" ref={bodyRef}>
-          {view.kind === "home" && <RailHome />}
-          {view.kind === "run" && <RunPanel key={view.runId} runId={view.runId} />}
-          {view.kind === "set" && <SetPanel setId={view.setId} />}
-        </div>
-
-        <div className="composer">
-          {replyBlocked && <p className="hint">{selectedRun?.config?.taskId ? "Continue this saved task in Tasks to preserve its scope." : "Wait for this turn, or stop it before replying."}</p>}
-          {needsSetup && <div className="field"><span className="hint">Connect a model to run the agent. Browsing and saved tasks work without one.</span><button className="btn sm" onClick={() => setOverlay("settings")}>Set up agent</button></div>}
-          {hasPage && (
-            <div className="composer-ctx" title={page!.url}>
-              <FavIcon url={page!.url} src={page!.favicon} size="sm" />
-              <span>{hostOf(page!.url)}</span>
-            </div>
-          )}
-          <div className="composer-row">
-            <textarea
-              ref={inputRef}
-              value={text}
-              rows={1}
-              aria-label="Ask the agent"
-              placeholder={hasPage ? "Ask about this page, or give a task…" : "Tell the agent what to do…"}
-              disabled={!connected || sending}
-              onChange={(e) => {
-                setText(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-            />
-            <button className="composer-send" title="Send (↵)" aria-label="Send" disabled={!text.trim() || sending || !connected || replyBlocked} onClick={() => void send()}>{I.send}</button>
-          </div>
+        <div className={`rail-body${recentOpen ? " rail-recents" : ""}`}>
+          {railOpen && recentOpen && <RailHome />}
+          {railOpen && !recentOpen && view.kind !== "set" && <Conversation chatId={chatId} embedded onChatCreated={chatId => setRailView({kind:"draft",chatId})} />}
+          {railOpen && !recentOpen && view.kind === "set" && <SetPanel setId={view.setId} />}
         </div>
       </div>
       <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={360} onResize={setRailWidth} />

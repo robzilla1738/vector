@@ -25,11 +25,14 @@ function Credentials({request}:{request:HttpAuthRequest}) {
     const body=document.querySelector<HTMLElement>('.app-body');
     const wasInert=body?.inert;
     if(body)body.inert=true;
-    void bridge.overlay(true);
-    form.current?.querySelector<HTMLInputElement>('input')?.focus();
-    return ()=>{if(body)body.inert=!!wasInert;void bridge.overlay(isScrimOverlay(useStore.getState().overlay));if(previous?.isConnected)previous.focus()};
+    let live=true;
+    void bridge.overlay(true).then(()=>{if(live)return bridge.focusShell()}).then(()=>{
+      if(live)form.current?.querySelector<HTMLInputElement>('input')?.focus();
+    }).catch(()=>{});
+    return ()=>{live=false;if(body)body.inert=!!wasInert;void bridge.overlay(isScrimOverlay(useStore.getState().overlay));if(previous?.isConnected)previous.focus()};
   },[]);
   async function respond(cancel=false){
+    if(busy)return;
     setBusy(true);setError('');
     try{await bridge.respondHttpAuth(request.id,cancel?null:{username,password});setPassword('')}
     catch{setPassword('');setError('This sign-in request could not be completed. Reload the website to try again.');setBusy(false)}
@@ -41,7 +44,7 @@ function Credentials({request}:{request:HttpAuthRequest}) {
         event.stopPropagation();
         if(event.key==='Escape'){event.preventDefault();void respond(true)}
         if(event.key==='Tab'){
-          const controls=[...event.currentTarget.querySelectorAll<HTMLElement>('input,button:not(:disabled)')];
+          const controls=[...event.currentTarget.querySelectorAll<HTMLElement>('input:not(:disabled),button:not(:disabled)')];
           const first=controls[0],last=controls.at(-1);
           if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}
           else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
@@ -52,8 +55,8 @@ function Credentials({request}:{request:HttpAuthRequest}) {
       {request.realm&&<p className="hint">{request.realm}</p>}
       {request.retry&&<p role="alert">The previous credentials were not accepted. Try again.</p>}
       {!request.proxy&&request.origin.startsWith('http:')&&<p className="hint">This website uses an unencrypted HTTP connection.</p>}
-      <label>Username<input className="field-input" autoComplete="off" value={username} onChange={event=>setUsername(event.target.value)} maxLength={4096}/></label>
-      <label>Password<input className="field-input" type="password" autoComplete="off" value={password} onChange={event=>setPassword(event.target.value)} maxLength={4096}/></label>
+      <label>Username<input className="field-input" autoComplete="off" disabled={busy} value={username} onChange={event=>setUsername(event.target.value)} maxLength={4096}/></label>
+      <label>Password<input className="field-input" type="password" autoComplete="off" disabled={busy} value={password} onChange={event=>setPassword(event.target.value)} maxLength={4096}/></label>
       <p className="hint">Aux does not save these credentials. The browser may reuse them during this session.</p>
       {error&&<p role="alert">{error}</p>}
       <div className="sheet-acts"><button type="button" className="btn" disabled={busy} onClick={()=>void respond(true)}>Cancel</button><button className="btn primary" disabled={busy}>Sign in</button></div>

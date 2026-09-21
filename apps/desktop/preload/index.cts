@@ -9,6 +9,20 @@ const windowArg = process.argv.find(value => value.startsWith("--aux-window-id="
 const windowId = windowArg ? decodeURIComponent(windowArg.slice("--aux-window-id=".length)) : "main";
 
 const vector = {
+  quickAskShortcut: (enabled?:boolean) => ipcRenderer.invoke("ui.quickAskShortcut",enabled),
+  quickAskMode: process.argv.includes("--aux-quick-ask"),
+  quickAsk: (action: "open"|"expand"|"dismiss"|"status") => ipcRenderer.invoke("ui.quickAsk", action),
+  onQuickAskState: (cb: (compact:boolean)=>void) => { const listener=(_event:unknown,compact:boolean)=>cb(compact);ipcRenderer.on("quick-ask.state",listener);return()=>ipcRenderer.removeListener("quick-ask.state",listener); },
+  browserProfiles:()=>ipcRenderer.invoke("ui.browserProfiles"),
+  createBrowserProfile:(name:string)=>ipcRenderer.invoke("ui.createBrowserProfile",name),
+  renameBrowserProfile:(id:string,name:string)=>ipcRenderer.invoke("ui.renameBrowserProfile",id,name),
+  archiveBrowserProfile:(id:string,archived:boolean)=>ipcRenderer.invoke("ui.archiveBrowserProfile",id,archived),
+  openBrowserProfile:(id:string)=>ipcRenderer.invoke("ui.openBrowserProfile",id),
+  onPageAction: (cb: (action: import("@vector/contracts").PageQuickAction) => void) => {
+    const listener = (_event: unknown, action: import("@vector/contracts").PageQuickAction) => cb(action);
+    ipcRenderer.on("page.quickAction", listener);
+    return () => ipcRenderer.removeListener("page.quickAction", listener);
+  },
   privateMode: process.argv.includes("--aux-private") || process.argv.includes("--aux-private-renderer"),
   windowId,
   /** call a versioned runtime method */
@@ -52,10 +66,11 @@ const vector = {
   },
 
   /** position the visible native page inside the stage rectangle (CSS px); `radius` rounds its corners to match the stage card */
-  setStage: (pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number) =>
-    ipcRenderer.invoke("ui.setStage", pageId, bounds, split, radius),
+  setStage: (pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number, ratio?: number) =>
+    ipcRenderer.invoke("ui.setStage", pageId, bounds, split, radius, ratio),
   /** hide native pages while a DOM overlay (palette/menus/overview) is up */
   overlay: (open: boolean) => ipcRenderer.invoke("ui.overlay", open),
+  focusShell: () => ipcRenderer.invoke("ui.focusShell") as Promise<void>,
   /** thumbnail data-url for a native page */
   preview: (pageId: string) => ipcRenderer.invoke("ui.preview", pageId) as Promise<string | null>,
   contextMenu: (pageId: string | null) => ipcRenderer.invoke("ui.contextMenu", pageId),
@@ -63,6 +78,7 @@ const vector = {
   registerCloudPreview:(url:string,token:string)=>ipcRenderer.invoke('ui.registerCloudPreview',url,token) as Promise<boolean>,
   revealPath: (p: string) => ipcRenderer.invoke("ui.revealPath", p),
   openPath: (p: string) => ipcRenderer.invoke("ui.openPath", p) as Promise<string>,
+  saveWorkbook: (content:string,format:"snapshot"|"csv"="snapshot") => ipcRenderer.invoke("ui.saveWorkbook",content,format) as Promise<string|null>,
   saveFile: (name: string, content: string) => ipcRenderer.invoke("ui.saveFile", name, content) as Promise<string | null>,
   saveCloudExport:(sourcePath:string,suggestedName:string)=>ipcRenderer.invoke('ui.saveCloudExport',sourcePath,suggestedName) as Promise<string|null>,
   saveStoredArtifact:(artifactId:string,suggestedName:string)=>ipcRenderer.invoke('ui.saveStoredArtifact',artifactId,suggestedName) as Promise<string|null>,
@@ -73,9 +89,11 @@ const vector = {
   devTools: (pageId: string) => ipcRenderer.invoke("ui.devTools", pageId),
   /** reload bypassing cache (⇧⌘R) */
   readArticle: (pageId: string) => ipcRenderer.invoke("ui.readArticle", pageId),
+  navigationMenu: (pageId:string,direction:"back"|"forward") => ipcRenderer.invoke("ui.navigationMenu",pageId,direction),
   hardReload: (pageId: string) => ipcRenderer.invoke("ui.hardReload", pageId),
   /** close the whole window (⇧⌘W, or ⌘W on the last tab) */
   closeWindow: () => ipcRenderer.invoke("ui.closeWindow"),
+  windows: () => ipcRenderer.invoke("ui.windows"),
   /** file picker for ⌘O — returns a path or null */
   selectRepository: () => ipcRenderer.invoke("ui.selectRepository") as Promise<RepositorySelection | null>,
   createProject: (id: string) => ipcRenderer.invoke("ui.createProject", id) as Promise<LocalProject>,
@@ -99,14 +117,24 @@ const vector = {
   stopProjectServiceStack: (projectId:string,stackId:string) => ipcRenderer.invoke("ui.stopProjectServiceStack",projectId,stackId) as Promise<ProjectCommand[]>,
   listProjects: () => ipcRenderer.invoke("ui.listProjects") as Promise<LocalProject[]>,
   inspectProject: (id: string) => ipcRenderer.invoke("ui.inspectProject", id) as Promise<ProjectInspection>,
+  pickEvidenceImage: () => ipcRenderer.invoke("ui.pickEvidenceImage") as Promise<{ filename: string; dataUrl: string } | null>,
   pickEvidenceDocument: () => ipcRenderer.invoke("ui.pickEvidenceDocument") as Promise<{ filename: string; content: string } | null>,
   openFile: () => ipcRenderer.invoke("ui.openFile") as Promise<string | null>,
   agentConfig: (input:unknown) => ipcRenderer.invoke("app.agentConfig",input),
   agentConnections:()=>ipcRenderer.invoke("app.agentConnections"),
   agentClients:()=>ipcRenderer.invoke("app.agentClients"),
   revokeAgentConnection:(connectionId:string)=>ipcRenderer.invoke("app.revokeAgentConnection",connectionId),
+  dictationStatus:()=>ipcRenderer.invoke("ui.dictationStatus"),
+  startDictation:(id:string)=>ipcRenderer.invoke("ui.startDictation",id),
+  stopDictation:(id:string)=>ipcRenderer.invoke("ui.stopDictation",id),
+  cancelDictation:(id:string)=>ipcRenderer.invoke("ui.cancelDictation",id),
+  onDictation:(callback:(value:unknown)=>void)=>{
+    const listener=(_event:Electron.IpcRendererEvent,value:unknown)=>callback(value);
+    ipcRenderer.on("dictation.event",listener);return()=>ipcRenderer.removeListener("dictation.event",listener);
+  },
   extensions:()=>ipcRenderer.invoke("app.extensions"),
   installUnpackedExtension:()=>ipcRenderer.invoke("app.installUnpackedExtension"),
+  updateUnpackedExtension:(key:string)=>ipcRenderer.invoke("app.updateUnpackedExtension",key),
   setExtensionEnabled:(key:string,enabled:boolean)=>ipcRenderer.invoke("app.setExtensionEnabled",key,enabled),
   removeExtension:(key:string)=>ipcRenderer.invoke("app.removeExtension",key),
   dataDir: () => ipcRenderer.invoke("app.dataDir") as Promise<string>,
@@ -122,6 +150,8 @@ const vector = {
   onHttpAuthChanged: (cb:()=>void) => { const listener=()=>cb(); ipcRenderer.on('http-auth-changed',listener); return ()=>ipcRenderer.removeListener('http-auth-changed',listener); },
   clearSiteData: (pageId: string) => ipcRenderer.invoke("app.clearSiteData", pageId) as Promise<boolean>,
   siteInfo: (pageId: string) => ipcRenderer.invoke("app.siteInfo", pageId),
+  siteZoom: (origin?: string) => ipcRenderer.invoke("app.siteZoom", origin),
+  onSiteZoomChanged: (cb: () => void) => { const listener = () => cb(); ipcRenderer.on("site-zoom-changed", listener); return () => ipcRenderer.removeListener("site-zoom-changed", listener); },
   sitePermissions: () => ipcRenderer.invoke("app.sitePermissions") as Promise<Record<string, Record<string, "allow" | "deny">>>,
   clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
   setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true) => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls),

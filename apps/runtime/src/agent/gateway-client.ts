@@ -1,5 +1,6 @@
 import {
   type LanguageModel,
+  type ModelMessage,
   APICallError,
   generateObject,
   generateText,
@@ -143,13 +144,17 @@ export function extractJson(text: string): unknown {
  * maxRetries 0 and owns repair/cancellation itself. The provider chooses
  * its own base URL — the SDK endpoint is not the OpenAI-compatible REST URL.
  */
-function filePartFromDataUrl(dataUrl: string): { type: "file"; mediaType: string; data: { type: "data"; data: string } } {
-  const m = /^data:([^;,]+)(;base64)?,([\s\S]*)$/.exec(dataUrl);
-  return {
-    type: "file",
-    mediaType: m?.[1] || "image/png",
-    data: { type: "data", data: m ? m[3]! : dataUrl },
-  };
+/** Build one user message without permitting implicit network image retrieval. */
+export function imageReferenceMessage(prompt: string, images: string[] = []): ModelMessage[] {
+  if (!images.length) return [{role:"user",content:prompt}];
+  if (images.length > 5 || images.reduce((total, image) => total + image.length, 0) > 16_000_000)
+    throw new VectorError("invalid_params", "Use up to five images totaling at most 12 MB.");
+  const files = images.map(image => {
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
+    if (!match || match[2]!.length % 4 !== 0) throw new VectorError("invalid_params", "Image references must be PNG, JPEG or WebP snapshots.");
+    return {type:"file" as const, mediaType:match[1]!, data:{type:"data" as const,data:match[2]!}};
+  });
+  return [{role:"user",content:[{type:"text",text:prompt},...files]}];
 }
 
 /**
@@ -195,15 +200,22 @@ export class GatewayModelClient implements ModelClient {
     this.only = this.gateway && opts.only?.length ? opts.only : undefined;
   }
 
+  private requireVision(modelId:string, images?:string[]) {
+    if (images?.length && gatewayOnlyForModel(modelId, this.only)?.includes("cerebras"))
+      throw new VectorError("capability_unsupported", "Choose an image-capable model to use these image references. The Cerebras planner accepts text only.");
+  }
+
   async generateStructured<T>(opts: {
     modelId: string;
     system: string;
     prompt: string;
+    imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
   }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
+    this.requireVision(opts.modelId, opts.imageDataUrls);
     // Skip generateObject when the schema would send oneOf — Cerebras/Qwen
     // reject it before any tokens. Simple schemas (probe, final decision)
     // still use structured output.
@@ -213,7 +225,7 @@ export class GatewayModelClient implements ModelClient {
           model: this.resolveModel(opts.modelId),
           schema: opts.schema,
           system: opts.system,
-          prompt: opts.prompt,
+          messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
           abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
           maxRetries: 0,
           maxOutputTokens: opts.maxOutputTokens ?? 2000,
@@ -247,12 +259,14 @@ export class GatewayModelClient implements ModelClient {
     modelId: string;
     system: string;
     prompt: string;
+    imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
     onText: (delta: string) => void;
   }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
+    this.requireVision(opts.modelId, opts.imageDataUrls);
     const schemaHint = schemaNeedsJsonFallback(opts.schema)
       ? `\n\n${PLAN_JSON_HINT}`
       : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(opts.schema))}`;
@@ -260,7 +274,7 @@ export class GatewayModelClient implements ModelClient {
     const stream = streamText({
       model: this.resolveModel(opts.modelId),
       system: `${opts.system}${schemaHint}`,
-      messages: [{ role: "user", content: opts.prompt }],
+      messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 2000,
@@ -285,6 +299,7 @@ export class GatewayModelClient implements ModelClient {
         modelId: opts.modelId,
         system: `${opts.system}\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.`,
         prompt: opts.prompt,
+        imageDataUrls: opts.imageDataUrls,
         signal: opts.signal,
         maxOutputTokens: (opts.maxOutputTokens ?? 2000) * 2,
       });
@@ -302,6 +317,7 @@ export class GatewayModelClient implements ModelClient {
       modelId: string;
       system: string;
       prompt: string;
+    imageDataUrls?: string[];
       schema: z.ZodType<T>;
       signal?: AbortSignal;
       maxOutputTokens?: number;
@@ -316,6 +332,7 @@ export class GatewayModelClient implements ModelClient {
       modelId: opts.modelId,
       system: `${opts.system}${schemaHint}`,
       prompt: opts.prompt,
+      imageDataUrls: opts.imageDataUrls,
       signal: opts.signal,
       maxOutputTokens: opts.maxOutputTokens,
     });
@@ -332,6 +349,7 @@ export class GatewayModelClient implements ModelClient {
         modelId: opts.modelId,
         system: `${opts.system}\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.`,
         prompt: opts.prompt,
+        imageDataUrls: opts.imageDataUrls,
         signal: opts.signal,
         maxOutputTokens: (opts.maxOutputTokens ?? 2000) * 2,
       });
@@ -348,28 +366,18 @@ export class GatewayModelClient implements ModelClient {
     modelId: string;
     system?: string;
     prompt: string;
+    imageDataUrls?: string[];
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;
   }): Promise<TextCallResult> {
     const started = Date.now();
-    if (opts.imageDataUrl && gatewayOnlyForModel(opts.modelId, this.only)?.includes("cerebras")) {
-      throw new VectorError("capability_unsupported", "vision is not available on the Cerebras planner");
-    }
+    const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
+    this.requireVision(opts.modelId, images);
     const res = await generateText({
       model: this.resolveModel(opts.modelId),
       system: opts.system,
-      messages: opts.imageDataUrl
-        ? [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: opts.prompt },
-                filePartFromDataUrl(opts.imageDataUrl),
-              ],
-            },
-          ]
-        : [{ role: "user", content: opts.prompt }],
+      messages: imageReferenceMessage(opts.prompt, images),
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 1200,

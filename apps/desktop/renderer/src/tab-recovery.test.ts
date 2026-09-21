@@ -44,12 +44,36 @@ it('falls back to the current space if the original space was removed', async ()
   setup();
   const invoke=vi.spyOn(bridge,'invoke').mockResolvedValue({} as never);
   close('middle');
-  useStore.getState().deleteSpace('work');
+  useStore.setState(state => ({ layout: { ...state.layout, spaces: state.layout.spaces.filter(space => space.id !== 'work'), activeSpaceId: 'personal' } }));
   useStore.getState().deleteFolder('research');
   invoke.mockResolvedValueOnce({pageId:'restored',title:'middle',url:'https://example.test/middle'} as never);
   await useStore.getState().reopenClosedTab();
   expect(useStore.getState().layout.tabSpace.restored).toBe('personal');
   expect(useStore.getState().layout.tabFolder.restored).toBeUndefined();
+});
+it('can reopen an older chosen tab without consuming the most recent one', async () => {
+  setup();
+  const invoke = vi.spyOn(bridge,'invoke').mockResolvedValue({} as never);
+  close('middle'); close('last');
+  invoke.mockResolvedValueOnce({pageId:'restored',title:'middle',url:'https://example.test/middle'} as never);
+  await useStore.getState().reopenClosedTab('middle');
+  expect(useStore.getState().closedTabs.map(tab => tab.pageId)).toEqual(['last']);
+  expect(useStore.getState().layout.tabFolder.restored).toBe('research');
+});
+it('restores placement without replacing a newer user selection', async () => {
+  setup();
+  let finish!: (page: PageTarget) => void;
+  vi.spyOn(bridge,'invoke').mockImplementation(async method => method === 'pages.open' ? new Promise<PageTarget>(resolve => { finish = resolve; }) : {});
+  close('middle');
+  const opening = useStore.getState().reopenClosedTab();
+  const restored = {pageId:'restored',title:'Middle',url:'https://example.test/middle',ownedByRuntime:false,viewStatus:'visible'} as PageTarget;
+  useStore.getState().applyEvent({seq:Date.now(),type:'page.added',ts:Date.now(),payload:{page:restored}});
+  useStore.getState().applyEvent({seq:Date.now()+1,type:'page.updated',ts:Date.now(),payload:{pageId:'restored',activePageId:'restored'}});
+  await useStore.getState().activate('first');
+  finish(restored); await opening;
+  expect(useStore.getState().activePageId).toBe('first');
+  expect(useStore.getState().layout.tabFolder.restored).toBe('research');
+  expect(useStore.getState().closedTabs).toEqual([]);
 });
 it('does not overwrite later selection or live metadata when opening finishes', async () => {
   setup();

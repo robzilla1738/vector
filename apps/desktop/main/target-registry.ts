@@ -4,6 +4,7 @@ interface ViewIdentity {
   pageId: string;
   windowId?: string;
   marker: string;
+  showBlankDocument?: boolean;
   owned: boolean;
   runtimeOwned?:boolean;
   kind?: "chromium" | "engine";

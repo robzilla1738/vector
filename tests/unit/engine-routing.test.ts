@@ -106,7 +106,7 @@ function shellNative(): NativeBridge {
     stopPage: ok,
     acquireStage: ok,
     releaseStage: ok,
-    capturePage: async () => ({ dataUrl: "" }),
+    capturePage: async () => ({ dataUrl: "", width: 0, height: 0, scale: 1 }),
     setEngineFrame: async () => ({ ok: true as const }),
     openExternal: ok,
     findInPage: async () => ({ matches: 0 }),

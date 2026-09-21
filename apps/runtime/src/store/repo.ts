@@ -15,6 +15,7 @@ import type {
   StepRecord,
   VectorEvent,
 } from "@vector/contracts";
+import { VectorError } from "@vector/contracts";
 import { kvGetJson, kvSetJson } from "./db.js";
 
 const now = () => Date.now();
@@ -271,13 +272,17 @@ export class Repo {
       ORDER BY created_at DESC, run_id DESC LIMIT ?`).all(...values, limit) as any[]).map(r => this.rowToRun(r));
   }
 
-  listConversations(limit = 40, options: { before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {
+  listConversations(limit = 40, options: { workspaceId?: string; before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {
     const where = ["c.archived=?"];
     const values: (string | number)[] = [options.archived ? 1 : 0];
+    if (options.workspaceId !== undefined) {
+      where.push("EXISTS (SELECT 1 FROM kv scope WHERE scope.key='setting:conversationWorkspace:'||c.chat_id AND scope.value=?)");
+      values.push(J(options.workspaceId));
+    }
     if (options.query?.trim()) {
       where.push(`(instr(lower(c.title),lower(?))>0 OR EXISTS (
         SELECT 1 FROM runs qr WHERE coalesce(json_extract(CASE WHEN json_valid(qr.config) THEN qr.config ELSE '{}' END,'$.chatId'),qr.run_id)=c.chat_id
-        AND instr(lower(qr.goal||' '||coalesce(qr.status_message,'')),lower(?))>0))`);
+        AND instr(lower(qr.goal||' '||coalesce(qr.status_message,'')||' '||coalesce(json_extract(CASE WHEN json_valid(qr.result) THEN qr.result ELSE '{}' END,'$.answer'),'')),lower(?))>0))`);
       values.push(options.query.trim(), options.query.trim());
     }
     if (options.before) {
@@ -291,12 +296,36 @@ export class Repo {
       FROM conversations c WHERE ${where.join(" AND ")} ORDER BY c.updated_at DESC,c.chat_id DESC LIMIT ?`).all(...values, limit) as any[];
     return rows.flatMap(row => {
       const latestRun = this.getRun(row.latest_run_id);
-      return latestRun ? [{ chatId: row.chat_id, taskId: latestRun.config?.taskId, title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: row.turn_count, latestRun }] : [];
+      return latestRun ? [{ chatId: row.chat_id, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: row.turn_count, latestRun }] : [];
     });
+  }
+
+  preparedConversations(): {chatId:string;title:string;attachmentCount:number;updatedAt:number}[] {
+    // Only metadata is read: unsent snapshots must not disappear because there is no run yet.
+    return this.db.prepare(`WITH snapshots AS (
+      SELECT substr(kv.key,length('setting:conversationAttachments:')+1) chat_id, item.value snapshot
+      FROM kv, json_each(CASE WHEN json_valid(kv.value) THEN kv.value ELSE '[]' END) item
+      WHERE kv.key LIKE 'setting:conversationAttachments:%'
+      UNION ALL
+      SELECT substr(kv.key,length('setting:conversationImages:')+1), item.value
+      FROM kv, json_each(CASE WHEN json_valid(kv.value) THEN kv.value ELSE '[]' END) item
+      WHERE kv.key LIKE 'setting:conversationImages:%'
+    ), visible AS (
+      SELECT chat_id,json_extract(snapshot,'$.filename') filename,
+        coalesce(json_extract(snapshot,'$.createdAt'),0) created_at FROM snapshots
+      WHERE json_valid(snapshot) AND json_type(snapshot,'$.filename')='text'
+        AND coalesce(json_extract(snapshot,'$.removed'),0)=0
+    ) SELECT chat_id AS chatId, min(filename) AS title, count(*) AS attachmentCount, max(created_at) AS updatedAt
+      FROM visible WHERE NOT EXISTS (
+        SELECT 1 FROM runs r WHERE coalesce(json_extract(CASE WHEN json_valid(r.config) THEN r.config ELSE '{}' END,'$.chatId'),r.run_id)=visible.chat_id
+      ) GROUP BY chat_id ORDER BY updatedAt DESC,chat_id DESC`).all() as {chatId:string;title:string;attachmentCount:number;updatedAt:number}[];
   }
 
   getConversation(chatId: string): ConversationSummary | undefined {
     return this.listConversationById(chatId);
+  }
+  taskForConversation(chatId: string): string | undefined {
+    return (this.db.prepare("SELECT task_id FROM tasks WHERE json_extract(json,'$.conversationId')=? LIMIT 1").get(chatId) as { task_id: string } | undefined)?.task_id;
   }
 
   private listConversationById(chatId: string): ConversationSummary | undefined {
@@ -304,7 +333,7 @@ export class Repo {
     if (!row) return undefined;
     const turns = this.listRuns(500, { chatId });
     const latestRun = turns[0];
-    return latestRun ? { chatId, taskId: latestRun.config?.taskId, title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: turns.length, latestRun } : undefined;
+    return latestRun ? { chatId, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: turns.length, latestRun } : undefined;
   }
 
   renameConversation(chatId: string, title: string): ConversationSummary | undefined {
@@ -317,22 +346,30 @@ export class Repo {
     return this.listConversationById(chatId);
   }
 
+  conversationRuns(chatId: string): Run[] {
+    return (this.db.prepare(`SELECT * FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=? ORDER BY created_at DESC,run_id DESC`).all(chatId) as any[]).map(row => this.rowToRun(row));
+  }
+
   deleteConversation(chatId: string): { deletedRuns: number; artifactPaths: string[] } {
-    const runIds = this.listRuns(500, { chatId }).map(run => run.runId);
+    const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=?`;
+    const runIds = (this.db.prepare(owned).all(chatId) as {run_id:string}[]).map(row => row.run_id);
     if (!runIds.length) return { deletedRuns: 0, artifactPaths: [] };
-    const placeholders = runIds.map(() => "?").join(",");
-    const artifactPaths = (this.db.prepare(`SELECT path FROM artifacts WHERE run_id IN (${placeholders})`).all(...runIds) as { path: string }[]).map(row => row.path);
+    const artifactPaths = (this.db.prepare(`SELECT path FROM artifacts WHERE run_id IN (${owned})`).all(chatId) as { path: string }[]).map(row => row.path);
+    const images = this.getSetting<{artifactId:string}[]>(`conversationImages:${chatId}`) ?? [];
+    for (const image of images) { const artifact=this.getArtifact(image.artifactId); if(artifact)artifactPaths.push(artifact.path); }
     this.transaction(() => {
-      const intentIds = (this.db.prepare(`SELECT id FROM action_intents WHERE run_id IN (${placeholders})`).all(...runIds) as { id: string }[]).map(row => row.id);
-      if (intentIds.length) this.db.prepare(`DELETE FROM action_transitions WHERE intent_id IN (${intentIds.map(() => "?").join(",")})`).run(...intentIds);
+      for (const image of images) this.db.prepare("DELETE FROM artifacts WHERE artifact_id=?").run(image.artifactId);
+      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationImages:${chatId}`);
+      this.db.prepare(`DELETE FROM action_transitions WHERE intent_id IN (SELECT id FROM action_intents WHERE run_id IN (${owned}))`).run(chatId);
       for (const table of ["action_intents", "operation_invocations", "response_metadata", "datasets", "spans", "events", "model_calls", "artifacts", "results", "steps"])
-        this.db.prepare(`DELETE FROM ${table} WHERE run_id IN (${placeholders})`).run(...runIds);
-      for (const runId of runIds) this.db.prepare("DELETE FROM kv WHERE key LIKE ? ESCAPE '\\'").run(`ckpt:run:${runId}:%`);
-      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationContext:${chatId}`);
-      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationAttachments:${chatId}`);
-      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationArtifacts:${chatId}`);
-      this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationWorkspace:${chatId}`);
-      this.db.prepare(`DELETE FROM runs WHERE run_id IN (${placeholders})`).run(...runIds);
+        this.db.prepare(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId);
+      for (const runId of runIds) {
+        const prefix = `ckpt:run:${runId}:`.replace(/[\\%_]/g, "\\$&");
+        this.db.prepare("DELETE FROM kv WHERE key LIKE ? ESCAPE '\\'").run(`${prefix}%`);
+      }
+      for (const key of ["conversationContext", "conversationAttachments", "conversationArtifacts", "conversationWorkspace"])
+        this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:${key}:${chatId}`);
+      this.db.prepare(`DELETE FROM runs WHERE run_id IN (${owned})`).run(chatId);
       this.db.prepare("DELETE FROM conversations WHERE chat_id=?").run(chatId);
     });
     return { deletedRuns: runIds.length, artifactPaths };
@@ -520,23 +557,93 @@ export class Repo {
   addHistory(url: string, title: string, pageId?: string) {
     this.db.prepare("INSERT OR REPLACE INTO history(url,title,page_id,visited_at) VALUES(?,?,?,?)").run(url, title, pageId ?? null, now());
   }
-  listHistory(query?: string, limit = 100): HistoryEntry[] {
-    const rows = query
-      ? (this.db.prepare("SELECT * FROM history WHERE url LIKE ? OR title LIKE ? ORDER BY visited_at DESC LIMIT ?").all(`%${query}%`, `%${query}%`, limit) as any[])
-      : (this.db.prepare("SELECT * FROM history ORDER BY visited_at DESC LIMIT ?").all(limit) as any[]);
+  listHistory(query?: string, limit = 100, options: { since?: number; before?: { visitedAt: number; url: string } } = {}): HistoryEntry[] {
+    const clauses: string[] = [];
+    const values: (string | number)[] = [];
+    if (query) {
+      clauses.push("(url LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\')");
+      const term = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+      values.push(term, term);
+    }
+    if (options.since !== undefined) { clauses.push("visited_at >= ?"); values.push(options.since); }
+    if (options.before) {
+      clauses.push("(visited_at < ? OR (visited_at = ? AND url < ?))");
+      values.push(options.before.visitedAt, options.before.visitedAt, options.before.url);
+    }
+    const rows = this.db.prepare(`SELECT * FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""} ORDER BY visited_at DESC, url DESC LIMIT ?`).all(...values, limit) as any[];
     return rows.map((r) => ({ url: r.url, title: r.title, pageId: r.page_id ?? undefined, visitedAt: r.visited_at }));
   }
-  clearHistory() {
-    this.db.exec("DELETE FROM history");
+  removeHistory(url: string, visitedAt: number): boolean {
+    return this.db.prepare("DELETE FROM history WHERE url=? AND visited_at=?").run(url, visitedAt).changes > 0;
   }
-  addBookmark(url: string, title: string) {
-    this.db.prepare("INSERT OR REPLACE INTO bookmarks(url,title,created_at) VALUES(?,?,?)").run(url, title, now());
+  clearHistory(range: { since?: number; before?: number } = {}): number {
+    const clauses: string[] = [];
+    const values: number[] = [];
+    if (range.since !== undefined) { clauses.push("visited_at >= ?"); values.push(range.since); }
+    if (range.before !== undefined) { clauses.push("visited_at < ?"); values.push(range.before); }
+    return Number(this.db.prepare(`DELETE FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`).run(...values).changes);
   }
-  importBookmarks(bookmarks: { url: string; title: string }[]) {
+  addBookmark(url: string, title: string, folderPath?: string[]) {
+    this.transaction(() => {
+      if (folderPath) this.createBookmarkFolder(folderPath);
+      this.db.prepare(`INSERT INTO bookmarks(url,title,created_at,folder_path) VALUES(?,?,?,?)
+        ON CONFLICT(url) DO UPDATE SET title=excluded.title,
+          folder_path=CASE WHEN ? THEN excluded.folder_path ELSE bookmarks.folder_path END`)
+        .run(url, title, now(), J(folderPath ?? []), folderPath === undefined ? 0 : 1);
+    });
+  }
+  updateBookmark(input: { originalUrl: string; url: string; title: string; folderPath?: string[]; expected: { title: string; folderPath?: string[] } }) {
+    this.transaction(() => {
+      const previous = this.listBookmarks().find(item => item.url === input.originalUrl);
+      if (!previous) throw new Error("This bookmark was removed. Save it again to create a new bookmark.");
+      if (previous.title !== input.expected.title || J(previous.folderPath ?? []) !== J(input.expected.folderPath ?? [])) throw new Error("This bookmark changed in another window. Cancel editing and reopen it to use the latest version.");
+      if (input.url !== input.originalUrl && this.db.prepare("SELECT 1 FROM bookmarks WHERE url=?").get(input.url)) throw new Error("That address is already bookmarked. Both bookmarks have been kept.");
+      const folder = input.folderPath ?? previous.folderPath ?? [];
+      this.createBookmarkFolder(folder);
+      this.db.prepare("UPDATE bookmarks SET url=?,title=?,folder_path=? WHERE url=?").run(input.url, input.title, J(folder), input.originalUrl);
+    });
+  }
+  moveBookmarks(input: { bookmarks: {url:string;folderPath:string[]}[]; folderPath:string[]; createFolder?:boolean }) {
     return this.transaction(() => {
-      const insert = this.db.prepare("INSERT OR IGNORE INTO bookmarks(url,title,created_at) VALUES(?,?,?)");
+      const existing = new Map(this.listBookmarks().map(item => [item.url, item]));
+      const selected = [...new Map(input.bookmarks.map(item => [item.url, item])).values()];
+      for (const item of selected) {
+        const current = existing.get(item.url);
+        if (!current || J(current.folderPath ?? []) !== J(item.folderPath)) throw new Error("A selected bookmark was moved or removed in another window. Select the bookmarks again; nothing was moved.");
+      }
+      if (input.createFolder) {
+        const paths = this.bookmarkFolders();
+        if (!input.folderPath.length || paths.some(path => J(path) === J(input.folderPath))) throw new Error("A folder with this name already exists. Choose another name.");
+        const parent = input.folderPath.slice(0, -1);
+        if (parent.length && !paths.some(path => J(path) === J(parent))) throw new Error("The parent folder no longer exists. Choose another folder.");
+        this.createBookmarkFolder(input.folderPath);
+      }
+      if (input.folderPath.length && !this.bookmarkFolders().some(path => J(path) === J(input.folderPath))) throw new Error("The destination folder no longer exists. Choose another folder.");
+      const update = this.db.prepare("UPDATE bookmarks SET folder_path=? WHERE url=?");
+      let moved = 0;
+      for (const item of selected) if (J(item.folderPath) !== J(input.folderPath)) {
+        update.run(J(input.folderPath), item.url); moved++;
+      }
+      return { moved };
+    });
+  }
+  saveBookmarkFolder(name:string, bookmarks:{url:string;title:string}[]) {
+    return this.transaction(() => {
+      if (this.bookmarkFolders().some(path => path.length === 1 && path[0] === name)) throw new Error("A bookmark folder already has this name. Choose a different name to keep this collection separate.");
+      const existing=new Set(this.listBookmarks().map(item=>item.url));
+      if(bookmarks.every(item=>existing.has(item.url)))throw new Error("These pages are already bookmarked. Find them in Library to organize their folders.");
+      return this.importBookmarks(bookmarks.map(item => ({...item,folderPath:[name]})),[[name]]);
+    });
+  }
+  importBookmarks(bookmarks: { url: string; title: string; folderPath?: string[] }[], folders: string[][] = []) {
+    return this.transaction(() => {
+      for (const path of folders) this.createBookmarkFolder(path);
+      const insert = this.db.prepare("INSERT OR IGNORE INTO bookmarks(url,title,created_at,folder_path) VALUES(?,?,?,?)");
       let added = 0;
-      for (const bookmark of bookmarks) added += Number(insert.run(bookmark.url, bookmark.title, now()).changes);
+      for (const bookmark of bookmarks) {
+        this.createBookmarkFolder(bookmark.folderPath ?? []);
+        added += Number(insert.run(bookmark.url, bookmark.title, now(), J(bookmark.folderPath ?? [])).changes);
+      }
       return { added, skipped: bookmarks.length - added };
     });
   }
@@ -544,7 +651,44 @@ export class Repo {
     this.db.prepare("DELETE FROM bookmarks WHERE url=?").run(url);
   }
   listBookmarks(): Bookmark[] {
-    return (this.db.prepare("SELECT * FROM bookmarks ORDER BY created_at DESC").all() as any[]).map((r) => ({ url: r.url, title: r.title, createdAt: r.created_at }));
+    const rows = this.db.prepare("SELECT url,title,created_at,folder_path FROM bookmarks ORDER BY created_at DESC").all() as { url: string; title: string; created_at: number; folder_path: string }[];
+    return rows.map(row => ({ url: row.url, title: row.title, createdAt: row.created_at, ...(row.folder_path !== "[]" ? { folderPath: JSON.parse(row.folder_path) as string[] } : {}) }));
+  }
+  bookmarkFolders(): string[][] {
+    const rows = this.db.prepare("SELECT path FROM bookmark_folders ORDER BY path").all() as { path: string }[];
+    return rows.map(row => JSON.parse(row.path) as string[]);
+  }
+  createBookmarkFolder(path: string[]): string[][] {
+    return this.transaction(() => {
+      const insert = this.db.prepare("INSERT OR IGNORE INTO bookmark_folders(path) VALUES(?)");
+      for (let depth = 1; depth <= path.length; depth++) insert.run(J(path.slice(0, depth)));
+      return this.bookmarkFolders();
+    });
+  }
+  renameBookmarkFolder(path: string[], name: string): string[][] {
+    return this.transaction(() => {
+      const key = J(path);
+      const replacement = [...path.slice(0, -1), name];
+      if (!this.db.prepare("SELECT 1 FROM bookmark_folders WHERE path=?").get(key)) throw new VectorError("not_found", "This bookmark folder no longer exists.");
+      if (key === J(replacement)) return this.bookmarkFolders();
+      if (this.db.prepare("SELECT 1 FROM bookmark_folders WHERE path=?").get(J(replacement))) throw new VectorError("conflict", "A folder with this name already exists here.");
+      const descendants = (candidate: string[]) => candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
+      const updateFolder = this.db.prepare("UPDATE bookmark_folders SET path=? WHERE path=?");
+      for (const folder of this.bookmarkFolders().filter(descendants)) updateFolder.run(J([...replacement, ...folder.slice(path.length)]), J(folder));
+      const updateBookmark = this.db.prepare("UPDATE bookmarks SET folder_path=? WHERE url=?");
+      for (const bookmark of this.listBookmarks()) {
+        if (bookmark.folderPath && descendants(bookmark.folderPath)) updateBookmark.run(J([...replacement, ...bookmark.folderPath.slice(path.length)]), bookmark.url);
+      }
+      return this.bookmarkFolders();
+    });
+  }
+  removeBookmarkFolder(path: string[]): string[][] {
+    const descendants = (candidate: string[]) => candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
+    if (this.bookmarkFolders().some(folder => folder.length > path.length && descendants(folder)) || this.listBookmarks().some(bookmark => descendants(bookmark.folderPath ?? []))) {
+      throw new VectorError("conflict", "Move this folder’s bookmarks and remove its subfolders before deleting it.");
+    }
+    this.db.prepare("DELETE FROM bookmark_folders WHERE path=?").run(J(path));
+    return this.bookmarkFolders();
   }
   saveDownload(d: {
     id: string;
@@ -565,6 +709,18 @@ export class Repo {
       )
       .run(d.id, d.pageId ?? null, d.filename, d.path, d.state, d.size, d.totalBytes ?? null, d.startedAt, d.endedAt ?? null);
     if(d.sourceUrl)kvSetJson(this.db, `download-source:${d.id}`, d.sourceUrl);
+  }
+  /** Removes inactive history records only; downloaded files are never touched. */
+  removeFinishedDownloads(ids: string[]): string[] {
+    return this.transaction(() => {
+      const removed: string[]=[];
+      const remove=this.db.prepare("DELETE FROM downloads WHERE id=? AND state IN ('completed','cancelled','interrupted')");
+      const removeSource=this.db.prepare("DELETE FROM kv WHERE key=?");
+      for(const id of new Set(ids)) {
+        if(remove.run(id).changes) { removeSource.run(`download-source:${id}`);removed.push(id); }
+      }
+      return removed;
+    });
   }
   listDownloads(limit = 100): Download[] {
     return (this.db.prepare("SELECT * FROM downloads ORDER BY started_at DESC LIMIT ?").all(limit) as any[]).map((r) => ({

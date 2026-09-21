@@ -1,0 +1,47 @@
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useStore } from "../store";
+
+class SurfaceBoundary extends Component<{children:ReactNode; fallback(error:Error):ReactNode}, {error:Error|null}> {
+  override state: {error:Error|null} = {error:null};
+  static getDerivedStateFromError(error:Error) { return {error}; }
+  override render() { return this.state.error ? this.props.fallback(this.state.error) : this.props.children; }
+}
+
+function SurfaceStatus({label, error, retry, pane}: {label:string; error?:Error; retry?:()=>void; pane:boolean}) {
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (pane) return;
+    root.current?.focus();
+  }, [pane]);
+  const close = () => pane ? useStore.getState().setMode("focus") : useStore.getState().setOverlay(null);
+  return <div className={`surface-status${pane ? " pane" : " overlay"}`} role={pane ? "region" : "dialog"} aria-modal={pane ? undefined : true} aria-label={label} tabIndex={-1} ref={root} onKeyDown={event => {
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
+    if (!pane && event.key === "Tab") {
+      const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button")];
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      event.preventDefault(); buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length]?.focus();
+    }
+  }}><div>
+    <h2>{error ? `${label} couldn’t open` : `Opening ${label.toLowerCase()}…`}</h2>
+    {error ? <><p>Try again. Your browser tabs and saved work stay available.</p><div className="row"><button className="btn primary" onClick={retry}>Try again</button><button className="btn" onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details></> : <><p role="status">Loading this view…</p><button className="btn sm ghost" onClick={close}>Cancel</button></>}
+  </div></div>;
+}
+
+/** A failed surface can retry without reloading the browser or discarding its drafts. */
+export function deferSurface<Props extends object>(load:()=>Promise<{default:ComponentType<Props>}>, label:string, pane=false) {
+  return function DeferredSurface(props:Props) {
+    const [attempt, setAttempt] = useState(0);
+    const previousFocus = useRef(document.activeElement as HTMLElement | null);
+    useEffect(() => () => {
+      if (pane) return;
+      queueMicrotask(() => {
+        const previous = previousFocus.current;
+        if (previous?.isConnected && !previous.closest("[inert]")) previous.focus();
+      });
+    }, []);
+    const Surface = useMemo(() => lazy(load), [attempt]);
+    return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} retry={() => setAttempt(value => value + 1)} />}>
+      <Suspense fallback={<SurfaceStatus label={label} pane={pane} />}><Surface {...props}/></Suspense>
+    </SurfaceBoundary>;
+  };
+}

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { bridge, type BrowserSiteInfo } from "../bridge";
 import { useStore } from "../store";
 import { I } from "./icons";
+import { PageZoom } from "./PageZoom";
 
 const labels:Record<string,string>={
   "media:audio":"Microphone","media:video":"Camera",media:"Camera and microphone",
@@ -11,29 +12,85 @@ const labels:Record<string,string>={
 };
 
 export function SiteControls(){
-  const pageId=useStore(state=>state.activePageId);
+  const page=useStore(state=>state.pages.find(page=>page.pageId===state.activePageId));
+  const pageId=page?.pageId;
   const setOverlay=useStore(state=>state.setOverlay);
-  const [info,setInfo]=useState<BrowserSiteInfo|null>(null);
+  const key=JSON.stringify([pageId,page?.url,page?.documentEpoch,page?.loading,page?.navigationError,page?.viewStatus]);
+  const currentKey=useRef(key); currentKey.current=key;
+  const request=useRef(0);
+  const [loaded,setLoaded]=useState<{key:string;info:BrowserSiteInfo}|null>(null);
+  const info=loaded?.key===key?loaded.info:null;
   const [busy,setBusy]=useState("");
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
+  const [actionError,setActionError]=useState("");
+  const [loading,setLoading]=useState(false);
+  const actionPending=useRef(false);
   const closeRef=useRef<HTMLButtonElement>(null);
-  const close=()=>{setOverlay(null);window.setTimeout(()=>{const buttons=[...document.querySelectorAll<HTMLButtonElement>('[aria-label="Site controls"]')];buttons.find(button=>button.offsetParent!==null)?.focus();},120);};
-  const load=async()=>{if(!pageId)return;setError("");try{setInfo(await bridge.siteInfo(pageId));}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}};
-  useEffect(()=>{void load();requestAnimationFrame(()=>closeRef.current?.focus());},[pageId]);
-  const reset=async(permission?:string)=>{if(!info)return;setBusy(permission??"all");setNotice("");setError("");try{await bridge.clearSitePermission(info.origin,permission);await load();setNotice(permission?`${labels[permission]??permission} will ask again.`:"This site will ask for access again.");}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}finally{setBusy("");}};
-  const clear=async()=>{if(!info)return;setBusy("data");setNotice("");setError("");try{if(await bridge.clearSiteData(info.pageId)){await load();setNotice("Cookies and stored website data cleared. Reload the site to finish signing out.");}}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}finally{setBusy("");}};
-  const security=info?.security==="secure"?{icon:I.lock,title:"Connection is secure",detail:"This page was loaded over an encrypted HTTPS connection."}:info?.security==="local"?{icon:I.globe,title:"Local connection",detail:"This page is on this Mac or a local network address and is not encrypted."}:{icon:I.alert,title:"Connection is not secure",detail:"Information sent to this page is not encrypted."};
+  const close=()=>{setOverlay(null);requestAnimationFrame(()=>{const buttons=[...document.querySelectorAll<HTMLButtonElement>('[aria-label="Site controls"]')];buttons.find(button=>button.offsetParent!==null)?.focus();});};
+  const load=useCallback(async()=>{
+    const version=++request.current;
+    if(!pageId){setError("Open a website to view its site controls.");return;}
+    setError("");setLoading(true);
+    try{
+      const value=await bridge.siteInfo(pageId);
+      if(version===request.current&&currentKey.current===key)setLoaded({key,info:value});
+    }catch(reason){if(version===request.current&&currentKey.current===key)setError(reason instanceof Error?reason.message:String(reason));}
+    finally{if(version===request.current&&currentKey.current===key)setLoading(false);}
+  },[pageId,key]);
+  useEffect(()=>{
+    currentKey.current=key;
+    setLoaded(null);setNotice("");setError("");setActionError("");setLoading(false);
+    if(!page?.loading)void load();
+    return()=>{++request.current;};
+  },[load,page?.loading]);
+  useEffect(()=>{
+    let active=true;
+    void bridge.focusShell().then(()=>{if(active)closeRef.current?.focus();}).catch(()=>{});
+    return()=>{active=false;currentKey.current="";};
+  },[]);
+  const action=async(name:string,work:()=>Promise<boolean|void>,message:string)=>{
+    if(!info||actionPending.current)return;
+    actionPending.current=true;
+    const originKey=key;
+    const trigger=document.activeElement instanceof HTMLButtonElement?document.activeElement:null;
+    setBusy(name);setNotice("");setActionError("");
+    try{
+      const changed=await work();
+      if(currentKey.current!==originKey||changed===false)return;
+      await load();
+      if(currentKey.current===originKey)setNotice(message);
+    }catch(reason){if(currentKey.current===originKey)setActionError(reason instanceof Error?reason.message:String(reason));}
+    finally{
+      actionPending.current=false;setBusy("");
+      requestAnimationFrame(()=>{
+        if(currentKey.current===originKey&&document.activeElement===document.body&&trigger?.isConnected)trigger.focus();
+      });
+    }
+  };
+  const reset=(permission?:string)=>info&&action(permission??"all",()=>bridge.clearSitePermission(info.origin,permission),permission?`${labels[permission]??permission} will ask again.`:"This site will ask for access again.");
+  const clear=()=>info&&action("data",()=>bridge.clearSiteData(info.pageId),"Cookies and stored website data cleared. Reload the site to finish signing out.");
+  const unavailable=!!page?.navigationError||page?.viewStatus==="crashed";
+  const security=unavailable?{icon:I.alert,title:"Connection not established",detail:"This page did not load successfully. Its address alone does not establish a secure connection."}:!info?{icon:I.globe,title:error?"Site details unavailable":"Checking this page…",detail:""}:info.security==="secure"?{icon:I.lock,title:"Connection is secure",detail:"This page was loaded over an encrypted HTTPS connection."}:info.security==="local"?{icon:I.globe,title:"Local connection",detail:"This page uses an unencrypted connection on this Mac."}:{icon:I.alert,title:"Connection is not secure",detail:"Information sent to this page is not encrypted."};
   return <div className="site-controls-scrim" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)close();}}>
-    <section className="site-controls-card pop-in" role="dialog" aria-modal="true" aria-labelledby="site-controls-title">
-      <header><div className={`site-security-icon ${info?.security??""}`}>{security.icon}</div><div><h2 id="site-controls-title">{info?.origin??"Site controls"}</h2><p>{security.title}</p></div><button ref={closeRef} className="icon-btn" aria-label="Close site controls" onClick={close}>{I.close}</button></header>
-      {error&&<div className="site-controls-error" role="alert"><span>{error}</span><button className="btn sm" onClick={()=>void load()}>Try again</button></div>}
+    <section className="site-controls-card pop-in" role="dialog" aria-modal="true" aria-labelledby="site-controls-title" onKeyDown={event=>{
+      if(event.key==="Escape"){event.preventDefault();event.stopPropagation();close();return;}
+      if(event.key!=="Tab")return;
+      const controls=[...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), [tabindex="0"]')].filter(element=>element.offsetParent!==null);
+      const first=controls[0],last=controls.at(-1);
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+    }}>
+      <header><div className={`site-security-icon ${unavailable?"insecure":info?.security??""}`}>{security.icon}</div><div><h2 id="site-controls-title">{info?.origin??"Site controls"}</h2><p>{security.title}</p></div><button ref={closeRef} className="icon-btn" aria-label="Close site controls" onClick={close}>{I.close}</button></header>
+      {error&&<div className="site-controls-error" role="alert"><span>{error}</span><button className="btn sm" disabled={loading||!!busy||!!page?.loading} onClick={()=>void load()}>{loading?"Refreshing…":"Refresh details"}</button></div>}
+      {actionError&&<p className="site-controls-error" role="alert">{actionError}</p>}
       {!info&&!error&&<p className="site-controls-loading" role="status">Loading site details…</p>}
       {info&&<>
-        <div className="site-security-copy"><strong>{security.title}</strong><span>{security.detail}</span></div>
-        <section className="site-controls-group" aria-labelledby="site-data-title"><div><span className="site-row-icon">{I.cookie}</span><div><strong id="site-data-title">Cookies and site data</strong><span>{info.cookieCount===1?"1 cookie":`${info.cookieCount} cookies`} currently visible to this page</span></div><button className="btn sm" disabled={!!busy} onClick={()=>void clear()}>Clear…</button></div></section>
-        <section className="site-controls-group" aria-labelledby="site-access-title"><div className="site-group-heading"><div><strong id="site-access-title">Site access</strong><span>Saved for this website</span></div>{Object.keys(info.permissions).length>0&&<button className="btn sm" disabled={!!busy} onClick={()=>void reset()}>Reset all</button>}</div>
-          {Object.entries(info.permissions).length?Object.entries(info.permissions).map(([permission,decision])=><div className="site-permission-compact" key={permission}><span>{labels[permission]??permission}</span><span className={`site-decision ${decision}`}>{decision==="allow"?"Allowed":"Blocked"}</span><button className="btn sm" aria-label={`Reset ${labels[permission]??permission}`} disabled={!!busy} onClick={()=>void reset(permission)}>Reset</button></div>):<p className="site-empty-access">No saved access decisions. Aux will ask before this site uses sensitive capabilities.</p>}
+        <PageZoom key={info.pageId} pageId={info.pageId} documentEpoch={page?.documentEpoch} />
+        <div className="site-security-copy"><span>{security.detail}</span></div>
+        <section className="site-controls-group" aria-labelledby="site-data-title"><div><span className="site-row-icon">{I.cookie}</span><div><strong id="site-data-title">Cookies and site data</strong><span>{info.cookieCount===1?"1 cookie":`${info.cookieCount} cookies`} stored for this address</span></div><button className="btn sm" disabled={!!busy} onClick={()=>void clear()}>{busy==="data"?"Clearing…":"Clear…"}</button></div></section>
+        <section className="site-controls-group" aria-labelledby="site-access-title"><div className="site-group-heading"><div><strong id="site-access-title">Site access</strong><span>{bridge.privateMode?"Only for this private window":"Saved for this website"}</span></div>{Object.keys(info.permissions).length>0&&<button className="btn sm" disabled={!!busy} onClick={()=>void reset()}>{busy==="all"?"Resetting…":"Reset all"}</button>}</div>
+          {Object.entries(info.permissions).length?Object.entries(info.permissions).map(([permission,decision])=><div className="site-permission-compact" key={permission}><span>{labels[permission]??permission}</span><span className={`site-decision ${decision}`}>{decision==="allow"?"Allowed":"Blocked"}</span><button className="btn sm" aria-label={`Reset ${labels[permission]??permission}`} disabled={!!busy} onClick={()=>void reset(permission)}>{busy===permission?"Resetting…":"Reset"}</button></div>):<p className="site-empty-access">No saved access decisions. Aux will ask before this site uses sensitive capabilities.</p>}
         </section>
         {notice&&<p className="site-controls-notice" role="status">{notice}</p>}
       </>}

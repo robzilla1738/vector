@@ -6,7 +6,7 @@ import { VectorError, type RpcChannel, type LocalProject, type ProjectInspection
  * vector page creation returns an explicit error.
  */
 export interface NativeBridge {
-  listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean }[] }>;
+  listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>;
   createPage(opts: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean; kind?: "chromium" | "engine" }): Promise<{ ok: true }>;
   closePage(pageId: string): Promise<{ ok: boolean }>;
   showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<{ ok: boolean }>;
@@ -19,12 +19,12 @@ export interface NativeBridge {
   /** Temporarily show a hidden page's view while pointer steps run — serialized. */
   acquireStage(pageId: string): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
-  capturePage(pageId: string, scale: number): Promise<{ dataUrl: string }>;
+  capturePage(pageId: string, scale: number): Promise<{ dataUrl: string; width: number; height: number; scale: number }>;
   setEngineFrame(pageId: string, dataUrl: string): Promise<{ ok: boolean }>;
   openExternal(url: string): Promise<{ ok: boolean }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
   stopFind(pageId: string, action: "clear" | "keep"): Promise<{ ok: boolean }>;
-  setZoom(pageId: string, level?: number, delta?: number, reset?: boolean): Promise<{ level: number }>;
+  setZoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out"): Promise<{ level: number }>;
   /** Write cookies into the shared profile partition. Returns count set. */
   setCookies(cookies: unknown[]): Promise<{ ok: boolean; count: number }>;
   /** Persist a secret via Electron safeStorage (plan A22). */
@@ -49,6 +49,7 @@ export interface NativeBridge {
   prepareProjectReview?(projectId:string,task:ProjectReviewContext):Promise<ProjectReviewSummary>;
   commitProject?(projectId:string,request:ProjectCommitRequest,task:ProjectReviewContext):Promise<ProjectCommitResult|null>;
   approveCloudCommand?(input:{task:ProjectCommandTask;environment:{remoteName:string;runtime:string;region:string};executable:string;args:string[];mode:'command'|'service';timeoutMinutes?:number}):Promise<boolean>;
+  movePage?(pageId: string, windowId?: string, activate?: boolean): Promise<{ windowId: string; sourceActivePageId: string | null; activePageId?: string | null }>;
   available(): boolean;
 }
 
@@ -58,10 +59,13 @@ export class ChannelNativeBridge implements NativeBridge {
     return true;
   }
   listPages() {
-    return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean }[] }>("native.listPages", {});
+    return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>("native.listPages", {});
   }
   createPage(o: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean; kind?: "chromium" | "engine" }) {
     return this.channel.call<{ ok: true }>("native.createPage", o);
+  }
+  movePage(pageId: string, windowId?: string, activate = true) {
+    return this.channel.call<{ windowId: string; sourceActivePageId: string | null; activePageId?: string | null }>("native.movePage", { pageId, windowId, activate });
   }
   closePage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.closePage", { pageId }, 55_000);
@@ -88,7 +92,7 @@ export class ChannelNativeBridge implements NativeBridge {
     return this.channel.call<{ ok: boolean }>("native.releaseStage", { pageId });
   }
   capturePage(pageId: string, scale: number) {
-    return this.channel.call<{ dataUrl: string }>("native.capturePage", { pageId, scale });
+    return this.channel.call<{ dataUrl: string; width: number; height: number; scale: number }>("native.capturePage", { pageId, scale });
   }
   setEngineFrame(pageId: string, dataUrl: string) {
     return this.channel.call<{ ok: boolean }>("native.setEngineFrame", { pageId, dataUrl });
@@ -102,8 +106,8 @@ export class ChannelNativeBridge implements NativeBridge {
   stopFind(pageId: string, action: "clear" | "keep") {
     return this.channel.call<{ ok: boolean }>("native.stopFind", { pageId, action });
   }
-  setZoom(pageId: string, level?: number, delta?: number, reset?: boolean) {
-    return this.channel.call<{ level: number }>("native.setZoom", { pageId, level, delta, reset });
+  setZoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out") {
+    return this.channel.call<{ level: number }>("native.setZoom", { pageId, level, delta, reset, direction });
   }
   setCookies(cookies: unknown[]) {
     return this.channel.call<{ ok: boolean; count: number }>("native.setCookies", { cookies });

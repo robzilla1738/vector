@@ -1,9 +1,11 @@
+import { nativePageId } from "./chrome";
+import { splitRatio } from "@vector/contracts/split-layout";
 /**
  * Pure reducers for the sidebar's local organisation: spaces, tab order,
  * pinned sites. The runtime owns pages; the shell owns how they are arranged.
  * Everything here is deterministic and unit-tested.
  */
-import type { PageTarget } from "@vector/contracts";
+import type { BrowserSpace, PageTarget } from "@vector/contracts";
 
 export type SpaceColor = "blue" | "violet" | "pink" | "orange" | "green" | "teal" | "slate";
 export const SPACE_COLORS: SpaceColor[] = ["blue", "violet", "pink", "orange", "green", "teal", "slate"];
@@ -12,6 +14,7 @@ export interface Space {
   id: string;
   name: string;
   color: SpaceColor;
+  workspaceId?: string;
 }
 
 export interface Pin {
@@ -19,7 +22,7 @@ export interface Pin {
   title: string;
 }
 
-export const MAX_PINS = 5;
+export const PIN_ROW_SIZE = 5;
 
 export interface Folder {
   id: string;
@@ -30,7 +33,12 @@ export interface Folder {
 
 export interface Layout {
   spaces: Space[];
+  archivedSpaces?: Space[];
   activeSpaceId: string;
+  /** Saved companion per primary tab; restored only while both remain in this Space. */
+  splits?: Record<string, string>;
+  splitRatio?: number;
+  activeTabs?: Record<string, string>;
   /** pageId → spaceId; pages not listed belong to the active space when first seen */
   tabSpace: Record<string, string>;
   /** explicit order of pageIds within the sidebar (across spaces) */
@@ -46,7 +54,7 @@ export interface Layout {
 export const DEFAULT_SPACE: Space = { id: "space-personal", name: "Personal", color: "blue" };
 
 export function emptyLayout(): Layout {
-  return { spaces: [DEFAULT_SPACE], activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {} };
+  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {} };
 }
 
 let seq = 0;
@@ -59,7 +67,8 @@ export function isTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime">): boo
 }
 
 /** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. */
-export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[]): string[] {
+export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): string[] {
+  pages=[...pages,...preservedIds.filter(id=>!pages.some(page=>page.pageId===id)).map(pageId=>({pageId}))];
   const live = new Set(pages.map((p) => p.pageId));
   const kept = order.filter((id) => live.has(id));
   const known = new Set(kept);
@@ -68,9 +77,10 @@ export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[]):
 }
 
 /** Ensure every live page has a space; new pages land in the active space. */
-export function syncSpaces(layout: Layout, pages: Pick<PageTarget, "pageId">[]): Layout {
+export function syncSpaces(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
+  pages=[...pages,...preservedIds.filter(id=>!pages.some(page=>page.pageId===id)).map(pageId=>({pageId}))];
   const tabSpace: Record<string, string> = {};
-  const valid = new Set(layout.spaces.map((s) => s.id));
+  const valid = new Set([...layout.spaces, ...(layout.archivedSpaces ?? [])].map((s) => s.id));
   let changed = false;
   for (const p of pages) {
     const cur = layout.tabSpace[p.pageId];
@@ -181,10 +191,30 @@ export function setActiveSpace(layout: Layout, spaceId: string): Layout {
   return layout.spaces.some((s) => s.id === spaceId) ? { ...layout, activeSpaceId: spaceId } : layout;
 }
 
+export function reconcileSpaces(layout: Layout, records: BrowserSpace[]): Layout {
+  const spaces = records.filter(space => !space.archived);
+  if (!spaces.length) return layout;
+  return {
+    ...layout, spaces, archivedSpaces: records.filter(space => space.archived),
+    activeSpaceId: spaces.some(space => space.id === layout.activeSpaceId) ? layout.activeSpaceId : spaces[0]!.id,
+  };
+}
+
 export function togglePin(layout: Layout, spaceId: string, pin: Pin): Layout {
   const cur = layout.pins[spaceId] ?? [];
   const has = cur.some((p) => p.url === pin.url);
-  const next = has ? cur.filter((p) => p.url !== pin.url) : [...cur, pin].slice(0, MAX_PINS);
+  const next = has ? cur.filter((p) => p.url !== pin.url) : [...cur, pin];
+  return { ...layout, pins: { ...layout.pins, [spaceId]: next } };
+}
+
+/** Move by stable site identity so overflow and visible pins share one order. */
+export function reorderPin(layout: Layout, spaceId: string, url: string, beforeUrl: string | null): Layout {
+  const pins = layout.pins[spaceId] ?? [];
+  const pin = pins.find(item => item.url === url);
+  if (!pin || beforeUrl === url || (beforeUrl !== null && !pins.some(item => item.url === beforeUrl))) return layout;
+  const next = pins.filter(item => item.url !== url);
+  const index = beforeUrl === null ? next.length : next.findIndex(item => item.url === beforeUrl);
+  next.splice(index, 0, pin);
   return { ...layout, pins: { ...layout.pins, [spaceId]: next } };
 }
 
@@ -288,12 +318,16 @@ export function parseLayout(raw: string | null): Layout {
     const active = spaces.some((s) => s.id === v.activeSpaceId) ? v.activeSpaceId! : spaces[0]!.id;
     return {
       spaces,
+      archivedSpaces: Array.isArray(v.archivedSpaces) ? v.archivedSpaces.filter(space => space && typeof space.id === "string" && typeof space.name === "string") : [],
       activeSpaceId: active,
+      splitRatio: splitRatio(v.splitRatio),
+      activeTabs: v.activeTabs && typeof v.activeTabs === "object" ? Object.fromEntries(Object.entries(v.activeTabs).filter(([, pageId]) => typeof pageId === "string")) : {},
+      splits: v.splits && typeof v.splits === "object" ? Object.fromEntries(Object.entries(v.splits).filter(([id, companion]) => typeof companion === "string" && id !== companion)) : {},
       tabSpace: v.tabSpace && typeof v.tabSpace === "object" ? v.tabSpace : {},
       order: Array.isArray(v.order) ? v.order.filter((x): x is string => typeof x === "string") : [],
       pins: v.pins && typeof v.pins === "object"
         ? Object.fromEntries(
-            Object.entries(v.pins).map(([id, list]) => [id, Array.isArray(list) ? (list as Pin[]).slice(0, MAX_PINS) : []]),
+            Object.entries(v.pins).map(([id, list]) => [id, Array.isArray(list) ? (list as Pin[]) : []]),
           )
         : {},
       folders: Array.isArray(v.folders)
@@ -318,4 +352,26 @@ export function hostOf(url: string): string {
   } catch {
     return url;
   }
+}
+
+/** Only pages that Aux can display inside its own stage can be paired. */
+export function canSplitPage(page: PageTarget | undefined): boolean {
+  return !!page && isTab(page) && !!nativePageId({mode:"focus",overlay:null,activePageId:page.pageId,...page});
+}
+
+/** A saved split never borrows a tab from another Space or a worker. */
+export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string | null): string | null {
+  if (!pageId) return null;
+  const companionId = layout.splits?.[pageId];
+  if (!companionId || companionId === pageId || layout.tabSpace[pageId] !== layout.tabSpace[companionId]) return null;
+  const companion = pages.find(page => page.pageId === companionId);
+  return companion && isTab(companion) ? companionId : null;
+}
+
+/** Keep the last human selection per Space; stale closed IDs are ignored by the caller. */
+export function rememberActiveTab(layout: Layout, pageId: string | null): Layout {
+  if (!pageId) return layout;
+  const spaceId = layout.tabSpace[pageId];
+  if (!spaceId || layout.activeTabs?.[spaceId] === pageId) return layout;
+  return { ...layout, activeTabs: { ...layout.activeTabs, [spaceId]: pageId } };
 }

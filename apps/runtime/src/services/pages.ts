@@ -1,3 +1,5 @@
+import type { BrowserSpace } from "@vector/contracts";
+import type { PageWindowMove } from "@vector/contracts";
 import {
   EventTypes,
   newObservationId,
@@ -124,6 +126,9 @@ export class PageService {
   /** set on app teardown — view.removed storms must not touch the restore list */
   private closing = false;
   private restoring = false;
+  private pendingRestore = new Map<string, ReturnType<Repo["loadTabs"]>[number]>();
+  private restoreErrors = new Map<string, string>();
+  private retryingRestore = new Set<string>();
   /** pages with an in-flight program — Playwright input is not a human takeover */
   private programInflight = new Set<string>();
 
@@ -142,7 +147,8 @@ export class PageService {
   get isRestoringTabs() { return this.restoring; }
 
   constructor(private deps: PageServiceDeps) {
-    this.restoring = deps.native.available() && deps.repo.loadTabs().some(tab => tab.backend === "vector");
+    if(deps.native.available())for(const tab of deps.repo.loadTabs().filter(tab=>tab.backend==="vector"))this.pendingRestore.set(tab.page_id,tab);
+    this.restoring = this.pendingRestore.size > 0;
     // restore persisted page rows as detached history entries
     for (const p of deps.repo.listPages({ includeDetached: true })) {
       p.viewStatus = "detached";
@@ -440,6 +446,7 @@ export class PageService {
     backend: Backend;
     title?: string;
     active?: boolean;
+    showBlankDocument?: boolean;
     restored?: PageTarget;
   }): Promise<PageTarget> {
     const driver = this.driverFor(opts.backend);
@@ -463,6 +470,7 @@ export class PageService {
       targetId: opts.marker,
       url: dp?.url() || opts.url,
       title: opts.title ?? "",
+      showBlankDocument: opts.showBlankDocument,
       documentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : 0,
       lastRevision: 0,
       viewStatus: opts.active === false ? "background" : "visible",
@@ -553,6 +561,8 @@ export class PageService {
         active: this.activeByWindow.get(x.target.windowId ?? "main") === x.target.pageId,
       }));
     try {
+      const liveIds=new Set(tabs.map(tab=>tab.pageId));
+      for(const saved of this.pendingRestore.values())if(!liveIds.has(saved.page_id))tabs.push({pageId:saved.page_id,windowId:saved.window_id,ordinal:tabs.length,url:saved.url,title:saved.title,backend:saved.backend as Backend,active:!!saved.active});
       this.deps.repo.saveTabs(tabs);
     } catch {
       /* snapshot is best-effort */
@@ -561,7 +571,13 @@ export class PageService {
 
   /** Reopen the tabs that were live when the app last shut down. */
   async restoreTabs() {
-    if (!this.deps.native.available() || this.live.size > 0) return;
+    if (!this.deps.native.available()) { this.restoring=false; return; }
+    if (this.live.size > 0) {
+      for(const pageId of this.live.keys())this.pendingRestore.delete(pageId);
+      this.restoring=false;
+      this.saveTabsSnapshot();
+      return;
+    }
     const existing = await (this.deps.native.listPages?.() ?? Promise.resolve({ pages: [] })).catch(() => ({ pages: [] }));
     if (existing.pages.length) {
       this.restoring = true;
@@ -570,6 +586,7 @@ export class PageService {
           const previous = this.deps.repo.getPage(page.pageId);
           try {
             await this.registerExternal({ ...page, backend: "vector", restored: previous });
+            this.pendingRestore.delete(page.pageId);
           } catch {
             /* one stale native target must not block the other live tabs */
           }
@@ -595,19 +612,11 @@ export class PageService {
     try {
       for (const t of tabs) {
         try {
-          const previous = this.deps.repo.listPages({ includeDetached: true }).find(page => page.pageId === t.page_id);
-          // Tab identity is durable; document/controller authority is not.
-          // The native driver must start beyond the prior document epoch.
-          if (!previous || !this.driverFor("vector")?.recoverPage) continue;
-          const p = await this.openOn("vector", {
-            url: t.url || "about:blank", windowId: t.window_id || "main", background: false,
-            ownedByRuntime: false, activate: false,
-          }, "session-restore", false, previous);
-          this.deps.repo.markDatasetsStale(p.pageId, p.documentEpoch);
+          const p = await this.restoreSavedTab(t.page_id);
           const windowId = t.window_id || "main";
           if (t.active || !activateIds.has(windowId)) activateIds.set(windowId, p.pageId);
-        } catch {
-          /* an unrestorable tab shouldn't block the rest */
+        } catch (error) {
+          this.restoreErrors.set(t.page_id,error instanceof Error?error.message:String(error));
         }
       }
       for (const pageId of activateIds.values()) await this.activate(pageId).catch(() => {});
@@ -617,6 +626,39 @@ export class PageService {
       // Keep the original durable snapshot until all surfaces are restored.
       // Normal later tab mutations resume snapshotting.
     }
+  }
+
+  recoveryTabs() {
+    return [...this.pendingRestore.values()].map(tab=>({pageId:tab.page_id,url:tab.url,title:tab.title,windowId:tab.window_id||"main",error:this.restoreErrors.get(tab.page_id),retrying:this.retryingRestore.has(tab.page_id)}));
+  }
+
+  async retryRestore(pageId:string) {
+    if(this.restoring||this.retryingRestore.has(pageId))throw new VectorError("conflict","This session is already being restored.");
+    this.retryingRestore.add(pageId);
+    try {
+      const page=await this.restoreSavedTab(pageId);
+      this.saveTabsSnapshot();
+      return {ok:true,pageId:page.pageId};
+    } catch(error) {
+      this.restoreErrors.set(pageId,error instanceof Error?error.message:String(error));
+      throw error;
+    } finally {
+      this.retryingRestore.delete(pageId);
+      this.deps.events.emit("browser.recovery.changed",{});
+    }
+  }
+
+  private async restoreSavedTab(pageId:string):Promise<PageTarget> {
+    const saved=this.pendingRestore.get(pageId);
+    if(!saved)throw new VectorError("not_found","This tab has already been restored.");
+    const existing=this.live.get(pageId);
+    if(existing){this.pendingRestore.delete(pageId);this.restoreErrors.delete(pageId);return existing.target;}
+    const previous=this.deps.repo.getPage(pageId);
+    if(!previous||!this.driverFor("vector")?.recoverPage)throw new VectorError("backend_unavailable","The browser cannot restore this tab yet. Its saved address has been kept.");
+    const page=await this.openOn("vector",{url:saved.url||"about:blank",windowId:saved.window_id||"main",background:false,ownedByRuntime:false,activate:false},"session-restore",false,previous);
+    this.deps.repo.markDatasetsStale(page.pageId,page.documentEpoch);
+    this.pendingRestore.delete(pageId);this.restoreErrors.delete(pageId);
+    return page;
   }
 
   private async refreshMeta(lp: LivePage) {
@@ -665,6 +707,43 @@ export class PageService {
     }
     this.deps.events.emit(EventTypes.PageRemoved, { pageId });
     return { ok: true };
+  }
+
+  async moveToWindow(input: PageWindowMove, space: BrowserSpace): Promise<PageTarget> {
+    return this.enqueue(input.pageId, async () => {
+      const page = this.live.get(input.pageId);
+      if (!page) throw new VectorError("not_found", "This tab no longer exists.");
+      if (page.target.ownedByRuntime || page.target.controller === "agent" || page.target.controller === "external") {
+        throw new VectorError("conflict", "Take control of this tab before moving it to another window.");
+      }
+      if (!this.deps.native.movePage) throw new VectorError("backend_unavailable", "Moving live tabs requires the Aux desktop browser.");
+      const fromWindowId = page.target.windowId ?? "main";
+      if (input.windowId === fromWindowId) return page.target;
+      const moved = await this.deps.native.movePage(input.pageId, input.windowId, input.activate);
+      page.target.windowId = moved.windowId;
+      if (moved.sourceActivePageId) this.activeByWindow.set(fromWindowId, moved.sourceActivePageId);
+      else this.activeByWindow.delete(fromWindowId);
+      this.activeByWindow.set(moved.windowId, moved.activePageId ?? input.pageId);
+      if (input.activate !== false) this.activeId = input.pageId;
+      this.persist(page);
+      this.deps.repo.setSetting(`tab-placement:${input.pageId}`, { spaceId: input.spaceId, folder: input.folder });
+      this.deps.events.emit("page.moved", {
+        page: page.target, fromWindowId, toWindowId: moved.windowId,
+        sourceActivePageId: moved.sourceActivePageId, activePageId: moved.activePageId ?? input.pageId, activate: input.activate !== false, spaceId: input.spaceId, space, folder: input.folder,
+      });
+      return page.target;
+    });
+  }
+
+  /** A native focus notification records selection without issuing another focus command. */
+  onNativeWindowFocused(pageId: string, windowId: string) {
+    const page = this.live.get(pageId);
+    if (!page || (page.target.windowId ?? "main") !== windowId || page.target.ownedByRuntime) return;
+    this.activeId = pageId;
+    this.activeByWindow.set(windowId, pageId);
+    page.target.lastActiveAt = Date.now();
+    this.persist(page);
+    this.deps.events.emit(EventTypes.PageUpdated, {pageId, activePageId: pageId, lastActiveAt: page.target.lastActiveAt});
   }
 
   async activate(pageId: string): Promise<PageTarget> {
@@ -1222,9 +1301,9 @@ export class PageService {
     if (!this.deps.native.available()) return { ok: true };
     return this.deps.native.stopFind(pageId, action);
   }
-  async zoom(pageId: string, level?: number, delta?: number, reset?: boolean) {
+  async zoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out") {
     if (!this.deps.native.available()) throw new VectorError("backend_unavailable", "zoom requires the desktop shell");
-    return this.deps.native.setZoom(pageId, level, delta, reset);
+    return this.deps.native.setZoom(pageId, level, delta, reset, direction);
   }
   /** Display-list scene for the live engine page. Not a PNG. */
   async scene(pageId: string) {
@@ -1238,9 +1317,24 @@ export class PageService {
     throw new VectorError("capability_unsupported", "engine did not export a display list");
   }
 
-  async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact" }) {
+  async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact"; expectedDocumentEpoch?: number }) {
     const dp = this.driverPageLenient(pageId);
-    const shot = await dp.screenshot({ fullPage: opts?.fullPage });
+    const before = this.get(pageId);
+    const epoch = before.documentEpoch;
+    const url = dp.url();
+    if (opts?.expectedDocumentEpoch !== undefined && opts.expectedDocumentEpoch !== epoch)
+      throw new VectorError("conflict", "The page changed before capture. Capture it again.");
+    const shot = before.backend === "vector" && this.deps.native.available() && !opts?.fullPage
+      ? await this.deps.native.capturePage(pageId, 1).then(image => ({
+        buffer: Buffer.from(image.dataUrl.split(",")[1] ?? "", "base64"),
+        width: image.width, height: image.height, scale: image.scale,
+      }))
+      : await dp.screenshot({ fullPage: opts?.fullPage });
+    const after = this.get(pageId);
+    if (after.documentEpoch !== epoch || dp.url() !== url || !dp.isAttached())
+      throw new VectorError("conflict", "The page changed during capture. Capture it again.");
+    if (!shot.buffer.length || shot.width <= 0 || shot.height <= 0)
+      throw new VectorError("backend_unavailable", "The page has no image available yet. Open the tab and try again.");
     if (opts?.format === "artifact") {
       const a = this.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });
       return { artifactId: a?.artifactId, width: shot.width, height: shot.height, scale: shot.scale };

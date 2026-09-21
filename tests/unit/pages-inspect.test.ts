@@ -40,6 +40,7 @@ const content = (url: string, over: Partial<ObservationContent> = {}): Observati
 
 function fakeEngine() {
   const calls: string[] = [];
+  let capture = async () => ({ buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 });
   let events: DriverPageEvents = {};
   let n = 0;
   const targets = new Map<string, string>();
@@ -79,7 +80,7 @@ function fakeEngine() {
       waitForDownload: async () => ({ suggestedFilename: "f" }),
       handleDialog: async (action) => rec(`dialog:${action}`),
       collectScroll: async () => ({ items: [], collected: 0 }),
-      screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
+      screenshot: () => capture(),
       observe: async () => {
         rec("observe");
         return content(current);
@@ -124,7 +125,7 @@ function fakeEngine() {
     routingOf: () => ({ requiresScript: false }),
     attach: async (targetId, pageId) => makePage(targetId, pageId, targets.get(targetId) ?? "about:blank"),
   };
-  return { driver, calls };
+  return { driver, calls, setCapture: (next: typeof capture) => { capture = next; } };
 }
 
 function harness(grants: string[] = ["effect:read"]) {
@@ -151,6 +152,20 @@ function harness(grants: string[] = ["effect:read"]) {
 }
 
 describe("H2-C7 pages inspect RPCs", () => {
+  it("rejects outdated, navigated and empty page captures", async () => {
+    const { pages, engine } = harness();
+    const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
+    await expect(pages.capture(page.pageId, { expectedDocumentEpoch: page.documentEpoch + 1 })).rejects.toThrow("changed before capture");
+    expect((await pages.capture(page.pageId)).width).toBe(20);
+    engine.setCapture(async () => {
+      await pages.navigate(page.pageId, "https://a.test/next");
+      return { buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 };
+    });
+    await expect(pages.capture(page.pageId)).rejects.toThrow("changed during capture");
+    engine.setCapture(async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }));
+    await expect(pages.capture(page.pageId)).rejects.toThrow("no image available");
+  });
+
   it("extracts observation keys, refs, and CSS specs", async () => {
     const { pages } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });

@@ -1,3 +1,4 @@
+import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { useState } from "react";
 import { bridge } from "../bridge";
 import { call } from "../store";
@@ -112,7 +113,7 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
             <details><summary>Snapshot fingerprint</summary><code>{record.source.sha256}</code><span>SHA-256 identifies these saved bytes; it does not verify the document’s claims.</span></details>
           </div>}
           {!!record.source.cloudArtifacts?.length&&<div className="document-source hint"><span>{record.source.cloudArtifacts.length} cloud result artifact{record.source.cloudArtifacts.length===1?'':'s'} preserved in Aux task data.</span><div className="row">{record.source.cloudArtifacts.map(item=><button className="btn sm" key={item.artifactId} onClick={()=>void bridge.saveStoredArtifact(item.artifactId,item.label).catch(error=>setImportError(error instanceof Error?error.message:String(error)))}>Save {item.label}…</button>)}</div><details><summary>Preserved artifact fingerprints</summary>{record.source.cloudArtifacts.map(item=><code key={item.artifactId}>{item.label} · {item.bytes.toLocaleString()} bytes · {item.sha256}</code>)}</details></div>}
-          {record.snapshot && <details><summary>{record.kind === "command_snapshot" ? "Saved command and output" : record.kind === "document_snapshot" ? "Saved document text" : "Captured page text"}</summary><pre className="evidence-text">{record.snapshot.text || "(Empty document)"}</pre></details>}
+          {record.snapshot && <details><summary>{record.kind === "command_snapshot" ? "Saved command and output" : record.kind === "document_snapshot" ? "Saved document text" : "Captured page text"}</summary><DocumentExtractionNote filename={record.snapshot.title} /><DocumentContent filename={record.snapshot.title} content={record.snapshot.text} /></details>}
         </div>)}
         {editable && <>
         <textarea aria-label="Evidence or review note" rows={3} placeholder="Describe the evidence you checked and what it establishes." value={note} onChange={event => setNotes(previous => ({ ...previous, [criterion.criterionId]: event.target.value }))} maxLength={4000} />
@@ -131,8 +132,9 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
         </section>}
         {document?.criterionId === criterion.criterionId && <section className="document-preview field" aria-label="Document preview">
           <strong>{document.filename}</strong>
-          <span className="hint">{new TextEncoder().encode(document.content).length.toLocaleString()} bytes · Text, Markdown, CSV or JSON, up to 512 KB</span>
-          <pre className="evidence-text">{document.content || "(Empty document)"}</pre>
+          <span className="hint">{new TextEncoder().encode(document.content).length.toLocaleString()} bytes of saved text · Up to 512 KB</span>
+          <DocumentExtractionNote filename={document.filename} />
+          <DocumentContent filename={document.filename} content={document.content} />
           <span className="hint">Save a local copy as evidence for this criterion. Importing does not send the text to a model. The original file will not be monitored.</span>
           <div className="row"><button className="btn sm" disabled={importing || active} onClick={() => void saveDocument()}>Save document evidence</button>
             <button className="btn sm" disabled={importing} onClick={() => setDocument(null)}>Cancel import</button></div>

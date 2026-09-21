@@ -1,5 +1,7 @@
+import { readWorkspaceMemory } from "./workspace-memory.js";
+import { memoryOrigin } from "@vector/contracts/memory-context";
 import { randomUUID } from "node:crypto";
-import { TaskCreateParams, TaskSchema, TaskUpdateParams, VectorError, taskConversationId, type Task, type Workspace, type WorkspaceMemory } from "@vector/contracts";
+import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, VectorError, taskConversationId, type Task, type Workspace, type WorkspaceMemory } from "@vector/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 
@@ -22,15 +24,32 @@ export class TaskService {
   }
 
   workspaceMemory(workspaceId: string): WorkspaceMemory {
-    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new VectorError("not_found", "Workspace does not exist");
-    const saved = this.repo.getSetting<Partial<WorkspaceMemory>>(`workspaceMemory:${workspaceId}`);
-    return { workspaceId, content: typeof saved?.content === "string" ? saved.content.slice(0, 16_000) : "", revision: Number.isInteger(saved?.revision) && saved!.revision! >= 0 ? saved!.revision! : 0, ...(typeof saved?.updatedAt === "number" ? { updatedAt: saved.updatedAt } : {}) };
+    return readWorkspaceMemory(this.repo, workspaceId);
   }
 
-  setWorkspaceMemory(workspaceId: string, expectedRevision: number, content: string): WorkspaceMemory {
+  searchWorkspaceMemory(query:string) {
+    const needle=query.trim().toLocaleLowerCase();
+    if(!needle)return [];
+    return this.workspaces().flatMap(workspace=>{
+      const memory=this.workspaceMemory(workspace.workspaceId), searchable=[memory.content,...(memory.items??[]).map(item=>`${item.content} ${item.sourceUrl??""}`)].join("\n"),index=searchable.toLocaleLowerCase().indexOf(needle);
+      if(index<0&&!workspace.name.toLocaleLowerCase().includes(needle))return [];
+      const start=Math.max(0,index-60),end=Math.min(searchable.length,start+240);
+      return [{workspaceId:workspace.workspaceId,name:workspace.name,enabled:memory.enabled!==false,excerpt:`${start?"…":""}${searchable.slice(start,end)}${end<searchable.length?"…":""}`}];
+    }).slice(0,100);
+  }
+
+  setWorkspaceMemory(workspaceId: string, expectedRevision: number, content: string, enabled?:boolean, items?: WorkspaceMemory["items"], excludedOrigins?: string[]): WorkspaceMemory {
     const prior = this.workspaceMemory(workspaceId);
     if (prior.revision !== expectedRevision) throw new VectorError("conflict", "Workspace memory changed; reload it before saving.");
-    const next = { workspaceId, content: content.slice(0, 16_000), revision: prior.revision + 1, updatedAt: Date.now() };
+    if (items && (items.length > 40 || new Set(items.map(item => item.itemId)).size !== items.length || items.some(item => !WorkspaceMemoryItemSchema.safeParse(item).success)))
+      throw new VectorError("invalid_params", "Use up to 40 valid memory notes with distinct identities.");
+    let origins = prior.excludedOrigins ?? [];
+    if (excludedOrigins) {
+      if (excludedOrigins.length > 100) throw new VectorError("invalid_params", "Use up to 100 excluded sites.");
+      try { origins = [...new Set(excludedOrigins.map(memoryOrigin))]; }
+      catch { throw new VectorError("invalid_params", "Use web addresses without credentials for excluded sites."); }
+    }
+    const next = { workspaceId, excludedOrigins: origins, items: items ?? prior.items ?? [], enabled:enabled??prior.enabled??true, content: content.slice(0, 16_000), revision: prior.revision + 1, updatedAt: Date.now() };
     this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
     this.events.emit("workspace.memory.updated", { workspaceId, revision: next.revision });
     return next;
@@ -62,6 +81,34 @@ export class TaskService {
     return task;
   }
 
+  promote(input: unknown): Task {
+    const { chatId, expectedRunId, ...definition } = TaskPromoteParams.parse(input);
+    let created = false;
+    const task = this.repo.transaction(() => {
+      const existing = this.repo.taskForConversation(chatId);
+      if (existing) return this.get(existing);
+      const conversation = this.repo.getConversation(chatId);
+      if (!conversation) throw new VectorError("not_found", "Conversation not found.");
+      if (conversation.archived) throw new VectorError("conflict", "Restore the conversation before saving it as a task.");
+      if (conversation.taskId) return this.get(conversation.taskId);
+      if (conversation.latestRun.runId !== expectedRunId) throw new VectorError("conflict", "The conversation changed. Review its latest reply before saving the task.");
+      if (this.repo.db.prepare(`SELECT 1 FROM runs WHERE (json_extract(config,'$.chatId')=? OR run_id=?) AND status IN ${ACTIVE_RUNS} LIMIT 1`).get(chatId, chatId)) throw new VectorError("conflict", "Wait for or stop the current turn before saving a task.");
+      if (this.repo.db.prepare("SELECT 1 FROM action_intents a JOIN runs r ON r.run_id=a.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1").get(chatId, chatId)
+        || this.repo.db.prepare("SELECT 1 FROM operation_invocations o JOIN runs r ON r.run_id=o.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND (o.status IN ('running','interrupted') OR o.effect_outcome='unknown') LIMIT 1").get(chatId, chatId)) throw new VectorError("conflict", "Resolve this conversation's uncertain actions before saving it as a task.");
+      if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId)) throw new VectorError("not_found", "Space does not exist.");
+      const now = Date.now();
+      const task: Task = { ...definition, conversationId: chatId, taskId: randomUUID(), revision: 1, state: "open", createdAt: now, updatedAt: now };
+      this.repo.db.prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)").run(task.taskId, task.workspaceId, task.revision, task.state, now, JSON.stringify(task));
+      this.saveRevision(task);
+      this.repo.setSetting(`conversationWorkspace:${chatId}`, task.workspaceId);
+      this.repo.db.prepare("UPDATE conversations SET title=? WHERE chat_id=?").run(task.title.slice(0,160), chatId);
+      created = true;
+      return task;
+    });
+    if (created) this.events.emit("task.created", { task });
+    return task;
+  }
+
   descendants(taskId: string, limit = 500): Task[] {
     const root = this.get(taskId);
     const candidates = this.list({ workspaceId: root.workspaceId, includeArchived: true, limit });
@@ -80,9 +127,9 @@ export class TaskService {
     return TaskSchema.parse(JSON.parse(row.json));
   }
 
-  list(opts: { workspaceId?: string; includeArchived?: boolean; limit?: number } = {}): Task[] {
-    return (this.repo.db.prepare("SELECT json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') ORDER BY updated_at DESC,task_id LIMIT ?")
-      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0, opts.limit ?? 100) as { json: string }[])
+  list(opts: { query?:string; workspaceId?: string; includeArchived?: boolean; limit?: number } = {}): Task[] {
+    return (this.repo.db.prepare("SELECT json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') AND (?='' OR instr(lower(coalesce(json_extract(json,'$.title'),'')||' '||coalesce(json_extract(json,'$.objective'),'')),lower(?))>0) ORDER BY updated_at DESC,task_id LIMIT ?")
+      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0, opts.query?.trim()??"", opts.query?.trim()??"", opts.limit ?? 100) as { json: string }[])
       .map(row => TaskSchema.parse(JSON.parse(row.json)));
   }
 
@@ -138,7 +185,7 @@ export class TaskService {
       const result = this.repo.db.prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
         .run(next.revision, next.state, next.updatedAt, JSON.stringify(next), taskId, expectedRevision);
       if (result.changes !== 1) throw new VectorError("conflict", "Task was changed by another client; refresh it before editing");
-      this.repo.db.prepare("UPDATE conversations SET title=?,archived=? WHERE chat_id=?").run(next.title.slice(0, 160), next.state === "archived" ? 1 : 0, taskConversationId(taskId));
+      this.repo.db.prepare("UPDATE conversations SET title=?,archived=? WHERE chat_id=?").run(next.title.slice(0, 160), next.state === "archived" ? 1 : 0, next.conversationId ?? taskConversationId(taskId));
       this.saveRevision(next);
       return next;
     });
@@ -156,7 +203,7 @@ export class TaskService {
     this.requireResolved(taskId);
     const memory = this.workspaceMemory(task.workspaceId);
     return {
-      taskId, taskRevision: task.revision, goal: task.objective, chatId: taskConversationId(taskId),
+      taskId, taskRevision: task.revision, goal: task.objective, chatId: task.conversationId ?? taskConversationId(taskId),
       context: [context, task.resources.length ? `Task reference metadata (contents have not been read; these references do not grant access or expand authority):\n${JSON.stringify(task.resources)}` : undefined, `Task acceptance criteria (revision ${task.revision}):\n${task.criteria.map(item => `- ${item.criterionId}: ${item.description} [${item.verification}]`).join("\n")}\nThese criteria require evidence. A successful run alone does not verify them.`].filter(Boolean).join("\n\n"),
       contextWorkspaceId: task.workspaceId, contextWorkspaceRevision: memory.revision,
     };

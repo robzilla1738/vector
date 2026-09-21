@@ -116,7 +116,12 @@ export function authorizeProgram(
     let effectOrigin = origin;
     if (effect === "egress" && "url" in step && typeof step.url === "string") {
       try {
-        effectOrigin = new URL(step.url, origin || undefined).origin;
+        // Opaque pages (about:blank) have origin "null", which is not a URL base.
+        // Absolute destinations must be checked independently of the current page.
+        let destination: URL;
+        try { destination = new URL(step.url); }
+        catch { destination = new URL(step.url, origin || undefined); }
+        effectOrigin = destination.origin;
       } catch {
         return { ok: false, denied: `permission denied for ${step.op} (invalid destination)`, effect };
       }

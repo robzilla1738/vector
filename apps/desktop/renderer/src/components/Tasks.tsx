@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Run, Task, Workspace, TaskReceipt } from "@vector/contracts";
+import type { Run, Task, TaskReceipt } from "@vector/contracts";
 import { call, useStore } from "../store";
 import { I } from "./icons";
 import { readTaskDraft, writeTaskDraft, taskDraftKey, readTaskSelection, rememberTask, type TaskDraft } from "../task-drafts";
@@ -18,9 +18,8 @@ export function Tasks() {
   const activePageId = useStore(s => s.activePageId);
   const pages = useStore(s => s.pages);
   const [showHistory, setShowHistory] = useState(false);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [workspaceId, setWorkspaceId] = useState("");
-  const [workspaceName, setWorkspaceName] = useState("");
+  const layout = useStore(s => s.layout);
+  const workspaceId = layout.spaces.find(space => space.id === layout.activeSpaceId)?.workspaceId ?? "";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selected, setSelected] = useState<Details | null>(null);
   const [receipt, setReceipt] = useState<TaskReceipt | null>(null);
@@ -40,13 +39,6 @@ export function Tasks() {
     return () => { previous?.focus(); };
   }, []);
 
-  useEffect(() => {
-    let live = true;
-    void call<Workspace[]>("workspaces.list", {}).then(items => {
-      if (live) { setWorkspaces(items); setWorkspaceId(items.find(item => item.workspaceId === readTaskSelection().workspaceId)?.workspaceId ?? items[0]?.workspaceId ?? ""); }
-    }).catch(e => { if (live) setError(String(e)); });
-    return () => { live = false; };
-  }, []);
   useEffect(() => {
     let live = true;
     setTasks([]); setSelected(null); setReceipt(null); setShowHistory(false); setTaskQuery("");
@@ -136,16 +128,13 @@ export function Tasks() {
       <div className="drawer-head"><h3>Tasks</h3><span className="sp" /><button className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>{I.close}</button></div>
       {error && <p role="alert" className="field">{error}</p>}
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
-        <div className="field"><label htmlFor="task-workspace">Workspace</label>
-          <select id="task-workspace" value={workspaceId} onChange={e => setWorkspaceId(e.target.value)}>
-            {!workspaces.length && <option value="">Create a workspace</option>}
-            {workspaces.map(item => <option key={item.workspaceId} value={item.workspaceId}>{item.name}</option>)}
+        <div className="field"><label htmlFor="task-workspace">Space</label>
+          <select id="task-workspace" value={layout.activeSpaceId} onChange={event => {
+            useStore.getState().switchSpace(event.target.value);
+            useStore.getState().setOverlay("tasks");
+          }}>
+            {layout.spaces.map(space => <option key={space.id} value={space.id}>{space.name}</option>)}
           </select>
-          <div className="row"><input aria-label="New workspace name" value={workspaceName} placeholder="New workspace" onChange={e => setWorkspaceName(e.target.value)} />
-            <button className="btn sm" disabled={!workspaceName.trim()} onClick={() => void action(async () => {
-              const item = await call<Workspace>("workspaces.create", { name: workspaceName });
-              setWorkspaces(previous => [...previous, item]); setWorkspaceId(item.workspaceId); setWorkspaceName("");
-            })}>Create</button></div>
         </div>
         <div className="field"><button className="btn sm" disabled={!workspaceId} onClick={() => reset()}>New task</button>
           <input aria-label="Search tasks" placeholder="Search tasks" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} />
@@ -153,7 +142,7 @@ export function Tasks() {
             {task.parentTaskId ? "↳ " : ""}{task.title}{task.state === "archived" ? " · Archived" : ""}
           </button>)}
         </div>
-        {selected && !showHistory && <div className="row"><button className="btn sm" onClick={() => reset(selected.task.taskId)}>New child task</button><button className="btn sm" onClick={() => { setError(""); setShowHistory(true); }}>Task history</button>{selected.runs[0] && <button className="btn sm" onClick={() => { useStore.getState().openConversation(selected.runs[0]!.run.runId); close(null); }}>Open full conversation</button>}</div>}
+        {selected && !showHistory && <div className="row"><button className="btn sm" onClick={() => reset(selected.task.taskId)}>New child task</button><button className="btn sm" onClick={() => { setError(""); setShowHistory(true); }}>Task history</button>{(selected.task.conversationId || selected.runs[0]) && <button className="btn sm" onClick={() => { if (selected.task.conversationId) useStore.getState().openConversationDraft(selected.task.conversationId); else useStore.getState().openConversation(selected.runs[0]!.run.runId); close(null); }}>Open full conversation</button>}</div>}
         {selected && showHistory && <TaskHistory key={selected.task.taskId} taskId={selected.task.taskId} onClose={() => setShowHistory(false)} />}
         {workspaceId && !showHistory && <>
           {draftNotice && <p className="field hint" role="status">{draftNotice}</p>}

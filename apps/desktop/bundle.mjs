@@ -5,6 +5,9 @@
  * are inlined). Build from source so incremental tsc cannot leave an old
  * in-place bundle as the next build’s input. electron is external — provided by the runtime.
  */
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import { buildSync } from "esbuild";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,4 +66,31 @@ buildSync({
   globalName: "AuxReader",
 });
 
+buildSync({
+  entryPoints: [join(here, "main/document-extract.ts")],
+  outfile: join(here, "dist/main/document-extract.cjs"),
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  sourcemap: false,
+});
+
+buildSync({entryPoints:[join(here,"main/workbook-export-worker.ts")],outfile:join(here,"dist/main/workbook-export.cjs"),bundle:true,platform:"node",format:"cjs",sourcemap:false});
+
+const pdfAssets = dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json"));
+for (const directory of ["cmaps", "standard_fonts"]) {
+  cpSync(join(pdfAssets, directory), join(here, "dist/main/pdf-assets", directory), { recursive: true });
+}
+
 console.log("bundled main, preload, and Aux MCP bridge");
+
+if (process.platform === "darwin") {
+  const source = join(here, "native/dictation.swift");
+  const info = join(here, "native/dictation-info.plist");
+  const output = join(here, "dist/main/aux-dictation");
+  if (!existsSync(output) || [source, info, fileURLToPath(import.meta.url)].some(path => statSync(path).mtimeMs > statSync(output).mtimeMs)) {
+    const result = spawnSync("xcrun", ["swiftc", "-O", "-swift-version", "5", "-target", `${process.arch === "arm64" ? "arm64" : "x86_64"}-apple-macosx13.0`, source, "-o", output,
+      "-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker", info], {stdio:"inherit"});
+    if (result.error || result.status !== 0) throw result.error ?? new Error("Could not build Aux dictation helper.");
+  }
+}

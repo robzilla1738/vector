@@ -20,7 +20,19 @@ it("reads only bounded UTF-8 regular documents and preserves exact bytes includi
   await expect(readEvidenceDocument(path)).rejects.toThrow("binary");
   await writeFile(path, Buffer.alloc(512 * 1024 + 1));
   await expect(readEvidenceDocument(path)).rejects.toThrow("512 KB");
-  await expect(readEvidenceDocument(join(dir, "record.pdf"))).rejects.toThrow("Choose a text");
+  await expect(readEvidenceDocument(join(dir, "record.exe"))).rejects.toThrow("Choose a PDF");
   const folder = join(dir, "folder.txt"); await mkdir(folder);
   await expect(readEvidenceDocument(folder)).rejects.toThrow("regular document");
+});
+
+it("accepts extracted Word snapshots while rejecting binary or unsafe attachment input", async () => {
+  const { ConversationAttachmentAddParams, EvidenceDocumentParams } = await import("@vector/contracts");
+  expect(ConversationAttachmentAddParams.safeParse({ chatId: "word-chat", filename: "Notes.DOCX", content: "Extracted notes" }).success).toBe(true);
+  expect(ConversationAttachmentAddParams.safeParse({ chatId: "workbook-chat", filename: "Budget.xlsx", content: '{"format":"aux.workbook.v1","sheets":[]}' }).success).toBe(true);
+  for (const filename of ["Notes.docx", "Budget.xlsx", "Research.pdf"]) expect(EvidenceDocumentParams.safeParse({ taskId: "task-documents", expectedRevision: 1, criterionId: "result", filename, content: "Saved text" }).success).toBe(true);
+  for (const value of [
+    { filename: "../Notes.docx", content: "notes" },
+    { filename: "Notes.docx", content: "binary\0content" },
+    { filename: "Notes.docx", content: "x".repeat(512 * 1024 + 1) },
+  ]) expect(ConversationAttachmentAddParams.safeParse({ chatId: "word-chat", ...value }).success).toBe(false);
 });

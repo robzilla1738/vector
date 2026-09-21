@@ -149,7 +149,7 @@ export const PAST_RUNS: Run[] = [
     pageIds: ["page-3"],
     config: { implementation: "program", routeReason: "saved program Stripe · compare pricing modes", modelCalls: 0 },
     statusMessage: "Done — 3 modes compared",
-    result: { modes: ["payment", "setup", "subscription"], supports_subscriptions: ["subscription"] },
+    result: { answer: "## Checkout modes\n\n| Mode | Purpose |\n| --- | --- |\n| payment | One-time purchase |\n| setup | Save payment details |\n| subscription | Recurring payment |\n\n```json\n{ \"mode\": \"subscription\", \"description\": \"A sample configuration for reviewing the checkout flow in this synthetic design fixture.\" }\n```" },
     createdAt: T0 - 3_600_000,
     startedAt: T0 - 3_600_000,
     endedAt: T0 - 3_590_000,

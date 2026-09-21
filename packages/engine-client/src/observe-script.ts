@@ -95,7 +95,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   function accessibleName(el: any): string {
     const aria = el.getAttribute("aria-label");
-    if (aria) return aria.trim().slice(0, 120);
+    if (aria) return redactText(aria).trim().slice(0, 120);
     const labelledBy = el.getAttribute("aria-labelledby");
     if (labelledBy) {
       const t = labelledBy
@@ -103,34 +103,34 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
         .map((id: string) => el.ownerDocument.getElementById(id)?.textContent?.trim() ?? "")
         .filter(Boolean)
         .join(" ");
-      if (t) return t.slice(0, 120);
+      if (t) return redactText(t).slice(0, 120);
     }
     // associated <label for=> or wrapping <label>
     const id = el.getAttribute("id");
     if (id) {
       const lab = el.ownerDocument.querySelector(`label[for="${CSS.escape(id)}"]`);
-      if (lab?.textContent?.trim()) return lab.textContent.trim().slice(0, 120);
+      if (lab?.textContent?.trim()) return redactText(lab.textContent).trim().slice(0, 120);
     }
     let p = el.parentElement;
     while (p) {
-      if (p.tagName === "LABEL" && p.textContent?.trim()) return p.textContent.trim().slice(0, 120);
+      if (p.tagName === "LABEL" && p.textContent?.trim()) return redactText(p.textContent).trim().slice(0, 120);
       p = p.parentElement;
     }
     const tag = el.tagName as string;
     if (tag === "INPUT") {
       const t = (el.getAttribute("type") || "").toLowerCase();
-      if (t === "submit" || t === "button") return (el.value || t).slice(0, 120);
+      if (t === "submit" || t === "button") return redactText(el.value || t).slice(0, 120);
       const ph = el.getAttribute("placeholder");
-      if (ph) return ph.slice(0, 120);
+      if (ph) return redactText(ph).slice(0, 120);
       const title = el.getAttribute("title");
-      if (title) return title.slice(0, 120);
+      if (title) return redactText(title).slice(0, 120);
       const name = el.getAttribute("name");
-      if (name) return name.slice(0, 120);
+      if (name) return redactText(name).slice(0, 120);
     }
-    if (tag === "IMG") return (el.getAttribute("alt") || "").slice(0, 120);
-    const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+    if (tag === "IMG") return redactText(el.getAttribute("alt") || "").slice(0, 120);
+    const text = redactText(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
     if (text) return text.slice(0, 120);
-    return (el.getAttribute("title") || el.getAttribute("placeholder") || el.getAttribute("name") || "").slice(0, 120);
+    return redactText(el.getAttribute("title") || el.getAttribute("placeholder") || el.getAttribute("name") || "").slice(0, 120);
   }
 
   /**
@@ -215,10 +215,29 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     return !!(el.disabled || el.getAttribute?.("aria-disabled") === "true");
   }
 
+  function protectedField(el: any): boolean {
+    if (String(el.type ?? el.getAttribute?.("type") ?? "").toLowerCase() === "password") return true;
+    const tokens = String(el.getAttribute?.("autocomplete") ?? "").toLowerCase().split(/\s+/);
+    return tokens.some(token => ["current-password", "new-password", "one-time-code"].includes(token));
+  }
+
+  const protectedValues = new Set<string>();
+  let protectedTexts: string[] = [];
+  function rememberProtectedValue(el: any) {
+    if (!protectedField(el)) return;
+    for (const value of [el.value, el.defaultValue, el.isContentEditable ? el.innerText : undefined])
+      if (typeof value === "string" && value) protectedValues.add(value);
+  }
+  function redactText(text: string): string {
+    for (const value of protectedTexts) text = text.split(value).join("{redacted}");
+    return text;
+  }
+
   function fieldValue(el: any): string | undefined {
     const tag = el.tagName as string;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return el.value ?? "";
-    if (el.isContentEditable) return (el.innerText || "").slice(0, 500);
+    if (protectedField(el)) return (el.value || el.innerText) ? "{redacted}" : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return redactText(el.value ?? "");
+    if (el.isContentEditable) return redactText(el.innerText || "").slice(0, 500);
     return undefined;
   }
 
@@ -245,12 +264,6 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     nextRef: args.refStart,
   };
 
-  // Headings
-  for (const h of (Array.from(root.querySelectorAll("h1,h2,h3")) as any[]).slice(0, 12)) {
-    const t = (h.textContent || "").replace(/\s+/g, " ").trim();
-    if (t) result.headings.push(t.slice(0, 140));
-  }
-
   // Interactive elements — include shadow DOM via a manual deep walk.
   const seen = new Set<any>();
   const elements: any[] = [];
@@ -269,6 +282,16 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     }
   };
   visit(root);
+  for (const el of elements) rememberProtectedValue(el);
+  protectedTexts = [...protectedValues].sort((a, b) => b.length - a.length);
+  result.title = redactText(result.title);
+  // Headings
+  for (const h of (Array.from(root.querySelectorAll("h1,h2,h3")) as any[]).slice(0, 12)) {
+    const t = redactText(h.textContent || "").replace(/\s+/g, " ").trim();
+    if (t) result.headings.push(t.slice(0, 140));
+  }
+
+
   result.elementsTotal = elements.length;
 
   // Real pages have far more interactives than the cap — nav chrome in DOM
@@ -301,7 +324,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (!visible(el)) continue;
     const tag = (el.tagName as string).toLowerCase();
     const role = implicitRole(el);
-    const name = accessibleName(el);
+    const name = redactText(accessibleName(el));
     const r = el.getBoundingClientRect();
     const entry: any = {
       ref: `r${refNum++}`,
@@ -315,7 +338,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       entry.selector.role = { role, name: name || undefined };
     }
     if (name) entry.name = name;
-    const type = el.getAttribute?.("type");
+    const type = el.getAttribute?.("type")?.toLowerCase();
     if (type && tag === "input") entry.type = type;
     const val = fieldValue(el);
     if (val !== undefined && val !== "") entry.value = val.slice(0, 200);
@@ -323,7 +346,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (tag === "select") entry.selected = el.options?.[el.selectedIndex]?.text?.trim() ?? "";
     if (tag === "a") entry.href = el.getAttribute("href") || undefined;
     const ph = el.getAttribute?.("placeholder");
-    if (ph) entry.placeholder = ph.slice(0, 100);
+    if (ph) entry.placeholder = redactText(ph).slice(0, 100);
     if (isDisabled(el)) entry.disabled = true;
     // Action-reliability state (plan A10): choices, toggles, focus, and
     // whether a click would actually land (viewport + occlusion).
@@ -361,7 +384,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
         if (!forwards) entry.occluded = true;
       }
     }
-    const txt = (el.innerText || "").replace(/\s+/g, " ").trim();
+    const txt = redactText(el.innerText || "").replace(/\s+/g, " ").trim();
     if (txt && txt !== name) entry.text = txt.slice(0, 140);
     result.elements.push(entry);
     refMap.set(entry.ref, el);
@@ -374,15 +397,15 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (!visible(el)) continue;
     const field: any = {
       ref: undefined as string | undefined,
-      label: accessibleName(el) || undefined,
+      label: redactText(accessibleName(el)) || undefined,
       name: el.getAttribute?.("name") || undefined,
-      type: (el.tagName === "INPUT" ? (el.getAttribute("type") || "text") : (el.tagName as string).toLowerCase()),
+      type: (el.tagName === "INPUT" ? (el.getAttribute("type") || "text").toLowerCase() : (el.tagName as string).toLowerCase()),
       value: fieldValue(el)?.slice(0, 300),
       required: !!el.required || el.getAttribute?.("aria-required") === "true",
     };
     if (typeof el.checkValidity === "function") {
       field.valid = el.checkValidity();
-      if (!field.valid && el.validationMessage) field.validationMessage = el.validationMessage;
+      if (!field.valid && el.validationMessage && !protectedField(el)) field.validationMessage = redactText(el.validationMessage);
     }
     const existing = result.elements.find((e) => e.selector.css && e.selector.css === cssPath(el));
     field.ref = existing?.ref;
@@ -394,13 +417,13 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (!visible(t)) continue;
     const rows = Array.from(t.querySelectorAll("tr")) as any[];
     const headerRow = rows.find((r) => r.querySelector("th")) ?? rows[0];
-    const cols = headerRow ? (Array.from(headerRow.querySelectorAll("th,td")) as any[]).map((c) => ((c.textContent as string) || "").trim().slice(0, 60)) : [];
+    const cols = headerRow ? (Array.from(headerRow.querySelectorAll("th,td")) as any[]).map((c) => redactText((c.textContent as string) || "").trim().slice(0, 60)) : [];
     const bodyRows = rows.slice(headerRow ? rows.indexOf(headerRow) + 1 : 0).slice(0, 12);
     result.tables.push({
       ref: `t${result.tables.length + 1}`,
-      caption: t.caption?.textContent?.trim()?.slice(0, 80),
+      caption: t.caption ? redactText(t.caption.textContent || "").trim().slice(0, 80) : undefined,
       columns: cols,
-      rows: bodyRows.map((r) => (Array.from(r.querySelectorAll("th,td")) as any[]).map((c) => ((c.textContent as string) || "").replace(/\s+/g, " ").trim().slice(0, 120))),
+      rows: bodyRows.map((r) => (Array.from(r.querySelectorAll("th,td")) as any[]).map((c) => redactText((c.textContent as string) || "").replace(/\s+/g, " ").trim().slice(0, 120))),
       totalRows: Math.max(0, rows.length - 1),
       truncated: rows.length - 1 > bodyRows.length,
     });
@@ -408,7 +431,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   // Main text — prefer article/main, fall back to body
   const mainEl = root.querySelector?.("main, article, [role=main]") ?? root;
-  let text = (mainEl.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+  let text = redactText(mainEl.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
 
   // innerText skips open shadow roots — collect their text so content living
   // in shadow DOM (widgets, counters) is still observable by the planner.
@@ -434,7 +457,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     for (const el of Array.from(container.querySelectorAll?.("*") ?? []) as any[]) {
       const sr = (el as any).shadowRoot;
       if (!sr) continue;
-      const t = shadowTextOf(sr).slice(0, 400);
+      const t = redactText(shadowTextOf(sr)).slice(0, 400);
       if (t) shadowChunks.push(`${(el.tagName as string).toLowerCase()}: ${t}`);
       visitShadow(sr);
     }
@@ -446,6 +469,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     text = `— shadow DOM —\n${shadowChunks.join("\n")}${text ? `\n\n${text}` : ""}`;
   }
 
+  text = redactText(text);
   if (text.length > args.maxTextChars) {
     text = text.slice(0, args.maxTextChars) + "\n…[text truncated]";
     result.truncated = true;

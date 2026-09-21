@@ -7,7 +7,7 @@ const META = ".aux-managed.json";
 const MAX_FILES = 2_000;
 const MAX_BYTES = 100 * 1024 * 1024;
 
-type Manifest = { manifest_version: number; name: string; version: string; permissions?: unknown; host_permissions?: unknown };
+type Manifest = { manifest_version: number; name: string; version: string; key?: string; permissions?: unknown; host_permissions?: unknown; optional_permissions?: unknown; optional_host_permissions?: unknown; content_scripts?: unknown };
 type Meta = { enabled: boolean; installedAt: number };
 
 export interface AuxExtension {
@@ -34,6 +34,10 @@ const manifestAt = (path: string): Manifest => {
 const permissions = (manifest: Manifest) => [...new Set([
   ...(Array.isArray(manifest.permissions) ? manifest.permissions : []),
   ...(Array.isArray(manifest.host_permissions) ? manifest.host_permissions : []),
+  ...(Array.isArray(manifest.content_scripts) ? manifest.content_scripts.flatMap(script =>
+    script && Array.isArray(script.matches) ? script.matches : []) : []),
+  ...[manifest.optional_permissions, manifest.optional_host_permissions].flatMap(values =>
+    Array.isArray(values) ? values.filter(value => typeof value === "string").map(value => `Optional: ${value}`) : []),
 ].filter((value): value is string => typeof value === "string"))].sort();
 const pathInside = (parent: string, child: string) => {
   const rel = relative(resolve(parent), resolve(child));
@@ -73,10 +77,21 @@ function copyTree(source: string, destination: string) {
 export class ExtensionManager {
   readonly root: string;
   private failures = new Map<string, string>();
+  private changing = new Set<string>();
+  private installing = new Set<string>();
 
   constructor(dataDir: string) {
     this.root = join(dataDir, "extensions");
     mkdirSync(this.root, { recursive: true, mode: 0o700 });
+    // A previous process stopped before committing its replacement. Restore the
+    // old directory before Chromium loads any extension from this profile.
+    for (const name of readdirSync(this.root)) {
+      const match = /^\.([0-9a-f-]{36})\.previous$/i.exec(name);
+      if (!match) continue;
+      const destination = join(this.root, match[1]!);
+      rmSync(destination, { recursive: true, force: true });
+      renameSync(join(this.root, name), destination);
+    }
   }
 
   inspect(path: string) {
@@ -95,41 +110,145 @@ export class ExtensionManager {
     }
   }
 
-  async install(sourcePath: string, session: Session): Promise<AuxExtension> {
+  async install(sourcePath: string, session: Session,
+    review: (details: { name: string; version: string; permissions: string[] }) => Promise<boolean>,
+  ): Promise<AuxExtension | null> {
     const source = resolve(sourcePath);
-    const description = this.inspect(source);
-    if (this.list(session).some(item => item.managed && item.name === description.name)) throw new Error(`${description.name} is already installed.`);
+    this.inspect(source);
     const key = randomUUID();
     const temporary = join(this.root, `.${key}.installing`);
     const destination = join(this.root, key);
+    let reservedName: string | undefined;
+    let installed = false;
     try {
       copyTree(source, temporary);
+      const description = this.inspect(temporary);
+      if (this.installing.has(description.name) || this.list(session).some(item => item.managed && item.name === description.name)) {
+        throw new Error(`${description.name} is already installed or being installed.`);
+      }
+      reservedName = description.name;
+      this.installing.add(reservedName);
       writeFileSync(join(temporary, META), JSON.stringify({ enabled: true, installedAt: Date.now() } satisfies Meta), { mode: 0o600 });
+      if (!await review(description)) return null;
       renameSync(temporary, destination);
       await session.extensions.loadExtension(destination, { allowFileAccess: false });
+      const result = this.item(destination, session);
+      if (!result?.loaded) throw new Error("The extension did not finish loading.");
+      installed = true;
       this.failures.delete(destination);
-      return this.list(session).find(item => item.key === key)!;
-    } catch (error) {
+      return result;
+    } finally {
+      if (reservedName) this.installing.delete(reservedName);
+      if (!installed) {
+        const loaded = session.extensions.getAllExtensions().find(item => resolve(item.path) === destination);
+        if (loaded) session.extensions.removeExtension(loaded.id);
+        rmSync(destination, { recursive: true, force: true });
+      }
       rmSync(temporary, { recursive: true, force: true });
-      rmSync(destination, { recursive: true, force: true });
+    }
+  }
+
+  async update(key: string, sourcePath: string, session: Session,
+    review: (details: { name: string; fromVersion: string; version: string; permissions: string[]; addedPermissions: string[]; enabled: boolean }) => Promise<boolean>,
+  ): Promise<AuxExtension | null> {
+    const path = this.managedPath(key);
+    if (this.changing.has(path)) throw new Error("This extension is already changing. Try again when it finishes.");
+    this.changing.add(path);
+    const staged = join(this.root, `.${randomUUID()}.updating`);
+    const backup = join(this.root, `.${key}.previous`);
+    let swapped = false;
+    let current: AuxExtension | null = null;
+    try {
+      current = this.item(path, session);
+      const original = manifestAt(path);
+      this.inspect(sourcePath);
+      copyTree(resolve(sourcePath), staged);
+      const replacement = manifestAt(staged);
+      validateTree(staged);
+      if (replacement.name !== original.name || replacement.key !== original.key) {
+        throw new Error("Choose an update for the same extension, with the same name and manifest key.");
+      }
+      const declared = permissions(replacement);
+      const previous = permissions(original);
+      const meta = this.meta(path);
+      this.writeMeta(staged, meta);
+      // Review the copied snapshot; changing the source folder during the dialog
+      // cannot introduce unreviewed code or additional declared permissions.
+      if (!await review({ name: replacement.name, fromVersion: original.version, version: replacement.version,
+        permissions: declared, addedPermissions: declared.filter(value => !previous.includes(value)), enabled: meta.enabled })) return null;
+      if (current?.loaded && current.id) session.extensions.removeExtension(current.id);
+      renameSync(path, backup); swapped = true;
+      renameSync(staged, path);
+      if (meta.enabled) {
+        const loaded = await session.extensions.loadExtension(path, { allowFileAccess: false });
+        if (current?.id && loaded.id !== current.id) throw new Error("The update changed the extension identity.");
+      }
+      // Atomic commit: startup only restores directories still named .previous.
+      const discarded = join(this.root, `.${key}.${randomUUID()}.discarded`);
+      renameSync(backup, discarded); swapped = false;
+      this.failures.delete(path);
+      try { rmSync(discarded, { recursive: true, force: true }); } catch { /* Old code remains inactive. */ }
+      return this.item(path, session)!;
+    } catch (error) {
+      try {
+        if (swapped) {
+          const loaded = session.extensions.getAllExtensions().find(item => resolve(item.path) === path);
+          if (loaded) session.extensions.removeExtension(loaded.id);
+          rmSync(path, { recursive: true, force: true });
+          renameSync(backup, path);
+        }
+        if (current?.loaded && !session.extensions.getAllExtensions().some(item => resolve(item.path) === path)) {
+          await session.extensions.loadExtension(path, { allowFileAccess: false });
+        }
+      } catch (restoreError) {
+        const message = `The update failed and the previous version could not be restored: ${restoreError instanceof Error ? restoreError.message : String(restoreError)}`;
+        this.failures.set(path, message);
+        throw new Error(message, { cause: error });
+      }
       throw error;
+    } finally {
+      this.changing.delete(path);
+      try { rmSync(staged, { recursive: true, force: true }); } catch { /* Staged code is never loaded. */ }
     }
   }
 
   async setEnabled(key: string, enabled: boolean, session: Session): Promise<AuxExtension> {
     const path = this.managedPath(key);
+    if(this.changing.has(path))throw new Error("This extension is already changing. Try again when it finishes.");
+    this.changing.add(path);
     const current = this.item(path, session);
-    if (!current) throw new Error("The extension is no longer installed.");
-    if (enabled && !current.loaded) await session.extensions.loadExtension(path, { allowFileAccess: false });
-    if (!enabled && current.id && current.loaded) session.extensions.removeExtension(current.id);
-    const prior = this.meta(path);
-    writeFileSync(join(path, META), JSON.stringify({ ...prior, enabled } satisfies Meta), { mode: 0o600 });
-    this.failures.delete(path);
-    return this.item(path, session)!;
+    try {
+      if (!current) throw new Error("The extension is no longer installed.");
+      if (enabled && !current.loaded) await session.extensions.loadExtension(path, { allowFileAccess: false });
+      if (!enabled && current.id && current.loaded) session.extensions.removeExtension(current.id);
+      this.writeMeta(path,{...this.meta(path),enabled});
+      this.failures.delete(path);
+      return this.item(path,session)!;
+    } catch(error) {
+      // A metadata write failure must not leave the running extension in a state
+      // that contradicts what will happen on the next browser launch.
+      const loaded=session.extensions.getAllExtensions().find(extension=>resolve(extension.path)===path);
+      try {
+        if(current?.loaded&&!loaded)await session.extensions.loadExtension(path,{allowFileAccess:false});
+        else if(!current?.loaded&&loaded)session.extensions.removeExtension(loaded.id);
+      } catch(rollback) {
+        const message=`${error instanceof Error?error.message:String(error)} The previous running state could not be restored: ${rollback instanceof Error?rollback.message:String(rollback)}`;
+        this.failures.set(path,message);throw new Error(message);
+      }
+      this.failures.set(path,error instanceof Error?error.message:String(error));
+      throw error;
+    } finally {this.changing.delete(path);}
+  }
+
+  private writeMeta(path:string,value:Meta) {
+    const temporary=join(path,`.aux-state-${randomUUID()}.tmp`);
+    try {writeFileSync(temporary,JSON.stringify(value),{mode:0o600});renameSync(temporary,join(path,META));}
+    finally {rmSync(temporary,{force:true});}
   }
 
   remove(key: string, session: Session) {
     const path = this.managedPath(key);
+    if(this.changing.has(path))throw new Error("This extension is already changing. Try again when it finishes.");
     const current = this.item(path, session);
     if (!current) throw new Error("The extension is no longer installed.");
     if (current.id && current.loaded) session.extensions.removeExtension(current.id);

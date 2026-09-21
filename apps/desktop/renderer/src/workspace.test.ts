@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { PageTarget } from "@vector/contracts";
 import {
   DEFAULT_SPACE,
+  canSplitPage,
+  rememberActiveTab,
+  splitForPage,
   assignFolder,
   assignSpace,
   createFolder,
@@ -118,10 +121,11 @@ describe("spaces", () => {
 });
 
 describe("pins", () => {
-  it("toggles and caps at 5 per space", () => {
+  it("keeps overflow pins and toggles individual pins", () => {
     let layout = emptyLayout();
     for (let i = 0; i < 7; i++) layout = togglePin(layout, DEFAULT_SPACE.id, { url: `https://s${i}.com/`, title: `s${i}` });
-    expect(layout.pins[DEFAULT_SPACE.id]).toHaveLength(5);
+    expect(layout.pins[DEFAULT_SPACE.id]).toHaveLength(7);
+    expect(parseLayout(JSON.stringify(layout)).pins[DEFAULT_SPACE.id]).toHaveLength(7);
     layout = togglePin(layout, DEFAULT_SPACE.id, { url: "https://s0.com/", title: "s0" });
     expect(isPinned(layout, DEFAULT_SPACE.id, "https://s0.com/")).toBe(false);
   });
@@ -176,4 +180,40 @@ describe("persistence", () => {
     }));
     expect(withFolder.folders).toEqual([{ id: "f1", name: "Dev", spaceId: "x", collapsed: false }]);
   });
+});
+
+describe("Space continuity", () => {
+  it("persists per-Space selection and restores splits only for live tabs in the same Space", () => {
+    let layout = assignSpace(assignSpace(emptyLayout(), "a", DEFAULT_SPACE.id), "b", DEFAULT_SPACE.id);
+    layout = rememberActiveTab({ ...layout, splits: { a: "b" } }, "a");
+    const restored = parseLayout(JSON.stringify(layout));
+    expect(restored.activeTabs?.[DEFAULT_SPACE.id]).toBe("a");
+    expect(splitForPage(restored, [page("a"), page("b")], "a")).toBe("b");
+    expect(splitForPage(restored, [page("a")], "a")).toBeNull();
+    const second = createSpace(restored, "Other");
+    expect(splitForPage(assignSpace(second, "b", second.activeSpaceId), [page("a"), page("b")], "a")).toBeNull();
+  });
+});
+
+it("retains failed session placement while live tabs change and removes it after recovery ends",()=>{
+  let layout=createSpace(emptyLayout(),"Research");
+  const space=layout.spaces.at(-1)!;
+  layout=assignSpace({...layout,order:["saved","live"]},"saved",space.id);
+  const restored=syncSpaces({...layout,order:syncOrder(layout.order,[page("live"),page("new")],["saved"])},[page("live"),page("new")],["saved"]);
+  expect(restored.order).toEqual(["saved","live","new"]);
+  expect(restored.tabSpace.saved).toBe(space.id);
+  const completed=syncSpaces({...restored,order:syncOrder(restored.order,[page("live"),page("new")])},[page("live"),page("new")]);
+  expect(completed.order).toEqual(["live","new"]);
+  expect(completed.tabSpace.saved).toBeUndefined();
+});
+
+
+it("offers split view only for available browser-owned pages", () => {
+  expect(canSplitPage(page("ready"))).toBe(true);
+  expect(canSplitPage(undefined)).toBe(false);
+  for (const changes of [
+    {backend:"chrome"}, {backend:"vector-engine"}, {ownedByRuntime:true},
+    {viewStatus:"detached"}, {viewStatus:"crashed"}, {url:"about:blank"},
+  ] as Partial<PageTarget>[]) expect(canSplitPage(page("unavailable", changes))).toBe(false);
+  expect(canSplitPage(page("blank-document", {url:"about:blank",showBlankDocument:true}))).toBe(true);
 });

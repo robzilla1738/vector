@@ -34,6 +34,8 @@ extraResources:
 
 mac:
   extendInfo:
+    NSMicrophoneUsageDescription: Aux uses your microphone only while you choose to dictate a message or allow a website to use it.
+    NSSpeechRecognitionUsageDescription: Aux turns your speech into editable text using on-device recognition.
     CFBundleDisplayName: Aux
   category: public.app-category.productivity
   icon: icon.icns

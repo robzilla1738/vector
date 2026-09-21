@@ -1,3 +1,4 @@
+import { BrowsingMemory } from "./services/browsing-memory.js";
 /**
  * Vector runtime entry point.
  *
@@ -434,6 +435,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.navigated": return pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
       case "view.titleChanged": return pages.onNativeTitle(str(pl.pageId)!, str(pl.title) ?? "");
       case "view.faviconChanged": return pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
+      case "view.windowFocused": return pages.onNativeWindowFocused(str(pl.pageId)!, str(pl.windowId)!);
       case "view.navState": return pages.onNativeNavState(str(pl.pageId)!, truthy(pl.canGoBack), truthy(pl.canGoForward));
       case "view.loading": return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
       case "view.navigationError": return pages.onNativeNavigationError(str(pl.pageId)!, pl.error as { url: string; code: number; message: string } | null);
@@ -486,6 +488,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           title: str(pl.title),
           backend: "vector",
           active: pl.activate === true,
+          showBlankDocument: pl.showBlankDocument === true,
         }).then(page => pl.activate === true ? pages.activate(page.pageId) : undefined).catch(() => {});
         return;
       case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!);
@@ -494,7 +497,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
 
   let closed = false;
+  const browsingMemory = new BrowsingMemory(repo);
+  const memoryExpiry = setInterval(() => { try { browsingMemory.prune(); } catch (error) { console.error("Browsing memory cleanup failed", error); } }, 60_000);
+  memoryExpiry.unref();
   const shutdown = async () => {
+    clearInterval(memoryExpiry);
     if (closed) return;
     closed = true;
     process.off("unhandledRejection", onUnhandledRejection);

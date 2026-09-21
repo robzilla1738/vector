@@ -220,6 +220,15 @@ describe("Gate D permissions and durable writes", () => {
     if (!auth.ok) expect(auth.effect).toBe("write");
   });
 
+  it("authorizes absolute destinations from opaque pages without bypassing scoped grants", () => {
+    const steps = [{ id: "nav", op: "navigate", url: "https://github.com" }] satisfies Program["steps"];
+    const grants = [{ effect: "egress" as const, origin: "https://github.com", scope: "*", expiresAt: 0 }];
+    expect(authorizeProgram(steps, grants, "null").ok).toBe(true);
+    expect(authorizeProgram(steps, ["effect:read"], "null")).toMatchObject({ ok: false, effect: "egress", denied: "permission denied for navigate (effect:egress)" });
+    expect(authorizeProgram([{ id: "nav", op: "navigate", url: "/relative" }], grants, "null").ok).toBe(false);
+    expect(authorizeProgram([{ id: "nav", op: "navigate", url: "https://elsewhere.test" }], grants, "null").ok).toBe(false);
+  });
+
   it("honours origin and expiresAt on structured grants (H2-C4)", () => {
     const click = [{ id: "c", op: "click", target: "r1" }] satisfies Program["steps"];
     const scoped = [{ effect: "write" as const, origin: "https://app.test", scope: "*", expiresAt: 0 }];

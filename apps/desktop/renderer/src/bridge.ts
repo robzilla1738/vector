@@ -13,6 +13,7 @@ export interface StageBounds {
   height: number;
 }
 
+export interface BrowserProfile { id:string;name:string;current:boolean;archived?:boolean }
 export interface HttpAuthRequest { id:string; origin:string;  proxy:boolean; realm:string; retry:boolean }
 export interface BrowserExtension { key:string;id?:string;name:string;version:string;permissions:string[];enabled:boolean;loaded:boolean;managed:boolean;source:"managed"|"environment";error?:string }
 export interface BrowserSiteInfo {
@@ -27,10 +28,20 @@ export interface BrowserHealthSummary {
 }
 export const emptyBrowserHealthSummary=():BrowserHealthSummary=>({samples:0,sessions:0,observedMinutes:0,spanDays:0,sevenDaySpan:false,cpuPercent:{p50:0,p95:0,max:0},memoryMb:{p50:0,p95:0,max:0},eventLoopLagMs:{p50:0,p95:0,max:0},maxWindows:0,maxPages:0,maxSuspendedPages:0,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0});
 
-export type ReaderNode = string | {tag:string;href?:string;children:ReaderNode[]};
+export type ReaderNode = string | {tag:string;href?:string;sourceId?:string;children:ReaderNode[]};
 export interface ReaderArticle { title:string;byline:string;site:string;url:string;minutes:number;content:ReaderNode }
 
 export interface VectorBridge {
+  browserProfiles():Promise<BrowserProfile[]>;
+  createBrowserProfile(name:string):Promise<BrowserProfile>;
+  renameBrowserProfile(id:string,name:string):Promise<BrowserProfile[]>;
+  archiveBrowserProfile(id:string,archived:boolean):Promise<BrowserProfile[]>;
+  openBrowserProfile(id:string):Promise<boolean>;
+  onPageAction(cb: (action: import("@vector/contracts").PageQuickAction) => void): () => void;
+  quickAskShortcut(enabled?:boolean):Promise<{enabled:boolean;registered:boolean;error:string}>;
+  quickAskMode: boolean;
+  quickAsk(action:"open"|"expand"|"dismiss"|"status"):Promise<boolean>;
+  onQuickAskState(cb:(compact:boolean)=>void):()=>void;
   privateMode: boolean;
   windowId: string;
   invoke(method: string, params?: unknown): Promise<unknown>;
@@ -48,14 +59,16 @@ export interface VectorBridge {
   controlDownload(id: string, action: "pause" | "resume" | "cancel"): Promise<void>;
   onLoading(cb: (s: { pageId: string; loading: boolean }) => void): () => void;
   /** position the visible native page; `radius` rounds the view to match the stage card */
-  setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number): Promise<boolean>;
+  setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number, ratio?: number): Promise<boolean>;
   overlay(open: boolean): Promise<boolean>;
+  focusShell(): Promise<void>;
   preview(pageId: string): Promise<string | null>;
   contextMenu(pageId: string | null): Promise<boolean>;
   openExternal(url: string): Promise<unknown>;
   registerCloudPreview(url:string,token:string):Promise<boolean>;
   revealPath(p: string): Promise<boolean>;
   openPath(p: string): Promise<string>;
+  saveWorkbook(content:string,format?:"snapshot"|"csv"):Promise<string|null>;
   saveFile(name: string, content: string): Promise<string | null>;
   saveCloudExport(sourcePath:string,suggestedName:string):Promise<string|null>;
   saveStoredArtifact(artifactId:string,suggestedName:string):Promise<string|null>;
@@ -63,8 +76,10 @@ export interface VectorBridge {
   printPage(pageId: string): Promise<boolean>;
   devTools(pageId: string): Promise<boolean>;
   readArticle(pageId:string):Promise<ReaderArticle>;
+  navigationMenu(pageId:string,direction:"back"|"forward"):Promise<boolean>;
   hardReload(pageId: string): Promise<boolean>;
   closeWindow(): Promise<boolean>;
+  windows(): Promise<{ id: string; title: string; tabCount: number }[]>;
   selectRepository(): Promise<RepositorySelection | null>;
   createProject(id: string): Promise<LocalProject>;
   createBlankProject(name:string):Promise<LocalProject>;
@@ -87,14 +102,21 @@ export interface VectorBridge {
   stopProjectServiceStack(projectId:string,stackId:string):Promise<ProjectCommand[]>;
   listProjects(): Promise<LocalProject[]>;
   inspectProject(id: string): Promise<ProjectInspection>;
+  pickEvidenceImage(): Promise<{ filename: string; dataUrl: string } | null>;
   pickEvidenceDocument(): Promise<{ filename: string; content: string } | null>;
   openFile(): Promise<string | null>;
   agentConfig(input:{name:string;client:"codex"|"claude";scope:AgentConnectionScope}): Promise<{ command: string; args: string[]; env: Record<string, string>; connection: AgentConnection }>;
   agentConnections():Promise<AgentConnection[]>;
   agentClients():Promise<{client:"codex"|"claude";installed:boolean;version?:string;error?:string}[]>;
   revokeAgentConnection(connectionId:string):Promise<AgentConnection>;
+  dictationStatus():Promise<{available:boolean;language?:string;reason?:string}>;
+  startDictation(id:string):Promise<boolean>;
+  stopDictation(id:string):Promise<boolean>;
+  cancelDictation(id:string):Promise<void>;
+  onDictation(callback:(event:{sessionId:string;type:"recording"|"finishing"|"transcript"|"final"|"error";text?:string;message?:string})=>void):()=>void;
   extensions():Promise<BrowserExtension[]>;
   installUnpackedExtension():Promise<BrowserExtension|null>;
+  updateUnpackedExtension(key:string):Promise<BrowserExtension|null>;
   setExtensionEnabled(key:string,enabled:boolean):Promise<BrowserExtension>;
   removeExtension(key:string):Promise<boolean>;
   dataDir(): Promise<string>;
@@ -110,6 +132,8 @@ export interface VectorBridge {
   onHttpAuthChanged(cb:()=>void):()=>void;
   clearSiteData(pageId: string): Promise<boolean>;
   siteInfo(pageId: string): Promise<BrowserSiteInfo>;
+  siteZoom(origin?: string): Promise<{origin: string; percentage: number}[]>;
+  onSiteZoomChanged(cb: () => void): () => void;
   sitePermissions(): Promise<Record<string, Record<string, "allow" | "deny">>>;
   clearSitePermission(origin: string, permission?: string): Promise<boolean>;
   setAppearance(theme: "system" | "dark" | "light", translucent?: boolean, windowControls?: boolean): Promise<boolean>;
@@ -117,6 +141,15 @@ export interface VectorBridge {
 
 const noop = () => () => {};
 const stub: VectorBridge = {
+  browserProfiles:async()=>[],
+  createBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+  renameBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+  archiveBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+  openBrowserProfile:async()=>false,
+  quickAskShortcut: async enabled => ({enabled:!!enabled,registered:!!enabled,error:""}),
+  quickAskMode: false,
+  quickAsk: async () => false,
+  onQuickAskState: noop,
   privateMode: false,
   windowId: "main",
   invoke: async () => {
@@ -125,6 +158,7 @@ const stub: VectorBridge = {
   onEvent: noop,
   onRuntimeStatus: noop,
   onShortcut: noop,
+  onPageAction: noop,
   onDownload: noop,
   onLoading: noop,
   retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
@@ -137,6 +171,7 @@ const stub: VectorBridge = {
   controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
   setStage: async () => true,
   overlay: async () => true,
+  focusShell: async () => {},
   preview: async () => null,
   contextMenu: async () => true,
   openExternal: async (url) => window.open(url, "_blank"),
@@ -144,14 +179,17 @@ const stub: VectorBridge = {
   revealPath: async () => true,
   openPath: async () => "",
   saveFile: async () => null,
+  saveWorkbook: async () => null,
   saveCloudExport:async()=>{throw new Error('Cloud export requires Aux desktop');},
   saveStoredArtifact:async()=>{throw new Error('Artifact export requires Aux desktop');},
   savePagePdf: async () => { throw new Error("PDF export requires the desktop browser"); },
   printPage: async () => true,
   devTools: async () => true,
   readArticle:async()=>{throw new Error("Reader view requires Aux desktop");},
+  navigationMenu: async()=>false,
   hardReload: async () => true,
   closeWindow: async () => true,
+  windows: async () => [],
   openFile: async () => null,
     selectRepository: async () => null,
     createProject: async () => { throw new Error("Local projects require Aux desktop"); },
@@ -175,13 +213,20 @@ const stub: VectorBridge = {
     stopProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
     listProjects: async () => [],
     inspectProject: async () => { throw new Error("Local projects require Aux desktop"); },
+    pickEvidenceImage: async () => null,
     pickEvidenceDocument: async () => null,
   agentConfig: async () => { throw new Error("Agent connection setup requires the Aux desktop app"); },
   agentConnections: async()=>[],
   agentClients:async()=>[],
   revokeAgentConnection: async()=>{throw new Error("Agent connection setup requires the Aux desktop app");},
+  dictationStatus:async()=>({available:false,reason:"Dictation requires the Aux macOS app."}),
+  startDictation:async()=>false,
+  stopDictation:async()=>false,
+  cancelDictation:async()=>{},
+  onDictation:()=>()=>{},
   extensions:async()=>[],
   installUnpackedExtension:async()=>{throw new Error("Extension installation requires Aux desktop");},
+  updateUnpackedExtension:async()=>{throw new Error("Extension updates require Aux desktop");},
   setExtensionEnabled:async()=>{throw new Error("Extension management requires Aux desktop");},
   removeExtension:async()=>false,
   dataDir: async () => "",
@@ -197,6 +242,8 @@ const stub: VectorBridge = {
   onHttpAuthChanged: noop,
   clearSiteData: async () => false,
   siteInfo: async () => { throw new Error("Site controls require Aux desktop"); },
+  siteZoom: async () => [],
+  onSiteZoomChanged: noop,
   sitePermissions: async () => ({}),
   clearSitePermission: async () => true,
   setAppearance: async () => true,

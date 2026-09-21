@@ -13,12 +13,13 @@ export function extractArticle() {
     if (node.tagName === 'IMG') return null;
     const children = [...node.childNodes].map(child => serialize(child, depth + 1)).filter(child => child !== null);
     const tag = node.tagName.toLowerCase();
-    if (!tags.has(tag)) return {tag:'div',children};
+    const sourceId = node.id ? node.id.slice(0, 1000) : undefined;
+    if (!tags.has(tag)) return {tag:'div',children,...(sourceId ? {sourceId} : {})};
     let href;
     if (tag === 'a') {
       try { const raw = node.getAttribute('href'); if (!raw) return {tag:'span',children}; const url = new URL(raw, location.href); if (['http:','https:'].includes(url.protocol)) href = url.href; } catch {}
     }
-    return {tag:tag==='a'&&!href?'span':tag,children,...(href ? {href} : {})};
+    return {tag:tag==='a'&&!href?'span':tag,children,...(href ? {href} : {}),...(sourceId ? {sourceId} : {})};
   };
   if (document.getElementsByTagName('*').length > 30000) throw new Error('This page is too large for Reader view.');
   const article = new Readability(document.cloneNode(true), {maxElemsToParse:30000,serializer:serialize}).parse();

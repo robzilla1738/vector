@@ -28,3 +28,41 @@ it('finds old prompts across all saved history, groups complete chats and pagina
     expect(ids.at(-1)).toBe('run-0001');
   } finally { db.close(); rmSync(dir, { recursive: true, force: true }); }
 });
+
+it('filters complete conversations by their current Space before pagination and search', () => {
+  const db = openDb(':memory:');
+  const repo = new Repo(db);
+  try {
+    for (const [chatId, workspaceId] of [['a','space-one'],['b','space-two'],['c','space-one'],['d',null]] as const) {
+      repo.saveRun({runId:`${chatId}-first`,goal:'Original needle',status:'completed',pageIds:[],createdAt:10,config:{chatId}});
+      repo.saveRun({runId:`${chatId}-second`,goal:'Follow-up',status:'completed',pageIds:[],createdAt:20,config:{chatId}});
+      repo.setSetting(`conversationWorkspace:${chatId}`,workspaceId);
+    }
+    const first = repo.listConversations(1,{workspaceId:'space-one',query:'needle'});
+    expect(first.map(item=>item.chatId)).toEqual(['c']);
+    expect(first[0]?.turnCount).toBe(2);
+    const before = {updatedAt:first[0]!.updatedAt,chatId:first[0]!.chatId};
+    expect(repo.listConversations(1,{workspaceId:'space-one',query:'needle',before}).map(item=>item.chatId)).toEqual(['a']);
+    repo.setSetting('conversationWorkspace:c','space-two');
+    expect(repo.listConversations(40,{workspaceId:'space-one'}).map(item=>item.chatId)).toEqual(['a']);
+    expect(repo.listConversations(40,{workspaceId:'space-two'}).map(item=>item.chatId)).toEqual(['c','b']);
+    repo.archiveConversation('a',true);
+    expect(repo.listConversations(40,{workspaceId:'space-one'})).toEqual([]);
+    expect(repo.listConversations(40,{workspaceId:'space-one',archived:true}).map(item=>item.chatId)).toEqual(['a']);
+    expect(repo.listConversations(40).some(item=>item.chatId==='d')).toBe(true);
+  } finally { db.close(); }
+});
+
+it('recovers attachment-only drafts and removes them from the draft index after their first turn', () => {
+  const db = openDb(':memory:');
+  const repo = new Repo(db);
+  try {
+    repo.setSetting('conversationAttachments:prepared', [{filename:'Plan.txt',createdAt:10,content:'Private source text'}]);
+    repo.setSetting('conversationImages:prepared', [{filename:'Capture.png',createdAt:20}, {filename:'Removed.png',createdAt:30,removed:true}]);
+    repo.setSetting('conversationImages:removed-only', [{filename:'Removed.png',createdAt:40,removed:true}]);
+    repo.setSetting('conversationAttachments:empty', []);
+    expect(repo.preparedConversations()).toEqual([{chatId:'prepared',title:'Capture.png',attachmentCount:2,updatedAt:20}]);
+    repo.saveRun({runId:'first-turn',goal:'Use my attachments',status:'completed',pageIds:[],createdAt:50,config:{chatId:'prepared'}});
+    expect(repo.preparedConversations()).toEqual([]);
+  } finally { db.close(); }
+});

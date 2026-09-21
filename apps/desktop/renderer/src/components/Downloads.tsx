@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { useStore } from "../store";
+import { useEffect, useRef, useState } from "react";
+import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
+import { canDismissDownload, mergeDownloadSnapshot } from "../downloads";
 
 function fmtSize(bytes: number | undefined): string {
   if (bytes === undefined) return "";
@@ -16,53 +17,136 @@ const STATE: Record<string, string> = { started: "Starting", progressing: "Downl
 /** ⌘⇧J — in-flow shelf under the page with live progress. */
 export function Downloads() {
   const items = useStore((s) => s.downloads);
+  const pages = useStore(s => s.pages);
   const setOverlay = useStore((s) => s.setOverlay);
+  const [query, setQuery] = useState("");
+  const [loading,setLoading]=useState(true);
+  const [loadError,setLoadError]=useState("");
+  const [refresh,setRefresh]=useState(0);
+  const [showFolder,setShowFolder]=useState(false);
+  const actionPending=useRef(false);
+  const shelfRef=useRef<HTMLDivElement>(null);
+  const searchRef=useRef<HTMLInputElement>(null);
+  const [filter, setFilter] = useState<"all" | "active" | "finished" | "attention">("all");
+  const filtered = items.filter(item => {
+    const matches = `${item.filename} ${item.sourceUrl ?? ""}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+    const stateMatches = filter === "all" || (filter === "active" && ["started", "progressing"].includes(item.state))
+      || (filter === "finished" && item.state === "completed") || (filter === "attention" && ["interrupted", "cancelled"].includes(item.state));
+    return matches && stateMatches;
+  }).sort((a, b) => Number(["started", "progressing"].includes(b.state)) - Number(["started", "progressing"].includes(a.state)) || b.startedAt - a.startedAt);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [rowErrors,setRowErrors]=useState<Record<string,string>>({});
   const [retried,setRetried]=useState<Set<string>>(()=>new Set());
   const [folder,setFolder]=useState<{path:string;custom:boolean;error?:string}|null>(null);
-  useEffect(()=>{let live=true;void bridge.downloadFolder().then(value=>{if(live)setFolder(value);}).catch(reason=>{if(live)setError(String(reason));});return()=>{live=false;};},[items.length]);
-  useEffect(() => {
-    let live = true;
-    void bridge.downloadsSnapshot().then(downloads => {
-      if (!live) return;
-      const active = new Set(downloads.map(download => download.id));
-      useStore.setState(state => ({ downloads: [
-        ...downloads,
-        ...state.downloads.filter(download => !active.has(download.id)).map(download =>
-          ["started", "progressing"].includes(download.state) ? { ...download, state: "interrupted" as const, canCancel: false, canResume: false, paused: false } : download),
-      ] }));
-    }).catch(reason => { if (live) setError(String(reason)); });
-    return () => { live = false; };
-  }, []);
-  async function action(id: string, work: () => Promise<unknown>) {
-    setBusy(id); setError("");
-    try { await work(); } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(null); }
+  const [folderLoading,setFolderLoading]=useState(false);
+  const [folderError,setFolderError]=useState("");
+  const [folderRefresh,setFolderRefresh]=useState(0);
+  const folderRequest=useRef(0);
+  useEffect(()=>{
+    if(!showFolder||bridge.privateMode)return;
+    const version=++folderRequest.current;
+    setFolderLoading(true);setFolderError("");
+    void bridge.downloadFolder().then(value=>{
+      if(version===folderRequest.current)setFolder(value);
+    }).catch(reason=>{
+      if(version===folderRequest.current)setFolderError(reason instanceof Error?reason.message:String(reason));
+    }).finally(()=>{if(version===folderRequest.current)setFolderLoading(false);});
+    return()=>{++folderRequest.current;};
+  },[showFolder,folderRefresh,refresh]);
+  async function changeFolder(reset=false){
+    if(actionPending.current)return;
+    ++folderRequest.current;setFolderLoading(false);setFolderError("");
+    await action("folder",async()=>{
+      try{const selected=await bridge.chooseDownloadFolder(reset);++folderRequest.current;setFolderLoading(false);setFolder(selected);}
+      catch(reason){setFolderError(reason instanceof Error?reason.message:String(reason));}
+    });
   }
 
+  useEffect(() => {
+    let live = true;
+    setLoading(true);setLoadError("");
+    const updated = new Set<string>();
+    const removed = new Set<string>();
+    const offEvents=bridge.onEvent(event=>{
+      if(event.type==="downloads.removed"&&Array.isArray(event.payload.ids))for(const id of event.payload.ids)if(typeof id==="string")removed.add(id);
+    });
+    const unsubscribe = bridge.onDownload(value => {
+      if (value && typeof value === "object" && "id" in value && typeof value.id === "string") updated.add(value.id);
+    });
+    void bridge.downloadsSnapshot().then(downloads => {
+      if (!live) return;
+      useStore.setState(state => ({ downloads: mergeDownloadSnapshot(state.downloads, downloads.filter(item=>!removed.has(item.id)), updated) }));
+    }).catch(reason => { if (live) setLoadError(reason instanceof Error?reason.message:String(reason)); }).finally(()=>{if(live)setLoading(false);});
+    return () => { live = false; unsubscribe();offEvents(); };
+  }, [refresh]);
+  async function action(id: string, work: () => Promise<unknown>, fileAction = false) {
+    if(actionPending.current)return;
+    actionPending.current=true;setBusy(id);
+    if(fileAction)setRowErrors(current=>{const next={...current};delete next[id];return next;});
+    else setError("");
+    const focused=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    const restoreFocus=!!focused&&!!shelfRef.current?.contains(focused);
+    try { await work(); } catch (reason) {
+      const message=reason instanceof Error?reason.message:String(reason);
+      if(fileAction)setRowErrors(current=>({...current,[id]:message}));
+      else setError(message);
+    } finally {
+      actionPending.current=false;setBusy(null);
+      if(restoreFocus)requestAnimationFrame(()=>{
+        if(document.activeElement!==document.body)return;
+        if(focused?.isConnected)focused.focus();
+        else searchRef.current?.focus();
+      });
+    }
+  }
+
+  const dismissible=filtered.filter(canDismissDownload);
+  const dismissDownloads=(ids:string[])=>action("clear",async()=>{
+    const result=await call<{removed:string[]}>("downloads.remove",{ids});
+    const removed=new Set(result.removed);
+    useStore.setState(state=>({downloads:state.downloads.filter(item=>!removed.has(item.id))}));
+    toast(result.removed.length?"Removed from the list. Files remain on your computer.":"No inactive downloads to remove.");
+  });
+
   return (
-    <div className="shelf slide-up" role="region" aria-label="Downloads">
+    <div ref={shelfRef} className="shelf slide-up" role="region" aria-label="Downloads">
       <div className="shelf-head">
         <span>Downloads</span>
         <span className="count nums">{items.length}</span>
         <span className="sp" />
+        {!!dismissible.length&&<button className="btn sm ghost" disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissible.map(item=>item.id))}>Clear list</button>}
+        {!bridge.privateMode&&<button className="btn sm ghost" aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
+        <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
         <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => setOverlay(null)}>{I.close}</button>
       </div>
+      <div className="download-tools">
+        <label className="download-search">{I.search}<input ref={searchRef} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>
+        <div className="download-filters" role="group" aria-label="Filter downloads">
+          {([["all","All"],["active","In progress"],["finished","Finished"],["attention","Needs attention"]] as const).map(([value,label])=><button key={value} className="btn sm ghost" aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}
+        </div>
+      </div>
+      {loadError && <p className="download-error" role="alert">Couldn’t refresh downloads. {loadError} <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Try again</button></p>}
       {error && <p className="download-error" role="alert">{error}</p>}
-      {folder&&<div className="download-folder">
-        <span className="download-folder-path" title={folder.path}>Save to <span className="selectable">{folder.path}</span></span>
-        <button className="btn sm ghost" disabled={busy!==null} onClick={()=>void action('folder',async()=>setFolder(await bridge.chooseDownloadFolder()))}>Change folder</button>
-        {(folder.custom||folder.error)&&<button className="btn sm ghost" disabled={busy!==null} onClick={()=>void action('folder',async()=>setFolder(await bridge.chooseDownloadFolder(true)))}>Use default</button>}
-      </div>}
-      {folder?.error&&<p className="download-error" role="alert">{folder.error}</p>}
-      {items.length === 0 && <div className="shelf-empty">No files yet. Downloads from this window appear here.</div>}
-      {items.map((d) => {
+      {bridge.privateMode ? <p className="download-private-note">Choose a save location for each private download. Files remain on your computer after this window closes.</p> : showFolder&&<section className="download-location" aria-label="Download save location" aria-busy={folderLoading}>
+        {folderLoading&&<p className="download-private-note" role="status">Loading save location…</p>}
+        {folder&&<div className="download-folder">
+          <span className="download-folder-path" title={folder.path}>Save to <span className="selectable">{folder.path}</span></span>
+          <button className="btn sm ghost" disabled={busy!==null} onClick={()=>void changeFolder()}>Change folder</button>
+          {(folder.custom||folder.error)&&<button className="btn sm ghost" disabled={busy!==null} onClick={()=>void changeFolder(true)}>Use default</button>}
+        </div>}
+        {(folderError||folder?.error)&&<p className="download-error" role="alert">{folderError||folder?.error} <button className="btn sm ghost" disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
+      </section>}
+      <div className="download-list" aria-busy={loading}>
+      {loading&&!items.length&&<div className="shelf-empty" role="status">Loading downloads…</div>}
+      {!loading&&!loadError&&!filtered.length && <div className="shelf-empty">{items.length ? "No downloads match. Try another name or filter." : "No files yet. Your downloads will appear here."}</div>}
+      {filtered.map((d) => {
         const active = d.state === "started" || d.state === "progressing";
         const pct = active && d.totalBytes ? Math.min(100, Math.round((d.size / d.totalBytes) * 100)) : null;
+        const sourcePage = pages.find(page => page.pageId === d.pageId && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? ""));
         return (
-          <div className={`dl-row ${d.state}${d.paused ? " paused" : ""}`} key={d.id}>
+          <div className={`dl-row ${d.state}${d.paused ? " paused" : ""}`} key={d.id} role="group" aria-label={d.filename}>
             <span className="dl-ico">{I.downloadSm}</span>
             <span className="dl-main">
               <span className="dl-name" title={d.path}>{d.filename}</span>
@@ -72,22 +156,28 @@ export function Downloads() {
                 <span className={`dl-state ${d.state}`}>{d.paused ? "Paused" : STATE[d.state] ?? d.state}</span>
                 {d.state==='interrupted'&&!d.path&&(d.sourceUrl?' · Choose an available folder, then Retry.':' · Download folder unavailable; choose a folder and retry from the page.')}
               </span>
-              {active && <span className="dl-bar" aria-hidden><span style={{ width: pct !== null ? `${pct}%` : "40%" }} className={pct === null ? "indeterminate" : ""} /></span>}
+              {active && <span className="dl-bar" role="progressbar" aria-label={`${d.paused ? "Paused" : "Downloading"} ${d.filename}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}><span style={{ width: pct !== null ? `${pct}%` : "40%" }} className={pct === null ? "indeterminate" : ""} /></span>}
             </span>
+            <div className="dl-actions">
             {d.canCancel && <>
-              {d.paused || d.state === "interrupted" ? <button className="btn sm ghost" disabled={busy !== null || !d.canResume} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"))}>Resume</button> : <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "pause"))}>Pause</button>}
-              <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "cancel"))}>Cancel</button>
+              {d.paused || d.state === "interrupted" ? <button className="btn sm ghost" disabled={busy !== null || !d.canResume} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}>Resume</button> : <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "pause"), true)}>Pause</button>}
+              <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "cancel"), true)}>Cancel</button>
             </>}
-            {!d.canCancel&&d.state!=='completed'&&d.sourceUrl&&<button className="btn sm ghost" title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page." disabled={busy!==null||retried.has(d.id)} onClick={()=>void action(d.id,async()=>{await bridge.retryDownload(d.id);setRetried(current=>new Set([...current,d.id]));})}>{retried.has(d.id)?'Retry requested':'Retry'}</button>}
+            {!d.canCancel&&d.state!=='completed'&&d.sourceUrl&&<button className="btn sm ghost" title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page." disabled={busy!==null||retried.has(d.id)} onClick={()=>void action(d.id,async()=>{await bridge.retryDownload(d.id);setRetried(current=>new Set([...current,d.id]));},true)}>{retried.has(d.id)?'Retry requested':'Retry'}</button>}
+            {sourcePage && <button className="btn sm ghost" title={`Return to ${sourcePage.title || sourcePage.url}`} onClick={() => void useStore.getState().activate(sourcePage.pageId).then(()=>{if(useStore.getState().overlay==="downloads")setOverlay(null);}).catch(errToast)}>Source page</button>}
             {d.state === "completed" && (
               <>
-                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => { const error = await bridge.openPath(d.path); if (error) throw new Error(`Could not open ${d.filename}: ${error}. The file may have been moved or deleted.`); })}>Open</button>
-                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.revealPath(d.path))}>Reveal</button>
+                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => { const error = await bridge.openPath(d.path); if (error) throw new Error(`Could not open ${d.filename}: ${error}. The file may have been moved or deleted.`); },true)}>Open</button>
+                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.revealPath(d.path),true)}>Reveal</button>
               </>
             )}
+            {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{I.close}</button>}
+            </div>
+            {rowErrors[d.id]&&<p className="dl-error" role="alert">{rowErrors[d.id]}</p>}
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

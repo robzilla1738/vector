@@ -1,3 +1,5 @@
+import { SavedResults } from "../services/saved-results.js";
+import { BrowsingMemory } from "../services/browsing-memory.js";
 import { EventTypes, MethodSchemas, newProgramId, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
@@ -17,6 +19,7 @@ import { compactObservation } from "../services/observation-render.js";
 import type { DriverSet } from "../services/pages.js";
 import type { Router } from "../services/router.js";
 import { TaskService } from "../services/tasks.js";
+import { SpaceService } from "../services/spaces.js";
 import { TaskEvidenceService } from "../services/task-evidence.js";
 import { summarizeModelUsage } from "../services/model-usage.js";
 import type { AgentConnectionService } from "../services/agent-connections.js";
@@ -55,6 +58,9 @@ export interface Services {
 /** Validates params against MethodSchemas and dispatches to services. */
 export function makeInvoker(s: Services) {
   const tasks = new TaskService(s.repo, s.events);
+  const browsingMemory = new BrowsingMemory(s.repo);
+  browsingMemory.prune();
+  const spaces = new SpaceService(s.repo, s.events);
   const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages);
   const cloudEnvironments=new CloudEnvironmentService(s.repo,s.settings);
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{
@@ -109,6 +115,10 @@ export function makeInvoker(s: Services) {
     const params: any = schema.parse(rawParams ?? {});
 
     const scope = client.external ? client.scope : undefined;
+    if (client.external && method.startsWith("conversations.images.")) throw new VectorError("permission_denied", "Image context is managed in Aux.");
+    if (client.external && method.startsWith("spaces.")) {
+      throw new VectorError("permission_denied", "Browser spaces are managed in Aux.");
+    }
     if (scope) {
       if (method === "workspaces.create" || method === "pages.open" || method === "runs.start") {
         throw new VectorError("permission_denied", "This scoped connection cannot expand its own authority");
@@ -175,16 +185,40 @@ export function makeInvoker(s: Services) {
         return method === "tasks.reviewCriterion" ? taskEvidence.review(params) : method==='tasks.reconcileAction'?taskEvidence.reconcile(params):taskEvidence.reconcileOperation(params);
       }
       case "workspaces.create": return tasks.createWorkspace(params.name);
+      case "spaces.list": return spaces.list();
+      case "spaces.import": return spaces.import(params.spaces);
+      case "spaces.create": return spaces.create(params.name, params.color);
+      case "spaces.update": {
+        const { id, ...patch } = params;
+        return spaces.update(id, patch);
+      }
       case "workspaces.list": return scope ? tasks.workspaces().filter(workspace => workspace.workspaceId === scope.workspaceId) : tasks.workspaces();
+      case "workspaces.memory.search":
+        if(client.external)throw new VectorError("permission_denied","Search Space memory in Aux.");
+        return tasks.searchWorkspaceMemory(params.query);
+      case "workspaces.browsingMemory.get":
+      case "workspaces.browsingMemory.set":
+      case "workspaces.browsingMemory.record":
+      case "workspaces.browsingMemory.forget": {
+        if (client.external) throw new VectorError("permission_denied", "Browsing memory is managed in Aux.");
+        if (method === "workspaces.browsingMemory.get") return browsingMemory.get(params.workspaceId);
+        if (method === "workspaces.browsingMemory.set") { const result = browsingMemory.setPolicy(params.workspaceId, params.policy); s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId }); return result; }
+        if (method === "workspaces.browsingMemory.record") return browsingMemory.record(params.workspaceId, s.pages.get(params.pageId), params.expectedDocumentEpoch);
+        const result = browsingMemory.forget(params.workspaceId, params.memoryId); s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId }); return result;
+      }
       case "workspaces.memory.get":
         if (client.external) throw new VectorError("permission_denied", "Workspace memory is managed in Aux.");
         return tasks.workspaceMemory(params.workspaceId);
       case "workspaces.memory.set":
         if (client.external) throw new VectorError("permission_denied", "Workspace memory is managed in Aux.");
-        return tasks.setWorkspaceMemory(params.workspaceId, params.expectedRevision, params.content);
+        return tasks.setWorkspaceMemory(params.workspaceId, params.expectedRevision, params.content,params.enabled,params.items,params.excludedOrigins);
       case "tasks.create": return tasks.create(params);
+      case "tasks.promote": {
+        if (client.external) throw new VectorError("permission_denied", "Save a conversation as a task in Aux.");
+        return tasks.promote(params);
+      }
       case "tasks.get":{const details=tasks.details(params.taskId);return{...details,children:details.children.map(child=>({...child,receiptStatus:taskEvidence.receipt(child.task.taskId).status}))};}
-      case "tasks.list": return scope ? scopedTasks(scope).filter(task => params.includeArchived || task.state === "open").slice(0, params.limit) : tasks.list(params);
+      case "tasks.list": return scope ? scopedTasks(scope).filter(task => (params.includeArchived || task.state === "open") && (!params.query || `${task.title} ${task.objective}`.toLowerCase().includes(params.query.toLowerCase()))).slice(0, params.limit) : tasks.list(params);
       case "tasks.update": return tasks.update(params);
       case "tasks.archive": return tasks.archive(params.taskId, params.expectedRevision, params.archived);
       case "tasks.start": {
@@ -301,6 +335,13 @@ export function makeInvoker(s: Services) {
       case "pages.list": return scope ? s.pages.list(params as never).filter(page => scopedPageIds(scope,client.connectionId).has(page.pageId)) : s.pages.list(params as never);
       case "pages.open": return s.pages.open(params as never);
       case "pages.close": return s.pages.close(params.pageId);
+      case "pages.moveToWindow": {
+        if (client.external) throw new VectorError("permission_denied", "Move tabs through the Aux browser interface.");
+        const space = spaces.list().find(space => space.id === params.spaceId && !space.archived);
+        if (!space) throw new VectorError("conflict", "Restore the tab’s space before moving it.");
+        if (params.folder && params.folder.spaceId !== params.spaceId) throw new VectorError("invalid_params", "The tab folder belongs to another space.");
+        return s.pages.moveToWindow(params, space);
+      }
       case "pages.activate": return s.pages.activate(params.pageId);
       case "pages.navigate": return s.pages.navigate(params.pageId, params["url" as never]);
       case "pages.back": return s.pages.back(params.pageId);
@@ -382,8 +423,8 @@ export function makeInvoker(s: Services) {
         return s.pages.stopFind(p.pageId, p.action);
       }
       case "pages.zoom": {
-        const p = params as { pageId: string; level?: number; delta?: number; reset?: boolean };
-        return s.pages.zoom(p.pageId, p.level, p.delta, p.reset);
+        const p = params as { pageId: string; level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" };
+        return s.pages.zoom(p.pageId, p.level, p.delta, p.reset, p.direction);
       }
       case "pages.takeover": return s.pages.takeover(params.pageId);
       case "pages.resume": return s.pages.resume(params.pageId);
@@ -412,8 +453,11 @@ export function makeInvoker(s: Services) {
       }
 
       // runs
-      case "runs.start": return s.runs.start(params as never);
-      case "runs.retry": return s.runs.retry(params.runId);
+      case "runs.start": {
+        if (client.external && params.defaultWorkspaceId) throw new VectorError("permission_denied", "Conversation Space defaults are set through the Aux browser.");
+        return s.runs.start(params as never);
+      }
+      case "runs.retry": return s.runs.retry(params.runId, params.pageId);
       case "runs.get": {
         const run = s.runs.coordinator.get(params.runId);
         const calls = s.repo.listModelCalls(run.runId);
@@ -434,13 +478,34 @@ export function makeInvoker(s: Services) {
       case "runs.context.get": return s.runs.context(params.chatId);
       case "runs.context.set": return s.runs.setContext(params);
       case "conversations.list": return s.runs.conversations(params);
+      case "conversations.prepared":
+        if (client.external) throw new VectorError("permission_denied", "Unsent conversations are available in Aux.");
+        return s.repo.preparedConversations();
+      case "conversations.images.get": return s.runs.images.list(params.chatId);
+      case "conversations.images.add": return s.runs.images.add(params);
+      case "conversations.images.read": return s.runs.images.read(params.chatId,params.imageId);
+      case "conversations.images.toggle": return s.runs.images.toggle(params.chatId,params.imageId,params.included);
+      case "conversations.images.remove": return s.runs.images.remove(params.chatId,params.imageId);
+      case "conversations.get": return s.runs.conversation(params.chatId);
       case "conversations.rename": return s.runs.renameConversation(params.chatId, params.title);
       case "conversations.archive": return s.runs.archiveConversation(params.chatId, params.archived);
       case "conversations.delete": return s.runs.deleteConversation(params.chatId);
+      case "conversations.attachments.read":
+        if (client.external) throw new VectorError("permission_denied", "Inspect document snapshots in Aux.");
+        return s.runs.readAttachment(params);
       case "conversations.attachments.get": return s.runs.attachments(params.chatId);
+      case "conversations.attachments.page":
+        if (client.external) throw new VectorError("permission_denied", "Attach page snapshots in Aux.");
+        return s.runs.attachPage(params);
       case "conversations.attachments.add": return s.runs.addAttachment(params);
       case "conversations.attachments.toggle": return s.runs.toggleAttachment(params);
       case "conversations.attachments.remove": return s.runs.removeAttachment(params);
+      case "results.search":
+        if (client.external) throw new VectorError("permission_denied", "Search saved results in Aux.");
+        return new SavedResults(s.repo, s.artifacts).search(params.query, params.limit);
+      case "results.read":
+        if (client.external) throw new VectorError("permission_denied", "Preview saved results in Aux.");
+        return new SavedResults(s.repo, s.artifacts).read(params.artifactId);
       case "conversations.artifacts.get": return s.runs.conversationArtifacts(params.chatId);
       case "conversations.artifacts.toggle": return s.runs.toggleConversationArtifact(params);
       case "conversations.sources.get": return s.runs.conversationSources(params.chatId);
@@ -460,8 +525,14 @@ export function makeInvoker(s: Services) {
       }
 
       // artifacts
-      case "artifacts.list": return s.artifacts.list(params as never);
-      case "artifacts.read": return s.artifacts.read(params.artifactId);
+      case "artifacts.list": {
+        const artifacts=s.artifacts.list(params as never);
+        if(!client.external)return artifacts;
+        const images=s.runs.images.privateArtifactIds();return artifacts.filter(artifact=>!images.has(artifact.artifactId));
+      }
+      case "artifacts.read":
+        if(client.external&&s.runs.images.privateArtifactIds().has(params.artifactId))throw new VectorError("permission_denied","Conversation image snapshots are inspected in Aux.");
+        return s.artifacts.read(params.artifactId);
 
       // programs
       case "programs.list": return s.repo.listPrograms();
@@ -521,25 +592,67 @@ export function makeInvoker(s: Services) {
         return r;
       }
 
+      case "browser.recovery.list":
+      case "browser.recovery.retry": {
+        if(client.external)throw new VectorError("permission_denied","Restore browsing sessions in Aux.");
+        return method==="browser.recovery.list"?s.pages.recoveryTabs():s.pages.retryRestore(params.pageId);
+      }
       // history / bookmarks
       case "history.list": {
-        const p = params as { query?: string; limit: number };
-        return s.repo.listHistory(p.query, p.limit);
+        return s.repo.listHistory(params.query, params.limit, params);
       }
       case "history.clear": {
-        s.repo.clearHistory();
-        return { ok: true };
+        if (client.external) throw new VectorError("permission_denied", "Manage browsing history in Aux Library.");
+        const removed = s.repo.clearHistory(params);
+        s.events.emit("history.changed", {});
+        return { ok: true, removed };
+      }
+      case "history.remove": {
+        if (client.external) throw new VectorError("permission_denied", "Manage browsing history in Aux Library.");
+        const removed = s.repo.removeHistory(params.url, params.visitedAt);
+        s.events.emit("history.changed", {});
+        return { removed };
       }
       case "bookmarks.list": return s.repo.listBookmarks();
+      case "bookmarks.folders.list": return s.repo.bookmarkFolders();
+      case "bookmarks.folders.create":
+      case "bookmarks.folders.rename":
+      case "bookmarks.folders.remove": {
+        if (client.external) throw new VectorError("permission_denied", "Organize bookmarks in Aux Library.");
+        const folders = method === "bookmarks.folders.create" ? s.repo.createBookmarkFolder(params.path)
+          : method === "bookmarks.folders.rename" ? s.repo.renameBookmarkFolder(params.path, params.name)
+          : s.repo.removeBookmarkFolder(params.path);
+        s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
+        return folders;
+      }
       case "bookmarks.add": {
-        const p = params as { url: string; title: string };
-        s.repo.addBookmark(p.url, p.title);
+        const p = MethodSchemas["bookmarks.add"].parse(params);
+        s.repo.addBookmark(p.url, p.title, p.folderPath);
         s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
         return { ok: true };
       }
+      case "bookmarks.update": {
+        if (client.external) throw new VectorError("permission_denied", "Edit bookmarks in Aux Library.");
+        s.repo.updateBookmark(MethodSchemas["bookmarks.update"].parse(params));
+        s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
+        return { ok: true };
+      }
+      case "bookmarks.move": {
+        if (client.external) throw new VectorError("permission_denied", "Organize bookmarks in Aux Library.");
+        const result = s.repo.moveBookmarks(MethodSchemas["bookmarks.move"].parse(params));
+        s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
+        return result;
+      }
+      case "bookmarks.saveFolder": {
+        if(client.external)throw new VectorError("permission_denied","Organize bookmarks in Aux Library.");
+        const p=MethodSchemas["bookmarks.saveFolder"].parse(params);
+        const result=s.repo.saveBookmarkFolder(p.name,p.bookmarks);
+        s.events.emit("bookmarks.changed",{bookmarks:s.repo.listBookmarks()});
+        return result;
+      }
       case "bookmarks.import": {
         const p = MethodSchemas["bookmarks.import"].parse(params);
-        const result = s.repo.importBookmarks(p.bookmarks);
+        const result = s.repo.importBookmarks(p.bookmarks, p.folders);
         s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
         return result;
       }
@@ -549,6 +662,12 @@ export function makeInvoker(s: Services) {
         return { ok: true };
       }
       case "downloads.list": return s.repo.listDownloads();
+      case "downloads.remove": {
+        if(client.external)throw new VectorError("permission_denied","Manage downloads in Aux.");
+        const removed=s.repo.removeFinishedDownloads(params.ids);
+        if(removed.length)s.events.emit(EventTypes.DownloadsRemoved,{ids:removed});
+        return {removed};
+      }
 
       case "workspace.get": {
         const pages = scope ? s.pages.list().filter(page => scopedPageIds(scope,client.connectionId).has(page.pageId)) : s.pages.list();
@@ -556,6 +675,11 @@ export function makeInvoker(s: Services) {
         const runs = s.runs.coordinator.list(50).filter(run => !taskIds || (!!run.config?.taskId && taskIds.has(run.config.taskId)));
         return {
           restoringTabs: s.pages.isRestoringTabs,
+          pendingRestoreTabs:scope?[]:s.pages.recoveryTabs().map(tab=>({pageId:tab.pageId,windowId:tab.windowId})),
+          tabPlacements: scope ? {} : Object.fromEntries(pages.flatMap(page => {
+            const placement = s.repo.getSetting(`tab-placement:${page.pageId}`);
+            return placement ? [[page.pageId, placement]] : [];
+          })),
           pages,
           sets: scope ? [] : s.sets.list(),
           members: scope ? [] : s.sets.list().flatMap((set) => s.repo.listMembers(set.setId)),

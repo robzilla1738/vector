@@ -1,5 +1,11 @@
+import { WebsiteSizes } from "./WebsiteSizes";
+import { QuickAskSetting } from "./QuickAskSetting";
+import { BrowserProfiles } from "./BrowserProfiles";
+import { SearchEngineSetting } from "./SearchEngineSetting";
+import { ClearHistory } from "./ClearHistory";
+import { MemorySettings } from "./MemorySettings";
 import type { ModelProvider } from "@vector/contracts";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, toast, errToast } from "../store";
 import { bridge, emptyBrowserHealthSummary, type BrowserHealthSummary } from "../bridge";
 import { engineModeLabel, readEngineMode, type EngineMode } from "../engine";
@@ -7,6 +13,7 @@ import { I } from "./icons";
 import { SitePermissions } from "./SitePermissions";
 import { ExternalAgents } from "./ExternalAgents";
 import { Extensions } from "./Extensions";
+import { searchSettings, type SettingsDestination } from "../settings-search";
 import { moveListFocus } from "../keyboard-list";
 
 /** what settings.get returns in place of the real key */
@@ -39,7 +46,10 @@ interface SentryProbe {organizations:{id:string;name:string;slug:string;regionUr
 interface SentryProject {id:string;name:string;slug:string;platform:string|null;organization:string}
 interface CookieImportResult { ok: boolean; source: string; imported: number; skipped: number; domains: number; detail?: string }
 
-const SettingsSearch = createContext("");
+function projectScope(settings:Record<string,unknown>,service:"vercel"|"sentry",scope?:string){
+  return JSON.stringify([scope??String(settings[service==="vercel"?"vercelTeamId":"sentryOrganization"]??""),settings[`${service}Probe`],settings[`${service}Credential`]]);
+}
+
 function activateRadioOnArrow(event: React.KeyboardEvent<HTMLDivElement>) {
   if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
   if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
@@ -54,25 +64,42 @@ function activateRadioOnArrow(event: React.KeyboardEvent<HTMLDivElement>) {
 }
 
 function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
-  const query = useContext(SettingsSearch);
-  if (query && !label.toLowerCase().includes(query.toLowerCase())) return null;
+  const id=useId();
   return (
-    <div className="field">
-      <label>{label}</label>
+    <div className="field" data-setting={label} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={hint?`${id}-hint`:undefined}>
+      <span id={`${id}-label`} className="setting-label">{label}</span>
       {children}
-      {hint && <span className="hint">{hint}</span>}
+      {hint && <span id={`${id}-hint`} className="hint">{hint}</span>}
     </div>
   );
 }
 
+type ConnectionTab = "Models" | "Services" | "Agents";
+const connectionCategories = ["Models", "Connections", "External agents"];
 export function Settings() {
-  const [category, setCategory] = useState(useStore.getState().settingsCategory);
+  const initialCategory = useRef(useStore.getState().settingsCategory).current;
+  const [category, setCategory] = useState(connectionCategories.includes(initialCategory) ? "Connections" : initialCategory);
+  const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : "Models");
+  function openCategory(name: string) {
+    setCategory(connectionCategories.includes(name) ? "Connections" : name);
+    if (connectionCategories.includes(name)) setConnectionTab(name === "Models" ? "Models" : name === "External agents" ? "Agents" : "Services");
+  }
   const [query, setQuery] = useState("");
-  const visible = (name: string) => !!query || category === name;
+  const searching = !!query.trim();
+  const results = searchSettings(query);
+  const visible = (name: string) => !searching && (connectionCategories.includes(name)
+    ? category === "Connections" && connectionTab === (name === "Models" ? "Models" : name === "External agents" ? "Agents" : "Services")
+    : category === name);
+  const [destination, setDestination] = useState<SettingsDestination | null>(null);
   const settings = useStore((s) => s.settings);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const setOverlay = useStore((s) => s.setOverlay);
-  const refresh = useStore((s) => s.refresh);
+  const refresh = async () => {
+    const previous = useStore.getState().settings;
+    const latest = await call<Record<string,unknown>>("settings.get");
+    if (useStore.getState().settings === previous) useStore.setState({settings:latest});
+  };
   const [key, setKey] = useState("");
   const [savingKey, setSavingKey] = useState(false);
   const [switchingProvider, setSwitchingProvider] = useState(false);
@@ -85,6 +112,7 @@ export function Settings() {
   const [saved, setSaved] = useState(false);
   const [models, setModels] = useState<ModelEntry[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
+  const modelsSequence = useRef(0);
   const [probe, setProbe] = useState<ProbeResult | null>(() => {
     const saved = settings.modelProbe as ProbeResult | undefined;
     return saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null;
@@ -98,7 +126,6 @@ export function Settings() {
   const [restoreStatus,setRestoreStatus]=useState<{pending:boolean;lastAppliedAt?:number}>({pending:false});
   const [health,setHealth]=useState<BrowserHealthSummary>(()=>emptyBrowserHealthSummary());
   const [healthBusy,setHealthBusy]=useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
   const [cookieImport, setCookieImport] = useState<{ busy: boolean; result?: CookieImportResult; error?: string }>({ busy: false });
   const [githubToken,setGithubToken]=useState('');
   const [githubBusy,setGithubBusy]=useState(false);
@@ -107,10 +134,17 @@ export function Settings() {
   const [vercelBusy,setVercelBusy]=useState(false);
   const [vercelError,setVercelError]=useState('');
   const [vercelProjects,setVercelProjects]=useState<VercelProject[]>([]);
+  const [vercelProjectsScope,setVercelProjectsScope]=useState("");
+  const vercelProjectRequest=useRef(0);
+  const visibleVercelProjects=vercelProjectsScope===projectScope(settings,"vercel")?vercelProjects:[];
   const [sentryToken,setSentryToken]=useState('');
   const [sentryBusy,setSentryBusy]=useState(false);
   const [sentryError,setSentryError]=useState('');
   const [sentryProjects,setSentryProjects]=useState<SentryProject[]>([]);
+  const [sentryProjectsScope,setSentryProjectsScope]=useState("");
+  const sentryProjectRequest=useRef(0);
+  const visibleSentryProjects=sentryProjectsScope===projectScope(settings,"sentry")?sentryProjects:[];
+  useEffect(()=>()=>{++vercelProjectRequest.current;++sentryProjectRequest.current;},[]);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -118,27 +152,76 @@ export function Settings() {
     return () => previous?.focus();
   }, []);
 
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [category, query, connectionTab]);
+
+  useLayoutEffect(() => {
+    if (!destination || searching) return;
+    const section = scrollRef.current?.querySelector<HTMLElement>(':scope > section:not([hidden])');
+    const target = destination.target
+      ? [...(section?.querySelectorAll<HTMLElement>('[data-setting]') ?? [])].find(node => node.dataset.setting === destination.target)
+      : section;
+    const details = target?.closest('details');
+    if (details) details.open = true;
+    if (target) {
+      target.scrollIntoView({ block: 'center' });
+      target.focus({ preventScroll: true });
+    } else section?.scrollIntoView({ block: 'start' });
+    setDestination(null);
+  }, [destination, searching]);
+
   useEffect(() => {
-    void bridge.dataDir().then(setDataDir);
-    void bridge.runtimeRestoreStatus().then(setRestoreStatus).catch(()=>{});
-    void bridge.healthSummary().then(setHealth).catch(()=>{});
-    void call<{ models: ModelEntry[] }>("models.list")
-      .then((r) => setModels(r.models))
-      .catch(() => {});
-  }, []);
+    if (searching || category !== "General") return;
+    let live = true;
+    void bridge.dataDir().then(value=>{if(live)setDataDir(value);}).catch(error=>{if(live)errToast(error);});
+    void bridge.runtimeRestoreStatus().then(value=>{if(live)setRestoreStatus(value);}).catch(()=>{});
+    void bridge.healthSummary().then(value=>{if(live)setHealth(value);}).catch(()=>{});
+    return()=>{live=false;};
+  }, [category, searching]);
+
+  useEffect(() => {
+    if(searching||category!=="Connections"||connectionTab!=="Models")return;
+    const sequence=++modelsSequence.current;
+    setModels([]);setModelsBusy(true);
+    void call<{models:ModelEntry[]}>("models.list").then(result=>{
+      if(sequence===modelsSequence.current)setModels(result.models);
+    }).catch(()=>{}).finally(()=>{if(sequence===modelsSequence.current)setModelsBusy(false);});
+    return()=>{++modelsSequence.current;};
+  },[category,connectionTab,searching,provider,settings.compatibleEndpoint,settings.modelApiKey]);
 
   useEffect(() => { setModelDraft(String(settings.plannerModel ?? "")); }, [settings.plannerModel, provider]);
   useEffect(() => { setEndpointDraft(String(settings.compatibleEndpoint ?? "")); }, [settings.compatibleEndpoint, provider]);
   useEffect(() => () => { probeSequence.current++; }, []);
 
-  const loadVercelProjects=async(teamId=String(settings.vercelTeamId??''))=>{setVercelBusy(true);setVercelError('');try{setVercelProjects(await call<VercelProject[]>('vercel.projects',teamId?{teamId}:{}));}catch(error){setVercelError(error instanceof Error?error.message:String(error));}finally{setVercelBusy(false);}};
-  const loadSentryProjects=async(organization=String(settings.sentryOrganization??''))=>{if(!organization){setSentryProjects([]);return;}setSentryBusy(true);setSentryError('');try{setSentryProjects(await call<SentryProject[]>('sentry.projects',{organization}));}catch(error){setSentryError(error instanceof Error?error.message:String(error));}finally{setSentryBusy(false);}};
+  const loadVercelProjects=async(teamId=String(useStore.getState().settings.vercelTeamId??""))=>{
+    const request=++vercelProjectRequest.current;
+    const scope=projectScope(useStore.getState().settings,"vercel",teamId);
+    const current=()=>request===vercelProjectRequest.current&&scope===projectScope(useStore.getState().settings,"vercel");
+    setVercelBusy(true);setVercelError("");
+    try{
+      const projects=await call<VercelProject[]>("vercel.projects",teamId?{teamId}:{});
+      if(current()){setVercelProjects(projects);setVercelProjectsScope(scope);}
+    }catch(error){if(current())setVercelError(error instanceof Error?error.message:String(error));}
+    finally{if(request===vercelProjectRequest.current)setVercelBusy(false);}
+  };
+  const loadSentryProjects=async(organization=String(useStore.getState().settings.sentryOrganization??""))=>{
+    const request=++sentryProjectRequest.current;
+    if(!organization){setSentryProjects([]);setSentryBusy(false);return;}
+    const scope=projectScope(useStore.getState().settings,"sentry",organization);
+    const current=()=>request===sentryProjectRequest.current&&scope===projectScope(useStore.getState().settings,"sentry");
+    setSentryBusy(true);setSentryError("");
+    try{
+      const projects=await call<SentryProject[]>("sentry.projects",{organization});
+      if(current()){setSentryProjects(projects);setSentryProjectsScope(scope);}
+    }catch(error){if(current())setSentryError(error instanceof Error?error.message:String(error));}
+    finally{if(request===sentryProjectRequest.current)setSentryBusy(false);}
+  };
 
   const set = async (patch: Record<string, unknown>) => {
     if ("gatewayApiKey" in patch || "plannerModel" in patch || "modelProvider" in patch || "modelCredential" in patch || "compatibleEndpoint" in patch) { probeSequence.current++; setProbe(null); }
     try {
       await call("settings.set", patch);
-      await refresh();
       setSaved(true);
       setTimeout(() => setSaved(false), 1200);
       return true;
@@ -171,13 +254,16 @@ export function Settings() {
   };
 
   const discoverModels = async () => {
+    if(modelsBusy)return;
+    const sequence=++modelsSequence.current;
     setModelsBusy(true); setConnectionError("");
     try {
       const result = await call<{ models: ModelEntry[] }>("models.list");
+      if(sequence!==modelsSequence.current)return;
       setModels(result.models);
       if (!result.models.length) setConnectionError("The endpoint returned no models.");
-    } catch (error) { setConnectionError(error instanceof Error ? error.message : String(error)); }
-    finally { setModelsBusy(false); }
+    } catch (error) { if(sequence===modelsSequence.current)setConnectionError(error instanceof Error ? error.message : String(error)); }
+    finally { if(sequence===modelsSequence.current)setModelsBusy(false); }
   };
 
   const theme = (settings.theme as string) ?? "dark";
@@ -198,20 +284,40 @@ export function Settings() {
   return (
     <div className="settings-page" role="region" aria-label="Settings" ref={dialogRef}>
       <nav className="settings-nav" aria-label="Settings categories" onKeyDown={event => moveListFocus(event, "button")}>
-        <input aria-label="Search settings" placeholder="Search settings…" value={query} onChange={e => setQuery(e.target.value)}/>
-        <span>Personal</span>
-        {["General", "Appearance", "Models", "Connections", "Site permissions", "Agent permissions", "External agents", "Extensions", "Engine"].map(name => <button key={name} aria-current={!query && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension, Engine: I.cpu } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}
+        <input aria-label="Search settings" placeholder="Search settings…" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={event => {
+          if (event.nativeEvent.isComposing || !searching) return;
+          if (event.key === "ArrowDown" || event.key === "Enter") {
+            event.preventDefault(); event.stopPropagation();
+            dialogRef.current?.querySelector<HTMLButtonElement>(".settings-search-result")?.focus();
+          }
+        }}/>
+        <span>Preferences</span>
+        {["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions", "Engine"].map(name => <button key={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension, Engine: I.cpu } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}
       </nav>
-      <SettingsSearch.Provider value={query}><div className="settings-content">
+      <div className="settings-content">
         <div className="drawer-head">
-          <h3>{query ? "Search preferences" : category}</h3>
+          <h3>{searching ? "Search settings" : category}</h3>
           <span className="sp" />
           {saved && <span className="saved">{I.check} Saved</span>}
           <button className="icon-btn" title="Close (Esc)" aria-label="Close settings" onClick={() => setOverlay(null)}>{I.close}</button>
         </div>
 
-        <section hidden={!visible("Site permissions")}><SitePermissions query={query} /></section>
-        <section hidden={!visible("Models")}><div className="drawer-section">Agent connection</div>
+        {!searching && category === "Connections" && <div className="settings-connection-tabs" role="tablist" aria-label="Connection types" onKeyDown={event => moveListFocus(event, '[role="tab"]', false)}>
+          {(["Models", "Services", "Agents"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
+        </div>}
+        <div className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
+        {searching && <div className="settings-search-results">
+          <p className="hint" role="status">{results.length ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}` : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}</p>
+          <div onKeyDown={event => moveListFocus(event, "button")}>
+            {results.map(result => <button key={`${result.category}:${result.label}`} className="settings-search-result" onClick={() => { openCategory(result.category); setQuery(""); setDestination(result); }}>
+              <span className="settings-search-category">{connectionCategories.includes(result.category) ? `Connections · ${result.category === "Connections" ? "Services" : result.category === "External agents" ? "Agents" : "Models"}` : result.category}</span><strong>{result.label}</strong><span>{result.description}</span>
+            </button>)}
+          </div>
+        </div>}
+
+        {visible("Memory") && <section tabIndex={-1}><MemorySettings /></section>}
+        <section tabIndex={-1} hidden={!visible("Site permissions")}><SitePermissions query="" /></section>
+        <section id="connection-panel-Models" role="tabpanel" aria-labelledby="connection-tab-Models" hidden={!visible("Models")}><div className="drawer-section">AI model</div>
         <p role="status" className="field">{probe?.ok ? `${providerNames[provider]} is ready.` : localCompatible ? "Local model endpoint configured. Save a model and test the connection before your first run." : hasKey ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.` : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}</p>
         <Field label="Model provider" hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider.">
           <select aria-label="Model provider" value={provider} disabled={savingKey || probing || switchingProvider} onChange={event => {
@@ -230,7 +336,7 @@ export function Settings() {
               onClick={() => void discoverModels()}>{modelsBusy ? "Discovering…" : "Discover models"}</button>
           </div>
         </Field>}
-        {provider !== "openai-compatible" && <span className="hint field">Destination: {String(settings.modelEndpoint ?? "Vercel AI Gateway")}. Enter a model ID available to your account. Use External agents below for Codex or Claude Code.</span>}
+        {provider !== "openai-compatible" && <span className="hint field">Destination: {String(settings.modelEndpoint ?? "Vercel AI Gateway")}. Enter a model ID available to your account. Use the Agents tab for Codex or Claude Code.</span>}
         <Field label={`${providerNames[provider]} API key`} hint={<>{String((settings.modelCredentialError ?? (provider === "gateway" ? settings.gatewayCredentialError : undefined)) ?? (settings.modelCredentialSource === "environment" ? "Using a process environment key. Change it in your launch environment." : hasKey ? "Key saved with OS encryption." : localCompatible ? "Optional for localhost. Add a key only if your local server requires one." : "No key configured. Saved keys require OS encryption."))}</>}>
           <div className="row">
             <input
@@ -287,7 +393,7 @@ export function Settings() {
         </div>
 
 
-        </section><section hidden={!visible("Connections")}><div className="drawer-section">GitHub</div>
+        </section><section id="connection-panel-Services" role="tabpanel" aria-labelledby="connection-tab-Services" hidden={!visible("Connections")}><div className="drawer-section">GitHub</div>
         <p className="field hint">Connect an explicitly supplied token for account and repository checks. Aux does not inspect GitHub CLI, Keychain, browser cookies, or other credential stores. Remote writes remain disabled.</p>
         {!!settings.githubProbe&&<div className="field" role="status"><strong>{String((settings.githubProbe as GithubProbe).name??(settings.githubProbe as GithubProbe).login)}</strong><span className="hint">@{String((settings.githubProbe as GithubProbe).login)} · checked {new Date((settings.githubProbe as GithubProbe).checkedAt).toLocaleString()}</span><span className="hint">{(settings.githubProbe as GithubProbe).scopes.length?`Reported scopes: ${(settings.githubProbe as GithubProbe).scopes.join(', ')}`:'GitHub did not report classic OAuth scopes. Repository access still follows the token’s configured grants.'}</span></div>}
         <Field label="GitHub token" hint={String(settings.githubCredentialError??(settings.githubCredential===KEY_MASK?'Saved with OS encryption. The token is never returned to this page.':'Use a fine-grained token limited to the repositories Aux should inspect.'))}>
@@ -302,16 +408,16 @@ export function Settings() {
         {!!settings.vercelProbe&&<div className="field" role="status"><strong>{String((settings.vercelProbe as VercelProbe).user.name)}</strong><span className="hint">{String((settings.vercelProbe as VercelProbe).user.email)} · checked {new Date((settings.vercelProbe as VercelProbe).checkedAt).toLocaleString()}</span></div>}
         <Field label="Vercel token" hint={String(settings.vercelCredentialError??(settings.vercelCredential===KEY_MASK?'Saved with OS encryption.':'Use a read-only token for the account Aux should inspect.'))}><div className="row"><input className="grow" type="password" aria-label="Vercel token" autoComplete="off" value={vercelToken} placeholder={settings.vercelCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Vercel token'} onChange={event=>{setVercelToken(event.target.value);setVercelError('');}}/><button className="btn sm" disabled={vercelBusy||!vercelToken.trim()} onClick={()=>{setVercelBusy(true);void set({vercelCredential:vercelToken.trim()}).then(ok=>{if(ok)setVercelToken('');}).finally(()=>setVercelBusy(false));}}>Save token</button>{settings.vercelCredential===KEY_MASK&&<button className="btn sm" disabled={vercelBusy} onClick={()=>{setVercelBusy(true);void set({vercelCredential:''}).then(ok=>{if(ok){setVercelProjects([]);toast('Vercel disconnected');}}).finally(()=>setVercelBusy(false));}}>Disconnect</button>}</div></Field>
         <div className="field"><button className="btn sm" disabled={vercelBusy||settings.vercelCredential!==KEY_MASK||!!vercelToken.trim()} onClick={()=>{setVercelBusy(true);setVercelError('');void call<VercelProbe>('vercel.probe',{}).then(async()=>{await refresh();await loadVercelProjects();}).catch(error=>setVercelError(error instanceof Error?error.message:String(error))).finally(()=>setVercelBusy(false));}}>{vercelBusy?'Checking…':'Check connection'}</button>{vercelError&&<span className="hint err" role="alert">{vercelError}</span>}</div>
-        {settings.vercelCredential===KEY_MASK&&!!settings.vercelProbe&&<><Field label="Vercel scope" hint="Choose the personal account or team that owns the project."><select aria-label="Vercel scope" value={String(settings.vercelTeamId??'')} onChange={event=>{const value=event.target.value;void set({vercelTeamId:value,vercelProjectId:''}).then(ok=>{if(ok)void loadVercelProjects(value);});}}><option value="">Personal account</option>{(settings.vercelProbe as VercelProbe).teams.map(team=><option key={team.id} value={team.id}>{team.name}</option>)}</select></Field><Field label="Vercel project" hint="The selected project is used for task-scoped deployment health."><div className="row"><select className="grow" aria-label="Vercel project" value={String(settings.vercelProjectId??'')} onFocus={()=>{if(!vercelProjects.length)void loadVercelProjects();}} onChange={event=>void set({vercelProjectId:event.target.value})}><option value="">Select project</option>{vercelProjects.map(project=><option key={project.id} value={project.id}>{project.name}{project.framework?` · ${project.framework}`:''}</option>)}</select><button className="btn sm" disabled={vercelBusy} onClick={()=>void loadVercelProjects()}>Refresh</button></div></Field></>}
+        {settings.vercelCredential===KEY_MASK&&!!settings.vercelProbe&&<><Field label="Vercel scope" hint="Choose the personal account or team that owns the project."><select aria-label="Vercel scope" value={String(settings.vercelTeamId??'')} onChange={event=>{const value=event.target.value;void set({vercelTeamId:value,vercelProjectId:''}).then(ok=>{if(ok)void loadVercelProjects(value);});}}><option value="">Personal account</option>{(settings.vercelProbe as VercelProbe).teams.map(team=><option key={team.id} value={team.id}>{team.name}</option>)}</select></Field><Field label="Vercel project" hint="The selected project is used for task-scoped deployment health."><div className="row"><select className="grow" aria-label="Vercel project" value={String(settings.vercelProjectId??'')} onFocus={()=>{if(!visibleVercelProjects.length&&!vercelBusy)void loadVercelProjects();}} onChange={event=>void set({vercelProjectId:event.target.value})}><option value="">Select project</option>{visibleVercelProjects.map(project=><option key={project.id} value={project.id}>{project.name}{project.framework?` · ${project.framework}`:''}</option>)}</select><button className="btn sm" disabled={vercelBusy} onClick={()=>void loadVercelProjects()}>Refresh</button></div></Field></>}
 
         <div className="drawer-section">Sentry</div>
         <p className="field hint">Read unresolved issue health from an explicitly supplied Sentry token. Aux cannot resolve, assign, delete, or change issues through this connection.</p>
         {!!settings.sentryProbe&&<div className="field" role="status"><strong>{(settings.sentryProbe as SentryProbe).organizations.length} organization{(settings.sentryProbe as SentryProbe).organizations.length===1?'':'s'} available</strong><span className="hint">Checked {new Date((settings.sentryProbe as SentryProbe).checkedAt).toLocaleString()}</span></div>}
         <Field label="Sentry token" hint={String(settings.sentryCredentialError??(settings.sentryCredential===KEY_MASK?'Saved with OS encryption.':'Use a token with organization, project, and event read access.'))}><div className="row"><input className="grow" type="password" aria-label="Sentry token" autoComplete="off" value={sentryToken} placeholder={settings.sentryCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Sentry token'} onChange={event=>{setSentryToken(event.target.value);setSentryError('');}}/><button className="btn sm" disabled={sentryBusy||!sentryToken.trim()} onClick={()=>{setSentryBusy(true);void set({sentryCredential:sentryToken.trim()}).then(ok=>{if(ok)setSentryToken('');}).finally(()=>setSentryBusy(false));}}>Save token</button>{settings.sentryCredential===KEY_MASK&&<button className="btn sm" disabled={sentryBusy} onClick={()=>{setSentryBusy(true);void set({sentryCredential:''}).then(ok=>{if(ok){setSentryProjects([]);toast('Sentry disconnected');}}).finally(()=>setSentryBusy(false));}}>Disconnect</button>}</div></Field>
         <div className="field"><button className="btn sm" disabled={sentryBusy||settings.sentryCredential!==KEY_MASK||!!sentryToken.trim()} onClick={()=>{setSentryBusy(true);setSentryError('');void call<SentryProbe>('sentry.probe',{}).then(refresh).catch(error=>setSentryError(error instanceof Error?error.message:String(error))).finally(()=>setSentryBusy(false));}}>{sentryBusy?'Checking…':'Check connection'}</button>{sentryError&&<span className="hint err" role="alert">{sentryError}</span>}</div>
-        {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!sentryProjects.length)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{sentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
-        </section><section hidden={!visible("External agents")}><ExternalAgents /></section>
-        <section hidden={!visible("Extensions")}><Extensions /></section>
+        {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
+        </section><section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
+        <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>
 
         <section className="appearance-preferences" hidden={!visible("Appearance")}><div className="drawer-section">Appearance</div>
         <Field label="Theme">
@@ -322,8 +428,13 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Sidebar appearance" hint="Native glass follows macOS accessibility preferences. Choose Solid for an opaque sidebar."><select aria-label="Sidebar appearance" value={String(settings.sidebarAppearance ?? "translucent")} onChange={e => void set({ sidebarAppearance: e.target.value })}><option value="translucent">Glass</option><option value="solid">Solid</option></select></Field>
+        <Field label="Sidebar appearance" hint="Solid keeps the browser crisp. Custom lets you adjust the surrounding surface; pages and menus stay opaque."><select aria-label="Sidebar appearance" value={String(settings.sidebarAppearance ?? "solid")} onChange={e => void set({ sidebarAppearance: e.target.value })}><option value="solid">Solid</option><option value="translucent">Custom</option></select></Field>
+        {settings.sidebarAppearance === "translucent" && <>
+          <Field label="Surface opacity"><div className="appearance-range"><input aria-label="Surface opacity" type="range" min="40" max="100" value={Number(settings.sidebarOpacity ?? 90)} onChange={e => void set({ sidebarOpacity: Number(e.target.value) })} /><output>{Number(settings.sidebarOpacity ?? 90)}%</output></div></Field>
+          <Field label="Surface blur" hint="Adds softness within the shell. macOS may also apply its native window material. Reduce Transparency uses solid surfaces."><div className="appearance-range"><input aria-label="Surface blur" type="range" min="0" max="40" value={Number(settings.sidebarBlur ?? 0)} onChange={e => void set({ sidebarBlur: Number(e.target.value) })} /><output>{Number(settings.sidebarBlur ?? 0)}px</output></div></Field>
+        </>}
         <Field label="Tab layout" hint="Both layouts use the same tabs, folders, and current selection."><select aria-label="Tab layout" value={String(settings.tabLayout ?? "vertical")} onChange={e => void set({ tabLayout: e.target.value })}><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></Field>
+        <Field label="Website sizes"><WebsiteSizes /></Field>
         </section><section hidden={!visible("Engine")}><div className="drawer-section">Engine</div>
         <Field label="Aux Engine" hint={engineModeLabel(engineMode)}>
           <div className="seg" role="radiogroup" aria-label="Engine mode" onKeyDown={activateRadioOnArrow}>
@@ -386,11 +497,11 @@ export function Settings() {
         </Field>
 
         </section><section hidden={!visible("General")}><div className="drawer-section">Browsing</div>
-        <Field label="Search engine" hint="URL template — %s is replaced by the query.">
-          <input aria-label="Search engine URL template" defaultValue={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"} onBlur={(e) => void set({ searchEngine: e.target.value })} />
+        <Field label="Search engine">
+          <SearchEngineSetting value={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"} onSave={searchEngine => set({ searchEngine })} />
         </Field>
 
-        <Field label="Chrome cookies" hint={cookieImport.result?.detail ?? "Brings your Chrome logins into Aux. Attaching Chrome imports everything, including app-bound cookies; from disk, macOS asks for keychain access."}>
+        <Field label="Import Chrome sign-ins" hint={cookieImport.result?.detail ?? "Import available sign-in cookies from Chrome. macOS may ask for keychain access; some sites may require you to sign in again."}>
           <div className="row">
             <button
               className="btn sm"
@@ -409,6 +520,16 @@ export function Settings() {
           </div>
         </Field>
 
+        <Field label="Quick Ask"><QuickAskSetting /></Field>
+        <Field label="Browser profiles"><BrowserProfiles /></Field>
+
+        <Field label="Task data backup" hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Backups contain private content; keep them somewhere secure.">
+          <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.')).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
+          {restoreStatus.pending&&<span className="hint" role="status">A restore is staged for the next launch. Changes made before quitting will be replaced.</span>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<span className="hint" role="status">{backupMessage}</span>}
+        </Field>
+
+        <details className="settings-advanced">
+          <summary>Diagnostics & storage</summary>
         {dataDir && (
           <Field label="Data directory">
             <div className="row">
@@ -419,30 +540,19 @@ export function Settings() {
         )}
 
         <Field label="Browser health" hint={health.samples?`${health.sevenDaySpan?'Seven-day span recorded':`${health.spanDays.toFixed(1)} of 7 days recorded`} · ${Math.round(health.observedMinutes/60)} hours while Aux was open · ${health.sessions} sessions · memory p95 ${Math.round(health.memoryMb.p95)} MB · CPU p95 ${health.cpuPercent.p95.toFixed(1)}% · responsiveness p95 ${Math.round(health.eventLoopLagMs.p95)} ms · ${health.pageCrashes} crashes · ${health.pageUnresponsive} hangs · up to ${health.maxPages} tabs and ${health.maxSuspendedPages} suspended${health.suspensionFailures?` · ${health.suspensionFailures} suspension failures`:''}. This contains only local performance totals, never URLs or page content.`:"Aux records local startup, responsiveness, CPU, memory, window, tab, crash, hang, and suspension totals while it is open. It never records URLs or page content."}>
-          <div className="row"><span className="hint grow">{health.samples?`${health.samples.toLocaleString()} private samples${health.startupMs!=null?` · typical startup ${health.startupMs} ms`:''}`:'Recording begins during this session.'}</span><button className="btn sm ghost danger" disabled={healthBusy||!health.samples} onClick={()=>{setHealthBusy(true);void bridge.clearHealth().then(setHealth).finally(()=>setHealthBusy(false));}}>{healthBusy?'Clearing…':'Clear'}</button></div>
+          <div className="row"><span className="hint grow">{health.samples?`${health.samples.toLocaleString()} private samples${health.startupMs!=null?` · typical startup ${health.startupMs} ms`:''}`:'Recording begins during this session.'}</span><button className="btn sm ghost danger" disabled={healthBusy||!health.samples} onClick={()=>{setHealthBusy(true);void bridge.clearHealth().then(setHealth).catch(errToast).finally(()=>setHealthBusy(false));}}>{healthBusy?'Clearing…':'Clear'}</button></div>
         </Field>
 
         <Field label="Support report" hint="Exports build and runtime versions, feature counts, aggregate browser health, nonsecret modes, and known compatibility limits. It excludes credentials, URLs, browsing history, task text, account identity, local paths, and content.">
           <div className="row"><button className="btn sm" disabled={diagnosticsBusy} onClick={()=>{setDiagnosticsBusy(true);setDiagnosticsMessage('');void bridge.exportDiagnostics().then(path=>setDiagnosticsMessage(path?'Support report saved.':'Export cancelled.')).catch(error=>setDiagnosticsMessage(error instanceof Error?error.message:String(error))).finally(()=>setDiagnosticsBusy(false));}}>{diagnosticsBusy?'Preparing…':'Export support report…'}</button>{diagnosticsMessage&&<span className="hint" role="status">{diagnosticsMessage}</span>}</div>
         </Field>
 
-        <Field label="Task data backup" hint="Creates a portable recovery folder with a consistent runtime database and available durable artifact files. It includes workspaces, tasks, conversations, evidence, browsing records and preferences. It excludes website cookies and sign-ins, extensions, downloads, project files, cloud resources and encrypted credentials. The folder can contain private URLs and task content, so store it securely.">
-          <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.')).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
-          {restoreStatus.pending&&<span className="hint" role="status">A restore is staged for the next launch. Changes made before quitting will be replaced.</span>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<span className="hint" role="status">{backupMessage}</span>}
-        </Field>
+        </details>
 
-        <div className="drawer-foot">
-          {confirmClear ? (
-            <>
-              <span className="hint">Clear all browsing history?</span>
-              <button className="btn sm" onClick={() => setConfirmClear(false)}>Cancel</button>
-              <button className="btn sm danger" onClick={() => void call("history.clear").then(() => { toast("History cleared"); setConfirmClear(false); }).catch(errToast)}>Clear history</button>
-            </>
-          ) : (
-            <button className="btn sm ghost danger" onClick={() => setConfirmClear(true)}>Clear history…</button>
-          )}
+        <div className="drawer-foot" data-setting="clear-history" tabIndex={-1}>
+          <ClearHistory />
         </div>
-      </section></div></SettingsSearch.Provider>
+      </section></div></div>
     </div>
   );
 }

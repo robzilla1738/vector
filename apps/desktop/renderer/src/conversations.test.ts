@@ -42,6 +42,14 @@ it("keeps a new-chat draft on setup failure and clears it only after a successfu
   useStore.setState({settings:{modelConfigured:true}});vi.spyOn(bridge,"invoke").mockResolvedValue({...first,runId:"fresh",config:{chatId:"new-chat"}} as never);
   expect((await useStore.getState().startRun("Fresh request",{chatId:"new-chat",pageId:"page",scope:"page"}))?.runId).toBe("fresh");expect(useStore.getState().agentDraft).toBe("");expect(useStore.getState().conversationDrafts.new).toBeUndefined();
 });
+it("retains a prepared conversation's identity and context during model setup", async () => {
+  useStore.setState({ runs: [], settings: { modelConfigured: false }, conversationId: "prepared", agentDraft: "Unrelated new draft", conversationDrafts: { "chat:prepared": "Use my attachment" }, conversationContexts: { "chat:prepared": "none" }, railView: { kind: "home" } });
+  expect(await useStore.getState().startRun("Use my attachment", { chatId: "prepared", scope: "new" })).toBeNull();
+  expect(useStore.getState().conversationId).toBe("prepared");
+  expect(useStore.getState().conversationDrafts["chat:prepared"]).toBe("Use my attachment");
+  expect(useStore.getState().conversationContexts["chat:prepared"]).toBe("none");
+  expect(useStore.getState().agentDraft).toBe("Unrelated new draft");
+});
 it("retries an interrupted turn through the guarded runtime path and stays in its conversation",async()=>{
   const interrupted={...first,status:"interrupted" as const,error:"Runtime stopped",endedAt:3};
   const retry={...first,runId:"retry",status:"queued" as const,config:{chatId:"chat",retryOfRunId:"first"},createdAt:4};

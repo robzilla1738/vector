@@ -1,6 +1,6 @@
 # Aux browser-layer candidate
 
-Status: source-only layout probe; **not a runnable or qualified Aux replacement**.
+Status: development launcher and layout candidate; **not an Aux replacement**.
 The existing Electron app and user profile remain untouched.
 
 ## Concrete experiment
@@ -12,7 +12,8 @@ leaving a web-rendered sidebar possible. A content view that reports Alloy cause
 construction to fail; substituting Alloy for website content would invalidate the
 compatibility experiment.
 
-The file compiles against the SDK below. It does not include a product launcher,
+The layout source compiles against the SDK below. The development launcher uses isolated
+request contexts and sandboxed helper processes. It does not include a product launcher,
 CEF renderer bindings, a duplicate sidebar, or mock controls. The caller must supply
 clients and request contexts. It does not prove that Aux can control Chrome's tabs,
 that the existing React shell can operate through CEF, or that any real extension,
@@ -27,9 +28,9 @@ password manager, SSO provider or screen-sharing workflow works.
 - Locally computed SHA-256: `ba6fa6704082a7b39289b56cd0ac4a423b7ad74dd929cf11f5ce588274402a75`
 - Source: https://cef-builds.spotifycdn.com/index.json
 
-Only headers were extracted from the checksum-verified archive during this cycle.
-The archive and headers are outside the repository at `/tmp/aux-cef-sdk-152` and may
-be removed by the OS. No framework was installed and no .app was assembled.
+The checksum-verified SDK was extracted outside the repository at
+`/tmp/aux-cef-sdk-152`. Development app output and synthetic profiles are also under
+`/tmp`; the OS may remove them. Nothing was installed into Applications.
 
 Validation performed:
 
@@ -39,15 +40,20 @@ clang++ -std=c++20 -fsyntax-only \
   experiments/cef-shell/layout-probe.cc
 ```
 
-## Next acceptance gate
+## Development build
 
-Running the macOS candidate requires a development-test .app. The user previously
-deferred bundles; approval was requested for this isolated test only. Until answered,
-do not assemble/run it. No signing, installation, distribution, account access,
-credential-store discovery or profile migration is authorized by that request.
+The active implementation cycle permits isolated development builds. This is not a
+release, signing, installation, distribution, or user-profile migration workflow.
+`build.py` requires the pinned SDK and a fresh output directory. Verify the archive's
+SHA-256 above before extracting it. Build output and profiles stay outside the repo.
 
-Once authorized, the runnable experiment must establish all of the following before
-choosing this shell or moving user data:
+```sh
+python3 experiments/cef-shell/build.py --sdk /absolute/path/to/pinned-sdk --output /tmp/aux-host-dev
+"/tmp/aux-host-dev/Aux Host Candidate.app/Contents/MacOS/Aux Host Candidate" --profile=/tmp/aux-host-profile
+```
+
+The left-hand surface is explicitly diagnostic and has no mock product controls.
+The runtime bridge is not connected. Product integration must establish:
 
 1. Actual Aux shell/native bridge integration, real tab creation/selection/close,
    full sidebar collapse and correct window geometry at reference sizes. The CEF
@@ -66,3 +72,26 @@ replacing the user's design or weakening browser compatibility to fit it.
 
 References: CEF `include/internal/cef_types_runtime.h`,
 `include/views/cef_browser_view_delegate.h`, and upstream cefclient Views example.
+
+## Current implementation evidence — 2026-09-20
+
+The macOS launcher and sandboxed helper compile against the pinned SDK. Context
+initialization must complete before browser-view construction. The Chrome view must
+be attached before the Alloy shell, then the shell can be reordered to the left.
+Both browser creation callbacks report their expected runtime styles with separate
+persistent contexts. The native window opens at the requested geometry.
+
+**Updated rendering evidence:** after fixing context initialization and attachment order,
+local Chrome content and the isolated Alloy shell both render with sandboxing enabled.
+`--content-only` isolates the Chrome view for diagnosis. Load callbacks now report
+failures and completion; accessibility is enabled in the candidate.
+
+**Candidate acceptance failed:** the wired Cmd+T Chrome command opens a separate stock
+Chromium window with its own tab strip and address bar. It does not add a controllable
+tab inside Aux's existing content surface. Do not integrate this candidate as the product
+host or replace Aux's layout with stock browser chrome. An embeddable Chrome tab
+lifecycle and stable startup still need a supported implementation. Browser-info timeout
+messages also remain. The diagnostic process was stopped after inspection.
+
+Reference lifecycle: [CEF macOS browser entry point](https://github.com/chromiumembedded/cef/blob/master/tests/cefsimple/cefsimple_mac.mm)
+and [sandboxed helper entry point](https://github.com/chromiumembedded/cef/blob/master/tests/cefsimple/process_helper_mac.cc).

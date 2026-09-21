@@ -54,6 +54,7 @@ export const NativeMethods = {
   "native.listPages": z.object({}),
   "native.createPage": NativeCreatePageParams,
   "native.closePage": NativePageIdParams,
+  "native.movePage": z.object({ pageId: z.string(), windowId: z.string().min(1).optional(), activate: z.boolean().optional() }),
   "native.showPage": NativeSetBoundsParams,
   "native.hidePage": NativePageIdParams,
   "native.focusPage": NativePageIdParams,

@@ -1,9 +1,16 @@
 import { bridge } from "./bridge";
 import { toast, useStore } from "./store";
 
+export async function printCurrentPage(pageId: string | null) {
+  const state = useStore.getState();
+  const page = state.pages.find(page => page.pageId === pageId);
+  if (state.mode !== "focus" || !page || page.backend !== "vector" || (page.url === "about:blank" && !page.showBlankDocument)) throw new Error("Open the browser page you want to print first.");
+  await bridge.printPage(page.pageId);
+}
+
 export async function savePagePdf(pageId: string | null) {
   const page = useStore.getState().pages.find(page => page.pageId === pageId);
-  if (!page || page.backend !== "vector" || page.url === "about:blank") {
+  if (useStore.getState().mode !== "focus" || !page || page.backend !== "vector" || (page.url === "about:blank" && !page.showBlankDocument)) {
     throw new Error("Open a page in Aux’s browser to save a PDF.");
   }
   try {

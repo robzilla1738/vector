@@ -1,34 +1,69 @@
+import { SplitDivider } from "./SplitDivider";
+import { nativePageId } from "../chrome";
+import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
-import { forwardRef } from "react";
+import { forwardRef, useRef, useState } from "react";
 import type { PageTarget } from "@vector/contracts";
 import { inElectron, inMock } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { EngineView } from "./EngineView";
 import { MockPage } from "./MockPage";
-import { Overview } from "./Overview";
-import { ResultsTable } from "./ResultsTable";
 import { Conversation } from "./Conversation";
 import { StartPage } from "./StartPage";
 import { I } from "./icons";
 
-/**
- * The page area — Arc's card: a rounded viewport inset from the window edge
- * with a soft shadow. `#stage` is the rect the native WebContentsView is
- * pinned to; engine pages paint a software screenshot here instead.
- */
+const Overview = deferSurface(async () => { const module = await import("./Overview"); return {default:module.Overview}; }, "Tab overview", true);
+const ResultsTable = deferSurface(async () => { const module = await import("./ResultsTable"); return {default:module.ResultsTable}; }, "Results", true);
+
+function PageRecovery({ page }: { page: PageTarget }) {
+  const [busy, setBusy] = useState<"reload" | "back" | null>(null);
+  const pending = useRef(false);
+  const [actionError, setActionError] = useState("");
+  const error = page.navigationError;
+  const crashed = page.viewStatus === "crashed";
+  const failure = crashed ? {title:"This tab crashed",detail:"Reload to try again. Unsaved changes on this page may be lost."} : navigationFailure(error!);
+  const recover = async (action: "reload" | "back") => {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(action); setActionError("");
+    try { await call(action === "reload" ? "pages.reload" : "pages.back", { pageId: page.pageId }); }
+    catch (reason) {
+      const detail = reason instanceof Error ? reason.message : String(reason);
+      setActionError(`${action === "reload" ? "Couldn’t reload this tab" : "Couldn’t go back"}. ${detail}`);
+    }
+    finally { pending.current = false; setBusy(null); }
+  };
+  return <div className="stage-message"><div className="empty-state navigation-error" role="status">
+    <span className={`empty-ico ${crashed ? "err" : ""}`}>{crashed ? I.alert : I.globe}</span><h2>{failure.title}</h2>
+    <p>{failure.detail}</p>
+    <p className="navigation-error-address selectable">{error?.url ?? page.url}</p>
+    <div className="empty-actions">
+      <button className="btn primary" disabled={busy !== null} onClick={() => void recover("reload")}>{busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}</button>
+      <button className="btn" onClick={() => useStore.getState().focusCommandBar()}>Edit address</button>
+      {page.canGoBack && <button className="btn" disabled={busy !== null} onClick={() => void recover("back")}>{busy === "back" ? "Going back…" : "Go back"}</button>}
+    </div>
+    {actionError && <p role="alert">{actionError}</p>}
+    {error && !crashed && <details className="navigation-error-details"><summary>Connection details</summary><p className="selectable">{error.message} ({error.code})</p></details>}
+  </div></div>;
+}
+
+/** Shared viewport for native pages and browser-owned surfaces. */
 export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }>(function Stage({ page }, ref) {
   const mode = useStore((s) => s.mode);
+  const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
   const overlay = useStore(s => s.overlay);
   const connected = useStore((s) => s.connected);
-  const hasUrl = !!page && !!page.url && page.url !== "about:blank";
-  const failure = page?.navigationError ? navigationFailure(page.navigationError) : null;
+  const hasUrl = !!page && (!!page.showBlankDocument || (!!page.url && page.url !== "about:blank"));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
+
+  const splitVisible = mode === "focus" && page && companion && companion.pageId !== page.pageId
+    && [page, companion].every(item => nativePageId({mode,overlay,activePageId:item.pageId,...item}));
 
   return (
     <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
       <div className="stage-progress" role="progressbar" aria-hidden={!loading} aria-valuetext={loading ? "Loading" : "Idle"} />
       <div id="stage" ref={ref}>
-        {mode === "focus" && page?.backend === "chrome" && (
+        {mode === "focus" && page?.backend === "chrome" && page.viewStatus !== "crashed" && !page.navigationError && (
           <div className="stage-message">
             <div className="empty-state">
               <span className="empty-ico">{I.chrome}</span>
@@ -43,27 +78,11 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
           </div>
         )}
         {mode === "focus" && page?.navigationError && page.viewStatus !== "crashed" && (
-          <div className="stage-message"><div className="empty-state">
-            <span className="empty-ico">{I.globe}</span><h2>{failure?.title}</h2>
-            <p>{failure?.detail}</p>
-            <p className="navigation-error-detail">{page.navigationError.url}<br/><span>{page.navigationError.message}</span></p>
-            <div className="empty-actions"><button className="btn" disabled={loading} onClick={() => void call("pages.reload", { pageId: page.pageId }).catch(errToast)}>Try again</button>{page.canGoBack && <button className="btn" onClick={() => void call("pages.back", { pageId: page.pageId }).catch(errToast)}>Go back</button>}</div>
-          </div></div>
+          <PageRecovery key={`${page.pageId}:${page.navigationError.url}`} page={page} />
         )}
-        {mode === "focus" && page?.viewStatus === "crashed" && (
-          <div className="stage-message">
-            <div className="empty-state">
-              <span className="empty-ico err">{I.alert}</span>
-              <h2>This tab crashed</h2>
-              <p>{page.error ?? "The renderer process went away."} Reload to try again. Unsaved changes on this page may be lost.</p>
-              <div className="empty-actions">
-                <button className="btn primary" onClick={() => void call("pages.reload", { pageId: page.pageId }).catch(errToast)}>Reload</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {mode === "focus" && page?.backend !== "chrome" && !hasUrl && connected && <StartPage />}
-        {mode === "focus" && !hasUrl && !connected && (
+        {mode === "focus" && page?.viewStatus === "crashed" && <PageRecovery key={page.pageId} page={page} />}
+        {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && connected && <StartPage />}
+        {mode === "focus" && !hasUrl && page?.viewStatus !== "crashed" && !connected && (
           <div className="stage-message">
             <div className="empty-state">
               <span className="empty-ico"><span className="spin" /></span>
@@ -72,8 +91,9 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
             </div>
           </div>
         )}
-        {mode === "focus" && hasUrl && page?.backend === "vector-engine" && page.viewStatus !== "crashed" && inElectron && <EngineView page={page} />}
-        {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !inElectron && inMock && <MockPage page={page} />}
+        {mode === "focus" && hasUrl && page?.backend === "vector-engine" && page.viewStatus !== "crashed" && !page.navigationError && inElectron && <EngineView page={page} />}
+        {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inElectron && inMock && !splitVisible && <MockPage page={page} />}
+        {splitVisible && <SplitDivider preview={!inElectron && inMock ? [page!, companion!] : undefined} />}
         {mode === "conversation" && <Conversation />}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}

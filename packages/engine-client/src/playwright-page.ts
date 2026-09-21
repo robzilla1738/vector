@@ -1,3 +1,4 @@
+import { extractElements } from "./extract-script.js";
 import type { BrowserContext, Dialog, ElementHandle, Frame, Locator, Page, Response } from "playwright-core";
 import {
   VectorError,
@@ -815,105 +816,13 @@ export class PlaywrightDriverPage implements DriverPage {
         continue;
       }
       if (!f.selector) {
-        out[f.name] = await this.page
-          .evaluate(() => {
-            const base = (document.body?.innerText ?? "") as string;
-            const shadowTextOf = (sr: any): string => {
-              const parts: string[] = [];
-              const walk = (n: any) => {
-                for (const c of Array.from(n.childNodes ?? []) as any[]) {
-                  if (c.nodeType === 3) {
-                    const t = (c.nodeValue ?? "").replace(/\s+/g, " ").trim();
-                    if (t) parts.push(t);
-                  } else if (c.nodeType === 1) {
-                    const tag = (c.tagName as string).toLowerCase();
-                    if (tag === "style" || tag === "script" || tag === "template" || tag === "noscript") continue;
-                    walk(c);
-                  }
-                }
-              };
-              walk(sr);
-              return parts.join(" ");
-            };
-            const chunks: string[] = [];
-            const visit = (container: any) => {
-              for (const el of Array.from(container.querySelectorAll?.("*") ?? []) as any[]) {
-                const sr = (el as any).shadowRoot;
-                if (!sr) continue;
-                const t = shadowTextOf(sr).slice(0, 400);
-                if (t) chunks.push(t);
-                visit(sr);
-              }
-            };
-            visit(document.body ?? document.documentElement);
-            const joined = chunks.length ? `— shadow DOM —\n${chunks.join("\n")}\n\n${base}` : base;
-            return joined.slice(0, 4000);
-          })
-          .catch(() => "");
+        const values = await this.page.evaluate(extractElements, null).catch(() => [""]);
+        out[f.name] = values[0] ?? "";
         continue;
       }
       const loc = this.page.locator(f.selector);
-      // innerText skips shadow roots — collect text through open shadow
-      // descendants so widgets like <shadow-counter> stay readable. The
-      // walker must live inside each serialized callback (no outer refs).
-      if (f.all) {
-        const items = await loc.evaluateAll((els, attr) =>
-          els.map((el) => {
-            if (attr) return (el as HTMLElement).getAttribute(attr) ?? "";
-            const parts: string[] = [];
-            const walk = (n: Node) => {
-              n.childNodes.forEach((c) => {
-                if (c.nodeType === 3) {
-                  const t = (c.nodeValue ?? "").replace(/\s+/g, " ").trim();
-                  if (t) parts.push(t);
-                } else if (c.nodeType === 1) {
-                  const tag = (c as Element).tagName.toLowerCase();
-                  if (tag === "style" || tag === "script" || tag === "template" || tag === "noscript") return;
-                  walk(c);
-                  const sr = (c as Element).shadowRoot;
-                  if (sr) walk(sr);
-                }
-              });
-            };
-            walk(el);
-            const sr = (el as Element).shadowRoot;
-            if (sr) walk(sr);
-            return parts.join(" ").trim();
-          }),
-          f.attribute ?? null,
-        );
-        out[f.name] = items;
-      } else {
-        const first = loc.first();
-        const exists = (await first.count()) > 0;
-        if (!exists) {
-          out[f.name] = null;
-        } else if (f.attribute) {
-          out[f.name] = await first.getAttribute(f.attribute);
-        } else {
-          out[f.name] = await first.evaluate((el) => {
-            const parts: string[] = [];
-            const walk = (n: Node) => {
-              n.childNodes.forEach((c) => {
-                if (c.nodeType === 3) {
-                  const t = (c.nodeValue ?? "").replace(/\s+/g, " ").trim();
-                  if (t) parts.push(t);
-                } else if (c.nodeType === 1) {
-                  const tag = (c as Element).tagName.toLowerCase();
-                  if (tag === "style" || tag === "script" || tag === "template" || tag === "noscript") return;
-                  walk(c);
-                  const sr = (c as Element).shadowRoot;
-                  if (sr) walk(sr);
-                }
-              });
-            };
-            walk(el);
-            const sr = (el as Element).shadowRoot;
-            if (sr) walk(sr);
-            return parts.join(" ").trim();
-          });
-        }
-      }
+      const values = await (f.all ? loc : loc.first()).evaluateAll(extractElements, f.attribute ?? null);
+      out[f.name] = f.all ? values.map(value => value ?? "") : values[0] ?? null;
     }
     return out;
   }

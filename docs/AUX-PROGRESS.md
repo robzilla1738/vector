@@ -1,14 +1,1931 @@
-# Aux implementation evidence and continuation record
+# Aux implementation progress
 
-Phases 1–4 in `AUX-ROADMAP.md` are integrated and handed off as a usable private
-`pnpm dev` build with explicit capabilities and limitations. Founder testing now
-determines the next roadmap. The former Phase 5 remains a post-handoff backlog.
-No app bundle, packaging, publishing or external release is authorized.
+## Active development cycle — 2026-09-20
 
-User credential constraint: do not search Keychain, password stores, or personal
-files for keys/passwords. Ask for missing credentials instead, including publishing
-credentials. Source inspection is allowed; tests use synthetic secrets and temp
-profiles. Do not read real credential stores to complete a test or migration.
+The new five-phase roadmap is active. Work proceeds phase by phase with implementation
+throughput and rendered product quality first; focused checks occur at phase boundaries.
+Earlier delivery/qualification notes below are historical, not a stop-work instruction.
+
+Current implementation focus: **3 — Agents that finish real work**.
+Phase 2 implementation now includes unified composers, context, draft recovery, search
+and memory; native voice permission/device acceptance and multi-window context journeys
+remain outstanding and are not claimed complete.
+Phase 1 remains incomplete on mandatory host compatibility: Chrome extension/native
+messaging/password-manager/passkey support needs a viable host implementation. The
+previously rejected CEF candidate is not a solution. Continue independent product
+implementation rather than repeating that investigation or minor validation cycles.
+
+- PR checkpoint validation: root build passed; the broader unit suite completed with
+  699 passing and 6 failing tests in MCP stdio, operation authority and router fixtures.
+  Full failure details and next diagnosis steps are in AUX-HANDOFF.md. No pre-change
+  baseline was run, so these are unresolved failures, not asserted pre-existing issues.
+
+- Saved CSV results, including edited copies, can now export real Excel workbooks.
+  Preview and export reuse one CSV parser; export keeps all rows/columns beyond the
+  rendered preview and preserves leading zeros, multiline fields and formula-like
+  values as literal text. Five focused CSV/workbook tests and desktop build/types pass.
+- This working tree is being captured as a PR checkpoint. See AUX-HANDOFF.md for the
+  prioritized implementation backlog, host limitation, code map and validation limits.
+
+- Native workbook import → preview → Export Excel → file save completed in an
+  isolated Aux profile with synthetic data. Read-back confirmed sparse B7/AB105
+  positions, hidden-sheet content, and literal formula-like strings. Attachment-only
+  draft search also recovered the same workbook after restart.
+- Document previews now have a bounded scrolling area and a sticky close/header,
+  keeping the reply field visible in the narrow assistant. Workbook export shows
+  one primary action; CSV, raw snapshots, and source display are grouped under
+  More options. Extraction/date details sit behind About this snapshot so actual
+  content receives the limited preview space. Renderer typecheck and desktop build
+  pass; the bounded preview was inspected in the native 360px assistant.
+
+- Workbook snapshots also export real `.xlsx` files through a shell-authorized native
+  save dialog. A bounded worker uses the existing Excel library to preserve all sheet
+  names, hidden states and sparse cell coordinates as literal strings. Excel row/cell
+  limits fail clearly instead of truncating data. Writes use a temporary sibling and
+  atomic rename so failed generation/writes do not replace an existing file. Original
+  formatting, formulas, links and images are intentionally not reconstructed from the
+  values-only snapshot. Binary round-trip/limit regressions pass; the native save-dialog
+  journey was subsequently completed as recorded above.
+
+- Workbook snapshots support Copy CSV, Export sheet and Save full snapshot. Sheet
+  exports include every saved populated row and column beyond the preview limit, with
+  original coordinate labels, and reuse formula-as-text CSV encoding. Excessively broad
+  sparse sheets offer the lossless full snapshot rather than allocating an unbounded
+  table. These exports are saved values, not reconstructed XLSX formatting/formulas.
+  Desktop build/types and one focused sparse-coordinate/export regression pass.
+
+- Saved text, Markdown, CSV and JSON outputs now support Edit copy, formatted Preview,
+  export of the edited version, and Attach edited copy for the next conversation turn.
+  Original artifacts remain immutable. Per-window drafts survive closing the preview and
+  restart, preserve the source for change detection, and are removed on conversation
+  deletion. Size/source checks, duplicate-action guards, local-storage failure guidance
+  and live/archived context restrictions apply. At 1280×720 the rendered mock flow
+  edited, previewed and attached a copy, then discarded edits to reveal the intact
+  original; native export remains on the existing save-dialog path.
+
+- Added an explicit Retry in selected tab recovery path for terminal single-tab chats
+  whose original browser tab is gone. It preserves the original goal, context snapshot,
+  chat identity and retry lineage, and uses the ordinary run-start safety checks. Saved
+  task retries stay revision-controlled; multi-tab retries cannot silently narrow their
+  scope to one replacement tab. Runtime/desktop build/types and three focused retry
+  lifecycle checks pass.
+
+- Agent navigation failures now distinguish an invalid destination from missing
+  permission. Invalid-address failures offer Revise request (or Edit task), preserve
+  an existing draft and never suggest granting broader access. Actual effect denials
+  retain Review permissions. The classifier recognizes only Aux's exact boundary error;
+  one focused regression test and runtime/desktop builds/types pass.
+
+- Task promotion now foregrounds the inferred, editable objective, with task name,
+  completion criteria and Space in optional Task details. Defaults remain reviewable and
+  saving grants no access or starts no execution. Duplicate saves are suppressed.
+- Saved tasks can choose New browser tab directly in the conversation. The tab opens
+  in the task's Space in the background; delayed starts preserve newer page/Space/view
+  navigation. Existing task details remain visible during refresh, and unrelated task
+  events no longer reload the card. Duplicate starts are suppressed.
+
+- Unified Work search now includes unsent text and attachment-only drafts. Results
+  identify drafts, open the same conversation, and merge a saved chat match with its draft
+  rather than listing it twice. Chats and search share one draft-entry representation;
+  private browsing continues to exclude saved-work search. Desktop build/types pass.
+
+- Full chat now offers Continue in side panel before the first message as well as
+  after a run. The keyboard/sidebar assistant toggle performs that same transition,
+  reusing the exact conversation/draft ID and existing browser tab. Existing chats select
+  their latest turn; unsent attachment drafts remain drafts. This removes the parallel
+  blank conversation previously shown when toggling the panel from a full-page draft.
+
+- Attachment-only conversations now appear in Chats’ unsent drafts and the existing
+  Recent expansion, even before a first message. A runtime metadata index discovers
+  saved document/page/image snapshots without loading their contents, excludes removed
+  snapshots and conversations that already have turns, and merges them with text drafts
+  without duplicate rows. Attachment-only rows reopen the same conversation; discarding
+  text leaves the saved attachments discoverable. Loading failures offer Retry.
+  Runtime/desktop builds and types pass; three focused history/index tests pass.
+
+- Saved-context mutations now emit metadata-only conversation context events after
+  persistence: document/page attachments, image inclusion/removal, previous-turn
+  inclusion, generated results and Space assignment. Other open views refresh that
+  conversation; returning to a window, reconnecting and run completion also refresh
+  context. Local mutations defer refreshes so older reads cannot replace their result;
+  loaded attachment panels remain mounted during refresh to preserve capture previews.
+  Disconnected views allow drafting but disable context changes. Runtime and desktop
+  builds/typechecks pass; multi-window native acceptance remains to be exercised.
+
+- Unified request presentation in the store for home, address bar and conversation
+  entry points. New task tabs open in the originating Space in the background. A delayed
+  start reveals its conversation/panel only if the originating page, Space and shell view
+  are unchanged; otherwise the work remains available in Chats. Successful starts no
+  longer erase newer prompts, and failures preserve the submitted prompt without
+  replacing independently edited draft text. Desktop typecheck/build pass; eight focused
+  start/draft tests pass, including delayed completion after opening Settings.
+
+- Replaced the side panel’s separate composer with the shared Conversation experience.
+  New side-panel chats now use the existing attachment/page snapshot, voice, context,
+  memory, options and error-recovery flows. Recent work is behind one header button;
+  Set views no longer carry an unrelated chat composer.
+- Added an explicit side-panel draft identity so attaching context before the first
+  message stays in the panel and expands into the same full conversation. Deleted
+  conversations also clear that draft view. Shared send handling suppresses duplicate
+  submissions, blocks sending while disconnected, retains newer draft text, and respects
+  IME composition. The composer stays editable while reconnecting.
+- Checked the rendered panel at 1280×720: quiet empty state, compact aligned composer,
+  Recent/return preserves text, and expansion retains the same draft. Desktop types
+  and production build pass. Native attachment/voice end-to-end coverage remains
+  separate from this rendered mock check.
+
+- Keyboard and command-palette Open File share one flow. File selection opens a new
+  tab in the originating Space rather than replacing an existing document; activation
+  occurs only while the originating browsing context is unchanged. Picker cancellation
+  does nothing, duplicate pickers are suppressed, and keyboard picker errors are surfaced.
+- Palette Print now uses the same page eligibility/error path as keyboard Print.
+  Desktop typecheck/build and two focused file-picker cancellation/failure/newer-navigation
+  checks pass. Native file-picker acceptance remains pending.
+
+- Zoom responses are scoped to the latest request and original document, preventing
+  delayed reads from overwriting newer values or applying after navigation. Saved website
+  sizes serialize resets, invalidate older reads, coalesce events during reset, and
+  restore keyboard focus when a reset removes its row. Page zoom offers Refresh zoom
+  after errors and ignores obsolete error responses; repeated mutations are guarded.
+- Focused out-of-order/navigation zoom coverage passes. Native zoom/reset interaction
+  remains in the phase acceptance pass.
+
+- Saved site permissions now separate action failures from refresh failures. A confirmed
+  reset removes only the affected decision and remains reported as successful even when
+  the follow-up read fails. Older reads cannot restore superseded decisions; repeated
+  reset/clear submissions are guarded immediately. Focus/visibility refresh picks up
+  changes made elsewhere, and native-dialog completion restores appropriate focus.
+- Desktop typecheck/build and a focused confirmed-reset/failed-refresh check pass,
+  including duplicate-click suppression and no misleading empty-state claim.
+
+- Shared Settings fields now expose named groups and associated help text. Search
+  destinations retain programmatic focus but announce the setting's name and context;
+  replaced unattached label elements while retaining the existing appearance styling.
+- Rendered search → Tab layout placed focus on the named Tab layout group with its
+  guidance attached, and the Appearance layout remained aligned. Preview tab closed.
+  Desktop typecheck/build pass.
+
+- Find exposes a direct Retry action after search failure, retaining the query and
+  returning focus to its input. Retry respects a missing/loading native page. Closing
+  Find invalidates its outstanding error response before stopping highlights.
+- Find and Reader no longer handle Escape while an input method is composing text,
+  preserving composition instead of closing the active reading/search surface.
+  Native IME interaction remains part of keyboard acceptance.
+
+- Profile creation keeps the returned profile immediately and closes its creation form
+  before opening the new window. A launch failure clearly says the profile was created
+  and offers recovery through its existing Open button. Removed a redundant list read
+  that could leave the creation form active after success and encourage duplicate profiles.
+- Profile mutations invalidate earlier list reads, preventing a delayed focus refresh
+  from replacing updated profile state. Desktop typecheck/build and a focused
+  create→launch failure→Open recovery check pass, with one creation request throughout.
+
+- Connection project discovery now associates Vercel/Sentry results with the exact
+  team/organization and checked connection that produced them. Switching scope hides
+  earlier project choices immediately. Out-of-order results/errors and responses after
+  unmount are ignored; default project loads read the current scope after connection
+  refresh rather than a captured render's settings. No credentials or permissions changed.
+- Desktop typecheck/build pass. Authenticated project-picker interaction remains a
+  dependency for the Connections acceptance journey.
+
+- Settings saves now use the existing settings-change event instead of refreshing the
+  whole browser workspace. Connection checks refresh only settings, with stale-read
+  protection. This removes unrelated tab/layout/download reads from preference changes.
+- Model discovery runs when Connections → Models is visible and rejects obsolete
+  provider/endpoint responses. General-only local diagnostics/status reads run only in
+  General. Desktop typecheck/build pass; full rendered Settings flow remains in the
+  phase acceptance pass.
+
+- Native isolated-profile acceptance: Back history opened at the navigation button,
+  selecting the prior entry reached New Tab, and Forward history restored the original
+  Example Domain page and split layout. Site controls rendered with current security,
+  zoom and cookie details. Cancel in the native clear-data sheet returned without a
+  success notice or data deletion. The isolated app was quit afterward.
+- Fixed two details exposed by that pass: blank history entries now read New tab;
+  site-control actions restore their initiating button after native dialogs when focus
+  returns to the document body, without overriding newer focus or page navigation.
+  The latter focus restoration still needs a native follow-up on the rebuilt app.
+
+- Back/Forward now expose native per-tab history menus through right-click or Down
+  while the button is focused, in both regular and private windows. Entries are ordered
+  nearest first and jump directly to the selected history index. Private history stays
+  in its native page process; regular IPC enforces the existing owning-window check.
+- Menu selection rechecks the history stack and current index before navigation so
+  an intervening navigation cannot redirect a stale selection to another entry.
+  Desktop typecheck/build and two focused ordering/stale-stack checks pass. Native
+  menu placement and interaction remain for the rendered phase acceptance pass.
+
+- Sidebar and toolbar share the same Back/Forward/Reload/Stop implementation, including
+  blank-page handling and navigation availability. Shift-click Reload now uses the
+  existing native reload-without-cache path in both layouts; the tooltip explains it.
+  Keyboard hard reload now reports rejected native actions through the existing error UI.
+
+- Site controls distinguish unavailable site details from failed reset/clear actions.
+  Read failures offer Refresh details; action errors leave the relevant controls
+  available without implying that a refresh repeats the action. Reset/Clear controls
+  show progress, duplicate actions are guarded immediately, and cancelled native data
+  clearing does not trigger a needless refresh or success notice.
+
+- Download save-location details load only when expanded, with localized loading,
+  failure and retry feedback. Download additions no longer trigger folder reloads.
+  Folder selection invalidates older reads so stale results cannot replace the new
+  location; private browsing does not request the persistent folder setting.
+- File errors remain beside their downloads, while folder errors stay in Save location.
+  Existing folder details remain usable during refresh. Native folder-picker interaction
+  remains for the phase acceptance pass.
+
+- Bookmark editing now presents labeled Name/Address/Folder fields in a contained
+  inline editor with aligned Cancel/Save actions. Fields and Cancel lock during save,
+  and the address disables spelling/capitalization assistance. Successful updates use
+  the runtime bookmark event instead of fallible redundant post-save list reads.
+- Rendered the editor at 1280×720 and completed a mock rename through Save, observing
+  the updated row and success message. Desktop typecheck/build pass; preview closed.
+
+- Library history and bookmark rows now use a quieter shared two-line layout: title
+  and visit time share a baseline, addresses truncate cleanly, and secondary actions
+  use compact icons with accessible names and tooltips. Full title/address text remains
+  available on hover. Removed repeated row borders and reduced excess vertical padding.
+- Inspected the rendered mock Library at 1280×720 and 1024×768, including history and
+  bookmarks. Columns stay aligned and more entries fit without wrapping the actions.
+  Temporary preview tab and viewport override were cleaned up.
+
+- Toolbar, sidebar, command-palette and keyboard bookmarking now share one store action.
+  It suppresses duplicate requests for the same address and leaves the runtime event
+  in charge of the bookmark list, preserving folders and changes from other windows.
+  Removed two manual appends that could duplicate an already-announced bookmark, plus
+  an unnecessary whole-workspace refresh from the sidebar. Errors preserve saved state
+  and release the pending action for retry. Private windows do not persist bookmarks.
+- Two focused checks pass for event-before-response ordering, duplicate suppression,
+  preserving folder metadata, and failure/retry behavior.
+
+- Session recovery supports Retry all with sequential progress and Stop after the
+  current tab. Individual failures remain beside their saved tab and do not prevent
+  later tabs from reopening. Leaving the recovery surface stops the remaining queue;
+  failed and unattempted entries keep their existing durable runtime records.
+- Recovery refresh clears resolved list errors, while operation failures stay local
+  to the affected row. The compact home entry remains quiet after recovery completes.
+  Desktop typecheck/build and two focused partial-failure/stop checks pass. Native
+  multi-window recovery presentation remains part of the phase acceptance pass.
+
+- Saved-task navigation now discards superseded requests and stops activation when the
+  user changes tabs, conversations, Spaces, panels, or overlays during loading. Archived
+  Spaces can be restored without activating them until the requested task is ready.
+- Desktop typecheck/build and two focused navigation checks pass: a delayed task does
+  not displace Settings, and out-of-order requests open only the newest selected task.
+
+- Conversation history refreshes now retain the loaded range instead of replacing an
+  80+ conversation list with the first 40 rows. Refresh reads respect the API's page
+  limit, stale responses are discarded, duplicate load requests are guarded, and retry
+  preserves the failed refresh mode. Existing rows remain available during refresh.
+- Refresh captures the visible conversation anchor and restores its offset when the
+  user has not scrolled elsewhere. History rows support Arrow/Home/End navigation;
+  search supports Down to enter the list and Enter to open the first result.
+- Desktop typecheck/build and a focused 40→80→refresh component check pass, confirming
+  that all 80 loaded conversations remain. Native scroll-anchor behavior and keyboard
+  presentation remain for the rendered phase pass.
+
+- Source-history refresh failures now have an inline Retry action and retain previously
+  loaded sources. Changing conversations clears the previous conversation's source state;
+  a failed load is no longer silently presented as an answer without references.
+- Run loading now fetches metadata and steps without eagerly reading page-observation
+  artifacts. Page details read their snapshot only when opened, with loading, readable
+  failure feedback, and retry of the exact selected artifact. Stale requests are ignored
+  after changing/unmounting the run. Sources and runtime evidence remain intact.
+- Desktop typecheck/build and focused run-control checks pass, including no artifact read
+  while Work history is collapsed or merely expanded, followed by Page read and retry.
+  Full-app source failure presentation remains for phase validation.
+
+- Turn images now live in a collapsed Images gallery. Opening it loads image bytes
+  on demand, three previews at a time, with Show more for the remaining saved images.
+  Long conversations no longer eagerly fetch every turn's screenshots or insert large
+  image blocks into the answer flow before the user requests them.
+- Each image has independent loading/error/retry behavior; one unavailable artifact
+  does not hide successful previews. Metadata refresh failures are recoverable, and
+  images above the existing 8 MB preview limit are explicitly counted rather than
+  silently omitted. Labels say saved image rather than assuming every image is a screenshot.
+- Desktop typecheck/build and a focused rendering check pass, verifying no image-byte
+  reads before expansion and preservation of a usable image beside a failed read.
+  Full-app gallery sizing remains for the rendered phase pass.
+
+- Live-run Pause/Resume/Take control/Return control now share immediate duplicate-action
+  guards and persistent inline error feedback. Stop remains available during another
+  pending control request and supersedes that request's UI feedback; late responses do
+  not clear Stop's busy/error state. Runtime state remains authoritative.
+- Takeover completion opens its browser tab only while the user remains in the same
+  browsing/conversation/panel state. Unmounting invalidates pending UI callbacks.
+  Returning control now surfaces failure directly instead of swallowing it into a toast.
+- Desktop typecheck/build and a focused rendered-component check pass, covering duplicate
+  Pause dispatch, Stop availability while Pause waits, and preservation of Stop failure
+  when the earlier Pause fails later. Native agent-control walkthrough remains pending.
+
+- Retrying a conversation turn now has a shared per-run pending guard and visible busy
+  controls. Repeated clicks while the request is pending do not submit another retry.
+  Completion follows the new turn only if the user stayed in the same browsing/chat/
+  panel/overlay state; otherwise the run remains available without replacing newer navigation.
+  Existing runtime retry and uncertain-action guards remain authoritative.
+- Answer copying now reports clipboard failures and cleans up its feedback timer.
+  Desktop typecheck/build and two focused retry checks pass, covering single dispatch,
+  navigation preservation, and normal conversation continuation.
+
+- Rendered inspection exposed two answer inputs for one agent question. Conversations
+  now show the question in the thread and use only the bottom composer for its answer;
+  standalone run panels retain their own input. Both share per-run saved drafts and
+  duplicate-send protection. Ordinary conversation drafts remain separate and preserved.
+- Answer submission no longer depends on loading unrelated context or the availability
+  of a previously selected tab. Failures stay inline with the kept reply. Dictation
+  inserts into the active question draft and respects the pending send state.
+- Page inspection in conversations is now revealed with Work history instead of adding
+  another persistent technical row. Observation-only turns still expose Work history.
+- At 1280×800 the rendered synthetic needs-input flow showed one composer, preserved
+  its typed reply from side panel to full page, and continued the run after Send. No
+  provider or external communication was used. Temporary tab/viewport cleaned up.
+
+- Completed restart recovery for unsent agent-question replies in regular browsing.
+  Drafts use independent per-run storage entries, restore only validated bounded data,
+  and carry conversation identity so deletion also clears drafts for unloaded turns.
+  Private windows explicitly bypass draft storage. This supersedes the session-only
+  limitation recorded in the previous entry.
+- Storage events synchronize replies between regular Aux windows. Successful submission
+  removes its stored draft only if question/text still match; a newer cross-window edit
+  remains intact. Storage failures retain the in-memory answer and surface a warning.
+- Desktop typecheck/build and five focused persistence/submission checks pass. These
+  establish restore, private storage bypass, invalid-entry handling and newer-draft
+  preservation; a native restart/cross-window walkthrough remains pending.
+
+- Replies to agent questions no longer disappear before submission succeeds. A shared
+  per-run pending guard prevents duplicate sends across mounted views; failures retain
+  both prompt and reply, and success clears only the exact submitted draft/prompt so
+  a newer question is preserved. Session-memory drafts survive switching views and are
+  removed with deleted conversations; they are not persisted across application restarts.
+- The question reply is now multiline with Enter/Shift+Enter behavior, composition
+  handling, sending state and inline failure feedback. Incoming questions do not steal
+  keyboard focus. Read-only conversations cannot send replies through this control.
+- Desktop typecheck/build and three focused submission checks pass: failure retention,
+  duplicate-send protection/newer-question preservation, and success cleanup. Native
+  provider interaction and a full rendered question/reply journey remain pending.
+
+- Long answers now support local heading links, including Unicode and repeated heading
+  names. Targets are scoped to each answer without global IDs, so one conversation turn
+  cannot steal another turn's section navigation. Following a link scrolls and focuses
+  the target with a visible keyboard outline; smaller heading levels share answer styling.
+- Desktop typecheck/build and four focused heading/Markdown checks pass, including actual
+  React rendering, same-answer target focus, literal code copying, and existing untrusted
+  HTML/image restrictions. Updated the copy-code check to target its named action after
+  the earlier Wrap control was added. Full-app long-answer inspection remains pending.
+
+- Tab Overview's existing Move menu now includes a new window and other regular Aux
+  windows, reusing the group-transfer path that preserves Space/folder placement and
+  reports partial outcomes. Private windows do not offer regular-window transfers.
+- Selected tabs with native audio state expose one contextual Mute/Unmute action.
+  Agent/external-controlled tabs are excluded, control is rechecked before each change,
+  and a failure reports how many changes completed. Mixed selections mute unmuted tabs;
+  fully muted selections unmute. No controls appear in the ordinary unselected overview.
+- Desktop typecheck/build and whitespace checks pass. Native batch audio and Overview
+  window-transfer walkthroughs remain for phase validation; no mock compatibility claim.
+
+- Library keyboard continuation now dismisses the current bookmark/folder editor or
+  import preview before closing the dialog. Explicit cancel returns to search, folder
+  navigation/view changes discard the old location's folder editor, and completed actions
+  recover focus when their trigger disappears. Input composition does not close Library.
+- Recently Closed supports the shared arrow/Home/End row navigation, and Enter from its
+  search field reopens the first available matching tab. Existing single/group recovery
+  paths remain authoritative. Desktop typecheck/build passed before the final composition
+  guard; a full rendered keyboard walkthrough remains for phase-level validation.
+
+- Library selection can now move saved bookmarks directly into a new named folder in
+  the current collection. The name field appears only for that destination; ordinary
+  browsing gains no extra controls. Completion refreshes folders and returns focus to search.
+- Folder creation and movement share the same regular-store transaction. Private
+  browsing validates the whole selection and destination before mutating its isolated
+  collection. Stale selections, existing names and deleted parent folders fail without
+  moving bookmarks or leaving an empty destination behind. Concurrent title edits survive.
+- Root/desktop builds and desktop typecheck pass. Focused regular/private move tests
+  cover creation, conflicts and rollback. The rendered mock moved two selected bookmarks
+  into Research tools, showed its two-item folder, and restored search focus. Fixed an
+  earlier extraction test's NodeList iteration typing so the root build remains clean.
+
+- Page recovery no longer suppresses a failed reload just because the original navigation
+  error is still present. Reload and Back now share an immediate in-flight guard, show
+  action-specific progress, and keep failures on the recovery surface instead of a
+  transient toast. Edit address remains available while recovery runs.
+- Added distinct recovery guidance for refused connections (including local development
+  servers), interrupted connections, and blocked page loads. Existing certificate
+  protection remains unchanged; no bypass control was added. Desktop typecheck/build
+  and whitespace checks pass. These changes have not yet had a native recovery walkthrough.
+
+- Downloads now associates transfer/open/reveal/retry failures with the affected file
+  instead of showing an ambiguous shelf-wide error. Folder and list failures remain
+  at shelf level. Rows have accessible file labels and readable wrapping for errors.
+- Download actions stack beneath filenames in narrow panes; folder controls and shelf
+  headings wrap without squeezing the file column. After an action removes its focused
+  control, focus returns to download search; retained controls regain focus when needed.
+- Desktop typecheck/build pass. The populated mock at 1024×768 with a wide sidebar
+  demonstrated the row-local retry error and removal-to-search focus recovery. This
+  checks presentation using synthetic downloads, not a live transfer or filesystem open.
+
+- Refined home and empty-chat centering: balanced home padding replaces the bottom-heavy
+  offset, and the empty conversation centers within its available thread area instead
+  of using a fixed top offset. Loading and history errors no longer compete with the
+  empty greeting. Existing drafts and composer placement are preserved.
+- Settings now responds to its actual pane width. A wide browser sidebar no longer
+  squeezes a desktop-sized settings layout into the remaining space: categories become
+  a compact horizontal strip, content padding contracts, and appearance fields stack.
+  Solid, quiet surfaces remain the default; no extra controls were introduced.
+- Read-only inspection of Aside informed spacing and hierarchy, without treating its
+  visible controls as evidence of implemented capabilities. Rendered Aux home/chat at
+  1280×720 and Appearance at 1024×768 with a wide sidebar were checked. Desktop
+  typecheck/build and whitespace checks pass; temporary preview and viewport cleaned up.
+
+
+- Structured Chromium extraction now uses one browser-side reader for first/all matches
+  and whole-page text, replacing duplicated walkers. Recognized password/autocomplete/
+  OTP values are masked before attributes or text leave the page, including open shadow
+  roots and whole-page echoes before truncation. Original DOM fields stay unchanged.
+- Missing single matches remain null; missing attributes in all-match results remain
+  empty strings. Ordinary text, metadata attributes and nested shadow text stay readable.
+  First-match extraction also removes the separate count/read round trip.
+- This closes the structured extraction gap alongside observation collection; arbitrary
+  evaluation, network responses and screenshots remain distinct access paths, so this
+  is not a claim that task-scoped credential isolation or an agent vault is complete.
+
+
+- Completed the observation redaction follow-through for known protected field values:
+  headings, page title, accessibility names, ordinary editable echoes, table captions/
+  cells and shadow summaries redact before truncation. A cached ordered value list
+  avoids repeatedly sorting credentials for each observed element.
+- Added a long synthetic credential case echoed into labels/headings/tables/shadow
+  text. Both source-collection checks pass; root and desktop builds pass. Protection
+  remains limited to values recognized in the observed form scope, not arbitrary
+  secret discovery, screenshots or page-script execution. Vault work remains separate.
+
+
+- Found and fixed an authenticated-work boundary gap in Chromium observation collection:
+  password values previously entered raw snapshots before downstream model rendering
+  masked some outputs. Collection now emits a fixed redaction marker for filled password,
+  current/new-password autocomplete and one-time-code fields; empty fields stay empty.
+- Input types normalize case, protected custom validation messages are omitted, and
+  known protected values are removed from collected main/shadow text and element labels.
+  Browser DOM values themselves are unchanged. This is prospective observation protection,
+  not a claim to scrub historical artifacts, arbitrary page scripting or screenshots.
+- A focused DOM regression covers mixed-case password types, revealed-password
+  autocomplete, OTP, open shadow roots, validation messages, empty fields and ordinary
+  editable text. It passes without real credentials. The optional task-scoped vault and
+  trusted autofill broker remain unfinished; no vault control was introduced.
+
+
+- Advanced independent Phase 2 context work: attach multiple open tabs from one
+  searchable selection. The picker respects the five-snapshot limit, retains selection
+  while searching, and removes successful items from retry selection after partial
+  failure. Each saved snapshot still checks page/document identity in the runtime.
+- One conversation ID and attachment lock cover the batch. Switching conversations
+  stops starting further reads; completed snapshots stay in their owning conversation.
+  Explicit selection never sends the draft or starts a model request. Failures remain
+  visible even when creating a chat remounts the picker; keyboard focus returns locally.
+- Rendered selection of two tabs produced two named snapshots in the same conversation
+  while preserving its draft. Desktop typecheck/build passed. Native host compatibility
+  remains the outstanding Phase 1 dependency; the full roadmap is not complete.
+
+
+- Overview's existing Move menu now offers New tab folder. Name it inline, see the
+  destination Space, and group selected open tabs without closing them. Creation uses
+  the shared tab-move operation, committing folder and placement in one layout write;
+  stale Spaces and empty selections fail before creating an orphan folder.
+- Clarified the separate Save bookmarks action so saved bookmark folders and open-tab
+  folders are distinguishable. Completed actions restore search focus when the removed
+  form/selection would otherwise leave keyboard focus on the document body.
+- Rendered two-tab grouping created the expanded sidebar folder with both tabs intact.
+  Desktop typecheck/build passed; this batch uses existing move/Space validation.
+
+
+- Tab Overview can select duplicate tabs within the current search/Space view. It
+  groups exact addresses separately per Space, keeps the active or most recently used
+  copy, and excludes agent-controlled/worker tabs. It only selects: users can then use
+  existing move, save or guarded group-close actions, with grouped reopening preserved.
+  The control appears only when redundant tabs exist; no permanent menu was added.
+  Desktop typecheck/build and the focused selection check pass, including preservation
+  of query/fragment differences and separate Spaces. Rendered interaction is left for
+  the phase-level Overview check.
+
+
+- Split-view creation now shares an availability rule across tab actions, command
+  search and the store. External Chrome, engine, worker, detached, failed and ordinary
+  blank tabs cannot create a nonfunctional pair. Existing pairs remain saved through
+  temporary page failures; renderer visibility is recomputed from current page state.
+- Native layout also checks the companion's live registry identity, window ownership,
+  browser type and content before reserving space. Missing/foreign/destroyed companions
+  leave the primary page full width rather than a blank second pane.
+- Development previews now render both synthetic documents using the same divider
+  geometry. Inspected the populated pair at 1280×720; these remain explicit mock pages,
+  not a claim of live website compatibility. Desktop typecheck/build passed.
+  The organization check exposed a missing default split ratio in newly created layouts;
+  added it so saved and restored layouts share the same canonical shape.
+
+
+- Split views now have a quiet draggable gutter, arrow-key resizing, Shift for larger
+  steps, Home/End limits and Enter/double-click reset. The chosen proportion is saved
+  with browser layout, with bounded pane widths and matching shell/native geometry.
+  Regular and private native windows share the same geometry; drag updates stay in
+  memory until release rather than writing storage on every move.
+- Native two-page check confirmed pointer dragging, keyboard adjustment, reset and
+  leaving/returning to the primary tab at its chosen proportion. Rendered pages retained
+  their content and the gutter stayed aligned. Unsupported/failed/blank companions no
+  longer reserve invisible native space. Private geometry uses the shared code but this
+  batch did not separately exercise a private-window drag.
+- Root build, desktop typecheck/build and two focused geometry checks passed. The
+  isolated test app was closed; the user's browser profile was not used.
+
+
+- Finished native dictation session cleanup: final/error events terminate the helper,
+  ignore later output and release ownership. A disconnected renderer also ends capture.
+  Six focused simulated-helper checks cover pending cancellation, cross-window/session
+  isolation, hidden-window cleanup, timeout, terminal output and disconnected recipients.
+  Desktop typecheck/build pass; no microphone was activated.
+- Dictation now handles Escape within its own surface. Cancelling capture preserves
+  partial words for review; Escape from review collapses to a quiet Review dictation
+  control without deleting text. Explicit Discard remains the action that clears it.
+  Rendered synthetic capture → Escape → review → Escape → reopen retained the exact
+  transcript and keyboard focus; desktop typecheck/build and diff check pass.
+
+- Added hold-Space-to-talk when Dictate is focused, alongside click-to-start/stop.
+  Key release ends recording into review; release during startup cancels capture.
+  Losing window focus releases a held recording, and repeated keydown does not restart.
+  An already-ended stop request now recovers into review instead of hanging.
+- Uninserted dictated text is a separate window-local draft keyed to the conversation.
+  Changing surfaces stops capture and restores editable review on return. Insertion,
+  explicit discard and conversation deletion clear it; it is not written as memory or
+  a sent message. Sending while recording stops capture without erasing its transcript.
+- Synthetic rendered check confirmed Space release → review, leave/return → same
+  transcript, and Discard → clean trigger with focus restored. Desktop typecheck/build
+  and diff check pass. Native microphone/permission/TCC validation remains outstanding;
+  the synthetic check does not establish speech-recognition accuracy or live capture.
+
+- Advanced independent Phase 2 work while the browser-host compatibility limitation
+  remains: added a native macOS on-device dictation helper, trusted-shell session broker
+  and conversation transcript review. Explicit start/stop/cancel, editable preview and
+  Insert into message preserve the existing draft and never send automatically.
+- Recognition checks on-device support before capture and requires it on the request;
+  there is no cloud transcription fallback. Audio stays in memory. Session IDs and
+  WebContents ownership isolate controls/events; pending start is cancellable, recording
+  ends after 60 seconds, and hiding/closing/reloading/crashing the owner stops capture.
+  Native usage descriptions and a Swift development build are included.
+- The helper compiles and read-only status reports en_US support on this Mac. Rendered
+  synthetic record → stop → edit → insert retained the draft and keyboard focus at
+  1280×720; fixed the initial focus loss and kept the trigger in the composer toolbar.
+  Desktop typecheck/build and diff check pass. No real microphone was activated.
+- Voice remains incomplete pending native permission/capture validation, hold-to-talk,
+  and surface-transition continuity. See apps/desktop/native/README.md. Neither phase
+  is marked complete; normal browser-host compatibility work remains outstanding.
+
+- Bookmarks and browsing history support Command/Ctrl-click and middle-click to open
+  separate background tabs in the current Space. The Library remains open with concise
+  feedback; normal clicks retain existing-tab reuse and foreground navigation. Selection
+  mode remains a selection action, and saved URLs reject embedded credentials.
+- Rendered middle-click retained the current page and Library. Fixed focus restoration
+  to wait until controls re-enable, then confirmed focus returns to the opened row.
+  Desktop typecheck/build and diff check passed; temporary preview closed.
+
+- Tab duplication now creates a separate page beside its source, preserving the source
+  Space and surviving folder before activating it. It does not silently reuse an
+  existing matching address or claim to clone navigation history/form state.
+- Close other tabs now uses the shared guarded group-close operation, so unload
+  cancellation, agent control, concurrent closes and grouped reopening behave like
+  multi-selection. Added Close tabs to the right for horizontal tabs; targets resolve
+  from current ordering at action time and a missing anchor performs no close.
+- Desktop typecheck/build, existing grouped-close/recovery checks and diff check pass.
+  These menu changes remain for the phase-level rendered integration check.
+
+- Completed reviewed-copy installation to match managed extension updates: the native
+  dialog describes the copied snapshot that will load, rather than the mutable source
+  folder. Review is required by the manager API; cancellation removes staging without
+  loading code. Duplicate installs are reserved across windows while review is pending.
+- Installation failure unloads any partially loaded copy before removing its files.
+  Two focused regressions cover source changes during review, concurrent duplicate
+  requests, cancellation and partial-load cleanup. All nine extension lifecycle checks
+  pass; desktop typecheck/build and diff check pass. Native dialog integration remains
+  part of the phase-level check, not inferred from the manager tests.
+
+- Added reviewed updates for managed unpacked extensions: choose a replacement folder,
+  review the copied snapshot and additional declared access, then replace the same
+  managed path/identity. Disabled extensions stay disabled; enabled extensions restart.
+  Content-script matches and optional declarations now appear in access descriptions.
+- Updates serialize against other lifecycle changes, retain the previous code until
+  successful loading, and restore it on load failure. Startup restores an interrupted
+  pre-commit replacement before loading extensions. This preserves code and enabled
+  state; it does not reverse changes an extension makes to its own storage while running.
+- Seven extension lifecycle checks pass, including reviewed-snapshot stability, cancel,
+  disabled restart, failed-load rollback and interrupted-update recovery. Desktop
+  typecheck/build pass. Rendered populated settings and disabled-update feedback at
+  1280×720 using explicit synthetic fixtures; native chooser/dialog flow remains for
+  the phase-level integration check. Preview closed.
+- Revisited pinned CEF source: the one-Chrome-BrowserView constraint remains; no host
+  replacement was made and no claim of complete Chrome/password-manager support added.
+
+- Pinned-site order now persists through the shared layout store. Drag visible pins
+  or overflow entries onto another pin to reposition them, with a restrained drop
+  outline. Context-menu Move to front / earlier / later actions provide keyboard
+  access and let overflow sites become visible without enlarging the pin row.
+- Movement uses stable URL and Space identities, preserves other Spaces, and ignores
+  missing targets. Rendered keyboard movement from last to first retained page
+  selection and focus at 1280×720. Typecheck/build and diff check passed; preview closed.
+  Pointer drag and overflow movement still need their phase-level rendered check.
+
+- Pinned sites now open a compact context menu instead of immediately unpinning on
+  right-click. Visible pins and overflow entries support new/background tabs, URL
+  copying and explicit Space-scoped unpinning. Command/Ctrl-click and middle-click
+  open background tabs; ordinary clicks reuse an existing tab in the current Space.
+- Added Shift-F10/context-menu keyboard access, bounded menu positioning, Escape
+  dismissal and focus restoration. Pins retain button semantics for accessibility.
+  Rendered the menu at 1280×720, opened a background tab with the original selected,
+  and exercised keyboard open/dismiss. Typecheck/build passed; preview closed.
+
+- Native regular windows now use the selected page title plus Aux/profile identity,
+  updating on title changes, selection/layout, transfers and profile rename. Tab-move
+  destinations share the same page naming and show “New Tab” instead of about:blank;
+  destroyed views are handled safely. Quick Ask retains its separate identity.
+- Window title updates avoid redundant native writes and reuse the current profile
+  name without reading its file during window resizing. Desktop typecheck/build and
+  diff check passed; this naming change has not had a separate native UI exercise.
+
+- Added Website sizes to Appearance and Settings search: inspect saved origin/percentage,
+  search the list, reset individual sites, and see loading/empty/error/retry states.
+  Reset persists before applying to open native views. Cookies and permissions remain
+  separate; regular-profile data is not exposed to private-window settings.
+- Native zoom changes/reset notify open settings and page-zoom controls across regular
+  windows. Existing per-origin bounded persistence and private-session isolation remain.
+- Rendered a 110% saved site → Settings search → full-width Website sizes row → reset
+  → default-size empty state at 1280×720. Fixed the initial narrow control-column layout
+  based on the rendered result. Two persistence/reset checks, desktop typecheck/build
+  and diff check passed; preview closed. Native cross-window update remains unexercised.
+
+
+- Unified trusted-shell web-link opening across answer Markdown, conversation sources
+  and Reader. Command/Ctrl-click and middle-click create a background tab in the current
+  Space without closing the conversation/Reader. Ordinary clicks retain foreground
+  behavior. Links still reject non-web schemes and embedded credentials.
+- Sources are semantic links with modifier support. A live tab is reused only when its
+  current address equals the cited URL; a reused page ID that navigated elsewhere no
+  longer takes the user to unrelated content. Invalid source URLs are omitted from
+  both the list and count.
+- Rendered Command-click from Reader created an unselected article tab while retaining
+  Reader and the original active tab. Shared helper covers answer/source modifier paths;
+  their individual UI paths were not separately exercised in this batch. Closed preview.
+
+
+- Added a compact Reader Contents outline derived from the sanitized heading tree.
+  Available for articles with multiple sections, with nested-heading indentation,
+  keyboard navigation, Escape/outside dismissal, and focus moved to the chosen heading.
+  Outline placement follows the toolbar height without shifting the article.
+- Article extraction now preserves bounded source anchor identifiers as inert data.
+  Same-article links scroll/focus their retained section inside Reader; external or
+  unavailable targets retain the existing open-tab behavior. No page HTML is injected.
+- Rendered outline at 1280×720; selecting the final section closed it and moved reading
+  focus/scroll. Following the article's return link focused the first section without
+  leaving Reader or opening another tab. Desktop typecheck/build and diff check passed;
+  temporary preview closed.
+
+
+- Removed native-window focus feedback: the window focus event now reports the selected
+  tab to the runtime without sending another native focus command. Runtime rejects
+  notifications for unknown/agent-owned tabs or mismatched window owners, then records
+  active identity and emits the selection update.
+- Extended session-recovery coverage to assert focus reporting does not issue native
+  focus calls and cannot change another window's selection. Root/desktop builds and
+  desktop typecheck passed.
+- Native isolated-profile recheck restored the two fixture tabs, selected/moved the
+  group into one new window, and showed the original foreground tab selected in that
+  destination. Switching native windows stayed responsive; the earlier feedback issue
+  did not reproduce. Quit the isolated app after the check.
+
+
+- Native isolated-profile check passed keyboard range selection → close two tabs →
+  Command+Shift+T recovery, restoring both addresses in order and the former foreground
+  tab. Group move created exactly one destination window containing both selected tabs.
+- That native transfer exposed a real focus failure: the source renderer attempted to
+  activate an already-transferred tab and correctly hit the cross-window ownership
+  guard. Fixed focus selection inside the transfer contract/native operation instead.
+  Background group members now preserve destination focus, while moved events carry the
+  destination active tab. Window isolation remains enforced; no cross-window bypass.
+- Root/desktop builds, desktop typecheck, three transfer checks and diff check passed.
+  The follow-up native target became unresponsive during window-menu interaction after
+  restart, so corrected foreground behavior is not yet claimed rendered-verified. Quit
+  the isolated app; original user profile remains untouched.
+
+
+- Added durable grouped closed-tab recovery. Group closes save original order and
+  foreground identity; Command+Shift+T reopens the newest retained group. Recently
+  Closed offers Reopen group alongside individual reopening. Existing 20-tab/30-day
+  retention and private-session storage boundaries remain in effect.
+- Reopening a group loads tabs in the background, restores Space/folder placement and
+  original positions, then focuses the former foreground tab. Duplicate URLs reopen
+  separately instead of reusing another live tab. Failed opens retain recovery entries.
+- Tab Overview now uses the shared guarded group-close operation with its existing
+  Stop/progress controls, so all group-close entry points record the same recovery data.
+- Focused checks cover cancellation, overlapping close calls, grouped order/foreground
+  recovery, duplicate-address independence, and stored-metadata bounds. Native rendered
+  group recovery remains in the phase validation queue.
+
+
+- Finished keyboard integration for tab multi-selection: Command/Ctrl+A selects the
+  available tab list, Delete/Backspace closes the selected group, Escape clears it,
+  and Command+W uses the shared selection while in browsing mode. Text inputs keep
+  native selection/editing behavior; both orientations share the handlers.
+- Group close now has one guarded store action reused by keyboard and context menu,
+  rejects overlapping requests, checks ownership before each close, and stops on
+  beforeunload cancellation. Async completion does not clear a newer selection;
+  keyboard focus returns to a remaining tab only if it otherwise fell to the body.
+- Two focused checks passed for cancellation and overlapping close requests. Desktop
+  typecheck/build and diff check passed. Native keyboard/focus behavior remains part
+  of the phase-level rendered check.
+
+
+- Expanded the shared native audio/video context menu with play/pause, media mute,
+  looping, controls visibility, and picture-in-picture entry/exit. Capability-dependent
+  actions follow Chromium's media flags; regular and private pages share the behavior.
+- Actions target the originating frame, match the media source without interpolating
+  executable input, traverse open shadow roots, and refuse ambiguous or missing media.
+  Changed frames and rejected playback show a concise native error instead of failing
+  silently. Media streams no longer need a download URL to expose playback actions.
+- Two focused script checks passed for target isolation/open shadow roots and duplicate
+  source refusal/quoted input. Desktop typecheck/build and diff check passed. Native
+  playback/PiP remains a phase-level rendered validation item.
+
+
+- Enabled selected-tab groups in native window destinations. New window is created by
+  the first transfer and its returned ID is reused for subsequent tabs; existing-window
+  destinations use the same flow. Snapshot Space/folder placement before source events
+  remove tabs, preserve the prior foreground tab, and keep private-window boundaries.
+- Validate all selected tabs before starting, retain runtime per-tab ownership checks,
+  and stop on the first failed/uncertain result. Report confirmed count and advise
+  checking both windows rather than claiming unconfirmed tabs stayed put or retrying.
+- Three focused renderer-store checks passed: destination reuse and placement retention,
+  uncertain-result stop/no retries, and agent-control preflight. Native group-transfer
+  UI exercise remains outstanding; existing native single-tab transfer is reused.
+
+
+- Added shared transient multi-selection to vertical and horizontal tabs: Command/Ctrl
+  toggles, Shift ranges, keyboard modifier activation and Escape clear. Selection is
+  scoped to the current Space, excludes agent-owned/detached tabs, and has restrained
+  outlined styling distinct from the foreground tab.
+- Existing tab menu now offers grouped move/close actions. Folder moves reuse one
+  persisted layout update, open the destination, and support removing a group from its
+  folder. Close walks the selected pages and stops on cancellation; no extra toolbar.
+- Group dragging reorders the selected tabs together or moves them into folders while
+  preserving selection order. Individual window movement remains available; moving an
+  entire selection across native windows is still outstanding.
+- Rendered Shift range, Command toggle, Escape, three-tab folder move in both layouts,
+  and selection styling at 1280×720. Restored the mock folder/layout and closed the tab.
+  Desktop typecheck/build and diff check passed. Drag and cancelled-close paths were
+  implemented but not separately driven through native UI in this batch.
+
+
+- Completed direct image-reference previews from composer chips, sharing the saved
+  preview with the context panel. Images can be reviewed without reopening all context
+  controls; chips now provide removal using existing conversation ownership and locks.
+- Preview reads have loading, retry and close states, cancel stale responses on chat
+  changes, and disappear when the image is removed. Document/image previews are mutually
+  exclusive when selected from composer chips. No model request is made to inspect one.
+- Rendered paste → review → attach → close context → chip preview → close at 1280×720.
+  Typed draft remained intact, the saved image and inclusion state displayed correctly,
+  and the preview stayed within the composer column. Restored clipboard and closed the
+  temporary tab. Desktop typecheck/build passed; removal was not driven in this UI check.
+
+
+
+- Added PNG/JPEG/WebP paste and file drop to full-page/embedded conversation textareas.
+  Images enter the existing preview/crop flow and are saved only on Attach image. Text
+  paste remains native. Input enforces one file, 16 MB, 64 million pixels and four saved
+  images; conversion strips metadata and uses existing bounded PNG normalization.
+- Reuses conversation image ownership, busy state, archive/run locks and attachment
+  storage. Async reads cannot attach into a different conversation. Unsupported file
+  drops explain using Attach for documents; text drafts are retained through review.
+- Rendered a synthetic clipboard image → review → saved 16×16 reference. A second paste
+  preserved existing draft text and was cancelled without sending. Restored the empty
+  preview clipboard, cleared the test draft and closed the preview. Desktop typecheck,
+  build and diff check passed. Drag/drop shares the input path but was not separately
+  driven through native UI in this batch.
+
+
+
+- Consolidated AI setup into one Connections Settings category with Models, Services
+  and Agents tabs. Removed separate top-level Models/External agents entries. Existing
+  model/agent deep links map to the correct view; search results identify and open the
+  relevant Connections tab without losing field focus or setup state.
+- Preserved all existing provider credentials, service integrations and scoped external
+  agent controls. Agent rail’s Set up agent button now targets model setup directly.
+  Keyboard tab navigation and category scroll reset remain integrated with Settings.
+- Rendered Connections at 1280×720, opened GitHub through search (Services selected),
+  and opened Agents with existing Codex/Claude/MCP setup intact. Desktop typecheck/build
+  and diff check passed; temporary preview closed. This consolidates existing setup,
+  not a claim of new extension or provider capability.
+
+
+
+- Continued independent Space organization while the documented CEF host limitation
+  remains unresolved. Chats now offers All Spaces/current Space filtering with scoped
+  search, archive browsing and pagination. Unbound older chats and unsent drafts remain
+  available in All Spaces; existing conversation IDs and history are unchanged.
+- Runtime filtering uses the current explicit conversation-to-workspace assignment
+  before limiting results, avoiding cross-Space leakage or missed pages from renderer
+  filtering. Space reassignment emits a conversation change event to refresh open lists.
+- Focused regression covers complete multi-turn groups, old prompt search, tied cursors,
+  reassignment, archive state and unbound history. Rendered the current-Space empty state
+  and return to All Spaces. Root/desktop builds, desktop typecheck and diff check passed;
+  temporary preview closed. Phase 1 host compatibility is still not complete.
+
+
+
+- Library search now finds bookmark folders, including empty folders, and shows their
+  full paths. Opening a result clears the global search, enters that folder, resets
+  the result scroll and restores search focus. Empty-state wording distinguishes
+  bookmark/folder results correctly.
+- Keyboard navigation now includes folder rows and primary saved-page rows: Down from
+  search enters results; arrows/Home/End move through the list without row-action noise.
+  Enter opens the first matching folder; IME composition does not trigger navigation.
+- Rendered check: empty Reading folder is searchable and opens with Enter; Down selects
+  the first folder and End reaches the final saved page. Desktop typecheck/build and
+  diff check passed; temporary preview closed.
+
+
+
+- Added Library bookmark selection and bulk Move. Selection can span searches/folders;
+  Select this view adds the visible results. Destination controls appear only during
+  selection, with unrelated main-toolbar actions hidden and keyboard focus contained
+  among visible controls. Normal rows return after a successful move.
+- Added the shared API contract and desktop-only runtime handler, atomic repository
+  operation, private-memory operation and preview behavior. Entire selections validate
+  before mutation: removed/moved bookmarks or missing destinations stop all changes.
+  Concurrent title edits are preserved; duplicate inputs do not double-count moves.
+- Focused regular/private checks passed. Rendered at 1280×720: created Reading, selected
+  ChatGPT and Kagi, moved both, received “2 bookmarks moved” and the destination count
+  updated to 2. Root build, desktop typecheck/build and diff check passed. Preview closed.
+
+
+
+- Restructured Settings into a persistent title/close header and a separately scrolling
+  content column. Category and query changes reset their reading position; search
+  destinations still reveal and focus the exact field after opening advanced groups.
+  The content viewport supports keyboard scrolling and reserves scrollbar space.
+- Rendered at 1280×720: Browser health search reveals the lower settings with General
+  and Close still visible; switching to Models opens at scrollTop 0. Desktop typecheck,
+  build and diff check passed. Temporary preview closed.
+
+
+
+- Added profile-scoped site zoom persistence and navigation restoration for regular
+  browser pages. Private windows share only a memory-resident preference set for their
+  session. Reset removes the override; saved origins exclude page paths and queries.
+  Writes replace the preference file atomically, validate restored entries and bound
+  stored sites. Failed writes report that the live size changed but could not be saved.
+- Site controls explain the preference lifetime. Focused storage checks cover restart,
+  reset, origin isolation, private-session isolation and malformed entries. Desktop
+  typecheck/build and diff check passed. A full native quit/relaunch journey remains
+  part of Phase 1 validation; no personal browser profile was opened or changed.
+
+
+
+- Unified page zoom controls and keyboard shortcuts around shared browser percentages
+  (25–500%). Directional changes are resolved against the live native page zoom, so
+  repeated shortcuts and buttons remain consistent; explicit/relative API levels and
+  reset remain supported. Regular and private windows use the same implementation.
+- Preview zoom now maintains real per-page state. Rendered check: two Zoom in actions
+  reach 125%, Cmd-minus reaches 110%, Cmd-zero resets to 100%. Focused native-helper
+  checks cover custom starting levels, boundaries, reset, invalid values and closed
+  tabs. Root/desktop builds, desktop typecheck and diff check passed; preview closed.
+
+
+
+- Added complete time-range browsing-history cleanup: last hour, 24 hours, seven days
+  or all time, with a fixed confirmation cutoff that preserves newer visits. The same
+  range contract works in runtime storage, private windows and the preview. Clear
+  feedback reports the removed count; cookies, bookmarks, files and memory remain.
+- History bulk deletion now follows individual deletion’s desktop-only authority;
+  external callers cannot erase browser history. Strict range validation rejects
+  reversed, negative and invalid bounds. Focused tests cover interval boundaries,
+  newer visits, bookmarks, repeat deletion, contracts and authority (14 checks passed).
+- Inspected the time-range panel at 1280×720 without clearing user history. Root build,
+  desktop typecheck/build and diff check passed; temporary preview closed.
+
+
+
+- Replaced noisy cross-category Settings filtering with concise searchable destinations.
+  Search matches category, labels and descriptions, supports multiple words and trims
+  whitespace. Results open complete settings groups, focus the matching field and
+  expand diagnostics when needed. No-match feedback and keyboard result navigation
+  are included; normal category contents remain intact.
+- Rendered at 1280×720: opacity finds Sidebar appearance without unrelated controls;
+  Browser health opens diagnostics and focuses its field; an unmatched query shows
+  the empty state. Temporary previews closed. Desktop typecheck/build and diff check
+  passed. Search indexes product descriptions rather than private setting values.
+
+
+- Integrated Find into Reader instead of replacing Reader with the original page.
+  Cmd+F and next/previous shortcuts target article text, including title and inline
+  formatting. Search uses the same shared text-surface finder as conversations.
+- Reader keeps its article mounted, with an in-flow search bar above the reading
+  viewport. Closing search restores article focus and keeps the found reading
+  position; Back to page remains the explicit exit from Reader. Search state resets
+  when leaving the view and handles article loading/content changes.
+- Added a populated Reader fixture. Rendered at 1280×720: calm → 1 of 4, Shift+Enter
+  → 4 of 4, Escape → Reader remains open with reader-scroll focused and scroll offset
+  preserved near the last passage. Temporary preview closed. Desktop typecheck,
+  build and diff check passed.
+
+
+- Fixed Find in full-page conversations searching the browser tab behind them.
+  Conversation mode now searches loaded message text with native CSS highlights,
+  next/previous wrapping and match counts. Phrases can span inline formatting;
+  controls and hidden content are excluded. Page mode retains native page search.
+- Streaming/loaded-message changes refresh counts and ranges without automatic scroll
+  jumps. Closing Find clears highlights and returns keyboard focus to the conversation
+  reading area without moving the viewport. The placeholder/help clearly scopes search
+  to loaded messages rather than claiming to search unloaded history.
+- Rendered at 1280×720: searching comparison highlights two message occurrences;
+  Enter advances to 2 of 2; Escape closes Find and focuses conversation-scroll.
+  Temporary preview closed. Final desktop typecheck/build and diff check passed.
+
+
+- Unified browser-menu keyboard behavior: arrow/Home/End navigation plus bounded
+  typeahead for Spaces, tab/folder menus, More and pin overflow. Editable search fields
+  retain normal typing. Details menus open from Up/Down and restore their trigger on
+  Escape/Tab; More now exposes menu/menuitem semantics throughout.
+- Space/tab/folder menus keep stable dismissal listeners while parent state changes,
+  preventing background updates from resetting keyboard focus. Folder actions now use
+  native buttons for Enter/Space activation, and folder popups clamp to their measured
+  viewport bounds instead of guessed dimensions.
+- Rendered keyboard journey: Arrow Down opens More with Chats focused; typing d
+  focuses Downloads; Escape closes it and restores More. Temporary preview tab closed.
+  Desktop typecheck/build and diff check passed; typeahead state also resets on
+  arrow navigation and dismissal so rapid reopen does not reuse an old search.
+
+
+- Finished download cleanup and restart recovery: the native host now reconciles
+  previous-process transfers absent from its authoritative live set into durable
+  interrupted records. Current-process and live/resumable transfers are preserved.
+- Completed, cancelled and interrupted history entries can be dismissed individually
+  or cleared within the current search/filter. Runtime removes only inactive records
+  and their source metadata; native regular/private handlers protect live transfers.
+  Files remain on disk. Cancelled status is neutral rather than an error color.
+- Added populated mock downloads and reviewed the rendered shelf at 1280×720:
+  Needs attention → Clear list removes only failed/cancelled rows; All retains the
+  completed file and active progress row. Tightened sidebar More-menu accessible
+  labels and Escape returning focus to its trigger.
+- Final root/desktop builds, desktop typecheck, diff check and five focused download
+  persistence/recovery/UI checks passed. Native restart reconciliation and
+  private cleanup were not separately driven through the OS in this slice.
+
+
+- Added PDF text import to conversation attachments and task evidence through the same
+  native picker and bounded extraction worker. Snapshots include page numbers and
+  explicit markers for pages without embedded text; the preview explains OCR/layout
+  limitations. Password-protected, unreadable, textless and oversized PDFs have
+  actionable recovery messages. The original file is unchanged.
+- Bundled matching PDF.js standard fonts and character maps for local resource reads.
+  The parser receives document bytes only; it does not render pages, evaluate document
+  scripts, follow links or fetch remote resources. PDF reading shares existing 16 MB
+  source / 512 KB text / 15-second worker limits, with a 500-page ceiling.
+- Desktop build/typecheck, focused attachment-contract checks and diff check passed.
+  The built worker extracted a two-page fixture, retained the empty-page marker,
+  rejected textless and corrupt fixtures, and loaded bundled font data without a
+  network lookup. Native picker/rendered PDF preview and encrypted/CJK documents
+  were not separately exercised in this slice; the shared Word/Excel UI was inspected
+  in the preceding work.
+
+
+- Replaced raw workbook JSON in agent context with compact sheet/cell references.
+  Each sheet receives a fair share of the shared document budget, so a long first
+  sheet does not hide later decisions. Hidden-sheet and saved-formula semantics remain
+  explicit, and partial references are labeled in the model context.
+- Attachment reads now return the exact prepared context text and its full reference
+  length alongside the unchanged saved snapshot. Show included text displays that
+  actual reference rather than guessing a prefix of workbook JSON; ordinary text
+  snapshots retain their prior behavior and older clients remain compatible.
+- Root build, desktop typecheck and 23 focused lifecycle checks passed. The new
+  integration check covers sparse cell coordinates, a large first sheet, a later
+  hidden sheet, unchanged source, bounded context and preview/run-context equality.
+
+
+- Completed Excel (.xlsx) import through the shared native document picker, isolated
+  extraction worker, conversation attachments and task evidence. Word imports now
+  use the same supported task-evidence contract instead of failing at that boundary.
+- Workbook snapshots retain sheet names/hidden state, row and column coordinates,
+  rich text, dates, errors and saved formula results. Formulas are never evaluated;
+  missing results are labeled. Charts/images/formatting are explicitly excluded.
+  Existing source size, text size, worker memory and time bounds apply.
+- Added a shared lazy document preview: compact sheet switching, cell-coordinate
+  table, empty-sheet state, bounded visible rows/columns and full stored source.
+  It preserves the exact included-context preview and leaves the composer visible.
+  Attachment excerpts use sheet names instead of exposing internal JSON.
+- Final root/desktop builds, desktop typecheck and diff checks passed. Two focused
+  input-contract checks passed. Built worker
+  checks covered sparse coordinates, cached/missing formulas, hidden sheets and Word
+  regression. Native picker → import → table → empty sheet rendered successfully in
+  the isolated development profile. No model request or external upload was made.
+
+
+- Added native Word (.docx) conversation attachments through the existing document
+  picker and stored-text snapshot flow. A separate bounded worker extracts plain text;
+  16 MB source / 512 KB extracted-text limits and a 15-second timeout provide clear
+  recovery messages for oversized, empty, corrupt, or slow documents. No source path
+  is passed to the parser and extracted HTML is never rendered.
+- Updated conversation input contracts to accept Word snapshot names and added a
+  preview note that images, formatting and page layout are excluded. The original
+  document remains unchanged; existing context inclusion and removal controls apply.
+- Root/desktop builds and desktop typecheck passed. Two focused document-boundary
+  checks passed; the built worker handled ordinary, empty, oversized-text and corrupt
+  DOCX fixtures. Native isolated-profile picker → import → preview was exercised with
+  actual extracted text and a rendered layout review. No model submission was made.
+
+
+
+- Added durable conversation.changed/deleted events after rename, archive, restore
+  and deletion. Open windows now update titles/archive state, and Recent/History refresh
+  without requiring a restart. Metadata requests cannot overwrite a newer received event.
+- Archived conversations show a compact Restore to reply notice, preserve draft text,
+  and disable reply, attachment mutation and retry controls. Restoring keeps the same
+  chat identity. Deleted conversations clear matching cached turns/steps/observations,
+  drafts/context and recovery pointers; an active deleted view becomes a fresh chat.
+- Updated mock lifecycle events and added an archived conversation fixture route.
+  Rendered archived → restore: reply/attachment controls become available on the same
+  conversation. Root/desktop builds, typecheck and 22 lifecycle checks passed; new
+  assertions cover the exact persisted rename/archive/restore/delete event sequence.
+  The real two-native-window event flow remains unexercised in this slice.
+
+
+- Fixed multi-window draft persistence exposed by Quick Ask: writes no longer replace
+  a whole cached draft/context map. Each conversation now owns its storage entry, so
+  editing another chat in a second window cannot erase a newer draft from the first.
+- Existing v1 maps remain readable; per-entry values override them, and empty entries
+  prevent deleted legacy text/context from reappearing. Malformed legacy JSON does not
+  hide healthy newer entries. Storage events synchronize only the changed conversation
+  and ignore stale events whose value no longer matches saved storage. Private windows
+  remain excluded from persistent cross-window synchronization.
+- Five focused draft/context checks cover independent writers, legacy restoration,
+  deletion, malformed legacy data and event classification. Desktop typecheck/build and
+  diff checks passed. This is a storage/lifecycle fix with no new visible controls;
+  simultaneous edits to the same conversation still follow the latest saved edit.
+
+
+- Implemented Quick Ask as a compact native window using the existing conversation,
+  draft, attachment, context and runtime paths. File → Quick Ask / Cmd-Shift-Space
+  opens it while Aux is active. General settings offers an optional system-wide
+  shortcut, persisted per profile, with collision/error feedback and unregister on quit.
+  It does not capture other apps. Global registration succeeds in the isolated fixture;
+  invocation from another app via automated synthetic input did not succeed and remains
+  unverified. Native menu/local shortcut invocation did succeed.
+- Expand promotes that same window into a full browser, retaining conversation identity,
+  draft and owned task tabs. Closing the compact window hides it while another regular
+  window exists; reopening reuses it. Escape dismisses it. Opening settings or other
+  full browser surfaces expands it. No separate chat store or conversation copying.
+- Native isolated-profile exercise: opened at 580×640, typed a draft, hid/reopened and
+  retained exact text, expanded and retained it in the full conversation. Reviewed the
+  centered empty layout, automatic input focus and quieter title bar. Corrected a General
+  settings checkbox width inherited from generic field styles. No live model submission
+  was made in this fixture, so network answers and task-tab continuity still need that
+  focused exercise. Desktop build/typecheck passed. Original user profile untouched.
+
+
+- Unified text-result eligibility and filename handling across conversation context,
+  search and previews. JSON reports are now searchable and previewable alongside CSV,
+  Markdown and plain text. Internal observations are excluded by both filename and
+  parsed content; filtered JSON candidates no longer consume the search result limit.
+- Added formatted JSON and a readable CSV table/source switch. CSV parsing preserves
+  quoted commas, escaped quotes, embedded newlines, empty cells and BOM handling;
+  malformed files fall back to their original text. Large tables show bounded previews
+  with their full row/column counts. Copy/export still use the original stored content.
+- Rendered CSV search → preview → source at 1280×720. Table columns align, the reply
+  field remains visible, and the source view preserves quoted data. Root build,
+  desktop typecheck/build and 26 focused result/conversation/CSV checks passed. This
+  extends the prior saved-results slice; binary document previews and full body search
+  remain future work rather than implied capabilities.
+
+
+- Added saved text results to universal search and its Work filter. Filename,
+  conversation title and turn objective find complete Markdown/plain-text/CSV outputs
+  up to 256 KiB. Results carry conversation provenance; archived conversations and
+  internal observations stay out, and deletion removes results through the existing
+  artifact/run lifecycle. Search does not scan result bodies or binary documents yet.
+- Selecting a result opens its conversation and the actual saved content with Markdown
+  rendering, tables, copy and export. Existing conversation Results entries can open
+  the same preview. Missing/unreadable results have a retryable error; external agent
+  clients cannot use the new cross-conversation search/read endpoints.
+- Rendered search → result → preview at 1280×720. Corrected the preview height after
+  finding it pushed the composer out of view; content now scrolls independently and
+  leaves the reply field and actions visible. Added a results mock scenario for this
+  complete path. Root/desktop builds and desktop typecheck passed; the focused result
+  service check covers filename/provenance search, internal/binary rejection, archive,
+  deletion and saved-content retrieval. Native export reuses the existing save dialog;
+  a fresh native export was not exercised in this slice. Voice/global mini popup remain
+  open Phase 2 work; no placeholder controls were added.
+
+
+- Fixed a real memory integration gap: conversation memory still read only the old
+  freeform field. Settings and conversations now share the validated storage reader,
+  preserving individual notes and source exclusions. New replies include active notes
+  while excluding paused, expired and excluded-source items; retries retain old context.
+- Chat's Memory section now offers a collapsed preview of the exact prepared notes
+  and browsing-reference text, using the same runtime output used for context assembly.
+  Memory changes refresh open chat context, and browsing references contribute to its
+  context indicator. Opening Memory on a new chat resolves the current Space without
+  closing the panel when the draft receives its permanent conversation ID.
+- Completed mock conversation/Space assignment and initialized its default Space
+  consistently with the sidebar. Rendered the Memory panel and empty prepared-context
+  state at 1280×720; bounded scrolling keeps the composer visible. Root build, desktop
+  build/typecheck and 37 task/conversation checks passed, including the new integration
+  assertions for note filtering and exact inspected context in a run.
+
+
+- Completed the opt-in browsing-memory experience: Memory settings now provides the
+  per-Space switch, 7/30/90-day retention, searchable remembered titles/addresses,
+  reopen, individual forgetting and inline-confirmed forget-all. Saved notes and
+  browsing references share the clearly named Space memory pause control and site
+  exclusions. The mock bridge supports the same settings lifecycle.
+- Foreground recording waits five seconds, requires an active native browsing tab,
+  and stops during overlays/conversations/private browsing. Main independently checks
+  actual window focus and stage visibility. Successful recording stops its retry
+  interval; policy/exclusion changes refresh the recorder. Runtime expiry now sweeps
+  inactive Spaces every minute in addition to startup and reads.
+- Native isolated-profile exercise passed: enabled memory, browsed Example Domain,
+  reopened settings and inspected its saved title/address, searched to a clean empty
+  state, then paused and confirmed the record remains available. Reviewed the native
+  rendered settings and scroll layout. The original profile was not changed. Forgetting,
+  expiry, stale/hidden/agent rejection and context isolation remain covered by the
+  focused service tests; live model use was not exercised.
+- Root build, desktop build/typecheck and the three browsing-memory service checks
+  passed for the implementation. Phase 1 host compatibility limits remain open;
+  independent Phase 2 memory/context work continues without claiming phase completion.
+
+
+- Added the backend for opt-in per-Space browsing memory. It stores at most 200 page
+  titles/addresses, strips query strings/fragments, coalesces revisits, and supports
+  7/30/90-day retention plus individual/all-record forgetting. It reads no page bodies,
+  forms or credentials. Existing per-profile runtime/storage isolation is reused.
+- Recording requires enabled policy, unpaused Space memory, a visible human-owned
+  native page at the expected document epoch, and an unexcluded HTTP(S) source. Main
+  additionally checks the focused window, actual visible stage and absence of overlays.
+  Agent, hidden, loading, stale and excluded pages are rejected. External clients cannot
+  manage or record this memory. Retention physically prunes on startup and reads.
+- New conversation context may include six recent allowed metadata references, explicitly
+  labeled as unread page contents/untrusted reference. Pausing/exclusions apply again at
+  retrieval; historical run snapshots remain unchanged. Policy/forget events are ready
+  for the renderer to refresh across windows.
+- Root build, desktop typecheck and 25 focused browsing/lifecycle checks passed. No user
+  control is exposed yet: opt-in/review UI, foreground recording hook, periodic expiry
+  sweep and native end-to-end exercise are the next implementation work. Default is off.
+
+
+- Native selected text can now become a sourced Space memory draft via Remember
+  selection. The action opens the owning Space's Memory settings for explicit review
+  and save; existing memory drafts are never overwritten. Non-web sources do not expose
+  local paths. Switching Spaces during loading preserves the draft without stealing
+  focus back to the original Space.
+- Selection drafts preserve the supplied text, show truncation/character-limit details,
+  and require shortening to 2,000 characters before saving. The per-Space draft reader
+  accepts the larger temporary review payload. A new/edit draft focuses its note field.
+- Root/desktop builds and desktop typecheck passed. Native isolated Example Domain
+  selection → actual context menu → sourced draft → explicit Save note completed,
+  with a saved per-note row and source visible afterward. No automatic model call or
+  silent memory save occurred. The isolated app was closed afterward.
+
+
+- Added per-Space memory site exclusions with explicit add/allow controls. Stored
+  addresses normalize to exact HTTP(S) origins; credentials are rejected and duplicates
+  coalesce. Sourced notes remain inspectable/searchable but are omitted from new model
+  context and included-context counts. Subdomains/ports, unsourced notes and overview
+  text remain separate; the UI explains this scope and does not imply browsing blocks.
+- Exclusions preserve existing notes and survive legacy edits. Revision checks protect
+  concurrent changes. Reloading externally changed overview content no longer silently
+  advances an older draft's revision. Background Settings refresh retains the current
+  editor, expansion and focus; shared input styles cover the new controls.
+- Root/desktop builds, desktop typecheck and 17 focused memory/task checks passed.
+  Rendered Settings flow added and displayed an exclusion at 1280×720. Automatic
+  browsing memory and automatic retention deletion remain subsequent work.
+
+
+- Space memory now supports up to 40 individually inspectable user-authored notes,
+  each with an optional source, expiry, timestamps and inclusion control. Add/edit,
+  pause, delete and search reuse revision-checked Space persistence. Existing freeform
+  notes remain intact and are exposed as an optional Space overview, initially collapsed
+  when empty. Item edits preserve overview drafts and use persistent per-Space drafts.
+- New context filters paused/expired items and shares the existing memory budget across
+  overview and individual notes. Saved run snapshots remain unchanged. Legacy overview
+  writes preserve items; deletion removes the current record and computed search entry.
+  Revision conflicts retain the draft and show the current note before replacement.
+- Source addresses require HTTP(S) without credentials; runtime validates item identity,
+  count and content. Memory remains desktop-managed and explicitly user-authored;
+  automatic browsing capture, site exclusions and automatic retention deletion remain
+  unfinished and are not implied by the new expiry control.
+- Root/desktop builds and desktop typecheck passed; 37 focused memory/task/lifecycle
+  checks passed. Rendered Settings flow created a sourced note and displayed it with
+  per-note controls. Existing freeform UI was then compacted; no full phase completion.
+
+
+- Added explicit open-tab text attachments through a searchable picker inside the
+  existing Attach panel. Users can retain multiple pages alongside documents, with
+  source URL, capture time, partial-text status, snapshot preview and inclusion/removal.
+  Snapshot reads reject changed document epochs; unreadable pages suggest image capture.
+  This desktop-only API observes the selected tab and saves immutable text, leaving the
+  live action tab independent. Existing document/retry persistence is reused.
+- The shared 6,000-character document budget now distributes capacity fairly among
+  included sources, returning unused short-source capacity to longer ones. Multiple
+  large tabs no longer leave later snapshots with zero context. Preview and mock use
+  the same allocator. Opening text previews closes context controls to avoid stacking
+  two large panels above the composer.
+- Root/desktop builds and desktop typecheck passed; 23 focused lifecycle/context tests
+  passed, including page provenance after navigation, stale selection rejection and
+  fair allocation. Rendered picker → stored snapshot → source/text preview checked at
+  1280×720 with mock page content. Native page extraction and network answer quality
+  are still to be exercised; this does not complete the broader phase.
+
+
+- Local image attachments now share the page-capture review, region selection,
+  inclusion/exclusion and immutable snapshot path. A shell-only native picker accepts
+  PNG/JPEG/WebP up to 16 MB, reads bounded regular files, re-encodes pixels without
+  source metadata, and resizes to fit snapshot limits. Only a filename and PNG pixels
+  reach the renderer/runtime; private browsing rejects the picker API.
+- Image controls live together under Attach with a visible four-image limit. Reviewed
+  images are not attached or sent automatically; users can cancel or crop first.
+  Header action spacing is explicitly constrained to avoid inherited stacked buttons.
+- Desktop typecheck/build passed. In the isolated native build, the repository Aux icon
+  passed through the actual macOS picker, rendered for review and saved as a 1024×1024
+  PNG alongside the previously persisted page capture. Closed the isolated app afterward.
+  JPEG/WebP decoding uses Electron's native decoder; only PNG was exercised manually.
+
+
+- Native capture follow-through (2026-09-21): reproduced a 30-second Playwright
+  screenshot timeout when the selected page was hidden behind chat. Viewport capture
+  for native Vector tabs now uses Electron capturePage with stayHidden/stayAwake and
+  explicit dimensions. Other backends and full-page captures retain their driver path.
+- Capture rejects stale requested document epochs, navigation during capture, detached
+  pages and empty images before returning or storing them. Added a focused regression
+  for stale/navigation/empty results. Image callbacks now carry their owning chat ID;
+  the parent rejects stale chat updates and counts overlapping image operations so an
+  older completion cannot unlock a newer operation.
+- The isolated native app captured hidden Example Domain, reviewed it, saved a
+  2048×1696 PNG (118 KB) into a new conversation and reopened the saved preview.
+  No tab switch or message send occurred. Closed the isolated app afterward; the
+  user's original app was not restarted. A real network model turn remains untested.
+- Root build, desktop build/typecheck and 35 focused capture/routing/handler checks
+  passed after updating the handler fixture for the existing recovery-tab API.
+
+
+- Added the conversation page-image interface: a single Attach entry opens documents
+  and page images together. Capture freezes the selected web viewport, lets the user
+  select a rectangular region with pointer or keyboard, and reviews before saving.
+  PNG crops are resized within backend limits; navigation during capture is rejected.
+  Capture never sends a message automatically. Existing saved-image APIs supply
+  preview, inclusion/exclusion, removal, source labels and compact attachment chips.
+- Bounded the context panel to keep the composer visible; image review scrolls into
+  view inside that panel. Mock capture uses a clearly labeled synthetic page, not a
+  claim of real native capture or model success.
+- Desktop build and typecheck passed. Rendered 1280×720 review covered capture,
+  keyboard region selection, saving a 640×400 crop into a new conversation, compact
+  chips and saved preview. Native hidden-tab capture and a network model turn remain
+  to be exercised; no broader phase completion is claimed.
+
+
+- Added durable conversation image snapshots backed by immutable artifact files, with
+  PNG size/dimension limits, source metadata, explicit include/exclude/remove and SHA-256
+  integrity checks. Up to four selected snapshots/8 MB are supported. Removed images
+  used by earlier runs remain available to exact retries; unused captures are freed,
+  and permanent conversation deletion removes retained image records/files as well.
+- Runs now save exact image artifact IDs and descriptive source context; normal planner,
+  repair and final calls receive those pixels. Skill reuse is bypassed for image inputs.
+  Vision fallback preserves reference images and clearly distinguishes the final live
+  screenshot from earlier historical references. Transport supports four references plus
+  one live screenshot. Missing/changed files fail instead of silently changing context.
+- Image management APIs are desktop-only. Generic external artifact list/read paths
+  exclude conversation image files, while explicit run inclusion supplies them internally
+  to the model. The generic file list is not an alternate path to excluded captures.
+- Root build and 41 focused lifecycle/model checks passed (21 lifecycle checks rerun
+  after artifact visibility changes). The new lifecycle test records actual planner
+  image inputs, removal/retry identity, cross-chat read rejection, tamper detection and
+  deletion cleanup. This backend integration is complete enough for the capture UI;
+  user-visible page/region capture, preview and end-to-end native acceptance remain open.
+
+- Began the image/region assistance implementation at the model transport boundary.
+  Normal structured and streaming model calls now accept explicit PNG/JPEG/WebP data
+  references, and preserve every image through schema/JSON repair fallbacks. The
+  existing screenshot text-call path shares this transport and remains supported.
+  Remote URLs, unsupported formats, oversized batches and known text-only Cerebras
+  routes fail explicitly instead of losing the image or silently fetching another site.
+- Root build and 20 focused model checks passed. New tests exercise actual SDK request
+  construction with a local mock model through both JSON and streaming repair paths.
+  No real provider call was made. This is backend groundwork: saved image snapshots,
+  per-run immutable references, capture/region UI and user-facing acceptance remain
+  to implement before image assistance can be called complete. No image control was
+  added to imply those pending capabilities already work.
+
+- Moved Settings, Tasks, Library, Reader, Inspector, tab overview and result tables into
+  on-demand modules. Shared loading/error boundaries offer Cancel/Retry without
+  reloading the browser or discarding surrounding drafts. Modal loading states have
+  keyboard containment and restore focus to the initiating control after closing.
+  Initial application module loading also exposes a retryable failure screen.
+- Production build main App chunk decreased from 620.96 KB to 407.67 KB (uncompressed;
+  179.17 KB to 123.90 KB gzip). Shared chunks also changed, so these are module-size
+  measurements, not a startup-time benchmark. The prior oversized-chunk warning is gone.
+- Root/desktop builds and desktop typecheck passed. A focused rejected-module → retry
+  regression preserves the surrounding input and mounts the recovered view. Rendered
+  preview confirmed Settings/Tasks loading and completion, then focus returned to the
+  original Tasks control when closing. Native startup timing remains unmeasured.
+
+- Home Recent now loads durable conversation summaries on demand, honoring saved titles,
+  archive state and updated order. It marks drafts without repeating those chats in the
+  draft list, supports retry/focus refresh, and retains the quiet three-row layout.
+  Conversation headers fetch their saved title as well. Mock history supports summary
+  listing, rename/archive/delete and title lookups for complete navigation previews.
+- History mutations are guarded against duplicate actions/stale page responses, keep
+  action errors separate from load failures, and retry the failed pagination operation.
+  Menus receive focus, support arrow navigation/Escape/outside dismissal, and state
+  filters expose pressed state. Narrow history layouts use smaller insets.
+- Fixed a real 500-turn deletion limit: archive/rename/delete guards now inspect every
+  conversation turn, including old active/task-owned/uncertain work. Transactional
+  deletion uses conversation-scoped subqueries across owned records, avoiding large
+  parameter lists, and escapes checkpoint-key patterns. Regression with 505 turns
+  confirms an old active turn blocks removal and all turns are removed after completion.
+- Root build, desktop typecheck/build and 20 run-lifecycle checks passed. Inspected
+  history → rename → home Recent at 1280×720 using synthetic preview data. Native
+  deletion was not exercised against user data.
+
+- Simplified conversation context into four compact sections: Documents, History,
+  Memory and Results. Each has a focused empty/populated view, retaining the existing
+  saved context authority and memory drafts. Removed stacked-section spacing/dividers,
+  corrected ordinary-chat copy, guarded history/result/Space saves across chat changes,
+  and prevented sending while those changes are pending.
+- Answer code blocks now show the language and optional wrapping; tables copy as
+  Markdown or save CSV through the native file workflow. CSV quotes cells and treats
+  formula-like values as text. Copy feedback resets; stable Markdown component bindings
+  preserve code/table controls while new answer text streams.
+- Desktop typecheck and root/desktop builds passed; two focused table-export checks
+  cover quoting, formula-like values, pipes and multiline cells. Reviewed populated
+  tables, code wrapping and Documents/Memory sections in the rendered 1280×720 preview.
+  Native CSV save and real streaming were not exercised in this mock inspection.
+
+- Added direct document attachment beside the chat composer, compact removable filename
+  chips, and a full stored-snapshot preview. The preview exposes the exact included
+  prefix under the existing shared 6,000-character budget, excluded state, timestamp,
+  and the fact that original file edits are not synced. Snapshot reads are desktop-only
+  and scoped to the requested conversation; previews and model context share one budget
+  calculation. No original source path is stored or displayed.
+- Attachment operations are guarded against duplicate actions and chat-switch races;
+  sending waits until attachment changes finish. Context changes clear old-chat UI.
+  Mock preview supports real in-memory add/read/toggle/remove for this layout journey.
+- Root/desktop builds and desktop typecheck passed, as did 19 run-lifecycle checks with
+  snapshot identity, inclusion-budget and exclusion assertions. Inspected attach →
+  full preview → included-text toggle at 1280×720 in the rendered mock. Native file
+  picking and real model execution were not re-tested in this batch.
+
+- Unified the existing command palette across tabs, bookmarks, history, conversations,
+  saved tasks and Space notes. Four compact type filters replace separate search flows;
+  requests are debounced, stale results ignored, partial failures recoverable, and
+  keyboard selection stays stable as results arrive. Private browsing excludes work.
+- Saved conversation search now includes answer text. Task search matches titles and
+  objectives before applying the result limit. Result navigation reuses existing views;
+  memory opens the exact Space, and unavailable task Spaces report a useful error.
+- Reviewed the populated palette and Saved pages filter in the rendered 1280×720 mock
+  preview. Root/desktop builds, desktop typecheck and 13 task checks passed, including
+  answer-only search and finding a task beyond the initial result limit. Preview does
+  not establish native agent execution. Existing bundle-size warning remains.
+
+Independent Phase 2 work is now progressing alongside the unresolved Phase 1 browser-host
+compatibility work; this does not mark Phase 1 complete.
+
+- Added reversible Space-memory inclusion controls. Saved notes remain inspectable and
+  searchable when paused, but newly assembled model context excludes them. Existing
+  notes default to enabled; editing paused notes preserves that choice. Toggles retain
+  unsaved drafts and revision checks prevent overwriting concurrent changes.
+- Memory Settings searches saved note contents and Space names, shows result excerpts
+  and paused state, and preserves selected-Space identity across asynchronous saves.
+  Own/other-window updates refresh the selected notes. Context counts exclude paused
+  memory, and the UI explains that active runs/earlier snapshots are unchanged.
+- Root build, desktop typecheck and 31 relevant task/run lifecycle checks passed. Added
+  regressions for pause/search/edit/conflict and actual inclusion/exclusion in new run
+  context. Rendered fixture confirmed save → pause → content search; corrected result
+  row specificity so excerpts have room. Automatic browsing memory is still unimplemented.
+
+
+- Refined the extension lifecycle without implying full Chrome compatibility. Loading,
+  empty, failed and populated states are distinct; failed enabled extensions offer Retry,
+  action failures refresh the installed row, and returning from another window refreshes
+  the list. Declared access and compatibility/update details are available on demand.
+- Enable/disable metadata now writes atomically. Concurrent mutations of one extension
+  are rejected; metadata failures attempt to restore the previous running state, and
+  failed loads remain visible without falsely persisting a successful enable operation.
+- Desktop typecheck and three extension-manager checks passed, including interrupted
+  enable → unchanged saved state → successful retry. This batch does not establish
+  Chrome Web Store, native messaging, password-manager or full host compatibility.
+  Rendered populated/failed extension states remain for the native phase review.
+
+
+- Closed a session-recovery data-loss path: failed startup tabs remain in every later
+  tab snapshot instead of disappearing on the next navigation/open. Retrying keeps the
+  original page ID and increments document authority; successful and newly opened tabs
+  remain intact. Interrupted native reconnects retain unresolved saved entries too.
+- Added trusted recovery list/retry methods and a quiet start-page notice linking to
+  Library. Recovery shows saved addresses, per-tab Retry and optional failure details;
+  private windows never use this persistent recovery path. Renderer layout reconciliation
+  preserves waiting tab order and Space ownership, scoped to each native window.
+- Root build and desktop typecheck passed. Fifteen focused session/layout checks passed,
+  including failure → new browsing → same-identity retry and pending-placement retention.
+  Rendered fixture confirmed start-page notice → Library → restored tab, and the populated
+  recovery layout was inspected at 1280×720. Full native restart acceptance remains pending.
+
+
+- Completed an Overview organization batch: one grouped Space/folder move control,
+  one persisted layout update for a selected set, stable range-selection anchor, and
+  Save as folder with an inline name form. Collections use an atomic runtime operation
+  that rejects folder collisions and retains existing bookmark placement. Private
+  windows use the same contract with memory-only storage. All-duplicate selections
+  explain where to organize existing bookmarks instead of creating an empty folder.
+- Bulk closing now reports progress, stops after the current tab on request or unmount,
+  keeps remaining selection on a site cancellation, and disables competing actions.
+  Native selects and selected-card outlines use shared visual styling.
+- Root build and desktop typecheck passed; four bookmark persistence regressions passed.
+  Rendered preview confirmed selection → save six tabs as a folder and reviewed the
+  populated Overview layout. Native before-unload integration was not rerun this batch.
+
+
+- Added complete bookmark address/title/folder editing through shared contracts,
+  transactional storage, private-window memory and Library. Updating preserves creation
+  time; duplicate destinations and stale edits fail without replacing either bookmark.
+  New addresses reject non-web schemes and embedded credentials. Editing uses the
+  shared input styling and wraps into a readable form at constrained widths.
+- Library now retains existing results during refresh, distinguishes initial-list and
+  pagination retry, prevents duplicate actions/page requests, and offers direct history
+  date filters. Opening a saved page only dismisses Library while it is still active.
+- Root build and desktop typecheck passed. Eight focused bookmark/permission checks
+  passed, including a new address-edit conflict regression. Inspected the editor in
+  the rendered preview; corrected raw native input borders to shared field styles.
+
+
+- Unified normal/private site permission handling. Both use readable capability names,
+  separate microphone/camera decisions, supported permission filtering and opaque-origin
+  rejection. Pending prompts cancel on document replacement, destruction, window close
+  or timeout; changed access decisions and transferred ownership invalidate late answers.
+  Private resets now replace the in-memory decision snapshot. No new screen-capture
+  grant path was added; the documented native host limitation remains unresolved.
+- Simplified Space switcher with current browser-profile identity, collapsed archived
+  Spaces, native button activation for Enter/Space, selected-Space radio semantics and
+  separate edit/archive buttons. Menus keep consistent row spacing and viewport inset.
+- Focused checks: desktop typecheck and three permission lifecycle/isolation regressions
+  passed. Inspected the populated Space menu in the rendered preview at 1280×720.
+  These changes do not complete Phase 1 or establish all native permission integrations.
+
+
+- Completed the managed-profile lifecycle with recoverable Archive/Restore, protecting
+  original/current profiles and retaining all browsing data and existing windows.
+  Archived identities cannot be launched until restored. Settings refreshes on window
+  focus and provides recovery from list failures; current-profile native titles refresh.
+- Profile launch now waits for a shell startup acknowledgement or clean single-instance
+  handoff, reports startup failures/timeouts, and coalesces overlapping launch requests.
+  A shell acknowledgement does not claim that models or every browser feature are ready.
+- Focused validation: desktop typecheck/build passed and three profile isolation/lifecycle
+  checks passed. In a separate temporary native Aux installation, created Fixture Work,
+  observed the independent profile process/window, archived/restored it from the parent,
+  and confirmed Current profile in the child Settings. Reviewed the populated settings
+  layout at the native window size. Both test instances were closed; the user's original
+  running browser was untouched. Full Phase 1 and engine compatibility remain ongoing.
+
+
+- Implemented managed browser profiles with explicit IDs and separate Chromium/runtime
+  directories. Existing data remains in place as the original profile; matching names
+  never merge identities. General settings now lists profiles with Create and open,
+  Open and Rename, inline errors and current-profile identification. Native windows
+  carry the profile name. Spaces explicitly share sign-ins inside their owning profile.
+- Profile launches use a restricted environment: provider secrets, runtime descriptors,
+  API tokens and CDP endpoints are not inherited; dotenv loading is disabled. Existing
+  app single-instance behavior is scoped by the selected Chromium directory. Catalogue
+  records use private file modes and atomic rename, and managed paths are validated.
+  Root build/desktop typecheck and two focused identity/environment-isolation checks
+  pass. Native profile creation/relaunch, simultaneous-window behavior and complete
+  profile lifecycle management still need implementation/integration follow-through;
+  this is not a claim that Phase 1 or account/password-manager support is complete.
+
+
+- Horizontal tabs keep New Tab fixed outside the scrolling strip; existing toolbar
+  overview remains the single all-tabs entry. Removed duplicate sidebar address and
+  navigation controls in horizontal mode. Rendered the populated 45-tab preview at
+  1280×720 and corrected the duplication found there. The temporary preview was closed.
+- Both tab layouts support Shift-F10/Context Menu keyboard access. Horizontal tab
+  deletion restores tab-strip keyboard focus, inactive Spaces retain a focusable tab,
+  and crash/loading indicators match vertical tabs. Menu Tab dismisses cleanly; shared
+  arrow navigation skips disabled controls and respects composition/handled events.
+  Desktop typecheck passed during the batch; native drag/keyboard integration remains
+  in the phase acceptance journey.
+
+
+- Added a shared external-app handoff for mailto, tel, webcal and webcals links in
+  regular/private pages, including new-window requests. A native sheet shows the exact
+  destination and defaults to Cancel; only confirmation opens the system app. Hidden
+  task pages cannot surface this prompt. Pending prompts are bounded per page, malformed
+  or credential-bearing targets are rejected, and failed launches explain recovery.
+  Incoming OS web links now reveal/restore the chosen regular window and use explicit
+  desktop-user navigation. Desktop typecheck passes; actual external-app launch was
+  not exercised, avoiding unsolicited mail/call/calendar application changes.
+
+
+- Added download-list cleanup end to end: individual completed-record removal and
+  Clear finished, with explicit copy that files remain on disk. The shared contract
+  bounds submitted IDs; runtime removal is transactional, completion-only and removes
+  source metadata with each record. Active/interrupted transfers remain untouched.
+  Private browsing applies the same rule in memory and checks its live transfer map.
+  Removal events update other windows; in-flight shelf snapshots cannot resurrect
+  records removed during the fetch. The API rejects external clients.
+  Root build and desktop typecheck pass; no broad test campaign was run.
+
+
+- Implemented shared native HTML fullscreen handling. A visible human page fills its
+  owning window, hides companion views and removes its viewport radius; exit restores
+  normal bounds and the user's previous window-fullscreen mode. Navigation, crash,
+  destruction, overlay entry and browser shortcuts clear the fullscreen session.
+  Background/agent pages cannot take over the window with fullscreen requests.
+  Private browsing now permits Chromium's fullscreen request while retaining the same
+  active-page ownership check.
+- Verified the isolated native private fixture enters edge-to-edge fullscreen, exits
+  with Escape and restores browser layout; Cmd-L exits fullscreen and selects the
+  address field. Shared code is wired into regular browsing too; actual video sites
+  and regular multiwindow/fullscreen-mode transitions remain phase acceptance work.
+  Desktop typecheck/build pass. The fixture window and server were closed afterward.
+
+
+- Extended blank-document handling through regular native popup identity, runtime
+  registration, persistence and live-view reattachment. Newly reopened empty tabs do
+  not inherit this flag, since their previous script-written document is gone.
+  Cmd-L selects the sidebar address field for a site-created blank document; reload
+  works for it and for local-file tabs. Print/PDF allow these documents using trusted
+  native view metadata while keeping ordinary empty new tabs unavailable. Updated
+  tab tooltips to retain popup identity. Root build and desktop typecheck pass; the
+  regular runtime popup path still needs the focused rendered acceptance journey.
+
+
+- A native private-window integration pass found and fixed blank popup content being
+  covered by Aux's new-tab surface. Page metadata now explicitly distinguishes a
+  site-created blank document; the private host and shared stage/address rendering
+  preserve it. Verified the visible script-written popup, retained opener, script
+  close and restoration of the original tab. This establishes the local popup journey,
+  not universal third-party SSO compatibility.
+- In the isolated native fixture, verified Cmd-L from a website, the editing context
+  menu, synthetic HTTP sign-in with username focus and completion, Downloads rendering,
+  failed-navigation recovery and Back. Back exposed stale address suggestions; the
+  address field now closes an unchanged inspected address when navigation replaces it,
+  while retaining independently edited drafts. Root and desktop builds pass before
+  that final address-field adjustment. No personal credentials or profile were used.
+
+
+- Refined the downloads shelf into direct All/In progress/Finished/Needs attention
+  filters, with save-location settings behind one disclosure. Explicit loading,
+  refresh/retry and refresh-error states preserve existing results and avoid presenting
+  fetch failures as an empty library. Paused transfers stop animating. Actions have a
+  synchronous duplicate-submission guard. Source page activation closes the downloads
+  shelf only if it is still the current overlay. Desktop typecheck passes; rendered
+  state inspection remains part of the phase acceptance pass.
+
+
+- Separated private selected-tab identity from the native visible stage. Overlays,
+  overview and recovery surfaces no longer clear native selection. Private stage
+  layout now honors the requested split companion, hides failed/crashed/blank pages,
+  and preserves crash state across resizing, selection and overlay changes. Only
+  navigation restart clears the crash state. Passive layout updates no longer focus
+  the website over a shell control.
+- Unified crashed-page and navigation recovery UI with guarded retry, edit address,
+  optional Back and inline retry errors. Crashed blank tabs no longer render the home
+  surface simultaneously; mock/engine/borrowed Chrome content cannot compete with a
+  recovery surface. Private native-stage integration still awaits the phase acceptance
+  pass; this batch is implementation plus static checking.
+
+
+- Shared native page shortcut classification now powers regular and private tabs.
+  Private website focus forwards address/search, tab switching, zoom, find and other
+  browser commands to the same renderer dispatcher. macOS Control editing bindings
+  and Option-arrow word navigation stay with the page; composing input is untouched.
+  Shell handlers respect controls that already consumed a key. Shift-Plus reaches
+  zoom before the general shifted-command guard. Private developer tools and source
+  view now use their existing native/page paths instead of silently doing nothing.
+- Private menus expose Find Next/Previous, Paste and Match Style, zoom/reset, address,
+  Back/Forward, Downloads and Developer Tools. Menus stay grouped and do not introduce
+  additional browser-chrome controls. Native keyboard integration remains in the
+  Phase 1 rendered acceptance pass.
+
+
+- Regular and private pages now share the native page context menu. Private pages gain
+  link/image actions, spelling suggestions, clipboard editing, navigation and inspect.
+  Editing explicitly targets the originating page rather than whichever view gains
+  focus while the menu is open; Paste and Match Style is available. Audio/video offer
+  address copying and native downloads when Chromium reports saving is supported.
+  Tab mute appears only for audible/muted pages, and navigation is confined to the
+  background-page menu. Unsupported URL schemes cannot invoke new-tab actions.
+  Desktop typecheck passes; rendered native-menu inspection remains part of Phase 1's
+  integration pass.
+
+
+- Completed an authentication/private-browsing batch. HTTP-auth requests are scoped to
+  the owning window, follow tab transfers, and reject responses from other windows.
+  Private browsing now uses the same human-only challenge flow; credentials remain
+  outside runtime events and storage. Same-document navigation keeps the challenge,
+  while replacement navigation and tab destruction cancel it and remove listeners.
+- Foreground private popups now adopt Chromium's child contents, preserving opener,
+  POST data and initial blank-page redirects. Background tabs retain Electron's
+  deferred-open fallback; this is not a claim of universal SSO compatibility.
+  Private close explicitly destroys the renderer after unload approval, and script-
+  closed pages remove their tab state. Overlays no longer focus a hidden private page.
+  Authentication waits for shell focus and blocks duplicate submissions.
+- Three focused authentication regressions and desktop typecheck pass. Real-account
+  SSO and native popup behavior still need an integration check; these changes do not
+  establish full Chrome-extension or password-manager compatibility. The existing
+  CEF candidate remains unresolved: its Chrome-style window permits one Chrome-style
+  browser view, and native-parent embedding selects Alloy, which does not satisfy
+  Aux's existing multi-tab layout requirement.
+
+- Completed a connected browser/control batch: permission denials now persist a typed
+  recovery state with a plain-language explanation, Review permissions and explicit
+  Retry/Open task controls. Existing authority checks stay unchanged; changing access
+  never automatically runs a task. Failed attempts no longer display stale progress as
+  their answer. The coordinator regression confirms blocked actions are not dispatched
+  and do not consume recovery-model calls.
+- Regular/private printing and PDF export share one native implementation. Printing
+  awaits Chromium's success/cancellation/error callback; closed/crashed/loading/blank
+  tabs and overlapping requests fail clearly. PDF export checks document identity while
+  capturing, sanitizes filenames, explains private-file persistence, and writes a
+  restricted temporary file before replacing the destination. Private File menu now
+  includes Print. Chat/overview shortcuts cannot print a hidden background tab.
+- Consolidated tab movement into one searchable destination view with folder/Space/
+  window groups, keyboard search-to-list navigation, Escape/back navigation and a
+  matching empty state. Common context actions remain on a short first screen. Active
+  tabs scroll into view; explicit tab activation reveals its collapsed folder. The
+  horizontal new-tab control is excluded from the native drag region. Removed the
+  incorrect Library shortcut label (Cmd-Y opens History).
+  Rendered the compact menu, filtered destination view and keyboard folder move at
+  1280×800 in the isolated development preview. Five repair/permission checks and
+  three native-output checks pass; root build and desktop typecheck pass. Native print
+  dialog/printer hardware and real-app PDF rendering still need a focused integration
+  check; the unit checks establish outcome/identity/file-write behavior only.
+
+- Simplified General settings: direct search-engine choices, an optional custom URL
+  editor with explicit Save and inline validation, concise Chrome sign-in import and
+  backup descriptions, and one collapsed Diagnostics & storage group. Matching
+  settings searches expand that group. Invalid templates cannot be persisted through
+  the settings API (HTTP/S, search placeholder, no embedded credentials); failed saves
+  retain the draft. Health-clear/data-directory errors now reach the existing error
+  handler. Verified the rendered layout at 1200×800 and rejected a missing-placeholder
+  URL without changing the selected engine. Eight focused settings checks, root build,
+  desktop typecheck and desktop build pass.
+
+
+- Applied the user's September 20 screenshot feedback: the home surface now centers
+  the Aux mark and a bounded search/Ask field in the viewport. Recent conversations
+  and drafts are optional under Recent; Chats & drafts and Tasks remain direct links.
+  This supersedes the earlier always-visible home dashboard described below.
+  Chat shares a 740px reading/composer column, removes the blank browser preview,
+  exposes a real-page preview on demand, and consolidates browser/model/permission
+  controls under Options. Saving as a task remains available there. Result metadata
+  and provider diagnostics are disclosures; empty work history is omitted. Context,
+  errors, active run controls, and sources remain accessible. IME composition no
+  longer accidentally submits a message.
+- Removed the repeated inset window frame and settings-content border; softened site
+  popup grouping. Fixed a sidebar menu spacing bug where icon wrapper spans expanded
+  like labels. Read-only inspection of installed Aside informed continuous surfaces,
+  restrained headers and readable widths; no feature-functionality claims were inferred.
+  Rendered the updated home, populated chat, expanded Options, menu and settings in
+  the isolated mock preview at 1440×960. Mock context/history endpoints are incomplete;
+  their visible errors are fixture limitations, so this was layout inspection only.
+- Fixed absolute URL permission evaluation from opaque origins such as about:blank:
+  a valid destination no longer fails because the current origin is the string null.
+  Destination-scoped permission checks are preserved; this does not grant navigation
+  when settings disallow it. All 23 review-gate checks pass, including the new opaque
+  origin and scope regression. Root build passes after declaring the existing jsdom
+  suspension test's DOM type dependency. No live model request was made in this check.
+- Tab overview now orders filtered results consistently, prunes hidden selections,
+  supports grid arrows/Home/End/Space/Enter and search-to-grid focus, and guards bulk
+  operations while busy. Private bookmark actions reuse the implemented session store.
+  Desktop compilation passes; the rendered overview keyboard check remains pending.
+
+- Refined the populated start page around the available stage width: smaller top and
+  inter-section gaps, compact draft rows, direct discard with undo, bounded recent-work
+  cards, and links to both all chats and tasks. Draft previews avoid repeating the title.
+  Recent work displays shared plain-language statuses reused by the run panel and rail.
+  Container-aware padding and card columns adapt when the agent panel is open. Rendered
+  checks showed drafts/recent work within the window with and without the panel; discard
+  and undo restored a synthetic draft. Desktop build and typecheck pass.
+
+- Address navigation from a conversation now reveals the browser before loading, so
+  failed destinations reach the existing recovery screen. Completion cannot refocus
+  a tab after the user has selected another. Known native errors use the recovery UI
+  instead of a duplicate raw toast; unexpected service failures remain visible.
+  Edit address uses the failed destination, and loading/failed/crashed pages no longer
+  display the address-bar secure indicator. Retry feedback stays with the error page.
+  Two focused failure/focus checks and renderer typecheck pass.
+
+- Added page zoom controls to Site controls, with percentage, standard size steps and
+  Reset. Keyboard changes share renderer state; regular/private native zoom use the
+  same absolute/relative semantics and 25–500% bounds. Private absolute zoom now works.
+  Typecheck and build pass; rendered zoom inspection is pending.
+- Approved generated Aux artwork is now integrated: deterministic fringe removal,
+  transparent 1024px colored master with balanced macOS padding, ten standard/Retina
+  iconset entries, compiled ICNS, and matching pure-white PNG/SVG extracted from the
+  same icon. Start-page and conversation marks share a theme-aware silhouette; favicon,
+  About and development Dock use the colored asset. Removed the old logo SVGs and
+  replaced Quick Look icon generation with an alpha-preserving native size pipeline.
+  Light/dark and small-size asset previews were inspected, transparency/size contents
+  checked, and the new mark was inspected in the rendered Aux start page. Asset sources
+  and reproducible commands live in `apps/desktop/brand/README.md`.
+
+- Idle suspension now checks an isolated document for changed form controls,
+  file selections, editable content, and playing media (including silent media and
+  controls inside open shadow roots). It also protects capture, active downloads,
+  and sites granted microphone/camera access. The final freeze decision rechecks
+  foreground/split/agent ownership after the asynchronous inspection. Unknown,
+  embedded, changing, or unresponsive documents stay awake and are reconsidered later;
+  no field values leave the page. This remains conservative freezing, not tab eviction.
+  Focused document/change checks and desktop typecheck pass. Long-idle native behavior
+  remains part of the focused Phase 1 integration check.
+
+- Private Library now supports session-only hierarchical bookmarks, folder creation,
+  rename/move, empty-folder removal, duplicate-preserving HTML import, and explicit
+  HTML export through the native save dialog. Private collections use the shared
+  contract validation and emit the same bookmark updates as regular windows, without
+  accessing their runtime/database. Library and export copy explain what disappears
+  on close and what remains on disk. Added private bookmark menu commands. Bookmark
+  All Tabs now uses a single import operation, excludes agent pages, deduplicates URLs,
+  preserves existing organization, and relies on authoritative updates rather than a
+  stale renderer snapshot. Two focused collection checks and desktop typecheck pass;
+  this private-specific flow has not yet received a rendered inspection.
+
+- Bookmark collections now reopen into a chosen existing Space, including nested
+  folders, through a compact Library action. Opens are sequential background tabs;
+  existing tabs in that Space are reused, progress is visible, and stopped/failed
+  items can be retried. Closing the collection stops further opens after the current
+  page. The destination survives a Space switch while opening, without changing the
+  selected tab or closing Library. A focused race/reuse check, desktop typecheck and
+  build pass. Rendered HTML import and opening a two-page nested collection preserved
+  the current tab and Library; the destination control received a spacing refinement.
+
+- In progress: runtime-owned Space identities connecting browser organization and tasks,
+  recoverable legacy mapping, shared names, archived-space restoration, and pin overflow.
+- Implemented in this cycle: hierarchical bookmark folders/import/export, bulk tab
+  overview actions, shared tab menus, horizontal reorder, and live cross-window tab
+  transfer. Focused phase-level checks are still pending.
+- Navigation refinement: explicit address-bar Search/Ask choice, Space-scoped saved
+  split companions, hidden-page preview protection, and live bookmark-folder refresh.
+- Appearance refinement: solid default, persisted custom opacity/blur, removal of forced
+  frosted shell styling, opaque menus, and more resilient Settings spacing/navigation.
+- Focused checks: bookmark parser/import/intent checks passed; migration and layout
+  checks passed after updating prior-version expectations (38 checks across five files).
+  Rendered live tab transfer caught and fixed native stacking and startup snapshot races;
+  moving a Research tab into a new window now visibly preserves its page and Space.
+  Root/desktop builds and renderer typechecking pass; this is not full phase completion.
+- Latest implementation: download search/status filters, active-first ordering, accessible
+  progress, responsive action rows and source reopening; persisted last-selected tab per
+  Space. Renderer typechecking passes; rendered download states are pending.
+- Host implementation: added a reproducible macOS CEF development launcher, isolated
+  contexts, sandboxed helpers and build script. It compiles and renders Chrome/Alloy
+  views after context lifecycle fixes. Its new-tab command opens stock Chromium UI
+  outside Aux, so this candidate is not accepted for product integration. Current
+  Aux remains on Electron; host integration and full extension compatibility are open.
+- Conversation memory now uses the same visible Spaces as browsing and tasks, including
+  a clear archived-Space label for retained context. The separate Workspace picker has
+  been removed; broader assistance/memory work is not yet complete.
+- Conversation continuity: new chats inherit their starting Space; explicit No Space
+  selections and existing conversation identities are preserved. Context loading/failure
+  states now block sending until recovered and offer Retry. Focused runtime coverage
+  has been added for defaulting/exclusion; phase-level execution remains pending.
+- Shared conversation UI: the rail now renders the same conversation/history/context
+  and reply component as the full view. A populated synthetic conversation confirmed
+  draft preservation on expansion. Fixed inherited Markdown whitespace and removed
+  the redundant answer label for plain responses; compact styles added.
+- Space notes: shared editor in Settings and conversation context, window-scoped
+  persistent drafts, explicit clear/save, conflict comparison and revision-guarded
+  replacement. Private browsing excludes saved notes. Rendered Settings inspection
+  refined field styling, heading spacing and selected-Space visibility. Synthetic
+  notes survived switching Settings pages, saving and restarting the development app.
+- Rail history now groups replies into one recent conversation, searches known turns,
+  and links to full saved history. Removed obsolete duplicate reply handling from the
+  rail composer; full and compact conversation replies use the same implementation.
+  Rendered two-turn history appears once, and its full-history link opens Chats.
+  Desktop build, renderer typecheck and diff whitespace checks pass for this batch.
+- Browsing history: stable pagination replaces the 500-visit ceiling; local-day filters,
+  day headings, literal title/address search and removal of individual visits. Delete
+  requests target the exact visit, leaving later visits and bookmarks intact. Private
+  windows retain the same controls over their temporary history only. Added an index
+  for chronological reads and a shared clear-history confirmation for Settings, Library
+  and the keyboard shortcut, replacing immediate shortcut deletion.
+  Rendered synthetic history reached all 115 matching visits over two pages; the clear
+  shortcut displayed its confirmation without deleting. Runtime/contracts builds,
+  desktop typecheck/build and 33 focused history/Space/run-lifecycle checks passed.
+- Tab recovery: Library now includes searchable Recently closed entries with original
+  Space/folder context and per-tab reopening. Restore revives an archived Space,
+  preserves a newer user selection during delayed opens, and does not reselect a tab
+  closed before its open response arrives. Failed opens retain the recovery entry.
+  Nine focused recovery checks pass; the rebuilt app closed Example Domain and restored
+  it through Library into Research. Renderer typecheck and desktop build passed.
+- Keyboard navigation: command palette supports @ tab search across Space/folder/title/
+  address, shows placement and current-tab status, and provides a /tabs command. Fixed
+  slash-prefix command matching, bookmark search beyond the first 30 saved pages and
+  explicit Ask prefix handling. Palette selection stays bounded as results change,
+  composition input does not submit early, and Tab focus remains inside the dialog.
+  Build/typecheck passed. Rendered /tabs selected the tab switcher, then showed the
+  current Example Domain tab with its Research Space label.
+- Conversation reading: one shared scroll controller follows growing content only
+  while at the bottom, retains reading position across panel/full view, anchors older
+  message loading, and exposes Jump to latest. Resize observation handles late images
+  and composer expansion without per-token store subscriptions. Rendered panel checks
+  confirmed scrolling back exposes the button and jumping returns to the latest answer.
+  Desktop build and renderer typecheck passed; live provider streaming remains part of
+  the later complete assistance check.
+- Browser context: compact and full composers share a picker with explicit current,
+  linked, selected and new-tab choices. Fixed new-tab selection falling back to the
+  linked page, carried selection into prepared conversation IDs, and blocked silently
+  replacing a missing explicit tab. Prepared drafts survive model setup under the same
+  conversation ID, retaining attachments/context and unrelated new-chat drafts.
+  Renderer typecheck and eight focused context/conversation checks passed; this picker
+  refinement awaits the next rendered assistance pass.
+- Page quick actions: native non-editable text selections offer Ask/Explain/Summarize;
+  unselected pages offer summarization. Each creates its own editable draft with a
+  bounded quoted selection, source URL and explicit source tab. No model call happens
+  until Send; existing drafts are retained. Private/worker/engine surfaces do not expose
+  these native actions. Rendered selection → Explain produced the expected draft and
+  source picker without sending. Multiline composers now grow to a bounded height.
+- Native stage correction: durable tab selection and the page visibly occupying the
+  stage are now separate. The renderer's null-stage request actually covers native
+  pages while conversations/overview own the surface. A rendered quick-action journey
+  caught the old page covering the draft and confirmed the corrected visible result.
+  Desktop typecheck/build passed before the final CSS autosizing refinement.
+- Draft continuation: the start page and conversation library now expose saved unsent
+  drafts, including prepared quick-action conversations with no run yet. Existing
+  conversation rows show their draft without a duplicate listing. Explicit draft opening
+  preserves its ID/context, and text discard offers Undo while keeping saved messages
+  and attachments. The start page shows up to three drafts with access to the full list.
+  This closes the discoverability gap behind the single pending-conversation shortcut.
+- Conversation-to-task promotion: inline editable objective/outcome/Space saving keeps
+  the original chat ID, selected context, attachments and sources. An unsent reply seeds
+  the objective. Future runs use task authority; prior runs remain historical and are not
+  relabeled as task execution. Promotion is idempotent, rejects stale/active/unresolved
+  work, and exposes the saved-task binding before its first run. Task rename/archive
+  follow the retained conversation identity. The native rendered flow saved the synthetic
+  two-turn conversation and opened its revision-one task in Research without a model call.
+  Fourteen focused promotion/task/history checks and runtime/contracts/desktop builds
+  passed. This adds saved-task continuation, not automatic task execution or routines.
+- Saved-task continuity: a compact objective/context card now starts a saved task directly
+  from its conversation through the existing revision and authority checks. Unsaved task
+  edits block starting; archived tasks, loading failures and missing tabs have explicit
+  recovery paths. Task details link back to promoted conversations before their first
+  task run. The rendered panel/full-view check confirmed context selection and an enabled
+  Run task control without invoking a model. Removed duplicate title/objective text.
+- Conversation spacing: composer and message columns now share the same reading width
+  and insets, accounting for the optional page preview. Container-based breakpoints hide
+  the preview when the actual conversation viewport is narrow. The narrow panel retains
+  its compact spacing and the task action row wraps instead of overflowing.
+- Download completion: private windows now implement pause/resume/cancel and safe HTTP(S)
+  retry inside their isolated session, sharing the regular transfer controller. Removed
+  the private shelf's ineffective folder-change control; it explains per-file save dialogs
+  and retained files. Snapshot reconciliation preserves newer live events, and Source page
+  returns to the originating tab instead of requesting the download URL again. Rendered
+  local regular-browser checks exercised empty, progressing, paused, resumed, cancelled,
+  retried and completed rows. Two snapshot-race checks, desktop typecheck/build and diff
+  checks passed. Private native handlers are built; their rendered journey remains open
+  because the inspection tool bound to the regular process instead of the private window.
+- Address-bar continuity: bookmark/folder matches join tab and deduplicated history
+  suggestions. Conversation matches reopen the existing chat/task instead of replaying
+  its goal as a new unscoped run. Stale history responses are ignored; composition input
+  does not submit, selection stays bounded and failed actions retain their input. Private
+  explicit Ask text stays a web search. Suggestion placement uses available viewport
+  height, and navigating from a conversation returns to the browser tab.
+- Failed-page polish: clear retry/edit-address/back actions, bounded wrapping and
+  expandable connection details replace the always-visible raw error. Rendered checks
+  confirmed the failed local page, address editing, matching-conversation suggestions
+  and reopening its original two turns/task without a model call. Desktop build/typecheck
+  passed; the final navigate-and-activate refinement passed typechecking.
+- Find-in-page: regular/private processes share request-scoped native searching, timeout
+  count fallback and cleanup on supersession, navigation, destruction and explicit stop.
+  Corrected private match-stepping and clear/keep selection mapping. The strip handles
+  composition, searching/error feedback, clear-search and narrow input sizing. A trusted
+  shell-focus bridge fixes Cmd-F/Cmd-L leaving keyboard input in native pages, and
+  Shift-Cmd-G now reaches the previous-match handler. Rendered Example Domain checks
+  focused Find from the native page, highlighted 1 of 2, stepped to 2 of 2, stepped back
+  and cleared highlights while retaining input focus. Four focused find checks and
+  desktop typecheck/build passed. Private rendered validation remains a later check.
+- Site controls: page/URL/document/loading changes invalidate details immediately;
+  request versions prevent stale results and notices from replacing the current site.
+  Native cookie reads reject changed or destroyed pages, including private windows.
+  Failed/crashed pages show Connection not established instead of inferring a secure
+  connection from an HTTPS address; initial loading no longer announces an insecure
+  connection. Private permission lifetime is explicit. Opaque dialog/groups, keyboard
+  focus wrapping and Escape focus restoration were checked in the rendered app, along
+  with loaded HTTPS and a refused local HTTPS connection. Desktop typecheck/build passed.
+- Reader continuity: shared isolated-world extraction now serves regular and private
+  pages, with navigation/ownership guards and no article persistence. Reader restores
+  in-memory position per document, offers serif/sans text, survives unavailable local
+  storage and exposes Retry. Private preferences remain in the current view. Added the
+  palette/private-menu entry and corrected the native Tab Overview shortcut. A synthetic
+  long article reopened at its prior section in the rendered app. That check caught the
+  toolbar scrolling away; explicit grid rows now keep controls visible above the article.
+  Desktop typecheck/build passed. Private completed downloads also gained Open/Reveal
+  handlers limited to paths recorded by that private window; rendered checking is pending.
+- Remaining: complete browser organization/navigation/import/recovery polish, host-dependent
+  compatibility work, and phase-level rendered/build checks. Later phases remain pending.
+
+Never search personal credential stores/files for missing credentials. Preserve existing
+profiles and saved work; use synthetic data for implementation checks.
+
+## Previous development cycle (historical)
 
 ## Private-build delivery status and review limitations
 

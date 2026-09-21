@@ -72,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 CREATE TABLE IF NOT EXISTS history(
   url TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', page_id TEXT, visited_at REAL NOT NULL,
   PRIMARY KEY(url, visited_at));
+CREATE INDEX IF NOT EXISTS idx_history_recent ON history(visited_at DESC, url DESC);
 CREATE TABLE IF NOT EXISTS bookmarks(
   url TEXT PRIMARY KEY, title TEXT NOT NULL, created_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS downloads(
@@ -124,7 +125,7 @@ const MIGRATIONS = [
 ];
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 const OPERATION_RECONCILIATION_SCHEMA = `
 CREATE TABLE IF NOT EXISTS operation_reconciliations(
@@ -300,6 +301,10 @@ export function openDb(path: string): DatabaseSync {
         if (version < 8) db.exec(CONVERSATION_SCHEMA);
         if (version < 9) migrateTaskConversations(db);
         if (version < 10) db.exec(OPERATION_RECONCILIATION_SCHEMA);
+        if (version < 11) {
+          applyMigrations(db, ["ALTER TABLE bookmarks ADD COLUMN folder_path TEXT NOT NULL DEFAULT '[]'"]);
+          db.exec("CREATE TABLE IF NOT EXISTS bookmark_folders(path TEXT PRIMARY KEY)");
+        }
         db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
         db.exec("COMMIT");
       } catch (error) {

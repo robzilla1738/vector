@@ -1,10 +1,17 @@
+import { pageShortcut } from "./page-shortcuts.js";
+import { showPageMenu } from "./page-menu.js";
 import { popupCommand } from './popup-commands.js';
-import { clipboard, Menu, session, WebContentsView, type BaseWindow, type WebContents, type MenuItemConstructorOptions } from "electron";
+import { session, WebContentsView, type BaseWindow, type WebContents } from "electron";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import type { PageQuickAction } from "@vector/contracts";
 import type { TargetRegistry, ViewEntry } from "./target-registry.js";
 
 export interface ViewHooks {
+  onExternalLink?(entry: ViewEntry, url: string): boolean;
+  onFullscreenReady?(entry: ViewEntry): void;
+  onBrowserShortcut?(entry: ViewEntry): void;
+  onPageAction?(action: PageQuickAction): void;
   onNavigated(pageId: string, url: string): void;
   onTitle(pageId: string, title: string): void;
   onFavicon(pageId: string, favicon: string): void;
@@ -111,6 +118,8 @@ export function createPageView(opts: {
 function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   const wc = entry.view.webContents;
   const id = entry.pageId;
+  wc.on("will-navigate",(event,url)=>{if(hooks.onExternalLink?.(entry,url))event.preventDefault();});
+  hooks.onFullscreenReady?.(entry);
   wc.on("will-prevent-unload", event => {
     try {
       if (hooks.confirmUnload?.(entry)) { event.preventDefault(); return; }
@@ -153,12 +162,13 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   wc.on("did-create-window", (popup) => {
     const pageId = `pop_${randomUUID()}`;
     const marker = `vtab-${pageId}`;
-    const child: ViewEntry = { pageId, windowId: entry.windowId, marker, popup, view: { webContents: popup.webContents }, owned: true, kind: "chromium" };
+    const child: ViewEntry = { showBlankDocument: true, pageId, windowId: entry.windowId, marker, popup, view: { webContents: popup.webContents }, owned: true, kind: "chromium" };
     installMarker(child.view, marker);
     wireEvents(child, hooks);
     hooks.onPopup(child);
   });
   wc.setWindowOpenHandler((details) => {
+    if(hooks.onExternalLink?.(entry,details.url))return {action:"deny"};
     const features = details.features ?? "";
     const wantsWindow = /width=|height=|popup/i.test(features) || details.disposition === "new-window";
     if (wantsWindow) {
@@ -194,7 +204,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
         });
         const pageId = `pop_${randomUUID()}`;
         const marker = `vtab-${pageId}`;
-        const child: ViewEntry = { pageId, windowId: entry.windowId, marker, view, owned: true, kind: "chromium" };
+        const child: ViewEntry = { showBlankDocument: true, pageId, windowId: entry.windowId, marker, view, owned: true, kind: "chromium" };
         installMarker(view, marker);
         wireEvents(child, hooks);
         // Parenting the view and notifying the runtime inside Chromium's
@@ -210,100 +220,20 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
       },
     };
   });
-  wc.on("context-menu", (_e, params) => showPageMenu(entry, params, hooks));
+  wc.on("context-menu", (_e, params) => showPageMenu(entry.view.webContents, params, {
+    openAsTab: (url, referrer) => hooks.openAsTab(url, { windowId: entry.windowId, referrer }),
+    onAudio: () => hooks.onAudio?.(entry.pageId, {muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
+    onPageAction: hooks.onPageAction && !entry.runtimeOwned && entry.kind !== "engine" ? action => hooks.onPageAction?.({pageId:entry.pageId,...action}) : undefined,
+  }));
   wc.on("before-input-event", (event, input) => {
-    if (!input.key || input.type !== "keyDown") return;
-    // ⌘ drives app shortcuts on macOS; Ctrl only counts off-platform so
-    // websites keep their own Ctrl-based keybindings on the Mac.
-    const meta = input.meta || (input.control && process.platform !== "darwin");
-    const k = input.key.toLowerCase().replace(/^arrow/, "");
-    const metaKeys = [
-      "l", "t", "w", "k", "f", "r", "d", "y", ",", "s", "g", "o", "p", "e",
-      "[", "]", "{", "}", "=", "+", "-", "_", "0",
-      "1", "2", "3", "4", "5", "6", "7", "8", "9",
-    ];
-    const forward =
-      (meta && metaKeys.includes(k)) ||
-      // shift-gated letters — the unshifted key still belongs to the page
-      // (⌘C copy, ⌘B bold, ⌘I italic, ⌫ editing all keep working)
-      (meta && input.shift && ["a", "j", "c", "backspace"].includes(k)) ||
-      // alt-gated — ⌘I/⌘U alone stay with the page's editor
-      (meta && input.alt && ["u", "i"].includes(k)) ||
-      // ⌃⇥ tab cycling — a browser-level binding, safe to take from pages
-      (input.control && k === "tab") ||
-      // ⌥← / ⌥→ and ⌘⌥← / ⌘⌥→ — the renderer splits nav vs. tab cycling
-      (input.alt && ["left", "right"].includes(k));
-    if (forward) {
-      event.preventDefault();
-      const shortcut = { key: input.key, meta, shift: input.shift, alt: input.alt, ctrl: !!input.control };
-      if (!entry.popup || !popupCommand(entry.popup, shortcut)) hooks.sendShortcut(shortcut, id);
-    }
+    const shortcut = pageShortcut(input);
+    if (!shortcut) return;
+    event.preventDefault();
+    hooks.onBrowserShortcut?.(entry);
+    if (!entry.popup || !popupCommand(entry.popup, shortcut)) hooks.sendShortcut(shortcut, id);
   });
 }
 
-/** Native right-click menu for page views — links, images, editing, nav, inspect. */
-function showPageMenu(entry: ViewEntry, p: Electron.ContextMenuParams, hooks: ViewHooks) {
-  const wc = entry.view.webContents;
-  const t: MenuItemConstructorOptions[] = [];
-  if(entry.kind!=='engine')t.push({label:wc.isAudioMuted()?'Unmute tab':'Mute tab',click:()=>{wc.setAudioMuted(!wc.isAudioMuted());hooks.onAudio?.(entry.pageId,{muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()});}},{type:'separator'});
-
-  if (p.misspelledWord) {
-    for (const s of p.dictionarySuggestions.slice(0, 5)) {
-      t.push({ label: s, click: () => wc.replaceMisspelling(s) });
-    }
-    if (p.dictionarySuggestions.length === 0) t.push({ label: "No suggestions", enabled: false });
-    t.push({ label: "Learn Spelling", click: () => wc.session.addWordToSpellCheckerDictionary(p.misspelledWord) });
-    t.push({ type: "separator" });
-  }
-
-  if (p.linkURL) {
-    t.push(
-      { label: "Open Link in New Tab", click: () => hooks.openAsTab(p.linkURL, { windowId: entry.windowId, referrer: { url: p.frameURL || wc.getURL(), policy: "strict-origin-when-cross-origin" } }) },
-      { label: "Copy Link", click: () => clipboard.writeText(p.linkURL) },
-      { type: "separator" },
-    );
-  }
-
-  if (p.mediaType === "image" && p.srcURL) {
-    t.push(
-      { label: "Open Image in New Tab", click: () => hooks.openAsTab(p.srcURL, { windowId: entry.windowId }) },
-      { label: "Copy Image", click: () => wc.copyImageAt(p.x, p.y) },
-      { label: "Save Image…", click: () => wc.downloadURL(p.srcURL) },
-      { type: "separator" },
-    );
-  }
-
-  if (p.isEditable) {
-    t.push(
-      { role: "undo" }, { role: "redo" }, { type: "separator" },
-      { role: "cut", enabled: p.editFlags.canCut },
-      { role: "copy", enabled: p.editFlags.canCopy },
-      { role: "paste", enabled: p.editFlags.canPaste },
-      { role: "selectAll", enabled: p.editFlags.canSelectAll },
-      { type: "separator" },
-    );
-  } else if (p.selectionText) {
-    t.push({ role: "copy", label: "Copy" }, { type: "separator" });
-  }
-
-  if (!p.isEditable) {
-    t.push(
-      { label: "Back", enabled: wc.navigationHistory.canGoBack(), click: () => wc.goBack() },
-      { label: "Forward", enabled: wc.navigationHistory.canGoForward(), click: () => wc.goForward() },
-      { label: "Reload", click: () => wc.reload() },
-      { type: "separator" },
-    );
-  }
-
-  t.push({
-    label: "Inspect Element",
-    click: () => {
-      wc.inspectElement(p.x, p.y);
-      if (!wc.isDevToolsOpened()) wc.openDevTools({ mode: "detach" });
-    },
-  });
-  Menu.buildFromTemplate(t).popup();
-}
 
 export function setEngineFrame(entry: ViewEntry, dataUrl: string) {
   if (entry.kind !== "engine") return;

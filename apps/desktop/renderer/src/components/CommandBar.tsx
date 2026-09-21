@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { HistoryEntry, PageTarget, Run, SavedProgram } from "@vector/contracts";
 import { toUrl } from "../chrome";
 import { detectIntent, intentLabel, type Intent } from "../intent";
@@ -8,10 +8,11 @@ import { EngineBadge } from "./EngineBadge";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { bridge } from "../bridge";
+import { recentConversations } from "../conversations";
 
 interface Suggestion {
   id: string;
-  section: "intent" | "tabs" | "recent" | "programs" | "runs";
+  section: "intent" | "tabs" | "bookmarks" | "recent" | "programs" | "runs";
   icon: React.ReactNode;
   title: string;
   detail?: string;
@@ -31,6 +32,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const settings = useStore((s) => s.settings);
   const runs = useStore((s) => s.runs);
   const programs = useStore((s) => s.programs);
+  const bookmarks = useStore(s => s.bookmarks);
   const focusRequest = useStore((s) => s.focusRequest);
   const focusSlot = useStore((s) => s.focusSlot);
   const startRun = useStore((s) => s.startRun);
@@ -39,10 +41,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const setOverlay = useStore((s) => s.setOverlay);
   const agentDraft = useStore((s) => s.agentDraft);
   const page = pages.find((p) => p.pageId === activePageId);
-  const hasPage = !!page && !!page.url && page.url !== "about:blank";
+  const pageAddress = page?.navigationError?.url ?? page?.url ?? "";
+  const hasPage = !!page?.showBlankDocument || (!!pageAddress && pageAddress !== "about:blank");
   const searchEngine = settings.searchEngine as string | undefined;
 
   const [editing, setEditing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [val, setVal] = useState("");
   const [sel, setSel] = useState(0);
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
@@ -52,8 +56,29 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const [scopeFlip, setScopeFlip] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const [popup, setPopup] = useState({ above: false, height: 420 });
+
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const place = () => {
+      const bounds = barRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const below = window.innerHeight - bounds.bottom - 16;
+      const above = bounds.top - 16;
+      const flip = below < 180 && above > below;
+      const height = Math.max(0, Math.min(420, flip ? above : below));
+      setPopup(prior => prior.above === flip && prior.height === height ? prior : { above: flip, height });
+    };
+    place();
+    const resize = new ResizeObserver(place);
+    if (barRef.current) resize.observe(barRef.current);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => { resize.disconnect(); window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
+  }, [editing]);
 
   // ⌘L and friends land here
   useEffect(() => {
@@ -61,8 +86,9 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     if (focusSlot !== slot) return;
     const el = inputRef.current;
     if (!el) return;
-    el.focus();
-    el.select();
+    let active = true;
+    void bridge.focusShell().then(() => { if (active) { el.focus(); el.select(); } }).catch(errToast);
+    return () => { active = false; };
   }, [focusRequest, focusSlot, slot]);
 
   // switching tabs (or the first snapshot landing) resets any half-typed state
@@ -75,10 +101,22 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId]);
 
+  const previousAddress = useRef(pageAddress);
+  useEffect(() => {
+    const prior = previousAddress.current;
+    previousAddress.current = pageAddress;
+    // Back/Forward or a site navigation replaced the address being inspected.
+    // Preserve an independently edited draft, but do not leave stale suggestions open.
+    if (editing && prior !== pageAddress && val === prior) {
+      setEditing(false);setVal("");setScopeFlip(false);
+      inputRef.current?.blur();
+    }
+  }, [pageAddress, editing, val]);
+
   // a new tab starts empty; otherwise seed with the URL and select it
   const onFocus = () => {
     setEditing(true);
-    const seed = hero&&entryMode==="ask"?agentDraft:hasPage ? page!.url : "";
+    const seed = hero&&entryMode==="ask"?agentDraft:hasPage ? pageAddress : "";
     setVal(seed);
     setSel(0);
     requestAnimationFrame(() => inputRef.current?.select());
@@ -97,24 +135,26 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const raw = val.trim();
   const baseIntent = useMemo(() => detectIntent(raw, { hasPage, searchEngine }), [raw, hasPage, searchEngine]);
   const intent: Intent = useMemo(() => {
+    if (bridge.privateMode && baseIntent.kind === "run") return { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     if (hero && raw) return entryMode === "ask" ? { kind: "run", goal: raw, scope: "new" } : { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     if (baseIntent.kind === "run" && scopeFlip) return { ...baseIntent, scope: baseIntent.scope === "page" ? "new" : "page" };
     return baseIntent;
   }, [baseIntent, scopeFlip, hero, raw, entryMode, searchEngine]);
-  const typedSomething = editing && raw.length > 0 && raw !== (page?.url ?? "");
+  const typedSomething = editing && raw.length > 0 && raw !== pageAddress;
 
   // recent pages — debounced history query while typing
   useEffect(() => {
+    let cancelled = false;
+    setHistory([]);
     if (!typedSomething || raw.length < 2 || intent.kind === "command") {
-      setHistory([]);
       return;
     }
     const t = window.setTimeout(() => {
       void call<HistoryEntry[]>("history.list", { query: raw, limit: 6 })
-        .then((h) => setHistory(h))
-        .catch(() => setHistory([]));
+        .then((h) => { if (!cancelled) setHistory(h); })
+        .catch(() => { if (!cancelled) setHistory([]); });
     }, 120);
-    return () => window.clearTimeout(t);
+    return () => { cancelled = true; window.clearTimeout(t); };
   }, [raw, typedSomething, intent.kind]);
 
   const exec = useCallback(
@@ -123,12 +163,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         case "navigate":
         case "search": {
           const url = i.url;
-          if (!alt && page) await call("pages.navigate", { pageId: page.pageId, url });
+          if (!alt && page) await useStore.getState().navigatePage(page.pageId, url);
           else await newTab(url);
           break;
         }
         case "run":
-          if (hero) { const run = await startRun(i.goal, { scope: "new", chatId: crypto.randomUUID() }); if (run) useStore.getState().openConversation(run.runId); }
+          if (hero) await startRun(i.goal, { scope: "new", chatId: crypto.randomUUID(), presentation: "conversation" });
           else await startRun(i.goal, { scope: alt ? (i.scope === "page" ? "new" : "page") : i.scope });
           break;
         case "command":
@@ -138,7 +178,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           break;
       }
     },
-    [page, newTab, startRun, setOverlay, hero],
+    [page, newTab, startRun, setOverlay, hero, activate],
   );
 
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -158,11 +198,22 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       });
     }
     if (intent.kind === "command") return out;
+    if (!hero && !bridge.privateMode && intent.kind === "search") {
+      out.push({ id: "ask", section: "intent", icon: I.agentSm, title: `Ask Aux: ${raw}`,
+        detail: hasPage ? `Use the current page · ${hostOf(page?.url ?? "")}` : "Start a conversation", hint: "Ask",
+        run: () => exec({ kind: "run", goal: raw, scope: hasPage ? "page" : "new" }) });
+    }
     for (const p of pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime && (p.title.toLowerCase().includes(q) || p.url.toLowerCase().includes(q))).slice(0, 3)) {
       out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, title: p.title || hostOf(p.url), detail: hostOf(p.url), hint: "Switch", run: () => activate(p.pageId) });
     }
-    for (const h of history.filter((h) => !pages.some((p) => p.url === h.url)).slice(0, 4)) {
-      out.push({ id: `h-${h.url}`, section: "recent", icon: <FavIcon url={h.url} size="sm" />, title: h.title || hostOf(h.url), detail: hostOf(h.url), run: () => (page ? call("pages.navigate", { pageId: page.pageId, url: h.url }) : newTab(h.url)) });
+    const seenUrls = new Set(pages.map(page => page.url));
+    for (const bookmark of bookmarks.filter(bookmark => !seenUrls.has(bookmark.url) && `${bookmark.title} ${bookmark.url} ${(bookmark.folderPath ?? []).join(" ")}`.toLowerCase().includes(q)).slice(0, 3)) {
+      seenUrls.add(bookmark.url);
+      out.push({ id: `bookmark-${bookmark.url}`, section: "bookmarks", icon: <FavIcon url={bookmark.url} size="sm" />, title: bookmark.title || hostOf(bookmark.url), detail: bookmark.folderPath?.join(" / ") || hostOf(bookmark.url), run: () => exec({ kind: "navigate", url: bookmark.url, display: bookmark.title }) });
+    }
+    const recent = history.filter(entry => { if (seenUrls.has(entry.url)) return false; seenUrls.add(entry.url); return true; });
+    for (const h of recent.slice(0, 4)) {
+      out.push({ id: `h-${h.url}`, section: "recent", icon: <FavIcon url={h.url} size="sm" />, title: h.title || hostOf(h.url), detail: hostOf(h.url), run: () => exec({ kind: "navigate", url: h.url, display: h.title }) });
     }
     for (const pr of programs.filter((pr: SavedProgram) => pr.name.toLowerCase().includes(q)).slice(0, 3)) {
       out.push({
@@ -179,13 +230,15 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         },
       });
     }
-    for (const r of runs.filter((r: Run) => !isLive(r) && r.goal.toLowerCase().includes(q) && r.goal.toLowerCase() !== q).slice(0, 3)) {
-      out.push({ id: `run-${r.runId}`, section: "runs", icon: I.reloadSm, title: r.goal, detail: "Run again", run: () => startRun(r.goal) });
+    const matchingChats = new Set(runs.filter((r: Run) => r.goal.toLowerCase().includes(q)).map(run => run.config?.chatId ?? run.runId));
+    for (const r of recentConversations(runs).filter(run => matchingChats.has(run.config?.chatId ?? run.runId)).slice(0, 3)) {
+      out.push({ id: `run-${r.runId}`, section: "runs", icon: I.chats, title: r.goal, detail: isLive(r) ? "Open active conversation" : "Continue conversation", hint: "Open", run: () => useStore.getState().openConversation(r.runId) });
     }
     return out;
-  }, [typedSomething, raw, intent, pages, activePageId, history, programs, runs, page, exec, activate, newTab, startRun]);
+  }, [typedSomething, raw, intent, hero, hasPage, pages, activePageId, bookmarks, history, programs, runs, page, exec, activate, newTab, startRun]);
 
   useEffect(() => setSel(0), [raw]);
+  useEffect(() => setSel(value => Math.min(value, Math.max(0, suggestions.length - 1))), [suggestions.length]);
   useEffect(() => {
     listRef.current?.querySelectorAll<HTMLElement>("[role=option]")[sel]?.scrollIntoView({ block: "nearest" });
   }, [sel]);
@@ -199,6 +252,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (hero && !bridge.privateMode && e.key === "Tab" && !e.shiftKey) { e.preventDefault(); switchEntryMode(entryMode==="search"?"ask":"search"); return; }
     if (e.key === "Escape") {
       e.preventDefault();
@@ -212,24 +266,31 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     } else if (e.key === "ArrowUp" && suggestions.length) {
       e.preventDefault();
       setSel((s) => Math.max(s - 1, 0));
-    } else if (e.key === "Tab" && intent.kind === "run") {
+    } else if (e.key === "Tab" && !e.shiftKey && intent.kind === "run") {
       e.preventDefault();
       setScopeFlip((v) => !v);
     } else if (e.key === "Enter") {
       e.preventDefault();
       const chosen = suggestions[sel];
-      const doIt = chosen && sel > 0 ? Promise.resolve(chosen.run()) : exec(intent, e.metaKey);
-      void doIt.catch(errToast).finally(() => inputRef.current?.blur());
+      void submit(() => chosen && sel > 0 ? chosen.run() : exec(intent, e.metaKey));
     }
   };
 
-  const secure = page?.url.startsWith("https://");
+  const submit = async (work: () => unknown | Promise<unknown>) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try { await work(); inputRef.current?.blur(); }
+    catch (error) { errToast(error); }
+    finally { setSubmitting(false); }
+  };
+
+  const secure = !page?.navigationError && !page?.loading && page?.viewStatus !== "crashed" && pageAddress.startsWith("https://");
   const showIntent = typedSomething && intent.kind !== "empty";
-  const title = page?.title || (hasPage ? hostOf(page!.url) : "");
+  const title = page?.title || (hasPage ? hostOf(pageAddress) : "");
   const placeholder = hero ? (entryMode === "ask" ? "Ask Aux…" : "Search or type a URL") : compact ? "Search, address, or ask…" : "Search, enter an address, or ask the agent";
 
   return (
-    <div className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>
+    <div ref={barRef} className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>
       <span className="cb-lead">
         {compact ? (
           hasPage && !editing ? <button type="button" className="cb-ico cb-site-trigger" title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={()=>setOverlay("site")}>{I.globe}</button> :
@@ -246,11 +307,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           <span className="cb-display" aria-hidden onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus(); }}>
             {hasPage && !hero ? (
               compact ? (
-                <span className="cb-title">{hostOf(page!.url)}</span>
+                <span className="cb-title">{hostOf(pageAddress)}</span>
               ) : (
                 <>
                   <span className="cb-title">{title}</span>
-                  <span className="cb-host">{hostOf(page!.url)}</span>
+                  <span className="cb-host">{hostOf(pageAddress)}</span>
                 </>
               )
             ) : (
@@ -268,7 +329,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           aria-haspopup="listbox"
           aria-autocomplete="list"
           aria-controls={suggestions.length > 0 ? listId : undefined}
-          aria-activedescendant={suggestions[sel] ? `cb-opt-${suggestions[sel]!.id}` : undefined}
+          aria-activedescendant={suggestions[sel] ? `${listId}-opt-${sel}` : undefined}
+          aria-busy={submitting || undefined}
           placeholder={editing ? placeholder : ""}
           spellCheck={false}
           autoCorrect="off"
@@ -309,28 +371,27 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             const chosen = suggestions[sel];
-            void (chosen && sel > 0 ? Promise.resolve(chosen.run()) : exec(intent)).catch(errToast).finally(() => inputRef.current?.blur());
+            void submit(() => chosen && sel > 0 ? chosen.run() : exec(intent));
           }}
         >
           {intent.kind === "run" ? I.send : I.enter}
         </button>
       )}
       {suggestions.length > 0 && (
-        <div className="cb-pop pop-in" ref={listRef} role="listbox" id={listId} onMouseDown={(e) => e.preventDefault()}>
+        <div className="cb-pop pop-in" style={{ maxHeight: popup.height, ...(popup.above ? { top: "auto", bottom: "calc(100% + 6px)" } : {}) }} ref={listRef} role="listbox" id={listId} onMouseDown={(e) => e.preventDefault()}>
           {suggestions.map((s, i) => {
             const first = i === 0 || suggestions[i - 1]!.section !== s.section;
             return (
               <div key={s.id}>
                 {first && s.section !== "intent" && <div className="cb-section">{SECTION[s.section]}</div>}
                 <div
-                  id={`cb-opt-${s.id}`}
+                  id={`${listId}-opt-${i}`}
                   role="option"
                   aria-selected={i === sel}
                   className={`cb-opt ${i === sel ? "sel" : ""} ${s.section}`}
                   onMouseMove={() => sel !== i && setSel(i)}
                   onClick={() => {
-                    void Promise.resolve(s.run()).catch(errToast);
-                    inputRef.current?.blur();
+                    void submit(s.run);
                   }}
                 >
                   <span className="cb-opt-ico">{s.icon}</span>
@@ -352,7 +413,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
 const SECTION: Record<Suggestion["section"], string> = {
   intent: "",
   tabs: "Open tabs",
+  bookmarks: "Bookmarks",
   recent: "Recent",
   programs: "Saved programs",
-  runs: "Run again",
+  runs: "Conversations",
 };

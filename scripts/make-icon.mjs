@@ -1,33 +1,36 @@
-// Generate the Vector app icon: render apps/desktop/icon.svg via Quick Look,
-// resize into an iconset with sips, and compile icon.icns with iconutil.
-// Usage: node scripts/make-icon.mjs   (run from the repo root, macOS only)
+// Build Aux's macOS icon from the approved transparent 1024px master.
+// Usage: node scripts/make-icon.mjs (macOS; no Quick Look rendering or background fill)
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdtempSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const SVG = join(process.cwd(), "apps", "desktop", "icon.svg");
-const OUT = join(process.cwd(), "apps", "desktop", "icon.icns");
-const WORK = join(tmpdir(), `vector-icon-${process.pid}`);
-const SET = join(WORK, "vector.iconset");
-
-mkdirSync(SET, { recursive: true });
-execFileSync("qlmanage", ["-t", "-s", "1024", "-o", WORK, SVG], { stdio: "pipe" });
-const png = readdirSync(WORK).find((f) => f.endsWith(".png"));
-if (!png) throw new Error("qlmanage produced no thumbnail");
-const full = join(SET, "icon_512x512@2x.png");
-renameSync(join(WORK, png), full);
-
-for (const s of [16, 32, 64, 128, 256, 512]) {
-  const f = join(SET, `icon_${s}x${s}.png`);
-  writeFileSync(f, "");
-  execFileSync("sips", ["-z", String(s), String(s), full, "--out", f], { stdio: "pipe" });
-  if (s <= 256) {
-    const f2 = join(SET, `icon_${s}x${s}@2x.png`);
-    execFileSync("sips", ["-z", String(s * 2), String(s * 2), full, "--out", f2], { stdio: "pipe" });
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const source = join(root, "apps/desktop/brand/aux-icon-1024.png");
+const output = join(root, "apps/desktop/icon.icns");
+if (process.platform !== "darwin") throw new Error("Use macOS sips and iconutil to build the ICNS asset.");
+const properties = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", "-g", "hasAlpha", source], { encoding: "utf8" });
+if (!/pixelWidth: 1024\b/.test(properties) || !/pixelHeight: 1024\b/.test(properties) || !/hasAlpha: yes\b/.test(properties)) throw new Error("The Aux icon master must be a transparent 1024 × 1024 PNG.");
+const work = mkdtempSync(join(tmpdir(), "aux-icon-"));
+try {
+  const iconset = join(work, "Aux.iconset");
+  mkdirSync(iconset);
+  for (const points of [16, 32, 128, 256, 512]) {
+    for (const scale of [1, 2]) {
+      const pixels = points * scale;
+      const target = join(iconset, `icon_${points}x${points}${scale === 2 ? "@2x" : ""}.png`);
+      if (pixels === 1024) copyFileSync(source, target);
+      else execFileSync("sips", ["-z", String(pixels), String(pixels), source, "--out", target], { stdio: "pipe" });
+    }
   }
+  const compiled = join(work, "Aux.icns");
+  execFileSync("iconutil", ["-c", "icns", iconset, "-o", compiled]);
+  copyFileSync(compiled, `${output}.next`);
+  renameSync(`${output}.next`, output);
+  copyFileSync(source, join(root, "apps/desktop/renderer/public/aux-icon.png"));
+  cpSync(iconset, join(root, "apps/desktop/brand/Aux.iconset"), { recursive: true });
+  console.log(`Built ${output} from ${source}`);
+} finally {
+  rmSync(work, { recursive: true, force: true });
 }
-execFileSync("sips", ["-z", "512", "512", full, "--out", join(SET, "icon_512x512.png")], { stdio: "pipe" });
-execFileSync("iconutil", ["-c", "icns", SET, "-o", OUT]);
-rmSync(WORK, { recursive: true, force: true });
-console.log("wrote", OUT);

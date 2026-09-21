@@ -33,30 +33,18 @@ describe("command bar intent — search", () => {
   });
 
   it("'search for X' is a search, not a run", () => {
-    expect(detectIntent("search for vector browser", ctx)).toMatchObject({ kind: "search", query: "vector browser" });
-    expect(detectIntent("look up ResizeObserver", ctx)).toMatchObject({ kind: "search", query: "ResizeObserver" });
+    expect(detectIntent("search for vector browser", ctx)).toMatchObject({ kind: "search", query: "search for vector browser" });
+    expect(detectIntent("look up ResizeObserver", ctx)).toMatchObject({ kind: "search", query: "look up ResizeObserver" });
   });
 });
 
 describe("command bar intent — agent runs", () => {
-  it("imperative requests become runs scoped to the current page", () => {
-    for (const v of ["summarise the review comments", "fill in this form with my details", "book the 9:30 slot for Thursday", "compare the pricing tiers and list which support SSO"]) {
-      expect(detectIntent(v, ctx), v).toMatchObject({ kind: "run", goal: v, scope: "page" });
+  it("never turns ordinary address-bar text into an agent request", () => {
+    for (const text of ["summarise the review comments", "book a table for two tonight", "what does this page say about refunds?", "every third-party script on the checkout flow with its size and load time please"]) {
+      for (const context of [ctx, noPage]) expect(detectIntent(text, context)).toMatchObject({ kind: "search", query: text });
     }
-  });
-
-  it("without a page an imperative request becomes a new task", () => {
-    expect(detectIntent("book a table for two tonight", noPage)).toMatchObject({ kind: "run", scope: "new" });
-  });
-
-  it("questions about *this* page are agent work; bare questions are searches", () => {
-    expect(detectIntent("what does this page say about refunds?", ctx)).toMatchObject({ kind: "run", scope: "page" });
-    expect(detectIntent("what does this page say about refunds?", noPage).kind).toBe("search");
-    expect(detectIntent("who wrote the iliad", ctx).kind).toBe("search");
-  });
-
-  it("long free text reads as a task", () => {
-    expect(detectIntent("every third-party script on the checkout flow with its size and load time please", ctx).kind).toBe("run");
+    expect(detectIntent("> summarise this", ctx)).toMatchObject({ kind: "run", scope: "page" });
+    expect(detectIntent("> summarise this", noPage)).toMatchObject({ kind: "run", scope: "new" });
   });
 
   it("> forces a run, / opens commands, empty is empty", () => {

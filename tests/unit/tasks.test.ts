@@ -38,7 +38,7 @@ it("persists workspace, criteria, resources and immutable revisions across resta
 
 it("persists revision-checked workspace memory and stamps its revision onto saved-task context", () => {
   const f = fixture();
-  expect(f.service.workspaceMemory(f.workspace.workspaceId)).toEqual({ workspaceId: f.workspace.workspaceId, content: "", revision: 0 });
+  expect(f.service.workspaceMemory(f.workspace.workspaceId)).toEqual({ workspaceId: f.workspace.workspaceId, content: "", items: [], excludedOrigins: [], enabled:true, revision: 0 });
   const saved = f.service.setWorkspaceMemory(f.workspace.workspaceId, 0, "Prefer concise reports and preserve offline support.");
   expect(saved).toMatchObject({ revision: 1, content: "Prefer concise reports and preserve offline support." });
   expect(() => f.service.setWorkspaceMemory(f.workspace.workspaceId, 0, "stale overwrite")).toThrow(/changed/i);
@@ -166,4 +166,50 @@ it('does not strand a retained cloud environment by detaching its project',()=>{
  expect(()=>f.service.update({taskId:f.task.taskId,expectedRevision:attached.revision,resources:[]})).toThrow('retained cloud environment');
  f.repo.setSetting('cloudEnvironments',[{taskId:f.task.taskId,taskRevision:attached.revision,projectId,environmentId,remoteName:'aux-fixture',authority:'local',status:'deleted'}]);
  expect(f.service.update({taskId:f.task.taskId,expectedRevision:attached.revision,resources:[]}).resources).toEqual([]);
+});
+
+
+it("pauses Space memory without deleting notes and searches their content",()=>{
+  const f=fixture();
+  const saved=f.service.setWorkspaceMemory(f.workspace.workspaceId,0,"Prefer accessible charts and metric units.");
+  const paused=f.service.setWorkspaceMemory(f.workspace.workspaceId,saved.revision,saved.content,false);
+  expect(paused).toMatchObject({enabled:false,content:saved.content,revision:2});
+  expect(f.service.searchWorkspaceMemory("METRIC")).toEqual([expect.objectContaining({workspaceId:f.workspace.workspaceId,enabled:false,excerpt:expect.stringContaining("metric units")})]);
+  expect(f.service.searchWorkspaceMemory("no matching phrase")).toEqual([]);
+  expect(f.service.setWorkspaceMemory(f.workspace.workspaceId,2,"Edited while paused").enabled).toBe(false);
+  expect(()=>f.service.setWorkspaceMemory(f.workspace.workspaceId,2,"Stale",true)).toThrow("changed");
+});
+
+it("searches task objectives before limiting and searches saved conversation answers", () => {
+  const f = fixture();
+  for (let index = 0; index < 14; index++) f.service.create({workspaceId:f.workspace.workspaceId,title:`Other ${index}`,objective:"Unrelated work",criteria:f.task.criteria,resources:[]});
+  expect(f.service.list({query:"report the result",limit:1}).map(task=>task.taskId)).toEqual([f.task.taskId]);
+  f.repo.saveRun({runId:"answer-search",goal:"Summarize the decision",pageIds:[],status:"completed",config:{chatId:"saved-answer"},result:{answer:"Use cobalt for the navigation accent."},createdAt:100});
+  expect(f.repo.listConversations(10,{query:"cobalt"}).map(chat=>chat.chatId)).toEqual(["saved-answer"]);
+  expect(f.repo.listConversations(10,{query:"not present"})).toEqual([]);
+});
+
+
+it("preserves individual memory notes across legacy edits and removes their search entries on deletion", () => {
+  const f = fixture(), id = f.workspace.workspaceId;
+  const note = { itemId: "note-one", content: "Use metric units", enabled: true, sourceUrl: "https://example.com/preferences", createdAt: 1, updatedAt: 1 };
+  f.service.setWorkspaceMemory(id, 0, "Legacy notes", true, [note]);
+  const edited = f.service.setWorkspaceMemory(id, 1, "Edited legacy notes");
+  expect(edited.items).toEqual([note]);
+  expect(f.service.searchWorkspaceMemory("metric")).toHaveLength(1);
+  expect(() => f.service.setWorkspaceMemory(id, 1, "Conflict", true, [])).toThrow("changed");
+  f.service.setWorkspaceMemory(id, edited.revision, edited.content, true, []);
+  expect(f.service.searchWorkspaceMemory("metric")).toEqual([]);
+  expect(f.service.workspaceMemory(id).content).toBe("Edited legacy notes");
+});
+
+
+it("normalizes memory site exclusions and preserves them through note edits", () => {
+  const f = fixture(), id = f.workspace.workspaceId;
+  const saved = f.service.setWorkspaceMemory(id, 0, "Notes", undefined, undefined, ["https://EXAMPLE.com/path", "https://example.com/else"]);
+  expect(saved.excludedOrigins).toEqual(["https://example.com"]);
+  expect(f.service.setWorkspaceMemory(id, 1, "Edited notes").excludedOrigins).toEqual(saved.excludedOrigins);
+  expect(() => f.service.setWorkspaceMemory(id, 2, "No", undefined, undefined, ["https://user:password@example.com/"])).toThrow("without credentials");
+  expect(f.service.workspaceMemory(id).revision).toBe(2);
+  expect(f.service.setWorkspaceMemory(id, 2, "Edited notes", undefined, undefined, []).excludedOrigins).toEqual([]);
 });

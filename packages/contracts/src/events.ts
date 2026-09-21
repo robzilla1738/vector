@@ -31,6 +31,7 @@ export const EventTypes = {
   ModelCall: "model.call",
   DownloadStarted: "download.started",
   DownloadFinished: "download.finished",
+  DownloadsRemoved: "downloads.removed",
   SessionChanged: "session.changed",
   SettingsChanged: "settings.changed",
   Preview: "page.preview",

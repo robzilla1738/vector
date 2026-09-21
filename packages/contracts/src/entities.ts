@@ -31,6 +31,8 @@ export const PageTargetSchema = z.object({
   sessionId: z.string().optional(),
   url: z.string(),
   title: z.string(),
+  /** A site-created blank document must remain visible instead of showing the new-tab surface. */
+  showBlankDocument: z.boolean().optional(),
   favicon: z.string().optional(),
   documentEpoch: z.number().int().nonnegative(),
   lastRevision: z.number().int().nonnegative(),
@@ -93,11 +95,11 @@ export const RunStatusSchema = z.enum([
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
 export const RunFailureSchema = z.object({
-  category: z.enum(["configuration", "authentication", "quota", "rate_limit", "network", "timeout", "provider", "model_output", "capability", "unknown"]),
+  category: z.enum(["configuration", "authentication", "quota", "rate_limit", "network", "timeout", "provider", "model_output", "capability", "permission", "unknown"]),
   /** Safe, user-facing summary. Provider response bodies are never stored here. */
   message: z.string(),
   retryable: z.boolean(),
-  action: z.enum(["retry", "model_settings", "none"]),
+  action: z.enum(["retry", "model_settings", "permission_settings", "edit_request", "none"]),
 });
 export type RunFailure = z.infer<typeof RunFailureSchema>;
 
@@ -121,6 +123,8 @@ export const RunSchema = z.object({
       contextAttachmentIds: z.array(z.string()).optional(),
       /** exact Aux-generated text artifacts used for this turn */
       contextArtifactIds: z.array(z.string()).optional(),
+      /** Immutable image snapshots explicitly included in this run. */
+      contextImageArtifactIds: z.array(z.string()).max(4).optional(),
       /** explicitly selected workspace memory revision used for this turn */
       contextWorkspaceId: z.string().optional(),
       contextWorkspaceRevision: z.number().int().nonnegative().optional(),
@@ -294,7 +298,9 @@ export const HistoryEntrySchema = z.object({
 });
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 
+export const BookmarkFolderPathSchema = z.array(z.string().trim().min(1).max(200)).max(32);
 export const BookmarkSchema = z.object({
+  folderPath: BookmarkFolderPathSchema.optional(),
   url: z.string(),
   title: z.string(),
   createdAt: z.number(),
@@ -317,3 +323,10 @@ export const DownloadSchema = z.object({
   endedAt: z.number().optional(),
 });
 export type Download = z.infer<typeof DownloadSchema>;
+
+export const PageQuickActionSchema = z.object({
+  pageId: z.string(), url: z.string(), title: z.string(),
+  action: z.enum(["ask", "explain", "summarize", "remember"]),
+  selection: z.string().max(12000), truncated: z.boolean(),
+});
+export type PageQuickAction = z.infer<typeof PageQuickActionSchema>;

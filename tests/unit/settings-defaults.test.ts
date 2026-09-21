@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MethodSchemas } from "@vector/contracts";
+import { MethodSchemas, SearchEngineTemplateSchema } from "@vector/contracts";
 import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@vector/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
@@ -123,6 +123,17 @@ describe("settings defaults for a real test pass", () => {
       expect(repo.getSetting("modelProbe")).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+
+describe("search engine URL templates", () => {
+  it("accepts usable search destinations and rejects missing terms or unsafe URLs", () => {
+    expect(SearchEngineTemplateSchema.safeParse(" https://search.example/search?q=%s ").success).toBe(true);
+    expect(SearchEngineTemplateSchema.safeParse("http://localhost:8080/search/%s").success).toBe(true);
+    for (const url of ["https://search.example/", "javascript:alert('%s')", "file:///tmp/%s", "https://user:password@example.com/?q=%s", "https://%s.example.com/", "not a url %s"]) {
+      expect(SearchEngineTemplateSchema.safeParse(url).success, url).toBe(false);
     }
   });
 });
