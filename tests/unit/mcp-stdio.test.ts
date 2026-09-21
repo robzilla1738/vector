@@ -7,6 +7,78 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 type Rpc = { method: string; params?: Record<string, unknown> };
 
+function pageTarget(overrides: Record<string, unknown> = {}) {
+  return {
+    pageId: "p1",
+    backend: "vector-engine",
+    targetId: "p1",
+    url: "https://app.test/form",
+    title: "Form",
+    documentEpoch: 1,
+    lastRevision: 0,
+    viewStatus: "background",
+    controller: "none",
+    controllerEpoch: 0,
+    ownedByRuntime: false,
+    createdAt: 1,
+    lastActiveAt: 1,
+    ...overrides,
+  };
+}
+
+function compactObservation() {
+  return {
+    observation: {
+      pageId: "p1",
+      url: "https://app.test/form",
+      title: "Form",
+      documentEpoch: 1,
+      revision: 0,
+      text: 'r1 textbox "Name"\nr9 button "Save"',
+      refs: [
+        { ref: "r1", role: "textbox", name: "Name" },
+        { ref: "r9", role: "button", name: "Save" },
+      ],
+    },
+  };
+}
+
+function fullObservation() {
+  return {
+    observationId: "obs-full",
+    pageId: "p1",
+    documentEpoch: 1,
+    revision: 0,
+    observedAt: 1,
+    scope: "full" as const,
+    content: {
+      url: "https://app.test/form",
+      title: "Form",
+      viewport: { width: 800, height: 600, scale: 1 },
+      scroll: { x: 0, y: 0, maxY: 0 },
+      frames: [{ frame: "main", url: "https://app.test/form", sameOrigin: true }],
+      text: 'r9 button "Save"',
+      headings: [],
+      elements: [
+        {
+          ref: "r9",
+          tag: "button",
+          role: "button",
+          name: "Save",
+          selector: { css: "#save" },
+          rect: { x: 8, y: 12, w: 64, h: 28 },
+        },
+      ],
+      formFields: [],
+      tables: [],
+      links: [],
+      dialogs: [],
+      truncated: false,
+      stats: { elementsTotal: 1, elementsShown: 1, textChars: 16, approxTokens: 4 },
+    },
+  };
+}
+
 class McpStdio {
   private buf = "";
   private nextId = 1;
@@ -72,48 +144,23 @@ describe("Gate F MCP stdio session", () => {
         let result: unknown = {};
         switch (body.method) {
           case "pages.open":
-            result = { pageId: "p1", backend: "vector-engine", documentEpoch: 1, url: body.params?.url };
+            result = pageTarget({ url: body.params?.url, backend: body.params?.backend ?? "vector" });
             break;
           case "pages.observe": {
             const format = body.params?.format ?? "compact";
-            result =
-              format === "full"
-                ? {
-                    pageId: "p1",
-                    observation: {
-                      format: "full",
-                      url: "https://app.test/form",
-                      elements: [
-                        {
-                          ref: "r9",
-                          role: "button",
-                          name: "Save",
-                          selector: "#save",
-                          rect: { x: 8, y: 12, w: 64, h: 28 },
-                        },
-                      ],
-                    },
-                  }
-                : {
-                    pageId: "p1",
-                    observation: {
-                      text: 'r1 textbox "Name"\nr9 button "Save"',
-                      url: "https://app.test/form",
-                      formFields: [{ ref: "r1", name: "Name", value: "typed-by-human" }],
-                    },
-                  };
+            result = format === "full" ? fullObservation() : compactObservation();
             break;
           }
           case "pages.execute":
-            result = { status: "completed", pageId: "p1", steps: [{ stepId: "c", status: "ok" }] };
+            result = { status: "completed", steps: [{ stepId: "c", op: "click", status: "ok", startedAt: 1, durationMs: 1 }] };
             break;
           case "pages.takeover":
             controller = "human";
-            result = { pageId: "p1", controller, backend: "vector-engine" };
+            result = pageTarget({ controller });
             break;
           case "pages.resume":
             controller = "agent";
-            result = { pageId: "p1", controller, backend: "vector-engine" };
+            result = pageTarget({ controller });
             break;
           default:
             result = { ok: true };
@@ -130,7 +177,7 @@ describe("Gate F MCP stdio session", () => {
       JSON.stringify({ port: addr.port, token: "test-token", pid: process.pid }),
     );
     child = spawn(process.execPath, [join(process.cwd(), "packages/mcp/dist/main.js")], {
-      env: { ...process.env, VECTOR_DATA_DIR: dataDir },
+      env: { ...process.env, AUX_DATA_DIR: dataDir, VECTOR_DATA_DIR: dataDir },
       stdio: ["pipe", "pipe", "pipe"],
     });
     mcp = new McpStdio(child);
@@ -191,10 +238,9 @@ describe("Gate F MCP stdio session", () => {
     });
     const text = (observed.result as { content: [{ text: string }] }).content[0].text;
     const parsed = JSON.parse(text) as {
-      observation: { format: string; elements: { selector: string; rect: { w: number } }[] };
+      content: { elements: { selector: { css: string }; rect: { w: number } }[] };
     };
-    expect(parsed.observation.format).toBe("full");
-    expect(parsed.observation.elements[0]).toMatchObject({ selector: "#save", rect: { w: 64 } });
+    expect(parsed.content.elements[0]).toMatchObject({ selector: { css: "#save" }, rect: { w: 64 } });
     const observeCall = [...calls].reverse().find((c) => c.method === "pages.observe");
     expect(observeCall?.params).toMatchObject({ pageId: "p1", format: "full" });
   });
@@ -205,6 +251,7 @@ describe("Gate F MCP stdio session", () => {
       arguments: { url: "https://app.test/auto" },
     });
     const openCall = [...calls].reverse().find((c) => c.method === "pages.open");
-    expect(openCall?.params).toEqual({ url: "https://app.test/auto", background: false });
+    expect(openCall?.params).toEqual({ url: "https://app.test/auto", background: false, ownedByRuntime: false });
+    expect(openCall?.params).not.toHaveProperty("backend");
   });
 });

@@ -89,7 +89,7 @@ decision as `PageTarget.routeReason`:
 | `needs-chromium-table:<reason>` | `auto`, origin recorded as Chromium-only within the last 24 h — Chromium |
 | `hybrid:chromium-default` | `auto` — unqualified origin, opened on embedded Chromium |
 | `hybrid:qualified-cohort:<cohort>` | `auto` — origin is explicitly qualified for the Vector Engine |
-| `hybrid:engine-safe-scheme:<scheme>` | `auto` — `about:` or `data:` document on the Vector Engine |
+| `hybrid:transient-document:<scheme>` | `auto` — `about:` or `data:` shell documents stay on Chromium so later navigation is not pinned to the engine |
 | `engine-always(classified:<reason>)` / `explicit-backend:vector-engine(classified:<reason>)` | the document was classified script-dependent but fallback is not allowed, so the page stays on the engine |
 | `fallback:<reason>` | `auto`: the engine classified the document as script-dependent (`empty-shell`, `empty-root-container: …`, `empty-viewport: …`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: …`) or failed mid-program / open (`mid-program:<op>:<message>`, `backend_unavailable`, `internal`); the page was reopened on Chromium and the origin recorded in the needs-chromium table |
 

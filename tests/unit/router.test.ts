@@ -55,7 +55,11 @@ describe("Router.decide", () => {
     expect(router.decide("chrome://settings", undefined).reason).toBe("unsupported-scheme:chrome:");
     expect(router.decide("not a url", undefined).reason).toBe("unparseable-url");
     expect(router.decide("file:///tmp/x.html", undefined).backend).toBe("vector");
-    expect(router.decide("data:text/html,<p>x</p>", undefined).backend).toBe("vector-engine");
+    expect(router.decide("data:text/html,<p>x</p>", undefined)).toMatchObject({
+      backend: "vector",
+      reason: "hybrid:transient-document:data:",
+      fallbackAllowed: false,
+    });
   });
 
   it("uses Chromium by default and the engine only for qualified cohorts", () => {
@@ -71,7 +75,11 @@ describe("Router.decide", () => {
     );
     expect(router.decide("https://build.internal.test/", undefined).backend).toBe("vector-engine");
     expect(router.decide("https://exact.test/", undefined).backend).toBe("vector-engine");
-    expect(router.decide("about:blank", undefined).reason).toBe("hybrid:engine-safe-scheme:about:");
+    expect(router.decide("about:blank", undefined)).toMatchObject({
+      backend: "vector",
+      reason: "hybrid:transient-document:about:",
+      fallbackAllowed: false,
+    });
   });
 
   it("logs every decision with its reason", () => {

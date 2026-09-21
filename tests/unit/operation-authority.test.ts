@@ -68,8 +68,9 @@ it("does not automatically follow redirects before per-hop authorization exists"
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const address = server.address() as { port: number };
+  const siteKey = `127.0.0.1:${address.port}`;
   const s = service(() => ["effect:read", "effect:egress"]);
-  s.saveRequestImpl({ siteKey: "127.0.0.1", name: "redirect", url: `http://127.0.0.1:${address.port}/redirect`, validated: true });
-  expect((await s.invoke({ siteKey: "127.0.0.1", name: "redirect" })).status).toBe("failed");
+  s.saveRequestImpl({ siteKey, name: "redirect", url: `http://127.0.0.1:${address.port}/redirect`, validated: true });
+  expect((await s.invoke({ siteKey, name: "redirect" })).status).toBe("failed");
   expect(escaped).toBe(0);
 });
