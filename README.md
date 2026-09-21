@@ -8,8 +8,8 @@ The full product roadmap and implementation evidence are maintained in
 Remaining founder-Mac work is in
 [local handoff](docs/AUX-LOCAL-HANDOFF.md).
 The private Aux development build is ready for founder review; legacy names below
-describe existing compatibility interfaces, not separate products. No packaged or
-external release is authorized at this stage.
+describe existing compatibility interfaces, not separate products. Unsigned local
+packages are available for review; this is not a signed or external release.
 
 `AUX_*` runtime configuration is canonical; `VECTOR_*` is accepted for compatibility.
 Within one source, a nonempty Aux value wins; process environment overrides `.env`
@@ -151,13 +151,14 @@ rows when the binaries are on PATH.
 ## Using the app
 
 The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
-is an Arc-style sidebar (spaces, five pin tiles, tab folders), a command bar
-in that sidebar, an inset stage card, and a resizable agent rail. Type is
-Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
+follows [Aside-inspired visual direction](docs/AUX-DESIGN-DIRECTION.md), retaining
+Aux branding and capabilities. It uses Geist/Geist Mono, Central Icons, native
+macOS material, a fully hidden or edge-revealed sidebar, and a resizable agent
+panel. See the [parity audit](docs/ASIDE-PARITY.md) for remaining verification.
 
 - `⌘T` new tab · `⌘W` close · `⌘⇧T` reopen · `⌘1–9` switch · `⌃Tab` cycle
-- `⌘L` / `⌘E` focus the **command bar** (sidebar field when expanded; top
-  toolbar only when the sidebar is hidden): a URL or search navigates
+- `⌘L` / `⌘E` focus the **command bar** (new-tab hero or top toolbar).
+  The top URL field and its icons reveal together on hover/focus; a URL or search navigates
   immediately (no model); a prompt starts an agent run. Prefixes: `/`
   command, `>` force a run, `?` force a search.
 - `⌘K` command palette · `⌘⇧A` agent rail · `⌘⇧O` tab overview ·

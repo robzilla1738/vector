@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/inter/opsz.css";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import "./tokens.css";
 import "./styles.css";
 

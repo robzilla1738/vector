@@ -7,7 +7,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
 }) {
   const spaces = useStore(state => state.layout.spaces);
   const activeSpaceId = useStore(state => state.layout.activeSpaceId);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(goal.slice(0, 200));
   const [objective, setObjective] = useState(goal);
   const [success, setSuccess] = useState("Complete the objective and explain the results and any remaining limitations.");
@@ -23,7 +23,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
       resources: page && /^https?:/.test(page.url) && page.url.length <= 4000 ? [{ resourceId: "source-page", kind: "url", locator: page.url, label: (page.title || page.url).slice(0,200) }] : [],
     }).then(onSaved).catch(reason => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => { pending.current = false; setBusy(false); });
   }}>
-    <strong>Keep working on this as a task</strong><p className="hint">This conversation, its sources and selected context stay together. Saving does not start a run or grant new access.</p>
+    <strong>Save as task</strong><p className="hint">Keeps this conversation and its context together. Nothing runs until you start it.</p>
     <label>What should Aux accomplish?<textarea value={objective} maxLength={10000} required disabled={busy} onChange={event => setObjective(event.target.value)} /></label>
     <details className="task-save-details"><summary>Task details</summary>
     <label>Task name<input value={title} maxLength={200} required disabled={busy} onChange={event => setTitle(event.target.value)} /></label>

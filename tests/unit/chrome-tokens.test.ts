@@ -20,12 +20,12 @@ function block(theme: "dark" | "light"): string {
 }
 
 describe("shipped stylesheet — native macOS chrome", () => {
-  it("leads the UI stack with the native macOS system font and keeps Inter as fallback", () => {
+  it("uses Geist consistently across the browser and agent surfaces", () => {
     expect(tokens).not.toMatch(/PP Mori/);
     const font = tokens.match(/--font-ui:\s*([^;]+);/);
     expect(font, "--font-ui").toBeTruthy();
-    expect(font![1]!.trim().startsWith("-apple-system")).toBe(true);
-    expect(font![1]).toContain('"Inter Variable"');
+    expect(font![1]!.trim().startsWith('"Geist Variable"')).toBe(true);
+    expect(font![1]).not.toContain("Inter");
   });
 
   it("defines surface, ink, accent, and agent tokens in both appearances", () => {
@@ -61,23 +61,23 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/\.ci svg path\s*\{[^}]*fill:\s*currentColor/);
   });
 
-  it("ships Zai Dark canvas under a lifted panel, not OLED black", () => {
+  it("uses the reference neutral palette and translucent surface layers", () => {
     const dark = block("dark");
-    expect(dark).toMatch(/--bg-window:\s*#161616/);
-    expect(dark).toMatch(/--bg-1:\s*#202020/);
+    expect(dark).toMatch(/--bg-window:\s*oklch\(20\.5% 0 0\)/);
+    expect(dark).toMatch(/--bg-1:\s*oklch\(26\.9% 0 0\)/);
     expect(dark).not.toMatch(/--bg-window:\s*#000000/);
   });
 
-  it("keeps the toolbar compact at 48px and exposes motion durations as tokens", () => {
-    expect(tokens).toMatch(/--toolbar-h:\s*48px/);
+  it("keeps the toolbar compact and exposes reference motion durations as tokens", () => {
+    expect(tokens).toMatch(/--toolbar-h:\s*40px/);
     expect(styles).toMatch(/\.toolbar\s*\{[^}]*height:\s*var\(--toolbar-h\)/s);
-    expect(tokens).toMatch(/--t-fast:\s*120ms/);
-    expect(tokens).toMatch(/--t-med:\s*180ms/);
+    expect(tokens).toMatch(/--t-fast:\s*150ms/);
+    expect(tokens).toMatch(/--t-med:\s*150ms/);
     expect(tokens).toMatch(/--t-slow:\s*240ms/);
   });
 
   it("uses an adjustable UI scale from --ui-font-size, never html font-size", () => {
-    expect(tokens).toMatch(/--ui-font-size:\s*13px/);
+    expect(tokens).toMatch(/--ui-font-size:\s*14px/);
     expect(tokens).toMatch(/--fs-xl:\s*calc\(var\(--ui-font-size\) \+ 4px\)/);
     expect(tokens).toMatch(/--fs-lg:\s*calc\(var\(--ui-font-size\) \+ 2px\)/);
     expect(tokens).toMatch(/--fs-md:\s*var\(--ui-font-size\)/);
@@ -85,29 +85,41 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/html\s*\{[^}]*font-size\s*:/);
   });
 
-  it("uses a gray sidebar with a raised selected pill in both appearances", () => {
-    const dark = block("dark");
-    const light = block("light");
-    expect(dark).toMatch(/--sb-bg:\s*#161616/);
-    expect(dark).toMatch(/--bg-window:\s*#161616/);
-    expect(dark).toMatch(/--sb-selected:\s*#2b2b2b/);
-    expect(dark).toMatch(/--sb-selected-ink:\s*#f8f8f8/);
-    expect(light).toMatch(/--sb-bg:\s*#f0f0f0/);
-    expect(light).toMatch(/--bg-window:\s*#f8f8f8/);
-    expect(light).toMatch(/--sb-selected:\s*#ffffff/);
-    expect(light).toMatch(/--sb-selected-ink:\s*#0d0d0d/);
-    expect(tokens).toMatch(/--sb-selected-shadow:/);
-    expect(tokens).toMatch(/--stage-radius:\s*var\(--r-2xl\)/);
-    expect(styles).toMatch(/\.stage-wrap\s*\{[^}]*padding:\s*var\(--stage-inset\)/s);
-    expect(styles).toMatch(/\.tab-row\.active\s*\{[^}]*box-shadow:\s*var\(--sb-selected-shadow\)/s);
-    expect(styles).toMatch(/\.sb-pins\s*\{[^}]*grid-template-columns:\s*repeat\(5/s);
-    expect(styles).toMatch(/\.folder-block\.open:hover\s*\{[^}]*background:\s*var\(--sb-field\)/s);
-    expect(styles).toMatch(/\.folder-kids \.tab-row\s*\{[^}]*padding-left:\s*calc\(var\(--space-2\) \+ var\(--fav\) \+ var\(--space-2\)\)/s);
+  it("keeps native material visible and provides a solid menu fallback", () => {
+    expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .app-body { background: transparent; }');
+    expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .main-col { background: color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent); }');
+    expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }');
+    expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
+    expect(tokens).toMatch(/--hairline:\s*0\.5px/);
+    expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
+    expect(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");
+    expect(styles).toContain("var(--surface-menu) 80%, transparent");
+    expect(styles).toContain("background: var(--surface-menu); backdrop-filter: none;");
     expect(styles).toMatch(/\.folder-kids\s*\{[^}]*overflow:\s*hidden/s);
   });
 
   it("uses tabular numerals for timings", () => {
     expect(styles).toMatch(/\.nums\s*\{\s*font-variant-numeric:\s*tabular-nums/);
+  });
+
+  it("uses the reference editor growth limit and collapsible section tracks", () => {
+    expect(styles).toMatch(/\.conversation-input > textarea\s*\{[^}]*max-height:\s*calc\(15lh \+ 1rem\)/);
+    expect(styles).toMatch(/\.sidebar-section-body\s*\{[^}]*grid-template-rows:\s*0fr/);
+    expect(styles).toMatch(/\.sidebar-section-body\.open\s*\{[^}]*grid-template-rows:\s*1fr/);
+  });
+
+  it("lets pinned tiles fill their row without growing into square cards", () => {
+    expect(styles).toMatch(/\.sb-pins\s*\{[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*minmax\(0, 1fr\)/);
+    expect(styles).toMatch(/\.sb-pins \.tile-face\s*\{[^}]*height:\s*40px;[^}]*aspect-ratio:\s*auto/);
+    expect(styles).not.toMatch(/\.sb-pins\s*\{[^}]*repeat\(5/);
+  });
+
+  it("reveals the URL field and both icon groups together without moving page layout", () => {
+    const controls = ".toolbar > :is(.cmdbar, .tb-left, .tb-right)";
+    expect(styles).toContain(`${controls} {\n  opacity: 0;`);
+    expect(styles).toContain(".toolbar:is(:hover, :focus-within, :has(.cmdbar.editing)) > :is(.cmdbar, .tb-left, .tb-right)");
+    expect(styles).toContain(`@media (hover: none) {\n  ${controls} { opacity: 1; transform: none; }`);
+    expect(styles).toContain(`@media (prefers-reduced-motion: reduce) {\n  ${controls} { transform: none; transition: none; }`);
   });
 
   it("does not paint a status color strip on answer or member cards", () => {
@@ -116,18 +128,18 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/inset\s+0\s+-2px\s+0\s+var\(--ok\)/);
   });
 
-  it("keeps waiting chips on --wait, distinct from success, and diffs off status green/red", () => {
+  it("keeps waiting, status, diff and find states distinguishable", () => {
     const dark = block("dark");
     const light = block("light");
-    expect(tokens).toMatch(/--wait:\s*#87d9a4/);
+    expect(tokens).toMatch(/--wait:\s*#fbbf24/);
     expect(tokens).not.toMatch(/--wait:\s*var\(--ok\)/);
-    expect(dark).toMatch(/--accent-surface:\s*#001d3d/);
-    expect(light).toMatch(/--accent-surface:\s*#ebf4ff/);
+    expect(dark).toMatch(/--accent-surface:\s*color-mix/);
+    expect(light).toMatch(/--accent-surface:\s*color-mix/);
     expect(styles).toMatch(/\.ctl-chip\.human\s*\{[^}]*color:\s*var\(--wait\)/s);
     expect(styles).toMatch(/\.takeover\s*\{[^}]*background:\s*var\(--wait-soft\)/s);
     expect(styles).toMatch(/\.project-diff \.diff-added\s*\{[^}]*background:\s*var\(--diff-add\)/);
     expect(styles).toMatch(/::highlight\(aux-conversation-matches\)\s*\{[^}]*background:\s*var\(--find-match\)/);
-    expect(styles).toMatch(/\.sidebar-rail\s*\{/s);
+    expect(styles).toMatch(/\.sidebar\.peek\s*\{/s);
     expect(styles).toMatch(/\.tl-nest\s*\{/s);
   });
 });

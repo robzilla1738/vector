@@ -27,8 +27,9 @@ A missing real account is a recorded dependency, not a reason to stop independen
 - Keep Electron unless a concrete mandatory compatibility limitation requires replacing
   the browser host. Start with the existing CEF Chrome-runtime candidate, preserving
   the React shell and runtime. Never substitute the custom engine for web compatibility.
-- Default to crisp, solid neutral surfaces. Optional shell opacity and blur must be
-  independently adjustable; avoid a forced frosted-glass wash. Keep viewport insets,
+- Follow [Aside parity direction](AUX-DESIGN-DIRECTION.md): native translucent
+  sidebar by default, solid/reduced-transparency alternatives, independent tint
+  and content opacity. Keep viewport insets,
   row spacing and panel proportions consistent at realistic window sizes.
 - Keep neutral macOS materials, system typography, restrained Lucide icons, clear focus,
   reduced-motion/transparency support, and the established minimal sidebar structure.

@@ -1,17 +1,13 @@
-import type { LucideIcon } from "lucide-react";
-import type { ReactElement } from "react";
+import type { ComponentType, ReactElement, SVGProps } from "react";
 import {
   Volume2,
   VolumeX,
   AppWindow,
   Archive,
   ArrowUp,
-  ArrowLeft,
-  ArrowRight,
   ArrowUpRight,
   Bookmark,
   Sparkles,
-  Bot,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -43,8 +39,6 @@ import {
   MessagesSquare,
   Moon,
   PanelLeft,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelRight,
   Pause,
   Pencil,
@@ -57,7 +51,6 @@ import {
   RotateCw,
   ScanSearch,
   Search,
-  Send,
   Settings,
   Snowflake,
   Square,
@@ -69,21 +62,19 @@ import {
   User,
   X,
   Zap,
-} from "lucide-react";
+} from "./central-icons";
 
 type IcoSize = "sm" | "md" | "lg";
 
-const STROKE: Record<IcoSize, number> = { sm: 2, md: 1.75, lg: 1.75 };
-
-function icon(Icon: LucideIcon, size: IcoSize = "md", fill = "none"): ReactElement {
+function icon(Icon: ComponentType<SVGProps<SVGSVGElement>>, size: IcoSize = "md", fill = "none"): ReactElement {
   return (
     <span className={`ci ico-${size}`} aria-hidden>
-      <Icon strokeWidth={STROKE[size]} fill={fill} />
+      <Icon fill={fill} />
     </span>
   );
 }
 
-/** Lucide stroke icons. Optical sizes: `--ico-sm` 14 / `--ico` 16 / `--ico-lg` 20. */
+/** Central Icons at the shell's 14 / 16 / 20px optical sizes. */
 export const I = {
   back: icon(ChevronLeft),
   fwd: icon(ChevronRight),
@@ -101,8 +92,8 @@ export const I = {
   gearSm: icon(Settings, "sm"),
   rail: icon(PanelRight),
   sidebar: icon(PanelLeft),
-  sidebarClose: icon(PanelLeftClose),
-  sidebarOpen: icon(PanelLeftOpen),
+  sidebarClose: icon(PanelLeft),
+  sidebarOpen: icon(PanelLeft),
   search: icon(Search),
   searchLg: icon(Search, "lg"),
   find: icon(ScanSearch),
@@ -154,7 +145,7 @@ export const I = {
   reloadSm: icon(RotateCw, "sm"),
   reopen: icon(RotateCcw, "sm"),
   sidebarSm: icon(PanelLeft, "sm"),
-  sidebarCloseSm: icon(PanelLeftClose, "sm"),
+  sidebarCloseSm: icon(PanelLeft, "sm"),
   volume: icon(Volume2, "sm"),
   volumeOff: icon(VolumeX, "sm"),
   bookmarkSm: icon(Bookmark, "sm"),

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic } from "lucide-react";
+import { Mic } from "./central-icons";
 import { setDictationDraft, useDictationDrafts } from "../dictation-drafts";
 import { bridge } from "../bridge";
 
@@ -74,7 +74,7 @@ export function Dictation({ draftKey, disabled, onInsert }: {draftKey:string; di
     else discard(); // Releasing during permission/startup cannot begin capture later.
   };
   if(!available && !text) {
-    return <button className="dictation-trigger" disabled title={reason || "On-device dictation is unavailable in this environment."}><Mic size={15} aria-hidden/> Dictate</button>;
+    return <button className="dictation-trigger" disabled title={reason || "On-device dictation is unavailable in this environment."}><Mic width={15} height={15} aria-hidden/> Dictate</button>;
   }
   if(phase==="idle"||phase==="saved")return <button ref={trigger} className="dictation-trigger" disabled={disabled} onClick={()=>phase==="saved"?setPhase("review"):void start()} onKeyDown={event=>{
     if(event.code!=="Space"||event.nativeEvent.isComposing)return;
@@ -82,7 +82,7 @@ export function Dictation({ draftKey, disabled, onInsert }: {draftKey:string; di
     if(event.repeat||holding.current)return;
     if(phase==="saved"){setPhase("review");return;}
     holding.current=true;void start();
-  }} title={phase==="saved"?"Review your unsent dictation":"Click to dictate, or hold Space while focused to talk. Review before inserting."}><Mic size={15} aria-hidden/> {phase==="saved"?"Review dictation":"Dictate"}</button>;
+  }} title={phase==="saved"?"Review your unsent dictation":"Click to dictate, or hold Space while focused to talk. Review before inserting."}><Mic width={15} height={15} aria-hidden/> {phase==="saved"?"Review dictation":"Dictate"}</button>;
   return <section ref={panel} className="dictation-panel" aria-label="Dictation" onKeyDown={event=>{
     if(event.key!=="Escape"||event.nativeEvent.isComposing)return;
     event.preventDefault();event.stopPropagation();

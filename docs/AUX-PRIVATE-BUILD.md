@@ -1,7 +1,8 @@
 # Aux private development build handoff
 
-Status: candidate for founder review. Updated 2026-09-20. This is a local development
-build, not a packaged, signed, published, or externally released application.
+Status: candidate for founder review. Updated 2026-09-21. Development and unsigned
+local packaged builds are available; neither is a signed or external release.
+Current UI and remaining acceptance checks: [Aside parity](ASIDE-PARITY.md).
 
 ## Start and stop
 
@@ -11,7 +12,8 @@ From the repository root:
 AUX_LOAD_DOTENV=0 pnpm dev
 ```
 
-The current founder process is already running from that command. Quit Aux normally
+For a packaged isolated preview, run `pnpm package:local` then `pnpm preview`.
+Do not assume an earlier temporary QA application is still running. Quit Aux normally
 to let the desktop and runtime close together. The development profile, runtime data,
 downloads, managed extensions, tasks, conversations, project records and recovery
 data are stored separately according to the repository's development configuration.

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ModelProviderSchema, type ModelProvider, type EngineMode } from "@vector/contracts";
+import { ModelProviderSchema, SidebarMaterialSchema, type ModelProvider, type EngineMode } from "@vector/contracts";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
 import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { DIRECT_PROVIDERS, PROVIDER_ENV, directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "../agent/direct-providers.js";
@@ -30,6 +30,9 @@ export interface Settings {
   maxModelCalls?: number;
   theme?: "system" | "dark" | "light";
   sidebarAppearance?: "solid" | "translucent";
+  sidebarMaterial?: "liquid-glass" | "titlebar" | "sidebar" | "under-window";
+  sidebarTint?: number;
+  contentOpacity?: number;
   sidebarBlur?: number;
   sidebarOpacity?: number;
   tabLayout?: "vertical" | "horizontal";
@@ -171,7 +174,10 @@ export class SettingsService {
       perOrigin: this.perOrigin(),
       maxModelCalls: this.maxModelCalls(),
       theme: (this.get("theme") as "system" | "dark" | "light") ?? "dark",
-      sidebarAppearance: (this.get("sidebarAppearance") as "solid" | "translucent") ?? "solid",
+      sidebarAppearance: (this.get("sidebarAppearance") as "solid" | "translucent") ?? "translucent",
+      sidebarMaterial: SidebarMaterialSchema.catch("liquid-glass").parse(this.get("sidebarMaterial")),
+      sidebarTint: Number(this.get("sidebarTint") ?? 0),
+      contentOpacity: Number(this.get("contentOpacity") ?? 95),
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "vertical",

@@ -1,12 +1,14 @@
-# Vector desktop shell
+# Aux desktop shell
 
 This is the product GUI (`pnpm dev`): one native desktop window with embedded
 page views, browser chrome, workspace, and agent rail.
 
 The renderer in `apps/desktop/renderer/src` is the browser chrome around the
-runtime's pages: an Arc-style sidebar, a command bar in that sidebar, an inset
-stage card, and a resizable agent rail. It is React 19 + zustand, styled with
-plain CSS on a single token sheet (Inter Variable, Lucide icons, charcoal).
+runtime's pages: Aside-inspired sidebar, top command bar, continuous rounded
+main surface and resizable agent rail. It is React 19 + zustand, styled with
+plain CSS and shared tokens (Geist/Geist Mono, Central Icons, neutral surfaces).
+The current spec is [visual direction](../AUX-DESIGN-DIRECTION.md); verification
+limits are in [Aside parity](../ASIDE-PARITY.md).
 Nothing in the shell talks to Electron except through the preload
 `contextBridge` (`bridge.ts`); `sandbox: true` and the permission handlers in
 `main/` are unchanged by the redesign.
@@ -15,10 +17,10 @@ Nothing in the shell talks to Electron except through the preload
 .app
 ├── .degraded                     runtime-disconnected banner (full width, only when offline)
 └── .app-body
-    ├── .sidebar                  spaces · 5 pin tiles · folders · unfiled tabs · footer
-    │                             CommandBar lives here when the sidebar is expanded
+    ├── .sidebar                  pins · bookmarks · chats · tabs/folders · space footer
+    │                             fully hidden or floating edge-hover peek when closed
     └── .main-col
-        ├── .toolbar              only when the sidebar is hidden: nav · CommandBar · chrome
+        ├── .toolbar              40px slot: nav · CommandBar · chrome; hover/focus reveal
         └── .main
             ├── .stage-wrap       FindBar? · Stage (.stage-card) · Downloads?
             └── .rail             AgentRail (RunPanel | SetPanel | home) + composer
@@ -32,8 +34,8 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | File | Role |
 | --- | --- |
 | `App.tsx` | Frame, shortcut dispatch (renderer + main-process shortcuts), stage-rect reporting to the native view, `narrow` media query |
-| `components/Sidebar.tsx` | Space switcher, 5-up pin row, 📁 tab folders (indent, group hover, WAAPI open/close), unfiled tabs under New Tab, drag-reorder, collapsed rail with hover-peek, tab/folder context menus. Hosts `CommandBar` when expanded |
-| `components/Toolbar.tsx` | Shown only when the sidebar is hidden: back/forward/reload, `CommandBar`, controller chip, overview, bookmark, rail toggle |
+| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode with floating edge peek, tab/folder context menus |
+| `components/Toolbar.tsx` | Always reserves its layout slot; back/forward/reload, `CommandBar`, controller chip, overview, bookmark and rail toggle reveal together on hover/focus |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again) |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
 | `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `EngineView` (`pages.capture`) for engine pages; `MockPage` in mock mode |
@@ -44,7 +46,7 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | `components/ObservationPanel.tsx` | Compact observation: title/url/viewport, headings, refs, raw text |
 | `components/SetPanel.tsx` | Set status, per-member segmented bar, member grid, failed list, Results |
 | `components/Palette.tsx` | ⌘K: intent routing, tab switch, agent/window/spaces/sets/chrome/bookmarks commands, two-level pickers (split view, borrow a Chrome tab) |
-| `components/StartPage.tsx` | Weather, command bar, suggested prompts, favourites, recent |
+| `components/StartPage.tsx` | Aux arch mark, Search/Ask field, recent chats and routines |
 | `components/VirtualList.tsx` | Fixed-row-height windowed list used by the tab list and past runs |
 | `components/Overview.tsx`, `ResultsTable.tsx`, `History.tsx`, `Settings.tsx`, `Inspector.tsx`, `FindBar.tsx`, `Downloads.tsx` | Secondary surfaces restyled on the tokens |
 | `favicon.ts` | Favicon candidate chain (page icon → DuckDuckGo → Google s2) + host letter |
@@ -67,7 +69,7 @@ listener and from the main-process accelerator relay.
 | ⌃Tab / ⌃⇧Tab, ⌘⌥← / → , ⌘⇧[ / ] | Cycle tabs |
 | ⌘⇧A | Toggle agent rail |
 | ⌘⇧O | Tab overview |
-| ⌘S | Collapse / expand sidebar (rail with hover-peek) |
+| ⌘S | Hide / expand sidebar (no logo strip; edge-hover peek) |
 | ⌘D / ⌘⇧D | Bookmark page / bookmark all tabs |
 | ⌘F, ⌘G / ⌘⇧G | Find in page, next / previous match |
 | ⌘R / ⌘⇧R | Reload / hard reload |
@@ -93,19 +95,17 @@ context menu (reload, duplicate, copy URL, pin, move to space, close others).
 Every colour, radius, size and duration used by `styles.css` is a custom
 property defined once in `tokens.css`. Components never introduce literals.
 
-- **Type** — `--font-ui` (`Inter Variable` → Inter → system), `--font-mono`;
-  sizes `--fs-2xs … --fs-3xl` = 11 / 12 / 12 / 13 / 15 / 18 / 22 / 28 px;
+- **Type** — Geist Variable and Geist Mono; 14px interface default with user scaling;
   line heights `--lh-tight|normal|relaxed`; tracking `--tracking-tight|snug|wide`.
-- **Icons** — Lucide stroke at `--ico-sm 14` / `--ico 16` / `--ico-lg 20`.
-  Folder rows use the 📁 emoji, not a stroke folder.
+- **Icons** — Central Icons at `--ico-sm 14` / `--ico 16` / `--ico-lg 20`.
+  Folders and sidebar toggles share the same icon family.
 - **Spacing** — 4 px grid, `--space-0 … --space-9` (2 → 56 px).
-- **Radii** — `--r-xs … --r-2xl` = 4 / 6 / 8 / 10 / 12 / 16 px, `--r-pill`.
-- **Shell metrics** — `--toolbar-h 52`, `--sidebar-w 240`, `--sidebar-rail-w 56`,
-  `--rail-w 360` (both panels are user-resizable; widths persist in
-  localStorage `vector.sb-w` / `vector.rail-w`), `--stage-inset 8`,
-  `--stage-radius` (`--r-2xl`), `--control-h 28`, `--control-h-lg 34`, `--hit 32`,
+- **Radii** — shared reference tokens, 0.5px hairlines and 1.4 squircle factor.
+- **Shell metrics** — `--toolbar-h 40`, fully closed sidebar width 0;
+  both panels are user-resizable and their widths persist in
+  localStorage `vector.sb-w` / `vector.rail-w`. Controls are 28/32px;
   `--traffic-inset 80` (macOS traffic lights).
-- **Motion** — `--t-fast 120`, `--t-med 180`, `--t-slow 240` ms; eases
+- **Motion** — `--t-fast 150`, `--t-med 150`, `--t-slow 240` ms; toolbar reveal 180ms; eases
   `--ease-out`, `--ease-spring`, `--ease-in-out`. `prefers-reduced-motion`
   zeroes the durations and collapses every animation/transition to 0.01 ms.
   `prefers-reduced-transparency` removes the backdrop blurs.
@@ -122,8 +122,8 @@ property defined once in `tokens.css`. Components never introduce literals.
 
 ## States
 
-- **Empty** — no tabs: sidebar hint + `StartPage` (weather, command bar,
-  suggested prompts, favourites, recent). No runs: rail home explains where
+- **Empty** — no tabs: sidebar hint + `StartPage` (Aux mark, Search/Ask field,
+  recent chats/routines). No runs: rail home explains where
   the agent works.
 - **Loading** — 2 px sweeping progress line at the top of the stage card; tab
   favicon becomes a spinner.
@@ -132,10 +132,9 @@ property defined once in `tokens.css`. Components never introduce literals.
 - **Long titles** — single-line ellipsis everywhere (tab rows, run rows, command
   bar title, member labels); full text in `title` tooltips.
 - **40+ tabs** — the tab list virtualizes at 28 rows (`VirtualList`, 32 px
-  rows); the collapsed rail caps at 40 tiles; past runs virtualize at 30.
+  rows); past runs virtualize at 30. Hidden mode has no persistent icon rail.
 - **Narrow** — ≤ 1100 px the agent rail clamps to 340 px and an expanded
-  sidebar folds to its rail while the agent rail is open (the rail's expand
-  button then closes the agent rail instead). ≤ 1000 px the command bar takes
+  sidebar can close while the agent rail is open. ≤ 1000 px the command bar takes
   more of the toolbar and the control chip drops its label. ≤ 820 px the
   sidebar and rail float over the stage as glass panels.
 - **Controller** — a status chip marks agent vs human control; taking over
@@ -162,7 +161,7 @@ browser. Query parameters:
 | --- | --- |
 | `scenario` | `start`, `browsing` (default), `run`, `takeover`, `needs-input`, `set`, `many` (45 tabs), `disconnected` |
 | `theme` | `dark` (default), `light` |
-| `sidebar` | `expanded`, `rail`, `hidden` |
+| `sidebar` | `expanded`, `hidden`; legacy `rail` normalizes to hidden |
 | `rail` | `1` opens the agent rail on the live run |
 | `live` | `1` keeps streaming new steps into the run |
 | `sbw`, `railw` | initial sidebar / rail widths in px |
@@ -182,7 +181,7 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
   `favicon.test.ts`, `EngineView.test.tsx`, `StepTimeline.test.tsx` and
   `ObservationPanel.test.tsx`.
 - `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
-  (sidebar/window match, 5-col pins, folder indent).
+  (native material layering, row-filling pins, coordinated toolbar reveal).
 
 ## Runtime contract dependencies
 

@@ -208,6 +208,8 @@ interface Workspace {
   moveTabToFolder(pageId: string, folderId: string | null): void;
 
   sidebarWidth: number;
+  sidebarSections: Record<"bookmarks" | "chats" | "tabs", boolean>;
+  toggleSidebarSection(section: "bookmarks" | "chats" | "tabs"): void;
   railWidth: number;
   setSidebarWidth(w: number): void;
   setRailWidth(w: number): void;
@@ -419,9 +421,8 @@ export const useStore = create<Workspace>((set, get) => ({
     const s = get();
     const page = s.pages.find((p) => p.pageId === s.activePageId);
     const onStart = s.mode === "focus" && !s.overlay && !page?.showBlankDocument && (!page?.url || page.url === "about:blank");
-    const requested = slot ?? (onStart ? "hero" : s.settings.tabLayout === "horizontal" ? "toolbar" : "sidebar");
-    const resolved: CommandSlot = requested === "toolbar" && s.settings.tabLayout !== "horizontal" ? "sidebar" : requested;
-    if (resolved === "sidebar" && s.sidebar !== "expanded") s.setSidebar("expanded");
+    const requested = slot ?? (onStart ? "hero" : "toolbar");
+    const resolved: CommandSlot = requested === "sidebar" ? "toolbar" : requested;
     set((st) => ({ focusRequest: st.focusRequest + 1, focusSlot: resolved }));
   },
 
@@ -964,7 +965,17 @@ export const useStore = create<Workspace>((set, get) => ({
     }),
 
   sidebarWidth: Number(storage?.getItem("vector.sb-w")) || 280,
-  railWidth: Number(storage?.getItem("vector.rail-w")) || 360,
+  sidebarSections: {
+    bookmarks: storage?.getItem("aux.sidebar.bookmarks") !== "closed",
+    chats: storage?.getItem("aux.sidebar.chats") !== "closed",
+    tabs: storage?.getItem("aux.sidebar.tabs") !== "closed",
+  },
+  toggleSidebarSection: section => {
+    const open = !get().sidebarSections[section];
+    storage?.setItem(`aux.sidebar.${section}`, open ? "open" : "closed");
+    set({ sidebarSections: { ...get().sidebarSections, [section]: open } });
+  },
+  railWidth: Number(storage?.getItem("vector.rail-w")) || 400,
   setSidebarWidth: (w) => {
     storage?.setItem("vector.sb-w", String(w));
     set({ sidebarWidth: w });

@@ -7,8 +7,8 @@ export function readUiFontSize(): UiFontSize {
   try {
     const value = Number(localStorage.getItem(KEY));
     if (value === 12 || value === 13 || value === 14) return value;
-  } catch { /* Storage unavailable; keep the default 13px body. */ }
-  return 13;
+  } catch { /* Storage unavailable; keep the default 14px body. */ }
+  return 14;
 }
 
 export function applyUiFontSize(size: UiFontSize = readUiFontSize()): void {

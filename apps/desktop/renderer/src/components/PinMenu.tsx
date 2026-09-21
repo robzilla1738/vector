@@ -2,23 +2,24 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { bridge } from "../bridge";
 import { isScrimOverlay } from "../chrome";
 import { moveMenuFocus } from "../keyboard-list";
+import { useMenuDismiss } from "../use-menu-dismiss";
+import { positionContextMenu } from "../position-context-menu";
 import { errToast, toast, useStore } from "../store";
 import type { Pin } from "../workspace";
 
-export function PinMenu({ pin, spaceId, x, y, onClose }: {
+export function PinMenu({ pin, spaceId, x, y, onClose: finishClose }: {
   pin: Pin; spaceId: string; x: number; y: number; onClose: () => void;
 }) {
   const pins = useStore(state => state.layout.pins[spaceId]);
   const index = pins?.findIndex(item => item.url === pin.url) ?? -1;
   const ref = useRef<HTMLDivElement>(null);
+  const onClose = useMenuDismiss(ref, finishClose);
   const trigger = useRef(document.activeElement as HTMLElement | null);
   const close = useRef(onClose); close.current = onClose;
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
-    const bounds = menu.getBoundingClientRect();
-    menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8))}px`;
-    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`;
+    positionContextMenu(menu, x, y);
   }, [x, y]);
   useEffect(() => {
     void bridge.overlay(true);

@@ -27,7 +27,7 @@ interface Suggestion {
  * new task, ⇥ flips a task between "this page" and "new task".
  */
 export function CommandBar({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
-  const slot = hero ? "hero" : compact ? "sidebar" : "toolbar";
+  const slot = hero ? "hero" : "toolbar";
   const pages = useStore((s) => s.pages);
   const activePageId = useStore((s) => s.activePageId);
   const settings = useStore((s) => s.settings);
@@ -288,7 +288,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const secure = !page?.navigationError && !page?.loading && page?.viewStatus !== "crashed" && pageAddress.startsWith("https://");
   const showIntent = typedSomething && intent.kind !== "empty";
   const title = page?.title || (hasPage ? hostOf(pageAddress) : "");
-  const placeholder = hero ? (entryMode === "ask" ? "Ask Aux…" : "Search or type a URL") : compact ? "Search, address, or ask…" : "Search, enter an address, or ask the agent";
+  const placeholder = hero && entryMode === "ask" ? "Ask Aux a task…" : "Search or type a URL";
 
   return (
     <div ref={barRef} className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>

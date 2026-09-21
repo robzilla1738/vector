@@ -1,9 +1,11 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { BaseWindow, WebContents } from "electron";
+import { app, type BaseWindow, type WebContents } from "electron";
 
-const executable = join(import.meta.dirname, "aux-dictation");
+const executable = app.isPackaged
+  ? join(process.resourcesPath, "app.asar.unpacked", "dist", "main", "aux-dictation")
+  : join(import.meta.dirname, "aux-dictation");
 type Session = { id: string; owner: WebContents; process: ChildProcessWithoutNullStreams; stop: () => void };
 let active: Session | undefined;
 let pendingStart: {owner: WebContents; id: string; cancelled: boolean} | undefined;

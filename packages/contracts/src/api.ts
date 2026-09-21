@@ -356,6 +356,8 @@ export const ChromeOpenLiveParams = z.object({ pageId: id });
 
 /** models / settings */
 export const ModelsProbeParams = z.object({ modelId: id.optional() });
+export const SidebarMaterialSchema = z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]);
+export type SidebarMaterial = z.infer<typeof SidebarMaterialSchema>;
 export const SettingsSetParams = z.object({
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
@@ -378,6 +380,9 @@ export const SettingsSetParams = z.object({
   maxModelCalls: z.number().int().min(0).max(256).optional(),
   theme: z.enum(["system", "dark", "light"]).optional(),
   sidebarAppearance: z.enum(["solid", "translucent"]).optional(),
+  sidebarMaterial: SidebarMaterialSchema.optional(),
+  sidebarTint: z.number().min(0).max(60).optional(),
+  contentOpacity: z.number().min(80).max(100).optional(),
   sidebarBlur: z.number().min(0).max(40).optional(),
   sidebarOpacity: z.number().min(40).max(100).optional(),
   tabLayout: z.enum(["vertical", "horizontal"]).optional(),

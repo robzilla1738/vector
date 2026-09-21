@@ -10,6 +10,7 @@ import { BrowsingMemory } from "./services/browsing-memory.js";
 import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { EventTypes, VectorError, isElementRef, normalizeAuxEnvironment, type Step } from "@vector/contracts";
 import { RpcChannel, type Transport } from "@vector/contracts";
 import {
@@ -581,7 +582,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
 }
 
-const isDirectRun = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isDirectRun || normalizeAuxEnvironment(process.env).AUX_RUNTIME_AUTOSTART === "1") {
   startRuntime().then((h) => {
     console.log(`[vector-runtime] api=http://127.0.0.1:${h.port}`);

@@ -5,10 +5,12 @@ import { isScrimOverlay } from "../chrome";
 import { call, errToast, toast, useStore } from "../store";
 import { canSplitPage, hostOf, isPinned, tabsInSpace } from "../workspace";
 import { moveMenuFocus } from "../keyboard-list";
+import { useMenuDismiss } from "../use-menu-dismiss";
+import { positionContextMenu } from "../position-context-menu";
 import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
 
-export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, onClose }: { page: PageTarget; selectedPages?: PageTarget[]; onSelectionDone?: () => void; x: number; y: number; onClose: () => void }) {
+export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, onClose: finishClose }: { page: PageTarget; selectedPages?: PageTarget[]; onSelectionDone?: () => void; x: number; y: number; onClose: () => void }) {
   const bulk = selectedPages.length > 1;
   const selectedIds = selectedPages.map(item => item.pageId);
   const layout = useStore(state => state.layout);
@@ -18,6 +20,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const activePageId = useStore(state => state.activePageId);
   const splitPageId = useStore(state => state.splitPageId);
   const ref = useRef<HTMLDivElement>(null);
+  const onClose = useMenuDismiss(ref, finishClose);
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const [moving, setMoving] = useState(false);
   const [query, setQuery] = useState("");
@@ -52,9 +55,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
-    const bounds = menu.getBoundingClientRect();
-    menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8))}px`;
-    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`;
+    positionContextMenu(menu, x, y);
   }, [x, y, folders.length, layout.spaces.length, windows.length, moving, query]);
 
   useEffect(() => {

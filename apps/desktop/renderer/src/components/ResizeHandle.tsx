@@ -14,8 +14,9 @@ export function ResizeHandle({ side, value, min, max, reset, onResize }: {
   reset: number;
   onResize: (w: number) => void;
 }) {
-  const onDown = (e: React.PointerEvent) => {
+  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.currentTarget.focus();
     const startX = e.clientX;
     const startW = value;
     document.body.classList.add("resizing");

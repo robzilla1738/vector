@@ -1,4 +1,3 @@
-import { NavigationButtons } from "./NavigationButtons";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PageTarget } from "@vector/contracts";
 import { bridge, inElectron } from "../bridge";
@@ -8,31 +7,33 @@ import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabsInFolder, tabsI
 import { isScrimOverlay } from "../chrome";
 import { detailsMenuKey, moveMenuFocus, moveListFocus } from "../keyboard-list";
 import { ResizeHandle } from "./ResizeHandle";
+import { SidebarSection } from "./SidebarSection";
 import { FavIcon, SiteTile } from "./SiteTile";
-import { CommandBar } from "./CommandBar";
+import { recentConversations } from "../conversations";
 import { useTabSelection } from "../use-tab-selection";
+import { useMenuDismiss } from "../use-menu-dismiss";
+import { positionContextMenu } from "../position-context-menu";
 import { backgroundLink, openBrowserLink } from "../browser-links";
 import { PinMenu } from "./PinMenu";
 import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
-import { AuxMark } from "./AuxMark";
 import { I } from "./icons";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
-const kidsH = (n: number) => (n <= 0 ? 0 : n * 32 + (n - 1) * 2);
 
 function FolderKids({ collapsed, count, children }: { collapsed: boolean; count: number; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const first = useRef(true);
   const animRef = useRef<Animation | null>(null);
-  const target = collapsed ? 0 : kidsH(count);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    animRef.current?.cancel();
     const fromH = el.getBoundingClientRect().height;
     const fromOp = Number.parseFloat(getComputedStyle(el).opacity);
+    animRef.current?.cancel();
+    const target = collapsed ? 0 : contentRef.current?.scrollHeight ?? 0;
     el.style.height = `${target}px`;
     el.style.opacity = target > 0 ? "1" : "0";
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -50,10 +51,12 @@ function FolderKids({ collapsed, count, children }: { collapsed: boolean; count:
       { duration, easing },
     );
     animRef.current = anim;
-    void anim.finished.finally(() => {
+    void anim.finished.then(() => {
       if (animRef.current === anim) animRef.current = null;
-    });
-  }, [target]);
+    }, () => { /* Reversing a toggle deliberately cancels the previous animation. */ });
+  }, [collapsed, count]);
+
+  useEffect(() => () => animRef.current?.cancel(), []);
 
   return (
     <div
@@ -62,7 +65,7 @@ function FolderKids({ collapsed, count, children }: { collapsed: boolean; count:
       inert={collapsed ? true : undefined}
       aria-hidden={collapsed}
     >
-      <div className="folder-kids-inner">{children}</div>
+      <div ref={contentRef} className="folder-kids-inner">{children}</div>
     </div>
   );
 }
@@ -173,7 +176,7 @@ const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, 
 /*  Space switcher                                                      */
 /* ------------------------------------------------------------------ */
 
-function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelete, onCollapse, onHistory, onDownloads, onSettings, onClose, archivedSpaces, onRestore }: {
+function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelete, onCollapse, onHistory, onDownloads, onSettings, onClose: finishClose, archivedSpaces, onRestore }: {
   archivedSpaces: Space[];
   onRestore: (id: string) => void;
   spaces: Space[];
@@ -190,6 +193,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const onClose = useMenuDismiss(ref, finishClose);
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const trigger = useRef(document.activeElement as HTMLElement | null);
   const [profileName, setProfileName] = useState("");
@@ -222,7 +226,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
   ];
   return (
     <div className="menu space-menu pop-in" role="menu" aria-label="Spaces and browser controls" ref={ref}
-      onKeyDown={event => { if (event.key === "Tab") { onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }}>
+      onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }}>
       {profileName && <div className="menu-caption space-profile-caption" title={`${profileName} browser profile`}>Profile · {profileName}</div>}
       {bridge.privateMode && <div className="menu-caption">Private window</div>}
       {spaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} role="none">
@@ -363,15 +367,50 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
 
 export function Sidebar() {
   const sidebarPref = useStore((s) => s.sidebar);
+  const sections = useStore(s => s.sidebarSections);
+  const toggleSection = useStore(s => s.toggleSidebarSection);
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
   const sidebar = sidebarPref;
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
   const bookmarks = useStore(s => s.bookmarks);
+  const runs = useStore(s => s.runs);
+  const conversationId = useStore(s => s.conversationId);
+  const conversations = useMemo(() => recentConversations(runs).slice(0, 3), [runs]);
   const pages = useStore((s) => s.pages);
   const activePageId = useStore((s) => s.activePageId);
   const mode = useStore((s) => s.mode);
+  const sidebarPeek = useStore(s => s.sidebarPeek);
+  const setSidebarPeek = useStore(s => s.setSidebarPeek);
+  const peekClose = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sidebarVisible = sidebar === "expanded" || sidebarPeek;
+  const keepPeek = () => {
+    if (peekClose.current) clearTimeout(peekClose.current);
+    if (sidebar !== "expanded") setSidebarPeek(true);
+  };
+  const dismissPeek = () => {
+    if (peekClose.current) clearTimeout(peekClose.current);
+    peekClose.current = setTimeout(() => {
+      const editing = document.activeElement?.matches(".sidebar input, .sidebar textarea, .sidebar [contenteditable=true]");
+      if (!editing && !document.querySelector(".sidebar:hover")) setSidebarPeek(false);
+    }, 180);
+  };
+  useEffect(() => {
+    void bridge.sidebarPeek(sidebar !== "expanded" && sidebarPeek).catch(errToast);
+    return () => { void bridge.sidebarPeek(false).catch(errToast); };
+  }, [sidebar, sidebarPeek]);
+  useEffect(() => () => { if (peekClose.current) clearTimeout(peekClose.current); }, []);
+  useEffect(() => {
+    if (!sidebarPeek) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      setSidebarPeek(false);
+      document.querySelector<HTMLButtonElement>('.toolbar [aria-label="Show sidebar"]')?.focus();
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [sidebarPeek, setSidebarPeek]);
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);
   const newTab = useStore((s) => s.newTab);
@@ -555,23 +594,9 @@ export function Sidebar() {
   );
 
 
-  const chromeNav = (
-    <>
-      <NavigationButtons page={page} />
-      {page?.controller === "human" && (
-        <button className="icon-btn warn" title="You're in control — hand the page back to the agent" aria-label="Return control to the agent" onClick={() => void returnControl(page.pageId)}>{I.hand}</button>
-      )}
-    </>
-  );
-
   const full = (
     <>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}>{chromeNav}<button className="icon-btn" aria-label="Collapse sidebar" title="Collapse sidebar (⌘S)" onClick={toggleSidebar}>{I.sidebarClose}</button></div>
-
-      <div className="sb-cmd">
-        <CommandBar compact />
-      </div>
-
+      <div className={`sb-head ${inElectron ? "electron" : ""}`}><button className="icon-btn" aria-label={sidebarPeek ? "Pin sidebar" : "Collapse sidebar"} title={sidebarPeek ? "Keep sidebar open" : "Collapse sidebar (⌘S)"} onClick={toggleSidebar}>{sidebarPeek ? I.pin : I.sidebarClose}</button></div>
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
           {visiblePins.map((b) => {
@@ -595,33 +620,39 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className="sb-space">
-        <button className="space-switch" data-space={space.color} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
-          <span className="space-ico">{I.person}</span>
-          <span className="space-name">{space.name}</span>
-        </button>
-        {menuOpen && (
-          <SpaceMenu
-            spaces={layout.spaces}
-            archivedSpaces={layout.archivedSpaces ?? []}
-            onRestore={id => void useStore.getState().restoreSpace(id).catch(errToast)}
-            active={space.id}
-            onPick={switchSpace}
-            onNew={() => setEditing("new")}
-            onNewFolder={() => setRenameId(addFolder("Untitled"))}
-            onEdit={(s) => setEditing(s)}
-            onDelete={id => void deleteSpace(id).catch(errToast)}
-            onCollapse={toggleSidebar}
-            onHistory={() => setOverlay("history")}
-            onDownloads={() => setOverlay("downloads")}
-            onSettings={() => setOverlay("settings")}
-            onClose={() => setMenuOpen(false)}
-          />
-        )}
-      </div>
-
+      {!bridge.privateMode && <SidebarSection title="Bookmarks" open={sections.bookmarks} onToggle={() => toggleSection("bookmarks")}>
+        {bookmarks.length ? <div className="sb-bookmark-list">{bookmarks.map(bookmark => <button className="sb-link" key={bookmark.url} title={bookmark.title || bookmark.url}
+          onClick={event => openPin(bookmark, event)} onAuxClick={event => openPin(bookmark, event)}>
+          <FavIcon url={bookmark.url} src={pages.find(page => page.url === bookmark.url)?.favicon} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
+        </button>)}</div> : <button className="sb-bookmarks-empty" onClick={() => setOverlay("bookmarks")}
+          onDragOver={event => { if (drag.pageId) { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; } }}
+          onDrop={event => {
+            if (!drag.pageId) return;
+            event.preventDefault();
+            const dropped = new Map(pages.filter(page => dragIds.current.includes(page.pageId) && /^https?:\/\//.test(page.url)).map(page => [page.url, page]));
+            void Promise.all([...dropped.values()].map(tab => call("bookmarks.add", {url: tab.url, title: tab.title}))).catch(errToast);
+            dragIds.current = []; setDrag(IDLE_DRAG);
+          }}>Drag tabs here to add bookmarks</button>}
+      </SidebarSection>}
+      {!bridge.privateMode && <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
+        <div className="sb-chats">
+        <button className={`sb-link ${mode === "conversation" && !conversationId ? "active" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>
+        {conversations.map(run => <button className={`sb-link ${conversationId === (run.config?.chatId ?? run.runId) ? "active" : ""}`} key={run.runId} onClick={() => useStore.getState().openConversation(run.runId)}>
+          <span>{run.goal}</span>
+        </button>)}
+        <button className="sb-link sb-show-all" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Show all</button>
+        </div>
+      </SidebarSection>}
+      <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>
       <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
         <div className="tab-list" role="tablist" aria-multiselectable="true" aria-label="Tabs" aria-orientation="vertical">
+          <NewTabButton
+            onClick={() => void newTab()}
+            dropOn={!!drag.pageId && drag.folderId != null && drag.over === ""}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDrag((d) => (d.over === "" ? d : { ...d, over: "" })); }}
+            onDrop={(e) => onDrop(null, e)}
+            onDragEnd={onDragEnd}
+          />
           {folders.map((f) => {
             const kids = tabsInFolder(layout, pages, f.id);
             return (
@@ -649,14 +680,6 @@ export function Sidebar() {
 
           {(folders.length > 0 || loose.length > 0) && <div className="sb-rule" />}
 
-          <NewTabButton
-            onClick={() => void newTab()}
-            dropOn={!!drag.pageId && drag.folderId != null && drag.over === ""}
-            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDrag((d) => (d.over === "" ? d : { ...d, over: "" })); }}
-            onDrop={(e) => onDrop(null, e)}
-            onDragEnd={onDragEnd}
-          />
-
           {loose.map((p, i) => (
             <div key={p.pageId} className="tab-slot">{renderRow(p, i, null, loose.length)}</div>
           ))}
@@ -666,11 +689,35 @@ export function Sidebar() {
           )}
         </div>
       </div>
-
+      </SidebarSection>
       <div className="sb-foot">
+      <div className="sb-space">
+        <button className="space-switch" data-space={space.color} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
+          <span className="space-ico">{I.person}</span>
+          <span className="space-name">{space.name}</span>
+        </button>
+        {menuOpen && (
+          <SpaceMenu
+            spaces={layout.spaces}
+            archivedSpaces={layout.archivedSpaces ?? []}
+            onRestore={id => void useStore.getState().restoreSpace(id).catch(errToast)}
+            active={space.id}
+            onPick={switchSpace}
+            onNew={() => setEditing("new")}
+            onNewFolder={() => setRenameId(addFolder("Untitled"))}
+            onEdit={(s) => setEditing(s)}
+            onDelete={id => void deleteSpace(id).catch(errToast)}
+            onCollapse={toggleSidebar}
+            onHistory={() => setOverlay("history")}
+            onDownloads={() => setOverlay("downloads")}
+            onSettings={() => setOverlay("settings")}
+            onClose={() => setMenuOpen(false)}
+          />
+        )}
+      </div>
         {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{I.grid}</button></> : <>
-        <button className="sb-new-chat" onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>
         <span className="sp" />
+        <button className="icon-btn" title="Search (⌘K)" aria-label="Search browser" onClick={() => setOverlay("palette")}>{I.search}</button>
         {page?.controller === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(page.pageId)}>{I.handSm}</button>}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
         <details className="sb-more" onKeyDown={detailsMenuKey}>
@@ -697,23 +744,20 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"}`}
-        inert={sidebar !== "expanded" ? true : undefined}
-        aria-hidden={sidebar !== "expanded"}
+        className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"} ${sidebarPeek && sidebar !== "expanded" ? "peek" : ""}`}
+        inert={!sidebarVisible ? true : undefined}
+        aria-hidden={!sidebarVisible}
+        onPointerEnter={keepPeek}
+        onPointerLeave={dismissPeek}
+        onBlur={dismissPeek}
         data-space={space.color}
         style={{ "--sb-w": `${sidebarWidth}px` } as React.CSSProperties}
         aria-label="Sidebar"
       >
-        <div className="sidebar-content">{full}</div>
+        <div className="sidebar-content" inert={!sidebarVisible ? true : undefined} aria-hidden={!sidebarVisible}>{full}</div>
         {sidebar === "expanded" && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
       </aside>
-      {sidebar === "rail" && (
-        <button className="sidebar-rail" aria-label="Show sidebar" title="Show sidebar (⌘S)" onClick={() => useStore.getState().setSidebar("expanded")}>
-          <span className="sidebar-rail-mark"><AuxMark /></span>
-          <span className="sidebar-rail-open">{I.sidebarOpen}</span>
-        </button>
-      )}
-      {sidebar === "hidden" && <button className="sidebar-reveal" aria-label="Expand sidebar" title="Show sidebar (⌘S)" onClick={() => useStore.getState().setSidebar("expanded")} />}
+      {sidebar !== "expanded" && <button className="sidebar-reveal" tabIndex={-1} aria-label="Preview sidebar" onPointerEnter={keepPeek} onPointerLeave={dismissPeek} onClick={keepPeek} />}
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
           onSave={(name, color) => (editing === "new" ? addSpace(name, color) : editSpace(editing.id, name, color))} />
@@ -749,18 +793,17 @@ function NewTabButton({ onClick, dropOn, onDragOver, onDrop, onDragEnd }: {
   );
 }
 
-function FolderContextMenu({ folder, x, y, onClose, onRename, onDelete }: {
+function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDelete }: {
   folder: Folder; x: number; y: number; onClose: () => void; onRename: () => void; onDelete: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const onClose = useMenuDismiss(ref, finishClose);
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const trigger = useRef(document.activeElement as HTMLElement | null);
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
-    const bounds = menu.getBoundingClientRect();
-    menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8))}px`;
-    menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`;
+    positionContextMenu(menu, x, y);
   }, [x, y, folder.name]);
   useEffect(() => {
     const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && closeRef.current();
@@ -774,7 +817,7 @@ function FolderContextMenu({ folder, x, y, onClose, onRename, onDelete }: {
     };
   }, []);
   return (
-    <div ref={ref} className="menu ctx-menu pop-in" role="menu" onKeyDown={event => { if (event.key === "Tab") { onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: Math.min(x, window.innerWidth - 200), top: Math.min(y, window.innerHeight - 120) }}>
+    <div ref={ref} className="menu ctx-menu pop-in" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
       <button className="menu-item" role="menuitem" onClick={() => { onRename(); onClose(); }}>
         <span className="t">Rename</span>
       </button>

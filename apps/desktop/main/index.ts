@@ -1,4 +1,5 @@
 import { saveWorkbookSnapshot } from "./save-workbook.js";
+import { setWindowMaterial } from "./window-material.js";
 import { showNavigationMenu } from "./navigation-menu.js";
 import { splitRatio, splitWidths } from "@vector/contracts/split-layout";
 import { dictationStatus, startDictation, stopDictation, cancelDictation } from "./dictation.js";
@@ -26,7 +27,7 @@ import { copyFile, cp, rm, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { ChildProcess } from "node:child_process";
-import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, type Transport } from "@vector/contracts";
+import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, SidebarMaterialSchema, type SidebarMaterial, type Transport } from "@vector/contracts";
 import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@vector/contracts/installation";
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
 import { createPageView, destroyPageView, downloadsSession, profileSession, setEngineFrame } from "./native-views.js";
@@ -80,33 +81,36 @@ const projectFiles = new ProjectFiles(id => localProjects.files(id),(id,name)=>l
 const savingProjects = new Set<string>();
 const cloudPreviewTokens = new Map<string,string>();
 
-const WINDOW_BG = { dark: "#1c1c1e", light: "#e4e4e1" } as const;
+const WINDOW_BG = { dark: "#171717", light: "#ffffff" } as const;
 
-function readStoredTheme(): "system" | "dark" | "light" {
+function readStoredAppearance(): { theme: "system" | "dark" | "light"; translucent: boolean; material: SidebarMaterial } {
   try {
-    const raw = JSON.parse(readFileSync(join(DATA_DIR, "settings.json"), "utf8")) as { theme?: string };
-    return raw.theme === "system" ? "system" : raw.theme === "light" ? "light" : "dark";
+    const raw = JSON.parse(readFileSync(join(DATA_DIR, "settings.json"), "utf8")) as { theme?: string; sidebarAppearance?: string; sidebarMaterial?: unknown };
+    return { theme: raw.theme === "system" ? "system" : raw.theme === "light" ? "light" : "dark", translucent: raw.sidebarAppearance !== "solid", material: SidebarMaterialSchema.catch("liquid-glass").parse(raw.sidebarMaterial) };
   } catch {
-    return "dark";
+    return { theme: "dark", translucent: true, material: "liquid-glass" };
   }
 }
 
-let requestedGlass = false;
+let requestedGlass = true;
+let requestedMaterial: SidebarMaterial = "liquid-glass";
 nativeTheme.on("updated", () => {
   const glass = requestedGlass && !nativeTheme.prefersReducedTransparency && process.platform === "darwin";
   for (const state of regularWindows.values()) {
-    state.win.setVibrancy(glass ? "under-window" : null);
+    state.win.setBackgroundColor(glass ? "#00000000" : WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"]);
+    setWindowMaterial(state.win, glass ? requestedMaterial : null);
     state.shellView.setBackgroundColor(glass ? "#00000000" : WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"]);
   }
 });
-function applyAppearance(theme: "system" | "dark" | "light", translucent = requestedGlass) {
+function applyAppearance(theme: "system" | "dark" | "light", translucent = requestedGlass, material = requestedMaterial) {
   requestedGlass = translucent;
+  requestedMaterial = material;
   nativeTheme.themeSource = theme;
   const bg = WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"];
   const glass = translucent && !nativeTheme.prefersReducedTransparency && process.platform === "darwin";
   for (const state of regularWindows.values()) {
     try { state.win.setBackgroundColor(glass ? "#00000000" : bg); } catch { /* platform support */ }
-    state.win.setVibrancy(glass ? "under-window" : null);
+    setWindowMaterial(state.win, glass ? requestedMaterial : null);
     state.shellView.setBackgroundColor(glass ? "#00000000" : bg);
   }
 }
@@ -184,6 +188,7 @@ interface RegularWindowState {
   win: BaseWindow;
   shellView: WebContentsView;
   overlayOpen: boolean;
+  sidebarPeek: boolean;
   stageBounds: { x: number; y: number; width: number; height: number } | null;
   focusedPageId: string | null;
   splitPageId: string | null;
@@ -1110,6 +1115,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       if(entry.pageId!==state.focusedPageId&&entry.pageId!==state.splitPageId)scheduleIdleFreeze(entry);
     }
   }
+  if (state.sidebarPeek) win.contentView.addChildView(state.shellView);
 }
 
 // ---------- renderer IPC ----------
@@ -1280,6 +1286,19 @@ function wireRendererIpc() {
   ipcMain.handle("ui.overlay", (event, open: boolean) => {
     const state = requireShellUi(event);
     state.overlayOpen = open;
+    applyStage(state);
+    return true;
+  });
+  ipcMain.handle("ui.sidebarPeek", (event, open: unknown) => {
+    const state = requireShellUi(event);
+    state.sidebarPeek = open === true;
+    state.win.contentView.addChildView(state.shellView);
+    if (!state.sidebarPeek) {
+      for (const pageId of [state.stagePageId, state.splitPageId]) {
+        const entry = pageId ? registry.get(pageId) : undefined;
+        if (entry && !entry.popup && (entry.windowId ?? PRIMARY_WINDOW_ID) === state.id) state.win.contentView.addChildView(entry.view);
+      }
+    }
     applyStage(state);
     return true;
   });
@@ -1684,10 +1703,11 @@ function wireRendererIpc() {
     saveSitePermissions(next);
     return true;
   });
-  ipcMain.handle("ui.setAppearance", (event, theme: unknown, translucent: unknown, windowControls: unknown) => {
+  ipcMain.handle("ui.setAppearance", (event, theme: unknown, translucent: unknown, windowControls: unknown, material: unknown) => {
     requireShellUi(event);
+    const nativeMaterial = SidebarMaterialSchema.default("liquid-glass").parse(material);
     if (process.platform === "darwin") for (const state of regularWindows.values()) state.win.setWindowButtonVisibility(windowControls !== false);
-    applyAppearance(theme === "system" ? "system" : theme === "light" ? "light" : "dark", translucent === true);
+    applyAppearance(theme === "system" ? "system" : theme === "light" ? "light" : "dark", translucent === true, nativeMaterial);
     return true;
   });
 }
@@ -1777,11 +1797,18 @@ async function openQuickAsk() {
 async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = false): Promise<RegularWindowState> {
   const existing = regularWindows.get(id);
   if (existing) { existing.win.show(); existing.win.focus(); return existing; }
-  const theme = readStoredTheme();
+  const { theme, translucent, material } = readStoredAppearance();
+  requestedGlass = translucent;
+  requestedMaterial = material;
   nativeTheme.themeSource = theme;
+  const glass = translucent && !nativeTheme.prefersReducedTransparency && process.platform === "darwin";
+  const backgroundColor = glass ? "#00000000" : WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"];
   const regularWindow = new BaseWindow({
     width: quickAsk ? 580 : 1440, height: quickAsk ? 640 : 960, minWidth: quickAsk ? 420 : 900, minHeight: quickAsk ? 400 : 640,
-    backgroundColor: WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"],
+    backgroundColor,
+    // CSS and WebContentsView alpha also need a transparent native window.
+    transparent: process.platform === "darwin",
+    visualEffectState: "active",
     title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 18 }, roundedCorners: true,
   });
   const regularShell = new WebContentsView({ webPreferences: {
@@ -1789,8 +1816,8 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     additionalArguments: [`--aux-window-id=${encodeURIComponent(id)}`, ...(quickAsk ? ["--aux-quick-ask"] : [])],
     contextIsolation: true, sandbox: true, nodeIntegration: false,
   }});
-  regularShell.setBackgroundColor(WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"]);
-  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false,
+  regularShell.setBackgroundColor(backgroundColor);
+  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false, sidebarPeek: false,
     stageBounds: null, stagePageId: null, focusedPageId: null, splitPageId: null, splitRatio: .5, stageRadius: 0, closeApproved: false };
   regularWindows.set(id, state);
   if (id === PRIMARY_WINDOW_ID || !win || !shellView) { win = regularWindow; shellView = regularShell; }
@@ -1805,6 +1832,7 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     return { action: "deny" };
   });
   regularWindow.contentView.addChildView(regularShell);
+  setWindowMaterial(regularWindow, glass ? material : null);
   const layout = () => {
     const { width, height } = regularWindow.getContentBounds();
     regularShell.setBounds({ x: 0, y: 0, width, height });

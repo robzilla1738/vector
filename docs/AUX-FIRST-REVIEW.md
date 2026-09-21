@@ -174,9 +174,9 @@ restart; changing the current model setting does not rewrite it. Saved-task rece
 and exports include the same provider, model and destination summary.
 
 Settings is a dedicated page with categories and search. Appearance controls
-system/light/dark, solid/translucent sidebar, a fixed neutral glass treatment,
-and horizontal/vertical tabs. macOS supplies native vibrancy; this is not a claim
-of native AppKit Liquid Glass. OS reduced transparency overrides glass. Reduced
+system/light/dark, solid/translucent sidebar, Liquid Glass/titlebar/sidebar/under-window
+materials, sidebar tint, content opacity and horizontal/vertical tabs. macOS 26+
+uses public AppKit Liquid Glass with older-system vibrancy fallback. OS reduced transparency overrides glass. Reduced
 motion disables transitions. Sidebar edge resize is keyboard accessible.
 
 ## A useful first session

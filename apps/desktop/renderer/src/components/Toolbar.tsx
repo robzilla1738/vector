@@ -33,7 +33,7 @@ export function Toolbar() {
         </div>
       </div>
 
-      <CommandBar />
+      <CommandBar compact />
 
       <div className="tb-right">
         {sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}

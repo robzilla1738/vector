@@ -6,15 +6,15 @@
 pnpm package:local
 ```
 
-Produces `release/mac-arm64/Vector.app` (unsigned local build) with the
-desktop shell, runtime, Chromium compatibility backend, and packaged Vector
+Produces `release/mac-arm64/Aux Browser.app` (`release/mac/` on Intel; unsigned local build) with the
+desktop shell, runtime, Chromium compatibility backend, and packaged Aux
 Engine host. Smoke with `pnpm smoke:packaged`.
 
 ```bash
 pnpm dev
 ```
 
-## Vector Engine development shell
+## Aux Engine development shell
 
 ```bash
 pnpm package:native-engine
@@ -31,13 +31,24 @@ Builds `ve-shell` (`--features product`: window + V8 + HTTP) into
    Electron main/preload into self-contained files (no node_modules in the
    asar).
 2. Stage the runtime under `release/.staging/runtime`: `apps/runtime/dist`
-   plus vendored `packages/contracts/dist` and `packages/browser-driver/dist`,
+   plus vendored contracts, engine-client and engine-native workspace packages,
    workspace deps rewritten to `file:`, registry deps hoisted into the
    runtime manifest, then `npm install --omit=dev`.
 3. `electron-builder` packages the app; the staged runtime lands at
    `Contents/Resources/runtime`.
 4. electron-builder hard-excludes `node_modules` from `extraResources`, so the
    script copies the runtime's `node_modules` in after the build.
+
+The macOS build compiles `native/liquid-glass.mm` with AppKit and Node-API headers;
+the build SDK must include macOS 26 AppKit declarations. The addon uses a runtime
+availability check and falls back to titlebar vibrancy on older macOS.
+`liquid-glass.node` and `aux-dictation` are unpacked from ASAR; dictation resolves
+its executable from `app.asar.unpacked` in packaged builds.
+
+Native icon: `apps/desktop/brand/aux-icon-1024.png` is the full-canvas silver
+master. Run `node scripts/make-icon.mjs` before packaging after replacing it.
+This generates the 16–1024px iconset, `apps/desktop/icon.icns`, and the renderer
+About icon. The separate monochrome UI mark is `renderer/public/arch-mark.svg`.
 
 At launch, `main/runtime-proc.ts` resolves
 `process.resourcesPath/runtime/dist/main.js` and forks it under
@@ -48,9 +59,9 @@ auto-assigned remote-debugging port), and `VECTOR_DATA_DIR`.
 
 ```bash
 # fixtures must be running: pnpm fixtures
-open release/mac-arm64/Vector.app
+pnpm preview
 # or drive it headlessly:
-VECTOR_DATA_DIR=/tmp/vpkg release/mac-arm64/Vector.app/Contents/MacOS/Vector &
+AUX_DATA_DIR=/tmp/vpkg 'release/mac-arm64/Aux Browser.app/Contents/MacOS/Aux Browser' &
 cat /tmp/vpkg/runtime.json     # port + token
 curl -X POST http://127.0.0.1:<port>/rpc \
   -H "authorization: Bearer <token>" -H 'content-type: application/json' \
@@ -62,4 +73,8 @@ curl -X POST http://127.0.0.1:<port>/rpc \
 - Code signing / notarization are intentionally off (`identity: null` in
   `electron-builder.yml`) — local builds only.
 - The packaged browser profile lives under the app's `userData` dir;
-  `VECTOR_DATA_DIR` only carries runtime state (db, artifacts, descriptor).
+  `AUX_DATA_DIR` only carries runtime state (db, artifacts, descriptor).
+- `pnpm preview` uses separate persistent data under `~/Library/Application Support/Aux Preview`,
+  disables dotenv loading and the experimental engine, and does not import main-profile credentials.
+- Isolated manual `electron-builder --dir` builds also require the runtime
+  dependency injection in step 4; packaging alone does not include those dependencies.

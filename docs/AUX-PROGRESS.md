@@ -1,5 +1,26 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21 (Aside parity, simpler chat, Aux branding)
+
+This is the current visual direction; earlier ZCode entries below are historical.
+Geist/Geist Mono and Central Icons replace Inter/Lucide. The sidebar closes fully
+and edge-reveals; pins, sections, menus, schedules and chat/history surfaces use
+the reference geometry and tokens. Native macOS Liquid Glass has older-system
+vibrancy fallback, tint/content-opacity settings and reduced-transparency support.
+
+The URL bar and both icon groups hide together and reveal on hover/focus without
+moving the page. Chat no longer opens task promotion automatically, clears reply
+drafts on promotion, or stacks successful completion labels above an answer.
+Work history starts collapsed; safety controls remain. AI SDK stays at 7.0.93.
+The new arch SVG and full-canvas silver macOS icon are integrated.
+
+Unsigned isolated native previews were built and opened. This does not establish
+signing/notarization or B1–B7 completion. Native pointer-only hover, matching-screen
+comparisons and the wallpaper matrix remain unverified. See [parity audit](ASIDE-PARITY.md)
+and [design QA](../design-qa.md). Current validation is recorded there.
+Pre-push verification: `pnpm test:unit` passed 161 files / 782 tests;
+`pnpm typecheck` passed. Native end-to-end acceptance is not implied.
+
 ## Continuation — 2026-09-21 (ZCode design pass)
 
 Transferable ZCode UX on `cursor/aux-remaining-implementation-4932`. Not a clone. B1–B7 unchanged.

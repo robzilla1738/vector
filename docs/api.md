@@ -14,6 +14,12 @@ accepted **only** on the WebSocket upgrade (`/ws`), never on `/rpc`.
 
 ## RPC
 
+Appearance fields accepted by `settings.set`: `sidebarAppearance` (`solid` or
+`translucent`), `sidebarMaterial` (`liquid-glass`, `titlebar`, `sidebar`,
+`under-window`), `sidebarTint` (0–60), `contentOpacity` (80–100). New profiles
+default to translucent/Liquid Glass/0/95; existing explicit values are retained.
+Native material is macOS-only; OS reduced transparency takes precedence.
+
 ```
 POST /rpc
 { "method": "<name>", "params": { … } }

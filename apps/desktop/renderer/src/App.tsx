@@ -105,6 +105,7 @@ export function App() {
   useEffect(()=>{if(quickAsk&&overlay)expandQuickAsk();},[quickAsk,overlay]);
   const railOpen = useStore((s) => s.railOpen);
   const sidebar = useStore((s) => s.sidebar);
+  const sidebarPeek = useStore(s => s.sidebarPeek);
   const activePageId = useStore((s) => s.activePageId);
   const pages = useStore((s) => s.pages);
   const activePage = pages.find((p) => p.pageId === activePageId);
@@ -121,23 +122,23 @@ export function App() {
 
   useEffect(() => { applyUiFontSize(); }, []);
 
-  // theme + space tint on the root so tokens cascade everywhere, including
-  // the native window (vibrancy was why light mode never showed)
+  // Native vibrancy and transparent renderer layers must change together.
   useEffect(() => {
     const dark = window.matchMedia("(prefers-color-scheme: dark)");
     const reduced = window.matchMedia("(prefers-reduced-transparency: reduce)");
     const apply = () => {
       const theme = settings.theme === "system" ? (dark.matches ? "dark" : "light") : settings.theme === "light" ? "light" : "dark";
-      const glass = settings.sidebarAppearance === "translucent" && !reduced.matches;
+      const glass = settings.sidebarAppearance !== "solid" && !reduced.matches;
       document.documentElement.dataset.theme = theme;
       document.documentElement.dataset.sidebarAppearance = glass ? "translucent" : "solid";
-      document.documentElement.style.setProperty("--sidebar-blur", `${Number(settings.sidebarBlur ?? 0)}px`);
-      document.documentElement.style.setProperty("--sidebar-opacity", `${Number(settings.sidebarOpacity ?? 90)}%`);
-      void bridge.setAppearance(settings.theme === "system" ? "system" : theme, glass, sidebar === "expanded" || settings.tabLayout === "horizontal");
+      document.documentElement.style.setProperty("--sidebar-tint", `${Number(settings.sidebarTint ?? 0)}%`);
+      document.documentElement.style.setProperty("--content-opacity", `${Number(settings.contentOpacity ?? 95)}%`);
+      const material = settings.sidebarMaterial === "sidebar" || settings.sidebarMaterial === "under-window" || settings.sidebarMaterial === "titlebar" ? settings.sidebarMaterial : "liquid-glass";
+      void bridge.setAppearance(settings.theme === "system" ? "system" : theme, glass, true, material).catch(errToast);
     };
     apply(); dark.addEventListener("change", apply); reduced.addEventListener("change", apply);
     return () => { dark.removeEventListener("change", apply); reduced.removeEventListener("change", apply); };
-  }, [settings.theme, settings.sidebarAppearance, settings.sidebarBlur, settings.sidebarOpacity, settings.tabLayout, sidebar]);
+  }, [settings.theme, settings.sidebarAppearance, settings.sidebarMaterial, settings.sidebarTint, settings.contentOpacity]);
   useEffect(() => {
     document.documentElement.dataset.space = space.color;
   }, [space.color]);
@@ -211,7 +212,9 @@ export function App() {
         const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
         const companion = pages.find(page => page.pageId === splitPageId);
         const split = showPage && companion && companion.pageId !== showPage && nativePageId({mode,overlay,activePageId:companion.pageId,...companion}) ? splitPageId : null;
-        void bridge.setStage(showPage, { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }, split, STAGE_RADIUS, splitRatio);
+        // Reserve an invisible edge target outside the native page's input surface.
+        const edge = sidebar === "expanded" ? 0 : 6;
+        void bridge.setStage(showPage, { x: Math.round(r.x) + edge, y: Math.round(r.y), width: Math.max(1, Math.round(r.width) - edge), height: Math.round(r.height) }, split, STAGE_RADIUS, splitRatio);
       });
     };
     const ro = new ResizeObserver(report);
@@ -352,7 +355,7 @@ export function App() {
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (
     <div
-      className={`app tabs-${settings.tabLayout ?? "vertical"} ${inElectron ? "electron" : ""} layout-${sidebar as SidebarMode} ${railOpen ? "rail-open" : ""}`}
+      className={`app tabs-${settings.tabLayout ?? "vertical"} ${inElectron ? "electron" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${railOpen ? "rail-open" : ""}`}
       onContextMenu={(e) => {
         if (!inElectron) return;
         const el = e.target as HTMLElement;
@@ -372,7 +375,7 @@ export function App() {
         <Sidebar />
         <div className="main-col">
           {settings.tabLayout === "horizontal" && <HorizontalTabs />}
-          {settings.tabLayout === "horizontal" && <Toolbar />}
+          <Toolbar />
           <div className="main">
             <div className="stage-wrap">
               {overlay === "find" && <FindBar />}

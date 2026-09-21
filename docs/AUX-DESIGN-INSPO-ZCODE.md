@@ -1,5 +1,9 @@
 # ZCode design inspiration — Aux mapping
 
+Historical reference only. The current palette, fonts, icons and sidebar behavior
+are defined by [Aside parity direction](AUX-DESIGN-DIRECTION.md). Do not restore
+the older Inter/Lucide or slim-rail requirements below.
+
 Source: [ZCode DESIGN.md](https://github.com/zai-org/ZCode/blob/main/DESIGN.md) and Zai Light/Dark values in [packages/ui/src/styles.css](https://github.com/zai-org/ZCode/blob/main/packages/ui/src/styles.css) (`.theme-zai-light` / `.theme-zai-dark`), reviewed 2026-09-21.
 
 Aux remains its own product. Patterns are adapted into Aux names, Inter, Lucide, and the Aux mark. Do not import `packages/ui`.

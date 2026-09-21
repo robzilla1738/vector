@@ -308,10 +308,10 @@ export function installMockBridge(q: URLSearchParams) {
         throw new Error("Document attachment not found.");
       }
       case "settings.get":
-        return settings;
+        return { ...settings };
       case "settings.set":
         Object.assign(settings, p);
-        emit("settings.changed", { settings });
+        emit("settings.changed", { settings: { ...settings } });
         return { ok: true };
       case "browser.recovery.list": return recoveryTabs;
       case "browser.recovery.retry": {
@@ -648,6 +648,7 @@ export function installMockBridge(q: URLSearchParams) {
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     setStage: async () => true,
     overlay: async () => true,
+    sidebarPeek: async () => true,
     focusShell: async () => {},
     preview: async () => null,
     contextMenu: async () => true,

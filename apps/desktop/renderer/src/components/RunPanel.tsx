@@ -39,14 +39,15 @@ function fmtCost(usd: number, estimated: boolean): string {
 /** Final answer as prose — no status chrome, copy is an icon. */
 function Answer({ run }: { run: Run }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
+  const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {
     const parts: string[] = [];
-    if (run.statusMessage && (!run.failure || run.result)) parts.push(run.statusMessage);
+    if (showSummary) parts.push(run.statusMessage!);
     if (run.result) for (const [k, v] of Object.entries(run.result)) parts.push(plainAnswer !== null ? plainAnswer : `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
     if (run.error && !run.failure) parts.push(`Error: ${run.error}`);
     return parts.join("\n");
-  }, [run, plainAnswer]);
+  }, [run, plainAnswer, showSummary]);
   useEffect(()=>{if(!copied)return;const timer=window.setTimeout(()=>setCopied(false),1200);return()=>window.clearTimeout(timer);},[copied]);
   const copy = () => {
     void navigator.clipboard.writeText(text).then(() => {
@@ -62,7 +63,7 @@ function Answer({ run }: { run: Run }) {
           {copied ? I.check : I.copy}
         </button>
       )}
-      {run.statusMessage && (!run.failure || run.result) && <AnswerMarkdown text={run.statusMessage}/>}
+      {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
       {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && (
         <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><dl className="answer-result">
@@ -118,7 +119,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   const observationRequest=useRef(0);
   const [showSteps, setShowSteps] = useState(() => {
     const current = useStore.getState().runs.find((item) => item.runId === runId);
-    return !!current && isLive(current);
+    return !conversation && !!current && isLive(current);
   });
   type Control = "take" | "return" | "stop" | "pause" | "resume";
   const [controlBusy, setControlBusy] = useState<Control | null>(null);
@@ -128,7 +129,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   useEffect(() => {
     setShowObs(false); setObsLoading(false); setObsError(""); setInspectedArtifact(null); setControlBusy(null); setControlError("");
     const r = useStore.getState().runs.find((x) => x.runId === runId);
-    setShowSteps(!!r && isLive(r));
+    setShowSteps(!conversation && !!r && isLive(r));
     if (!steps) void loadRun(runId);
     return () => { pendingControl.current=null; ++observationRequest.current; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,7 +207,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
       </div>
 
       <div className="run-status nums">
-        <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>
+        {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {!conversation && <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>}
         {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
         {!conversation && stats && stats.costUsd > 0 && <span title={`${stats.inputTokens.toLocaleString()} in · ${stats.outputTokens.toLocaleString()} out tokens`}>{fmtCost(stats.costUsd, stats.costEstimated)}</span>}

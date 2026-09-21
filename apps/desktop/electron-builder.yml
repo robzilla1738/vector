@@ -14,6 +14,9 @@ files:
   - "!node_modules/**" # main+preload are esbuild-bundled; no runtime deps
 
 asar: true
+asarUnpack:
+  - dist/main/liquid-glass.node
+  - dist/main/aux-dictation
 
 # the forked runtime + its production deps are staged by scripts/package-local.mjs
 extraResources:

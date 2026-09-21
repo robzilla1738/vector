@@ -15,6 +15,21 @@ function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}
 }
 
 describe("settings defaults for a real test pass", () => {
+  it("persists native material, independent tint and content opacity", async () => {
+    const { dir, settings } = harness();
+    try {
+      expect(settings.all()).toMatchObject({ sidebarMaterial: "liquid-glass", sidebarTint: 0, contentOpacity: 95 });
+      const patch = { sidebarMaterial: "sidebar", sidebarTint: 20, contentOpacity: 100 } as const;
+      await settings.set(MethodSchemas["settings.set"].parse(patch));
+      expect(settings.all()).toMatchObject(patch);
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"))).toMatchObject(patch);
+      expect(MethodSchemas["settings.set"].safeParse({ sidebarMaterial: "fake-blur" }).success).toBe(false);
+      expect(MethodSchemas["settings.set"].safeParse({ sidebarTint: 61 }).success).toBe(false);
+      expect(MethodSchemas["settings.set"].safeParse({ contentOpacity: 79 }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("honours a saved planner model including GPT Luna Fast", () => {
     const { dir, settings } = harness({}, { plannerModel: "openai/gpt-5.6-luna-fast" });
     try {

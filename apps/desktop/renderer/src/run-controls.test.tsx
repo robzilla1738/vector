@@ -7,6 +7,20 @@ import { bridge } from "./bridge";
 import { makeRun, makeSteps } from "./mock/fixtures";
 import { useStore } from "./store";
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
+it.each(["completed", "partially_completed"] as const)("keeps %s chat output concise without hiding partial results", async status => {
+  const original=useStore.getState();
+  const run=makeRun({runId:"concise",status,pageIds:[],statusMessage:"Done — 3 modes compared",result:{answer:"## Checkout modes\nThe comparison."}});
+  useStore.setState({runs:[run],steps:{concise:[]},prompt:null});
+  const host=document.createElement("div"),root=createRoot(host);
+  try {
+    await act(async()=>root.render(<RunPanel runId="concise" conversation/>));
+    expect(host.querySelectorAll(".answer h2")).toHaveLength(1);
+    expect(host.querySelector(".answer")?.textContent?.includes(run.statusMessage!)).toBe(status!=="completed");
+    expect(host.querySelector(".run-state")!==null).toBe(status!=="completed");
+    expect(host.querySelector('[aria-label="Copy answer"]')).not.toBeNull();
+  } finally { await act(async()=>root.unmount());useStore.setState(original,true); }
+});
+
 it("keeps Stop available during pause and ignores the superseded pause error",async()=>{
   const original=useStore.getState();
   const run=makeRun({runId:"controls",status:"running",pageIds:[]});
@@ -20,6 +34,10 @@ it("keeps Stop available during pause and ignores the superseded pause error",as
   });
   try {
     await act(async()=>root.render(<RunPanel runId="controls" conversation/>));
+    const history=Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(button=>button.textContent?.includes("Work history"))!;
+    expect(history.getAttribute("aria-expanded")).toBe("false");
+    await act(async()=>history.click());
+    expect(history.getAttribute("aria-expanded")).toBe("true");
     const pause=host.querySelector<HTMLButtonElement>('[aria-label="Pause run"]')!;
     await act(async()=>{pause.click();pause.click();});
     expect(invoke.mock.calls.filter(([method])=>method==="runs.pause")).toHaveLength(1);

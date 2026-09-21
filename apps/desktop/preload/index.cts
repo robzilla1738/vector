@@ -70,6 +70,7 @@ const vector = {
     ipcRenderer.invoke("ui.setStage", pageId, bounds, split, radius, ratio),
   /** hide native pages while a DOM overlay (palette/menus/overview) is up */
   overlay: (open: boolean) => ipcRenderer.invoke("ui.overlay", open),
+  sidebarPeek: (open: boolean) => ipcRenderer.invoke("ui.sidebarPeek", open),
   focusShell: () => ipcRenderer.invoke("ui.focusShell") as Promise<void>,
   /** thumbnail data-url for a native page */
   preview: (pageId: string) => ipcRenderer.invoke("ui.preview", pageId) as Promise<string | null>,
@@ -154,7 +155,7 @@ const vector = {
   onSiteZoomChanged: (cb: () => void) => { const listener = () => cb(); ipcRenderer.on("site-zoom-changed", listener); return () => ipcRenderer.removeListener("site-zoom-changed", listener); },
   sitePermissions: () => ipcRenderer.invoke("app.sitePermissions") as Promise<Record<string, Record<string, "allow" | "deny">>>,
   clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
-  setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true) => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls),
+  setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true, material = "liquid-glass") => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls, material),
 };
 
 export type VectorBridge = typeof vector;

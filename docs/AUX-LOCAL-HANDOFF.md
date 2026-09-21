@@ -45,22 +45,24 @@ PR 13 remains an earlier handoff-only draft and is superseded.
 - Mid-program engine `capability_unsupported` after a completed write does not migrate
   or replay remaining writes. The origin is recorded so the next open uses Chromium.
 
-### ZCode-inspired design (not a clone)
+### Current design: Aside parity with Aux branding
 
-Mapped from [ZCode DESIGN.md](https://github.com/zai-org/ZCode/blob/main/DESIGN.md)
-into Aux tokens and shell. Aux mark, Inter, and Lucide stay. Do not import ZCode
-packages or become an IDE.
+See [visual direction](AUX-DESIGN-DIRECTION.md) and [parity audit](ASIDE-PARITY.md).
+The earlier ZCode treatment is superseded: current type is Geist/Geist Mono,
+icons are Central Icons, and the brand assets are the arch SVG and silver native icon.
 
-- **Palette:** Zai Dark/Light roles as Aux CSS (`#161616` canvas, `#202020` panel,
-  `#2b2b2b` card/menu/input, `#001d3d` / `#ebf4ff` accent surface). Sparse `#4099ff`
-  / `#0b7fff` links. Confirmation `--wait` is not `--ok`. Dedicated diff and find
-  tokens. Never a brand page fill.
+- **Palette:** reference neutral/alpha tokens; native Liquid Glass on macOS 26+,
+  titlebar fallback, configurable sidebar tint and content opacity, solid alternative.
 - **Tool cards:** summary-first step cards in conversation and the agent rail.
   Nested `fillCredential` with a left-border rail, redacted secrets, HTTP(S) chips
-  open Aux tabs, absolute paths use `openPath`. Live runs expand so streaming cards
-  show. One-shot entrance per `stepId`.
-- **Sidebar:** `⌘S` toggles expanded ↔ slim Aux-mark rail outside the aside. Palette
-  can still hide completely. 7px hidden-edge hit remains.
+  open Aux tabs, absolute paths use `openPath`. Chat work history starts collapsed;
+  Pause/Stop and attention states remain visible. One-shot entrance per `stepId`.
+- **Sidebar:** `⌘S` toggles expanded ↔ fully closed, with no logo rail. The left
+  edge reveals a floating sidebar. URL and adjacent controls reveal on hover/focus.
+- **Chat:** optional task promotion lives under Options, successful replies avoid
+  duplicate status text, and unsent drafts survive task promotion.
+- **Packaging:** unsigned local previews have launched; signing, notarization and
+  the seven-day pilot remain B7. No installed-app or distribution claim follows.
 
 Visual founder acceptance and VoiceOver are still B4. Design polish is not Chrome
 Web Store, 1Password, Apple Passwords, or passkey parity.
@@ -143,7 +145,7 @@ for website content.
 **Needs:** founder eyes and VoiceOver on this Mac.
 
 **Do:** VoiceOver through sidebar, conversation, agent rail, Settings, takeover,
-needs-input, and live tool cards. Visual pass of dark/light, expanded/rail/hidden
+needs-input, and live tool cards. Visual pass of dark/light, expanded/hidden/hover-peek
 sidebar, 1024 / 1280 / 1512 conversation widths.
 
 **Done when:** the founder accepts or files concrete defects. CSS unit checks and
@@ -213,8 +215,8 @@ can be re-attempted on that identity, and the founder finishes the pilot notes.
 | --- | --- |
 | Shell, drafts, conversation | `apps/desktop/renderer/src/App.tsx`, `store.ts`, `components/Conversation.tsx`, `AgentRail.tsx`, `QuickAsk.tsx` |
 | Tool cards / steps | `components/StepTimeline.tsx`, `RunPanel.tsx` |
-| Sidebar rail | `components/Sidebar.tsx`, `sidebar-mode.ts`, `styles.css` (`.sidebar-rail`) |
-| Tokens / type | `tokens.css`, `ui-font-size.ts`, `docs/AUX-DESIGN-INSPO-ZCODE.md` |
+| Sidebar / hover peek | `components/Sidebar.tsx`, `sidebar-mode.ts`, `styles.css` |
+| Tokens / type | `tokens.css`, `ui-font-size.ts`, `docs/AUX-DESIGN-DIRECTION.md` |
 | Vault / fillCredential | `apps/runtime/src/services/vault.ts`, `execution/executor.ts`, `services/pages.ts` |
 | Journal / leases | `apps/runtime/src/store/{repo,db}.ts`, `DurableWriteLedger`, schema 13 |
 | GitHub/Vercel/Sentry GET | `apps/runtime/src/services/settings.ts` (`fetch` with no method; `serviceJson`) |

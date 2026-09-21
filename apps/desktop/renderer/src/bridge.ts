@@ -61,6 +61,7 @@ export interface VectorBridge {
   /** position the visible native page; `radius` rounds the view to match the stage card */
   setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number, ratio?: number): Promise<boolean>;
   overlay(open: boolean): Promise<boolean>;
+  sidebarPeek(open: boolean): Promise<boolean>;
   focusShell(): Promise<void>;
   preview(pageId: string): Promise<string | null>;
   contextMenu(pageId: string | null): Promise<boolean>;
@@ -136,7 +137,7 @@ export interface VectorBridge {
   onSiteZoomChanged(cb: () => void): () => void;
   sitePermissions(): Promise<Record<string, Record<string, "allow" | "deny">>>;
   clearSitePermission(origin: string, permission?: string): Promise<boolean>;
-  setAppearance(theme: "system" | "dark" | "light", translucent?: boolean, windowControls?: boolean): Promise<boolean>;
+  setAppearance(theme: "system" | "dark" | "light", translucent?: boolean, windowControls?: boolean, material?: "liquid-glass" | "titlebar" | "sidebar" | "under-window"): Promise<boolean>;
 }
 
 const noop = () => () => {};
@@ -171,6 +172,7 @@ const stub: VectorBridge = {
   controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
   setStage: async () => true,
   overlay: async () => true,
+  sidebarPeek: async () => true,
   focusShell: async () => {},
   preview: async () => null,
   contextMenu: async () => true,

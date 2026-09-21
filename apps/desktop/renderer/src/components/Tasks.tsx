@@ -19,6 +19,7 @@ export function Tasks() {
   const activePageId = useStore(s => s.activePageId);
   const pages = useStore(s => s.pages);
   const [showHistory, setShowHistory] = useState(false);
+  const [creating, setCreating] = useState(false);
   const layout = useStore(s => s.layout);
   const workspaceId = layout.spaces.find(space => space.id === layout.activeSpaceId)?.workspaceId ?? "";
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -54,7 +55,7 @@ export function Tasks() {
         const [details, receipt] = await Promise.all([call<Details>("tasks.get", {taskId: remembered}), call<TaskReceipt>("tasks.receipt", {taskId: remembered})]);
         if (!live) return;
         edit(details); setReceipt(receipt);
-      } else reset();
+      } else { reset(); setCreating(false); }
     })().catch(error => { if (live) setError(String(error)); }).finally(() => { if (live) setBusy(false); });
     return () => { live = false; };
   }, [workspaceId]);
@@ -72,10 +73,12 @@ export function Tasks() {
     return taskDraftKey(workspaceId, parentTaskId ? `new-child-${parentTaskId}` : undefined);
   }
   function reset(parentTaskId: string | null = null) {
+    setCreating(true);
     setShowHistory(false);
     setSelected(null); setReceipt(null); setNewParentTaskId(parentTaskId); restore(readTaskDraft(newDraftKey(parentTaskId))); remember(null);
   }
   function edit(details: Details, restoreDraft = true) {
+    setCreating(false);
     setShowHistory(false);
     setSelected(details); setNewParentTaskId(null);
     restore(restoreDraft ? readTaskDraft(taskDraftKey(workspaceId, details.task.taskId)) : null, details.task);
@@ -123,11 +126,13 @@ export function Tasks() {
   const conflict = !!selected && draftRevision !== selected.task.revision;
   const attached = !!selected && !!activePageId && (selected.task.resources.some(resource => resource.kind === "page" && resource.locator === activePageId) || selected.runs.some(({ run, currentRevision }) => currentRevision && run.pageIds.includes(activePageId)));
   const dirty = !!selected && (title !== selected.task.title || objective !== selected.task.objective || criteria !== selected.task.criteria.map(item => item.description).join("\n"));
+  const visibleTasks = tasks.filter(task => `${task.title} ${task.objective} ${task.criteria.map(item => item.description).join(" ")} ${task.resources.map(item => item.label).join(" ")}`.toLowerCase().includes(taskQuery.toLowerCase()));
 
   return <div className="tasks-page" role="region" aria-label="Tasks" ref={dialogRef}>
-    <div className="task-content">
+    <div className={`task-content ${!selected && !creating ? "task-index" : ""}`}>
       <div className="drawer-head"><h3>Tasks</h3><span className="sp" /><button className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>{I.close}</button></div>
       {error && <p role="alert" className="field">{error}</p>}
+      {(selected || creating) && <button className="btn ghost task-back" disabled={busy} onClick={() => { setSelected(null); setCreating(false); setShowHistory(false); remember(null); }}>{I.back}All tasks</button>}
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
         <div className="field"><label htmlFor="task-workspace">Space</label>
           <select id="task-workspace" value={layout.activeSpaceId} onChange={event => {
@@ -137,15 +142,20 @@ export function Tasks() {
             {layout.spaces.map(space => <option key={space.id} value={space.id}>{space.name}</option>)}
           </select>
         </div>
-        <div className="field"><button className="btn sm" disabled={!workspaceId} onClick={() => reset()}>New task</button>
-          <input aria-label="Search tasks" placeholder="Search tasks" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} />
-          {tasks.filter(task => `${task.title} ${task.objective} ${task.criteria.map(item => item.description).join(" ")} ${task.resources.map(item => item.label).join(" ")}`.toLowerCase().includes(taskQuery.toLowerCase())).map(task => <button key={task.taskId} className="btn" aria-pressed={selected?.task.taskId === task.taskId} onClick={() => void action(() => refresh(task.taskId))}>
-            {task.parentTaskId ? "↳ " : ""}{task.title}{task.state === "archived" ? " · Archived" : ""}
-          </button>)}
-        </div>
+        {!selected && !creating && <>
+          <div className="task-index-tools"><input aria-label="Search tasks" placeholder="Search tasks…" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} /><button className="btn primary" disabled={!workspaceId} onClick={() => reset()}>{I.plusSm}New task</button></div>
+          <div className="task-index-grid">
+            {visibleTasks.map(task => <button key={task.taskId} className="task-index-card" onClick={() => void action(() => refresh(task.taskId))}>
+              <span>{task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"}</span><strong>{task.title}</strong><p>{task.objective}</p><small>{task.criteria.length} success criteria</small>
+            </button>)}
+          </div>
+          {!busy && !tasks.length && <div className="home-empty"><p>No saved tasks yet.</p><button className="btn ghost" disabled={!workspaceId} onClick={() => reset()}>Create your first task</button></div>}
+          {!busy && tasks.length > 0 && !visibleTasks.length && <div className="home-empty" role="status"><p>No tasks match “{taskQuery}”.</p><button className="btn ghost" onClick={() => setTaskQuery("")}>Clear search</button></div>}
+          {workspaceId && <Routines workspaceId={workspaceId} />}
+        </>}
         {selected && !showHistory && <div className="row"><button className="btn sm" onClick={() => reset(selected.task.taskId)}>New child task</button><button className="btn sm" onClick={() => { setError(""); setShowHistory(true); }}>Task history</button>{(selected.task.conversationId || selected.runs[0]) && <button className="btn sm" onClick={() => { if (selected.task.conversationId) useStore.getState().openConversationDraft(selected.task.conversationId); else useStore.getState().openConversation(selected.runs[0]!.run.runId); close(null); }}>Open full conversation</button>}</div>}
         {selected && showHistory && <TaskHistory key={selected.task.taskId} taskId={selected.task.taskId} onClose={() => setShowHistory(false)} />}
-        {workspaceId && !showHistory && <>
+        {workspaceId && (selected || creating) && !showHistory && <>
           {draftNotice && <p className="field hint" role="status">{draftNotice}</p>}
           {conflict && selected && <div className="field" role="alert"><p>This task changed since your draft began. Review the current saved version before applying your draft.</p>
             <details><summary>Current saved task · revision {selected.task.revision}</summary><h4>{selected.task.title}</h4><p className="selectable">{selected.task.objective}</p><ul>{selected.task.criteria.map(item => <li key={item.criterionId}>{item.description}</li>)}</ul></details>

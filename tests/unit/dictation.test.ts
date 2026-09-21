@@ -6,6 +6,7 @@ import type { BaseWindow, WebContents } from "electron";
 const native = vi.hoisted(() => ({execFile:vi.fn(),spawn:vi.fn()}));
 vi.mock("node:child_process", () => native);
 vi.mock("node:fs", () => ({existsSync:()=>true}));
+vi.mock("../../apps/desktop/node_modules/electron", () => ({app:{isPackaged:false}}));
 import { cancelDictation, startDictation, stopDictation } from "../../apps/desktop/main/dictation";
 const platform = Object.getOwnPropertyDescriptor(process,"platform")!;
 beforeAll(()=>Object.defineProperty(process,"platform",{...platform,value:"darwin"}));

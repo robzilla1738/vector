@@ -1,101 +1,94 @@
-# Aux visual direction and implementation boundary
+# Aux visual direction: Aside parity
 
-Primary references: the nine Aside screenshots supplied in this conversation on
-2026-09-19. They provide visual grounding, not instructions to implement every
-feature visible in the source product. Aux remains its own product.
+The current direction (2026-09-21) is close visual and interaction parity with
+Aside, retaining Aux branding and real Aux functionality. This supersedes the
+earlier ZCode palette, Inter typography, sidebar address bar and minimal-shell
+direction. Do not reintroduce those choices as design requirements.
 
-Operational layering, Zai Light/Dark surface roles, type scale, radius nesting,
-waiting chips, tool-call cards, and sidebar collapse take transferable rules from
-[ZCode DESIGN.md](https://github.com/zai-org/ZCode/blob/main/DESIGN.md).
-See [AUX-DESIGN-INSPO-ZCODE.md](AUX-DESIGN-INSPO-ZCODE.md) for Use / Don’t-use.
-Do not clone ZCode’s product, packages, or logo. Aux keeps Inter, Lucide, and its mark.
+## Reference and tokens
 
-## Material, type and icons
+Reference: the installed Aside Agent Manager bundle version 1.26.921.1617,
+including its compiled global CSS, new-tab, sidebar, chat and task components,
+plus inspection of the running native Aside application.
 
-Use a Zai Dark canvas (`#161616`) with lifted panels (`#202020`) and card surfaces
-(`#2b2b2b`). Light uses `#f8f8f8` / `#ffffff` / `#f0f0f0` sidebar. Subtle one-pixel
-borders, nested radii (xl → sm; dialogs 2xl), and 4px spacing. System UI typography
-comes first on macOS, with an adjustable `--ui-font-size`. Navigation uses the existing
-Lucide family with 14/16/20px optical sizes. Folder emoji were replaced with matching
-line icons; bookmark favicons are constrained to 16px. Toolbar chevrons, upward
-send controls, quiet selected rows and explicit keyboard focus are consistent.
+Use Geist Variable and Geist Mono from their font packages. Keep the Aux mark;
+do not copy Aside's proprietary display font, wordmark or account identity.
+Use the reference's 4px spacing rhythm, 0.5px hairlines, 1.4 squircle factor,
+150ms hover/focus transitions and 240ms layout transitions. Respect reduced
+motion and increased contrast.
 
-The sidebar uses Electron’s native macOS under-window vibrancy through a transparent
-shell view plus translucent CSS material. Blur affects the backdrop, never the
-foreground text/icons. Solid mode and reduced transparency disable the effect.
-No color tint is applied or configurable; the sidebar material is neutral.
-There is no blur or tint tuning UI. macOS controls its material blur; the app uses
-a fixed neutral backdrop treatment.
-This is native vibrancy with a glass-inspired design, **not AppKit Liquid Glass**.
+Dark background is oklch(20.5% 0 0), popovers 26.9%, foreground 98.5%.
+Light background is white and foreground 14.5%. Secondary text and surfaces
+use the reference's alpha hierarchy rather than separate tinted grays.
+The content material defaults to a 95% background. Menus use an 80% popover color
+with an 8px backdrop blur and solid reduced-transparency fallback.
+Interface icons use the user-supplied Central Icons paths, retaining their
+24px viewboxes and 1.5px strokes at the shell's 14/16/20px sizes.
 
-Material guidance: [Apple Materials](https://developer.apple.com/design/human-interface-guidelines/materials)
-and [Electron BaseWindow vibrancy](https://www.electronjs.org/docs/latest/api/base-window).
-Native AppKit Liquid Glass integration can follow after first hands-on feedback;
-it is not necessary to introduce another shell or plugin before this review.
+The sidebar is transparent over Electron's macOS native vibrancy.
+Do not paint an opaque CSS canvas over that material. Solid mode and the OS
+reduced-transparency preference remain supported. Settings expose four native
+materials (Liquid Glass, title bar, sidebar, under window), 0–60% independent sidebar tint,
+and 80–100% content opacity. Defaults are Liquid Glass, zero extra tint, and 95%
+content opacity. Reset restores these together. Native effect opacity stays at
+100%: lowering it also weakens the blur and exposes sharp background content.
+These are user-requested customization controls, not source-derived Aside values.
+Liquid Glass uses public AppKit NSGlassEffectView on macOS 26+, with titlebar
+vibrancy fallback on older macOS. The native material is not promised pixel-identical across
+OS versions, wallpapers and activation states.
 
-Sidebar width transitions settle over 240ms; hover/focus feedback uses 120ms.
-Native page bounds track layout through ResizeObserver. Reduced motion removes
-transitions. Sidebar resize also supports arrow keys and Home to reset.
+## Shell and navigation
 
-## Complete experiences in this build
+- Keep the toolbar's 40px layout slot in both tab orientations, but reveal the
+  URL and surrounding icons together on hover/focus with a 180ms transition.
+  Touch keeps controls visible; reduced motion removes the transition.
+  Command-L focuses it, except on new-tab where it focuses the hero field.
+- Sidebar: collapse control, bookmarks/pins, Chats with New chat and recent
+  conversations, then Tabs/folders. Put the local profile/space control below.
+- Collapse completely, with no logo strip. Hover the left edge for a floating
+  sidebar; the toolbar keeps an explicit reopen button available on reveal.
+- Keep a continuous rounded main surface, compact controls, quiet selected rows
+  and visible keyboard focus. Preserve resize, drag/drop and keyboard behavior.
+- Retain actual Aux spaces, saved tasks, browser tools and agent panel.
+  Do not invent billing, a cloud account or unsupported reference features.
+- The new-tab page uses the reference's restrained logo/search composition:
+  64px mark, 48px gap, 54px input, 32px Search/Ask segmented control, and
+  a 1152px content maximum. Recent chat cards and routines use real saved data.
 
-1. Shell/home: organized sidebar, retained Library/spaces/folders/pins, visible
-   toolbar only in horizontal-tab mode, Search/Ask, optional suggestions and real saved conversation cards.
-   Weather, greeting, IP-location lookup and weather requests were removed.
-2. Conversations: durable existing chat IDs group turns; full-page history and
-   reply composer; captured images; expandable work; real browser link when the
-   page exists; agent side panel remains available. No new conversation database.
-   Active turns, task ownership and unresolved actions gate continuation.
-3. Settings/layout: category navigation and preference search, grouped rows,
-   system theme, Glass/Solid material, horizontal/vertical tab choice.
-   Changing layout preserves the underlying tabs, active selection and folders.
+## Chats, tasks and settings
 
-## Explicit limitations
+Empty chats show a subdued Aux mark rather than an oversized greeting.
+The bottom composer has attachment, dictation and send controls, with real
+permission/model/context actions underneath. Dictation is reviewed locally
+before insertion; attachments and active-run safety gates remain intact.
+Conversation previews render existing saved answers and never fabricate activity.
+Show successful answers once, without a duplicate completion badge/status summary.
+Keep partial-result and failure notices. Work history starts collapsed in chat.
+Task promotion is optional under Options → Save as task, never an automatic form
+above the composer, and never consumes an unsent reply. The existing AI SDK
+7.0.93 streaming runtime is unchanged.
 
-- The browser account control identifies the local profile. There is no invented
-  signed-in Aux account, billing plan or avatar copied from the reference.
-- Conversation history searches all saved prompts/responses and loads more chats
-  on demand. Threads load earlier messages in batches. Responses render Markdown lists, tables,
-  code and web links; remote image markup does not fetch content into the shell. Recent home cards
-  represent runs/conversations; saved tasks without runs remain available in Tasks.
-- The conversation model/permission/workspace controls navigate to real setup and
-  task interfaces. There is no unsupported inline project or model picker.
-- Captured images are immutable historical artifacts; page previews can become
-  stale. A closed historical tab can reopen the last observed web URL or use an explicitly
-  selected open tab before further browser work.
-- Routines, global mini popup, voice capture, arbitrary file attachments, public
-  share links and managed agent sessions are separately tracked roadmap features.
-- Live provider, authenticated external-agent and full browser compatibility
-  qualification still require additional work. No model calls were made in QA.
-- The private bundle is now Aux Browser.app, with Aux menus/display name.
-  Internal identity remains stable; the legacy app icon and actual OS credential
-  qualification are pending.
+The in-app brand mark is `renderer/public/arch-mark.svg`. The native icon master
+is `brand/aux-icon-1024.png`: the supplied silver artwork with a clean geometric
+outer mask, filling the 1024px canvas (no extra inset). `node scripts/make-icon.mjs`
+regenerates the ICNS, complete iconset and renderer About icon.
 
-Response rendering uses [react-markdown](https://github.com/remarkjs/react-markdown)
-with [remark-gfm](https://github.com/remarkjs/remark-gfm). Raw HTML is skipped;
-only explicit HTTP(S) destinations open in Aux tabs. Captured screenshots continue
-to come from stored artifacts, independently of model-authored image markup.
+Saved tasks open on a card index with search and a deliberate New task action;
+editing is a separate selected state. Routines and schedules use the existing
+runtime. Settings use the same typography, surface and control tokens as the
+shell, with Translucent/Solid as the material choice.
 
-## User correction: original Aux structure, neutral material
+## Boundaries and verification
 
-The later user correction supersedes the earlier Aside sidebar organization.
-Restore navigation/address, pins, space selector, folders and tabs from the
-pre-redesign Sidebar implementation in bb7b808. Aside guides surface geometry,
-material, type and spacing. Chats/Tasks remain compact lower navigation; Library
-remains accessible. Remove tint from settings/contracts and all visual effects.
-Use a fine neutral keyboard-focus outline and a single continuous rounded main
-surface boundary. Verify native translucency over a controlled neutral backdrop.
+Visual parity does not authorize removal of safety, accessibility or data
+integrity controls. Keep errors, permissions, unsent drafts, task ownership and
+unresolved-action gates visible and operational. Stored explicit preferences
+are honored; new profiles default to translucent material.
 
-## First-review correction: minimal shell
+Validate native dark/light windows as well as populated mock screens. Browser
+previews cannot establish native vibrancy parity. Type checks, production builds
+and UI token tests supplement visual checks; none establish full product or
+live-provider qualification. No external model calls are needed for visual QA.
 
-The user's 5:02 and 5:03 PM screenshots supersede the earlier busy footer and
-permanent content toolbar. Vertical mode has no bar above the webpage. The
-sidebar collapses to zero width; a seven-pixel edge hit target and Command-S
-restore it. Command-L reopens/focuses its address field. Window controls hide
-while vertical mode is collapsed and return on expansion; horizontal tabs keep
-their toolbar and window controls. Original spaces, pins, folders and tabs remain.
-
-The footer exposes New chat, Agent and More. More contains saved chats, Tasks,
-Library, Downloads, bookmarking, overview and Settings. No duplicate new-tab
-footer control. The agent panel uses neutral status text, quieter icons and
-softer composer surfaces without hiding errors or permissions.
+The related ZCode inspiration document is historical background, not an
+authority for the current palette, layout or typography.

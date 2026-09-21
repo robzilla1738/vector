@@ -85,6 +85,9 @@ for (const directory of ["cmaps", "standard_fonts"]) {
 console.log("bundled main, preload, and Aux MCP bridge");
 
 if (process.platform === "darwin") {
+  const headers = dirname(createRequire(import.meta.url).resolve("node-api-headers/package.json"));
+  const glass = spawnSync("xcrun", ["clang++", "-std=c++17", "-fobjc-arc", "-mmacosx-version-min=13.0", "-shared", "-undefined", "dynamic_lookup", "-framework", "AppKit", "-I", join(headers, "include"), join(here, "native/liquid-glass.mm"), "-o", join(here, "dist/main/liquid-glass.node")], { stdio: "inherit" });
+  if (glass.error || glass.status !== 0) throw glass.error ?? new Error("Could not build Aux Liquid Glass integration.");
   const source = join(here, "native/dictation.swift");
   const info = join(here, "native/dictation-info.plist");
   const output = join(here, "dist/main/aux-dictation");
