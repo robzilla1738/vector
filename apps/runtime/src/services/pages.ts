@@ -22,6 +22,7 @@ import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/engine
 import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
+import type { VaultService } from "./vault.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
 import { authorizeProgram, classifyStep, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { Router, isFallbackError } from "./router.js";
@@ -42,7 +43,7 @@ export type ExecuteResult = ProgramResult & { observation?: Observation };
 
 /** Ops that dispatch trusted input — they need a visible, laid-out view. */
 const INTERACTIVE_OPS = new Set([
-  "click", "dblclick", "hover", "press", "type", "fill",
+  "click", "dblclick", "hover", "press", "type", "fill", "fillCredential",
   "check", "uncheck", "select", "scroll", "dragTo", "clickPoint",
 ]);
 
@@ -108,6 +109,8 @@ export interface PageServiceDeps {
    * run is the write grant. Falls back to `grants` when omitted.
    */
   grantsForRun?: GrantSource;
+  /** optional locked vault; fillCredential resolves here and never records the secret */
+  vault?: VaultService;
 }
 
 /**
@@ -1119,6 +1122,15 @@ export class PageService {
           // after the spread: an explicit `allowEval: undefined` from a caller
           // must not re-enable page JS / new Function for untrusted programs
           allowEval: ctx.allowEval ?? false,
+          pageOrigin: origin,
+          taskId: ctx.taskId ?? (ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
+          resolveCredential: ctx.resolveCredential ?? (this.deps.vault
+            ? (ref, info) => this.deps.vault!.revealForFill(ref, {
+                ...info,
+                origin: info.origin || origin,
+                taskId: info.taskId ?? ctx.taskId ?? (ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
+              })
+            : undefined),
           // engine path: the observation rides back in the same native call
           returnObservation: engineActAndObserve ? opts.returnObservation : undefined,
           observe: (req) => this.observe(pageId, req).then((o) => o.content),
@@ -1712,6 +1724,7 @@ function mergeConsoleLines(
 
 function stepInputsOf(s: { op: string } & Record<string, unknown>): Record<string, unknown> {
   const { id, op, timeoutMs, optional, expect, ...rest } = s;
+  if (op === "fillCredential") return { target: rest.target, credentialRef: rest.credentialRef };
   return rest;
 }
 

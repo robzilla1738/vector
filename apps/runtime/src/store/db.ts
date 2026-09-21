@@ -125,7 +125,7 @@ const MIGRATIONS = [
 ];
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 const OPERATION_RECONCILIATION_SCHEMA = `
 CREATE TABLE IF NOT EXISTS operation_reconciliations(
@@ -236,6 +236,36 @@ CREATE TABLE task_revisions(task_id TEXT NOT NULL, revision INTEGER NOT NULL, js
 CREATE INDEX idx_runs_task ON runs(json_extract(config,'$.taskId'));
 `;
 
+const VAULT_ROUTINE_SCHEMA = `
+CREATE TABLE IF NOT EXISTS vault_items(
+  item_id TEXT PRIMARY KEY, label TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('password','secret')),
+  username TEXT, account_label TEXT, origin TEXT NOT NULL,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, revoked_at INTEGER, expires_at INTEGER);
+CREATE TABLE IF NOT EXISTS vault_grants(
+  grant_id TEXT PRIMARY KEY, item_id TEXT NOT NULL, credential_ref TEXT NOT NULL UNIQUE,
+  task_id TEXT, workspace_id TEXT, origin TEXT NOT NULL, account_label TEXT,
+  created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, revoked_at INTEGER,
+  last_used_at INTEGER, use_count INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_vault_grants_item ON vault_grants(item_id,revoked_at);
+CREATE TABLE IF NOT EXISTS vault_access(
+  seq INTEGER PRIMARY KEY AUTOINCREMENT, item_id TEXT, grant_id TEXT, action TEXT NOT NULL,
+  actor TEXT NOT NULL, task_id TEXT, origin TEXT, detail TEXT, recorded_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_vault_access_item ON vault_access(item_id,seq);
+CREATE TABLE IF NOT EXISTS routines(
+  routine_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, revision INTEGER NOT NULL,
+  paused INTEGER NOT NULL DEFAULT 0, archived_at INTEGER, updated_at INTEGER NOT NULL, json TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_routines_workspace ON routines(workspace_id,archived_at,updated_at);
+CREATE TABLE IF NOT EXISTS routine_revisions(routine_id TEXT NOT NULL, revision INTEGER NOT NULL, json TEXT NOT NULL,
+  PRIMARY KEY(routine_id,revision));
+CREATE TABLE IF NOT EXISTS routine_runs(
+  routine_run_id TEXT PRIMARY KEY, routine_id TEXT NOT NULL, revision INTEGER NOT NULL,
+  occurrence_id TEXT, occurrence_identity TEXT, status TEXT NOT NULL,
+  reason TEXT, chat_id TEXT, run_id TEXT, parameters TEXT NOT NULL DEFAULT '{}',
+  started_at INTEGER, ended_at INTEGER, created_at INTEGER NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_routine_occurrence ON routine_runs(occurrence_identity) WHERE occurrence_identity IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_routine_runs ON routine_runs(routine_id,created_at);
+`;
+
 const ACTION_JOURNAL_SCHEMA = `
 CREATE TABLE action_intents(
   id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE,
@@ -305,6 +335,7 @@ export function openDb(path: string): DatabaseSync {
           applyMigrations(db, ["ALTER TABLE bookmarks ADD COLUMN folder_path TEXT NOT NULL DEFAULT '[]'"]);
           db.exec("CREATE TABLE IF NOT EXISTS bookmark_folders(path TEXT PRIMARY KEY)");
         }
+        if (version < 12) db.exec(VAULT_ROUTINE_SCHEMA);
         db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
         db.exec("COMMIT");
       } catch (error) {

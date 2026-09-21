@@ -1,5 +1,5 @@
 import ExcelJS, { type CellValue } from "exceljs";
-import { DOCUMENT_EVIDENCE_MAX_BYTES, type WorkbookSnapshot } from "@vector/contracts";
+import { DOCUMENT_EVIDENCE_MAX_BYTES, workbookSourceHyperlink, type WorkbookCell, type WorkbookSnapshot } from "@vector/contracts";
 
 function cellText(value: CellValue): string {
   if (value == null) return "";
@@ -28,7 +28,12 @@ export async function extractWorkbook(bytes: Buffer): Promise<string> {
         if (cell.isMerged && cell.address !== cell.master.address) return;
         const value = cellText(cell.value);
         if (!value) return;
-        cells.push({ column: Number(cell.col), value });
+        const raw = cell.value;
+        const href = raw && typeof raw === "object" && "hyperlink" in raw
+          ? workbookSourceHyperlink(String((raw as { hyperlink?: string }).hyperlink ?? ""))
+          : undefined;
+        const record: WorkbookCell = { column: Number(cell.col), value, ...(href ? { hyperlink: href } : {}) };
+        cells.push(record);
         populatedCells++;
       });
       if (!cells.length) return;

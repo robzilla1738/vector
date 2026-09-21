@@ -7,6 +7,8 @@ export const settingsDestinations: SettingsDestination[] = [
   entry('General', 'Quick Ask', 'Keyboard shortcut for the global assistant popup.'),
   entry('General', 'Browser profiles', 'Separate accounts, sign-ins and browsing data.'),
   entry('General', 'Task data backup', 'Create a backup or restore chats, tasks, Spaces and preferences.'),
+  entry('General', 'Vector data', 'Copy legacy Vector task data into Aux without moving credentials.'),
+  entry('Vault', 'Agent vault', 'Lock, save and grant site credentials as opaque fill references.'),
   entry('General', 'Data directory', 'Reveal local storage in Finder.'),
   entry('General', 'Browser health', 'Local performance, memory, CPU and crash totals.'),
   entry('General', 'Support report', 'Export diagnostics without private content.'),
@@ -34,7 +36,7 @@ export const settingsDestinations: SettingsDestination[] = [
 export function searchSettings(query: string) {
   const words = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   return words.length ? settingsDestinations.filter(item => {
-    const text = `${["Models", "Connections", "External agents"].includes(item.category) ? "Connections " : ""}${item.category} ${item.label} ${item.description}`.toLocaleLowerCase();
+    const text = `${["Models", "Connections", "External agents", "Vault"].includes(item.category) ? "Connections " : ""}${item.category} ${item.label} ${item.description}`.toLocaleLowerCase();
     return words.every(word => text.includes(word));
   }) : [];
 }

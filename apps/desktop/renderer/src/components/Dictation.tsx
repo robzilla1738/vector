@@ -6,6 +6,7 @@ import { bridge } from "../bridge";
 /** Dictated words remain a local, editable preview until the user inserts them. */
 export function Dictation({ draftKey, disabled, onInsert }: {draftKey:string; disabled:boolean; onInsert:(text:string)=>void}) {
   const [available,setAvailable]=useState(false);
+  const [reason,setReason]=useState("");
   const text=useDictationDrafts(state=>state.drafts[draftKey]??"");
   const setText=(value:string)=>setDictationDraft(draftKey,value);
   const [phase,setPhase]=useState<"idle"|"saved"|"starting"|"recording"|"finishing"|"review">(text ? "review" : "idle");
@@ -19,7 +20,7 @@ export function Dictation({ draftKey, disabled, onInsert }: {draftKey:string; di
   const releaseHold=useRef<()=>void>(()=>{});
   useEffect(()=>{
     alive.current=true;
-    void bridge.dictationStatus().then(value=>{if(alive.current)setAvailable(value.available);}).catch(()=>{});
+    void bridge.dictationStatus().then(value=>{if(alive.current){setAvailable(value.available);setReason(value.reason??"");}}).catch(()=>{});
     const off=bridge.onDictation(event=>{
       if(event.sessionId!==session.current)return;
       if(event.text!==undefined)setText(event.text);
@@ -72,7 +73,9 @@ export function Dictation({ draftKey, disabled, onInsert }: {draftKey:string; di
     if(recording.current)void stop();
     else discard(); // Releasing during permission/startup cannot begin capture later.
   };
-  if(!available && !text)return null;
+  if(!available && !text) {
+    return <button className="dictation-trigger" disabled title={reason || "On-device dictation is unavailable in this environment."}><Mic size={15} aria-hidden/> Dictate</button>;
+  }
   if(phase==="idle"||phase==="saved")return <button ref={trigger} className="dictation-trigger" disabled={disabled} onClick={()=>phase==="saved"?setPhase("review"):void start()} onKeyDown={event=>{
     if(event.code!=="Space"||event.nativeEvent.isComposing)return;
     event.preventDefault();event.stopPropagation();

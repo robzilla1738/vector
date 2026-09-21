@@ -6,6 +6,7 @@ import { readTaskDraft, writeTaskDraft, taskDraftKey, readTaskSelection, remembe
 import { TaskResources } from "./TaskResources";
 import { TaskHistory } from "./TaskHistory";
 import { TaskReceiptView } from "./TaskReceiptView";
+import { Routines } from "./Routines";
 import { bridge } from "../bridge";
 
 type Details = { task: Task; revisions: Task[]; runs: { run: Run; currentRevision: boolean }[]; children:{task:Task;depth:number;latestRun?:{runId:string;status:string;taskRevision?:number};cloudAuthority?:{environmentId:string;remoteName:string};receiptStatus?:TaskReceipt['status']}[] };
@@ -184,6 +185,7 @@ export function Tasks() {
             {receipt && !dirty && !conflict && <TaskReceiptView key={`${receipt.taskId}:${receipt.taskRevision}`} receipt={receipt} pageId={attached ? activePageId : null} submit={(method, params) => action(async () => {
               await call(method, params); await refresh(receipt.taskId);
             })} />}
+            {!dirty && !conflict && <Routines workspaceId={workspaceId} task={selected.task} />}
           </>}
         </>}
       </fieldset>

@@ -66,6 +66,7 @@ export interface CoordinatorDeps {
   };
   grants?: GrantSource;
   durableWrites?: DurableWriteLedger;
+  vault?: import("../services/vault.js").VaultService;
 }
 
 /** Thin machine apply: start/control + `reduce` via `runCoordinatorLoop`. */

@@ -35,4 +35,5 @@ export const EventTypes = {
   SessionChanged: "session.changed",
   SettingsChanged: "settings.changed",
   Preview: "page.preview",
+  RoutineUpdated: "routine.updated",
 } as const;

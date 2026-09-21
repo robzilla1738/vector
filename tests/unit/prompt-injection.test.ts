@@ -30,6 +30,7 @@ describe("planner-facing step schema (P0-1)", () => {
         { id: "a", op: "click", target: "r1", expect: [{ kind: "textVisible", text: "Saved" }] },
         { id: "b", op: "waitFor", condition: { kind: "urlMatches", pattern: "/done" } },
         { id: "c", op: "extract", fields: [{ name: "t", selector: "h1" }] },
+        { id: "d", op: "fillCredential", target: "r9", credentialRef: `cref_${"ab".repeat(12)}` },
       ],
     });
     expect(ok.success, JSON.stringify(ok.success ? "" : ok.error.issues)).toBe(true);
@@ -202,5 +203,21 @@ describe("H2-C6 budget.tokens", () => {
     });
     expect(uncapped).toContain(long);
     expect(uncapped).not.toContain("truncated");
+  });
+
+  it("lists opaque credential grants without secret values", () => {
+    const prompt = buildPlannerPrompt({
+      goal: "sign in",
+      observations: [obsWith("login form")],
+      recentOutcomes: [],
+      pageIds: ["p1"],
+      fenceToken: "DATA-vault",
+      credentialGrants: [{ credentialRef: `cref_${"ab".repeat(12)}`, origin: "https://example.com", accountLabel: "work" }],
+    });
+    expect(prompt).toContain("CREDENTIAL GRANTS");
+    expect(prompt).toContain(`cref_${"ab".repeat(12)}`);
+    expect(prompt).toContain("https://example.com");
+    expect(prompt).not.toContain("password");
+    expect(prompt).not.toContain("s3cret");
   });
 });

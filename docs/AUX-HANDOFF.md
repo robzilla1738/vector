@@ -33,102 +33,61 @@ that must be extended and assessed against the current roadmap, not assumed comp
 | Everyday browsing | Space/workspace identity, vertical/horizontal tabs, multi-select/movement, split layout, pins/folders/bookmarks/imports, history, downloads, recovery, site controls/permissions/zoom, find, reader, native navigation menus, file and page output, profiles/private flows. |
 | Assistance | Shared side/full-page conversation composer, mini popup, explicit page/tab/image/document context, dictation helper, draft preservation, attachment-only draft recovery/search, sources, image previews and concise run controls. |
 | Memory | Inspectable Space memory, source exclusions, opt-in browsing memory, retention and correction/deletion paths; private boundaries retained. |
-| Real work | Task promotion with editable objective, background task starts, selected-tab retry when a single original tab is lost, missing-input continuation, specific invalid-destination recovery, safe context snapshots and redacted observations. |
-| Files/results | PDF/DOCX/XLSX extraction, image/text/CSV/JSON/Markdown previews, immutable saved results with editable copies and persisted drafts, attachment reuse, CSV/full-snapshot export, real values-only XLSX export. |
+| Real work | Task promotion with editable objective (`tasks.promote` binds the existing chat), background task starts, selected-tab retry when a single original tab is lost, crashed/detached originals treated as missing, missing-input continuation, specific invalid-destination recovery, safe context snapshots and redacted observations. |
+| Files/results | PDF/DOCX/XLSX extraction, image/text/CSV/JSON/Markdown previews, immutable saved results with editable copies and persisted drafts, attachment reuse, CSV/full-snapshot export, values-only XLSX plus optional http(s) source hyperlinks when a cell stores them. |
+| Agent vault | Optional locked vault (passphrase + OS-encrypted blobs). Opaque `cref_` grants scoped to origin and optional task. Fill via `fillCredential` never batches through engine IPC, never writes secrets into steps/observations/results. Revoke, history, expiry, origin/task mismatch fail closed. |
+| Routines | Parameterized routines from saved tasks, weekday schedules and hourly monitors, versioned edits, pause, occurrence identity, no-overlap, uncertain-write block, missed consequential schedules vs coalesced monitors, review/skip, desktop-closed cloud-capable miss when `startWork` is absent. |
+| Development workspace | Task workspace Preview / Changes / Files + expandable Console, unified Connections (Models / Services / Vault / Agents), incident snapshot from an authorized page or project preview. GitHub / Vercel / Sentry stay read-only. |
+| Rename / migration | Schema 12 additive vault/routine tables (`IF NOT EXISTS`). Explicit Vector→Aux copy: backup-first `VACUUM INTO`, skip secrets/cookies/password stores, strip kv credential keys, fail closed on dual roots or dest-db conflict. |
 
-Latest addition: saved CSV results and their edited copies can export real Excel files.
-Preview and export share a CSV parser, but export retains rows/columns beyond preview
-limits. Cell strings (including leading zeros and formula-like text) are not coerced or
-executed. Native export uses a bounded worker and atomic destination replacement.
+Latest product addition: sourced conversation tables can export a values-only workbook
+with an explicit Source column and http(s) hyperlinks. Excel still does **not** restore
+formatting, images, formulas or arbitrary external links. Dictation is disabled with a
+reason when the native capture path is unavailable. Site controls restore the opener
+control on close.
 
-## Outstanding implementation, in order
+## Remaining work (true blockers and native acceptance)
 
-### 1. Finish Phase 3 file and task experiences
+Implementable P0/P1 product/code from the ordered handoff is in this tree. Do not
+re-open vault/routines/migration as missing. What remains is founder-device, signed
+identity, paid cloud, or native-hands-on — not silent completion.
 
-- Complete creation/editing/export/revision experiences across the requested file types.
-  Current result editing is text/Markdown/CSV/JSON; it is **not** a full binary document
-  editor. XLSX export reconstructs saved values and coordinates only, without original
-  formatting, images, formulas or external links. DOCX import is extracted text; PDF
-  import excludes scanned text/layout. These limits are deliberately stated in the UI.
-- Continue sourced research → comparison → reusable result → human edit → next turn.
-  Sources in rendered answer tables are not automatically embedded into an exported
-  workbook as source hyperlinks. Do not describe current Excel export as that complete
-  sourced-research journey.
-- Finish conversational task promotion without making the user manage redundant task
-  setup. The inferred objective is foregrounded, but an inline Save as task form still
-  exists. Keep one task/conversation/context identity.
-- Complete representative dynamic-site, frame/popup, upload/download, form/rich-text,
-  multi-site and prepared-communication workflows. Reuse coordinator repair/observation,
-  ownership and uncertain-outcome protections. Do not retry uncertain writes blindly.
-- Preserve explicit multi-tab context on retries. Replacement-tab retry is intentionally
-  limited to single-tab chats; audit crashed/detached original-tab eligibility in RunPanel
-  before broadening recovery. Never silently narrow multi-tab work.
-- Finish the authenticated comparison and prepared form/file acceptance journeys from
-  the roadmap. Current builds and unit tests do not establish these experiences.
+### Host, identity, and accounts (blocked without a real path)
 
-### 2. Implement trusted authenticated agent work
+- Electron still does not establish Chrome Web Store, 1Password native messaging, Apple
+  Passwords, or platform/synced passkeys. Do not claim those. A Chromium browser-layer
+  host must keep the React shell, native tab lifecycle, trusted bridge and profile
+  separation, and prove tab/sidebar controllability before any migration. CEF Alloy
+  remains rejected.
+- Founder-only device SSO/MFA, real microphone/TCC/conferencing, VoiceOver, and visual
+  interaction acceptance still need the founder review path (`AUX_LOAD_DOTENV=0 pnpm dev`).
+- Packaging, signing and notarization stay out of this checkpoint. Unsigned local
+  builds cannot prove Touch ID / iCloud passkeys / 1Password browser identity.
 
-- The optional locked agent vault and task/account/origin-scoped credential broker are
-  **not implemented**. Existing `secret-store.ts` is not evidence of a finished vault.
-- Implement explicit saving, trusted fill with opaque references, short task-scoped
-  access, revoke/delete/access history, account-change and expired-grant recovery.
-  Never pass secret values through models, logs, page observations or result artifacts.
-- Reuse existing permission/journal/review paths and show concrete destination/account/
-  content before sensitive actions. Keep ordinary browsing light.
-- Password-manager/native messaging/passkey support is a host dependency described below.
-  Do not fake compatibility or require personal credentials to implement independent work.
+### Native journeys still needing device proof
 
-### 3. Resolve Phase 1 host compatibility without discarding Aux's shell
+- Open File and download-folder pickers, cross-window transfer/session recovery, and
+  extension×media×private combinations have code and focused tests; they have not had a
+  full isolated-profile native walkthrough in this continuation.
+- Layout CSS covers 1024 / 1280 / 1512 conversation widths. Empty / populated / loading /
+  error / collapsed / recovery matrix is not a native screenshot pass.
+- Multi-window context: metadata, reconnect and stale-read guards exist; selected
+  text/image/region → same chat → restart with newer drafts needs native confirmation.
+- Live provider-backed authenticated comparison on a real account is not claimed.
+  Vault grants plus `fillCredential` are the independent implementation.
 
-Electron's partial extension APIs do not establish required Chrome-compatible extension,
-SSO, password-manager, Apple Passwords/1Password or platform passkey support. Extension
-management and managed installation copies exist; full required compatibility does not.
+### Cloud / mutation posture (do not widen)
 
-The pinned CEF 152 Chrome-runtime experiment **failed product acceptance**: Cmd+T opens
-a separate stock Chromium window instead of a controllable tab in Aux's content surface.
-It is diagnostic code, not a production replacement. Do not repeat the same experiment,
-switch web content to Alloy, or replace Aux with stock Chrome chrome to claim success.
-A viable host path must retain the React shell, native tab lifecycle, trusted bridge,
-profile separation, layout and existing runtime control. See its README for evidence.
+- Remote browser takeover, provider-side spend budgets, hosted deletion schedulers, and
+  authorized GitHub/Vercel/Sentry push/PR/deploy/issue mutations remain unavailable.
+  Cloud-capable routines miss cleanly when the desktop is closed and no start worker is
+  configured; they do not invent a cloud run.
 
-Carry forward everyday-browser journeys that still lack native acceptance: Open File
-and download-folder pickers, site-control focus restoration, cross-window transfer and
-session recovery, extension/media/private combinations, and realistic populated layouts.
-Use targeted checks when finishing those experiences, not a broad compatibility campaign
-that stalls unrelated implementation.
+### Honesty limits that stay stated in the UI
 
-### 4. Close Phase 2 continuity gaps
-
-Native dictation code is present, but real microphone/TCC/device acceptance remains.
-Multi-window context changes need a native journey; metadata events, reconnect/focus
-refresh and stale-read guards are implemented. Exercise selected text/image/region →
-question → same chat side/full view → restart, retaining context and newer draft edits.
-Recheck quiet layout at 1024×768, 1280×800 and 1512×982 with empty, populated, loading,
-error, collapsed and recovery states. Recent native workbook preview was inspected in
-the 360px assistant; this is not evidence for every surface/state.
-
-### 5. Complete Phase 4 development/cloud experiences
-
-Start from existing local projects, task panels, services/commands, diagnostics, diff/
-review, external-agent sessions and cloud environments. Inspect actual behavior before
-changing their contracts. Complete the coherent Preview/Changes/Files + expandable
-Console experience, issue/incident intake and unified Connections. Preserve dirty files,
-external edits, identity, checkpoints, ownership and conflict-safe local return.
-
-Required complete journeys remain: repository/blank project → services → preview edit →
-diff/check → handoff; incident → reproduction/prepared fix; cloud continuation → desktop
-closed → reconnect/results → safe local return. Real provider/account prerequisites must
-be recorded precisely, while independent implementation continues.
-
-### 6. Complete Phase 5 routines
-
-Existing tasks/programs/pools/cloud infrastructure is not proof of a finished routine
-product. Implement results → reusable parameterized routine, account/site/output/review
-boundaries, schedules/monitors, versioned run history, pause/rerun and meaningful alerts.
-Recheck access each run; preserve timezone/occurrence identity, no-overlap defaults,
-missed-run semantics and uncertain-write reconciliation. Local dependencies stay local;
-cloud-capable schedules must survive the desktop closing. Finish the roadmap's monitor,
-report-comparison and expired-account recovery journeys.
+- Result editing is text/Markdown/CSV/JSON, not a binary Office editor.
+- DOCX import is extracted text. PDF excludes scanned text/layout.
+- Spaces and task Workspaces keep distinct IDs; they are not merged by name.
 
 ## Code map
 
@@ -140,12 +99,18 @@ report-comparison and expired-account recovery journeys.
   `StructuredResult.tsx`: immutable results, edited copies, context previews and export.
 - `apps/desktop/main/save-workbook.ts`, `workbook-export*.ts`, `document-*.ts`,
   `workbook-extract.ts`: native file boundaries and bounded workers.
-- `packages/contracts/src/csv.ts`: lossless row parser shared by CSV preview/Excel export.
-- `apps/runtime/src/services/{runs,tasks,conversation-images,document-context,saved-results,
-  browsing-memory,workspace-memory,spaces}.ts`: runtime authority and persistence flows.
-- `apps/runtime/src/store/{repo,db}.ts`: additive migrations and stored identity.
+- `packages/contracts/src/{csv,vault,routines,workbook-snapshot}.ts`: CSV parser, vault
+  and routine contracts, optional source hyperlinks on values-only workbooks.
+- `apps/runtime/src/services/{runs,tasks,vault,routines,legacy-migration,conversation-images,
+  document-context,saved-results,browsing-memory,workspace-memory,spaces}.ts`: runtime
+  authority, credential broker, routines, fail-closed Vector→Aux copy.
+- `apps/runtime/src/store/{repo,db}.ts`: additive migrations (schema 12 vault/routine
+  tables) and stored identity.
 - `apps/runtime/src/services/cloud-environments.ts`, `agent-connections.ts`, plus local
   project modules: reuse for Phase 4. Locate current APIs before introducing new concepts.
+- `apps/desktop/renderer/src/components/{VaultSettings,Routines,TaskWorkspace,
+  SaveConversationTask,ConversationTask}.tsx`: vault, routines, Preview/Changes/Files/
+  Console, conversational promotion, task-scoped vault grants.
 - `apps/desktop/main/{index,private-main,native-views,extensions,browser-profiles}.ts`:
   native shell and profile boundaries. Mirror applicable private behavior without sharing
   private data or persisting it accidentally.
@@ -163,32 +128,23 @@ Recent completed checks:
 - Native restart → search attachment-only draft → same chat → side-panel preview.
 - Rendered result edit/preview/attach/discard flow in the mock app; original retained.
 
+Continuation 2026-09-21 (branch `cursor/aux-remaining-implementation-4932`):
+
+- M0 unit debt is **cleared for the three named files**. Failures were fixture/schema/env
+  lag against intended policy, not a rollback of exact host/port auth or transient-document
+  routing. Focused: `mcp-stdio` (3), `operation-authority` (3), `router` (10) pass.
+- Focused product units pass after rebuilding `@vector/runtime` dist (tests import dist):
+  vault, routines, legacy migration, representative workflows, workbook hyperlinks,
+  contracts, prompt-injection `fillCredential`, set-run crashed/detached/multi-tab,
+  executor, database-migration schema 12, site-controls opener. 101 tests / 14 files.
+- `pnpm build`, desktop typecheck, and desktop production build pass on this revision.
+- Full `pnpm test:unit` was **not** re-run as a 699-file campaign. Do not treat the
+  historical 6 failures as still open.
+
 The native XLSX acceptance above used a workbook snapshot; the latest saved-CSV-result
 button reuses that native path and has binary round-trip coverage, but has not had its
-own native picker walkthrough. Latest metadata disclosure polish compiled; avoid
-mistaking an earlier screenshot for inspection of every subsequent CSS change.
-
-### PR checkpoint test result — unresolved
-
-`pnpm build` passed. `pnpm test:unit` completed: **699 passed, 6 failed** across
-143 files (140 passed, 3 failed). Do not call the full suite green. These failures were
-recorded at handoff rather than changing unrelated execution policy to satisfy tests:
-
-- `tests/unit/mcp-stdio.test.ts`: all three session tests fail. Open response lacks the
-  expected `p1`, full observation is absent, and omitted-backend parameters now include
-  `ownedByRuntime: false`. Inspect fixture/API agreement and MCP response errors before
-  deciding whether runtime or tests need correction.
-- `tests/unit/operation-authority.test.ts`: redirect test is rejected before invocation
-  because its site key is `127.0.0.1` while the request host includes a dynamic port.
-  Preserve exact host/port authorization; correct the fixture if that remains intended.
-- `tests/unit/router.test.ts`: two assertions disagree with current transient-document
-  behavior (`data:` resolves to `vector`, and `about:blank` reason is
-  `hybrid:transient-document:about:`). Confirm intended policy before updating assertions.
-
-No pre-change baseline run was made for these failures, so their regression provenance
-is not established. Start continuation with focused diagnosis of these three files;
-there is no need to repeat every passing test while diagnosing them. `git diff --check`
-passed. The latest desktop typecheck/build passed before this final documentation pass.
+own native picker walkthrough in this continuation. Avoid mistaking an earlier screenshot
+for inspection of every subsequent CSS change.
 
 Commands:
 
@@ -197,8 +153,8 @@ pnpm install --frozen-lockfile
 pnpm build
 pnpm --filter @vector/desktop typecheck
 pnpm --filter @vector/desktop build
-pnpm test:unit
-pnpm --filter @vector/desktop dev:mock --port 5189
+pnpm exec vitest run tests/unit/mcp-stdio.test.ts tests/unit/operation-authority.test.ts tests/unit/router.test.ts tests/unit/agent-vault.test.ts tests/unit/routines.test.ts tests/unit/legacy-migration.test.ts
+AUX_LOAD_DOTENV=0 AUX_ENGINE=0 pnpm dev
 ```
 
 Desktop typecheck force-emits unbundled main output: **run the desktop build afterward**
@@ -206,8 +162,6 @@ before launching Electron. Mock `?scenario=results` provides saved-result fixtur
 mock success is not native permission, account, file, voice or cloud success.
 
 Use a fresh isolated profile for native work; `AUX_DATA_DIR`, `AUX_PROFILE_DIR`,
-`AUX_ENGINE=0`, `AUX_LOAD_DOTENV=0` were used for recent local checks. Temporary fixtures
-and the custom test app under `/tmp` are not repository prerequisites and may disappear.
-The isolated native test app was quit after the latest walkthrough. Do not use personal
-profiles or hunt for personal credentials. No repository commit or PR merge is required
-for continuing development; this PR is the handoff checkpoint.
+`AUX_ENGINE=0`, `AUX_LOAD_DOTENV=0`. Do not use personal profiles or hunt for personal
+credentials. Keep this continuation as a **draft work branch** until the human reviews.
+Do not mark ready for merge on that review gate.

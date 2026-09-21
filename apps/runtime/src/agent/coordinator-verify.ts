@@ -50,7 +50,7 @@ export const OBSERVATION_BLIND_OPS = new Set([
 ]);
 
 const WRITE_LIKE_OPS = new Set([
-  "click", "dblclick", "fill", "type", "press", "select", "check", "uncheck",
+  "click", "dblclick", "fill", "fillCredential", "type", "press", "select", "check", "uncheck",
   "navigate", "submit", "hover", "scroll", "dragTo", "clickPoint", "reload",
 ]);
 

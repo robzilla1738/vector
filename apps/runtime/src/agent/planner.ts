@@ -56,6 +56,7 @@ You return ONE of:
 Rules:
 - Target elements by ref ids (r7) from the LATEST observation. Refs die on navigation (document epoch change).
 - Prefer fill/select/check over type+press for form fields. A select's options=[…] lists its choices: pass one of them as the select value.
+- Never put passwords, tokens, or other secrets in fill/type values. When CREDENTIAL GRANTS lists a cref_… reference, use fillCredential with that opaque reference. If a password is required and no grant exists, return status="needs_input".
 - An element marked offscreen needs a scroll (scroll with target=its ref) before a click lands; occluded means something covers it (close the overlay or dialog first). expanded/pressed/focused are the element's current state.
 - Search/filter boxes submit on Enter: after fill/type into one, press key "Enter" on that field — autocomplete popups often swallow or stale the submit-button click.
 - For virtualized or infinite-scroll lists, use collectScroll (item selector + optional key/fields/limit) instead of scroll+extract loops — it dedupes by stable key across renders.
@@ -224,11 +225,16 @@ export function buildPlannerPrompt(input: {
   fenceToken?: string;
   /** H2-C6: cap rendered observation text (~4 chars/token). Default 3000. */
   budget?: { tokens?: number };
+  /** Opaque vault grants for the current origin. Never include secret values. */
+  credentialGrants?: { credentialRef: string; origin: string; accountLabel?: string }[];
 }): string {
   const token = input.fenceToken ?? newFenceToken();
   const tokenBudget = input.budget?.tokens ?? 3000;
   const parts: string[] = [`GOAL: ${input.goal}`];
   if (input.context) parts.push(`EARLIER IN THIS SESSION: ${input.context}`);
+  if (input.credentialGrants?.length) {
+    parts.push(`CREDENTIAL GRANTS (opaque refs only; never echo secrets): ${input.credentialGrants.map(g => `${g.credentialRef} for ${g.origin}${g.accountLabel ? ` (${g.accountLabel})` : ""}`).join("; ")}`);
+  }
   if (input.pageIds.length) {
     const current = input.observations[0]?.pageId;
     parts.push(`PAGES: ${input.pageIds.join(", ")} — currently observing ${current ?? "none"}; set pageId to work on another`);

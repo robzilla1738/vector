@@ -3,6 +3,7 @@ import { bridge, type BrowserSiteInfo } from "../bridge";
 import { useStore } from "../store";
 import { I } from "./icons";
 import { PageZoom } from "./PageZoom";
+import { restoreSiteControlsOpener } from "../site-controls-opener";
 
 const labels:Record<string,string>={
   "media:audio":"Microphone","media:video":"Camera",media:"Camera and microphone",
@@ -27,7 +28,7 @@ export function SiteControls(){
   const [loading,setLoading]=useState(false);
   const actionPending=useRef(false);
   const closeRef=useRef<HTMLButtonElement>(null);
-  const close=()=>{setOverlay(null);requestAnimationFrame(()=>{const buttons=[...document.querySelectorAll<HTMLButtonElement>('[aria-label="Site controls"]')];buttons.find(button=>button.offsetParent!==null)?.focus();});};
+  const close=()=>{setOverlay(null);requestAnimationFrame(()=>{restoreSiteControlsOpener();});};
   const load=useCallback(async()=>{
     const version=++request.current;
     if(!pageId){setError("Open a website to view its site controls.");return;}

@@ -9,6 +9,7 @@ import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { bridge } from "../bridge";
 import { recentConversations } from "../conversations";
+import { rememberSiteControlsOpener } from "../site-controls-opener";
 
 interface Suggestion {
   id: string;
@@ -293,14 +294,14 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     <div ref={barRef} className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>
       <span className="cb-lead">
         {compact ? (
-          hasPage && !editing ? <button type="button" className="cb-ico cb-site-trigger" title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={()=>setOverlay("site")}>{I.globe}</button> :
+          hasPage && !editing ? <button type="button" className="cb-ico cb-site-trigger" title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={event=>{rememberSiteControlsOpener(event.currentTarget);setOverlay("site");}}>{I.globe}</button> :
           <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.search}</span>
         ) : page && hasPage && !hero ? (
           <EngineBadge page={page as PageTarget} compact />
         ) : (
           <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.searchLg}</span>
         )}
-        {hasPage && !editing && !hero && !compact && <button type="button" className={`cb-lock ${secure ? "secure" : ""}`} title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={()=>setOverlay("site")}>{secure ? I.lock : I.alert}</button>}
+        {hasPage && !editing && !hero && !compact && <button type="button" className={`cb-lock ${secure ? "secure" : ""}`} title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={event=>{rememberSiteControlsOpener(event.currentTarget);setOverlay("site");}}>{secure ? I.lock : I.alert}</button>}
       </span>
       <div className="cb-field">
         {!editing && (

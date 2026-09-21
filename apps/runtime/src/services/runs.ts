@@ -410,6 +410,7 @@ export class RunService {
     artifacts: ArtifactStore;
     translateSteps: (pageId: string, steps: Step[]) => Step[];
     nativeAvailable: () => boolean;
+    vault?: import("./vault.js").VaultService;
     tracer?: {
       start(
         name: string,
@@ -452,6 +453,7 @@ export class RunService {
       tracer: deps.tracer,
       grants: () => deps.settings.effectGrantsForRun(),
       durableWrites,
+      vault: deps.vault,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,
@@ -676,7 +678,23 @@ export class RunService {
     if (latest && latest.runId !== prior.runId) throw new VectorError("conflict", "A newer turn exists in this conversation. Retry it instead.");
     if (replacementPageId && prior.pageIds.length > 1) throw new VectorError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
     if (replacementPageId) this.deps.pages.get(replacementPageId);
-    if (!replacementPageId && !prior.pageIds.length) throw new VectorError("conflict", "Reopen or choose a browser tab before retrying this turn.");
+    const usable = (pageId: string) => {
+      try {
+        const page = this.deps.pages.get(pageId);
+        if (typeof this.deps.pages.isAttached === "function" && !this.deps.pages.isAttached(pageId)) return false;
+        return page.viewStatus !== "crashed" && page.viewStatus !== "detached";
+      } catch {
+        return true;
+      }
+    };
+    if (!replacementPageId) {
+      const missing = prior.pageIds.filter(id => !usable(id));
+      if (missing.length) {
+        if (prior.pageIds.length > 1) throw new VectorError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
+        throw new VectorError("conflict", "Reopen or choose a browser tab before retrying this turn.");
+      }
+      if (!prior.pageIds.length) throw new VectorError("conflict", "Reopen or choose a browser tab before retrying this turn.");
+    }
     return this.start({
       goal: prior.goal,
       pageIds: replacementPageId ? [replacementPageId] : prior.pageIds,

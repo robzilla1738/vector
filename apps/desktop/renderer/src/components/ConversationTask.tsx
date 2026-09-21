@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { PageTarget, Run, Task } from "@vector/contracts";
+import type { PageTarget, Run, Task, VaultItem } from "@vector/contracts";
+import { originOfAddress } from "@vector/contracts";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { openSavedTask } from "../task-navigation";
@@ -66,8 +67,38 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
       <div className="conversation-task-actions">
         <BrowserContextPicker value={context} linkedPageId={linkedPageId} onChange={onContext} disabled={busy || disabled} />
         <button className="btn" disabled={busy || disabled || !task || unsaved || missingContext} onClick={() => void start()}>{busy ? "Starting…" : needsSetup ? "Set up model" : "Run task"}</button>
+        {task && <button className="btn sm ghost" disabled={busy || disabled} onClick={() => { useStore.getState().setOverlay("tasks"); }}>Make a routine</button>}
       </div>
       {missingContext && <p className="hint">Choose an available tab or New browser tab to continue.</p>}
+      {task && <TaskSiteGrant taskId={taskId} workspaceId={task.workspaceId} page={page} />}
     </>}
   </section>;
+}
+
+function TaskSiteGrant({ taskId, workspaceId, page }: { taskId: string; workspaceId?: string; page?: PageTarget }) {
+  const origin = page ? originOfAddress(page.url) : undefined;
+  const [items, setItems] = useState<VaultItem[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!origin) return;
+    void call<VaultItem[]>("vault.list", {}).then(setItems).catch(() => undefined);
+  }, [origin, taskId]);
+  if (!origin) return null;
+  const matches = items.filter(item => item.origin === origin && !item.revokedAt);
+  const openVault = () => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); };
+  return <div className="conversation-task-grant">
+    <p className="hint">Trusted fill uses the agent vault. Models receive an opaque reference, not the secret. Grant this origin for this task after unlocking the vault.</p>
+    {error && <p className="field-error" role="alert">{error}</p>}
+    <div className="row">
+      {matches.map(item => <button key={item.itemId} className="btn sm" disabled={busy} onClick={() => {
+        setBusy(true); setError("");
+        void call("vault.grant", { itemId: item.itemId, origin, taskId, workspaceId, ttlMs: 30 * 60_000 })
+          .then(() => useStore.getState().toast(`Granted ${item.label} for ${origin}.`))
+          .catch(reason => setError(reason instanceof Error ? reason.message : String(reason)))
+          .finally(() => setBusy(false));
+      }}>Grant {item.label} for this task</button>)}
+      <button className="btn sm ghost" onClick={openVault}>{matches.length ? "Manage vault" : "Open vault"}</button>
+    </div>
+  </div>;
 }

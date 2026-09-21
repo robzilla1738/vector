@@ -10,6 +10,17 @@ it("exports a real workbook preserving sparse cells, hidden sheets and literal f
   expect(bytes.subarray(0,2).toString()).toBe("PK");
   expect(JSON.parse(await extractWorkbook(bytes))).toEqual(snapshot);
 });
+it("exports stored source hyperlinks and round-trips them without inferring from cell text",async()=>{
+  const snapshot={format:"aux.workbook.v1",sheets:[
+    {name:"Sources",hidden:false,rows:[{number:1,cells:[{column:1,value:"Acme",hyperlink:"https://example.com/acme"},{column:2,value:"https://example.com/plain"}]}]},
+  ]};
+  const bytes=await exportWorkbook(JSON.stringify(snapshot));
+  expect(JSON.parse(await extractWorkbook(bytes))).toEqual(snapshot);
+  const csv=await exportWorkbook('"Vendor","https://example.com/row"\r\n', "csv");
+  const fromCsv=JSON.parse(await extractWorkbook(csv));
+  expect(fromCsv.sheets[0].rows[0].cells[1]).toEqual({column:2,value:"https://example.com/row",hyperlink:"https://example.com/row"});
+  expect(fromCsv.sheets[0].rows[0].cells[0]).toEqual({column:1,value:"Vendor"});
+});
 it("rejects values outside Excel limits rather than truncating them",async()=>{
   const snapshot={format:"aux.workbook.v1",sheets:[{name:"Sheet",hidden:false,rows:[{number:1048577,cells:[{column:1,value:"Keep me"}]}]}]};
   await expect(exportWorkbook(JSON.stringify(snapshot))).rejects.toThrow(/row limit/);

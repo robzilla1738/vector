@@ -135,8 +135,12 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
   const live = isLive(run);
-  const page = pages.find((p) => p.pageId === run.pageIds[0]);
-  const retryPage = !page && run.pageIds.length <= 1 ? pages.find(item => item.pageId === retryPageId && !["crashed","detached"].includes(item.viewStatus ?? "")) : undefined;
+  const originalPages = run.pageIds.map(id => pages.find(p => p.pageId === id));
+  const usable = (item?: typeof pages[number]) => !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
+  const page = usable(originalPages[0]) ? originalPages[0] : undefined;
+  const missingOriginals = run.pageIds.filter((id, index) => !usable(originalPages[index]) || originalPages[index]?.pageId !== id);
+  const multiTabBlocked = run.pageIds.length > 1 && missingOriginals.length > 0;
+  const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? pages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
   const humanPages = pages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
   const humanPage = humanPages[0];
   const humanHolds = humanPages.length > 0;
@@ -218,7 +222,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
           {!live && (run.config?.taskId
             ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{I.layersSm}</button>
             : conversation && latestConversationTurn && !run.failure
-              ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying} onClick={() => void retryRun(run.runId)}>{I.reload}</button>
+              ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button>
               : !conversation && !run.failure
                 ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>
                 : null)}
@@ -227,6 +231,9 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
       {!live && latestConversationTurn && !run.config?.taskId && !page && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
         <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</button>
+      </section>}
+      {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && <section className="run-failure" role="status">
+        <div className="run-failure-copy"><strong>Original tabs are missing</strong><p>This turn used {run.pageIds.length} tabs. Restore those tabs before retrying. Aux will not retry a subset.</p></div>
       </section>}
       {controlError && <p className="field-error" role="alert">{controlError}</p>}
 
@@ -296,6 +303,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
           }}>{run.config?.taskId ? "Edit task" : "Revise request"}</button>}
           {run.failure.action === "permission_settings" && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{I.lock}Review permissions</button>}
           {run.failure.action === "permission_settings" && run.config?.taskId && <button className="btn sm" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>Open task</button>}
+          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{I.lock}Open vault</button>}
           {run.failure.action === "model_settings" && (
             <button className="btn sm" onClick={openModelSettings}>{I.gearSm}Model settings</button>
           )}

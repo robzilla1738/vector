@@ -1180,6 +1180,15 @@ export const useStore = create<Workspace>((set, get) => ({
         push({ kind: "event", title: controller === "human" ? "You took control" : `Page released (${controller})`, pageId, status: controller === "human" ? "paused" : "ok" });
         break;
       }
+      case "routine.updated": {
+        const run = e.payload.run as { status?: string; reason?: string } | undefined;
+        const routine = e.payload.routine as { title?: string } | undefined;
+        const title = routine?.title?.trim() || "Routine";
+        if (run?.status === "needs_review") s.toast(`${title} is waiting for review before it writes.`);
+        else if (run?.status === "missed") s.toast(run.reason ? `${title}: ${run.reason}` : `${title} missed a scheduled run.`);
+        else if (run?.status === "uncertain") s.toast(`${title} recorded an uncertain write. Reconcile it before running again.`);
+        break;
+      }
       case "run.updated":
       case "run.status": {
         const run = e.payload.run as Run | undefined;

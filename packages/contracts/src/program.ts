@@ -98,6 +98,12 @@ const stepOptions = <C extends z.ZodType>(condition: C) => {
   }),
   z.object({
     ...stepBase,
+    op: z.literal("fillCredential"),
+    ...targetFields,
+    credentialRef: z.string().regex(/^cref_[a-z0-9]{24,64}$/).describe("opaque vault grant; never a secret value"),
+  }),
+  z.object({
+    ...stepBase,
     op: z.literal("type"),
     ...targetFields,
     value: z.string(),

@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { WorkbookSnapshotSchema, readCsvRows } from "@vector/contracts";
+import { WorkbookSnapshotSchema, readCsvRows, workbookSourceHyperlink } from "@vector/contracts";
 
 /** Build a new values-only workbook. Never evaluate formulas or restore external links. */
 export async function exportWorkbook(content:string,format:"snapshot"|"csv"="snapshot"):Promise<Buffer> {
@@ -12,7 +12,8 @@ export async function exportWorkbook(content:string,format:"snapshot"|"csv"="sna
       if(number>1048576||row.length>16384)throw new Error("This CSV exceeds Excel’s row or column limit. Export the original CSV instead.");
       row.forEach((value,index)=>{
         if(value.length>32767)throw new Error("A cell exceeds Excel’s text limit. Export the original CSV instead.");
-        sheet.getCell(number,index+1).value=value;
+        const href = workbookSourceHyperlink(value);
+        sheet.getCell(number,index+1).value = href ? { text: value, hyperlink: href } : value;
       });
     });
     return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -27,7 +28,8 @@ export async function exportWorkbook(content:string,format:"snapshot"|"csv"="sna
       if(row.number>1048576)throw new Error("A saved row exceeds Excel’s row limit.");
       for(const cell of row.cells){
         if(cell.value.length>32767)throw new Error("A saved cell exceeds Excel’s text limit. Save the full snapshot instead.");
-        sheet.getCell(row.number,cell.column).value=cell.value;
+        const href = cell.hyperlink ? workbookSourceHyperlink(cell.hyperlink) : undefined;
+        sheet.getCell(row.number,cell.column).value = href ? { text: cell.value, hyperlink: href } : cell.value;
       }
     }
   }

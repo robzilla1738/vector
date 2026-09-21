@@ -13,6 +13,7 @@ import { I } from "./icons";
 import { SitePermissions } from "./SitePermissions";
 import { ExternalAgents } from "./ExternalAgents";
 import { Extensions } from "./Extensions";
+import { VaultSettings } from "./VaultSettings";
 import { searchSettings, type SettingsDestination } from "../settings-search";
 import { moveListFocus } from "../keyboard-list";
 
@@ -74,21 +75,21 @@ function Field({ label, hint, children }: { label: string; hint?: React.ReactNod
   );
 }
 
-type ConnectionTab = "Models" | "Services" | "Agents";
-const connectionCategories = ["Models", "Connections", "External agents"];
+type ConnectionTab = "Models" | "Services" | "Agents" | "Vault";
+const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
   const initialCategory = useRef(useStore.getState().settingsCategory).current;
   const [category, setCategory] = useState(connectionCategories.includes(initialCategory) ? "Connections" : initialCategory);
   const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : "Models");
   function openCategory(name: string) {
     setCategory(connectionCategories.includes(name) ? "Connections" : name);
-    if (connectionCategories.includes(name)) setConnectionTab(name === "Models" ? "Models" : name === "External agents" ? "Agents" : "Services");
+    if (connectionCategories.includes(name)) setConnectionTab(name === "Models" ? "Models" : name === "External agents" ? "Agents" : name === "Vault" ? "Vault" : "Services");
   }
   const [query, setQuery] = useState("");
   const searching = !!query.trim();
   const results = searchSettings(query);
   const visible = (name: string) => !searching && (connectionCategories.includes(name)
-    ? category === "Connections" && connectionTab === (name === "Models" ? "Models" : name === "External agents" ? "Agents" : "Services")
+    ? category === "Connections" && connectionTab === (name === "Models" ? "Models" : name === "External agents" ? "Agents" : name === "Vault" ? "Vault" : "Services")
     : category === name);
   const [destination, setDestination] = useState<SettingsDestination | null>(null);
   const settings = useStore((s) => s.settings);
@@ -303,14 +304,14 @@ export function Settings() {
         </div>
 
         {!searching && category === "Connections" && <div className="settings-connection-tabs" role="tablist" aria-label="Connection types" onKeyDown={event => moveListFocus(event, '[role="tab"]', false)}>
-          {(["Models", "Services", "Agents"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
+          {(["Models", "Services", "Vault", "Agents"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
         </div>}
         <div className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
         {searching && <div className="settings-search-results">
           <p className="hint" role="status">{results.length ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}` : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}</p>
           <div onKeyDown={event => moveListFocus(event, "button")}>
             {results.map(result => <button key={`${result.category}:${result.label}`} className="settings-search-result" onClick={() => { openCategory(result.category); setQuery(""); setDestination(result); }}>
-              <span className="settings-search-category">{connectionCategories.includes(result.category) ? `Connections · ${result.category === "Connections" ? "Services" : result.category === "External agents" ? "Agents" : "Models"}` : result.category}</span><strong>{result.label}</strong><span>{result.description}</span>
+              <span className="settings-search-category">{connectionCategories.includes(result.category) ? `Connections · ${result.category === "Connections" ? "Services" : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}` : result.category}</span><strong>{result.label}</strong><span>{result.description}</span>
             </button>)}
           </div>
         </div>}
@@ -416,7 +417,8 @@ export function Settings() {
         <Field label="Sentry token" hint={String(settings.sentryCredentialError??(settings.sentryCredential===KEY_MASK?'Saved with OS encryption.':'Use a token with organization, project, and event read access.'))}><div className="row"><input className="grow" type="password" aria-label="Sentry token" autoComplete="off" value={sentryToken} placeholder={settings.sentryCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Sentry token'} onChange={event=>{setSentryToken(event.target.value);setSentryError('');}}/><button className="btn sm" disabled={sentryBusy||!sentryToken.trim()} onClick={()=>{setSentryBusy(true);void set({sentryCredential:sentryToken.trim()}).then(ok=>{if(ok)setSentryToken('');}).finally(()=>setSentryBusy(false));}}>Save token</button>{settings.sentryCredential===KEY_MASK&&<button className="btn sm" disabled={sentryBusy} onClick={()=>{setSentryBusy(true);void set({sentryCredential:''}).then(ok=>{if(ok){setSentryProjects([]);toast('Sentry disconnected');}}).finally(()=>setSentryBusy(false));}}>Disconnect</button>}</div></Field>
         <div className="field"><button className="btn sm" disabled={sentryBusy||settings.sentryCredential!==KEY_MASK||!!sentryToken.trim()} onClick={()=>{setSentryBusy(true);setSentryError('');void call<SentryProbe>('sentry.probe',{}).then(refresh).catch(error=>setSentryError(error instanceof Error?error.message:String(error))).finally(()=>setSentryBusy(false));}}>{sentryBusy?'Checking…':'Check connection'}</button>{sentryError&&<span className="hint err" role="alert">{sentryError}</span>}</div>
         {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
-        </section><section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
+        </section><section tabIndex={-1} id="connection-panel-Vault" role="tabpanel" aria-labelledby="connection-tab-Vault" hidden={!visible("Vault")}><VaultSettings /></section>
+        <section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
         <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>
 
         <section className="appearance-preferences" hidden={!visible("Appearance")}><div className="drawer-section">Appearance</div>
@@ -527,6 +529,7 @@ export function Settings() {
           <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.')).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
           {restoreStatus.pending&&<span className="hint" role="status">A restore is staged for the next launch. Changes made before quitting will be replaced.</span>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<span className="hint" role="status">{backupMessage}</span>}
         </Field>
+        <LegacyMigration />
 
         <details className="settings-advanced">
           <summary>Diagnostics & storage</summary>
@@ -555,4 +558,24 @@ export function Settings() {
       </section></div></div>
     </div>
   );
+}
+
+function LegacyMigration() {
+  const [status, setStatus] = useState<{ source: string | null; destination: string; dualRoots: boolean; skippedCredentials: boolean; migrated: boolean; blockedReason?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => { void call<NonNullable<typeof status>>("installation.legacyStatus", {}).then(setStatus).catch(() => undefined); }, []);
+  if (!status?.source && !status?.dualRoots && !status?.migrated) return null;
+  return <Field label="Vector data" hint="Explicit Vector→Aux copy. Encrypted credentials, cookies and password stores are never moved. Confirm before copying task data.">
+    <p className="hint">{status.blockedReason ?? (status.migrated ? "A Vector→Aux migration already completed for this destination." : status.source ? `Legacy data found at ${status.source}.` : "No legacy Vector directory found.")}</p>
+    {status.skippedCredentials && <p className="hint">Credential files will be skipped. Re-enter keys in Connections after migration.</p>}
+    {status.source && !status.migrated && <button className="btn sm" disabled={busy} onClick={() => {
+      setBusy(true); setMessage("");
+      void call("installation.migrateLegacy", { confirm: true }).then(() => {
+        setMessage("Copied task data. Credentials were not moved. Restart Aux with the Aux data directory.");
+        setStatus(current => current ? { ...current, migrated: true } : current);
+      }).catch(error => setMessage(error instanceof Error ? error.message : String(error))).finally(() => setBusy(false));
+    }}>{busy ? "Copying…" : "Copy Vector data into Aux…"}</button>}
+    {message && <span className="hint" role="status">{message}</span>}
+  </Field>;
 }

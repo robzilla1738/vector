@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { normalizeAuxEnvironment, type AuxEnvironment } from "./environment.js";
 
+export const LEGACY_CREDENTIAL_NAMES = ["secrets", "gateway.key", "model.key"] as const;
+
 /** Existing profiles stay in place until the explicit, backed-up migration runs. */
 export function resolveDataDirectory(
   source: AuxEnvironment = process.env,
@@ -31,6 +33,27 @@ export function resolveDatabasePath(dataDir: string): string {
     throw new Error("Both Aux and legacy Vector databases exist in the selected directory. Resolve the migration before starting the runtime.");
   }
   return existsSync(legacy) ? legacy : current;
+}
+
+export function defaultAuxDataDirectory(
+  userHome = homedir(),
+  platform: NodeJS.Platform = process.platform,
+  source: AuxEnvironment = {},
+): string {
+  const env = normalizeAuxEnvironment(source);
+  let root = join(userHome, ".local", "share");
+  if (platform === "darwin") root = join(userHome, "Library", "Application Support");
+  if (platform === "linux" && env.XDG_DATA_HOME) root = env.XDG_DATA_HOME;
+  if (platform === "win32") root = env.LOCALAPPDATA || join(userHome, "AppData", "Local");
+  return join(root, "Aux Browser");
+}
+
+export function defaultLegacyVectorDataDirectory(userHome = homedir()): string {
+  return join(userHome, "Library", "Application Support", "Vector");
+}
+
+export function hasLegacyCredentialFiles(root: string): boolean {
+  return LEGACY_CREDENTIAL_NAMES.some(name => existsSync(join(root, name)));
 }
 
 export function resolveRuntimeDescriptor(source: AuxEnvironment = process.env): string {

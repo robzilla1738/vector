@@ -7,7 +7,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
 }) {
   const spaces = useStore(state => state.layout.spaces);
   const activeSpaceId = useStore(state => state.layout.activeSpaceId);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [title, setTitle] = useState(goal.slice(0, 200));
   const [objective, setObjective] = useState(goal);
   const [success, setSuccess] = useState("Complete the objective and explain the results and any remaining limitations.");
@@ -15,7 +15,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState("");
-  if (!open) return <button className="btn sm ghost" onClick={() => setOpen(true)}>Save as task…</button>;
+  if (!open) return <button className="btn sm ghost" onClick={() => setOpen(true)}>Save as task</button>;
   return <form className="save-conversation-task" onSubmit={event => {
     event.preventDefault(); if (pending.current) return; pending.current = true; setBusy(true); setError("");
     void call<Task>("tasks.promote", { chatId, expectedRunId: runId, workspaceId: space, title, objective,

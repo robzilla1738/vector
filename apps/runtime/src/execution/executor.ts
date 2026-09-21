@@ -40,8 +40,13 @@ export interface ExecContext {
    * to false — model-authored plans can never reach page JS (P0-1).
    */
   allowEval?: boolean;
-  /** called before every dispatched step — throw to abort (e.g. takeover epoch) */
+  /** abort if the page controller changed mid-program */
   checkValid?: () => void;
+  /** saved task that authorized this run, used to scope vault grants */
+  taskId?: string;
+  /** resolve opaque vault grants immediately before fill; never persist the secret */
+  resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string }) => Promise<string>;
+  pageOrigin?: string;
 }
 
 const stepInputs = (s: Step): Record<string, unknown> => {
@@ -62,7 +67,7 @@ function assertEvalAllowed(step: Step, allowEval: boolean) {
   }
 }
 
-async function runStep(page: DriverPage, s: Step): Promise<Record<string, unknown> | undefined> {
+async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promise<Record<string, unknown> | undefined> {
   switch (s.op) {
     case "navigate": return void (await page.navigate(s.url, s.timeoutMs));
     case "back": return void (await page.back(s.timeoutMs));
@@ -73,6 +78,17 @@ async function runStep(page: DriverPage, s: Step): Promise<Record<string, unknow
     case "dblclick": return void (await page.dblclick(s.target, s.timeoutMs));
     case "hover": return void (await page.hover(s.target, s.timeoutMs));
     case "fill": return void (await page.fill(s.target, s.value, s.timeoutMs));
+    case "fillCredential": {
+      if (!ctx.resolveCredential) throw new VectorError("backend_unavailable", "Trusted fill requires the agent vault.");
+      const secret = await ctx.resolveCredential(s.credentialRef, {
+        pageId: page.identity.pageId,
+        runId: ctx.runId,
+        origin: ctx.pageOrigin ?? "",
+        target: s.target,
+        taskId: ctx.taskId,
+      });
+      return void (await page.fill(s.target, secret, s.timeoutMs));
+    }
     case "type": return void (await page.typeText(s.target, s.value, s.delayMs, s.timeoutMs));
     case "press": return void (await page.press(s.key, s.target, s.timeoutMs));
     case "check": return void (await page.check(s.target, s.timeoutMs));
@@ -135,7 +151,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
-      const detail = await runStep(page, step);
+      const detail = await runStep(page, step, ctx);
       // verify post-conditions
       if (step.expect) {
         for (const cond of step.expect as Condition[]) {
@@ -146,7 +162,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       }
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
       const mutating = [
-        "navigate", "back", "forward", "reload", "click", "dblclick", "fill", "type",
+        "navigate", "back", "forward", "reload", "click", "dblclick", "fill", "fillCredential", "type",
         "press", "select", "check", "uncheck", "submit", "dragTo", "clickPoint", "upload", "dialog",
       ].includes(step.op);
       const outcome: StepOutcome = {
@@ -313,7 +329,9 @@ export async function executeProgram(
   // backend in one call. Trust checks run up front exactly as the per-step
   // runner would apply them; the expectDownload pair needs the local waiter
   // fusion, so such programs stay on the per-step path.
-  if (page.executeProgram && steps.length && !steps.some((s) => s.op === "expectDownload")) {
+  // fillCredential stays on the per-step path so secrets never enter the
+  // native batch payload or the step ledger.
+  if (page.executeProgram && steps.length && !steps.some((s) => s.op === "expectDownload" || s.op === "fillCredential")) {
     for (const s of steps) assertEvalAllowed(s, ctx.allowEval ?? false);
     ctx.checkValid?.();
     const res = await page.executeProgram(steps, { signal: ctx.signal, returnObservation: ctx.returnObservation });

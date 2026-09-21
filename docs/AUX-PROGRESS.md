@@ -1,5 +1,47 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21
+
+Implementable P0/P1 product/code from `AUX-HANDOFF.md` and the remaining-work plan is in
+this tree on `cursor/aux-remaining-implementation-4932`. Keep the checkpoint draft until
+human review. Do not treat founder SSO, VoiceOver, signed 1Password/passkeys, packaging,
+or paid-cloud mutation as done.
+
+- **M0 unit debt:** the three named files are green. Failures were fixture/schema/env
+  lag against intended policy. Exact host/port session auth and auto-mode
+  `hybrid:transient-document:${scheme}` for `about:`/`data:` were preserved. Focused:
+  mcp-stdio 3, operation-authority 3, router 10 pass.
+- **Vault:** optional locked store (scrypt passphrase + OS `v{hex}` secrets). Opaque
+  `cref_` grants, revoke/history/expiry, origin and task mismatch fail closed. Planner
+  sees refs and account labels only. `fillCredential` resolves immediately before fill,
+  skips the engine batch, and is stripped from step inputs. Task cards can grant the
+  current page origin. Run failures that mention the vault offer Open vault. Settings
+  Connections includes a Vault tab. `secret-store.ts` is still not the vault.
+- **Files/tasks:** conversational promotion still uses one `tasks.promote` identity.
+  Sourced tables export values plus http(s) source hyperlinks only. Excel honesty copy
+  remains. Multi-tab retry still refuses to narrow; crashed/detached originals are
+  missing. Representative navigate/dialog/upload/fill/type/select/fillCredential/
+  download/click unit path passes without embedding secrets.
+- **Routines:** fromResult parameterization, weekday 09:00 and hourly monitor, versioned
+  edits, pause, occurrence identity, no-overlap, uncertain-write block, missed
+  consequential schedules vs coalesced monitors, review/skip, toast on needs_review /
+  missed / uncertain. Cloud-capable without `startWork` records missed. `routines.due`
+  ticks every 60s in the runtime.
+- **Phase 4:** Task workspace Preview / Changes / Files + expandable Console. Unified
+  Connections Models/Services/Vault/Agents. Incident snapshot stays local/read-only.
+  GitHub/Vercel/Sentry are not given push/PR/deploy.
+- **Phase 1/2 targeted:** site-controls restore the remembered opener; dictation is a
+  disabled control with reason when capture is unavailable; conversation widths at
+  1024 / 1280 / 1512. Open File and download-folder pickers already exist; this pass
+  did not add a native picker walkthrough.
+- **Migration:** schema 12. Explicit Vector→Aux copy: backup-first VACUUM, skip
+  secrets/cookies/password stores, strip kv credential keys, dest-db and dual-root
+  fail closed. Settings shows Copy Vector data into Aux when a legacy root exists.
+- **Validation:** `pnpm build`, desktop typecheck, desktop production build, and 101
+  focused unit tests across 14 files pass. Runtime tests must run against rebuilt dist.
+  Full `pnpm test:unit` was not re-run as a campaign. Native TCC, VoiceOver, founder
+  SSO, and signed-identity password managers remain unproven.
+
 ## Active development cycle — 2026-09-20
 
 The new five-phase roadmap is active. Work proceeds phase by phase with implementation

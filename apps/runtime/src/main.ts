@@ -43,6 +43,7 @@ import { canResumeAfterPageRelease } from "./agent/control-authority.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
+import { VaultService } from "./services/vault.js";
 
 export interface RuntimeHandle {
   port: number;
@@ -235,6 +236,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
   });
   const responses = new ResponseStore({ repo, events, artifacts });
+  const vault = new VaultService(repo, native);
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
   const pages = new PageService({
@@ -246,6 +248,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     artifacts,
     responses,
     tracer,
+    vault,
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
@@ -332,6 +335,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     translateSteps,
     nativeAvailable: () => native.available(),
     tracer,
+    vault,
   });
 
   events.subscribe((e) => {
@@ -393,6 +397,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     operations,
     state,
     tracer,
+    vault,
     drivers: () => drivers,
     router,
     engine: () => engineInfo,
@@ -425,6 +430,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // ---- channel surface for the shell ----
   resolveInvoker!(invoke);
+  const dueTimer = setInterval(() => {
+    void invoke("routines.due", {}, { external: false }).catch(() => undefined);
+  }, 60_000);
+  dueTimer.unref?.();
   // forward the event stream so the shell renderer can subscribe over IPC
   events.subscribe((e) => channel?.notify("event", e));
   channel?.onNotify((type, payload) => {
@@ -502,6 +511,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   memoryExpiry.unref();
   const shutdown = async () => {
     clearInterval(memoryExpiry);
+    clearInterval(dueTimer);
     if (closed) return;
     closed = true;
     process.off("unhandledRejection", onUnhandledRejection);

@@ -18,6 +18,7 @@ import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM } from "./planner.js";
 import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions } from "./skills.js";
+import { originOfAddress } from "@vector/contracts";
 import { promptCannotGrant } from "./policy.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, settleWrite } from "./durable.js";
@@ -255,6 +256,10 @@ export async function planTurn(
   };
   const canStream = typeof s.model.streamStructured === "function" && s.run.pageIds.length <= 1;
   const plannerCall = async (): Promise<PlanChunk> => {
+    const origin = originOfAddress(obs.content.url);
+    const credentialGrants = origin && s.self.deps.vault
+      ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
+      : undefined;
     const prompt = buildPlannerPrompt({
       goal: s.run.goal,
       observations: [obs],
@@ -263,6 +268,7 @@ export async function planTurn(
       repairNote: s.lastError,
       context: s.run.config?.context,
       budget: { tokens: 3000 },
+      credentialGrants,
     });
     const args = { modelId: s.modelId, system: PLANNER_SYSTEM, prompt, schema: PlanChunkSchema, maxOutputTokens: 8192 };
     if (!canStream) return (await structuredCall<PlanChunk>(s, "planner", args)).object;
@@ -512,7 +518,7 @@ export async function dispatchPlan(
   if (write.skip) throw new VectorError("conflict", write.reason!);
   const result = streamed
       ? await early!.finish(plan.steps ?? [])
-      : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+      : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
   if (early && !streamed) early.halt();
   settleWrite(s.self.durable, write.intentId, result.status === "completed");
   const carried = early ? early.observation : (result as { observation?: Observation }).observation;
@@ -549,7 +555,7 @@ export async function dispatchPlan(
         .slice(0, 2)
         .map((e) => ({ role: e.role, nameIncludes: (e.name ?? "").slice(0, 40) }));
       const writes = plan.steps.some((step) =>
-        ["click", "fill", "type", "press", "select", "check", "uncheck", "navigate", "submit"].includes(step.op),
+        ["click", "fill", "fillCredential", "type", "press", "select", "check", "uncheck", "navigate", "submit"].includes(step.op),
       );
       if (s.self.skills.length < 32 && named.length > 0 && !writes) {
         s.self.skills.push(
@@ -597,6 +603,9 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
         repairNote: s.lastError,
         context: s.run.config?.context,
         budget: { tokens: 3000 },
+        credentialGrants: originOfAddress(fresh.content.url) && s.self.deps.vault
+          ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin: originOfAddress(fresh.content.url) }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
+          : undefined,
       }),
       schema: RepairChunkSchema,
       maxOutputTokens: 8192,
@@ -621,7 +630,7 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
         });
         if (write.skip) throw new VectorError("conflict", write.reason!);
         {
-          const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, signal: s.c.abort.signal });
+          const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal });
           settleWrite(s.self.durable, write.intentId, r2.status === "completed");
           s.stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
           if (r2.status === "completed") {

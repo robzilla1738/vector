@@ -17,10 +17,11 @@ import { conversationPage } from "../conversation-page";
 import { openSavedTask } from "../task-navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationContext as ConversationContextState, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
+import { sourcedWorkbookSnapshot } from "@vector/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
-import { useStore, call, errToast, isLive } from "../store";
+import { useStore, call, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { answerUrl } from "./AnswerMarkdown";
 import { RunPanel } from "./RunPanel";
@@ -36,6 +37,12 @@ function RunSources({ sources, onOpen }: { sources: ConversationSource[]; onOpen
       <span><b>{source.title}</b><small>{new URL(source.url).hostname} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
     </a>)}
     <p>Observed browser pages provide provenance, not independent proof of an external outcome.</p>
+    <button className="btn sm ghost" onClick={() => void (async () => {
+      const rows = [["Title", "Host"], ...links.map(source => [source.title, new URL(source.url).hostname])];
+      const snapshot = sourcedWorkbookSnapshot("Sources", rows, links.map(source => source.url));
+      if (await bridge.saveWorkbook(JSON.stringify(snapshot))) toast("Sourced workbook exported");
+    })().catch(errToast)}>Export sourced workbook…</button>
+    <p>Excel export stores cell values plus http(s) source hyperlinks. Formatting, formulas and images are not created.</p>
   </div></details>;
 }
 
@@ -485,7 +492,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {contextPanel}
-      {optionsOpen && id && last && !live && !contextLocked && <SaveConversationTask key={id} chatId={id} runId={last.runId} goal={text.trim() || turns[0]?.goal || last.goal} workspaceId={workspaceContext.workspace?.workspaceId} page={selectedContext} onSaved={task => { if (useStore.getState().conversationDrafts[draftKey(id)] === text) setText(""); setWorkspaceContext(current => ({ ...current, taskId: task.taskId })); setContextRefresh(value => value + 1); }} />}
+      {id && last && !live && !contextLocked && <SaveConversationTask key={id} chatId={id} runId={last.runId} goal={text.trim() || turns[0]?.goal || last.goal} workspaceId={workspaceContext.workspace?.workspaceId} page={selectedContext} onSaved={task => { if (useStore.getState().conversationDrafts[draftKey(id)] === text) setText(""); setWorkspaceContext(current => ({ ...current, taskId: task.taskId })); setContextRefresh(value => value + 1); }} />}
       {missingContext && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
       <div className="conversation-input"><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask a question or give Aux a task…"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/><button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim() || (!answering && (attachmentSaving || contextSaving || workspaceSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onClick={() => void send()}>{I.send}</button></div>
       <div className="composer-options">

@@ -78,6 +78,7 @@ const WRITE_OPS = new Set([
   "click",
   "dblclick",
   "fill",
+  "fillCredential",
   "type",
   "press",
   "select",

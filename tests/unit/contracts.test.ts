@@ -7,6 +7,7 @@ describe("StepSchema", () => {
       { id: "s1", op: "navigate", url: "https://x.test" },
       { id: "s2", op: "click", target: "r1" },
       { id: "s3", op: "fill", target: "css:#q", value: "hello" },
+      { id: "s3c", op: "fillCredential", target: "css:#password", credentialRef: `cref_${"ab".repeat(12)}` },
       { id: "s4", op: "select", target: "r2", value: "approved" },
       { id: "s5", op: "waitFor", condition: { kind: "selector", selector: "#ok", state: "visible" } },
       { id: "s6", op: "extract", fields: [{ name: "title", selector: "h1" }] },
@@ -77,6 +78,7 @@ describe("API schemas", () => {
       "conversations.artifacts.get", "conversations.artifacts.toggle", "conversations.sources.get",
       "conversations.workspace.get", "conversations.workspace.set", "workspaces.memory.get", "workspaces.memory.set",
       "artifacts.list", "artifacts.read",
+      "vault.status", "vault.save", "vault.grant", "routines.list", "routines.fromResult", "installation.legacyStatus",
     ]) {
       expect(MethodSchemas, m).toHaveProperty(m);
     }

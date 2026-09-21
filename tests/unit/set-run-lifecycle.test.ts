@@ -64,7 +64,7 @@ function fakePages(opts: { execMs: number }) {
 function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClient | null } = {}) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
-  const { pages, state } = fakePages({ execMs: opts.execMs ?? 40 });
+  const { pages, state, targets } = fakePages({ execMs: opts.execMs ?? 40 });
   const sets = new SetService(repo, events, pages);
   let maxWorkers = opts.maxWorkers ?? 8;
   const settings = {
@@ -101,7 +101,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     translateSteps: (_pid, steps) => steps,
     nativeAvailable: () => false,
   });
-  return { repo, events, pages, sets, settings, runs, state, removedArtifacts, artifactContents };
+  return { repo, events, pages, sets, settings, runs, state, removedArtifacts, artifactContents, targets };
 }
 
 const TERMINAL = new Set<Run["status"]>(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
@@ -390,6 +390,19 @@ describe("conversation turn retry", () => {
     expect(retried.config).toMatchObject({chatId:"lost-chat",retryOfRunId:"lost-tab",context:"Original saved context"});
     h.repo.saveRun({runId:"many-tabs",goal:"Compare tabs",status:"failed",pageIds:["closed-a","closed-b"],createdAt:20,config:{chatId:"many-chat"}});
     await expect(h.runs.retry("many-tabs",replacement.pageId)).rejects.toThrow(/multi-tab/);
+  });
+
+  it("treats crashed and detached originals as missing and never retries a subset", async () => {
+    const h = harness();
+    const crashed = { pageId: "crash-a", url: "https://a.test", viewStatus: "crashed", ownedByRuntime: false } as PageTarget;
+    const live = { pageId: "crash-b", url: "https://b.test", viewStatus: "visible", ownedByRuntime: false } as PageTarget;
+    h.targets.set("crash-a", crashed);
+    h.targets.set("crash-b", live);
+    h.repo.saveRun({ runId: "multi-crash", goal: "Compare both", status: "failed", pageIds: ["crash-a", "crash-b"], createdAt: 20, config: { chatId: "crash-chat" } });
+    await expect(h.runs.retry("multi-crash")).rejects.toThrow(/multi-tab/);
+    h.targets.set("only-crash", { pageId: "only-crash", url: "https://only.test", viewStatus: "crashed", ownedByRuntime: false } as PageTarget);
+    h.repo.saveRun({ runId: "one-crash", goal: "Finish lookup", status: "interrupted", pageIds: ["only-crash"], createdAt: 21, config: { chatId: "one-crash-chat" } });
+    await expect(h.runs.retry("one-crash")).rejects.toThrow(/Reopen or choose/);
   });
 
   it("keeps task runs in their revision-controlled task workflow", async () => {

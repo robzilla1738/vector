@@ -1,10 +1,9 @@
 import {useEffect, useState} from 'react';
 import type {LocalProject, RepositorySelection, ProjectInspection, ProjectReviewSummary, ProjectCommitResult, Task} from '@vector/contracts';
 import {bridge} from '../bridge';
-import {ProjectFileEditor} from './ProjectFileEditor';
-import {ProjectCommandPanel} from './ProjectCommandPanel';
 import {UntrackedFileReview} from './UntrackedFileReview';
 import {CloudEnvironmentPanel} from './CloudEnvironmentPanel';
+import {TaskWorkspace} from './TaskWorkspace';
 import {useStore} from '../store';
 
 type GithubStatus={owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string;defaultBranch:string;private:boolean;account:string;permissions:{admin:boolean;maintain?:boolean;push:boolean;triage?:boolean;pull:boolean};basePresent:boolean;headPresent:boolean;checks:{state:string;total:number;updatedAt:number}|null;checkRuns:{id:number;name:string;status:string;conclusion:string|null;detailsUrl:string|null}[];pullRequests:{number:number;title:string;url:string;draft:boolean;base:string;head:string;updatedAt:string}[];issues:{number:number;title:string;url:string;body:string|null;author:string;labels:string[];updatedAt:string}[];checkedAt:number};
@@ -23,7 +22,6 @@ export function LocalProjectResources({task,update,onEvidenceImported}:{task:Tas
   const [authorEmail,setAuthorEmail]=useState('');
   const [busy,setBusy]=useState(false);
   const [fileProject,setFileProject]=useState<string|null>(null);
-  const [commandProject,setCommandProject]=useState<string|null>(null);
   const [error,setError]=useState('');
   const [github,setGithub]=useState<Record<string,GithubStatus>>({});
   const [operations,setOperations]=useState<Record<string,OperationsStatus>>({});
@@ -69,8 +67,7 @@ export function LocalProjectResources({task,update,onEvidenceImported}:{task:Tas
           <button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setInspection(await bridge.inspectProject(project.projectId));setReview(null);setCommit(null);await load();})}>Inspect checkout</button>
           <button className="btn sm" disabled={busy||project.state!=='ready'} onClick={()=>void action(async()=>{const current=await bridge.inspectProject(project.projectId);await bridge.revealPath(current.project.path);})}>Show in Finder</button>
           {!attached&&<button className="btn sm" disabled={busy||task.state==='archived'||task.resources.length>=100||project.state!=='ready'} onClick={()=>void action(()=>attach(project))}>Attach to task</button>}
-          <button className="btn sm" disabled={project.state!=='ready'} aria-expanded={fileProject===project.projectId} onClick={()=>{setFileProject(fileProject===project.projectId?null:project.projectId);setCommandProject(null);}}>Files</button>
-          <button className="btn sm" disabled={project.state!=='ready'} aria-expanded={commandProject===project.projectId} onClick={()=>{setCommandProject(commandProject===project.projectId?null:project.projectId);setFileProject(null);}}>Commands & preview</button>
+          <button className="btn sm" disabled={project.state!=='ready'} aria-expanded={fileProject===project.projectId} onClick={()=>setFileProject(fileProject===project.projectId?null:project.projectId)}>Workspace</button>
           {attached&&<button className="btn sm" disabled={busy||project.state!=='ready'} onClick={()=>void action(async()=>{const status=await bridge.invoke('development.githubStatus',{taskId:task.taskId,expectedRevision:task.revision,projectId:project.projectId}) as GithubStatus;setGithub(current=>({...current,[project.projectId]:status}));})}>Check GitHub</button>}
           {attached&&<button className="btn sm" disabled={busy||project.state!=='ready'} onClick={()=>void action(async()=>{const status=await bridge.invoke('development.operationsStatus',{taskId:task.taskId,expectedRevision:task.revision,projectId:project.projectId}) as OperationsStatus;setOperations(current=>({...current,[project.projectId]:status}));})}>Check operations</button>}
           {attached&&<button className="btn sm" disabled={busy||project.state!=='ready'} aria-expanded={cloudProject===project.projectId} onClick={()=>setCloudProject(cloudProject===project.projectId?null:project.projectId)}>Cloud</button>}
@@ -83,8 +80,7 @@ export function LocalProjectResources({task,update,onEvidenceImported}:{task:Tas
           {operations[project.projectId]!.unavailable.map(message=><span className="hint" key={message}>{message}</span>)}<span className="hint">Read-only check · {new Date(operations[project.projectId]!.checkedAt).toLocaleString()}</span>
         </section>}
         {cloudProject===project.projectId&&<CloudEnvironmentPanel task={task} projectId={project.projectId} onEvidenceImported={onEvidenceImported}/>}
-        {fileProject===project.projectId&&<ProjectFileEditor key={project.projectId} projectId={project.projectId} taskId={task.taskId} taskRevision={task.revision} attached={attached} disabled={task.state==='archived'}/>}
-        {commandProject===project.projectId&&<ProjectCommandPanel key={project.projectId} task={task} projectId={project.projectId} disabled={task.state==='archived'}/>}
+        {fileProject===project.projectId&&<TaskWorkspace project={project} task={task} inspection={inspection?.project.projectId===project.projectId?inspection:null} attached={attached} busy={busy} onInspect={async()=>{setInspection(await bridge.inspectProject(project.projectId));await load();}} onEvidenceImported={onEvidenceImported}/>}
       </section>;
     })}
     {inspection&&<section className="task-resource" aria-label="Checkout status"><strong>{inspection.project.name} · Working tree</strong>

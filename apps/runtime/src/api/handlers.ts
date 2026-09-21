@@ -1,6 +1,6 @@
 import { SavedResults } from "../services/saved-results.js";
 import { BrowsingMemory } from "../services/browsing-memory.js";
-import { EventTypes, MethodSchemas, newProgramId, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
+import { EventTypes, MethodSchemas, newProgramId, originOfAddress, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import type { PageService } from "../services/pages.js";
@@ -27,6 +27,9 @@ import type { AgentConnectionScope } from "@vector/contracts";
 import type {NativeBridge} from '../native.js';
 import {CloudEnvironmentService} from '../services/cloud-environments.js';
 import {cancelRuntimeRestore,createRuntimeBackup,stageRuntimeRestore} from '../services/runtime-backup.js';
+import { VaultService } from "../services/vault.js";
+import { RoutineService } from "../services/routines.js";
+import { legacyInstallationStatus, migrateLegacyInstallation } from "../services/legacy-migration.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -40,6 +43,8 @@ export interface Services {
   repo: Repo;
   agentConnections?: AgentConnectionService;
   native?:NativeBridge;
+  vault?: VaultService;
+  routines?: RoutineService;
   responses?: ResponseStore;
   operations?: OperationService;
   state?: StateService;
@@ -63,6 +68,20 @@ export function makeInvoker(s: Services) {
   const spaces = new SpaceService(s.repo, s.events);
   const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages);
   const cloudEnvironments=new CloudEnvironmentService(s.repo,s.settings);
+  const vault = s.vault ?? new VaultService(s.repo, s.native);
+  const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
+    objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");
+  const routines = s.routines ?? new RoutineService(s.repo, s.events, async (routine, parameters) => {
+    if (!routine.sourceTaskId) throw new VectorError("conflict", "This routine has no saved task. Run it from a conversation in Aux.");
+    const details = tasks.details(routine.sourceTaskId);
+    const pageIds = details.task.resources.filter(resource => resource.kind === "page").map(resource => resource.locator).filter(pageId => {
+      try { return s.pages.isAttached(pageId); } catch { return false; }
+    });
+    if (!pageIds.length) throw new VectorError("conflict", "Attach an open browser tab to the source task before this routine can run.");
+    const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);
+    const run = await s.runs.start({ ...prepared, goal: substituteRoutine(routine.objective, parameters), pageIds });
+    return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
+  });
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{
     const criteria=new Set(task.criteria.map(item=>item.criterionId));
     if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new VectorError('conflict','The cloud task result references a criterion outside this task revision.');
@@ -331,6 +350,56 @@ export function makeInvoker(s: Services) {
       case 'installation.createBackup':if(client.external)throw new VectorError('permission_denied','Runtime backups require an explicit action in Aux.');return createRuntimeBackup(s.repo,s.settings.all().dataDir);
       case 'installation.stageRestore':if(client.external)throw new VectorError('permission_denied','Runtime restore requires an explicit action in Aux.');return stageRuntimeRestore(s.settings.all().dataDir,params.path);
       case 'installation.cancelRestore':if(client.external)throw new VectorError('permission_denied','Runtime restore requires an explicit action in Aux.');return cancelRuntimeRestore(s.settings.all().dataDir);
+      case 'installation.legacyStatus':if(client.external)throw new VectorError('permission_denied','Installation migration is managed in Aux.');return legacyInstallationStatus();
+      case 'installation.migrateLegacy':
+        if(client.external)throw new VectorError('permission_denied','Installation migration requires an explicit action in Aux.');
+        return migrateLegacyInstallation({confirm:true,destination:params.destination});
+      case "vault.status":
+      case "vault.list":
+      case "vault.save":
+      case "vault.lock":
+      case "vault.unlock":
+      case "vault.grant":
+      case "vault.revoke":
+      case "vault.history":
+      case "vault.grants": {
+        if (client.external) throw new VectorError("permission_denied", "The agent vault can only be managed in Aux.");
+        if (method === "vault.status") return vault.status();
+        if (method === "vault.list") return vault.list(params.includeRevoked);
+        if (method === "vault.save") return vault.save(params);
+        if (method === "vault.lock") return vault.lock(params.passphrase);
+        if (method === "vault.unlock") return vault.unlock(params.passphrase, params.ttlMs);
+        if (method === "vault.grant") return vault.grant(params);
+        if (method === "vault.revoke") return vault.revoke(params);
+        if (method === "vault.history") return vault.history(params.itemId, params.limit);
+        const origin = params.origin ? originOfAddress(params.origin) : undefined;
+        if (params.origin && !origin) throw new VectorError("invalid_params", "Grants must name an http(s) origin without credentials.");
+        return vault.grants({ taskId: params.taskId, origin });
+      }
+      case "routines.list":
+      case "routines.get":
+      case "routines.create":
+      case "routines.fromResult":
+      case "routines.update":
+      case "routines.pause":
+      case "routines.archive":
+      case "routines.run":
+      case "routines.runs":
+      case "routines.reconcile":
+      case "routines.due": {
+        if (client.external) throw new VectorError("permission_denied", "Routines are managed in Aux.");
+        if (method === "routines.list") return routines.list(params);
+        if (method === "routines.get") return routines.get(params.routineId);
+        if (method === "routines.create") return routines.create(params);
+        if (method === "routines.fromResult") return routines.fromResult(params);
+        if (method === "routines.update") return routines.update(params);
+        if (method === "routines.pause") return routines.pause(params.routineId, params.expectedRevision, params.paused);
+        if (method === "routines.archive") return routines.archive(params.routineId, params.expectedRevision, params.archived);
+        if (method === "routines.run") return routines.run(params);
+        if (method === "routines.runs") return routines.runs(params.routineId, params.limit);
+        if (method === "routines.reconcile") return routines.reconcile(params.routineRunId, params.outcome, params.note);
+        return routines.due(params.now);
+      }
       // pages
       case "pages.list": return scope ? s.pages.list(params as never).filter(page => scopedPageIds(scope,client.connectionId).has(page.pageId)) : s.pages.list(params as never);
       case "pages.open": return s.pages.open(params as never);

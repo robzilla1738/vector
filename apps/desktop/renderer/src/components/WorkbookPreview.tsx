@@ -44,10 +44,10 @@ export function WorkbookPreview({ content }: { content: string }) {
       </div></details>
     </div>
     {error&&<p className="field-error" role="alert">{error}</p>}
-    <p className="hint">Exports keep all saved cells and their coordinates. Formulas remain text.</p>
+    <p className="hint">Exports keep saved cell values and coordinates. Formulas stay text. Source hyperlinks are included only when a cell stores a safe http(s) address.</p>
     {source ? <pre tabIndex={0} aria-label="Workbook snapshot source">{content}</pre> : sheet.rows.length ? <div className="structured-result-table workbook-table" tabIndex={0} aria-label={`${sheet.name} cell values`}><table><thead><tr><th scope="col" aria-label="Row number" />{visibleColumns.map(column => <th scope="col" key={column}>{workbookColumnLabel(column)}</th>)}</tr></thead><tbody>{sheet.rows.slice(0, 100).map(row => {
-      const values = new Map(row.cells.map(cell => [cell.column, cell.value]));
-      return <tr key={row.number}><th scope="row">{row.number}</th>{visibleColumns.map(column => <td key={column}>{values.get(column) ?? ""}</td>)}</tr>;
+      const values = new Map(row.cells.map(cell => [cell.column, cell]));
+      return <tr key={row.number}><th scope="row">{row.number}</th>{visibleColumns.map(column => { const cell = values.get(column); return <td key={column} title={cell?.hyperlink}>{cell?.value ?? ""}</td>; })}</tr>;
     })}</tbody></table></div> : <p className="hint">This sheet has no cell values.</p>}
   </div>;
 }

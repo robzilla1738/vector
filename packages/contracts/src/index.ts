@@ -10,6 +10,8 @@ export * from "./entities.js";
 export * from "./tasks.js";
 export * from "./spaces.js";
 export * from "./agent-connections.js";
+export * from "./vault.js";
+export * from "./routines.js";
 export * from "./events.js";
 export * from "./api.js";
 export * from "./bridge.js";

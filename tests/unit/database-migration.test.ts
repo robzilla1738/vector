@@ -28,7 +28,7 @@ describe("versioned database upgrades", () => {
     prior.close();
     const upgraded = track(openDb(path));
     const repo = new Repo(upgraded);
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(repo.listBookmarks()).toMatchObject([{ url: "https://kept.test/", title: "Kept" }]);
     expect(repo.bookmarkFolders()).toEqual([]);
     repo.addBookmark("https://new.test/", "New", ["Research"]);
@@ -55,7 +55,7 @@ describe("versioned database upgrades", () => {
     const upgraded = track(openDb(path));
     const next = new Repo(upgraded);
     const chatId = `task:${task.taskId}`;
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(next.listRuns(10, { chatId }).map(run => run.runId).sort()).toEqual(["task-turn-one", "task-turn-two"]);
     expect(next.getConversation(chatId)).toMatchObject({ chatId, taskId: task.taskId, title: "Weekly research", turnCount: 2, archived: true });
     expect(next.getSetting(`conversationContext:${chatId}`)).toEqual({ historyEnabled: false, excludedRunIds: ["task-turn-one"] });
@@ -74,7 +74,7 @@ describe("versioned database upgrades", () => {
     prior.close();
     const upgraded = track(openDb(path));
     const repo = new Repo(upgraded);
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(repo.listConversations()).toMatchObject([{ chatId: "chat-one", title: "Original chat title", turnCount: 2, archived: false }]);
     expect(repo.listRuns(10, { chatId: "chat-one" })).toHaveLength(2);
   });
@@ -86,7 +86,7 @@ describe("versioned database upgrades", () => {
     prior.prepare("INSERT INTO runs(run_id,goal,status,page_ids,created_at) VALUES(?,?,?,?,?)").run("kept", "Keep this run", "failed", "[]", 1);
     prior.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     const repo = new Repo(upgraded);
     const run = repo.getRun("kept")!;
     run.failure = { category: "network", message: "Aux couldn’t reach the model provider.", retryable: true, action: "retry" };
@@ -100,7 +100,7 @@ describe("versioned database upgrades", () => {
     prior.exec("DROP TABLE agent_connections; PRAGMA user_version=5");
     prior.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(upgraded.prepare("SELECT count(*) AS n FROM agent_connections").get()?.n).toBe(0);
   });
 
@@ -112,7 +112,7 @@ describe("versioned database upgrades", () => {
     prior.exec("ALTER TABLE tabs DROP COLUMN window_id; PRAGMA user_version=4");
     prior.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(upgraded.prepare("SELECT page_id,window_id FROM tabs").get()).toEqual({ page_id: "page", window_id: "main" });
     expect(upgraded.prepare("SELECT count(*) AS n FROM agent_connections").get()?.n).toBe(0);
   });
@@ -130,7 +130,7 @@ describe("versioned database upgrades", () => {
     expect(details.task.title).toBe("Revised task");
     expect(details.revisions).toHaveLength(2);
     expect(upgraded.prepare("SELECT count(*) AS n FROM task_evidence").get()?.n).toBe(0);
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
   });
 
   it("adds tasks to version 2 without losing unresolved action intents", () => {
@@ -139,7 +139,7 @@ describe("versioned database upgrades", () => {
     prior.exec("DROP TABLE task_evidence; DROP TABLE criterion_reviews; DROP INDEX idx_runs_task; DROP TABLE task_revisions; DROP TABLE tasks; DROP TABLE workspaces; PRAGMA user_version=2; INSERT INTO action_intents VALUES ('a','key','run','page',1,'uncertain',1,NULL)");
     prior.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(upgraded.prepare("SELECT status FROM action_intents WHERE id='a'").get()?.status).toBe("uncertain");
     expect(upgraded.prepare("SELECT count(*) AS n FROM tasks").get()?.n).toBe(0);
   });
@@ -149,10 +149,10 @@ describe("versioned database upgrades", () => {
     prior.exec("DROP TABLE task_evidence; DROP TABLE criterion_reviews; DROP INDEX idx_runs_task; DROP TABLE task_revisions; DROP TABLE tasks; DROP TABLE workspaces; DROP TABLE action_intents; DROP TABLE action_transitions; DROP TABLE journal_imports; PRAGMA user_version=1; INSERT INTO kv VALUES ('retained','yes')");
     prior.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(upgraded.prepare("SELECT value FROM kv WHERE key='retained'").get()?.value).toBe("yes");
     expect(upgraded.prepare("SELECT count(*) AS n FROM action_intents").get()?.n).toBe(0);
-    const backupDirectory = readdirSync(directory).find(name => name.includes("before-v11"))!;
+    const backupDirectory = readdirSync(directory).find(name => name.includes("before-v12"))!;
     const backup = track(new DatabaseSync(join(directory, backupDirectory, "state.sqlite"), { readOnly: true }));
     expect(version(backup)).toBe(1);
     expect(backup.prepare("SELECT name FROM sqlite_schema WHERE name='action_intents'").get()).toBeUndefined();
@@ -160,7 +160,8 @@ describe("versioned database upgrades", () => {
   it("initializes fresh databases once without creating backups", () => {
     const { directory, path } = fixture();
     const db = openDb(path);
-    expect(version(db)).toBe(11);
+    expect(version(db)).toBe(12);
+    expect(db.prepare("SELECT name FROM sqlite_schema WHERE name IN ('vault_items','vault_grants','vault_access','routines','routine_revisions','routine_runs')").all()).toHaveLength(6);
     db.prepare("INSERT INTO kv VALUES (?, ?)").run("synthetic", "retained");
     db.close();
     const reopened = track(openDb(path));
@@ -175,7 +176,7 @@ describe("versioned database upgrades", () => {
     legacy.prepare("INSERT INTO kv VALUES (?, ?)").run("synthetic", "in-wal");
     expect(statSync(`${path}-wal`).size).toBeGreaterThan(0);
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(11);
+    expect(version(upgraded)).toBe(12);
     expect(upgraded.prepare("SELECT value FROM kv").get()?.value).toBe("in-wal");
     const backups = readdirSync(directory).filter(name => name.includes("before-v"));
     expect(backups).toHaveLength(1);
@@ -203,7 +204,7 @@ describe("versioned database upgrades", () => {
     expect(legacy.prepare("SELECT name FROM sqlite_schema WHERE name='kv'").get()).toBeUndefined();
     legacy.exec("ALTER TABLE set_members RENAME TO preserved_members");
     const repaired = track(openDb(path));
-    expect(version(repaired)).toBe(11);
+    expect(version(repaired)).toBe(12);
     expect(repaired.prepare("SELECT synthetic FROM preserved_members").get()?.synthetic).toBe("preserved");
   });
 
