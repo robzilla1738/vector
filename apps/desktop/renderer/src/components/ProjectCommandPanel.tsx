@@ -32,7 +32,7 @@ function serviceSuggestions(environment:ProjectEnvironment|null){
   return [...new Map(all.filter(item=>item.intent==='service').map(item=>[item.command,item])).values()];
 }
 
-export function ProjectCommandPanel({projectId,disabled,task}:{projectId:string;disabled:boolean;task:Task}){
+export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{projectId:string;disabled:boolean;task:Task;surface?:"preview"|"console"|"all"}){
   const [runs,setRuns]=useState<ProjectCommand[]>([]);
   const [command,setCommand]=useState('');
   const commandRef=useRef<HTMLTextAreaElement>(null);
@@ -90,10 +90,14 @@ export function ProjectCommandPanel({projectId,disabled,task}:{projectId:string;
   const detectedServiceKey=detectedServices.map(item=>item.command).join('\n');
   useEffect(()=>{setStackCommands(detectedServices.slice(0,4).map(item=>item.command));},[projectId,detectedServiceKey]);
   const orderedStackCommands=detectedServices.filter(item=>stackCommands.includes(item.command)).map(item=>item.command);
+  const showPreview=surface!=="console";
+  const showCommands=surface!=="preview";
   const stacks=[...runs.reduce((groups,run)=>{if(!run.stackId)return groups;const group=groups.get(run.stackId)??[];group.push(run);groups.set(run.stackId,group);return groups;},new Map<string,ProjectCommand[]>()).entries()]
     .map(([stackId,members])=>({stackId,members:members.sort((a,b)=>(a.stackOrder??0)-(b.stackOrder??0))})).sort((a,b)=>Math.max(...b.members.map(item=>item.startedAt))-Math.max(...a.members.map(item=>item.startedAt))).slice(0,5);
-  return <section className="field" aria-label="Project commands">
+  return <section className="field" aria-label={surface==="preview"?"Project preview":surface==="console"?"Project console":"Project commands"}>
     <p className="hint">Task: {task.title} · Saved revision {task.revision}. Approval binds this command to that revision; later edits do not retarget it.</p>
+    {error&&<p role="alert">{error}</p>}
+    {showCommands&&<>
     <section className="project-environment" aria-label="Project environment">
       <div className="project-environment-head"><div><strong>Project environment</strong><p className="hint">Detected from fixed root manifests. Aux does not run repository code during inspection.</p></div><button className="btn sm" disabled={busy} onClick={()=>void refreshEnvironment().catch(error=>setError(String(error)))}>Refresh</button></div>
       {!environment?<p className="hint">Inspecting manifests and local runtimes…</p>:!environment.javascript&&!environment.python&&!environment.rust&&!environment.go&&!environment.additional?.length&&!environment.unsupported.length?<p className="hint">No recognized project manifest was found. Enter a reviewed command manually.</p>:<>
@@ -117,7 +121,6 @@ export function ProjectCommandPanel({projectId,disabled,task}:{projectId:string;
     <label className="row project-command-mode"><input type="checkbox" disabled={busy} checked={service} onChange={event=>setService(event.target.checked)} /> Keep running as a local service</label>
     <p className="hint">Runs locally after native confirmation. Not sandboxed; commands can modify files and use the network. Separate HOME, no inherited model credentials, no interactive input or detached background services. {service?`Keeps running until stopped or Aux quits. Files remain editable. ${runningServices}/4 service slots are active.`:'Stops after 10 minutes or when Aux quits. One check can run while local services stay active.'}</p>
     <button className="btn sm" disabled={disabled||busy||!command.trim()||(service?runningServices>=4:runningCommand)} onClick={()=>void action(async()=>{await bridge.runProjectCommand(projectId,command,{taskId:task.taskId,expectedRevision:task.revision},service?'service':'command');setRuns(await bridge.listProjectCommands(projectId));})}>Review and run</button>
-    {error&&<p role="alert">{error}</p>}
     {stacks.map(({stackId,members})=>{const stackActive=members.some(run=>run.state==='running'||run.state==='stopping');const restartable=!stackActive&&members.some(run=>run.state==='interrupted'||run.state==='failed')&&members.every(run=>run.task?.taskId===task.taskId&&run.task.taskRevision===task.revision);return <section className="project-stack-status" key={stackId} aria-label={`${members[0]?.stackLabel??'Local services'} status`}>
       <div><strong>{members[0]?.stackLabel??'Local services'}</strong><span className="hint">{members.map(run=>`${run.stackOrder!=null?run.stackOrder+1+'. ':''}${run.state.replaceAll('_',' ')}`).join(' · ')}</span></div>
       {stackActive&&<button className="btn sm" disabled={busy||members.some(run=>run.state==='stopping')} onClick={()=>void action(async()=>{await bridge.stopProjectServiceStack(projectId,stackId);setRuns(await bridge.listProjectCommands(projectId));})}>{members.some(run=>run.state==='stopping')?'Stopping…':'Stop stack'}</button>}
@@ -133,6 +136,8 @@ export function ProjectCommandPanel({projectId,disabled,task}:{projectId:string;
       {(run.state==='running'||run.state==='stopping')&&<button className="btn sm" disabled={busy||run.state==='stopping'} onClick={()=>void action(async()=>{await bridge.stopProjectCommand(projectId,run.commandId);setRuns(await bridge.listProjectCommands(projectId));})}>{run.state==='stopping'?'Stopping…':run.mode==='service'?'Stop service':'Stop command'}</button>}
       {run.state==='interrupted'&&<><p className="hint">Completion was not recorded. Nothing was restarted automatically. After a force quit, verify external processes before running again.</p>{!run.stackId&&run.mode==='service'&&run.task?.taskId===task.taskId&&run.task.taskRevision===task.revision&&<button className="btn sm" disabled={disabled||busy||runningServices>=4} onClick={()=>void action(async()=>{await bridge.runProjectCommand(projectId,run.command,{taskId:task.taskId,expectedRevision:task.revision},'service');setRuns(await bridge.listProjectCommands(projectId));})}>Review and restart service</button>}{run.mode==='service'&&run.task&&(run.task.taskId!==task.taskId||run.task.taskRevision!==task.revision)&&<p className="hint">This service belongs to another or earlier task revision. Review its command in the current task before running it again.</p>}</>}
     </details>)}
+    </>}
+    {showPreview&&<>
     <label className="field">Local preview URL<input aria-label="Local preview URL" value={preview} onChange={event=>{previewEdited.current=true;setPreview(event.target.value);setCheck(null);}} placeholder="http://localhost:3000" /></label>
     <p className="hint">Checks send a local GET without browser cookies and do not follow redirects. A response confirms this URL answered, not that it belongs to this command or that the app works correctly.</p>
     {check&&<div role="status" className="hint"><strong>{check.state==='responding'?'Responded successfully':check.state==='http_error'?'HTTP response needs attention':'Not reachable'}{check.statusCode?` · HTTP ${check.statusCode}`:''}</strong><p>{check.message}</p><p>Last checked {new Date(check.checkedAt).toLocaleString()}. This is a dated check, not live monitoring.</p></div>}
@@ -162,5 +167,6 @@ export function ProjectCommandPanel({projectId,disabled,task}:{projectId:string;
         </div>
       </>}
     </section>}
+    </>}
   </section>;
 }

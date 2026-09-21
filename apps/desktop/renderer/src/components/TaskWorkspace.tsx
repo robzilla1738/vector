@@ -19,7 +19,6 @@ export function TaskWorkspace({
   onEvidenceImported?: () => Promise<void> | void;
 }) {
   const [tab, setTab] = useState<Tab>("preview");
-  const [consoleOpen, setConsoleOpen] = useState(true);
   const current = inspection?.project.projectId === project.projectId ? inspection : null;
   return <section className="task-workspace" aria-label="Project workspace">
     <div className="settings-connection-tabs" role="tablist" aria-label="Project workspace">
@@ -27,7 +26,7 @@ export function TaskWorkspace({
         <button key={name} role="tab" aria-selected={tab === name} onClick={() => setTab(name)}>{name[0]!.toUpperCase() + name.slice(1)}</button>
       ))}
     </div>
-    {tab === "preview" && <ProjectCommandPanel key={`preview:${project.projectId}`} task={task} projectId={project.projectId} disabled={task.state === "archived"} />}
+    {tab === "preview" && <ProjectCommandPanel key={`preview:${project.projectId}`} surface="preview" task={task} projectId={project.projectId} disabled={task.state === "archived"} />}
     {tab === "files" && <ProjectFileEditor key={project.projectId} projectId={project.projectId} taskId={task.taskId} taskRevision={task.revision} attached={attached} disabled={task.state === "archived"} />}
     {tab === "changes" && <section className="field" aria-label="Project changes">
       <p className="hint">Compared with the isolated checkout baseline. Refresh after editing. Binary content, ignored files and submodule contents are not shown.</p>
@@ -41,10 +40,7 @@ export function TaskWorkspace({
     </section>}
     {tab === "console" && <section className="field" aria-label="Project console">
       <p className="hint">Command output, preview diagnostics and incident snapshots stay with this task. GitHub, Vercel and Sentry remain read-only. Closing Aux does not send these logs anywhere.</p>
-      <details className="task-workspace-console" open={consoleOpen} onToggle={event => setConsoleOpen(event.currentTarget.open)}>
-        <summary>{consoleOpen ? "Console" : "Show console"}</summary>
-        <ProjectCommandPanel key={`console:${project.projectId}`} task={task} projectId={project.projectId} disabled={task.state === "archived"} />
-      </details>
+      <ProjectCommandPanel key={`console:${project.projectId}`} surface="console" task={task} projectId={project.projectId} disabled={task.state === "archived"} />
       {attached && <CloudEnvironmentPanel task={task} projectId={project.projectId} onEvidenceImported={onEvidenceImported} />}
     </section>}
   </section>;

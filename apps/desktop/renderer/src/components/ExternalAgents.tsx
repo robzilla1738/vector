@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@vector/contracts";
-import { mcpCatalogForScope } from "@vector/contracts";
+import { mcpCatalogGrouped, type McpCatalogTool } from "@vector/contracts";
 import { bridge } from "../bridge";
 
 type Config = Awaited<ReturnType<typeof bridge.agentConfig>>;
@@ -21,7 +21,12 @@ export function ExternalAgents() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const availableTasks = useMemo(() => tasks.filter(task => task.workspaceId === workspaceId && task.state === "open"), [tasks, workspaceId]);
-  const catalog = useMemo(() => mcpCatalogForScope(scopeKind), [scopeKind]);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogGroup, setCatalogGroup] = useState<"all" | McpCatalogTool["group"]>("all");
+  const catalogGroups = useMemo(
+    () => mcpCatalogGrouped(scopeKind, { query: catalogQuery, group: catalogGroup === "all" ? undefined : catalogGroup }),
+    [scopeKind, catalogQuery, catalogGroup],
+  );
   const connectionTarget = (connection: AgentConnection) => {
     const scope = connection.scope;
     return scope.kind === "task"
@@ -72,7 +77,10 @@ export function ExternalAgents() {
     <span className="hint">The generated token can access only the selected task scope, its attached browser tabs and attached Aux-managed checkouts. File changes, local commands, preview tabs and commits require native approval. It cannot accept evidence, reconcile actions, create workspaces, or expand its own scope. Use the client’s approval controls for its non-Aux tools.</span>
     <details className="field"><summary>Tools this token can call</summary>
       <p className="hint">{scopeKind === "task" ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation." : "Workspace-scoped connections can create tasks inside the selected workspace."} Vault, routines, backups and human review stay in Aux.</p>
-      {catalog.map(tool => <div className="hint" key={tool.name}><strong>{tool.name}</strong> · {tool.description}</div>)}
+      <label>Filter tools<input aria-label="Filter scoped MCP tools" value={catalogQuery} onChange={event => setCatalogQuery(event.target.value)} placeholder="Name or description" /></label>
+      <div className="seg" role="group" aria-label="Tool group">{(["all", "browser", "task", "workspace"] as const).map(value => <button key={value} className={catalogGroup === value ? "on" : ""} aria-pressed={catalogGroup === value} onClick={() => setCatalogGroup(value)}>{value === "all" ? "All" : value[0]!.toUpperCase() + value.slice(1)}</button>)}</div>
+      {catalogGroups.map(group => <div className="field" key={group.group}><div className="drawer-section">{group.label}</div>{group.tools.map(tool => <div className="hint" key={tool.name}><strong>{tool.name}</strong> · {tool.description}</div>)}</div>)}
+      {!catalogGroups.length && <p className="hint">No scoped tools match this filter.</p>}
     </details>
     <div className="seg" role="group" aria-label="Agent client">{(["codex", "claude"] as const).map(value => <button key={value} className={client === value ? "on" : ""} aria-pressed={client === value} onClick={() => setClient(value)}>{value === "codex" ? "Codex" : "Claude Code"}</button>)}</div>
     {!workspaces.length ? <p role="status">Create a saved task and workspace before connecting an external agent.</p> : <>

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { readConversationContexts, readConversationDrafts, readPendingConversation, writeConversationEntry, DRAFTS_KEY, CONTEXTS_KEY, DRAFT_ENTRY_PREFIX, conversationEntryChange } from "./conversation-drafts";
+import { readConversationContexts, readConversationDrafts, readPendingConversation, writeConversationEntry, applyConversationStorageChange, DRAFTS_KEY, CONTEXTS_KEY, DRAFT_ENTRY_PREFIX, CONTEXT_ENTRY_PREFIX, conversationEntryChange } from "./conversation-drafts";
 it("restores exact reply text while ignoring malformed storage entries", () => {
   const original = "Draft\n\n日本語 and <literal markup>";
   expect(readConversationDrafts({ getItem: () => JSON.stringify({"new":"Fresh prompt","chat:one":original,"chat:two":12,"unrelated":"ignored"}) })).toEqual({"new":"Fresh prompt","chat:one":original});
@@ -50,4 +50,19 @@ it("retains selected page context and newer draft edits across a simulated resta
   const restarted={getItem:(key:string)=>storage.getItem(key),length:storage.length,key:(index:number)=>storage.key(index)};
   expect(readConversationContexts(restarted)).toEqual({"chat:ask":"page-selected"});
   expect(readConversationDrafts(restarted)["chat:ask"]).toBe("Ask about the selection, with a later edit");
+});
+it("applies another window's storage events without replacing unrelated drafts",()=>{
+  const first={conversationDrafts:{"chat:keep":"Keep this","new":"Old composer"},conversationContexts:{"chat:keep":"page-old"},agentDraft:"Old composer"};
+  writeConversationEntry(storageFixture(),"draft","chat:ask","From window two");
+  const draftChange=conversationEntryChange(`${DRAFT_ENTRY_PREFIX}chat:ask`,"From window two")!;
+  const contextChange=conversationEntryChange(`${CONTEXT_ENTRY_PREFIX}chat:keep`,"page-new")!;
+  const composerChange=conversationEntryChange(`${DRAFT_ENTRY_PREFIX}new`,"Newer composer")!;
+  const afterDraft=applyConversationStorageChange(first,draftChange);
+  const afterContext=applyConversationStorageChange({...first,...afterDraft},contextChange);
+  const afterComposer=applyConversationStorageChange({...first,...afterDraft,...afterContext},composerChange);
+  expect(afterComposer).toMatchObject({
+    conversationDrafts:{"chat:keep":"Keep this","new":"Newer composer","chat:ask":"From window two"},
+    conversationContexts:{"chat:keep":"page-new"},
+    agentDraft:"Newer composer",
+  });
 });

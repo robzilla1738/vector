@@ -1,7 +1,7 @@
 import { readWorkspaceMemory } from "./workspace-memory.js";
 import { memoryOrigin } from "@vector/contracts/memory-context";
 import { randomUUID } from "node:crypto";
-import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, VectorError, taskConversationId, type Task, type Workspace, type WorkspaceMemory } from "@vector/contracts";
+import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, VectorError, taskConversationId, taskMatchesQuery, type Task, type Workspace, type WorkspaceMemory } from "@vector/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 
@@ -128,9 +128,11 @@ export class TaskService {
   }
 
   list(opts: { query?:string; workspaceId?: string; includeArchived?: boolean; limit?: number } = {}): Task[] {
-    return (this.repo.db.prepare("SELECT json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') AND (?='' OR instr(lower(coalesce(json_extract(json,'$.title'),'')||' '||coalesce(json_extract(json,'$.objective'),'')),lower(?))>0) ORDER BY updated_at DESC,task_id LIMIT ?")
-      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0, opts.query?.trim()??"", opts.query?.trim()??"", opts.limit ?? 100) as { json: string }[])
-      .map(row => TaskSchema.parse(JSON.parse(row.json)));
+    return (this.repo.db.prepare("SELECT json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') ORDER BY updated_at DESC,task_id LIMIT 500")
+      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0) as { json: string }[])
+      .map(row => TaskSchema.parse(JSON.parse(row.json)))
+      .filter(task => taskMatchesQuery(task, opts.query))
+      .slice(0, opts.limit ?? 100);
   }
 
   details(taskId: string) {

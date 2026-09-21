@@ -1477,7 +1477,7 @@ function wireRendererIpc() {
   });
   ipcMain.handle("ui.openFile", async event => {
     const state=requireShellUi(event);
-    const r = await dialog.showOpenDialog(state.win, { properties: ["openFile"] });
+    const r = await dialog.showOpenDialog(state.win, { title: "Open File", properties: ["openFile"] });
     return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
   });
   ipcMain.handle("ui.revealPath", (_e, p: string) => {

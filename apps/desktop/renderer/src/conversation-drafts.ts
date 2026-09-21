@@ -55,6 +55,22 @@ export function conversationEntryChange(name:string|null,value:string|null) {
   return {kind,key,value:value??""};
 }
 
+/** Apply another window’s storage event without replacing unrelated drafts. */
+export function applyConversationStorageChange<T extends {
+  conversationDrafts: Record<string, string>;
+  conversationContexts: Record<string, string>;
+  agentDraft?: string;
+}>(state: T, change: { kind: "draft" | "context"; key: string; value: string }): Partial<T> {
+  const field = change.kind === "draft" ? "conversationDrafts" : "conversationContexts";
+  const values = { ...state[field] };
+  if (change.value) values[change.key] = change.value;
+  else delete values[change.key];
+  return {
+    [field]: values,
+    ...(change.kind === "draft" && change.key === NEW_DRAFT_KEY ? { agentDraft: change.value } : {}),
+  } as Partial<T>;
+}
+
 function readLegacyMap(storage:Pick<Storage,"getItem">|null,key:string):unknown {
   try{return JSON.parse(storage?.getItem(key)??"{}");}catch{return {};}
 }

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
+import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
 import { agentMayEgress } from "../agent/policy.js";

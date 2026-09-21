@@ -47,6 +47,19 @@ export const TaskPromoteParams = TaskDefinitionSchema.extend({ workspaceId: text
 export const TaskUpdateParams = TaskDefinitionSchema.partial().extend({ taskId: text, expectedRevision: z.number().int().positive(), resources: ResourceList.optional() });
 export type Task = z.infer<typeof TaskSchema>;
 export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
+
+/** Title, objective, criterion text and resource labels. Locators are not searched. */
+export function taskMatchesQuery(
+  task: Pick<Task, "title" | "objective" | "criteria" | "resources">,
+  query?: string,
+): boolean {
+  const needle = query?.trim().toLocaleLowerCase() ?? "";
+  if (!needle) return true;
+  return [task.title, task.objective, ...task.criteria.map(item => item.description), ...task.resources.map(item => item.label)]
+    .join(" ")
+    .toLocaleLowerCase()
+    .includes(needle);
+}
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type WorkspaceMemory = z.infer<typeof WorkspaceMemorySchema>;
 

@@ -1,6 +1,6 @@
 import { SavedResults } from "../services/saved-results.js";
 import { BrowsingMemory } from "../services/browsing-memory.js";
-import { EventTypes, MethodSchemas, newProgramId, originOfAddress, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
+import { EventTypes, MethodSchemas, newProgramId, originOfAddress, taskMatchesQuery, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import type { PageService } from "../services/pages.js";
@@ -251,7 +251,7 @@ export function makeInvoker(s: Services) {
         return tasks.promote(params);
       }
       case "tasks.get":{const details=tasks.details(params.taskId);return{...details,children:details.children.map(child=>({...child,receiptStatus:taskEvidence.receipt(child.task.taskId).status}))};}
-      case "tasks.list": return scope ? scopedTasks(scope).filter(task => (params.includeArchived || task.state === "open") && (!params.query || `${task.title} ${task.objective}`.toLowerCase().includes(params.query.toLowerCase()))).slice(0, params.limit) : tasks.list(params);
+      case "tasks.list": return scope ? scopedTasks(scope).filter(task => (params.includeArchived || task.state === "open") && taskMatchesQuery(task, params.query)).slice(0, params.limit) : tasks.list(params);
       case "tasks.update":
         if (client.external && Array.isArray(params.resources) && params.resources.some((resource: { access?: string }) => resource.access === "write")) {
           throw new VectorError("permission_denied", "Write access on task resources can only be set in Aux.");

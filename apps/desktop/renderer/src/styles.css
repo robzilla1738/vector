@@ -1214,6 +1214,10 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
   .user-message { max-width: 92%; }
   .sidebar .tab-meta, .home-suggestions { display: none; }
   .conversation-compose-content { padding-inline: 12px; }
+  .empty-state { max-width: 100%; padding-inline: 16px; }
+  .navigation-error { width: 100%; }
+  .stage-card.loading .stage-progress { width: 100%; }
+  .sidebar.collapsed { width: 64px; }
 }
 @media (min-width: 1025px) and (max-width: 1279px) {
   .conversation-thread { max-width: 640px; }

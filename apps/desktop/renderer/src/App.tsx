@@ -1,6 +1,6 @@
 import { runAnswerEntry } from "./run-answer-drafts";
 import { closeSelectedTabs } from "./use-tab-selection";
-import { conversationEntryChange, NEW_DRAFT_KEY } from "./conversation-drafts";
+import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { QuickAsk } from "./components/QuickAsk";
 import { useBrowsingMemory } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
@@ -49,12 +49,7 @@ export function App() {
       }
       const change=conversationEntryChange(event.key,event.newValue);
       if(!change)return;
-      useStore.setState(state=>{
-        const field=change.kind==="draft"?"conversationDrafts":"conversationContexts";
-        const values={...state[field]};
-        if(change.value)values[change.key]=change.value;else delete values[change.key];
-        return {[field]:values,...(change.kind==="draft"&&change.key===NEW_DRAFT_KEY?{agentDraft:change.value}:{})};
-      });
+      useStore.setState(state=>applyConversationStorageChange(state,change));
     };
     window.addEventListener("storage",changed);return()=>window.removeEventListener("storage",changed);
   },[]);

@@ -3,10 +3,14 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  assertProfileBackupAllowed,
   mcpCatalogForScope,
+  mcpCatalogGrouped,
   mcpNamesAreCanonical,
+  profileBackupAction,
   refuseSilentCredentialMove,
   requireScopedAuxMcpCatalog,
+  RETAINED_PACKAGE_SCOPE,
   RETAINED_SESSION_PARTITIONS,
   RETAINED_WIRE_IDS,
   TaskResourceSchema,
@@ -31,6 +35,15 @@ afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
 it("keeps Vector session and MCP identities fail-closed", () => {
   expect(RETAINED_SESSION_PARTITIONS).toEqual({ browsing: "persist:vector-default", enginePaint: "persist:vector-engine-paint" });
   expect(RETAINED_WIRE_IDS).toContain("vector");
+  expect(RETAINED_PACKAGE_SCOPE).toBe("@vector");
+  expect(mcpCatalogGrouped("task").map(group => group.group)).toEqual(["browser", "task", "workspace"]);
+  expect(mcpCatalogForScope("task", { query: "verify", group: "task" }).map(tool => tool.name)).toEqual(["aux_task_verify_criterion"]);
+  expect(profileBackupAction("Default/Bookmarks")).toBe("copy");
+  expect(profileBackupAction("Default/Cookies")).toBe("refuse");
+  expect(profileBackupAction("Default/Login Data")).toBe("refuse");
+  expect(profileBackupAction("Default/Web Data")).toBe("refuse");
+  expect(profileBackupAction("Default/Local Storage/leveldb/000003.log")).toBe("refuse");
+  expect(() => assertProfileBackupAllowed("Default/Cookies")).toThrow(/stay in place/i);
   expect(mcpNamesAreCanonical("aux")).toBe(true);
   expect(mcpNamesAreCanonical("vector")).toBe(false);
   expect(() => refuseSilentCredentialMove("Adapter")).toThrow(/stay in place/i);
@@ -80,6 +93,12 @@ it("skips incomplete backups and fails closed when the backup cannot fit", async
   expect(await listRuntimeBackups(directory)).toEqual([]);
   await expect(createRuntimeBackup(repo, directory, { maxBackupBytes: 1 })).rejects.toThrow(/Not enough free space/);
   expect(await listRuntimeBackups(directory)).toEqual([]);
+  await expect(createRuntimeBackup(repo, directory, { interrupt: () => { throw new Error("killed"); } })).rejects.toThrow(/killed/);
+  expect(await listRuntimeBackups(directory)).toEqual([]);
+  const killed = join(directory, "backups", "aux-runtime-killed");
+  mkdirSync(killed, { recursive: true });
+  writeFileSync(join(killed, "state.sqlite"), "partial");
+  expect(await listRuntimeBackups(directory)).toEqual([]);
 });
 
 it("keeps conversation CSS breakpoints for 1024, 1280 and 1512 widths", () => {
@@ -87,6 +106,13 @@ it("keeps conversation CSS breakpoints for 1024, 1280 and 1512 widths", () => {
   expect(css).toContain("@media (max-width: 1024px)");
   expect(css).toContain("@media (min-width: 1280px) and (max-width: 1511px)");
   expect(css).toContain("@media (min-width: 1512px)");
+  const compact = css.slice(css.indexOf("@media (max-width: 1024px)"), css.indexOf("@media (min-width: 1025px)"));
+  expect(compact).toContain(".empty-state");
+  expect(compact).toContain(".navigation-error");
+  expect(compact).toContain(".stage-card.loading");
+  expect(compact).toContain(".sidebar.collapsed");
+  expect(css).toContain(".empty-state {");
+  expect(css).toContain(".navigation-error {");
 });
 
 it("does not share the retained profile partition with the private process", () => {

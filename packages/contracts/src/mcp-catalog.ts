@@ -23,7 +23,7 @@ export const MCP_SCOPED_CATALOG: readonly McpCatalogTool[] = [
   { name: "aux_dialog", group: "browser", scoped: true, description: "Inspect or answer a page dialog." },
   { name: "aux_network", group: "browser", scoped: true, description: "Read captured network responses for an authorized page." },
   { name: "aux_workspaces_list", group: "workspace", scoped: true, description: "List the workspace this connection is allowed to see." },
-  { name: "aux_tasks_list", group: "task", scoped: true, description: "List saved tasks in this connection’s scope. Optional query matches title and objective." },
+  { name: "aux_tasks_list", group: "task", scoped: true, description: "List saved tasks in this connection’s scope. Optional query matches title, objective, criteria and resource labels." },
   { name: "aux_task_get", group: "task", scoped: true, description: "Read a task, revisions and associated runs." },
   { name: "aux_task_update", group: "task", scoped: true, description: "Revise a task using its expected current revision." },
   { name: "aux_task_archive", group: "task", scoped: true, description: "Archive or restore a task." },
@@ -36,6 +36,33 @@ export const MCP_SCOPED_CATALOG: readonly McpCatalogTool[] = [
   { name: "aux_task_create", group: "task", scoped: true, workspaceCreate: true, description: "Create a task. Task-scoped connections may only add a resource-free child." },
 ];
 
-export function mcpCatalogForScope(kind: "workspace" | "task" | undefined): McpCatalogTool[] {
-  return MCP_SCOPED_CATALOG.filter(tool => kind !== "task" || !tool.workspaceCreate || tool.name === "aux_task_create");
+export const MCP_CATALOG_GROUP_LABELS: Record<McpCatalogTool["group"], string> = {
+  browser: "Browser",
+  task: "Tasks",
+  development: "Development",
+  cloud: "Cloud",
+  workspace: "Workspace",
+};
+
+export function mcpCatalogForScope(
+  kind: "workspace" | "task" | undefined,
+  opts: { group?: McpCatalogTool["group"]; query?: string } = {},
+): McpCatalogTool[] {
+  const needle = opts.query?.trim().toLowerCase() ?? "";
+  return MCP_SCOPED_CATALOG.filter(tool => {
+    if (kind === "task" && tool.workspaceCreate && tool.name !== "aux_task_create") return false;
+    if (opts.group && tool.group !== opts.group) return false;
+    if (needle && !`${tool.name} ${tool.description} ${tool.group}`.toLowerCase().includes(needle)) return false;
+    return true;
+  });
+}
+
+export function mcpCatalogGrouped(
+  kind: "workspace" | "task" | undefined,
+  opts: { group?: McpCatalogTool["group"]; query?: string } = {},
+): { group: McpCatalogTool["group"]; label: string; tools: McpCatalogTool[] }[] {
+  const tools = mcpCatalogForScope(kind, opts);
+  return (["browser", "task", "workspace", "development", "cloud"] as const)
+    .filter(group => tools.some(tool => tool.group === group))
+    .map(group => ({ group, label: MCP_CATALOG_GROUP_LABELS[group], tools: tools.filter(tool => tool.group === group) }));
 }

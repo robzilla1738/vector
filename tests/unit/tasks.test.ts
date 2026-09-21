@@ -125,6 +125,14 @@ it("keeps parent and child archive state coherent", () => {
   expect(restoredChild.state).toBe("open");
 });
 
+it("searches title, criteria and resource labels without matching locators", () => {
+  const f = fixture();
+  expect(f.service.list({ query: "required tests" }).map(task => task.taskId)).toEqual([f.task.taskId]);
+  expect(f.service.list({ query: "Source" }).map(task => task.taskId)).toEqual([f.task.taskId]);
+  expect(f.service.list({ query: "/synthetic/no-such-repo" })).toEqual([]);
+  expect(f.service.list({ query: "does-not-exist" })).toEqual([]);
+});
+
 it("blocks a new task run on unresolved effects from an older run and revision", () => {
   const f = fixture();
   f.repo.saveRun({ runId: "r1", goal: f.task.objective, pageIds: ["p1"], status: "interrupted", config: { taskId: f.task.taskId, taskRevision: 1 }, createdAt: Date.now() });
