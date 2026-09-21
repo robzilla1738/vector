@@ -169,5 +169,6 @@ mock success is not native permission, account, file, voice or cloud success.
 
 Use a fresh isolated profile for native work; `AUX_DATA_DIR`, `AUX_PROFILE_DIR`,
 `AUX_ENGINE=0`, `AUX_LOAD_DOTENV=0`. Do not use personal profiles or hunt for personal
-credentials. Keep this continuation as a **draft work branch** until the human reviews.
-Do not mark ready for merge on that review gate.
+credentials. After a crash/restart, retry a single-tab turn only after choosing a live
+tab; detached originals are missing. GitHub / Vercel / Sentry inspection stays GET-only.
+CEF Alloy remains rejected. B1–B7 stay founder/device/paid-cloud blockers.

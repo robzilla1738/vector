@@ -52,9 +52,12 @@ describe("restart recovery", () => {
     const { run } = await rt2.invoke("runs.get", { runId: "run-crashed" }) as { run: Run };
     expect(run.status).toBe("interrupted");
 
-    const retried = await rt2.invoke("runs.retry", { runId: "run-crashed" }) as Run;
+    await expect(rt2.invoke("runs.retry", { runId: "run-crashed" })).rejects.toThrow(/Reopen or choose a browser tab/i);
+
+    const replacement = await rt2.invoke("pages.open", { url: `${RECORDS}/records`, background: true }) as PageTarget;
+    const retried = await rt2.invoke("runs.retry", { runId: "run-crashed", pageId: replacement.pageId }) as Run;
     expect(retried.goal).toBe(run.goal);
-    expect(retried.pageIds).toEqual(run.pageIds);
+    expect(retried.pageIds).toEqual([replacement.pageId]);
     expect(retried.config?.chatId).toBe(run.runId);
     expect(retried.config?.retryOfRunId).toBe(run.runId);
     await expect(rt2.invoke("runs.retry", { runId: "run-crashed" })).rejects.toThrow(/newer turn/i);

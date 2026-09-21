@@ -1,5 +1,14 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21 (CI typecheck and restart retry)
+
+CI on `cursor/aux-remaining-implementation-4932` failed two jobs. Policy was not weakened.
+
+- **Desktop typecheck:** `conversationEntryChange` now returns `{kind:"draft"|"context"}` instead of a widened `string`. Incident prepared-fix `openPath` only runs when a path exists.
+- **Integration recovery:** after restart, a crashed run’s original tab is detached and treated as missing. `runs.retry` without a replacement tab refuses with “Reopen or choose a browser tab”. Retry with a newly opened tab preserves chat identity and retry lineage. This matches the existing unit contract in `set-run-lifecycle.test.ts`.
+
+B1–B7 remain unproven.
+
 ## Continuation — 2026-09-21 (unit suite green, catalog/search/journal fence)
 
 On `cursor/aux-remaining-implementation-4932` after rebuilding `@vector/contracts`, `@vector/runtime`, `@vector/mcp`, and `@vector/cli` dist. Founder/device blockers B1–B7 are unchanged.

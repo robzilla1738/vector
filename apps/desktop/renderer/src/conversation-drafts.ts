@@ -47,8 +47,8 @@ export function writeConversationEntry(storage:Pick<Storage,"setItem">|null, kin
   // Empty entries are tombstones: old map data must not reappear after deletion.
   storage?.setItem(`${kind==="draft"?DRAFT_ENTRY_PREFIX:CONTEXT_ENTRY_PREFIX}${key}`,value);
 }
-export function conversationEntryChange(name:string|null,value:string|null) {
-  const kind=name?.startsWith(DRAFT_ENTRY_PREFIX)?"draft":name?.startsWith(CONTEXT_ENTRY_PREFIX)?"context":null;
+export function conversationEntryChange(name:string|null,value:string|null): {kind:"draft"|"context";key:string;value:string}|null {
+  const kind: "draft"|"context"|null = name?.startsWith(DRAFT_ENTRY_PREFIX)?"draft":name?.startsWith(CONTEXT_ENTRY_PREFIX)?"context":null;
   if(!kind||!name)return null;
   const key=name.slice((kind==="draft"?DRAFT_ENTRY_PREFIX:CONTEXT_ENTRY_PREFIX).length);
   if(!validKey(key)||(kind==="context"&&(value?.length??0)>200))return null;
