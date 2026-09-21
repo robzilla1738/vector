@@ -40,9 +40,9 @@ export function TaskWorkspace({
       </> : <p className="hint">Inspect the checkout to load the current diff.</p>}
     </section>}
     {tab === "console" && <section className="field" aria-label="Project console">
-      <p className="hint">Command output, preview diagnostics and incident snapshots stay with this task. GitHub, Vercel and Sentry remain read-only.</p>
+      <p className="hint">Command output, preview diagnostics and incident snapshots stay with this task. GitHub, Vercel and Sentry remain read-only. Closing Aux does not send these logs anywhere.</p>
       <details className="task-workspace-console" open={consoleOpen} onToggle={event => setConsoleOpen(event.currentTarget.open)}>
-        <summary>Expand console</summary>
+        <summary>{consoleOpen ? "Console" : "Show console"}</summary>
         <ProjectCommandPanel key={`console:${project.projectId}`} task={task} projectId={project.projectId} disabled={task.state === "archived"} />
       </details>
       {attached && <CloudEnvironmentPanel task={task} projectId={project.projectId} onEvidenceImported={onEvidenceImported} />}

@@ -225,3 +225,29 @@ it('fences local task and project mutations while one cloud environment owns the
   f.repo.saveRun({runId:'project-owner',goal:task.objective,pageIds:[],status:'running',createdAt:Date.now(),config:{taskId:task.taskId,taskRevision:task.revision}});
   expect(()=>f.tasks.prepareRun(sibling.taskId,sibling.revision)).toThrow('Another task is actively using this project');
 });
+
+it("records honest criterion checks without accepting the criterion", () => {
+  const f = fixture();
+  const manual = f.evidence.verifyCriterion(f.base);
+  expect(manual).toMatchObject({ method: "manual", status: "unverified", localMatch: false });
+  expect(f.db.prepare("SELECT count(*) AS n FROM criterion_reviews").get()?.n).toBe(0);
+  expect(f.evidence.receipt(f.task.taskId).status).toBe("needs_review");
+  expect(f.evidence.receipt(f.task.taskId).verifications[0]?.verificationId).toBe(manual.verificationId);
+  const browserTask = f.tasks.update({ taskId: f.task.taskId, expectedRevision: 1, criteria: [{ criterionId: "order", description: "One order exists", verification: "browser" }] });
+  const browser = f.evidence.verifyCriterion({ taskId: browserTask.taskId, expectedRevision: 2, criterionId: "order" });
+  expect(browser).toMatchObject({ method: "browser", status: "needs_review", localMatch: false });
+  expect(f.db.prepare("SELECT count(*) AS n FROM criterion_reviews").get()?.n).toBe(0);
+});
+
+it("refuses CLI and MCP write access on task resources", async () => {
+  const f = fixture();
+  await expect(f.invoke("tasks.update", {
+    taskId: f.task.taskId, expectedRevision: 1,
+    resources: [{ ...f.task.resources[0], access: "write" }],
+  })).rejects.toMatchObject({ code: "permission_denied" });
+  const updated = await f.invoke("tasks.update", {
+    taskId: f.task.taskId, expectedRevision: 1,
+    resources: [{ ...f.task.resources[0], access: "read" }],
+  }, { external: false }) as { resources: { access: string }[] };
+  expect(updated.resources[0]?.access).toBe("read");
+});

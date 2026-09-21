@@ -114,6 +114,22 @@ it("records missed consequential schedules and coalesces missed monitors", async
   expect(monitorRun?.reason).toMatch(/Coalesced 2 missed/i);
 });
 
+it("lists coalesced monitor alerts and compares runs without claiming a business outcome", async () => {
+  const f = fixture();
+  const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check", parameters: [] });
+  const left = await f.routines.run({ routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} });
+  const right = { ...left, routineRunId: "compare-right", status: "completed" as const, createdAt: left.createdAt + 1 };
+  f.repo.db.prepare("INSERT INTO routine_runs(routine_run_id,routine_id,revision,status,parameters,created_at) VALUES(?,?,?,?,?,?)")
+    .run(right.routineRunId, right.routineId, right.revision, right.status, "{}", right.createdAt);
+  const comparison = f.routines.compare(left.routineRunId, right.routineRunId);
+  expect(comparison.routineId).toBe(routine.routineId);
+  expect(comparison.statusChanged).toBe(true);
+  expect(comparison.summary).toMatch(/does not prove a business outcome/i);
+  f.repo.db.prepare("UPDATE routine_runs SET status='missed', reason='Missed scheduled run. Consequential work was not started automatically.' WHERE routine_run_id=?")
+    .run(left.routineRunId);
+  expect(f.routines.alerts().some(alert => alert.routineRunId === left.routineRunId && alert.status === "missed")).toBe(true);
+});
+
 it("records cloud-capable missed runs honestly when no cloud starter exists", async () => {
   const f = fixture();
   const routine = f.routines.create({

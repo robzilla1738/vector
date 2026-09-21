@@ -85,6 +85,12 @@ it("terminates the helper after final text and rejects further data in the same 
   expect(owner.send).toHaveBeenLastCalledWith("dictation.event",{sessionId:id,type:"final",text:"Reviewed words"});
   expect(child.kill).toHaveBeenCalledWith("SIGKILL");
 });
+it("does not spawn capture when the speech helper reports unavailable",async()=>{
+  const {contents,host}=fixture();
+  native.execFile.mockImplementation((_path,_args,_options,callback)=>{callback(null,JSON.stringify({available:false,reason:"Microphone permission is unavailable in this environment."}));});
+  await expect(startDictation(contents,id,host)).rejects.toThrow("Microphone permission is unavailable");
+  expect(native.spawn).not.toHaveBeenCalled();
+});
 it("terminates capture if its owner can no longer receive transcript events",async()=>{
   const {contents,host,owner,child}=fixture();
   await startDictation(contents,id,host);

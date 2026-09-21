@@ -7,8 +7,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { MethodSchemas, PlanStepSchema, errorAdvice, toErrorPayload, VectorError } from "@vector/contracts";
+import { MethodSchemas, PlanStepSchema, errorAdvice, toErrorPayload, VectorError, requireScopedAuxMcpCatalog } from "@vector/contracts";
 import { rpc } from "./client.js";
+
+requireScopedAuxMcpCatalog();
 
 const server = new McpServer({ name: "aux", version: "0.1.0" });
 // Existing clients keep vector_* names. The desktop-generated configuration opts
@@ -22,7 +24,7 @@ const scopedTools=new Set([
   'aux_pages_list','aux_page_observe','aux_page_execute','aux_page_takeover','aux_page_resume','aux_page_capture',
   'aux_run_get','aux_run_control','aux_run_answer','aux_extract','aux_wait_for','aux_console','aux_dialog','aux_network',
   'aux_workspaces_list','aux_tasks_list','aux_task_get','aux_task_update','aux_task_archive','aux_task_start',
-  'aux_task_record_evidence','aux_task_capture_evidence','aux_task_receipt',
+  'aux_task_record_evidence','aux_task_capture_evidence','aux_task_receipt','aux_task_verify_criterion','aux_task_replace_agent',
 ]);
 const catalogAllows=(name:string)=>!scopedCatalog||scopedTools.has(name)||name.startsWith('aux_development_')||name.startsWith('aux_cloud_')||(name==='aux_task_create'&&(scopedKind==='workspace'||scopedKind==='task'));
 const registerToolOriginal=server.registerTool.bind(server);
@@ -742,6 +744,8 @@ const taskTools = [
   ["aux_task_record_evidence", "tasks.recordEvidence", "Record an external-client claim for a task criterion. This is not human acceptance or independent verification."],
   ["aux_task_capture_evidence", "tasks.captureEvidence", "Capture a dated page-text observation from a current task resource or run. Content is stored locally as evidence."],
   ["aux_task_receipt", "tasks.receipt", "Read criterion evidence, human review, unresolved actions, run history, and recorded model costs. Optional revision reads an earlier definition; freshness is assessed now, not as of that revision date. External client model costs are not included."],
+  ["aux_task_verify_criterion", "tasks.verifyCriterion", "Run an honest local criterion check against saved evidence. Manual and service criteria stay unverified. This never records human acceptance."],
+  ["aux_task_replace_agent", "tasks.replaceAgent", "Cancel the active Aux built-in agent on this task and start a replacement that keeps the same task and conversation identity."],
 ] as const;
 for (const [name, method, description] of taskTools) {
   server.registerTool(name, { description, inputSchema: MethodSchemas[method].shape }, async (params: unknown) => {

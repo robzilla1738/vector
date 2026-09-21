@@ -99,7 +99,7 @@ export async function runMemberAgent(opts: {
       steps,
     });
     if (write.skip) return err(member, pageId, obs.content.url, write.reason!, executed);
-    const res = await pages.execute(prepared.program, { runId, signal });
+    const res = await pages.execute(prepared.program, { runId, journaled: true, signal });
     settleWrite(opts.durable, write.intentId, res.status === "completed");
     executed.push(...steps);
     outcomes.push(...res.steps);

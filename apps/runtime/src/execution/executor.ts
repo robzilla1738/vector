@@ -44,6 +44,12 @@ export interface ExecContext {
   checkValid?: () => void;
   /** saved task that authorized this run, used to scope vault grants */
   taskId?: string;
+  /**
+   * True when the caller already persisted a DurableWriteLedger intent for
+   * this program. Direct API/CLI/terminal execute leaves this unset so
+   * PageService journals before dispatch.
+   */
+  journaled?: boolean;
   /** resolve opaque vault grants immediately before fill; never persist the secret */
   resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string }) => Promise<string>;
   pageOrigin?: string;

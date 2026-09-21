@@ -36,7 +36,7 @@ export function TaskHistory({ taskId, onClose }: { taskId: string; onClose: () =
   return <section className="task-history field" aria-label="Saved task history">
     <div className="row"><h3 ref={heading} tabIndex={-1}>Saved task history</h3><span className="sp" />
       <button className="btn sm" onClick={onClose}>Back to current task</button></div>
-    <p className="hint">Inspect earlier objectives, resources, evidence and reviews. Your current draft stays unchanged.</p>
+    <p className="hint">Inspect earlier objectives, resources, evidence and reviews. Your current draft stays unchanged. Saved history stays on this Mac and is available in every Aux window without signing in.</p>
     {!!revisions.length && <label className="field">Saved revision
       <select aria-label="Saved revision" value={revision ?? ""} onChange={event => { setReceipt(null); setRevision(Number(event.target.value)); }}>
         {revisions.map(item => <option key={item.revision} value={item.revision}>Revision {item.revision}{item.revision === revisions[0]?.revision ? " · Latest saved" : ""} · {new Date(item.updatedAt).toLocaleString()}</option>)}

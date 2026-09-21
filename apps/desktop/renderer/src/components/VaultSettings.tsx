@@ -6,6 +6,7 @@ export function VaultSettings() {
   const [status, setStatus] = useState<VaultStatus | null>(null);
   const [items, setItems] = useState<VaultItem[]>([]);
   const [grants, setGrants] = useState<VaultGrant[]>([]);
+  const [expired, setExpired] = useState<VaultGrant[]>([]);
   const [history, setHistory] = useState<VaultAccessRecord[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,13 +17,14 @@ export function VaultSettings() {
   const [accountLabel, setAccountLabel] = useState("");
   const [secret, setSecret] = useState("");
   async function refresh() {
-    const [nextStatus, nextItems, nextGrants, nextHistory] = await Promise.all([
+    const [nextStatus, nextItems, nextGrants, nextExpired, nextHistory] = await Promise.all([
       call<VaultStatus>("vault.status", {}),
       call<VaultItem[]>("vault.list", {}),
       call<VaultGrant[]>("vault.grants", {}),
+      call<VaultGrant[]>("vault.expiredGrants", {}),
       call<VaultAccessRecord[]>("vault.history", { limit: 30 }),
     ]);
-    setStatus(nextStatus); setItems(nextItems); setGrants(nextGrants); setHistory(nextHistory);
+    setStatus(nextStatus); setItems(nextItems); setGrants(nextGrants); setExpired(nextExpired); setHistory(nextHistory);
   }
   useEffect(() => { void refresh().catch(reason => setError(reason instanceof Error ? reason.message : String(reason))); }, []);
   async function action(work: () => Promise<void>) {
@@ -63,7 +65,8 @@ export function VaultSettings() {
         <button className="btn sm" disabled={busy || !!item.revokedAt} onClick={() => void action(() => call("vault.revoke", { itemId: item.itemId }).then(() => undefined))}>Revoke</button>
       </div>
     </div>)}
-    {grants.length > 0 && <details><summary>Active grants</summary>{grants.map(grant => <div className="hint" key={grant.grantId}>{grant.credentialRef} · {grant.origin} · expires {new Date(grant.expiresAt).toLocaleString()} · used {grant.useCount}<button className="btn sm" disabled={busy} onClick={() => void action(() => call("vault.revoke", { grantId: grant.grantId }).then(() => undefined))}>Revoke grant</button></div>)}</details>}
+    {grants.length > 0 && <details><summary>Active grants</summary>{grants.map(grant => <div className="hint" key={grant.grantId}>{grant.credentialRef} · {grant.origin} · expires {new Date(grant.expiresAt).toLocaleString()} · used {grant.useCount}<button className="btn sm" disabled={busy || status?.locked} onClick={() => void action(() => call("vault.renewGrant", { grantId: grant.grantId }).then(() => undefined))}>Renew</button><button className="btn sm" disabled={busy} onClick={() => void action(() => call("vault.revoke", { grantId: grant.grantId }).then(() => undefined))}>Revoke grant</button></div>)}</details>}
+    {expired.length > 0 && <details open><summary>Expired grants</summary><p className="hint">Renew the same grant. Aux does not duplicate the secret or create a second credential.</p>{expired.map(grant => <div className="hint" key={grant.grantId}>{grant.credentialRef} · {grant.origin} · expired {new Date(grant.expiresAt).toLocaleString()}<button className="btn sm" disabled={busy || status?.locked} onClick={() => void action(() => call("vault.renewGrant", { grantId: grant.grantId }).then(() => undefined))}>Renew without duplicating</button><button className="btn sm" disabled={busy} onClick={() => void action(() => call("vault.revoke", { grantId: grant.grantId }).then(() => undefined))}>Revoke grant</button></div>)}</details>}
     {history.length > 0 && <details><summary>Access history</summary>{history.map(row => <span className="hint" key={row.seq}>{row.action} · {row.actor}{row.origin ? ` · ${row.origin}` : ""}{row.detail ? ` · ${row.detail}` : ""} · {new Date(row.recordedAt).toLocaleString()}</span>)}</details>}
   </section>;
 }

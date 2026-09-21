@@ -411,6 +411,7 @@ export class RunService {
     translateSteps: (pageId: string, steps: Step[]) => Step[];
     nativeAvailable: () => boolean;
     vault?: import("./vault.js").VaultService;
+    durableWrites?: DurableWriteLedger;
     tracer?: {
       start(
         name: string,
@@ -421,7 +422,7 @@ export class RunService {
   }) {
     this.images = new ConversationImages(deps.repo, deps.artifacts, chatId => deps.events.emit("conversation.context.changed", {chatId}));
     this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() });
-    const durableWrites = new DurableWriteLedger(
+    const durableWrites = deps.durableWrites ?? new DurableWriteLedger(
       deps.repo.db,
       typeof deps.settings.all === "function" && deps.settings.all().dataDir
         ? join(deps.settings.all().dataDir, "durable-writes.json")

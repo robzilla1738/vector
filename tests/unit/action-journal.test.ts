@@ -36,6 +36,19 @@ it("blocks uncertain effects across changed observations, refs, epochs and repai
   expect(history[2]?.evidence).toContain("provider lookup");
 });
 
+it("keeps task-level logical writes stable across new runs and aborts undispatched intents", () => {
+  const f = fixture();
+  const first = beginConsequentialWrite(f.ledger, { runId: "run-1", pageId: "page", documentEpoch: 1, steps: [{ op: "fill", target: "a", value: "1" }], taskId: "task-1", taskRevision: 1 });
+  expect(first.skip).toBe(false);
+  f.ledger.confirm(first.intentId!);
+  const retry = beginConsequentialWrite(f.ledger, { runId: "run-2", pageId: "other-page", documentEpoch: 40, revision: 9, steps: [{ op: "fill", target: "a", value: "1" }], taskId: "task-1", taskRevision: 1 });
+  expect(retry.skip).toBe(true);
+  const pending = f.ledger.begin({ ...action, runId: "run-3", logicalActionId: "never-dispatched" });
+  f.ledger.abortUndispatched(pending.intent.id, "Pre-dispatch failed before the browser ran the write.");
+  expect(f.ledger.unresolved("run-3")).toEqual([]);
+  expect(f.db.prepare("SELECT status FROM action_intents WHERE id=?").get(pending.intent.id)?.status).toBe("not_applied");
+});
+
 it("keeps explicit logical action identity stable and includes all parameters in signatures", () => {
   const f = fixture();
   const first = f.ledger.begin({ ...action, logicalActionId: "invoice-123" });

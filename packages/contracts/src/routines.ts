@@ -86,6 +86,27 @@ export const RoutineRunParams = z.object({
   expectedRevision: z.number().int().positive(),
   parameters: z.record(z.string(), z.string().max(4000)).default({}),
 }).strict();
+export const RoutineAlertSchema = z.object({
+  routineRunId: text,
+  routineId: text,
+  title: text.max(200),
+  status: RoutineRunSchema.shape.status,
+  reason: z.string().max(1000).optional(),
+  triggerKind: z.enum(["manual", "schedule", "monitor"]),
+  createdAt: z.number(),
+});
+export const RoutineCompareSchema = z.object({
+  routineId: text,
+  title: text.max(200),
+  left: RoutineRunSchema,
+  right: RoutineRunSchema,
+  sameOccurrence: z.boolean(),
+  sameParameters: z.boolean(),
+  statusChanged: z.boolean(),
+  summary: text.max(2000),
+});
+export type RoutineAlert = z.infer<typeof RoutineAlertSchema>;
+export type RoutineCompare = z.infer<typeof RoutineCompareSchema>;
 
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;
 export type RoutineTrigger = z.infer<typeof RoutineTriggerSchema>;

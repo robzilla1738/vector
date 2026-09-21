@@ -25,6 +25,7 @@ import type { Repo } from "../store/repo.js";
 import type { VaultService } from "./vault.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
 import { authorizeProgram, classifyStep, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
+import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -111,6 +112,8 @@ export interface PageServiceDeps {
   grantsForRun?: GrantSource;
   /** optional locked vault; fillCredential resolves here and never records the secret */
   vault?: VaultService;
+  /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
+  durableWrites?: DurableWriteLedger;
 }
 
 /**
@@ -1077,6 +1080,18 @@ export class PageService {
       }
       const auth = authorizeProgram(allSteps, grants, origin);
       if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
+      const run = ctx.runId ? this.deps.repo.getRun(ctx.runId) : undefined;
+      const journal = ctx.journaled ? { skip: false as const, intentId: undefined as string | undefined } : beginConsequentialWrite(this.deps.durableWrites, {
+        runId: ctx.runId ?? `direct:${pageId}`,
+        pageId,
+        documentEpoch: lp.target.documentEpoch ?? 0,
+        revision: lp.target.lastRevision,
+        steps: allSteps,
+        taskId: ctx.taskId ?? run?.config?.taskId,
+        taskRevision: run?.config?.taskRevision,
+      });
+      if (journal.skip) throw new VectorError("conflict", journal.reason!);
+      ctx = { ...ctx, journaled: true };
       this.programInflight.add(pageId);
       try {
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
@@ -1196,6 +1211,7 @@ export class PageService {
         }
       } catch (e) {
         flushSteps();
+        settleWrite(this.deps.durableWrites, journal.intentId, false);
         if (!ctx.runId && (lp.target.controller === "agent" || lp.target.controller === "external")) {
           lp.target.controller = "none";
         }
@@ -1206,6 +1222,7 @@ export class PageService {
       } finally {
         if (needsStage) await this.deps.native.releaseStage(pageId).catch(() => {});
       }
+      settleWrite(this.deps.durableWrites, journal.intentId, result.status === "completed");
       flushSteps();
       if (!ctx.runId && (lp.target.controller === "agent" || lp.target.controller === "external")) {
         lp.target.controller = "none";

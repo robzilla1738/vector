@@ -70,7 +70,11 @@ export {
   type GrantInput,
   type PermissionGrant,
 } from "./agent/permissions.js";
-export { DurableWriteLedger, stepSignature, beginConsequentialWrite, settleWrite, type WriteIntent } from "./agent/durable.js";
+export { DurableWriteLedger, stepSignature, beginConsequentialWrite, settleWrite, taskLogicalActionId, type WriteIntent } from "./agent/durable.js";
+export { CoordinatorLease, coordinatorOwnerId, COORDINATOR_LEASE_TTL_MS } from "./agent/coordinator-lease.js";
+export { SpaceService } from "./services/spaces.js";
+export { backupRetention, setBackupRetention, listRuntimeBackups, createRuntimeBackup, BACKUP_KEEP_OPTIONS } from "./services/runtime-backup.js";
+export { markCloudDesktopClosed, CloudEnvironmentService } from "./services/cloud-environments.js";
 export {
   classifyRepair,
   noteRepair,

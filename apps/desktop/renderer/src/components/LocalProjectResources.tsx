@@ -33,7 +33,7 @@ export function LocalProjectResources({task,update,onEvidenceImported}:{task:Tas
   }
   async function attach(project:LocalProject){
     if(task.resources.some(resource=>resource.projectId===project.projectId))return;
-    await update([...task.resources,{resourceId:crypto.randomUUID(),kind:'repository',projectId:project.projectId,locator:project.path,label:`${project.name} · ${project.branch}`.slice(0,200)}]);
+    await update([...task.resources,{resourceId:crypto.randomUUID(),kind:'repository',projectId:project.projectId,locator:project.path,label:`${project.name} · ${project.branch}`.slice(0,200),access:'write'}]);
   }
   async function attachUrl(locator:string,label:string){
     if(task.resources.some(resource=>resource.kind==='url'&&resource.locator===locator))return;

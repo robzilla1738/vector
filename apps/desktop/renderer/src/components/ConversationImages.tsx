@@ -115,10 +115,16 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     if (version === request.current) { setPreview(result); setCapture(null); }
   });
   const canCapture = page && /^https?:\/\//.test(page.url) && !["crashed", "detached"].includes(page.viewStatus ?? "");
+  const captureDisabledReason = disabled ? "Capture is unavailable while this conversation cannot accept attachments."
+    : images.length >= 4 ? "Four images attached. Remove one to add another."
+    : !page ? "Choose an open web page in Browser context to capture it."
+    : !/^https?:\/\//.test(page.url) ? "Page capture is available on http(s) pages, not local or special pages."
+    : ["crashed", "detached"].includes(page.viewStatus ?? "") ? "This tab is crashed or detached. Capture is unavailable until it is restored."
+    : undefined;
   return <section className="conversation-captures" aria-label="Image references">
-    <div className="conversation-documents-head"><div><b>Images</b><small>Paste, drop, choose a file or capture the selected page. Review before attaching.</small></div><div className="capture-actions"><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Choose image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} onClick={() => void takeCapture()}>Capture page</button></div></div>
+    <div className="conversation-documents-head"><div><b>Images</b><small>Paste, drop, choose a file or capture the selected page. Review before attaching.</small></div><div className="capture-actions"><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Choose image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture page</button></div></div>
     {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
-    {!canCapture && <p className="hint">Choose an open web page in Browser context to capture it.</p>}
+    {captureDisabledReason && !canCapture && <p className="hint">{captureDisabledReason}</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
     {busy && <p className="hint" role="status">Preparing image…</p>}
     {images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}

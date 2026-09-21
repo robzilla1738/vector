@@ -145,6 +145,19 @@ it("installs only the reviewed copy and prevents concurrent duplicate installati
   expect(manager.list(session as unknown as Session)).toHaveLength(1);
 });
 
+it("keeps media-permission extensions on the managed profile and out of a private session", async () => {
+  const { source, data } = fixture(), session = new FakeSession(), privateSession = new FakeSession();
+  writeFileSync(join(source, "manifest.json"), JSON.stringify({
+    manifest_version: 3, name: "Media helper", version: "1.0.0",
+    permissions: ["storage", "tabCapture"], host_permissions: ["https://meet.example.test/*"],
+  }));
+  const manager = new ExtensionManager(data);
+  expect(manager.inspect(source).permissions).toEqual(expect.arrayContaining(["tabCapture", "storage", "https://meet.example.test/*"]));
+  await manager.install(source, session as unknown as Session, async () => true);
+  expect(manager.list(session as unknown as Session)).toHaveLength(1);
+  expect(manager.list(privateSession as unknown as Session)[0]).toMatchObject({ loaded: false, enabled: true });
+  expect(privateSession.getAllExtensions()).toEqual([]);
+});
 it("cancels installation without loading code and cleans up a partially loaded failure", async () => {
   const { source, data } = fixture(), session = new FakeSession(), manager = new ExtensionManager(data);
   expect(await manager.install(source, session as unknown as Session, async () => false)).toBeNull();

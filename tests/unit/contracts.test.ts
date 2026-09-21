@@ -78,7 +78,10 @@ describe("API schemas", () => {
       "conversations.artifacts.get", "conversations.artifacts.toggle", "conversations.sources.get",
       "conversations.workspace.get", "conversations.workspace.set", "workspaces.memory.get", "workspaces.memory.set",
       "artifacts.list", "artifacts.read",
-      "vault.status", "vault.save", "vault.grant", "routines.list", "routines.fromResult", "installation.legacyStatus",
+      "vault.status", "vault.save", "vault.grant", "vault.renewGrant", "vault.expiredGrants",
+      "routines.list", "routines.fromResult", "routines.alerts", "routines.compare",
+      "installation.legacyStatus", "installation.listBackups", "installation.backupRetention",
+      "tasks.verifyCriterion", "tasks.replaceAgent", "cloud.reconnectStatus", "development.prepareIncidentFix",
     ]) {
       expect(MethodSchemas, m).toHaveProperty(m);
     }

@@ -49,9 +49,11 @@ logical IDs, transition history, and completion refusal. A previous test labeled
 kill-9 only reopened an object; its name was corrected and actual process-kill
 coverage was added separately.
 
-Not yet complete: durable task identity across new runs, independent reconciliation
-adapters and UI, criterion-specific verification, receipts, cross-process ownership
-and fencing, all direct API/CLI/terminal/cloud dispatch paths, provider idempotency,
-and full power-loss/disk-full/performance qualification. Saved-operation invocation
-records are still a separate journal to unify. These tests do not prove universal
-exactly-once execution or completion of the recovery roadmap.
+Not yet complete: provider idempotency, OS-level power-loss qualification, and
+cross-process fencing outside this runtime (in-process SQLite leases exist).
+These tests do not prove universal exactly-once execution. Human address-bar
+navigation is not journaled. CLI `pages.execute`, operation invoke, BiDi-backed
+programs, dialog accept/dismiss, and saved-operation writes share the durable
+write ledger. Criterion-specific verification is an honest local check, not
+business-outcome proof. Reconciliation remains a desktop-user adapter with
+evidence, never an agent permission.

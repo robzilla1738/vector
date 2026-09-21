@@ -24,7 +24,7 @@ export function TaskResources({task, pages, activePageId, attached, update, onEv
   }
   return <section className="field task-resources" aria-label="Task resources">
     <h4>Resources</h4>
-    <span className="hint">Saved references describe task context; they do not grant access or read files and websites automatically. Changes create a new task revision and require fresh evidence review.</span>
+    <span className="hint">Saved references describe task context. Reference-only never grants agent access. Read and write are Aux desktop controls, not MCP/CLI authority. Changes create a new task revision and require fresh evidence review.</span>
     {!task.resources.length && <p className="hint">No resources attached.</p>}
     {task.resources.map(resource => {
       const page = resource.kind === "page" ? pages.find(page => page.pageId === resource.locator && page.viewStatus !== "detached" && !page.ownedByRuntime) : undefined;
@@ -33,7 +33,7 @@ export function TaskResources({task, pages, activePageId, attached, update, onEv
         {editing === resource.resourceId ? <form className="row" onSubmit={event => { event.preventDefault(); void update(task.resources.map(item => item.resourceId === resource.resourceId ? {...item, label:label.trim()} : item)).then(ok => {if(ok) setEditing(null);}); }}>
           <input aria-label="Resource label" value={label} onChange={event => setLabel(event.target.value)} maxLength={200}/><button className="btn sm" disabled={!label.trim()}>Save label</button><button className="btn sm" type="button" onClick={() => setEditing(null)}>Cancel</button>
         </form> : <strong>{resource.label}</strong>}
-        <span className="hint">{resource.kind === "page" ? page ? "Browser tab" : "Tab unavailable" : resource.kind} · {page?.url ?? resource.locator}</span>
+        <span className="hint">{resource.kind === "page" ? page ? "Browser tab" : "Tab unavailable" : resource.kind} · {page?.url ?? resource.locator} · {(resource.access ?? (resource.kind === "repository" ? "write" : "reference")).replaceAll("_", " ")}</span>
         <div className="row">
           {page && <button className="btn sm" onClick={() => void useStore.getState().activate(page.pageId).catch(errToast)}>Open tab</button>}
           {href && <button className="btn sm" onClick={() => {
@@ -41,6 +41,11 @@ export function TaskResources({task, pages, activePageId, attached, update, onEv
             void (existing ? useStore.getState().activate(existing.pageId) : useStore.getState().newTab(href)).catch(errToast);
           }}>Open URL</button>}
           <button className="btn sm" disabled={archived} onClick={() => {setEditing(resource.resourceId); setLabel(resource.label);}}>Rename</button>
+          <label className="hint">Access<select aria-label={`${resource.label} access`} disabled={archived} value={resource.access ?? (resource.kind === "repository" ? "write" : "reference")} onChange={event => void update(task.resources.map(item => item.resourceId === resource.resourceId ? {...item, access: event.target.value as Resource["access"]} : item))}>
+            <option value="reference">Reference only</option>
+            <option value="read">Read</option>
+            <option value="write">Write in Aux</option>
+          </select></label>
           <button className="btn sm" disabled={archived} onClick={() => void update(task.resources.filter(item => item.resourceId !== resource.resourceId))}>Remove reference</button>
         </div>
       </article>;

@@ -44,6 +44,8 @@ import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
+import { DurableWriteLedger } from "./agent/durable.js";
+import { markCloudDesktopClosed } from "./services/cloud-environments.js";
 
 export interface RuntimeHandle {
   port: number;
@@ -62,6 +64,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   repo.pruneEvents();
   const events = new EventBus(repo);
   const settings = new SettingsService(repo, config.settingsPath, env);
+  const durableWrites = new DurableWriteLedger(repo.db, join(config.dataDir, "durable-writes.json"));
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
 
   // ---- channel to the desktop shell (fork IPC) ----
@@ -249,6 +252,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     responses,
     tracer,
     vault,
+    durableWrites,
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
@@ -316,6 +320,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     pages,
     translateSteps,
+    durableWrites,
     grants: () => settings.effectGrants(),
     egressAllowlist: () =>
       (env.VECTOR_ENGINE_ALLOWLIST ?? "")
@@ -336,6 +341,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     nativeAvailable: () => native.available(),
     tracer,
     vault,
+    durableWrites,
   });
 
   events.subscribe((e) => {
@@ -517,6 +523,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     process.off("unhandledRejection", onUnhandledRejection);
     process.off("uncaughtException", onUncaughtException);
     runs.coordinator.markInterrupted();
+    try { markCloudDesktopClosed(repo); } catch { /* local records only */ }
     await drivers.vector?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
     await drivers.engine?.disconnect().catch(() => {});

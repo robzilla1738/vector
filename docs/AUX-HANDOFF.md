@@ -38,7 +38,7 @@ that must be extended and assessed against the current roadmap, not assumed comp
 | Agent vault | Optional locked vault (passphrase + OS-encrypted blobs). Opaque `cref_` grants scoped to origin and optional task. Fill via `fillCredential` never batches through engine IPC, never writes secrets into steps/observations/results. Revoke, history, expiry, origin/task mismatch fail closed. |
 | Routines | Parameterized routines from saved tasks, weekday schedules and hourly monitors, versioned edits, pause, occurrence identity, no-overlap, uncertain-write block, missed consequential schedules vs coalesced monitors, review/skip, desktop-closed cloud-capable miss when `startWork` is absent. |
 | Development workspace | Task workspace Preview / Changes / Files + expandable Console, unified Connections (Models / Services / Vault / Agents), incident snapshot from an authorized page or project preview. GitHub / Vercel / Sentry stay read-only. |
-| Rename / migration | Schema 12 additive vault/routine tables (`IF NOT EXISTS`). Explicit Vector→Aux copy: backup-first `VACUUM INTO`, skip secrets/cookies/password stores, strip kv credential keys, fail closed on dual roots or dest-db conflict. |
+| Rename / migration | Schema 13 additive coordinator leases and criterion verifications. Explicit Vector→Aux copy: backup-first `VACUUM INTO`, skip secrets/cookies/password stores, strip kv credential keys, fail closed on dual roots or dest-db conflict. Runtime backup list/retention/restore UI. Retained session partitions `persist:vector-*`. |
 
 Latest product addition: sourced conversation tables can export a values-only workbook
 with an explicit Source column and http(s) hyperlinks. Excel still does **not** restore
@@ -88,6 +88,10 @@ identity, paid cloud, or native-hands-on — not silent completion.
 - Result editing is text/Markdown/CSV/JSON, not a binary Office editor.
 - DOCX import is extracted text. PDF excludes scanned text/layout.
 - Spaces and task Workspaces keep distinct IDs; they are not merged by name.
+- Resource write access is an Aux desktop control. CLI/MCP cannot set it.
+- Local criterion checks and routine alerts are not business-outcome proof.
+- Download retry after restart starts a new transfer. Partial byte-range resume
+  is not implemented.
 
 ## Code map
 
@@ -104,8 +108,8 @@ identity, paid cloud, or native-hands-on — not silent completion.
 - `apps/runtime/src/services/{runs,tasks,vault,routines,legacy-migration,conversation-images,
   document-context,saved-results,browsing-memory,workspace-memory,spaces}.ts`: runtime
   authority, credential broker, routines, fail-closed Vector→Aux copy.
-- `apps/runtime/src/store/{repo,db}.ts`: additive migrations (schema 12 vault/routine
-  tables) and stored identity.
+- `apps/runtime/src/store/{repo,db}.ts`: additive migrations (schema 13 coordinator
+  leases and criterion verifications) and stored identity.
 - `apps/runtime/src/services/cloud-environments.ts`, `agent-connections.ts`, plus local
   project modules: reuse for Phase 4. Locate current APIs before introducing new concepts.
 - `apps/desktop/renderer/src/components/{VaultSettings,Routines,TaskWorkspace,
@@ -133,13 +137,12 @@ Continuation 2026-09-21 (branch `cursor/aux-remaining-implementation-4932`):
 - M0 unit debt is **cleared for the three named files**. Failures were fixture/schema/env
   lag against intended policy, not a rollback of exact host/port auth or transient-document
   routing. Focused: `mcp-stdio` (3), `operation-authority` (3), `router` (10) pass.
-- Focused product units pass after rebuilding `@vector/runtime` dist (tests import dist):
-  vault, routines, legacy migration, representative workflows, workbook hyperlinks,
-  contracts, prompt-injection `fillCredential`, set-run crashed/detached/multi-tab,
-  executor, database-migration schema 12, site-controls opener. 101 tests / 14 files.
-- `pnpm build`, desktop typecheck, and desktop production build pass on this revision.
-- Full `pnpm test:unit` was **not** re-run as a 699-file campaign. Do not treat the
-  historical 6 failures as still open.
+- Schema 13, vault/routines, journal unification, leases, criterion checks, agent
+  replace, backup retention, identity fail-closed, and remaining software-only
+  Phase 2–5 items above are in this tree. Rebuild runtime dist before unit tests
+  (`tests` import dist).
+- `pnpm build`, desktop typecheck, and desktop production build pass on earlier
+  revisions of this branch. Re-run `pnpm test:unit` after rebuilding `@vector/runtime`.
 
 The native XLSX acceptance above used a workbook snapshot; the latest saved-CSV-result
 button reuses that native path and has binary round-trip coverage, but has not had its
@@ -153,7 +156,7 @@ pnpm install --frozen-lockfile
 pnpm build
 pnpm --filter @vector/desktop typecheck
 pnpm --filter @vector/desktop build
-pnpm exec vitest run tests/unit/mcp-stdio.test.ts tests/unit/operation-authority.test.ts tests/unit/router.test.ts tests/unit/agent-vault.test.ts tests/unit/routines.test.ts tests/unit/legacy-migration.test.ts
+pnpm test:unit
 AUX_LOAD_DOTENV=0 AUX_ENGINE=0 pnpm dev
 ```
 

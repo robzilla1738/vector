@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { CriterionReviewParams, CriterionReviewSchema, EvidenceCaptureParams, EvidenceCommandParams, EvidenceDocumentParams, EvidenceNoteParams, PreservedCloudResultSchema, TaskEvidenceSchema, TaskReconcileParams, TaskReconcileOperationParams, VectorError,
-  type Task, type TaskEvidence, type CriterionReview, type TaskReceipt, type CloudTaskResult, type PreservedCloudResult } from "@vector/contracts";
+import { CriterionReviewParams, CriterionReviewSchema, CriterionVerificationSchema, EvidenceCaptureParams, EvidenceCommandParams, EvidenceDocumentParams, EvidenceNoteParams, PreservedCloudResultSchema, TaskEvidenceSchema, TaskReconcileParams, TaskReconcileOperationParams, TaskVerifyCriterionParams, VectorError,
+  type Task, type TaskEvidence, type CriterionReview, type CriterionVerification, type TaskReceipt, type CloudTaskResult, type PreservedCloudResult } from "@vector/contracts";
 import type { Repo } from "../store/repo.js";
 import { summarizeModelUsage } from "./model-usage.js";
 import type { EventBus } from "../events.js";
@@ -177,6 +177,56 @@ export class TaskEvidenceService {
     this.events.emit('task.operation_reconciled',{taskId:p.taskId,invocationId:p.invocationId,outcome:p.outcome,evidenceId:p.evidenceId});return{ok:true};
   }
 
+  verifyCriterion(input: unknown): CriterionVerification {
+    const p = TaskVerifyCriterionParams.parse(input);
+    const task = this.current(p.taskId, p.expectedRevision, p.criterionId);
+    const criterion = task.criteria.find(item => item.criterionId === p.criterionId)!;
+    const rows = this.evidence(p.taskId, p.expectedRevision, p.criterionId);
+    const fresh = rows.filter(item => !this.staleReason(item.record));
+    let localMatch = false;
+    let status: CriterionVerification["status"] = "unverified";
+    let reason: string;
+    if (criterion.verification === "manual") {
+      reason = "Manual criteria stay unverified until you accept them. This check did not record a review.";
+    } else if (criterion.verification === "service") {
+      reason = "Service checks stay unverified. Aux does not call remote APIs to prove this criterion, and this is not human acceptance.";
+    } else if (criterion.verification === "browser") {
+      localMatch = fresh.some(item => item.record.kind === "browser_observation");
+      status = "needs_review";
+      reason = localMatch
+        ? "A current page observation exists. This local match is not human acceptance."
+        : "No current page observation exists for this criterion.";
+    } else if (criterion.verification === "artifact") {
+      localMatch = fresh.some(item => item.record.kind === "document_snapshot" || !!item.record.source.cloudArtifacts?.length);
+      status = "needs_review";
+      reason = localMatch
+        ? "A saved artifact snapshot exists. This local match is not human acceptance."
+        : "No current artifact snapshot exists for this criterion.";
+    } else {
+      localMatch = fresh.some(item => item.record.kind === "command_snapshot");
+      status = "needs_review";
+      reason = localMatch
+        ? "A saved command result exists. A successful exit is not acceptance."
+        : "No current command result exists for this criterion.";
+    }
+    const record = CriterionVerificationSchema.parse({
+      verificationId: randomUUID(),
+      taskId: p.taskId,
+      taskRevision: p.expectedRevision,
+      criterionId: p.criterionId,
+      method: criterion.verification,
+      status,
+      localMatch,
+      reason,
+      evidenceIds: fresh.map(item => item.record.evidenceId),
+      recordedAt: Date.now(),
+    });
+    this.repo.db.prepare("INSERT INTO criterion_verifications(verification_id,task_id,task_revision,criterion_id,json,recorded_at) VALUES(?,?,?,?,?,?)")
+      .run(record.verificationId, record.taskId, record.taskRevision, record.criterionId, JSON.stringify(record), record.recordedAt);
+    this.events.emit("task.criterion_verified", { taskId: record.taskId, verificationId: record.verificationId, status: record.status, localMatch: record.localMatch });
+    return record;
+  }
+
   receipt(taskId: string, revision?: number, includeChildren = true): TaskReceipt {
     const details = this.tasks.details(taskId);
     const task = revision === undefined ? details.task : details.revisions.find(item => item.revision === revision);
@@ -226,7 +276,12 @@ export class TaskEvidenceService {
         durationMs: run.startedAt !== undefined && run.endedAt !== undefined ? Math.max(0, run.endedAt - run.startedAt) : undefined })),
       modelCalls: usage.calls, knownCostUsd: usage.knownCostUsd, costComplete: usage.costComplete,
       modelIds: usage.modelIds, providers: usage.providers, destinations: usage.destinations,
-      cloudResults:this.cloudResults().filter(item=>item.taskId===taskId&&item.taskRevision===task.revision).sort((a,b)=>b.resultUpdatedAt-a.resultUpdatedAt),childTasks };
+      cloudResults:this.cloudResults().filter(item=>item.taskId===taskId&&item.taskRevision===task.revision).sort((a,b)=>b.resultUpdatedAt-a.resultUpdatedAt),childTasks,
+      verifications: (this.repo.db.prepare("SELECT json FROM criterion_verifications WHERE task_id=? AND task_revision=? ORDER BY recorded_at DESC LIMIT 100")
+        .all(taskId, task.revision) as { json: string }[]).flatMap(row => {
+          const parsed = CriterionVerificationSchema.safeParse(JSON.parse(row.json));
+          return parsed.success ? [parsed.data] : [];
+        }) };
   }
 
   private current(taskId: string, revision: number, criterionId?: string, idle = false): Task {

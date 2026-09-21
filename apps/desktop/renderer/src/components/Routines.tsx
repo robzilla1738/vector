@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
-import type { Routine, RoutineRun, Task } from "@vector/contracts";
+import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task } from "@vector/contracts";
 import { call } from "../store";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
+  const [comparison, setComparison] = useState<RoutineCompare | null>(null);
   const [selected, setSelected] = useState<{ routine: Routine; runs: RoutineRun[] } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState("");
   const [parameter, setParameter] = useState("");
   async function refresh(routineId?: string) {
-    const items = await call<Routine[]>("routines.list", { workspaceId, includeArchived: true });
+    const [items, nextAlerts] = await Promise.all([
+      call<Routine[]>("routines.list", { workspaceId, includeArchived: true }),
+      call<RoutineAlert[]>("routines.alerts", { limit: 20 }),
+    ]);
     setRoutines(items);
+    setAlerts(nextAlerts);
     if (routineId) setSelected(await call("routines.get", { routineId }));
   }
   useEffect(() => { void refresh().catch(reason => setError(reason instanceof Error ? reason.message : String(reason))); }, [workspaceId]);
@@ -28,6 +34,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       setTitle(""); setParameter(""); await refresh(routine.routineId);
     })}>Make routine from this task</button>}</div>
     <p className="hint">Parameterized repeats of a saved task. Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until you reconcile an uncertain write.</p>
+    {alerts.length > 0 && <section className="field" aria-label="Routine alerts"><strong>Alerts</strong><span className="hint">Local run records only. They do not prove a business outcome.</span>{alerts.map(alert => <div className="hint" key={alert.routineRunId}>{alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}{alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}</div>)}</section>}
     {task && <div className="row"><input aria-label="Routine title" placeholder="Routine title" value={title} onChange={event => setTitle(event.target.value)} /><input aria-label="Topic parameter" placeholder="Optional topic parameter" value={parameter} onChange={event => setParameter(event.target.value)} /></div>}
     {error && <p className="field-error" role="alert">{error}</p>}
     {routines.map(item => <button className="btn" key={item.routineId} aria-pressed={selected?.routine.routineId === item.routineId} onClick={() => void action(() => refresh(item.routineId))}>{item.title}{item.paused ? " · paused" : ""}{item.archivedAt ? " · archived" : ""} · {item.trigger.kind}</button>)}
@@ -40,7 +47,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         <button className="btn sm" disabled={busy} onClick={() => void action(async () => { await call("routines.pause", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, paused: !selected.routine.paused }); await refresh(selected.routine.routineId); })}>{selected.routine.paused ? "Resume" : "Pause"}</button>
         <button className="btn sm" disabled={busy} onClick={() => void action(async () => { await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, trigger: { kind: "schedule", timezone, hour: 9, minute: 0, days: [1, 2, 3, 4, 5] } }); await refresh(selected.routine.routineId); })}>Weekday 09:00</button>
         <button className="btn sm" disabled={busy} onClick={() => void action(async () => { await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, trigger: { kind: "monitor", timezone, intervalMinutes: 60 }, reviewRequired: false }); await refresh(selected.routine.routineId); })}>Hourly monitor</button>
+        {selected.runs.length >= 2 && <button className="btn sm" disabled={busy} onClick={() => void action(async () => { setComparison(await call<RoutineCompare>("routines.compare", { leftRunId: selected.runs[1]!.routineRunId, rightRunId: selected.runs[0]!.routineRunId })); })}>Compare latest two runs</button>}
       </div>
+      {comparison && comparison.routineId === selected.routine.routineId && <p className="hint" role="status">{comparison.summary}</p>}
       {selected.runs.map(run => <div className="hint" key={run.routineRunId}>
         {run.status.replaceAll("_", " ")}{run.reason ? ` · ${run.reason}` : ""} · {new Date(run.createdAt).toLocaleString()}
         {(run.status === "needs_review" || run.status === "uncertain") && <>

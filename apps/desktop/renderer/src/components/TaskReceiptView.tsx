@@ -96,10 +96,12 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
     {receipt.criteria.map(({ criterion, status, evidence, review }) => {
       const note = notes[criterion.criterionId] ?? "";
       const chosen = (selected[criterion.criterionId] ?? []).filter(id => evidence.some(item => item.record.evidenceId === id && !item.stale));
+      const verification = receipt.verifications.find(item => item.criterionId === criterion.criterionId);
       return <section key={criterion.criterionId} aria-label={criterion.description} className="field" style={{ borderTop: "1px solid var(--accent-line)", paddingTop: "var(--space-3)" }}>
         <strong>{criterion.description}</strong>
         <span className="hint">{status === "accepted" ? "Accepted by you" : status.replaceAll("_", " ")}</span>
         {review && <p>{review.note}</p>}
+        {verification && <p className="hint">Local check · {verification.method} · {verification.status.replaceAll("_", " ")} · {verification.localMatch ? "matched saved evidence" : "no local match"} · {verification.reason} This is not acceptance.</p>}
         {!evidence.length && <p>No evidence recorded.</p>}
         {evidence.map(({ record, stale, reason }) => <div key={record.evidenceId}>
           <label className="row" style={{ alignItems: "flex-start" }}>{editable && <input type="checkbox" style={{ width: 16, height: 16, flexShrink: 0 }} aria-label={`Use evidence ${record.evidenceId}`} disabled={stale}
@@ -142,7 +144,9 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
         <div className="row">
           <button className="btn sm" disabled={!chosen.length || !note.trim() || active} onClick={() => void submit?.("tasks.reviewCriterion", { ...base, criterionId: criterion.criterionId, evidenceIds: chosen, note, outcome: "accepted" })}>Accept criterion</button>
           <button className="btn sm" disabled={!chosen.length || !note.trim() || active} onClick={() => void submit?.("tasks.reviewCriterion", { ...base, criterionId: criterion.criterionId, evidenceIds: chosen, note, outcome: "rejected" })}>Mark not met</button>
+          <button className="btn sm" disabled={active} onClick={() => void submit?.("tasks.verifyCriterion", { ...base, criterionId: criterion.criterionId })}>Run local check</button>
         </div>
+        <span className="hint">A local check compares saved evidence. It never records acceptance.</span>
         </>}
       </section>;
     })}

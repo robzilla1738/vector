@@ -3,7 +3,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {openDb,Repo} from '@vector/runtime';
-import {retrySource} from '../../apps/desktop/main/download-retry.js';
+import {retrySource,canResumePartialDownload} from '../../apps/desktop/main/download-retry.js';
 it('retains retry URLs with download records after restart without inventing sources for older records',()=>{
  const root=mkdtempSync(join(tmpdir(),'aux-download-retry-'));let db=openDb(join(root,'state.sqlite'));
  try{
@@ -19,4 +19,8 @@ it('retains retry URLs with download records after restart without inventing sou
 it('offers only HTTP(S) sources without embedded credentials',()=>{
  expect(retrySource('https://example.test/file')).toBe('https://example.test/file');
  for(const value of [undefined,'not a URL','file:///tmp/private','blob:https://example.test/id','javascript:alert(1)','https://user:password@example.test/file'])expect(retrySource(value)).toBeUndefined();
+});
+it('treats a retry after restart as a new transfer, not a byte-range resume',()=>{
+ expect(retrySource('https://example.test/file?part=2')).toBe('https://example.test/file?part=2');
+ expect(canResumePartialDownload()).toBe(false);
 });

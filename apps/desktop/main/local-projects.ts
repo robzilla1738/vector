@@ -149,7 +149,17 @@ export class LocalProjects {
     lines.push('## Connected operations health','',input.operations?clean(input.operations,32*1024):'No connected operations status was available.','');
     lines.push('## Limits','',`This is a dated local snapshot. It contains at most 100 recent console messages, 100 network responses, 10 project commands, 10 Sentry issues and the latest Vercel deployment summary. It does not prove root cause, current health or that a later fix worked.`,'');
     const content=lines.join('\n');const path=join(this.directory(id),`incident-${generatedAt}.md`);const temporary=path+'.'+randomUUID()+'.tmp';await writeFile(temporary,content,{mode:0o600});await rename(temporary,path);
-    return {projectId:id,generatedAt,path,content,page:input.page,consoleCount:input.console.length,networkCount:input.network.length};
+    const preparedFixContent=[
+      `# Prepared local fix`,'',
+      `Generated: ${new Date(generatedAt).toISOString()}`,`Incident snapshot: ${path}`,'',
+      'This companion stays on this Mac. It does not push, deploy, open a pull request, mutate cloud resources, or apply a remote change.','',
+      '## Suggested next local steps','',
+      '1. Inspect checkout changes in Aux Files.','2. Apply a bounded edit in the isolated checkout.','3. Run a local check from Commands.','4. Review the patch in Changes before any local commit.','',
+      '## Incident summary','',
+      `Task: ${clean(input.task.title,200)} (revision ${input.task.taskRevision})`,`Page: ${clean(input.page.title,500)}`,`URL: ${clean(safeUrl(input.page.url),2048)}`,`Console messages: ${input.console.length}`,`Network responses: ${input.network.length}`,'',
+    ].join('\n');
+    const preparedFixPath=join(this.directory(id),`incident-${generatedAt}-prepared-fix.md`);const preparedTmp=preparedFixPath+'.'+randomUUID()+'.tmp';await writeFile(preparedTmp,preparedFixContent,{mode:0o600});await rename(preparedTmp,preparedFixPath);
+    return {projectId:id,generatedAt,path,content,page:input.page,consoleCount:input.console.length,networkCount:input.network.length,preparedFixPath,preparedFixContent};
   }
   async inspect(id:string):Promise<ProjectInspection> {
     const project=await this.get(id);

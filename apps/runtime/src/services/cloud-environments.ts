@@ -2,7 +2,7 @@ import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {posix} from 'node:path';
 import {mkdir,readFile,readdir,rm,stat} from 'node:fs/promises';
 import {Sandbox,type Command} from '@vercel/sandbox';
-import {CloudCommandRecordSchema,CloudEnvironmentSchema,CloudTaskResultSchema,VectorError,type CloudCommandRecord,type CloudEnvironment,type CloudCommandResult,type CloudFile,type CloudFileEntry,type CloudTaskResult} from '@vector/contracts';
+import {CloudCommandRecordSchema,CloudEnvironmentSchema,CloudReconnectStatusSchema,CloudTaskResultSchema,VectorError,type CloudCommandRecord,type CloudEnvironment,type CloudCommandResult,type CloudFile,type CloudFileEntry,type CloudReconnectStatus,type CloudTaskResult} from '@vector/contracts';
 import type {Repo} from '../store/repo.js';
 import type {SettingsService} from './settings.js';
 
@@ -190,6 +190,25 @@ export class CloudEnvironmentService{
   async stop(record:CloudEnvironment){this.requireLive(record);const sandbox=await this.provider.get({...this.settings.vercelSandboxCredentials(),name:record.remoteName,resume:false});const result=await sandbox.stop();const snapshot=result.snapshot as {id?:string;snapshotId?:string}|undefined;const next=CloudEnvironmentSchema.parse({...record,status:'stopped',authority:'local',updatedAt:Date.now(),snapshotId:snapshot?.id??snapshot?.snapshotId,activeCpuMs:result.activeCpuDurationMs,ingressBytes:result.networkTransfer?.ingress,egressBytes:result.networkTransfer?.egress,expiresAt:undefined});await this.save(next);return next;}
   async delete(record:CloudEnvironment){if(record.status!=='deleted'){const sandbox=await this.provider.get({...this.settings.vercelSandboxCredentials(),name:record.remoteName,resume:false});await sandbox.delete({deleteOrphanSnapshots:true});}const next=CloudEnvironmentSchema.parse({...record,status:'deleted',authority:'local',updatedAt:Date.now(),expiresAt:undefined,cleanupState:undefined,cleanupError:undefined});await this.save(next);return next;}
   get(taskId:string,environmentId:string){const record=this.records().find(item=>item.environmentId===environmentId&&item.taskId===taskId);if(!record)throw new VectorError('not_found','Cloud environment does not belong to this task.');return record;}
+  reconnectStatus(taskId:string):CloudReconnectStatus{
+    const environments=this.records().filter(item=>item.taskId===taskId&&item.status!=='deleted');
+    let credentialsAvailable=true;
+    let note='Local reconnect status only. Aux did not resume, stop, delete or inventory remote sandboxes.';
+    try{this.settings.vercelSandboxCredentials();}
+    catch(error){
+      credentialsAvailable=false;
+      note=`${error instanceof Error?error.message:String(error)} Local records were not changed. Re-enter Vercel in Connections. Encrypted credentials were not moved.`;
+    }
+    return CloudReconnectStatusSchema.parse({
+      checkedAt:Date.now(),
+      credentialsAvailable,
+      environments:environments.map(item=>CloudEnvironmentSchema.parse({
+        ...item,
+        reconnectState:credentialsAvailable?(item.desktopClosedAt?'desktop_closed':'live'):'credentials_unavailable',
+      })),
+      note,
+    });
+  }
   private relativePath(value:string){const normalized=posix.normalize(`/${value.replaceAll('\\','/')}`).slice(1);if(normalized==='.'||normalized==='')return'';if(normalized.startsWith('../')||normalized.includes('/../'))throw new VectorError('invalid_params','Remote path must stay inside the workspace.');return normalized;}
   private remotePath(value:string){const relative=this.relativePath(value);return relative?`${ROOT}/${relative}`:ROOT;}
   private async assertRemotePath(sandbox:Sandbox,relativePath:string,kind:'file'|'directory'){
@@ -230,4 +249,16 @@ export class CloudEnvironmentService{
   private commandRecords(){const value=this.repo.getSetting<unknown>(COMMANDS_KEY);if(!Array.isArray(value))return[];return value.flatMap(item=>{const parsed=CloudCommandRecordSchema.safeParse(item);return parsed.success?[parsed.data]:[];});}
   private save(record:CloudEnvironment){const write=this.writes.then(()=>{const records=this.records().filter(item=>item.environmentId!==record.environmentId);records.push(record);this.repo.setSetting(KEY,records.slice(-200));});this.writes=write.catch(()=>{});return write;}
   private saveCommand(record:CloudCommandRecord){const parsed=CloudCommandRecordSchema.parse(record);const write=this.writes.then(()=>{const records=this.commandRecords().filter(item=>item.commandId!==parsed.commandId);records.push(parsed);this.repo.setSetting(COMMANDS_KEY,records.slice(-500));});this.writes=write.catch(()=>{});return write;}
+}
+
+export function markCloudDesktopClosed(repo:Repo,now=Date.now()){
+  const value=repo.getSetting<unknown>(KEY);
+  if(!Array.isArray(value))return;
+  const next=value.flatMap(item=>{
+    const parsed=CloudEnvironmentSchema.safeParse(item);
+    if(!parsed.success)return [];
+    if(parsed.data.status==='deleted')return [parsed.data];
+    return [CloudEnvironmentSchema.parse({...parsed.data,desktopClosedAt:now,reconnectState:'desktop_closed' as const})];
+  });
+  repo.setSetting(KEY,next.slice(-200));
 }

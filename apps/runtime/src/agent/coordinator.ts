@@ -15,6 +15,7 @@ import type { ModelClient } from "./model-client.js";
 import { recoverAfterCrash } from "./recovery.js";
 import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
+import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { initialMachine, reduce } from "./machine.js";
 import type { CompiledSkill } from "./skills.js";
 import {
@@ -77,10 +78,14 @@ export class RunCoordinator {
   unresolvedByRun = new Map<string, string[]>();
   durable: DurableWriteLedger;
   deps: CoordinatorDeps;
+  private leases: CoordinatorLease;
+  private leaseOwner = coordinatorOwnerId();
+  private heldLeases = new Set<string>();
 
   constructor(deps: CoordinatorDeps) {
     this.deps = deps;
     this.durable = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
+    this.leases = new CoordinatorLease(deps.repo.db);
   }
 
   seedSkills(skills: CompiledSkill[]) {
@@ -121,6 +126,11 @@ export class RunCoordinator {
     chatId?: string;
     retryOfRunId?: string;
   }): Promise<Run> {
+    const leaseKey = opts.taskId ? `task:${opts.taskId}` : undefined;
+    if (leaseKey) {
+      this.leases.acquire(leaseKey, this.leaseOwner);
+      this.heldLeases.add(leaseKey);
+    }
     const run: Run = {
       runId: newRunId(),
       goal: opts.goal,
@@ -149,6 +159,9 @@ export class RunCoordinator {
     };
     this.deps.repo.saveRun(run);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
+    const runLease = `run:${run.runId}`;
+    this.leases.acquire(runLease, this.leaseOwner);
+    this.heldLeases.add(runLease);
     this.controls.set(run.runId, {
       abort: new AbortController(),
       paused: false,
@@ -233,6 +246,8 @@ export class RunCoordinator {
     run.config = { ...(run.config ?? {}), checkpoint };
     this.deps.repo.saveRun(run);
     this.deps.repo.saveCheckpoint(`run:${run.runId}`, "coordinator", checkpoint);
+    const taskKey = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
+    try { if (taskKey && this.heldLeases.has(taskKey)) this.leases.refresh(taskKey, this.leaseOwner); } catch { /* fenced owners stop at finish */ }
   }
 
   finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
@@ -265,6 +280,10 @@ export class RunCoordinator {
     }
     this.deps.tracer?.incr(`run.${status}`);
     for (const pageId of run.pageIds) this.deps.pages.releaseAgent?.(pageId);
+    const taskKey = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
+    const runKey = `run:${runId}`;
+    if (taskKey && this.heldLeases.has(taskKey)) { this.leases.release(taskKey, this.leaseOwner); this.heldLeases.delete(taskKey); }
+    if (this.heldLeases.has(runKey)) { this.leases.release(runKey, this.leaseOwner); this.heldLeases.delete(runKey); }
   }
 
   async waitIfPaused(c: RunControl, _runId: string) {

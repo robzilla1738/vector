@@ -26,7 +26,7 @@ import type { AgentConnectionService } from "../services/agent-connections.js";
 import type { AgentConnectionScope } from "@vector/contracts";
 import type {NativeBridge} from '../native.js';
 import {CloudEnvironmentService} from '../services/cloud-environments.js';
-import {cancelRuntimeRestore,createRuntimeBackup,stageRuntimeRestore} from '../services/runtime-backup.js';
+import {cancelRuntimeRestore,createRuntimeBackup,listRuntimeBackups,backupRetention,setBackupRetention,stageRuntimeRestore} from '../services/runtime-backup.js';
 import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
 import { legacyInstallationStatus, migrateLegacyInstallation } from "../services/legacy-migration.js";
@@ -186,6 +186,16 @@ export function makeInvoker(s: Services) {
         if (!s.agentConnections) throw new VectorError("backend_unavailable", "Agent connection management is unavailable");
         return s.agentConnections.revoke(params.connectionId);
       case "tasks.receipt": return taskEvidence.receipt(params.taskId, params.revision);
+      case "tasks.verifyCriterion": return taskEvidence.verifyCriterion(params);
+      case "tasks.replaceAgent": {
+        const details = tasks.details(params.taskId);
+        for (const { run } of details.runs) {
+          if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) s.runs.cancel(run.runId);
+        }
+        const pageIds = params.pageIds ?? (params.pageId ? [params.pageId] : []);
+        if (scope && Array.isArray(pageIds)) for (const pageId of pageIds) requireScopedPage(scope, pageId, client.connectionId);
+        return s.runs.start({ ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context), pageIds, modelId: params.modelId });
+      }
       case "tasks.recordEvidence": return taskEvidence.recordNote(params, client.external ? "external_client" : "desktop_user");
       case "tasks.prepareLocalCommand":
         if(client.external)throw new VectorError('permission_denied','Local command preparation requires the Aux desktop interface');
@@ -231,14 +241,22 @@ export function makeInvoker(s: Services) {
       case "workspaces.memory.set":
         if (client.external) throw new VectorError("permission_denied", "Workspace memory is managed in Aux.");
         return tasks.setWorkspaceMemory(params.workspaceId, params.expectedRevision, params.content,params.enabled,params.items,params.excludedOrigins);
-      case "tasks.create": return tasks.create(params);
+      case "tasks.create":
+        if (client.external && Array.isArray(params.resources) && params.resources.some((resource: { access?: string }) => resource.access === "write")) {
+          throw new VectorError("permission_denied", "Write access on task resources can only be set in Aux.");
+        }
+        return tasks.create(params);
       case "tasks.promote": {
         if (client.external) throw new VectorError("permission_denied", "Save a conversation as a task in Aux.");
         return tasks.promote(params);
       }
       case "tasks.get":{const details=tasks.details(params.taskId);return{...details,children:details.children.map(child=>({...child,receiptStatus:taskEvidence.receipt(child.task.taskId).status}))};}
       case "tasks.list": return scope ? scopedTasks(scope).filter(task => (params.includeArchived || task.state === "open") && (!params.query || `${task.title} ${task.objective}`.toLowerCase().includes(params.query.toLowerCase()))).slice(0, params.limit) : tasks.list(params);
-      case "tasks.update": return tasks.update(params);
+      case "tasks.update":
+        if (client.external && Array.isArray(params.resources) && params.resources.some((resource: { access?: string }) => resource.access === "write")) {
+          throw new VectorError("permission_denied", "Write access on task resources can only be set in Aux.");
+        }
+        return tasks.update(params);
       case "tasks.archive": return tasks.archive(params.taskId, params.expectedRevision, params.archived);
       case "tasks.start": {
         const { taskId, expectedRevision, ...options } = params;
@@ -258,7 +276,8 @@ export function makeInvoker(s: Services) {
         tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);const status=await s.settings.operationsStatus();
         tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return status;
       }
-      case 'development.incidentReport':{
+      case 'development.incidentReport':
+      case 'development.prepareIncidentFix': {
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);if(scope)requireScopedPage(scope,params.pageId,client.connectionId);
         const page=s.pages.get(params.pageId);const project=await developmentNative().inspectProject(params.projectId);
         const taskPage=task.resources.some(resource=>resource.kind==='page'&&resource.locator===params.pageId)||s.runs.coordinator.list(500).some(run=>run.config?.taskId===task.taskId&&run.config.taskRevision===task.revision&&run.pageIds.includes(params.pageId));
@@ -347,7 +366,13 @@ export function makeInvoker(s: Services) {
       case 'cloud.delete':{
         if(client.external)throw new VectorError('permission_denied','Cloud environment deletion requires an explicit action in Aux.');const record=cloudEnvironments.get(params.taskId,params.environmentId);tasks.prepareCloudLifecycle(params.taskId,params.expectedRevision,record.projectId,record.environmentId);return cloudEnvironments.delete(record);
       }
+      case 'cloud.reconnectStatus':{
+        tasks.prepareProjectList(params.taskId,params.expectedRevision);return cloudEnvironments.reconnectStatus(params.taskId);
+      }
       case 'installation.createBackup':if(client.external)throw new VectorError('permission_denied','Runtime backups require an explicit action in Aux.');return createRuntimeBackup(s.repo,s.settings.all().dataDir);
+      case 'installation.listBackups':if(client.external&&client.scope)throw new VectorError('permission_denied','Runtime backups require an explicit action in Aux.');return listRuntimeBackups(s.settings.all().dataDir);
+      case 'installation.backupRetention':if(client.external&&client.scope)throw new VectorError('permission_denied','Runtime backups require an explicit action in Aux.');return backupRetention(s.repo);
+      case 'installation.setBackupRetention':if(client.external)throw new VectorError('permission_denied','Backup retention is managed in Aux.');return setBackupRetention(s.repo,params.keep);
       case 'installation.stageRestore':if(client.external)throw new VectorError('permission_denied','Runtime restore requires an explicit action in Aux.');return stageRuntimeRestore(s.settings.all().dataDir,params.path);
       case 'installation.cancelRestore':if(client.external)throw new VectorError('permission_denied','Runtime restore requires an explicit action in Aux.');return cancelRuntimeRestore(s.settings.all().dataDir);
       case 'installation.legacyStatus':if(client.external)throw new VectorError('permission_denied','Installation migration is managed in Aux.');return legacyInstallationStatus();
@@ -360,16 +385,21 @@ export function makeInvoker(s: Services) {
       case "vault.lock":
       case "vault.unlock":
       case "vault.grant":
+      case "vault.renewGrant":
+      case "vault.expiredGrants":
       case "vault.revoke":
       case "vault.history":
       case "vault.grants": {
-        if (client.external) throw new VectorError("permission_denied", "The agent vault can only be managed in Aux.");
+        const vaultRead = method === "vault.status" || method === "vault.list" || method === "vault.history" || method === "vault.grants" || method === "vault.expiredGrants";
+        if (client.external && (client.scope || !vaultRead)) throw new VectorError("permission_denied", "The agent vault can only be managed in Aux.");
         if (method === "vault.status") return vault.status();
         if (method === "vault.list") return vault.list(params.includeRevoked);
         if (method === "vault.save") return vault.save(params);
         if (method === "vault.lock") return vault.lock(params.passphrase);
         if (method === "vault.unlock") return vault.unlock(params.passphrase, params.ttlMs);
         if (method === "vault.grant") return vault.grant(params);
+        if (method === "vault.renewGrant") return vault.renewGrant(params);
+        if (method === "vault.expiredGrants") return vault.expiredGrants();
         if (method === "vault.revoke") return vault.revoke(params);
         if (method === "vault.history") return vault.history(params.itemId, params.limit);
         const origin = params.origin ? originOfAddress(params.origin) : undefined;
@@ -386,8 +416,11 @@ export function makeInvoker(s: Services) {
       case "routines.run":
       case "routines.runs":
       case "routines.reconcile":
-      case "routines.due": {
-        if (client.external) throw new VectorError("permission_denied", "Routines are managed in Aux.");
+      case "routines.due":
+      case "routines.alerts":
+      case "routines.compare": {
+        const routineRead = method === "routines.list" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare";
+        if (client.external && (client.scope || !routineRead)) throw new VectorError("permission_denied", "Routines are managed in Aux.");
         if (method === "routines.list") return routines.list(params);
         if (method === "routines.get") return routines.get(params.routineId);
         if (method === "routines.create") return routines.create(params);
@@ -398,6 +431,8 @@ export function makeInvoker(s: Services) {
         if (method === "routines.run") return routines.run(params);
         if (method === "routines.runs") return routines.runs(params.routineId, params.limit);
         if (method === "routines.reconcile") return routines.reconcile(params.routineRunId, params.outcome, params.note);
+        if (method === "routines.alerts") return routines.alerts(params.limit);
+        if (method === "routines.compare") return routines.compare(params.leftRunId, params.rightRunId);
         return routines.due(params.now);
       }
       // pages

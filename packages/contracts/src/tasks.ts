@@ -14,6 +14,8 @@ export const TaskResourceSchema = z.object({
   kind: z.enum(["page", "url", "file", "artifact", "repository", "environment"]),
   locator: text.max(4000),
   label: text.max(200),
+  /** Saved references do not grant agent access. `write` is desktop-only. Omit to keep kind defaults (repository write, others reference). */
+  access: z.enum(["reference", "read", "write"]).optional(),
 });
 const ResourceList = z.array(TaskResourceSchema).max(100).refine(items => new Set(items.map(item => item.resourceId)).size === items.length, "Resource IDs must be unique");
 export const TaskDefinitionSchema = z.object({
@@ -80,6 +82,28 @@ export const TaskReconcileParams = z.object({ taskId: text, expectedRevision: z.
   evidenceId: text, outcome: z.enum(["applied", "not_applied"]), note: text.max(4000) }).strict();
 export const TaskReconcileOperationParams = z.object({ taskId: text, expectedRevision: z.number().int().positive(), invocationId: text,
   evidenceId: text, outcome: z.enum(["applied", "not_applied"]), note: text.min(1).max(4000) }).strict();
+export const TaskVerifyCriterionParams = z.object({ taskId: text, expectedRevision: z.number().int().positive(), criterionId: text }).strict();
+export const CriterionVerificationSchema = z.object({
+  verificationId: text,
+  taskId: text,
+  taskRevision: z.number().int().positive(),
+  criterionId: text,
+  method: z.enum(["manual", "browser", "service", "test", "artifact"]),
+  status: z.enum(["unverified", "needs_review"]),
+  localMatch: z.boolean(),
+  reason: text.max(1000),
+  evidenceIds: z.array(text).max(100),
+  recordedAt: z.number(),
+});
+export type CriterionVerification = z.infer<typeof CriterionVerificationSchema>;
+export const TaskReplaceAgentParams = z.object({
+  taskId: text,
+  expectedRevision: z.number().int().positive(),
+  pageId: text.optional(),
+  pageIds: z.array(text).max(20).optional(),
+  modelId: text.optional(),
+  context: z.string().max(20_000).optional(),
+}).strict();
 export const TaskReceiptSchema = z.object({
   taskId: text, taskRevision: z.number().int().positive(), currentTaskRevision: z.number().int().positive().optional(), objective: text, generatedAt: z.number(),
   status: z.enum(["in_progress", "uncertain", "accepted", "not_met", "needs_review"]),
@@ -100,6 +124,7 @@ export const TaskReceiptSchema = z.object({
     cloudEnvironment:z.string().optional(),
     modelCalls:z.number().int().nonnegative(),knownCostUsd:z.number().nonnegative(),costComplete:z.boolean(),
   })).max(500).default([]),
+  verifications: z.array(CriterionVerificationSchema).max(100).default([]),
 });
 export type TaskReceipt = z.infer<typeof TaskReceiptSchema>;
 

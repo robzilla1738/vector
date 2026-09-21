@@ -1,5 +1,46 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21 (schema 13, journal, catalog, backup)
+
+Software-only remainder from the remaining-work plan on
+`cursor/aux-remaining-implementation-4932`. Founder/device blockers B1–B7 are
+unchanged. Do not treat SSO, VoiceOver, signed 1Password/passkeys, packaging,
+Chrome Web Store, or paid-cloud mutation as done.
+
+- **Journal / Phase 3:** Schema 13 adds `coordinator_leases` and
+  `criterion_verifications`. Task-level logical action IDs stay stable across
+  runs. `pages.execute` without `journaled` records consequential writes.
+  Operation invoke unifies into the same ledger. Coordinator leases fence
+  in-process with TTL takeover. `tasks.verifyCriterion` is an honest local
+  check and never inserts reviews. `tasks.replaceAgent` cancels then starts
+  the same task identity. Spaces list by `workspaceId` and never merge by name.
+  Resource `access` is reference/read/write; CLI/MCP cannot set write; scoped
+  connections still cannot change resources.
+- **CLI/MCP:** `task verify|replace|journal`, `task list --query`, read-only
+  `vault`/`routines`/`backup`, `cloud reconnect`. MCP scoped catalog includes
+  verify/replace and fails closed when `AUX_MCP_TOOL_PREFIX=aux` lacks a token.
+- **Phase 2:** Selection→ask→restart draft tests; dictation stays disabled with
+  a reason and does not spawn capture when unavailable; page capture shows why
+  it is disabled; CSS breakpoints 1024/1280/1512 are unit-checked, not founder
+  screenshot-accepted.
+- **Phase 4/5:** MCP catalog filter UX; incident companion markdown is local
+  only; `cloud.reconnectStatus` does not resume or delete remotes; shutdown
+  stamps `desktopClosedAt`. Monitor coalesced reason re-emits one toast.
+  Expired vault grants renew the same grantId. Routine compare is local run
+  records, not business-outcome proof.
+- **Backup / identity:** Settings lists complete backups, retention 3|5|10|20,
+  restore-this-backup. Incomplete folders are skipped. Disk-full backup fails
+  closed. `persist:vector-default` / `persist:vector-engine-paint` stay. Identity
+  adapters refuse silent credential moves.
+- **Browser tests:** Open File and download-folder pickers remain wired.
+  Extension×media×private: managed extensions do not load into a private
+  session. Print/PDF share one in-progress lock. Download retry after restart
+  is a new transfer (`canResumePartialDownload() === false`).
+
+Validation: rebuild `@vector/contracts` and `@vector/runtime` dist, then
+`pnpm test:unit`. Native TCC, VoiceOver, founder SSO, signed password managers,
+Chrome Web Store, and paid cloud mutation remain unproven.
+
 ## Continuation — 2026-09-21
 
 Implementable P0/P1 product/code from `AUX-HANDOFF.md` and the remaining-work plan is in

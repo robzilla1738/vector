@@ -125,7 +125,7 @@ const MIGRATIONS = [
 ];
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 const OPERATION_RECONCILIATION_SCHEMA = `
 CREATE TABLE IF NOT EXISTS operation_reconciliations(
@@ -266,6 +266,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_routine_occurrence ON routine_runs(occurre
 CREATE INDEX IF NOT EXISTS idx_routine_runs ON routine_runs(routine_id,created_at);
 `;
 
+const COORDINATOR_VERIFY_SCHEMA = `
+CREATE TABLE IF NOT EXISTS coordinator_leases(
+  lease_key TEXT PRIMARY KEY, owner_id TEXT NOT NULL, acquired_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 1, fenced INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS criterion_verifications(
+  verification_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, task_revision INTEGER NOT NULL,
+  criterion_id TEXT NOT NULL, json TEXT NOT NULL, recorded_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_criterion_verifications ON criterion_verifications(task_id,task_revision,criterion_id,recorded_at);
+`;
+
 const ACTION_JOURNAL_SCHEMA = `
 CREATE TABLE action_intents(
   id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE,
@@ -336,6 +346,7 @@ export function openDb(path: string): DatabaseSync {
           db.exec("CREATE TABLE IF NOT EXISTS bookmark_folders(path TEXT PRIMARY KEY)");
         }
         if (version < 12) db.exec(VAULT_ROUTINE_SCHEMA);
+        if (version < 13) db.exec(COORDINATOR_VERIFY_SCHEMA);
         db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
         db.exec("COMMIT");
       } catch (error) {

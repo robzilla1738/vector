@@ -66,6 +66,10 @@ export const VaultGrantParams = z.object({
   workspaceId: text.optional(),
   ttlMs: z.number().int().min(60_000).max(24 * 60 * 60_000).default(30 * 60_000),
 }).strict();
+export const VaultRenewGrantParams = z.object({
+  grantId: text,
+  ttlMs: z.number().int().min(60_000).max(24 * 60 * 60_000).default(30 * 60_000),
+}).strict();
 export const VaultLockParams = z.object({
   passphrase: z.string().min(8).max(200).optional(),
 }).strict();

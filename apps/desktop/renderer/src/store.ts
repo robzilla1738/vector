@@ -1184,9 +1184,11 @@ export const useStore = create<Workspace>((set, get) => ({
         const run = e.payload.run as { status?: string; reason?: string } | undefined;
         const routine = e.payload.routine as { title?: string } | undefined;
         const title = routine?.title?.trim() || "Routine";
-        if (run?.status === "needs_review") s.toast(`${title} is waiting for review before it writes.`);
+        if (run?.reason?.startsWith("Coalesced ")) s.toast(`${title}: ${run.reason}`);
+        else if (run?.status === "needs_review") s.toast(`${title} is waiting for review before it writes.`);
         else if (run?.status === "missed") s.toast(run.reason ? `${title}: ${run.reason}` : `${title} missed a scheduled run.`);
         else if (run?.status === "uncertain") s.toast(`${title} recorded an uncertain write. Reconcile it before running again.`);
+        else if (run?.status === "failed") s.toast(run.reason ? `${title}: ${run.reason}` : `${title} failed.`);
         break;
       }
       case "run.updated":

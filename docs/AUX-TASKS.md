@@ -82,9 +82,11 @@ the tab, captures its order text, reviews both criteria, reopens, archives, and
 restores the task. Pass `--packaged` to use the private macOS arm64 application. The screenshot is written under ignored
 `release/test-artifacts/tasks.png`. It does not perform a model-backed task run.
 
-Remaining: independent automated outcome verification, richer/exportable receipts,
-task-level logical action allocation, durable coordinator leases/fencing, agent replacement,
-CLI/MCP task ergonomics, resource editing/access controls, draft recovery, task
-search, multiple windows, richer history and editing, integration of existing tab
-spaces with runtime workspaces, and cloud task synchronization. Full keyboard and
-VoiceOver qualification and founder design review remain separate gates.
+Remaining: cloud task synchronization. Independent automated outcome verification is
+an honest local check (`tasks.verifyCriterion`) that never records human acceptance.
+Receipts are exportable Markdown. Task-level logical action IDs, in-process coordinator
+leases, agent replacement, CLI/MCP task verify/replace/journal, resource access
+controls, draft recovery, task search, and Space↔workspace identity (retained IDs,
+never merged by name) are implemented. Multiple windows share local history without
+SSO. Full keyboard and VoiceOver qualification and founder design review remain
+separate gates.

@@ -12,7 +12,15 @@ export const CloudEnvironmentSchema=z.object({
   sourceTree:z.string().regex(/^[a-f0-9]{40,64}$/).optional(),pendingSourceTree:z.string().regex(/^[a-f0-9]{40,64}$/).optional(),syncState:z.enum(['uploading','ready','failed']).optional(),syncedPaths:z.array(z.string()).max(500).optional(),
   authority:z.enum(['local','cloud']).optional(),leaseId:z.string().uuid().optional(),authorityGrantedAt:z.number().int().nonnegative().optional(),
   lastResultStatus:z.enum(['completed','needs_input','failed']).optional(),lastResultSummary:z.string().trim().min(1).max(4000).optional(),lastResultUpdatedAt:z.number().int().nonnegative().optional(),localRequest:CloudLocalRequestSchema.optional(),
+  desktopClosedAt:z.number().int().nonnegative().optional(),reconnectState:z.enum(['live','desktop_closed','credentials_unavailable','refreshed']).optional(),
 });
+export const CloudReconnectStatusSchema=z.object({
+  checkedAt:z.number(),
+  credentialsAvailable:z.boolean(),
+  environments:z.array(CloudEnvironmentSchema).max(200),
+  note:z.string().max(1000),
+});
+export type CloudReconnectStatus=z.infer<typeof CloudReconnectStatusSchema>;
 export type CloudEnvironment=z.infer<typeof CloudEnvironmentSchema>;
 export const CloudCommandRecordSchema=z.object({commandId:z.string().uuid(),providerCommandId:z.string().optional(),environmentId:z.string().uuid(),taskId:z.string(),projectId:z.string().uuid(),executable:z.string(),args:z.array(z.string()),mode:z.enum(['command','service']).default('command'),status:z.enum(['running','completed','failed','stopped','uncertain']),startedAt:z.number(),finishedAt:z.number().optional(),exitCode:z.number().int().optional(),stdout:z.string(),stderr:z.string(),durationMs:z.number().nonnegative().optional(),lastError:z.string().max(1000).optional()});
 export type CloudCommandRecord=z.infer<typeof CloudCommandRecordSchema>;

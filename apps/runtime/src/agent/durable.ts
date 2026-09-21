@@ -68,6 +68,12 @@ export class DurableWriteLedger {
   // A failed browser response is not proof that the external effect failed.
   fail(id: string): void { this.transition(id, "uncertain"); }
 
+  /** Pre-dispatch failure: the write never left this process. */
+  abortUndispatched(id: string, reason: string): void {
+    if (!reason.trim()) throw new Error("Pre-dispatch abort requires a reason");
+    this.transition(id, "not_applied", reason);
+  }
+
   /** Trusted reconciliation only; callers must supply independent evidence. */
   reconcile(id: string, outcome: "applied" | "not_applied", evidence: string): void {
     if (!evidence.trim()) throw new Error("Reconciliation requires evidence");
@@ -137,6 +143,11 @@ export function stepSignature(ops: Array<{ op: string; target?: unknown; value?:
   return createHash("sha256").update(canonical).digest("hex");
 }
 
+/** Stable task-level identity: same logical write across runs, pages and epochs. */
+export function taskLogicalActionId(taskId: string, revision: number, signature: string): string {
+  return `task:${taskId}:r${revision}:${signature}`;
+}
+
 /** Persist a write/egress intent. `skip` means do not dispatch. */
 export function beginConsequentialWrite(
   ledger: DurableWriteLedger | undefined,
@@ -147,6 +158,9 @@ export function beginConsequentialWrite(
     /** Observation revision. Same click after a new observe is a new write. */
     revision?: number;
     steps: Array<{ op: string; target?: unknown; value?: unknown }>;
+    logicalActionId?: string;
+    taskId?: string;
+    taskRevision?: number;
   },
 ): { skip: boolean; intentId?: string; reason?: string } {
   if (!ledger) return { skip: false };
@@ -155,12 +169,16 @@ export function beginConsequentialWrite(
     return effect !== "read";
   });
   if (!writes) return { skip: false };
+  const signature = stepSignature(opts.steps);
+  const logicalActionId = opts.logicalActionId
+    ?? (opts.taskId && opts.taskRevision != null ? taskLogicalActionId(opts.taskId, opts.taskRevision, signature) : undefined);
   const began = ledger.begin({
     runId: opts.runId,
     pageId: opts.pageId,
     documentEpoch: opts.documentEpoch,
     revision: opts.revision,
-    signature: stepSignature(opts.steps),
+    signature,
+    logicalActionId,
   });
   if (began.duplicate) return { skip: true, reason: `Action ${began.intent.id} is ${began.intent.status}; reconcile its outcome before dispatch. No new action was executed.` };
   return { skip: false, intentId: began.intent.id };

@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
-import { compileAndAuthorize } from "../agent/action-compiler.js";
+import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
 import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
@@ -88,6 +88,7 @@ export class OperationService {
       egressAllowlist?: () => string[];
       /** User-started invokes; defaults to USER_RUN_GRANTS like runs.start. */
       grants?: GrantSource;
+      durableWrites?: DurableWriteLedger;
     },
   ) {}
 
@@ -440,8 +441,28 @@ export class OperationService {
           routeReason: attemptReason, startedAt, endedAt, error,
         });
       record("running");
+      let intentId: string | undefined;
+      const journalWrites = op.effectClass !== "read" && !!this.deps.durableWrites;
+      if (journalWrites) {
+        const inputKey = opts.requestKey ?? createHash("sha256").update(JSON.stringify(opts.inputs ?? {})).digest("hex").slice(0, 24);
+        const logicalActionId = i === 0
+          ? `operation:${opts.siteKey}/${opts.name}:${inputKey}`
+          : `operation:${opts.siteKey}/${opts.name}:${inputKey}:retry:${i}`;
+        const journal = beginConsequentialWrite(this.deps.durableWrites, {
+          runId: opts.runId ?? `operation:${opts.siteKey}/${opts.name}`,
+          pageId: opts.pageId ?? `operation:${opts.siteKey}`,
+          documentEpoch: 0,
+          steps: [{ op: "fill" }],
+          logicalActionId,
+        });
+        if (journal.skip) {
+          record("failed", journal.reason, "not-dispatched", Date.now());
+          return { invocationId, status: "failed", route: { ...route, implId: impl.implId, kind: impl.kind }, error: journal.reason };
+        }
+        intentId = journal.intentId;
+      }
       try {
-        const result = await this.executeImpl(impl, opts,op.guards);
+        const result = await this.executeImpl(impl, { ...opts, journaled: journalWrites || undefined }, op.guards);
         const failed = result && typeof result === "object" && (result as ProgramResult).status === "failed";
 
         // postcondition: guards.verify predicate over {result, extracted, inputs}
@@ -497,6 +518,7 @@ export class OperationService {
         }
 
         if (status === "completed") {
+          settleWrite(this.deps.durableWrites, intentId, true);
           return {
             invocationId, status,
             route: { ...route, implId: impl.implId, kind: impl.kind, reason: fellBack ? `${route.reason} → fell back to ${impl.kind}` : route.reason },
@@ -504,12 +526,17 @@ export class OperationService {
           };
         }
         // failed result — steps may have dispatched; fall back only when safe
+        settleWrite(this.deps.durableWrites, intentId, false);
         lastError = errMsg ?? "execution failed";
         if (op.effectClass === "read" && i < ladder.length - 1) { fellBack = true; continue; }
         return { invocationId, status: "failed", route: { ...route, implId: impl.implId, kind: impl.kind }, result, error: lastError };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         const pre = isPreDispatchError(e);
+        if (intentId && this.deps.durableWrites) {
+          if (pre) this.deps.durableWrites.abortUndispatched(intentId, msg);
+          else settleWrite(this.deps.durableWrites, intentId, false);
+        }
         record("failed", msg, pre ? "not-dispatched" : "unknown", Date.now());
         this.deps.events.emit("operation.invoked", {
           invocationId, operation: `${opts.siteKey}/${opts.name}`, kind: impl.kind, status: "failed", attempt: i, error: msg,
@@ -527,7 +554,7 @@ export class OperationService {
   /** Execute one implementation against the invoke context. */
   private async executeImpl(
     impl: ImplRow,
-    opts: { pageId?: string; runId?: string; inputs?: Record<string, unknown> },
+    opts: { pageId?: string; runId?: string; inputs?: Record<string, unknown>; journaled?: boolean },
     guards:Record<string,unknown>,
   ): Promise<unknown> {
     if (impl.kind === "browser-program") {
@@ -551,11 +578,11 @@ export class OperationService {
         nodes: saved.nodes,
         inputs: { ...(saved.inputs ?? {}), ...(opts.inputs ?? {}) },
       };
-      return this.deps.pages.execute(program, { runId: opts.runId, allowEval: false });
+      return this.deps.pages.execute(program, { runId: opts.runId, allowEval: false, journaled: opts.journaled });
     }
     if (impl.kind === "session-request") {
       const req = JSON.parse(impl.executable) as { method: string; url: string; body?: unknown; headers?: Record<string, string> };
-      return this.runSessionRequest(req, opts.inputs ?? {}, opts.pageId, opts.runId,guards['session']==='required');
+      return this.runSessionRequest(req, opts.inputs ?? {}, opts.pageId, opts.runId, guards['session']==='required', opts.journaled);
     }
     throw new VectorError("backend_unavailable", `unknown impl kind ${impl.kind}`);
   }
@@ -572,6 +599,7 @@ export class OperationService {
     pageId?: string,
     runId?: string,
     requireSession=false,
+    journaled?: boolean,
   ) {
     const sub = (s: string) => s.replace(/\{input:([A-Za-z0-9_.]+)\}/g, (_m, k: string) => encodeURIComponent(String(inputs[k] ?? "")));
     const url = sub(req.url);
@@ -608,7 +636,7 @@ export class OperationService {
         { pageId, steps: [{ id: "req", op: "evaluate", expression: expr, as: "response" } as never] },
         // the expression is built here from a validated request template,
         // not from model output — a trusted source
-        { runId, allowEval: true },
+        { runId, allowEval: true, journaled },
       );
       const r = (result as ProgramResult).extracted?.response as { status: number; ok: boolean; body: string;truncated?:boolean } | undefined;
       if (!r) throw new VectorError("step_failed", `in-page request ${req.method} ${url} returned no result`);

@@ -139,7 +139,7 @@ export function Tasks() {
         </div>
         <div className="field"><button className="btn sm" disabled={!workspaceId} onClick={() => reset()}>New task</button>
           <input aria-label="Search tasks" placeholder="Search tasks" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} />
-          {tasks.filter(task => `${task.title} ${task.objective}`.toLowerCase().includes(taskQuery.toLowerCase())).map(task => <button key={task.taskId} className="btn" aria-pressed={selected?.task.taskId === task.taskId} onClick={() => void action(() => refresh(task.taskId))}>
+          {tasks.filter(task => `${task.title} ${task.objective} ${task.criteria.map(item => item.description).join(" ")} ${task.resources.map(item => item.label).join(" ")}`.toLowerCase().includes(taskQuery.toLowerCase())).map(task => <button key={task.taskId} className="btn" aria-pressed={selected?.task.taskId === task.taskId} onClick={() => void action(() => refresh(task.taskId))}>
             {task.parentTaskId ? "↳ " : ""}{task.title}{task.state === "archived" ? " · Archived" : ""}
           </button>)}
         </div>
@@ -167,6 +167,10 @@ export function Tasks() {
               const run = await call<Run>("tasks.start", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, pageIds: [activePageId] });
               openRail({ kind: "run", runId: run.runId }); close(null);
             })}>Run on current tab</button>
+              {selected.runs.some(({ run }) => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) && <button className="btn" disabled={needsSetup || conflict || dirty || selected.task.state === "archived"} onClick={() => void action(async () => {
+                const run = await call<Run>("tasks.replaceAgent", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, pageIds: activePageId ? [activePageId] : [] });
+                openRail({ kind: "run", runId: run.runId }); close(null);
+              })}>Replace agent</button>}
               <button className="btn" disabled={dirty || conflict} onClick={() => void action(async () => {
                 await call("tasks.archive", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, archived: selected.task.state !== "archived" });
                 await refresh(selected.task.taskId);

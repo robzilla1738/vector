@@ -218,6 +218,10 @@ export class TaskService {
     const task=this.get(taskId);this.requireRevision(task,expectedRevision);
     if(task.state==='archived')throw new VectorError('conflict','Restore this task before using its project');
     if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===projectId))throw new VectorError('permission_denied','Attach this project to the saved task before using it');
+    const resource=task.resources.find(item=>item.kind==='repository'&&item.projectId===projectId)!;
+    const access=resource.access ?? "write";
+    if(write && access !== "write")throw new VectorError('permission_denied', access === "read" ? "This checkout is attached for reading. Set write access in Aux before saving files or running mutating commands." : "This checkout is a reference only. Set write access in Aux before using it.");
+    if(!write && access === "reference")throw new VectorError('permission_denied','This checkout is a reference only. Set read or write access in Aux before inspecting it.');
     if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireProjectAvailable(projectId,taskId);}
     return task;
   }

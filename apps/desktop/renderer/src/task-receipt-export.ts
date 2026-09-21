@@ -54,6 +54,10 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
   lines.push('', '## Unresolved connected operations', '');
   if(!receipt.unresolvedOperations.length)lines.push('No unresolved connected operations recorded in this receipt.','');
   for(const operation of receipt.unresolvedOperations)lines.push(`- ${text(operation.invocationId)} — ${text(operation.operation)}; ${operation.effectClass}; ${text(operation.status)} / ${text(operation.effectOutcome)}; run ${text(operation.runId)}; started ${time(operation.startedAt)}${operation.error?`; error ${text(operation.error)}`:''}`);
+  lines.push('', '## Local criterion checks', '');
+  if (!receipt.verifications.length) lines.push('No local criterion checks recorded in this receipt.', '');
+  else lines.push('These local matches are not human acceptance and do not prove a business outcome.', '');
+  for (const verification of receipt.verifications) lines.push(`- ${text(verification.criterionId)} — ${verification.method}; ${verification.status}; local match ${verification.localMatch}; ${text(verification.reason)}; ${time(verification.recordedAt)}`);
   lines.push("", "## Runs", "");
   if (!receipt.runs.length) lines.push("No runs recorded.");
   for (const run of receipt.runs) {

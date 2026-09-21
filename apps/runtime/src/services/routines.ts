@@ -3,6 +3,8 @@ import {
   routineOccurrenceIdentity,
   VectorError,
   type Routine,
+  type RoutineAlert,
+  type RoutineCompare,
   type RoutineRun,
   type RoutineTrigger,
 } from "@vector/contracts";
@@ -242,13 +244,50 @@ export class RoutineService {
         const missed = this.recentMissedMonitors(routine.routineId);
         const record = await this.run({ routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} }, { occurrenceId: randomUUID(), identity, scheduledFor: now });
         if (missed > 0) {
-          this.repo.db.prepare("UPDATE routine_runs SET reason=? WHERE routine_id=? AND occurrence_identity=?").run(`Coalesced ${missed + 1} missed read-only checks into one run.`, routine.routineId, identity);
           record.reason = `Coalesced ${missed + 1} missed read-only checks into one run.`;
+          this.updateRun(record);
+          this.events.emit("routine.updated", { routine, run: record });
         }
         created.push(record);
       }
     }
     return created;
+  }
+
+  alerts(limit = 30): RoutineAlert[] {
+    const rows = this.repo.db.prepare(`SELECT r.routine_run_id, r.routine_id, r.status, r.reason, r.created_at, t.json
+      FROM routine_runs r JOIN routines t ON t.routine_id=r.routine_id
+      WHERE (r.status IN ('missed','needs_review','uncertain','failed') OR r.reason LIKE 'Coalesced %')
+      ORDER BY r.created_at DESC LIMIT ?`).all(limit) as { routine_run_id: string; routine_id: string; status: string; reason: string | null; created_at: number; json: string }[];
+    return rows.map(row => {
+      const routine = JSON.parse(row.json) as { title: string; trigger?: { kind?: string } };
+      return {
+        routineRunId: row.routine_run_id,
+        routineId: row.routine_id,
+        title: routine.title,
+        status: row.status as RoutineAlert["status"],
+        reason: row.reason ?? undefined,
+        triggerKind: routine.trigger?.kind === "schedule" || routine.trigger?.kind === "monitor" ? routine.trigger.kind : "manual",
+        createdAt: row.created_at,
+      };
+    });
+  }
+
+  compare(leftRunId: string, rightRunId: string): RoutineCompare {
+    const left = this.runById(leftRunId);
+    const right = this.runById(rightRunId);
+    if (left.routineId !== right.routineId) throw new VectorError("conflict", "Compare two runs of the same routine.");
+    const routine = this.routine(left.routineId);
+    const sameOccurrence = !!left.occurrenceIdentity && left.occurrenceIdentity === right.occurrenceIdentity;
+    const sameParameters = JSON.stringify(left.parameters) === JSON.stringify(right.parameters);
+    const statusChanged = left.status !== right.status;
+    const summary = [
+      `${routine.title}: ${left.status.replaceAll("_", " ")} vs ${right.status.replaceAll("_", " ")}.`,
+      sameOccurrence ? "Same scheduled occurrence." : "Different occurrences.",
+      sameParameters ? "Parameters match." : "Parameters differ.",
+      "This comparison is a local status snapshot. It does not prove a business outcome.",
+    ].join(" ");
+    return { routineId: routine.routineId, title: routine.title, left, right, sameOccurrence, sameParameters, statusChanged, summary };
   }
 
   private async dispatch(record: RoutineRun, routine: Routine): Promise<RoutineRun> {

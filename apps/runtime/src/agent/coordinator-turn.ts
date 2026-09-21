@@ -294,12 +294,14 @@ export async function planTurn(
           documentEpoch: epoch,
           revision: obs.revision,
           steps: prepared.program.steps ?? [],
+          taskId: s.run.config?.taskId,
+          taskRevision: s.run.config?.taskRevision,
         });
         if (write.skip) return Promise.reject(new VectorError("conflict", write.reason!));
         return s.self.deps.pages
           .execute(
             { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
-            { runId: s.runId, signal: s.c.abort.signal, onStep: onStepRecorded },
+            { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal, onStep: onStepRecorded },
             last ? { returnObservation: nextObserveReq() } : {},
           )
           .then((r) => {
@@ -514,11 +516,13 @@ export async function dispatchPlan(
     documentEpoch: obs.documentEpoch,
     revision: obs.revision,
     steps: compiled.program.steps ?? [],
+    taskId: s.run.config?.taskId,
+    taskRevision: s.run.config?.taskRevision,
   });
   if (write.skip) throw new VectorError("conflict", write.reason!);
   const result = streamed
       ? await early!.finish(plan.steps ?? [])
-      : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+      : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
   if (early && !streamed) early.halt();
   settleWrite(s.self.durable, write.intentId, result.status === "completed");
   const carried = early ? early.observation : (result as { observation?: Observation }).observation;
@@ -627,10 +631,12 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
           documentEpoch: fresh.documentEpoch,
           revision: fresh.revision,
           steps: compiled.program.steps ?? [],
+          taskId: s.run.config?.taskId,
+          taskRevision: s.run.config?.taskRevision,
         });
         if (write.skip) throw new VectorError("conflict", write.reason!);
         {
-          const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal });
+          const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal });
           settleWrite(s.self.durable, write.intentId, r2.status === "completed");
           s.stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
           if (r2.status === "completed") {

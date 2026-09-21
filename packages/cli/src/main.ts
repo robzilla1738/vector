@@ -87,15 +87,22 @@ async function main() {
   traces [runId] [--since n] · describe
   models · probe [modelId]
   workspace list · workspace create <name>
-  task list [--workspace id] [--archived] · task get <taskId>
+  task list [--workspace id] [--archived] [--query text] · task get <taskId>
   task create <workspaceId> <definition-json|@file>
   task update <taskId> <revision> <patch-json|@file>
   task archive|restore <taskId> <revision> · task receipt <taskId> [revision]
   task start <taskId> <revision> [--pages id,id]
+  task verify <taskId> <revision> <criterionId>
+  task replace <taskId> <revision> [--pages id,id]
+  task journal <taskId> [revision]
+  vault status|list|grants|expired|history
+  routines list [--workspace id] · routines get <id> · routines runs <id>
+  routines alerts · routines compare <leftRunId> <rightRunId>
+  backup list · backup retention
   dev projects <taskId> <revision> · dev inspect|files|commands <taskId> <revision> <projectId>
   dev read <taskId> <revision> <projectId> <path>
   dev github|operations|review <taskId> <revision> <projectId>
-  cloud list <taskId> <revision>
+  cloud list <taskId> <revision> · cloud reconnect <taskId> <revision>
   cloud commands|files|result <taskId> <revision> <environmentId> [path]
   cloud read <taskId> <revision> <environmentId> <path>
   get <method> [params-json]             raw method call
@@ -289,7 +296,7 @@ async function main() {
 
     case "task": {
       const sub = args[0];
-      if (sub === "list") out(await rpc("tasks.list", { workspaceId: flags.workspace, includeArchived: !!flags.archived, limit: flags.limit ? Number(flags.limit) : 100 }));
+      if (sub === "list") out(await rpc("tasks.list", { workspaceId: flags.workspace, includeArchived: !!flags.archived, query: typeof flags.query === "string" ? flags.query : undefined, limit: flags.limit ? Number(flags.limit) : 100 }));
       else if (sub === "get") {
         if (!args[1]) fail("usage: auxctl task get <taskId>");
         out(await rpc("tasks.get", { taskId: args[1] }));
@@ -310,7 +317,18 @@ async function main() {
         if (!args[1] || !args[2]) fail("usage: auxctl task start <taskId> <revision> [--pages id,id]");
         const pageIds = typeof flags.pages === "string" ? flags.pages.split(",").map(value => value.trim()).filter(Boolean) : [];
         out(await rpc("tasks.start", { taskId: args[1], expectedRevision: Number(args[2]), pageIds }));
-      } else fail("usage: auxctl task list|get|create|update|archive|restore|receipt|start …");
+      } else if (sub === "verify") {
+        if (!args[1] || !args[2] || !args[3]) fail("usage: auxctl task verify <taskId> <revision> <criterionId>");
+        out(await rpc("tasks.verifyCriterion", { taskId: args[1], expectedRevision: Number(args[2]), criterionId: args[3] }));
+      } else if (sub === "replace") {
+        if (!args[1] || !args[2]) fail("usage: auxctl task replace <taskId> <revision> [--pages id,id]");
+        const pageIds = typeof flags.pages === "string" ? flags.pages.split(",").map(value => value.trim()).filter(Boolean) : [];
+        out(await rpc("tasks.replaceAgent", { taskId: args[1], expectedRevision: Number(args[2]), pageIds }));
+      } else if (sub === "journal") {
+        if (!args[1]) fail("usage: auxctl task journal <taskId> [revision]");
+        const receipt = await rpc<{ unresolvedActions: unknown[]; unresolvedOperations: unknown[]; verifications: unknown[] }>("tasks.receipt", { taskId: args[1], ...(args[2] ? { revision: Number(args[2]) } : {}) });
+        out({ unresolvedActions: receipt.unresolvedActions, unresolvedOperations: receipt.unresolvedOperations, verifications: receipt.verifications });
+      } else fail("usage: auxctl task list|get|create|update|archive|restore|receipt|start|verify|replace|journal …");
       return;
     }
 
@@ -335,6 +353,7 @@ async function main() {
       if (!sub || !taskId || !revision) fail("usage: auxctl cloud <action> <taskId> <revision> [environmentId] [path]");
       const base = { taskId, expectedRevision: Number(revision) };
       if (sub === "list") out(await rpc("cloud.environments", base));
+      else if (sub === "reconnect") out(await rpc("cloud.reconnectStatus", base));
       else {
         if (!environmentId) fail(`usage: auxctl cloud ${sub} <taskId> <revision> <environmentId>${sub === "read" ? " <path>" : " [path]"}`);
         if (sub === "commands") out(await rpc("cloud.commands", { ...base, environmentId }));
@@ -343,7 +362,7 @@ async function main() {
           if (!path) fail("usage: auxctl cloud read <taskId> <revision> <environmentId> <path>");
           out(await rpc("cloud.readFile", { ...base, environmentId, path }));
         } else if (sub === "result") out(await rpc("cloud.taskResult", { ...base, environmentId }));
-        else fail("usage: auxctl cloud list|commands|files|read|result …");
+        else fail("usage: auxctl cloud list|reconnect|commands|files|read|result …");
       }
       return;
     }
@@ -396,6 +415,42 @@ async function main() {
     case "describe":
       out(await rpc("runtime.describe"));
       return;
+
+    case "vault": {
+      const sub = args[0];
+      if (sub === "status") out(await rpc("vault.status", {}));
+      else if (sub === "list") out(await rpc("vault.list", { includeRevoked: !!flags.revoked }));
+      else if (sub === "grants") out(await rpc("vault.grants", {}));
+      else if (sub === "expired") out(await rpc("vault.expiredGrants", {}));
+      else if (sub === "history") out(await rpc("vault.history", { limit: flags.limit ? Number(flags.limit) : 50 }));
+      else fail("usage: auxctl vault status|list|grants|expired|history");
+      return;
+    }
+
+    case "routines": {
+      const sub = args[0];
+      if (sub === "list") out(await rpc("routines.list", { workspaceId: flags.workspace, includeArchived: !!flags.archived }));
+      else if (sub === "get") {
+        if (!args[1]) fail("usage: auxctl routines get <routineId>");
+        out(await rpc("routines.get", { routineId: args[1] }));
+      } else if (sub === "runs") {
+        if (!args[1]) fail("usage: auxctl routines runs <routineId>");
+        out(await rpc("routines.runs", { routineId: args[1], limit: flags.limit ? Number(flags.limit) : 30 }));
+      } else if (sub === "alerts") out(await rpc("routines.alerts", { limit: flags.limit ? Number(flags.limit) : 30 }));
+      else if (sub === "compare") {
+        if (!args[1] || !args[2]) fail("usage: auxctl routines compare <leftRunId> <rightRunId>");
+        out(await rpc("routines.compare", { leftRunId: args[1], rightRunId: args[2] }));
+      } else fail("usage: auxctl routines list|get|runs|alerts|compare …");
+      return;
+    }
+
+    case "backup": {
+      const sub = args[0];
+      if (sub === "list") out(await rpc("installation.listBackups", {}));
+      else if (sub === "retention") out(await rpc("installation.backupRetention", {}));
+      else fail("usage: auxctl backup list | backup retention");
+      return;
+    }
 
     case "get": {
       const [method, paramsJson] = args;

@@ -357,6 +357,7 @@ export class SetRunner {
     const program: Program = { ...prepared.program, nodes: learned.nodes };
     const res = await this.deps.pages.execute(program, {
       runId: opts.runId,
+      journaled: true,
       signal: opts.signal,
       allowEval: learned.trusted,
     });

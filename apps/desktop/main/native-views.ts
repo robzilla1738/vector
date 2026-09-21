@@ -4,7 +4,7 @@ import { popupCommand } from './popup-commands.js';
 import { session, WebContentsView, type BaseWindow, type WebContents } from "electron";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { PageQuickAction } from "@vector/contracts";
+import { RETAINED_SESSION_PARTITIONS, type PageQuickAction } from "@vector/contracts";
 import type { TargetRegistry, ViewEntry } from "./target-registry.js";
 
 export interface ViewHooks {
@@ -39,7 +39,7 @@ const ENGINE_PAINT_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!
 `)}`;
 
 // Persisted profile identity; changing this before migration would hide existing logins.
-const PROFILE_PARTITION = "persist:vector-default";
+const PROFILE_PARTITION = RETAINED_SESSION_PARTITIONS.browsing;
 
 /** Inject the Aux target marker into a webContents — every document. */
 export function installMarker(view: Pick<WebContentsView, "webContents">, marker: string) {
@@ -81,7 +81,7 @@ export function createPageView(opts: {
   // Human and agent tabs share the same browser profile. Control ownership is
   // enforced by the runtime; changing who drives a page must not change its
   // cookies, storage, permissions, cache, or service workers.
-  const partition = enginePaint ? "persist:vector-engine-paint" : PROFILE_PARTITION;
+  const partition = enginePaint ? RETAINED_SESSION_PARTITIONS.enginePaint : PROFILE_PARTITION;
   const view = new WebContentsView({
     webPreferences: {
       partition,

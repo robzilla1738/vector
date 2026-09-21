@@ -42,3 +42,12 @@ it("updates context independently and identifies cross-window changes without ac
   expect(conversationEntryChange("unrelated","value")).toBeNull();
   expect(conversationEntryChange(`${DRAFT_ENTRY_PREFIX}not-a-chat`,"value")).toBeNull();
 });
+it("retains selected page context and newer draft edits across a simulated restart",()=>{
+  const storage=storageFixture();
+  writeConversationEntry(storage,"context","chat:ask","page-selected");
+  writeConversationEntry(storage,"draft","chat:ask","Ask about the selection");
+  writeConversationEntry(storage,"draft","chat:ask","Ask about the selection, with a later edit");
+  const restarted={getItem:(key:string)=>storage.getItem(key),length:storage.length,key:(index:number)=>storage.key(index)};
+  expect(readConversationContexts(restarted)).toEqual({"chat:ask":"page-selected"});
+  expect(readConversationDrafts(restarted)["chat:ask"]).toBe("Ask about the selection, with a later edit");
+});

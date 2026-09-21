@@ -122,3 +122,20 @@ it("keeps task-scoped grants from filling other tasks and never batches secrets"
   expect(calls).toContain("fill:r1=s3cret-value");
   expect(calls).toContain("click");
 });
+
+it("renews an expired grant without duplicating the secret", async () => {
+  const { vault, secrets, db } = memoryVault();
+  vault.lock("passphrase-ok");
+  vault.unlock("passphrase-ok");
+  const item = await vault.save({ label: "Example", origin: "https://example.com", secret: "s3cret-value" });
+  const grant = vault.grant({ itemId: item.itemId, origin: "https://example.com", ttlMs: 60_000 });
+  db.prepare("UPDATE vault_grants SET expires_at=1 WHERE grant_id=?").run(grant.grantId);
+  expect(vault.expiredGrants(Date.now()).map(row => row.grantId)).toEqual([grant.grantId]);
+  const renewed = vault.renewGrant({ grantId: grant.grantId, ttlMs: 60_000 });
+  expect(renewed.grantId).toBe(grant.grantId);
+  expect(renewed.credentialRef).toBe(grant.credentialRef);
+  expect(renewed.expiresAt).toBeGreaterThan(Date.now());
+  expect(vault.expiredGrants()).toEqual([]);
+  expect([...secrets.values()].filter(value => value === "s3cret-value")).toHaveLength(1);
+  expect(vault.history(item.itemId).some(row => row.detail?.includes("renewed without duplicating"))).toBe(true);
+});

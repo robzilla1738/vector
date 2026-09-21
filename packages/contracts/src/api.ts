@@ -28,16 +28,16 @@ import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, O
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
 import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
-  TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema } from "./tasks.js";
+  TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import {
-  VaultAccessRecordSchema, VaultGrantParams, VaultGrantSchema, VaultItemSchema, VaultLockParams, VaultSaveParams, VaultStatusSchema, VaultUnlockParams,
+  VaultAccessRecordSchema, VaultGrantParams, VaultGrantSchema, VaultItemSchema, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultStatusSchema, VaultUnlockParams,
 } from "./vault.js";
 import {
-  RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineUpdateParams,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineUpdateParams,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
-import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
+import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema} from "./local-projects.js";
 
 const id = z.string().min(1);
@@ -448,6 +448,8 @@ export const MethodSchemas = {
   "tasks.reconcileAction": TaskReconcileParams,
   "tasks.reconcileOperation": TaskReconcileOperationParams,
   "tasks.receipt": z.object({ taskId: id, revision: z.number().int().positive().optional() }),
+  "tasks.verifyCriterion": TaskVerifyCriterionParams,
+  "tasks.replaceAgent": TaskReplaceAgentParams,
   "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
   "spaces.list": z.object({}),
   "spaces.import": z.object({ spaces: z.array(SpaceInputSchema).max(500) }),
@@ -473,6 +475,7 @@ export const MethodSchemas = {
   "development.githubStatus": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
   "development.operationsStatus": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
   "development.incidentReport": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),pageId:id}).strict(),
+  "development.prepareIncidentFix": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),pageId:id}).strict(),
   "development.files": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
   "development.readFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024)}).strict(),
   "development.writeFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/),content:z.string().max(256*1024)}).strict(),
@@ -511,7 +514,11 @@ export const MethodSchemas = {
   "cloud.syncProject": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
   "cloud.stop": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
   "cloud.delete": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
+  "cloud.reconnectStatus": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
   "installation.createBackup": z.object({}).strict(),
+  "installation.listBackups": z.object({}).strict(),
+  "installation.backupRetention": z.object({}).strict(),
+  "installation.setBackupRetention": z.object({keep:z.union([z.literal(3),z.literal(5),z.literal(10),z.literal(20)])}).strict(),
   "installation.stageRestore": z.object({path:z.string().min(1).max(4096)}).strict(),
   "installation.cancelRestore": z.object({}).strict(),
   "installation.legacyStatus": z.object({}).strict(),
@@ -522,6 +529,8 @@ export const MethodSchemas = {
   "vault.lock": VaultLockParams,
   "vault.unlock": VaultUnlockParams,
   "vault.grant": VaultGrantParams,
+  "vault.renewGrant": VaultRenewGrantParams,
+  "vault.expiredGrants": z.object({}).strict(),
   "vault.revoke": z.object({itemId:id.optional(),grantId:id.optional()}).strict().refine(value=>!!value.itemId||!!value.grantId, "Choose a vault item or grant to revoke"),
   "vault.history": z.object({itemId:id.optional(),limit:z.number().int().min(1).max(200).default(50)}),
   "vault.grants": z.object({taskId:id.optional(),origin:z.string().url().optional()}),
@@ -536,6 +545,8 @@ export const MethodSchemas = {
   "routines.runs": z.object({routineId:id,limit:z.number().int().min(1).max(100).default(30)}),
   "routines.reconcile": z.object({routineRunId:id,outcome:z.enum(["applied","not_applied"]),note:z.string().min(1).max(4000)}).strict(),
   "routines.due": z.object({now:z.number().optional()}),
+  "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
+  "routines.compare": z.object({leftRunId:id,rightRunId:id}).strict(),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -747,6 +758,8 @@ export const ResultSchemas = {
   "tasks.reconcileAction": z.object({ ok: z.literal(true) }),
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
   "tasks.receipt": TaskReceiptSchema,
+  "tasks.verifyCriterion": CriterionVerificationSchema,
+  "tasks.replaceAgent": RunSchema,
   "workspaces.create": WorkspaceSchema,
   "spaces.list": z.array(BrowserSpaceSchema),
   "spaces.import": z.array(BrowserSpaceSchema),
@@ -772,6 +785,7 @@ export const ResultSchemas = {
   "development.githubStatus": ProjectGithubStatusSchema,
   "development.operationsStatus": z.object({checkedAt:z.number(),vercel:z.object({project:z.object({id:z.string(),name:z.string(),framework:z.string().nullable(),updatedAt:z.number(),teamId:z.string().nullable()}),deployments:z.array(z.object({id:z.string(),name:z.string(),url:z.string().url(),state:z.string(),target:z.string().nullable(),createdAt:z.number(),readyAt:z.number().nullable()}))}).optional(),sentry:z.object({organization:z.string(),project:z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()}),issues:z.array(z.object({id:z.string(),shortId:z.string(),title:z.string(),level:z.string(),status:z.string(),count:z.number(),users:z.number(),firstSeen:z.string(),lastSeen:z.string(),permalink:z.string()}))}).optional(),unavailable:z.array(z.string())}),
   "development.incidentReport": ProjectIncidentReportSchema,
+  "development.prepareIncidentFix": ProjectIncidentReportSchema,
   "development.files": z.array(z.string()),
   "development.readFile": ProjectFileSchema,
   "development.writeFile": ProjectFileSchema.extend({recoveryPath:z.string()}).nullable(),
@@ -810,7 +824,11 @@ export const ResultSchemas = {
   "cloud.syncProject": CloudEnvironmentSchema,
   "cloud.stop": CloudEnvironmentSchema,
   "cloud.delete": CloudEnvironmentSchema,
+  "cloud.reconnectStatus": CloudReconnectStatusSchema,
   "installation.createBackup": z.object({path:z.string(),createdAt:z.number(),bytes:z.number().int().nonnegative(),schemaVersion:z.number().int().positive(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
+  "installation.listBackups": z.array(z.object({path:z.string(),name:z.string(),createdAt:z.number(),bytes:z.number().int().nonnegative(),schemaVersion:z.number().int().positive(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()})),
+  "installation.backupRetention": z.object({keep:z.number().int().positive()}),
+  "installation.setBackupRetention": z.object({keep:z.number().int().positive()}),
   "installation.stageRestore": z.object({staged:z.literal(true),schemaVersion:z.number().int().positive(),bytes:z.number().int().nonnegative(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
   "installation.cancelRestore": z.object({cancelled:z.literal(true)}),
   "installation.legacyStatus": z.object({
@@ -836,6 +854,8 @@ export const ResultSchemas = {
   "vault.lock": VaultStatusSchema,
   "vault.unlock": VaultStatusSchema,
   "vault.grant": VaultGrantSchema,
+  "vault.renewGrant": VaultGrantSchema,
+  "vault.expiredGrants": z.array(VaultGrantSchema),
   "vault.revoke": z.object({ok:z.literal(true)}),
   "vault.history": z.array(VaultAccessRecordSchema),
   "vault.grants": z.array(VaultGrantSchema),
@@ -850,6 +870,8 @@ export const ResultSchemas = {
   "routines.runs": z.array(RoutineRunSchema),
   "routines.reconcile": RoutineRunSchema,
   "routines.due": z.array(RoutineRunSchema),
+  "routines.alerts": z.array(RoutineAlertSchema),
+  "routines.compare": RoutineCompareSchema,
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
   "agentConnections.revoke": AgentConnectionSchema,

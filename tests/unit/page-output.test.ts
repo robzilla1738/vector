@@ -39,6 +39,19 @@ it("saves a captured private PDF with a safe name and cleans up the temporary fi
   expect(await readFile(destination, "utf8")).toBe("%PDF-fixture");
   expect(await readdir(directory)).toEqual(["report.pdf"]);
 });
+it("shares one in-progress lock across print and PDF and keeps private export copy honest", async () => {
+  const tab = page(), wc = tab as unknown as WebContents;
+  const printing = printPage(wc);
+  await expect(savePagePdf(wc, owner, true)).rejects.toThrow("already in progress");
+  tab.print.mock.calls[0]![1](true, "");
+  expect(await printing).toBe(true);
+  const directory = await mkdtemp(join(tmpdir(), "aux-page-output-")); directories.push(directory);
+  const destination = join(directory, "private-report.pdf");
+  native.save.mockResolvedValueOnce({ canceled: false, filePath: destination });
+  expect(await savePagePdf(wc, owner, true)).toBe(destination);
+  expect(native.save.mock.calls[0]![1]).toMatchObject({ message: expect.stringContaining("private window") });
+  expect(tab.printToPDF).toHaveBeenCalledWith({ printBackground: true, preferCSSPageSize: true });
+});
 it("rejects a changed document and allows a later cancelled export", async () => {
   const tab = page(), wc = tab as unknown as WebContents;
   tab.printToPDF.mockImplementationOnce(async () => { tab.emit("did-start-navigation", {}, "https://elsewhere.test", false, true); return Buffer.from("changed"); });

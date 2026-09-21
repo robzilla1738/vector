@@ -60,12 +60,14 @@ Reconcile those effects before resuming work.
 ## Evidence and next migrations
 
 `tests/unit/database-migration.test.ts` exercises fresh initialization, each recent
-ordered transitions including version 7 → 8 and version 8 → 9, restart, WAL-backed snapshots and their
+ordered transitions including version 12 → 13 (coordinator leases and criterion
+verifications), restart, WAL-backed snapshots and their
 permissions, schema-error rollback and repaired retry, and refusal of newer schemas
 using synthetic temporary databases.
 
 Future schema changes require a new ordered version transition and tests against
 the preceding version. Do not modify version 1 and assume existing version 1
-databases will rerun it. Whole-profile backup, restore UI, backup retention,
-process-kill/disk-full fault testing, and full application migration remain open
-roadmap work.
+databases will rerun it. Runtime backup/restore UI, retention (keep 3|5|10|20),
+and disk-full backup failure are implemented. OS data-root Vector→Aux copy remains
+fail-closed on dual roots. Full application/profile migration of cookies, password
+stores and credentials remains open and must never silently move secrets.

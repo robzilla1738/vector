@@ -174,6 +174,29 @@ export class VaultService {
     return grant;
   }
 
+  renewGrant(input: { grantId: string; ttlMs?: number }): VaultGrant {
+    this.assertUnlocked();
+    const grantRow = this.repo.db.prepare("SELECT * FROM vault_grants WHERE grant_id=?").get(input.grantId) as Record<string, unknown> | undefined;
+    if (!grantRow) throw new VectorError("not_found", "That vault grant was not found.");
+    const grant = rowGrant(grantRow);
+    const item = this.item(grant.itemId);
+    const now = Date.now();
+    if (grant.revokedAt || item.revokedAt) throw new VectorError("conflict", "This credential grant was revoked. Save a replacement instead of duplicating the secret.");
+    if (item.expiresAt && item.expiresAt <= now) throw new VectorError("conflict", "This vault item expired. Save a replacement credential.");
+    const next: VaultGrant = { ...grant, expiresAt: now + (input.ttlMs ?? 30 * 60_000) };
+    this.repo.db.prepare("UPDATE vault_grants SET expires_at=? WHERE grant_id=?").run(next.expiresAt, next.grantId);
+    this.record("grant", { itemId: item.itemId, grantId: next.grantId, taskId: next.taskId, origin: next.origin, detail: "renewed without duplicating the secret" });
+    return next;
+  }
+
+  expiredGrants(now = Date.now()): VaultGrant[] {
+    const rows = this.repo.db.prepare(`SELECT g.* FROM vault_grants g JOIN vault_items i ON i.item_id=g.item_id
+      WHERE g.revoked_at IS NULL AND i.revoked_at IS NULL AND g.expires_at<=?
+      AND (i.expires_at IS NULL OR i.expires_at>?)
+      ORDER BY g.expires_at DESC`).all(now, now) as Record<string, unknown>[];
+    return rows.map(rowGrant);
+  }
+
   grants(filter: { taskId?: string; origin?: string } = {}): VaultGrant[] {
     const now = Date.now();
     let sql = "SELECT * FROM vault_grants WHERE revoked_at IS NULL AND expires_at > ?";

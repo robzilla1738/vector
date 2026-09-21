@@ -159,6 +159,16 @@ it('prepares local commands only for a current idle open task with the selected 
  expect(()=>f.service.prepareLocalCommand(f.task.taskId,4,projectId)).toThrow('unresolved action');
 });
 
+it('refuses project writes when the attached checkout is reference or read only',()=>{
+ const f=fixture(),projectId='11111111-1111-4111-8111-111111111111';
+ const referenced=f.service.update({taskId:f.task.taskId,expectedRevision:1,resources:[{...f.task.resources[0],projectId,access:'reference'}]});
+ expect(()=>f.service.prepareProjectAccess(referenced.taskId,referenced.revision,projectId)).toThrow(/reference only/i);
+ expect(()=>f.service.prepareLocalCommand(referenced.taskId,referenced.revision,projectId)).toThrow(/reference only/i);
+ const readable=f.service.update({taskId:f.task.taskId,expectedRevision:referenced.revision,resources:[{...referenced.resources[0],access:'read'}]});
+ expect(f.service.prepareProjectAccess(readable.taskId,readable.revision,projectId).revision).toBe(readable.revision);
+ expect(()=>f.service.prepareLocalCommand(readable.taskId,readable.revision,projectId)).toThrow(/write access/i);
+});
+
 it('does not strand a retained cloud environment by detaching its project',()=>{
  const f=fixture(),projectId='11111111-1111-4111-8111-111111111111',environmentId='22222222-2222-4222-8222-222222222222';
  const attached=f.service.update({taskId:f.task.taskId,expectedRevision:1,resources:[{...f.task.resources[0],projectId}]});

@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import type {CloudCommandRecord,CloudCommandResult,CloudEnvironment,CloudFile,CloudFileEntry,CloudPreviewSession,CloudProviderInventory,CloudTaskResult,CloudWorkspaceExport,CloudResultArtifactExport,Task,TaskEvidence} from '@vector/contracts';
+import type {CloudCommandRecord,CloudCommandResult,CloudEnvironment,CloudFile,CloudFileEntry,CloudPreviewSession,CloudProviderInventory,CloudReconnectStatus,CloudTaskResult,CloudWorkspaceExport,CloudResultArtifactExport,Task,TaskEvidence} from '@vector/contracts';
 import {bridge} from '../bridge';
 import {useStore} from '../store';
 import {CloudTerminal} from './CloudTerminal';
@@ -20,6 +20,7 @@ export function CloudEnvironmentPanel({task,projectId,onEvidenceImported}:{task:
   const [openedFile,setOpenedFile]=useState<CloudFile|null>(null);
   const [terminalEnvironment,setTerminalEnvironment]=useState<string|null>(null);
   const [inventory,setInventory]=useState<CloudProviderInventory|null>(null);
+  const [reconnect,setReconnect]=useState<CloudReconnectStatus|null>(null);
   const [taskResults,setTaskResults]=useState<Record<string,CloudTaskResult|null>>({});
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -44,6 +45,9 @@ export function CloudEnvironmentPanel({task,projectId,onEvidenceImported}:{task:
   return <section className="field project-environment" aria-label="Cloud environment">
     <strong>Vercel Sandbox</strong>
     <p className="hint">Create persistent remote compute in the selected Vercel project. The Universal image includes Node, Python, Bun, common development tools and coding-agent CLIs; signing in to any remote agent remains an explicit action in the cloud terminal. Compute, network and snapshot storage may be billed. Aux limits sessions to 45 minutes, lifetime use to 90 CPU minutes and 1 GB egress, and schedules deletion. Vercel does not expose a currency budget here. Aux copies the selected checkout and this task's title, objective, criteria and revision only when you choose Upload source & task brief. It never sends browser cookies, model keys, workspace memory or local environment variables.</p>
+    <div className="row"><button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setReconnect(await bridge.invoke('cloud.reconnectStatus',{taskId:task.taskId,expectedRevision:task.revision}) as CloudReconnectStatus);})}>Check reconnect status</button></div>
+    {reconnect&&<p className="hint" role="status">{reconnect.note} Credentials {reconnect.credentialsAvailable?'available':'unavailable'} · {reconnect.environments.length} recorded environment{reconnect.environments.length===1?'':'s'}. This does not resume, stop or delete remote sandboxes.</p>}
+    {reconnect?.environments.map(item=><span className="hint" key={item.environmentId}>{item.remoteName} · {(item.reconnectState??'live').replaceAll('_',' ')}{item.desktopClosedAt?` · desktop closed ${new Date(item.desktopClosedAt).toLocaleString()}`:''}</span>)}
     <div className="row"><select aria-label="Cloud runtime" value={runtime} onChange={event=>setRuntime(event.target.value as typeof runtime)}><option value="universal">Universal · recommended</option><option value="node24">Legacy Node 24</option><option value="node22">Legacy Node 22</option><option value="python3.13">Legacy Python 3.13</option></select><select aria-label="Cloud region" value={region} onChange={event=>setRegion(event.target.value)}><option value="iad1">US East · Washington</option><option value="sfo1">US West · San Francisco</option><option value="fra1">Europe · Frankfurt</option><option value="sin1">Asia · Singapore</option><option value="syd1">Australia · Sydney</option></select><select aria-label="Maximum cloud session" value={timeoutMinutes} onChange={event=>setTimeoutMinutes(Number(event.target.value))}><option value={15}>15-minute sessions</option><option value={30}>30-minute sessions</option><option value={45}>45-minute sessions</option></select><select aria-label="Automatic cloud cleanup" value={cleanupHours} onChange={event=>setCleanupHours(Number(event.target.value))}><option value={6}>Delete after 6 hours</option><option value={24}>Delete after 24 hours</option><option value={72}>Delete after 3 days</option></select><label className="row"><input type="checkbox" checked={ack} onChange={event=>setAck(event.target.checked)}/> I understand this creates billable remote resources.</label><button className="btn sm" disabled={busy||!ack} onClick={()=>void action(async()=>{await bridge.invoke('cloud.create',{taskId:task.taskId,expectedRevision:task.revision,projectId,runtime,region,port:3000,timeoutMinutes,cleanupHours});setAck(false);await load();})}>Create environment</button></div>
     {error&&<p role="alert">{error}</p>}
     {message&&<p role="status">{message}</p>}
