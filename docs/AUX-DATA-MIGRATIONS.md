@@ -68,6 +68,8 @@ using synthetic temporary databases.
 Future schema changes require a new ordered version transition and tests against
 the preceding version. Do not modify version 1 and assume existing version 1
 databases will rerun it. Runtime backup/restore UI, retention (keep 3|5|10|20),
-and disk-full backup failure are implemented. OS data-root Vector→Aux copy remains
+disk-full backup failure, and interrupt-before-manifest skip are implemented.
+Chromium Cookies, Login Data, Web Data and similar stores are classified refuse
+and never copied. OS data-root Vector→Aux copy remains
 fail-closed on dual roots. Full application/profile migration of cookies, password
 stores and credentials remains open and must never silently move secrets.

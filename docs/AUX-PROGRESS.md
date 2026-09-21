@@ -1,5 +1,18 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21 (unit suite green, catalog/search/journal fence)
+
+On `cursor/aux-remaining-implementation-4932` after rebuilding `@vector/contracts`, `@vector/runtime`, `@vector/mcp`, and `@vector/cli` dist. Founder/device blockers B1–B7 are unchanged.
+
+- **Unit suite:** `pnpm test:unit` — **151 files, 746 tests passed**. Node is 22.14.0 in this environment (package engines want >=22.18.0); that warning did not fail tests. Policy was not weakened.
+- **Journal:** Logical action IDs are hashed without run id, so the same task write cannot be re-issued from a later run. Saved-operation browser-program replay imports `compileAndAuthorize`.
+- **Tasks:** `tasks.list` query matches title, objective, criteria and resource labels, not locators. CLI/MCP and desktop share that matcher.
+- **MCP catalog:** Connections groups scoped tools and filters by name/group. `@vector` package scope and `vector_*` MCP names stay fail-closed compatibility surfaces.
+- **Backup:** Runtime backup interrupt before the manifest is treated as incomplete and skipped. Chromium Cookies, Login Data, Web Data and similar stores are classified `refuse` and never copied.
+- **Phase 2/4:** Preview and Console are separate task-workspace surfaces. Conversation storage events apply another window’s draft/context without replacing unrelated chats. 1024 CSS covers empty, error, loading and collapsed states without founder screenshot acceptance. Open File dialogs are titled in the main and private shells.
+
+Native TCC, VoiceOver, founder SSO, signed password managers, Chrome Web Store, paid cloud mutation, packaging and whole-profile cookie migration remain unproven.
+
 ## Continuation — 2026-09-21 (schema 13, journal, catalog, backup)
 
 Software-only remainder from the remaining-work plan on

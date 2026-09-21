@@ -84,9 +84,10 @@ restores the task. Pass `--packaged` to use the private macOS arm64 application.
 
 Remaining: cloud task synchronization. Independent automated outcome verification is
 an honest local check (`tasks.verifyCriterion`) that never records human acceptance.
-Receipts are exportable Markdown. Task-level logical action IDs, in-process coordinator
-leases, agent replacement, CLI/MCP task verify/replace/journal, resource access
-controls, draft recovery, task search, and Space↔workspace identity (retained IDs,
+Receipts are exportable Markdown. Task-level logical action IDs stay stable across
+runs. In-process coordinator leases, agent replacement, CLI/MCP task
+verify/replace/journal/search, resource access
+controls, draft recovery, Space↔workspace identity (retained IDs,
 never merged by name) are implemented. Multiple windows share local history without
 SSO. Full keyboard and VoiceOver qualification and founder design review remain
 separate gates.

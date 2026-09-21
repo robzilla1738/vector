@@ -46,6 +46,8 @@ formatting, images, formulas or arbitrary external links. Dictation is disabled 
 reason when the native capture path is unavailable. Site controls restore the opener
 control on close.
 
+`pnpm test:unit` after rebuilding runtime dist: **151 files, 746 tests passed**.
+
 ## Remaining work (true blockers and native acceptance)
 
 Implementable P0/P1 product/code from the ordered handoff is in this tree. Do not
@@ -138,11 +140,12 @@ Continuation 2026-09-21 (branch `cursor/aux-remaining-implementation-4932`):
   lag against intended policy, not a rollback of exact host/port auth or transient-document
   routing. Focused: `mcp-stdio` (3), `operation-authority` (3), `router` (10) pass.
 - Schema 13, vault/routines, journal unification, leases, criterion checks, agent
-  replace, backup retention, identity fail-closed, and remaining software-only
-  Phase 2–5 items above are in this tree. Rebuild runtime dist before unit tests
-  (`tests` import dist).
-- `pnpm build`, desktop typecheck, and desktop production build pass on earlier
-  revisions of this branch. Re-run `pnpm test:unit` after rebuilding `@vector/runtime`.
+  replace, backup retention, identity fail-closed, task search, MCP catalog grouping,
+  Preview/Console split, and remaining software-only Phase 2–5 items above are in this
+  tree. Logical journal identities are stable across runs. Profile credential stores
+  are refused, not copied.
+- Full `pnpm test:unit` after rebuilding `@vector/contracts` and `@vector/runtime`:
+  **151 files, 746 tests passed**. Node 22.14.0 vs engines `>=22.18.0` is a warning only.
 
 The native XLSX acceptance above used a workbook snapshot; the latest saved-CSV-result
 button reuses that native path and has binary round-trip coverage, but has not had its

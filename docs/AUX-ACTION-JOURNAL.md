@@ -20,12 +20,10 @@ with an uncertain-outcome message.
 
 ## Identity, evidence, and compatibility
 
-Explicit logical action IDs are supported and remain stable across pages and
-observations. Existing planner calls still use observation-bound identities plus
-the unresolved-effect barrier; full task-level action allocation is not finished.
-Step fingerprints include every parameter and use canonical object ordering and
-SHA-256 instead of delimiter-concatenated values. Fingerprints are not stored as
-raw input values.
+Explicit logical action IDs are supported and remain stable across pages,
+observations, and new runs of the same task revision. Step fingerprints include
+every parameter and use canonical object ordering and SHA-256 instead of
+delimiter-concatenated values. Fingerprints are not stored as raw input values.
 
 The `confirmed` journal status means the execution interface acknowledged success,
 not independent verification of the user's business outcome. Trusted reconciliation
