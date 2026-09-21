@@ -60,7 +60,7 @@ it("applies another window's storage events without replacing unrelated drafts",
   const afterDraft=applyConversationStorageChange(first,draftChange);
   const afterContext=applyConversationStorageChange({...first,...afterDraft},contextChange);
   const afterComposer=applyConversationStorageChange({...first,...afterDraft,...afterContext},composerChange);
-  expect(afterComposer).toMatchObject({
+  expect({...first,...afterDraft,...afterContext,...afterComposer}).toMatchObject({
     conversationDrafts:{"chat:keep":"Keep this","new":"Newer composer","chat:ask":"From window two"},
     conversationContexts:{"chat:keep":"page-new"},
     agentDraft:"Newer composer",

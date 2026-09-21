@@ -42,7 +42,7 @@ export class DurableWriteLedger {
     signature: string; revision?: number; logicalActionId?: string;
   }): { intent: WriteIntent; duplicate: boolean } {
     const idempotencyKey = opts.logicalActionId
-      ? createHash("sha256").update(JSON.stringify([opts.runId, opts.logicalActionId])).digest("hex")
+      ? createHash("sha256").update(JSON.stringify(["logical-action", opts.logicalActionId])).digest("hex")
       : this.key(opts.runId, opts.pageId, opts.documentEpoch, opts.signature, opts.revision);
     this.db.exec("BEGIN IMMEDIATE");
     try {
