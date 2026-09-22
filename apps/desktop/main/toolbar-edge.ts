@@ -14,6 +14,16 @@ export function pagePointerKeepsToolbar(offsetFromPageTop: number, open: boolean
   return offsetFromPageTop >= 0 && offsetFromPageTop <= TOOLBAR_EDGE_OPEN;
 }
 
+/** The hidden sidebar leaves no gutter. The pointer on the window's left edge still opens it. */
+export function cursorAtWindowLeft(
+  cursor: { x: number; y: number },
+  content: { x: number; y: number; width: number; height: number },
+): boolean {
+  const x = cursor.x - content.x;
+  const y = cursor.y - content.y;
+  return x >= 0 && x <= 8 && y >= 0 && y <= content.height;
+}
+
 export function toolbarEdgeFromCursor(
   cursor: { x: number; y: number },
   content: { x: number; y: number },

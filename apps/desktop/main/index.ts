@@ -32,11 +32,13 @@ import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@vector/co
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
 import { createPageView, destroyPageView, downloadsSession, profileSession, setEngineFrame } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
+import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
 import { interruptedDownloadHistory } from "./download-recovery.js";
 import { controlDownload } from "./download-control.js";
 import { hasPageWork } from "./page-suspension.js";
 import { setPageZoom } from "./page-zoom.js";
 import { PageFinder } from "./page-find.js";
+import { startPreviewWatch } from "./preview-watch.js";
 import { printPage, savePagePdf } from "./page-output.js";
 import { createOffscreenHolds } from "./offscreen-holds.js";
 import { readArticle } from "./read-article.js";
@@ -192,12 +194,17 @@ interface RegularWindowState {
   shellView: WebContentsView;
   overlayOpen: boolean;
   sidebarPeek: boolean;
+  toolbarOverlay: boolean;
+  toolbarOverlaySeq: number;
+  paintedFill: string;
+  chromeOnTop: boolean;
   stageBounds: { x: number; y: number; width: number; height: number } | null;
   focusedPageId: string | null;
   splitPageId: string | null;
   splitRatio: number;
   stageRadius: number;
   closeApproved: boolean;
+  previewWatch: { pageId: string; stop: () => void } | null;
 }
 const regularWindows = new Map<string, RegularWindowState>();
 const toolbarEdges = new Map<string, ReturnType<typeof attachToolbarEdgeWatch>>();
@@ -231,6 +238,13 @@ let runtimeCdpPort = 0;
 // beneath the shell) so Chromium keeps laying it out. Any number of pages can
 // be held at once. setVisible(false) stops frames and Playwright stalls.
 const offscreen = createOffscreenHolds();
+function clearPreviewWatch(state: RegularWindowState) {
+  const watch = state.previewWatch;
+  if (!watch) return;
+  state.previewWatch = null;
+  watch.stop();
+  if (offscreen.endPreview(watch.pageId) && !state.win.isDestroyed()) applyStage(state);
+}
 const idleFreezeTimers=new Map<string,NodeJS.Timeout>();
 const frozenPages=new Set<string>();
 const desiredFrozenPages=new Set<string>();
@@ -577,6 +591,11 @@ const viewHooks = {
     return (entry.popup || owner ? dialog.showMessageBoxSync(entry.popup ?? owner!, options) : 0) === 1;
   },
   onAudio: (pageId:string,state:{muted:boolean;audible:boolean})=>shellForPage(pageId)?.webContents.send('view.audio',{pageId,...state}),
+  onCursor: (pageId: string, cursor: string) => {
+    const state = stateForEntry(registry.get(pageId));
+    if (!state?.toolbarOverlay || state.shellView.webContents.isDestroyed()) return;
+    state.shellView.webContents.send("page-cursor", cssCursor(cursor));
+  },
   onLoading: (pageId: string, loading: boolean) => {
     const entry=registry.get(pageId);if(loading)void wakePage(entry);else if(entry){const state=stateForEntry(entry);if(state&&state.focusedPageId!==pageId&&state.splitPageId!==pageId&&!offscreen.holds(pageId))scheduleIdleFreeze(entry);}
     shellForPage(pageId)?.webContents.send("view.loading", { pageId, loading });
@@ -708,6 +727,7 @@ function registerNativeHandlers(ch: RpcChannel) {
     entry.windowId = destination.id;
     pageWindowOwners.set(pageId, destination.id);
     notifyHttpAuthChanged();
+    if (source.previewWatch?.pageId === pageId) clearPreviewWatch(source);
     if (source.focusedPageId === pageId) source.focusedPageId = registry.all().find(candidate => !candidate.popup && !candidate.runtimeOwned && (candidate.windowId ?? PRIMARY_WINDOW_ID) === source.id)?.pageId ?? null;
     if (source.splitPageId === pageId) source.splitPageId = null;
     if (activate || !destination.focusedPageId) { destination.focusedPageId = pageId; destination.splitPageId = null; }
@@ -727,6 +747,10 @@ function registerNativeHandlers(ch: RpcChannel) {
     // stale pointers would leave every other view hidden
     if (state?.focusedPageId === pageId) state.focusedPageId = null;
     if (state?.splitPageId === pageId) state.splitPageId = null;
+    if (state?.previewWatch?.pageId === pageId) {
+      state.previewWatch.stop();
+      state.previewWatch = null;
+    }
     offscreen.forget(pageId);
     forgetPageLifecycle(pageId);
     if (state) applyStage(state);
@@ -1066,7 +1090,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       if(entry.popup || (entry.windowId??PRIMARY_WINDOW_ID)!==state.id)continue;
       const shown=entry.view.webContents===fullscreen;
       entry.view.setVisible(shown);
-      if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);}
+      if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);win.contentView.addChildView(entry.view);}
     }
     syncToolbarEdge();
     return;
@@ -1120,8 +1144,48 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       if(entry.pageId!==state.focusedPageId&&entry.pageId!==state.splitPageId)scheduleIdleFreeze(entry);
     }
   }
-  if (state.sidebarPeek) win.contentView.addChildView(state.shellView);
+  placeChrome(state);
   syncToolbarEdge();
+}
+
+function placeChrome(state: RegularWindowState) {
+  const glass = requestedGlass && !nativeTheme.prefersReducedTransparency && process.platform === "darwin";
+  const fill = state.quickAsk || state.toolbarOverlay || glass ? "#00000000" : WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"];
+  if (state.paintedFill !== fill) {
+    state.paintedFill = fill;
+    state.shellView.setBackgroundColor(fill);
+  }
+  if (state.win.isDestroyed()) return;
+  // The address bar lives in the shell. Raise that view while it is open so it paints over the page instead of pushing the page down.
+  if (state.sidebarPeek || state.toolbarOverlay) {
+    state.chromeOnTop = true;
+    state.win.contentView.addChildView(state.shellView);
+    return;
+  }
+  if (!state.chromeOnTop) return;
+  state.chromeOnTop = false;
+  for (const pageId of [state.stagePageId, state.splitPageId]) {
+    const entry = pageId ? registry.get(pageId) : undefined;
+    if (!entry || entry.popup || (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) continue;
+    state.win.contentView.addChildView(entry.view);
+  }
+}
+
+function deliverPagePointer(state: RegularWindowState, value: unknown) {
+  if (!state.toolbarOverlay || state.overlayOpen) return;
+  const message = readPagePointer(value);
+  if (!message) return;
+  const visible = [state.splitPageId, state.stagePageId].flatMap(pageId => {
+    const entry = pageId ? registry.get(pageId) : undefined;
+    if (!entry || entry.popup || (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id || !entry.view.getVisible()) return [];
+    return [{ entry, ...entry.view.getBounds() }];
+  });
+  const hit = boundsContaining(message.x, message.y, visible);
+  if (!hit || hit.entry.view.webContents.isDestroyed()) return;
+  const input = inputEventFor(message, hit.x, hit.y);
+  if (!input) return;
+  if (message.kind === "down") hit.entry.view.webContents.focus();
+  hit.entry.view.webContents.sendInputEvent(input);
 }
 
 // ---------- renderer IPC ----------
@@ -1296,6 +1360,25 @@ function wireRendererIpc() {
     applyStage(state);
     return true;
   });
+  ipcMain.handle("ui.toolbarOverlay", (event, open: unknown, ticket: unknown) => {
+    const state = requireShellUi(event);
+    const seq = typeof ticket === "number" && Number.isFinite(ticket) ? ticket : 0;
+    if (seq < state.toolbarOverlaySeq) return false;
+    state.toolbarOverlaySeq = seq;
+    state.toolbarOverlay = open === true;
+    applyStage(state);
+    return true;
+  });
+  ipcMain.handle("ui.trafficLights", (event, visible: unknown) => {
+    const state = requireShellUi(event);
+    if (process.platform === "darwin") state.win.setWindowButtonVisibility(visible !== false);
+    return true;
+  });
+  ipcMain.on("ui.pagePointer", (event, value: unknown) => {
+    const state = stateForShell(event.sender.id);
+    if (!state || event.senderFrame !== state.shellView.webContents.mainFrame) return;
+    deliverPagePointer(state, value);
+  });
   ipcMain.handle("ui.sidebarPeek", (event, open: unknown) => {
     const state = requireShellUi(event);
     state.sidebarPeek = open === true;
@@ -1310,6 +1393,46 @@ function wireRendererIpc() {
     return true;
   });
   ipcMain.handle("ui.focusShell", event => { requireShellUi(event).shellView.webContents.focus(); });
+  ipcMain.handle("ui.watchPreview", async (event, pageId: unknown) => {
+    const state = requireShellUi(event);
+    if (typeof pageId !== "string") return false;
+    if (state.previewWatch?.pageId === pageId) return true;
+    clearPreviewWatch(state);
+    let entry: ViewEntry;
+    try { entry = requireOwnedEntry(state, pageId); } catch { return false; }
+    if (entry.popup || entry.view.webContents.isDestroyed()) return false;
+    const wasVisible = entry.view.getVisible();
+    let stopped = false;
+    state.previewWatch = { pageId, stop: () => { stopped = true; } };
+    offscreen.beginPreview(pageId);
+    try {
+      await wakePage(entry);
+      if (stopped) return false;
+      if (event.sender.isDestroyed() || entry.view.webContents.isDestroyed()) { clearPreviewWatch(state); return false; }
+      applyStage(state);
+      if (!wasVisible) await new Promise(resolve => setTimeout(resolve, 180));
+      if (stopped) return false;
+      if (event.sender.isDestroyed() || entry.view.webContents.isDestroyed()) { clearPreviewWatch(state); return false; }
+      const sender = event.sender;
+      const stopLoop = startPreviewWatch({
+        pageId,
+        capture: () => entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true }),
+        send: frame => { if (!sender.isDestroyed()) sender.send("preview-frame", frame); },
+        stopped: () => stopped || sender.isDestroyed() || entry.view.webContents.isDestroyed(),
+      });
+      if (stopped || state.previewWatch === null) { stopLoop(); return false; }
+      state.previewWatch = { pageId, stop: () => { stopped = true; stopLoop(); } };
+      return true;
+    } catch {
+      if (state.previewWatch?.pageId === pageId) clearPreviewWatch(state);
+      return false;
+    }
+  });
+  ipcMain.handle("ui.unwatchPreview", (event, pageId: unknown) => {
+    const state = requireShellUi(event);
+    if (state.previewWatch && (typeof pageId !== "string" || state.previewWatch.pageId === pageId)) clearPreviewWatch(state);
+    return true;
+  });
   ipcMain.handle("ui.preview", async (event, pageId: string) => {
     const state = requireShellUi(event);
     let entry: ViewEntry;
@@ -1831,21 +1954,24 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
   const glass = translucent && !nativeTheme.prefersReducedTransparency && process.platform === "darwin";
   const backgroundColor = glass ? "#00000000" : WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"];
   const regularWindow = new BaseWindow({
-    width: quickAsk ? 580 : 1440, height: quickAsk ? 640 : 960, minWidth: quickAsk ? 420 : 900, minHeight: quickAsk ? 400 : 640,
-    backgroundColor,
+    width: quickAsk ? 580 : 1440, height: quickAsk ? 500 : 960, minWidth: quickAsk ? 420 : 900, minHeight: quickAsk ? 360 : 640,
+    backgroundColor: quickAsk ? "#00000000" : backgroundColor,
     // CSS and WebContentsView alpha also need a transparent native window.
     transparent: process.platform === "darwin",
     visualEffectState: "active",
-    title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 18 }, roundedCorners: true,
+    show: !quickAsk,
+    // A square system shadow sits outside the rounded panel. The panel draws its own.
+    hasShadow: quickAsk ? false : undefined,
+    title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: quickAsk ? { x: 30, y: 26 } : { x: 16, y: 18 }, roundedCorners: true,
   });
   const regularShell = new WebContentsView({ webPreferences: {
     preload: join(import.meta.dirname, "..", "preload", "index.cjs"),
     additionalArguments: [`--aux-window-id=${encodeURIComponent(id)}`, ...(quickAsk ? ["--aux-quick-ask"] : [])],
     contextIsolation: true, sandbox: true, nodeIntegration: false,
   }});
-  regularShell.setBackgroundColor(backgroundColor);
-  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false, sidebarPeek: false,
-    stageBounds: null, stagePageId: null, focusedPageId: null, splitPageId: null, splitRatio: .5, stageRadius: 0, closeApproved: false };
+  regularShell.setBackgroundColor(quickAsk ? "#00000000" : backgroundColor);
+  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false, sidebarPeek: false, toolbarOverlay: false, toolbarOverlaySeq: 0, paintedFill: backgroundColor, chromeOnTop: false,
+    stageBounds: null, stagePageId: null, focusedPageId: null, splitPageId: null, splitRatio: .5, stageRadius: 0, closeApproved: false, previewWatch: null };
   toolbarEdges.set(id, attachToolbarEdgeWatch(regularWindow, regularShell.webContents, () => ({
     page: !!state.stagePageId && !state.overlayOpen,
     stage: state.stageBounds,
@@ -1863,7 +1989,7 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     return { action: "deny" };
   });
   regularWindow.contentView.addChildView(regularShell);
-  setWindowMaterial(regularWindow, glass ? material : null);
+  if (!quickAsk) setWindowMaterial(regularWindow, glass ? material : null);
   const layout = () => {
     const { width, height } = regularWindow.getContentBounds();
     regularShell.setBounds({ x: 0, y: 0, width, height });
@@ -1886,6 +2012,9 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     else void requestRegularWindowClose(state);
   });
   regularWindow.on("closed", () => {
+    state.previewWatch?.stop();
+    if (state.previewWatch) offscreen.forget(state.previewWatch.pageId);
+    state.previewWatch = null;
     toolbarEdges.get(id)?.stop();
     toolbarEdges.delete(id);
     regularWindows.delete(id);

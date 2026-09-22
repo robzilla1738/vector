@@ -3,6 +3,7 @@ import type { PageTarget } from "@vector/contracts";
 import {
   DEFAULT_SPACE,
   canSplitPage,
+  previewSplit,
   rememberActiveTab,
   splitForPage,
   assignFolder,
@@ -216,4 +217,23 @@ it("offers split view only for available browser-owned pages", () => {
     {viewStatus:"detached"}, {viewStatus:"crashed"}, {url:"about:blank"},
   ] as Partial<PageTarget>[]) expect(canSplitPage(page("unavailable", changes))).toBe(false);
   expect(canSplitPage(page("blank-document", {url:"about:blank",showBlankDocument:true}))).toBe(true);
+});
+
+it("pairs a conversation preview with the current tab when that tab can share the stage", () => {
+  const layout = { ...emptyLayout(), tabSpace: { current: DEFAULT_SPACE.id, preview: DEFAULT_SPACE.id } };
+  expect(previewSplit(layout, [page("current"), page("preview")], "preview", "current")).toEqual({ primary: "current", companion: "preview" });
+});
+
+it("falls back to another tab in the same Space when the current tab cannot share the stage", () => {
+  const layout = { ...emptyLayout(), tabSpace: { current: "space-other", preview: DEFAULT_SPACE.id, partner: DEFAULT_SPACE.id } };
+  expect(previewSplit(layout, [page("current"), page("preview"), page("partner")], "preview", "current")).toEqual({ primary: "preview", companion: "partner" });
+  const samePage = { ...emptyLayout(), tabSpace: { current: DEFAULT_SPACE.id, preview: DEFAULT_SPACE.id } };
+  expect(previewSplit(samePage, [page("current"), page("preview")], "current", "current")).toEqual({ primary: "current", companion: "preview" });
+});
+
+it("does not offer a split for a crashed page, a page in another Space, or a page with no partner", () => {
+  const layout = { ...emptyLayout(), tabSpace: { current: DEFAULT_SPACE.id, preview: DEFAULT_SPACE.id, other: "space-other" } };
+  expect(previewSplit(layout, [page("current"), page("preview"), page("other")], "other", "current")).toBeNull();
+  expect(previewSplit(layout, [page("only")], "only", "only")).toBeNull();
+  expect(previewSplit(layout, [page("preview", { viewStatus: "crashed" }), page("current")], "preview", "current")).toBeNull();
 });

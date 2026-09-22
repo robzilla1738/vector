@@ -12,6 +12,7 @@ import { bridge, inElectron, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
+import { usePagePointerForward } from "./page-pointer";
 import { onStageReport, stageAvoiding } from "./stage-obstruction";
 import { isTab, tabsInSpace } from "./workspace";
 import { bookmarkWebUrl } from "./bookmark-files";
@@ -115,6 +116,11 @@ export function App() {
     && activePage.viewStatus !== "crashed" && !activePage.navigationError
     && (!!activePage.showBlankDocument || (!!activePage.url && activePage.url !== "about:blank"));
   const toolbarReveal = useToolbarReveal(pageChrome);
+  const [toolbarHole, setToolbarHole] = useState(false);
+  const [toolbarReady, setToolbarReady] = useState(false);
+  const [toolbarStacked, setToolbarStacked] = useState(false);
+  const nativeShowing = !!nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
+  usePagePointerForward(toolbarStacked && nativeShowing);
   const splitPageId = useStore((s) => s.splitPageId);
   const splitRatio = useStore(s => s.layout.splitRatio ?? .5);
   const settings = useStore((s) => s.settings);
@@ -127,6 +133,35 @@ export function App() {
   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
 
   useEffect(() => { applyUiFontSize(); }, []);
+
+  // Raise the shell over the native page before the bar animates, and lower it only after the bar has left.
+  const toolbarTicket = useRef(0);
+  useEffect(() => {
+    if (!inElectron) return;
+    const ticket = ++toolbarTicket.current;
+    const current = () => toolbarTicket.current === ticket;
+    if (toolbarReveal.covering) {
+      void bridge.toolbarOverlay(true, ticket).then(() => {
+        if (!current()) return;
+        setToolbarStacked(true);
+        setToolbarReady(true);
+      }).catch(() => {});
+      return;
+    }
+    setToolbarReady(false);
+    void bridge.toolbarOverlay(false, ticket).finally(() => {
+      if (!current()) return;
+      setToolbarStacked(false);
+      setToolbarHole(false);
+    });
+  }, [toolbarReveal.covering]);
+
+  // The page stays flush. While the address bar is away, the window buttons would sit on that page, so they leave with the bar.
+  const hideTrafficLights = inElectron && sidebar !== "expanded" && !sidebarPeek && nativeShowing && !toolbarReveal.covering;
+  useEffect(() => {
+    if (!inElectron) return;
+    void bridge.trafficLights(!hideTrafficLights).catch(() => {});
+  }, [hideTrafficLights]);
 
   // Native vibrancy and transparent renderer layers must change together.
   useEffect(() => {
@@ -218,22 +253,12 @@ export function App() {
         const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
         const companion = pages.find(page => page.pageId === splitPageId);
         const split = showPage && companion && companion.pageId !== showPage && nativePageId({mode,overlay,activePageId:companion.pageId,...companion}) ? splitPageId : null;
-        // Reserve an invisible edge target outside the native page's input surface.
-        const edge = sidebar === "expanded" ? 0 : 6;
-        let cover = 0;
-        const card = el.closest(".stage-card");
-        if (toolbarReveal.inset && card?.classList.contains("has-page")) {
-          const bar = el.closest(".main-col")?.querySelector(":scope > .toolbar");
-          const pop = bar?.querySelector(".cb-pop");
-          const bottom = (pop ?? bar)?.getBoundingClientRect().bottom;
-          if (bottom != null) cover = Math.max(0, Math.min(Math.round(r.height) - 80, Math.round(bottom - r.top)));
-        }
         const menus = [...document.querySelectorAll<HTMLElement>(".ctx-menu")].map(menu => {
           const box = menu.getBoundingClientRect();
           return { x: box.x, y: box.y, width: box.width, height: box.height };
         });
         const fitted = stageAvoiding(
-          { x: Math.round(r.x) + edge, y: Math.round(r.y) + cover, width: Math.max(1, Math.round(r.width) - edge), height: Math.max(1, Math.round(r.height) - cover) },
+          { x: Math.round(r.x), y: Math.round(r.y), width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) },
           menus,
         );
         void bridge.setStage(showPage, fitted, split, STAGE_RADIUS, splitRatio);
@@ -241,21 +266,17 @@ export function App() {
     };
     const ro = new ResizeObserver(report);
     ro.observe(el);
-    const bar = el.closest(".main-col")?.querySelector(":scope > .toolbar");
-    const popover = bar ? new MutationObserver(report) : null;
-    if (bar) popover?.observe(bar, { childList: true, subtree: true });
     report();
     const stopStageReport = onStageReport(report);
     // panels animate with transforms; re-report once they settle
     const t = window.setTimeout(report, 280);
     return () => {
       ro.disconnect();
-      popover?.disconnect();
       stopStageReport();
       cancelAnimationFrame(raf);
       window.clearTimeout(t);
     };
-  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, pages, splitPageId, splitRatio, mode, overlay, railOpen, sidebar, settings.tabLayout, toolbarReveal.inset]);
+  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, pages, splitPageId, splitRatio, mode, overlay, railOpen, settings.tabLayout]);
 
   const dispatchShortcut = (s: Shortcut) => {
     const k = s.key.toLowerCase().replace(/^arrow/, "");
@@ -380,10 +401,11 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (inElectron && toolbarReveal.covering && !toolbarHole) setToolbarHole(true);
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (
     <div
-      className={`app tabs-${settings.tabLayout ?? "vertical"} ${inElectron ? "electron" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${railOpen ? "rail-open" : ""}`}
+      className={`app tabs-${settings.tabLayout ?? "vertical"} ${inElectron ? "electron" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
       onContextMenu={(e) => {
         if (!inElectron) return;
         const el = e.target as HTMLElement;
@@ -401,7 +423,7 @@ export function App() {
       )}
       <div className="app-body">
         <Sidebar />
-        <div className={`main-col${toolbarReveal.revealed ? " toolbar-revealed" : ""}`}>
+        <div className={`main-col${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
           {settings.tabLayout === "horizontal" && <HorizontalTabs />}
           <Toolbar />
           <div className="main">
@@ -413,9 +435,9 @@ export function App() {
               {overlay === "tasks" && <Tasks />}
               {overlay === "downloads" && <Downloads />}
             </div>
-            {!bridge.privateMode && <AgentRail />}
           </div>
         </div>
+        {!bridge.privateMode && <AgentRail />}
       </div>
       {overlay === "palette" && !bridge.privateMode && <Palette />}
       {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && <Library key={overlay} initialView={overlay === "bookmarks" ? "bookmarks" : "history"} confirmClear={overlay === "clear-history"} />}

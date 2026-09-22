@@ -400,7 +400,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
                     <span className="cb-opt-title">{s.title}</span>
                     {s.detail && <span className="cb-opt-detail">{s.detail}</span>}
                   </span>
-                  {s.hint && <kbd>{s.hint}</kbd>}
+                  {s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null}
                 </div>
               </div>
             );

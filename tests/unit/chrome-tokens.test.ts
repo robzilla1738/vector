@@ -120,6 +120,13 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).toMatch(/\.app\.electron \.main-col:has\(\.stage-card\.has-page\) > \.toolbar\s*\{[^}]*background:\s*transparent/s);
     expect(styles).toContain(".main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right)");
     expect(styles).toContain(".app.electron .main-col.toolbar-revealed:has(.stage-card.has-page)");
+    expect(styles).toContain("translate3d(0, calc(-100% - 10px), 0)");
+    expect(styles).toContain("cubic-bezier(.22, 1, .36, 1)");
+    expect(styles).toContain("backdrop-filter: blur(22px) saturate(1.4)");
+    expect(styles).toContain("html:has(:is(.app.toolbar-stacked, .app.sidebar-peek)) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)");
+    expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail) .main-col:has(.stage-card.has-page) .stage-wrap > .findbar { padding-left: var(--traffic-inset); }");
+    expect(styles).toContain(".app.electron .sidebar.expanded .sb-head.electron { padding-left: var(--traffic-inset); }");
+    expect(styles).not.toContain(".sidebar.peek .sb-head.electron");
   });
 
   it("reveals the URL field and both icon groups together without moving page layout", () => {
@@ -149,5 +156,75 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).toMatch(/::highlight\(aux-conversation-matches\)\s*\{[^}]*background:\s*var\(--find-match\)/);
     expect(styles).toMatch(/\.sidebar\.peek\s*\{/s);
     expect(styles).toMatch(/\.tl-nest\s*\{/s);
+  });
+});
+
+describe("session chrome — search, preview, close, settings, attachments", () => {
+  const commandBar = readFileSync(join(here, "../../apps/desktop/renderer/src/components/CommandBar.tsx"), "utf8");
+  const conversation = readFileSync(join(here, "../../apps/desktop/renderer/src/components/Conversation.tsx"), "utf8");
+  const attachPage = readFileSync(join(here, "../../apps/desktop/renderer/src/components/AttachPage.tsx"), "utf8");
+  const images = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ConversationImages.tsx"), "utf8");
+  const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
+
+  it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
+    expect(commandBar).toContain('s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null');
+    expect(commandBar).toContain('hint: "Ask"');
+    expect(commandBar).toContain('hint: "Switch"');
+    expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
+  });
+
+  it("keeps a conversation page card live and offers Open in tab and Split view", () => {
+    expect(conversation).toContain("bridge.watchPreview(pageId)");
+    expect(conversation).toContain("bridge.onPreviewFrame");
+    expect(conversation).toContain("img.current.src = image");
+    expect(conversation).toContain(">Open in tab</span>");
+    const menu = conversation.slice(conversation.indexOf("conversation-preview-menu"));
+    expect(menu.indexOf("splitPlan &&")).toBeGreaterThanOrEqual(0);
+    expect(menu.indexOf("splitPlan &&")).toBeLessThan(menu.indexOf(">Split view</span>"));
+    expect(conversation).toContain("previewSplit(layout, pages, selectedContext.pageId, activePageId)");
+  });
+
+  it("forces tab close targets round after the shared superellipse rule", () => {
+    expect(superellipse).toBeGreaterThanOrEqual(0);
+    const round = styles.indexOf("button.tab-close, button.horizontal-tab-close, button.icon-btn.sm, button.icon-btn.xs { corner-shape: round; }");
+    const radius = styles.indexOf("button.tab-close, button.horizontal-tab-close {\n  width: 22px;\n  height: 22px;\n  border-radius: 999px;\n}");
+    expect(round).toBeGreaterThan(superellipse);
+    expect(radius).toBeGreaterThan(superellipse);
+  });
+
+  it("keeps settings navigation one quiet selected surface and groups fields into rounded cards", () => {
+    const flat = styles.indexOf('.settings-nav button:hover, .settings-nav button[aria-current] { background: var(--bg-active);');
+    const selected = styles.indexOf('.settings-nav button[aria-current="page"] { background: var(--surface-primary); color: var(--ink-0); box-shadow: none; }');
+    expect(selected).toBeGreaterThan(flat);
+    expect(selected).toBeGreaterThan(superellipse);
+    expect(styles).toContain("settings-nav button {\n  display: flex;\n  align-items: center;\n  gap: 10px;");
+    expect(styles).toContain("border-radius: 10px;\n  corner-shape: round;");
+    expect(styles).toContain(".settings-content .drawer-section + .field,\n.settings-content section > .field:first-child { border-start-start-radius: 16px; border-start-end-radius: 16px; }");
+    expect(styles).toContain(".settings-content .field:not(:has(+ .field)) { border-end-start-radius: 16px; border-end-end-radius: 16px; border-bottom-color: transparent; }");
+    expect(styles).not.toContain(".settings-content .field:first-of-type { border-radius: 14px 14px 0 0; }");
+    expect(styles).not.toContain(".settings-content .field:last-of-type { border-radius: 0 0 14px 14px; }");
+  });
+
+  it("opens attachments as one row and hides conversation options and work history", () => {
+    expect(styles).toContain(".context-body { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }");
+    expect(styles).toContain(".context-attach, .context-body .attach-page, .context-body > .conversation-captures, .context-body .capture-triggers { display:contents; }");
+    expect(styles).toContain(".context-body .conversation-capture-rest");
+    expect(styles).toContain(".capture-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; }");
+    expect(styles).not.toMatch(/capture-actions[^{]*\{[^}]*display:\s*contents/);
+    expect(conversation).toContain('className="context-body" aria-label="Add to this reply"');
+    expect(conversation).not.toContain("conversation-memory-head");
+    expect(conversation).not.toContain('aria-label="Context sections"');
+    expect(conversation).toContain('? "Adding…" : "Document"}</button>');
+    expect(attachPage).toContain(">Page</button>");
+    expect(images).toContain('className="capture-triggers"');
+    expect(images).toContain('className="conversation-capture-rest"');
+    expect(images).toContain(">Image</button>");
+    expect(images).toContain(">Capture</button>");
+    expect(conversation).toContain('aria-label={contextOpen ? "Close attachments" : "Add to this reply"}');
+    expect(styles).toContain(".conversation .composer-options, .conversation .composer-attach { display:none; }");
+    expect(styles).toContain(".conversation .run-status,\n.conversation .run-section,\n.conversation .run-msg { display: none; }");
+    const send = styles.indexOf(".conversation-input > .icon-btn { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
+    const plus = styles.indexOf(".conversation-input > .icon-btn.context-toggle { background: transparent; color: var(--ink-2); }");
+    expect(plus).toBeGreaterThan(send);
   });
 });

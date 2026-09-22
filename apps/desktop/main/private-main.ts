@@ -7,6 +7,7 @@ import { offerExternalLink } from "./external-links.js";
 import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
 import { pageShortcut } from "./page-shortcuts.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
+import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
 /**
  * Aux private browser process.
  *
@@ -33,6 +34,7 @@ import { PageFinder } from "./page-find.js";
 import { readArticle } from "./read-article.js";
 import { PrivateBookmarks } from "./private-bookmarks.js";
 import { setPageZoom } from "./page-zoom.js";
+import { startPreviewWatch } from "./preview-watch.js";
 const siteZoom = new SiteZoomPreferences();
 import { MethodSchemas } from "@vector/contracts";
 
@@ -53,6 +55,10 @@ let stageBounds: {x:number;y:number;width:number;height:number} | null = null;
 let toolbarEdge: ReturnType<typeof attachToolbarEdgeWatch> | null = null;
 let stageRadius = 0;
 let overlayOpen = false;
+let toolbarOverlay = false;
+let toolbarOverlaySeq = 0;
+let shellFill = "#1c1c1e";
+let chromeOnTop = false;
 let exitApproved = false;
 let exitPending = false;
 let preparedExit: { invalidated: boolean; cleanup: () => void } | null = null;
@@ -113,7 +119,7 @@ function applyStage(focus = false) {
     for(const page of pages.values()) {
       const shown=page.view.webContents===fullscreen;
       page.view.setVisible(shown);
-      if(shown){page.view.setBounds({x:0,y:0,width:size.width,height:size.height});page.view.setBorderRadius(0);}
+      if(shown){page.view.setBounds({x:0,y:0,width:size.width,height:size.height});page.view.setBorderRadius(0);win.contentView.addChildView(page.view);}
     }
     toolbarEdge?.sync();
     return;
@@ -136,6 +142,20 @@ function applyStage(focus = false) {
     if (page.target.viewStatus!=="crashed") page.target={...page.target,viewStatus:shown?"visible":"hidden"};
   }
   if(focus && primary)primary.view.webContents.focus();
+  if(shellView){
+    const fill=toolbarOverlay?"#00000000":"#1c1c1e";
+    if(shellFill!==fill){shellFill=fill;shellView.setBackgroundColor(fill);}
+    if(toolbarOverlay){
+      chromeOnTop=true;
+      win.contentView.addChildView(shellView);
+    }else if(chromeOnTop){
+      chromeOnTop=false;
+      for(const id of [stagePageId, splitPageId]){
+        const page=id?pages.get(id):undefined;
+        if(page?.view.getVisible())win.contentView.addChildView(page.view);
+      }
+    }
+  }
   toolbarEdge?.sync();
 }
 
@@ -157,6 +177,7 @@ function wirePage(page: PrivatePage) {
     openAsTab:(url,referrer)=>{void openPage(url,true,referrer).catch(()=>{});},
     onAudio:()=>shellView?.webContents.send("view.audio",{pageId:page.target.pageId,muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
   }));
+  wc.on("cursor-changed",(_event,type)=>{if(toolbarOverlay)shellView?.webContents.send("page-cursor",cssCursor(type));});
   wc.on("before-input-event",(event,input)=>{
     const shortcut=pageShortcut(input);
     if(!shortcut)return;
@@ -350,7 +371,50 @@ function registerIpc() {
   });
   ipcMain.handle("ui.setStage",(event,pageId:string|null,bounds:{x:number;y:number;width:number;height:number},split?:string|null,radius?:number,ratio?:number)=>{requireShell(event);stagePageId=pageId&&pages.has(pageId)?pageId:null;splitPageId=split&&pages.has(split)?split:null;stageBounds=bounds;splitRatio=normalizeSplitRatio(ratio);if(Number.isFinite(radius))stageRadius=Math.max(0,Math.min(24,Math.round(radius!)));applyStage();return true;});
   ipcMain.handle("ui.overlay",(event,open:boolean)=>{requireShell(event);overlayOpen=open;applyStage();return true;});
+  ipcMain.handle("ui.toolbarOverlay",(event,open:unknown,ticket:unknown)=>{
+    requireShell(event);
+    const seq=typeof ticket==="number"&&Number.isFinite(ticket)?ticket:0;
+    if(seq<toolbarOverlaySeq)return false;
+    toolbarOverlaySeq=seq;toolbarOverlay=open===true;applyStage();return true;
+  });
+  ipcMain.handle("ui.trafficLights",(event,visible:unknown)=>{requireShell(event);if(process.platform==="darwin"&&win)win.setWindowButtonVisibility(visible!==false);return true;});
+  ipcMain.on("ui.pagePointer",(event,value:unknown)=>{
+    if(!toolbarOverlay||overlayOpen||!win||win.isDestroyed())return;
+    try{requireShell(event as Electron.IpcMainInvokeEvent);}catch{return;}
+    const message=readPagePointer(value);if(!message)return;
+    const visible=[splitPageId,stagePageId].flatMap(id=>{
+      const page=id?pages.get(id):undefined;
+      if(!page?.view.getVisible())return [];
+      return [{page,...page.view.getBounds()}];
+    });
+    const hit=boundsContaining(message.x,message.y,visible);
+    if(!hit||hit.page.view.webContents.isDestroyed())return;
+    const input=inputEventFor(message,hit.x,hit.y);
+    if(!input)return;
+    if(message.kind==="down")hit.page.view.webContents.focus();
+    hit.page.view.webContents.sendInputEvent(input);
+  });
   ipcMain.handle("ui.focusShell",event=>{requireShell(event);shellView?.webContents.focus();});
+  let previewWatch:{pageId:string;stop:()=>void}|null=null;
+  const clearPreviewWatch=()=>{previewWatch?.stop();previewWatch=null;};
+  ipcMain.handle("ui.watchPreview",async(event,pageId:unknown)=>{
+    requireShell(event);
+    if(typeof pageId!=="string")return false;
+    if(previewWatch?.pageId===pageId)return true;
+    clearPreviewWatch();
+    const page=pages.get(pageId);
+    if(!page||page.view.webContents.isDestroyed())return false;
+    const sender=event.sender;
+    const stop=startPreviewWatch({
+      pageId,
+      capture:()=>page.view.webContents.capturePage(),
+      send:frame=>{if(!sender.isDestroyed())sender.send("preview-frame",frame);},
+      stopped:()=>sender.isDestroyed()||page.view.webContents.isDestroyed(),
+    });
+    previewWatch={pageId,stop};
+    return true;
+  });
+  ipcMain.handle("ui.unwatchPreview",(event,pageId:unknown)=>{requireShell(event);if(!previewWatch||typeof pageId!=="string"||previewWatch.pageId===pageId)clearPreviewWatch();return true;});
   ipcMain.handle("ui.preview",async(event,pageId:string)=>{requireShell(event);const page=pages.get(pageId);if(!page)return null;try{return (await page.view.webContents.capturePage()).resize({width:240}).toDataURL();}catch{return null;}});
   ipcMain.handle("ui.tabAudio",event=>{requireShell(event);return Object.fromEntries([...pages].map(([id,page])=>[id,{muted:page.view.webContents.isAudioMuted(),audible:page.view.webContents.isCurrentlyAudible()}]));});
   ipcMain.handle("ui.setTabMuted",(event,pageId:string,muted:boolean)=>{requireShell(event);const page=pages.get(pageId);if(!page)throw new Error("Private tab not found");page.view.webContents.setAudioMuted(muted);shellView?.webContents.send("view.audio",{pageId,muted,audible:page.view.webContents.isCurrentlyAudible()});});

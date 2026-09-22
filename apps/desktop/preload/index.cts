@@ -51,6 +51,11 @@ const vector = {
     ipcRenderer.on("toolbar-edge", listener);
     return () => ipcRenderer.removeListener("toolbar-edge", listener);
   },
+  onSidebarEdge: (cb: (near: boolean) => void) => {
+    const listener = (_event: unknown, near: boolean) => cb(near);
+    ipcRenderer.on("sidebar-edge", listener);
+    return () => ipcRenderer.removeListener("sidebar-edge", listener);
+  },
   onDownload: (cb: (d: unknown) => void) => {
     const l = (_e: unknown, d: unknown) => cb(d);
     ipcRenderer.on("download", l);
@@ -75,10 +80,25 @@ const vector = {
     ipcRenderer.invoke("ui.setStage", pageId, bounds, split, radius, ratio),
   /** hide native pages while a DOM overlay (palette/menus/overview) is up */
   overlay: (open: boolean) => ipcRenderer.invoke("ui.overlay", open),
+  toolbarOverlay: (open: boolean, ticket: number) => ipcRenderer.invoke("ui.toolbarOverlay", open, ticket) as Promise<boolean>,
+  trafficLights: (visible: boolean) => ipcRenderer.invoke("ui.trafficLights", visible) as Promise<boolean>,
+  forwardPagePointer: (message: unknown) => { ipcRenderer.send("ui.pagePointer", message); },
+  onPageCursor: (cb: (cursor: string) => void) => {
+    const listener = (_event: unknown, cursor: string) => cb(cursor);
+    ipcRenderer.on("page-cursor", listener);
+    return () => ipcRenderer.removeListener("page-cursor", listener);
+  },
   sidebarPeek: (open: boolean) => ipcRenderer.invoke("ui.sidebarPeek", open),
   focusShell: () => ipcRenderer.invoke("ui.focusShell") as Promise<void>,
   /** thumbnail data-url for a native page */
   preview: (pageId: string) => ipcRenderer.invoke("ui.preview", pageId) as Promise<string | null>,
+  watchPreview: (pageId: string) => ipcRenderer.invoke("ui.watchPreview", pageId) as Promise<boolean>,
+  unwatchPreview: (pageId: string) => ipcRenderer.invoke("ui.unwatchPreview", pageId) as Promise<boolean>,
+  onPreviewFrame: (cb: (frame: { pageId: string; image: string }) => void) => {
+    const listener = (_event: unknown, frame: { pageId: string; image: string }) => cb(frame);
+    ipcRenderer.on("preview-frame", listener);
+    return () => ipcRenderer.removeListener("preview-frame", listener);
+  },
   contextMenu: (pageId: string | null) => ipcRenderer.invoke("ui.contextMenu", pageId),
   openExternal: (url: string) => ipcRenderer.invoke("ui.openExternal", url),
   registerCloudPreview:(url:string,token:string)=>ipcRenderer.invoke('ui.registerCloudPreview',url,token) as Promise<boolean>,

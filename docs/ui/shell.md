@@ -36,22 +36,22 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | `App.tsx` | Frame, shortcut dispatch (renderer + main-process shortcuts), stage-rect reporting to the native view, `narrow` media query |
 | `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode with floating edge peek, tab/folder context menus. A web tab dropped on Bookmarks is saved |
 | `components/Toolbar.tsx` | On a loaded page the row is out of the layout until the pointer reaches the top or the field is focused. Back/forward/reload, `CommandBar`, the controller chip, overview, bookmark and the rail toggle reveal together. Touch keeps the row in the layout. ⌘L still focuses it |
-| `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again) |
+| `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again). The primary suggestion's enter mark is the same circular accent up-arrow as the composer send control. Other hints stay text keys |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
 | `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `EngineView` (`pages.capture`) for engine pages; `MockPage` in mock mode |
 | `components/EngineBadge.tsx`, `engine.ts` | Chromium / Your Chrome / Vector Engine badge with hover card (route reason, route ms, first paint) |
 | `components/AgentRail.tsx` | Rail chrome, home view (live, sets, searchable past runs — virtualized at 30+), composer, `ResizeHandle` |
 | `components/RunPanel.tsx` | Goal, status/elapsed/model calls/cost, page chip, takeover banner + Return control, needs-input prompt, final answer with copy, `StepTimeline`, `ObservationPanel` |
-| `components/Conversation.tsx` | Chat transcript and composer. A web-tab context shows that page's preview beside the messages as soon as the chat opens. The globe hides it. The preview is a sibling of the message column and hides when the chat column is under 900px |
+| `components/Conversation.tsx` | Chat transcript and composer. A web-tab context shows a live preview of that page beside the messages as soon as the chat opens. The globe hides it. The preview is a sibling of the message column and hides when the chat column is under 900px. Clicking it offers Open in tab, and Split view only when `previewSplit` can pair the page with the current tab or another tab in the same Space. The composer plus opens one attachment row — Document, Page, Image, Capture — not a history or memory switcher. A finished turn hides options and work history |
 | `components/StepTimeline.tsx` | Steps with outcome, duration, detail, inspect-observation affordance |
 | `components/ObservationPanel.tsx` | Compact observation: title/url/viewport, headings, refs, raw text |
 | `components/SetPanel.tsx` | Set status, per-member segmented bar, member grid, failed list, Results |
 | `components/Palette.tsx` | ⌘K: intent routing, tab switch, agent/window/spaces/sets/chrome/bookmarks commands, two-level pickers (split view, borrow a Chrome tab) |
 | `components/StartPage.tsx` | Aux arch mark, Search/Ask field, recent chats and routines |
 | `components/VirtualList.tsx` | Fixed-row-height windowed list used by the tab list and past runs |
-| `components/Overview.tsx`, `ResultsTable.tsx`, `History.tsx`, `Settings.tsx`, `Inspector.tsx`, `FindBar.tsx`, `Downloads.tsx` | Secondary surfaces restyled on the tokens |
+| `components/Overview.tsx`, `ResultsTable.tsx`, `History.tsx`, `Settings.tsx`, `Inspector.tsx`, `FindBar.tsx`, `Downloads.tsx` | Secondary surfaces restyled on the tokens. Settings navigation is a quiet column with one selected row; preference fields group into rounded cards |
 | `favicon.ts` | Favicon candidate chain (page icon → DuckDuckGo → Google s2) + host letter |
-| `workspace.ts` | Spaces / pins (cap 5) / folders / tab order (persisted in localStorage), `hostOf` |
+| `workspace.ts` | Spaces / pins (cap 5) / folders / tab order (persisted in localStorage), `hostOf`, `previewSplit` |
 | `store.ts` | zustand workspace: runtime snapshot + events, UI state (mode, overlay, sidebar mode, rail view, widths, `narrow`) |
 | `mock/bridge.ts`, `mock/fixtures.ts` | Scripted bridge for browser-only development and screenshots |
 
@@ -104,6 +104,7 @@ property defined once in `tokens.css`. Components never introduce literals.
   Folders and sidebar toggles share the same icon family.
 - **Spacing** — 4 px grid, `--space-0 … --space-9` (2 → 56 px).
 - **Radii** — shared reference tokens, 0.5px hairlines and 1.4 squircle factor.
+  Tab close targets and the suggestion send mark stay circular; the shared squircle does not flatten them.
 - **Shell metrics** — `--toolbar-h 40`, fully closed sidebar width 0;
   both panels are user-resizable and their widths persist in
   localStorage `vector.sb-w` / `vector.rail-w`. Controls are 28/32px;
@@ -195,9 +196,11 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
   geometry, bookmark drop, stage clearance beside a menu, and the separate
   preview and agent-stage holds (`tests/unit/toolbar-edge.test.ts`,
   `bookmark-drop.test.ts`, `stage-obstruction.test.ts`,
-  `offscreen-holds.test.ts`).
+  `offscreen-holds.test.ts`, `page-pointer.test.ts`).
 - `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
-  (native material layering, row-filling pins, coordinated toolbar reveal).
+  (native material layering, row-filling pins, coordinated toolbar reveal,
+  the suggestion send mark, round tab-close targets, settings groups, and
+  the one-row attachment composer). `workspace.test.ts` covers `previewSplit`.
 
 ## Runtime contract dependencies
 

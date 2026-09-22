@@ -26,7 +26,7 @@ export function AttachPage({ pages, disabled, remaining, onAttach }: { pages: Pa
     finally { pending.current = false; setBusy(false); }
   }
   return <div className="attach-page">
-    <button ref={trigger} className="btn sm ghost" aria-expanded={open} disabled={disabled || busy} onClick={() => { setOpen(value => !value); setError(""); }}>Attach text from open tabs</button>
+    <button ref={trigger} className="btn sm" aria-expanded={open} disabled={disabled || busy} onClick={() => { setOpen(value => !value); setError(""); }}>Page</button>
     {open && <div className="attach-page-picker" onKeyDown={event => {
       if (event.key === "Escape" && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); if (!busy) close(); }
     }}>

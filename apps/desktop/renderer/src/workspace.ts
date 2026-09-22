@@ -359,6 +359,18 @@ export function canSplitPage(page: PageTarget | undefined): boolean {
   return !!page && isTab(page) && !!nativePageId({mode:"focus",overlay:null,activePageId:page.pageId,...page});
 }
 
+/** Pair a preview with the current tab, or with another tab in the same Space. */
+export function previewSplit(layout: Layout, pages: PageTarget[], pageId: string, activePageId: string | null): { primary: string; companion: string } | null {
+  const target = pages.find(page => page.pageId === pageId);
+  if (!canSplitPage(target)) return null;
+  const spaceId = layout.tabSpace[pageId];
+  const partner = (page: PageTarget | undefined) => !!page && page.pageId !== pageId && canSplitPage(page) && layout.tabSpace[page.pageId] === spaceId;
+  const active = pages.find(page => page.pageId === activePageId);
+  if (active && partner(active)) return { primary: active.pageId, companion: pageId };
+  const other = pages.find(page => partner(page));
+  return other ? { primary: pageId, companion: other.pageId } : null;
+}
+
 /** A saved split never borrows a tab from another Space or a worker. */
 export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string | null): string | null {
   if (!pageId) return null;
