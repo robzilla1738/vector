@@ -1,5 +1,5 @@
 import { SplitDivider } from "./SplitDivider";
-import { nativePageId } from "../chrome";
+import { isScrimOverlay, nativePageId } from "../chrome";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
 import { forwardRef, useRef, useState } from "react";
@@ -58,9 +58,11 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
 
   const splitVisible = mode === "focus" && page && companion && companion.pageId !== page.pageId
     && [page, companion].every(item => nativePageId({mode,overlay,activePageId:item.pageId,...item}));
+  // A scrim replaces the page. A floating toolbar would lay that surface under the window buttons.
+  const showingPage = mode === "focus" && !isScrimOverlay(overlay) && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError;
 
   return (
-    <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
+    <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
       <div className="stage-progress" role="progressbar" aria-hidden={!loading} aria-valuetext={loading ? "Loading" : "Idle"} />
       <div id="stage" ref={ref}>
         {mode === "focus" && page?.backend === "chrome" && page.viewStatus !== "crashed" && !page.navigationError && (

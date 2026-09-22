@@ -1,5 +1,5 @@
 import { screen, type BaseWindow, type WebContents } from "electron";
-import { toolbarEdgeFromCursor } from "./toolbar-edge.js";
+import { cursorAtWindowLeft, toolbarEdgeFromCursor } from "./toolbar-edge.js";
 
 export interface ToolbarEdgeSample {
   page: boolean;
@@ -9,26 +9,36 @@ export interface ToolbarEdgeSample {
 /** Tell the shell when the pointer is at the top of a loaded page. The page view sits above the shell, so the shell never sees that hover itself. */
 export function attachToolbarEdgeWatch(win: BaseWindow, shell: WebContents, read: () => ToolbarEdgeSample) {
   let open = false;
+  let atLeft = false;
   let timer: ReturnType<typeof setInterval> | null = null;
   const send = (next: boolean) => {
     if (next === open) return;
     open = next;
     if (!shell.isDestroyed()) shell.send("toolbar-edge", next);
   };
+  const sendLeft = (next: boolean) => {
+    if (next === atLeft) return;
+    atLeft = next;
+    if (!shell.isDestroyed()) shell.send("sidebar-edge", next);
+  };
   const tick = () => {
     if (win.isDestroyed()) return stop();
     const { page, stage } = read();
     if (!page || !stage || !win.isFocused()) {
       send(false);
+      sendLeft(false);
       return;
     }
     const cursor = screen.getCursorScreenPoint();
-    send(toolbarEdgeFromCursor(cursor, win.getContentBounds(), stage, open));
+    const content = win.getContentBounds();
+    send(toolbarEdgeFromCursor(cursor, content, stage, open));
+    sendLeft(cursorAtWindowLeft(cursor, content));
   };
   const stop = () => {
     if (timer) clearInterval(timer);
     timer = null;
     send(false);
+    sendLeft(false);
   };
   const sync = () => {
     if (win.isDestroyed()) return stop();
@@ -40,7 +50,7 @@ export function attachToolbarEdgeWatch(win: BaseWindow, shell: WebContents, read
     stop();
   };
   win.on("focus", tick);
-  win.on("blur", () => send(false));
+  win.on("blur", () => { send(false); sendLeft(false); });
   win.on("closed", stop);
   return { sync, stop };
 }

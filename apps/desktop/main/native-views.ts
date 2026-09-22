@@ -28,6 +28,7 @@ export interface ViewHooks {
   openAsTab(url: string, options?: { windowId?: string; background?: boolean; referrer?: Electron.Referrer }): void;
   /** app-level shortcuts pressed while a page view is focused */
   sendShortcut(s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }, pageId: string): void;
+  onCursor?(pageId: string, cursor: string): void;
 }
 
 const ENGINE_PAINT_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
@@ -155,6 +156,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   });
   wc.on("unresponsive",()=>hooks.onUnresponsive?.(id));
   wc.on("destroyed", () => hooks.onDestroyed(id));
+  wc.on("cursor-changed", (_event, type) => hooks.onCursor?.(id, type));
   wc.on("input-event", (_e, input) => {
     // a human typing/clicking in an agent-driven page takes control of it
     if (input.type === "keyDown" || input.type === "mouseDown") hooks.onTakeover(id);

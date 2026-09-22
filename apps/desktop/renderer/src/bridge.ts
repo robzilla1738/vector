@@ -50,6 +50,8 @@ export interface VectorBridge {
   onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => void): () => void;
   /** Pointer is at the top of a loaded native page, where the shell cannot see the hover. */
   onToolbarEdge(cb: (near: boolean) => void): () => void;
+  /** Pointer is on the left edge of a loaded page, where a hidden sidebar can open. */
+  onSidebarEdge(cb: (near: boolean) => void): () => void;
   onDownload(cb: (d: unknown) => void): () => void;
   retryDownload(id:string):Promise<void>;
   tabAudio():Promise<Record<string,{muted:boolean;audible:boolean}>>;
@@ -63,9 +65,19 @@ export interface VectorBridge {
   /** position the visible native page; `radius` rounds the view to match the stage card */
   setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number, ratio?: number): Promise<boolean>;
   overlay(open: boolean): Promise<boolean>;
+  /** Keep the shell painted above the native page so the address bar can slide over it. `ticket` drops stale replies. */
+  toolbarOverlay(open: boolean, ticket: number): Promise<boolean>;
+  /** macOS window buttons. Hidden only while a flush page would draw through them. */
+  trafficLights(visible: boolean): Promise<boolean>;
+  forwardPagePointer(message: unknown): void;
+  onPageCursor(cb: (cursor: string) => void): () => void;
   sidebarPeek(open: boolean): Promise<boolean>;
   focusShell(): Promise<void>;
   preview(pageId: string): Promise<string | null>;
+  /** Keep a hidden page laid out and stream JPEG frames until unwatch. */
+  watchPreview(pageId: string): Promise<boolean>;
+  unwatchPreview(pageId: string): Promise<boolean>;
+  onPreviewFrame(cb: (frame: { pageId: string; image: string }) => void): () => void;
   contextMenu(pageId: string | null): Promise<boolean>;
   openExternal(url: string): Promise<unknown>;
   registerCloudPreview(url:string,token:string):Promise<boolean>;
@@ -162,6 +174,7 @@ const stub: VectorBridge = {
   onRuntimeStatus: noop,
   onShortcut: noop,
   onToolbarEdge: noop,
+  onSidebarEdge: noop,
   onPageAction: noop,
   onDownload: noop,
   onLoading: noop,
@@ -175,9 +188,16 @@ const stub: VectorBridge = {
   controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
   setStage: async () => true,
   overlay: async () => true,
+  toolbarOverlay: async () => true,
+  trafficLights: async () => true,
+  forwardPagePointer: () => {},
+  onPageCursor: noop,
   sidebarPeek: async () => true,
   focusShell: async () => {},
   preview: async () => null,
+  watchPreview: async () => false,
+  unwatchPreview: async () => true,
+  onPreviewFrame: noop,
   contextMenu: async () => true,
   openExternal: async (url) => window.open(url, "_blank"),
   registerCloudPreview:async()=>{throw new Error('Protected cloud previews require Aux desktop');},

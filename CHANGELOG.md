@@ -3,6 +3,16 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Desktop chrome (PR #16)
+
+The search suggestion's primary enter mark is the same circular accent
+up-arrow as the composer send control. Other suggestion hints stay text
+keys. A conversation page card streams that page and offers Open in tab.
+Split view appears only when the page can pair with the current tab or
+another tab in the same Space. Tab close hovers stay round. Settings uses
+one selected navigation row and grouped fields. The composer plus opens a
+single attachment row: Document, Page, Image, and Capture.
+
 ## Agent navigation and the loaded-page shell (PR #15)
 
 Chromium `navigate`, `back`, `forward`, and `reload` return at

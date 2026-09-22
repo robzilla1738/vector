@@ -203,14 +203,13 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
     } finally { if(version===observationRequest.current)setObsLoading(false); }
   };
 
-  const quietConversation = conversation && !live && run.status === "completed" && !run.failure;
   return (
     <div className="run-panel" data-testid="run-panel">
       <div className="run-goal">
         <h2>{run.goal}</h2>
       </div>
 
-      {!quietConversation && <div className="run-status nums">
+      {!conversation && <div className="run-status nums">
         {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {!conversation && <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>}
         {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
@@ -256,7 +255,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </div>
       )}
 
-      {live && run.statusMessage && !asksMe && <p className="run-msg">{run.statusMessage}</p>}
+      {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
       {asksMe && question && (
         <div className="needs-input" role="group" aria-label="The agent needs your answer">
@@ -318,7 +317,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </section>
       )}
 
-      {(!conversation || live || !!steps?.length || !!obs) && <section className="run-section">
+      {!conversation && <section className="run-section">
         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{I.right}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>

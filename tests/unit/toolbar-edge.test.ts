@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pagePointerKeepsToolbar, toolbarEdgeFromCursor } from "../../apps/desktop/main/toolbar-edge";
+import { cursorAtWindowLeft, pagePointerKeepsToolbar, toolbarEdgeFromCursor } from "../../apps/desktop/main/toolbar-edge";
 
 const stage = { x: 280, y: 0, width: 1000, height: 800 };
 const content = { x: 100, y: 40 };
@@ -12,6 +12,13 @@ describe("toolbar edge", () => {
     expect(pagePointerKeepsToolbar(-20, true)).toBe(true);
     expect(pagePointerKeepsToolbar(40, true)).toBe(true);
     expect(pagePointerKeepsToolbar(90, true)).toBe(false);
+  });
+
+  it("opens the hidden sidebar only from the window's left edge", () => {
+    const content = { x: 100, y: 40, width: 1200, height: 800 };
+    expect(cursorAtWindowLeft({ x: 104, y: 200 }, content)).toBe(true);
+    expect(cursorAtWindowLeft({ x: 130, y: 200 }, content)).toBe(false);
+    expect(cursorAtWindowLeft({ x: 104, y: 900 }, content)).toBe(false);
   });
 
   it("ignores the pointer when it is over the sidebar", () => {

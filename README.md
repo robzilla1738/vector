@@ -166,8 +166,11 @@ panel. See the [parity audit](docs/ASIDE-PARITY.md) for remaining verification.
   reaches the top or the field is focused. A URL or search navigates
   immediately (no model); a prompt starts an agent run. Prefixes: `/`
   command, `>` force a run, `?` force a search.
-- A conversation with a web tab shows that page beside the messages. Drop a
-  web tab on Bookmarks to save it. A tab menu leaves the loaded page visible.
+- A conversation with a web tab shows a live preview of that page beside the
+  messages. Click it to open the page in the tab, or in split view when
+  another tab in the Space can share the stage. The composer plus adds a
+  document, page, image, or capture on one row. Drop a web tab on Bookmarks
+  to save it. A tab menu leaves the loaded page visible.
 - `⌘K` command palette · `⌘⇧A` agent rail · `⌘⇧O` tab overview ·
   `⌘S` collapse the sidebar · `⌘F` find · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom ·
   `⌘[`/`⌘]` back/forward · `⌘Y` history · `⌘⇧J` downloads · `⌘,` settings

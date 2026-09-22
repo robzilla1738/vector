@@ -403,6 +403,11 @@ export function Sidebar() {
     return () => { void bridge.sidebarPeek(false).catch(errToast); };
   }, [sidebar, sidebarPeek]);
   useEffect(() => () => { if (peekClose.current) clearTimeout(peekClose.current); }, []);
+  useEffect(() => bridge.onSidebarEdge(near => {
+    if (sidebar === "expanded") return;
+    if (near) keepPeek();
+    else dismissPeek();
+  }), [sidebar]);
   useEffect(() => {
     if (!sidebarPeek) return;
     const dismiss = (event: KeyboardEvent) => {
