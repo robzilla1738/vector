@@ -44,12 +44,13 @@ PR 13 remains an earlier handoff-only draft and is superseded.
   replacement tab.
 - Mid-program engine `capability_unsupported` after a completed write does not migrate
   or replay remaining writes. The origin is recorded so the next open uses Chromium.
-- In flight on top of main (PRs 17–20): green-main repair (renderer gate drift,
+- Landed on main (PRs 17–21): green-main repair (renderer gate drift,
   conversation run-panel controls), oxlint in CI with a warnings ratchet,
   tracker/ad blocking + scoped HTTPS bypass + Chromium-family bookmark import,
-  portable `aux-routine@1` routine export/import, and an offline `--validate`
-  self-check for the task benchmark harness. The CEF host probe is resolved —
-  the shell stays Electron; macOS probe results are platform-independent.
+  portable `aux-routine@1` routine export/import, an offline `--validate`
+  self-check for the task benchmark harness, and this batch's docs updates.
+  The CEF host probe is resolved — the shell stays Electron; macOS probe
+  results are platform-independent (`experiments/cef-shell/README.md`).
 
 ### Current design: Aside parity with Aux branding
 
@@ -101,6 +102,56 @@ AUX_LOAD_DOTENV=0 AUX_ENGINE=0 AUX_DATA_DIR=/tmp/aux-review AUX_PROFILE_DIR=/tmp
 
 Mock `?scenario=results` is not native permission, account, file, voice, or cloud
 success. Node engines want `>=22.18.0`; a 22.14 warning does not fail tests.
+
+## Remaining work that does not need the founder Mac
+
+Ordered. Each is a normal engineering task, not an acceptance gate.
+
+### R1 — `AI_GATEWAY_API_KEY` for real benchmark runs
+
+The task benchmark (`tests/benchmarks/tasks/run.mjs`) ships manifest, scorer,
+fixtures and an offline `--validate` self-check wired into `runtime.yml`. Real
+runs need a provisioned `AI_GATEWAY_API_KEY` (org secret) and a paid model
+budget. First action when the key exists: run the internal suite per planner
+config, record numbers in `docs/BENCHMARKS.md`, then add Mind2Web /
+WebVoyager-style public tasks.
+
+### R2 — Planner quality spend (needs R1)
+
+Model routing (cheap planner, `AUX_RECOVERY_MODEL` recovery), self-healing
+refs, bounded replans, vision fallback, verifier quality — driven by the
+benchmark numbers, not by feel. Includes the deep-research mode: sets already
+fan out parallel members with a Results table, so a research preset is mostly
+a planner + synthesis task, not new plumbing.
+
+### R3 — Widevine / DRM license
+
+Chromium builds lack Widevine CDM; Netflix/Hulu/Spotify-grade playback needs a
+licensed CDM (Google Cast licensing program or Electron's shipped binary
+caveat). Track whether the license is attainable before promising DRM
+playback.
+
+### R4 — Deferred daily-driver parity (Electron-capped)
+
+Deliberately not in the parity PR: password-store and history import, Safari
+bookmark import, cosmetic ad filtering (network block exists; element hiding
+needs a different layer), Google Safe-Browsing API integration, Chromium
+translate, autofill/form-fill profiles. Each is small but needs its own
+design pass; some (translate, autofill) are Electron-capped or need
+third-party service terms.
+
+### R5 — Warn-level lint debt (~400 findings)
+
+`pnpm lint` enforces a `--max-warnings=400` ratchet. Largest classes:
+jsx-a11y `prefer-tag-over-role` (~145), react-hooks `exhaustive-deps` (~43),
+`set-state-in-effect` (~52), refs-in-render (~29), a handful of vitest
+`valid-expect` false positives. Pay down by class; do not raise the cap.
+
+### R6 — Distribution plumbing beyond B7
+
+Auto-update channel (Squirrel/electron-updater or hosted delta), crash
+reporting pipeline, and release-artifact provenance. The CI release jobs
+already produce downloadable artifacts; they are unsigned and unupdated.
 
 ## Remaining work that requires the founder Mac
 
