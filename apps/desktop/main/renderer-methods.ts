@@ -24,6 +24,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "chrome.attach",
   "chrome.detach",
   "chrome.importCookies",
+  "chrome.importBookmarks",
   "chrome.tabs",
   "cloud.cleanupOrphan",
   "cloud.commands",

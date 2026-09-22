@@ -132,6 +132,7 @@ export function Settings() {
   const [health,setHealth]=useState<BrowserHealthSummary>(()=>emptyBrowserHealthSummary());
   const [healthBusy,setHealthBusy]=useState(false);
   const [cookieImport, setCookieImport] = useState<{ busy: boolean; result?: CookieImportResult; error?: string }>({ busy: false });
+  const [bookmarkImport, setBookmarkImport] = useState<{ busy: boolean; result?: { ok: boolean; imported: number; skipped: number; profiles: string[]; detail: string }; error?: string }>({ busy: false });
   const [githubToken,setGithubToken]=useState('');
   const [githubBusy,setGithubBusy]=useState(false);
   const [githubError,setGithubError]=useState('');
@@ -533,6 +534,25 @@ export function Settings() {
             </button>
             {cookieImport.result && <span className="hint ok">{cookieImport.result.imported} imported · {cookieImport.result.domains} domains</span>}
             {cookieImport.error && <span className="hint err">{cookieImport.error}</span>}
+          </div>
+        </Field>
+
+        <Field label="Import Chrome bookmarks" hint={bookmarkImport.result?.detail ? `Bookmarks imported · ${bookmarkImport.result.detail}` : "Import bookmarks and folders from Chrome, Chromium or Edge. Existing Aux bookmarks are kept; duplicates are skipped."}>
+          <div className="row">
+            <button
+              className="btn sm"
+              disabled={bookmarkImport.busy}
+              onClick={() => {
+                setBookmarkImport({ busy: true });
+                void call<{ ok: boolean; imported: number; skipped: number; profiles: string[]; detail: string }>("chrome.importBookmarks", {})
+                  .then((r) => setBookmarkImport({ busy: false, result: r }))
+                  .catch((e) => setBookmarkImport({ busy: false, error: e instanceof Error ? e.message : String(e) }));
+              }}
+            >
+              {bookmarkImport.busy ? "Importing…" : "Import bookmarks"}
+            </button>
+            {bookmarkImport.result && <span className="hint ok">{bookmarkImport.result.imported} imported{bookmarkImport.result.skipped ? ` · ${bookmarkImport.result.skipped} duplicates skipped` : ""}</span>}
+            {bookmarkImport.error && <span className="hint err">{bookmarkImport.error}</span>}
           </div>
         </Field>
 
