@@ -120,6 +120,10 @@ and `docs/engine/evidence/held-out-latest.json`.
 | act + observe (`returnObservation`) | 11.9 ms | 2.0 ms |
 | full observation size | 9,580 bytes | 5,917 bytes |
 
+The Chromium column is the 2026-09-16 paired run. A later chrome-only run,
+after navigation returned at DOMContentLoaded, is recorded separately in
+`docs/BENCHMARKS.md` (observe 15.5 ms p50, navigate+observe 13.2 ms p50, n=5).
+
 Engine-side numbers for the static corpus (`cargo run --release -p perf --
 --gate m1`) are in `docs/engine/architecture.md` → Status. Official
 Speedometer 3.0 / JetStream / MotionMark GPU: `cargo run --release -p
@@ -158,9 +162,12 @@ panel. See the [parity audit](docs/ASIDE-PARITY.md) for remaining verification.
 
 - `⌘T` new tab · `⌘W` close · `⌘⇧T` reopen · `⌘1–9` switch · `⌃Tab` cycle
 - `⌘L` / `⌘E` focus the **command bar** (new-tab hero or top toolbar).
-  The top URL field and its icons reveal together on hover/focus; a URL or search navigates
+  On a loaded page the address row stays out of the layout until the pointer
+  reaches the top or the field is focused. A URL or search navigates
   immediately (no model); a prompt starts an agent run. Prefixes: `/`
   command, `>` force a run, `?` force a search.
+- A conversation with a web tab shows that page beside the messages. Drop a
+  web tab on Bookmarks to save it. A tab menu leaves the loaded page visible.
 - `⌘K` command palette · `⌘⇧A` agent rail · `⌘⇧O` tab overview ·
   `⌘S` collapse the sidebar · `⌘F` find · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom ·
   `⌘[`/`⌘]` back/forward · `⌘Y` history · `⌘⇧J` downloads · `⌘,` settings

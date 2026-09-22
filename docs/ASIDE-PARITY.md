@@ -17,9 +17,10 @@ starts collapsed in conversation mode, including while a response is running;
 Pause, Stop, approval requests and errors remain available. AI SDK is already
 7.0.93; this pass preserves the existing streaming runtime.
 
-Browser checks cover opening/cancelling the optional form and coordinated toolbar
-focus reveal (all three control groups at opacity 1, unchanged 40px toolbar).
-Native pointer-only hover and full Aside chat fidelity remain unverified.
+Browser checks cover opening and cancelling the optional form, and revealing
+the toolbar from focus. On a loaded page the toolbar is out of the layout
+until the pointer reaches the top or the field is focused. Full Aside chat
+fidelity remains unverified.
 
 ### Branding and final chat cleanup
 
@@ -135,9 +136,9 @@ classification. Aux-specific status/diff/find colors are not asserted exact.
 | Surface | Implemented / checked | Still required |
 | --- | --- | --- |
 | New tab | Reference-derived geometry, Search/Ask, three real previews; native screenshots inspected | Same-size light/dark pair and responsive captures |
-| Browsing | Persistent compact toolbar; transparent sidebar/main separation | Same-size native content comparison |
+| Browsing | Loaded page sits flush; the toolbar floats in from the top edge. Sidebar and main stay separated | Same-size native content comparison |
 | New chat | Quiet Aux mark; composer and real actions | Native reference capture after model menu is dismissed |
-| Conversation | Existing durable answers and safety controls retained | Matched populated conversation, long content and streaming states |
+| Conversation | Durable answers, safety controls, and a web-tab preview beside the messages | Matched populated conversation, long content and streaming states |
 | Chat history | Square preview grid/list and compact toolbar; list toggle and menu Escape verified in mock browser | Native pair |
 | Tasks/routines | Searchable index, separate edit state and existing schedule capabilities | Matched native index, editor and empty/error states |
 | Menus/popovers | Glass tokens, motion, keyboard dismissal | Native reference states, placement, focus return and exit motion |
@@ -175,8 +176,10 @@ The dark/light/saturated background matrix remains outstanding.
 - Aux name and mark replace Aside identity. Central Icons replace the reference
   glyph family at the user's explicit request, preserving supplied SVG geometry.
 - The user requested an auto-hiding URL field and its surrounding toolbar icons.
-  They share a 180ms reveal, remain accessible to keyboard focus, and preserve
-  the page's position. This deliberately differs from Aside's persistent toolbar.
+  On a loaded page they leave the layout, so the page sits flush, and they
+  float back in together on a 180ms reveal when the pointer reaches the top
+  or the field is focused. Keyboard focus still opens the row. Aside keeps
+  its toolbar on screen.
 - Geist Mono is packaged; the reference names Berkeley Mono first, but no usable
   Berkeley font asset was found in the supplied bundle.
 - Aux spaces, tasks, permissions, local dictation review and agent controls remain

@@ -138,7 +138,12 @@ Agents send **typed programs** — batched `navigate/click/fill/select/wait/
 extract/keyboard/…` steps — not per-keystroke instructions. The executor runs
 them transactionally-ish: each step verifies the epoch, resolves the ref to a
 locator, acts, and records a `StepResult` with timing. Extraction steps return
-structured fields.
+structured fields. On Chromium, `navigate`, `back`, `forward`, and `reload`
+return at DOMContentLoaded. An explicit `waitFor { kind: "settled" }` still
+waits for a quiet page. The engine still settles after its own steps. A
+`javascript:` or `vbscript:` navigation is page script: the runtime requires
+`allowEval`, and the engine requires `allowEvaluate`. A run already marked
+`cancelled` stays cancelled.
 
 `runs.start` drives the agent loop: observe → plan (AI Gateway, structured
 output) → execute batch → verify → repeat, with human-takeover and pause/
@@ -172,6 +177,7 @@ in active states are marked `interrupted` (`runtime.describe` reports
 `checkpointResume: false`); persisted pages whose native surface is gone
 come back `detached`. The only resume primitive is program-level:
 `checkpoint` nodes plus `resumeFrom` (`programCheckpoints: true`).
+A schema-upgrade snapshot deletes `setting:gatewayApiKey` after the copy.
 
 An unhandled rejection in the runtime fails the active runs with the fault
 as their error and keeps serving; an uncaught exception fails them, flushes,

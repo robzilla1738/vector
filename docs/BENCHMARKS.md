@@ -2,6 +2,8 @@
 
 Every published performance number has a row here. Numbers without a table row are not claims.
 
+The 1.3–3.8 ms rows are the paired engine profile in the README (`pnpm bench --backend both`, 2026-09-16). The 15.5 ms and 13.2 ms rows are a later chrome-only run of the same records fixture, after Chromium navigation returned at DOMContentLoaded.
+
 | Metric | Value | Profile | n | Source |
 |---|---|---|---|---|
 | `pages.observe` compact (records fixture) | 1.3 ms p50 | production-labelled agent path | 5 | `pnpm bench --backend both` / README |

@@ -3,6 +3,26 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Agent navigation and the loaded-page shell (PR #15)
+
+Chromium `navigate`, `back`, `forward`, and `reload` return at
+DOMContentLoaded. An explicit `waitFor { kind: "settled" }` still waits for
+a quiet page. The engine's own `settle()` budgets are unchanged.
+`docs/BENCHMARKS.md` records the chrome-only records-fixture run from
+2026-09-21 (observe 15.5 ms p50, navigate+observe 13.2 ms p50, n=5).
+
+A conversation preview and an agent stage lease are separate holds. Ending
+a preview cannot hide a page the agent is still driving. On a loaded page
+the toolbar stays out of the layout until the pointer reaches the top. A
+web tab dropped on Bookmarks is saved, and a tab menu leaves the page
+painted. The window glass matches the window corner radius and stays
+unclipped.
+
+Agent `javascript:` and `vbscript:` navigations require the evaluate
+capability. A cancelled run stays cancelled. MCP step arrays use the planner
+schema. Database backups drop the gateway key. The current audit is
+`docs/audit/2026-09-21.md`.
+
 ## Current review Mac pickup (PR #11, `cursor/vector-current-review-418e`)
 
 Mac-run proof of `Vector_Current_Review_60b2d41` on this development tree.

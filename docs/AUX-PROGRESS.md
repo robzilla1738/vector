@@ -1,15 +1,29 @@
 # Aux implementation progress
 
+## Continuation — 2026-09-21 (agent path and loaded-page shell)
+
+This is the current shell and agent-navigation behavior. Earlier sections
+below are the passes that led here.
+
+Chromium navigation returns at DOMContentLoaded. An explicit settled wait
+remains. A conversation preview and an agent stage lease are separate holds.
+On a loaded page the toolbar is out of the layout until the pointer reaches
+the top. A conversation shows its web tab beside the messages. Dropping a
+web tab on Bookmarks saves it, and a tab menu leaves the page painted. The
+window glass matches the window corner radius and stays unclipped. Numbers
+for the chrome-only records run are in `docs/BENCHMARKS.md`. Details:
+`docs/ui/shell.md`, `docs/api.md`, `CHANGELOG.md`.
+
 ## Continuation — 2026-09-21 (Aside parity, simpler chat, Aux branding)
 
-This is the current visual direction; earlier ZCode entries below are historical.
+Earlier ZCode entries below are historical.
 Geist/Geist Mono and Central Icons replace Inter/Lucide. The sidebar closes fully
 and edge-reveals; pins, sections, menus, schedules and chat/history surfaces use
 the reference geometry and tokens. Native macOS Liquid Glass has older-system
 vibrancy fallback, tint/content-opacity settings and reduced-transparency support.
 
-The URL bar and both icon groups hide together and reveal on hover/focus without
-moving the page. Chat no longer opens task promotion automatically, clears reply
+The URL bar and both icon groups hide together and reveal on hover/focus. The
+later pass above takes that row out of the layout on a loaded page. Chat no longer opens task promotion automatically, clears reply
 drafts on promotion, or stacks successful completion labels above an answer.
 Work history starts collapsed; safety controls remain. AI SDK stays at 7.0.93.
 The new arch SVG and full-canvas silver macOS icon are integrated.

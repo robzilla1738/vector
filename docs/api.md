@@ -250,8 +250,11 @@ Ops: `navigate` `back` `forward` `reload` `stop` `click` `dblclick` `hover`
 `collectScroll` `evaluate`.
 
 On `vector-engine` (V8 scripting on by default) `evaluate`, `dialog`,
-`expectDownload`, `javascript:` URLs, HTML5 `dragTo`, and
+`expectDownload`, HTML5 `dragTo`, and
 `waitFor` `{ downloadCompleted | expression }` run in-engine.
+`javascript:` and `vbscript:` navigations are page script: the runtime
+rejects them unless `allowEval` is set, and the engine rejects them unless
+the context was created with `allowEvaluate`.
 `xpath:` targets still fail with `capability_unsupported` (the auto-mode
 fallback probe). With `engineMode: "auto"` a remaining
 `capability_unsupported` triggers the Chromium fallback described above.
@@ -266,9 +269,11 @@ events) · `settled` — quiescence: two animation frames, no in-flight
 fetch/XHR, and no DOM mutation for ~100 ms, bounded (`timeoutMs`, default
 2 s; fails with `condition_timeout` when the page never goes quiet) ·
 `downloadCompleted` · `response { urlIncludes, status? }` · `expression`.
-`navigate`/`back`/`forward`/`reload` already apply the `settled` signal with a
-500 ms bound after `domcontentloaded`, so the next observe sees a rendered
-page without a fixed sleep.
+On Chromium, `navigate`/`back`/`forward`/`reload` return at
+`DOMContentLoaded`. They do not run the settled wait. Use
+`waitFor { kind: "settled" }` when the next step needs a quiet page. The
+engine still calls `settle()` after steps; budgets are in
+[`docs/engine/architecture.md`](engine/architecture.md).
 
 - `evaluate` (and the `expression` wait condition, and `{eval:}` in node
   programs) run page JS and are available only to trusted program sources —

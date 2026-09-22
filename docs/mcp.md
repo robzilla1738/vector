@@ -127,8 +127,11 @@ Things an MCP client should expect:
   (`runtime.describe` → `checkpointResume: false`).
 - A page may be served by the **Aux Engine** (`backend: "vector-engine"`
   on the page, `routeReason` on the open result). Its refs work the same
-  way. `evaluate`, `dialog`, downloads, `javascript:` URLs, HTML5 `dragTo`
-  and `vector_page_capture` run in-engine. `xpath:` targets still fail with
+  way. `evaluate`, `dialog`, downloads, HTML5 `dragTo`
+  and `vector_page_capture` run in-engine. `javascript:` and `vbscript:`
+  navigations require that evaluate capability. `vector_page_execute` and
+  `vector_set_map` accept planner steps, so `evaluate` is not a tool
+  argument. `xpath:` targets still fail with
   `capability_unsupported`. With `engineMode: auto` the runtime moves
   the page to Chromium and replays the rest; the `vector_page_execute`
   result then carries `fallback { from, to, reason, replayedFrom, repair,

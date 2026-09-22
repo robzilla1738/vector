@@ -2,9 +2,10 @@
 
 final result: blocked
 
-The requested task-promotion interruption is fixed and browser-verified. Full
+The requested task-promotion interruption is fixed and browser-verified. On a
+loaded page the toolbar leaves the layout and returns from the top edge. Full
 Aside visual acceptance is not claimed: matching native conversation captures
-and pointer-only toolbar hover verification are still missing.
+are still missing.
 
 ## Evidence and scope
 
@@ -25,9 +26,11 @@ and pointer-only toolbar hover verification are still missing.
 - Fixed: conversation work history now starts collapsed even for running turns.
   Tests confirm it remains expandable and Pause/Stop remain usable.
 - Fixed: promoting a chat no longer consumes or clears an unsent reply.
-- Toolbar focus reveals URL and both icon groups together at opacity 1; moving
-  focus to the composer fades all three to opacity 0 without changing its 40px
-  height. Pure native hover is not verified by this check.
+- On a loaded page the toolbar leaves the layout. Focus and a pointer at the
+  top of the page reveal the URL and both icon groups together. A later live
+  window confirmed the conversation preview, a tab menu that leaves the page
+  painted, and a web-tab drop onto Bookmarks. Aside pixel parity is still
+  open.
 - No browser console errors returned in the inspected preview.
 
 ## Fidelity surfaces
