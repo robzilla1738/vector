@@ -8,7 +8,7 @@ describe("split layout", () => {
         const result = splitWidths(width, ratio);
         expect(result.left + result.gutter + result.right).toBe(width);
         expect(Math.min(result.left, result.right)).toBeGreaterThanOrEqual(0);
-        if (width >= 328) expect(Math.min(result.left, result.right)).toBeGreaterThanOrEqual(160);
+        expect(Math.min(result.left, result.right)).toBeGreaterThanOrEqual(width >= 328 ? 160 : 0);
       }
     }
   });

@@ -12,7 +12,6 @@ import {
   ConversationSummarySchema,
   DownloadSchema,
   HistoryEntrySchema,
-  ModelCallSchema,
   ModelUsageSummarySchema,
   PageSetSchema,
   PageTargetSchema,

@@ -108,7 +108,7 @@ export class EarlyDispatcher {
       .then((r) => {
         this.outcomes.push(...r.steps);
         if (r.observation) this.observation = r.observation;
-        if (r.extracted) this.extracted = { ...(this.extracted ?? {}), ...r.extracted };
+        if (r.extracted) this.extracted = { ...this.extracted, ...r.extracted };
         if (r.fallback) this.fallback = r.fallback;
         if (r.status !== "completed") {
           this.status = r.status;

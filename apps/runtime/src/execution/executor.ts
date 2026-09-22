@@ -55,11 +55,6 @@ export interface ExecContext {
   pageOrigin?: string;
 }
 
-const stepInputs = (s: Step): Record<string, unknown> => {
-  const { id, op, timeoutMs, optional, expect, ...rest } = s as Record<string, unknown>;
-  return rest;
-};
-
 /** `javascript:` and `vbscript:` navigations run script in the current page. */
 function isActiveScriptUrl(url: string): boolean {
   try {

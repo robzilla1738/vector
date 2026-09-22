@@ -289,7 +289,7 @@ async function tokensForRun(rpc, runId) {
 /** Generic MCP tool loop: one model, one system prompt, whatever tools the server exposes. */
 async function mcpAdapter(name, cfg) {
   let runtime = null;
-  const env = { ...process.env, ...(cfg.env ?? {}) };
+  const env = { ...process.env, ...cfg.env };
   if (cfg.needsRuntime) {
     runtime = await startRuntimeFor({ engineMode: cfg.engineMode ?? "off" });
     env.VECTOR_DATA_DIR = runtime.dataDir;

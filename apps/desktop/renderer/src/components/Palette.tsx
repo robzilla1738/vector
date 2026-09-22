@@ -304,7 +304,7 @@ export function Palette() {
           />
           <kbd>esc</kbd>
         </div>
-        {!chromeTabs&&!splitPick&&!/^[\/@]/.test(q.trim())&&<div className="palette-filters" role="group" aria-label="Search types">{([['all','All'],['tabs','Tabs'],['work','Work'],['pages','Saved pages']] as const).filter(([type])=>!bridge.privateMode||type!=="work").map(([type,label])=><button key={type} className="btn sm ghost" aria-pressed={filter===type} onClick={()=>setFilter(type)}>{label}</button>)}</div>}
+        {!chromeTabs&&!splitPick&&!/^[/@]/.test(q.trim())&&<div className="palette-filters" role="group" aria-label="Search types">{([['all','All'],['tabs','Tabs'],['work','Work'],['pages','Saved pages']] as const).filter(([type])=>!bridge.privateMode||type!=="work").map(([type,label])=><button key={type} className="btn sm ghost" aria-pressed={filter===type} onClick={()=>setFilter(type)}>{label}</button>)}</div>}
         {searching&&<p className="palette-search-status hint" role="status">Searching saved work…</p>}
         {searchError&&<p className="palette-search-status hint" role="status">Some saved results couldn’t be searched. <button className="btn sm ghost" onClick={()=>setSearchRefresh(value=>value+1)}>Retry</button></p>}
         <div className="palette-list" ref={listRef} role="listbox" id="palette-list">

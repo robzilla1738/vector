@@ -424,7 +424,7 @@ function signalPrivateControl(child: ChildProcess, action: "commit" | "abort") {
 
 async function preparePrivateWindows(): Promise<ChildProcess[] | null> {
   const prepared: ChildProcess[] = [];
-  for (const child of [...privateChildren.keys()]) {
+  for (const child of privateChildren.keys()) {
     const result = await requestPrivateControl(child, "prepare");
     if (result === null) { privateChildren.delete(child); continue; }
     if (!result) {
@@ -1815,7 +1815,7 @@ function wireRendererIpc() {
       pageId: entry.pageId, url: url.href, origin: url.origin, title: wc.getTitle(),
       security: url.protocol === "https:" ? "secure" : local ? "local" : "insecure",
       cookieCount: cookies.length,
-      permissions: { ...(sitePermissions[url.origin] ?? {}) },
+      permissions: { ...sitePermissions[url.origin] },
     };
   });
   ipcMain.handle("ui.readArticle", async (event, pageId: unknown) => {

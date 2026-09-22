@@ -286,6 +286,7 @@ export const ProgramNodeSchema: z.ZodType<ProgramNode> = z.lazy(() =>
     z.object({
       kind: z.literal("if"),
       when: PredicateSchema,
+      // oxlint-disable-next-line unicorn/no-thenable — `then` is a DSL field, not a promise hook
       then: z.array(ProgramNodeSchema),
       else: z.array(ProgramNodeSchema).optional(),
     }),

@@ -217,7 +217,7 @@ describe("Gate D permissions and durable writes", () => {
   it("denies a write when effect:write is not granted", () => {
     const auth = authorizeProgram([{ id: "c", op: "click", target: "r1" }], ["effect:read"]);
     expect(auth.ok).toBe(false);
-    if (!auth.ok) expect(auth.effect).toBe("write");
+    expect(auth).toMatchObject({ ok: false, effect: "write" });
   });
 
   it("authorizes absolute destinations from opaque pages without bypassing scoped grants", () => {
@@ -651,8 +651,7 @@ describe("Finding 5 skill reuse after failed postconditions", () => {
     });
     markSkillFailed(skill);
     const skip = tryReuseSkill([skill], "save the form", obs(), "https://app.test/form");
-    expect("skipped" in skip).toBe(true);
-    if ("skipped" in skip) expect(skip.skipped).toMatch(/blocked after failed postconditions/);
+    expect(skip).toMatchObject({ skipped: expect.stringMatching(/blocked after failed postconditions/) });
   });
 });
 
@@ -769,11 +768,9 @@ describe("Gate B/F one session without Chromium", () => {
       url: "https://app.test/form",
       guards: [{ exactOrigin: "https://app.test", role: "button", nameIncludes: "Save" }],
     });
-    expect("program" in compiled).toBe(true);
-    if ("program" in compiled) {
-      const agent = await authority.execute(compiled.program);
-      expect(agent.status).toBe("completed");
-    }
+    if (!("program" in compiled)) throw new Error("expected a compiled program");
+    const agent = await authority.execute(compiled.program);
+    expect(agent.status).toBe("completed");
     await authority.takeover(opened.pageId);
     expect(authority.identity(opened.pageId).controller).toBe("human");
     await expect(

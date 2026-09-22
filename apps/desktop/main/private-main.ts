@@ -482,7 +482,7 @@ function registerIpc() {
     const cookies=await wc.session.cookies.get({url:url.href});
     if(wc.isDestroyed()||pages.get(pageId)!==page||wc.getURL()!==url.href)throw new Error("The page changed. Open site controls again.");
     const local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
-    return {pageId,url:url.href,origin:url.origin,title:wc.getTitle(),security:url.protocol==='https:'?'secure':local?'local':'insecure',cookieCount:cookies.length,permissions:{...(permissionDecisions[url.origin]??{})}};
+    return {pageId,url:url.href,origin:url.origin,title:wc.getTitle(),security:url.protocol==='https:'?'secure':local?'local':'insecure',cookieCount:cookies.length,permissions:{...permissionDecisions[url.origin]}};
   });
   ipcMain.handle("ui.setAppearance",(event,theme:"system"|"dark"|"light",translucent=false)=>{requireShell(event);nativeTheme.themeSource=theme;const glass=translucent&&!nativeTheme.prefersReducedTransparency&&process.platform==="darwin";win?.setVibrancy(glass?"under-window":null);shellView?.setBackgroundColor(glass?"#00000000":nativeTheme.shouldUseDarkColors?"#1c1c1e":"#e4e4e1");return true;});
 

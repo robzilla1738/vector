@@ -16,7 +16,7 @@ let app;
 try{
  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
- const opened=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/capture');
+ await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/capture');
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===base+'/capture');if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);
  await app.evaluate(({session})=>{
  globalThis.capturePermissions=[];

@@ -26,12 +26,14 @@
     "package:electron": "node scripts/package-local.mjs",
     "cli": "node packages/cli/dist/main.js",
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "lint": "oxlint apps packages tests scripts --max-warnings=400"
   },
   "devDependencies": {
     "@types/node": "24.3.0",
+    "jsdom": "26.1.0",
+    "oxlint": "1.83.0",
     "typescript": "5.9.3",
-    "vitest": "3.2.4",
-    "jsdom": "26.1.0"
+    "vitest": "3.2.4"
   }
 }

@@ -1,6 +1,6 @@
 import type { ConversationArtifact, ConversationAttachment, ConversationSource, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
 
-const md = (value: unknown) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\\`*_{}\[\]()#+!|]/g, "\\$&").replace(/^([-=>])/gm, "\\$1");
+const md = (value: unknown) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\\`*_{}[\]()#+!|]/g, "\\$&").replace(/^([-=>])/gm, "\\$1");
 const iso = (value: number) => new Date(value).toISOString();
 const resultLines = (result: Record<string, unknown> | undefined): string[] => {
   if (!result) return ["No structured result was recorded."];

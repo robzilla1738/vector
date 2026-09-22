@@ -506,7 +506,7 @@ export class PageService {
       onNavigated: (url, epoch) => {
         if (!url.startsWith("chrome-error://")) lp.target.url = url;
         lp.target.documentEpoch = epoch;
-        this.deps.repo.markDatasetsStale(lp.target.pageId, epoch);
+        this.deps.repo.markDatasetsStale(lp.target.pageId);
         this.persist(lp);
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, url: lp.target.url, documentEpoch: epoch });
         void this.refreshMeta(lp);
@@ -662,7 +662,7 @@ export class PageService {
     const previous=this.deps.repo.getPage(pageId);
     if(!previous||!this.driverFor("vector")?.recoverPage)throw new VectorError("backend_unavailable","The browser cannot restore this tab yet. Its saved address has been kept.");
     const page=await this.openOn("vector",{url:saved.url||"about:blank",windowId:saved.window_id||"main",background:false,ownedByRuntime:false,activate:false},"session-restore",false,previous);
-    this.deps.repo.markDatasetsStale(page.pageId,page.documentEpoch);
+    this.deps.repo.markDatasetsStale(page.pageId);
     this.pendingRestore.delete(pageId);this.restoreErrors.delete(pageId);
     return page;
   }
@@ -1314,7 +1314,7 @@ export class PageService {
     return {
       status: replay.status,
       steps: [...result.steps.slice(0, failedAt), ...replay.steps],
-      extracted: { ...(result.extracted ?? {}), ...(replay.extracted ?? {}) },
+      extracted: { ...result.extracted, ...replay.extracted },
       error: replay.error,
       fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: false },
     };

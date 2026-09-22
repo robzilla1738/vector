@@ -155,11 +155,12 @@ describe("prompt fencing", () => {
     expect(withContext.split("\n").filter((l) => l.startsWith("GOAL:")).length).toBe(1);
     // nothing inside any fence starts with the section marker
     let inside = false;
-    for (const l of lines) {
-      if (l === `<<<${token}`) inside = true;
-      else if (l === `${token}>>>`) inside = false;
-      else if (inside) expect(l.startsWith("===")).toBe(false);
-    }
+    const fenced = lines.filter((l) => {
+      if (l === `<<<${token}`) { inside = true; return false; }
+      if (l === `${token}>>>`) { inside = false; return false; }
+      return inside;
+    });
+    for (const l of fenced) expect(l.startsWith("===")).toBe(false);
   });
 
   it("final-answer prompt fences too and the system prompts carry the rule", () => {

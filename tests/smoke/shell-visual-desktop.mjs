@@ -27,7 +27,7 @@ try {
  assert.equal(await page.locator('.sb-bookmarks,.sb-conversations').count(),0);
  assert.equal(await page.getByRole('list',{name:'Pinned sites'}).count(),1);
  await page.screenshot({path:join(out,'aux-shell-restored.png')});
- const material=await app.evaluate(async ({BaseWindow,BrowserWindow,desktopCapturer,systemPreferences})=>{
+ const material=await app.evaluate(async ({BaseWindow,BrowserWindow,systemPreferences})=>{
    const main=BaseWindow.getAllWindows()[0];
    const back=new BrowserWindow({x:40,y:40,width:1320,height:1040,frame:false,show:false,webPreferences:{sandbox:true}});
    await back.loadURL('data:text/html,'+encodeURIComponent('<style>body{margin:0;background:repeating-linear-gradient(135deg,#eee 0 150px,#777 150px 300px,#222 300px 450px);height:100vh}</style>'));

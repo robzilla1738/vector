@@ -10,7 +10,7 @@ import { ConversationTask } from "./ConversationTask";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { useEffect, useRef, useState } from "react";
-import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationContext as ConversationContextState, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
+import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
@@ -99,12 +99,10 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [sending, setSending] = useState(false);
   const sendPending = useRef(false);
   const [exporting, setExporting] = useState(false);
-  const [contextState, setContextState] = useState<ConversationContextState | null>(null);
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
-  const [generatedArtifacts, setGeneratedArtifacts] = useState<ConversationArtifact[]>([]);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
-  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+  const [workspaceSaving] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
   const [previewMenu, setPreviewMenu] = useState(false);
@@ -120,7 +118,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const loadedContextChat = useRef<string | null>(null);
   const [contextError, setContextError] = useState("");
   const [contextRefresh, setContextRefresh] = useState(0);
-  const [contextSaving, setContextSaving] = useState(false);
+  const [contextSaving] = useState(false);
   const [documentSaving, setAttachmentSaving] = useState(false);
   const [imageOperations, setImageOperations] = useState(0);
   const [incomingImage, setIncomingImage] = useState<File | null>(null);
@@ -132,7 +130,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   activeChat.current = id;
   const documentBusy = useRef(false);
   const conversationRoot = useRef<HTMLElement>(null);
-  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setGeneratedArtifacts([]); setContextState(null); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
+  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
   const [taskTitle, setTaskTitle] = useState("");
   const [archived, setArchived] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -209,14 +207,12 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     let cancelled = false;
     if (!connected || attachmentSaving || contextSaving || workspaceSaving) { setContextLoading(false); return; }
     setContextError(""); setContextLoading(!!id);
-    if (!id) { setContextState(null); setImages([]); setAttachments([]); setGeneratedArtifacts([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
+    if (!id) { setImages([]); setAttachments([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
     void Promise.all([
-      call<ConversationContextState>("runs.context.get", { chatId: id }),
       call<{ images: ConversationImage[] }>("conversations.images.get", { chatId: id }),
       call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
-      call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
       call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
-    ]).then(([context, imageReferences, documents, generated, workspace]) => { if (!cancelled) { loadedContextChat.current = id; setContextState(context); setImages(imageReferences.images); setAttachments(documents.attachments); setGeneratedArtifacts(generated.artifacts); setWorkspaceContext(workspace); } })
+    ]).then(([imageReferences, documents, workspace]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); } })
       .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setContextLoading(false); });
     return () => { cancelled = true; };
@@ -445,7 +441,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {!connected && <p className="hint" role="status">Connecting to Aux… You can keep writing.</p>}
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
       {taskBound ? <>
-      <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || contextSaving || workspaceSaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={run => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
+      <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || contextSaving || workspaceSaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {attachmentPanel}

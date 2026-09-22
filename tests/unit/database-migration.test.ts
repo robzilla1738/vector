@@ -187,10 +187,9 @@ describe("versioned database upgrades", () => {
     expect(backup.prepare("SELECT value FROM kv").get()?.value).toBe("in-wal");
     expect(backup.prepare("SELECT name FROM sqlite_schema WHERE name='pages'").get()).toBeUndefined();
     expect(backup.prepare("PRAGMA integrity_check").get()?.integrity_check).toBe("ok");
-    if (process.platform !== "win32") {
-      expect(statSync(backupDirectory).mode & 0o777).toBe(0o700);
-      expect(statSync(backupPath).mode & 0o777).toBe(0o600);
-    }
+    // POSIX mode bits only; win32 has no equivalent
+    expect(process.platform === "win32" || (statSync(backupDirectory).mode & 0o777) === 0o700).toBe(true);
+    expect(process.platform === "win32" || (statSync(backupPath).mode & 0o777) === 0o600).toBe(true);
   });
 
   it("rolls back every schema change on failure and permits a repaired retry", () => {

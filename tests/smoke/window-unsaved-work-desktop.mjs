@@ -19,7 +19,7 @@ try{
  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({dialog})=>{globalThis.unloadAnswers=[];globalThis.unloadPrompts=[];const respond=(...args)=>{const options=args.at(-1);if(options.title!=='Leave website?')throw new Error('Unexpected dialog');globalThis.unloadPrompts.push({message:options.message,defaultId:options.defaultId});globalThis.changeDuringUnload?.();const response=globalThis.unloadAnswers.shift();if(typeof response!=='number')throw new Error('Missing synthetic response');return response;};dialog.showMessageBoxSync=respond;dialog.showMessageBox=async(...args)=>({response:respond(...args),checkboxChecked:false});});
- const first=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/draft');
+ await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/draft');
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===base+'/draft');if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);fixture.on('dialog',()=>{});
  const editor=embedded?fixture.frameLocator('iframe'):fixture;
  async function dirty(){await editor.getByLabel('Draft',{exact:true}).click();await editor.getByLabel('Draft',{exact:true}).fill('unsaved synthetic draft');}

@@ -125,7 +125,6 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "routines.update",
   "runs.answer",
   "runs.cancel",
-  "runs.context.get",
   "runs.get",
   "runs.list",
   "runs.pause",

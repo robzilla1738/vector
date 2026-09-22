@@ -17,7 +17,7 @@ it('edits selected UTF-8 files with conflict detection, recovery and mode preser
   expect(JSON.parse(await readFile(saved.recoveryPath,'utf8')).content).toBe('first\r\n');
   const history=await service.history('project','app.ts');expect(history.versions).toHaveLength(1);
   const version=await service.readVersion('project','app.ts',history.versions[0]!.versionId);expect(version.content).toBe('first\r\n');
-  const restored=await service.save('project','app.ts',saved.sha256,version.content);expect(await readFile(join(checkout,'app.ts'),'utf8')).toBe('first\r\n');
+  await service.save('project','app.ts',saved.sha256,version.content);expect(await readFile(join(checkout,'app.ts'),'utf8')).toBe('first\r\n');
   const reopened=new ProjectFiles(async()=>({path:checkout,files:names}),async()=>{});
   const nextHistory=await reopened.history('project','app.ts');expect(nextHistory.versions).toHaveLength(2);
   const previousVersion=nextHistory.versions.find(item=>item.sha256===saved.sha256)!;expect((await reopened.readVersion('project','app.ts',previousVersion.versionId)).content).toBe('second\r\n');

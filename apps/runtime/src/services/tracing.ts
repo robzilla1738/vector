@@ -40,14 +40,13 @@ export class Tracer {
     const startedAt = Date.now();
     const db = this.db;
     const file = this.dir;
-    const tracer = this;
     return {
       spanId,
-      end(outcome = "ok", attrs) {
+      end: (outcome = "ok", attrs) => {
         const endedAt = Date.now();
-        const merged = { ...(ctx?.attrs ?? {}), ...(attrs ?? {}) };
+        const merged = { ...ctx?.attrs, ...attrs };
         // a span end is the program/run boundary — land the counters with it
-        tracer.flushCounters();
+        this.flushCounters();
         db.prepare(
           `INSERT OR REPLACE INTO spans(span_id,parent_id,name,run_id,page_id,started_at,ended_at,duration_ms,outcome,attrs)
            VALUES(?,?,?,?,?,?,?,?,?,?)`,

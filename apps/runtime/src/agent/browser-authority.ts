@@ -6,7 +6,7 @@
  * second engine copy.
  */
 import { VectorError, type Observation, type Program, type ProgramResult } from "@vector/contracts";
-import type { PageService, ExecuteResult } from "../services/pages.js";
+import type { PageService } from "../services/pages.js";
 
 export class BrowserAuthority {
   constructor(private pages: PageService) {}

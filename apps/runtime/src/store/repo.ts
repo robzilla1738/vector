@@ -852,7 +852,7 @@ export class Repo {
       .all(...([...(filter?.runId ? [filter.runId] : []), ...(filter?.pageId ? [filter.pageId] : [])] as any[])) as any[];
     return rows.map((r) => this.datasetRow(r));
   }
-  markDatasetsStale(pageId: string, documentEpoch: number) {
+  markDatasetsStale(pageId: string) {
     this.db.prepare("UPDATE datasets SET stale=1 WHERE page_id=?").run(pageId);
   }
   private datasetRow(r: any) {
