@@ -153,6 +153,7 @@ export interface VectorBridge {
   clearSitePermission(origin: string, permission?: string): Promise<boolean>;
   privacy(): Promise<{ trackerBlock: boolean; blocked: number }>;
   setTrackerBlock(enabled: boolean): Promise<{ trackerBlock: boolean; blocked: number }>;
+  proceedInsecure(url: string): Promise<boolean>;
   setAppearance(theme: "system" | "dark" | "light", translucent?: boolean, windowControls?: boolean, material?: "liquid-glass" | "titlebar" | "sidebar" | "under-window"): Promise<boolean>;
 }
 
@@ -275,6 +276,7 @@ const stub: VectorBridge = {
   clearSitePermission: async () => true,
   privacy: async () => ({ trackerBlock: true, blocked: 0 }),
   setTrackerBlock: async () => ({ trackerBlock: true, blocked: 0 }),
+  proceedInsecure: async () => true,
   setAppearance: async () => true,
 };
 

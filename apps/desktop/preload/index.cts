@@ -182,6 +182,7 @@ const vector = {
   clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
   privacy: () => ipcRenderer.invoke("app.privacy") as Promise<{ trackerBlock: boolean; blocked: number }>,
   setTrackerBlock: (enabled: boolean) => ipcRenderer.invoke("app.setTrackerBlock", enabled) as Promise<{ trackerBlock: boolean; blocked: number }>,
+  proceedInsecure: (url: string) => ipcRenderer.invoke("app.proceedInsecure", url) as Promise<boolean>,
   setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true, material = "liquid-glass") => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls, material),
 };
 

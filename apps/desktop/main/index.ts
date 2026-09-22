@@ -6,6 +6,7 @@ import { dictationStatus, startDictation, stopDictation, cancelDictation } from 
 import { SiteZoomPreferences } from "./site-zoom.js";
 import { installSitePermissions, permissionOrigin } from "./site-permissions.js";
 import { installTrackerBlock } from "./tracker-block.js";
+import { createInsecureBypass } from "./insecure-bypass.js";
 import { BrowserProfiles } from "./browser-profiles.js";
 import { offerExternalLink } from "./external-links.js";
 import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
@@ -502,6 +503,7 @@ let privacy: PrivacyState = (() => {
   }
 })();
 let blockedRequests = 0;
+const insecureBypass = createInsecureBypass();
 
 function savePrivacy(next: PrivacyState) {
   const temporary = `${PRIVACY_FILE}.tmp`;
@@ -540,6 +542,10 @@ function configurePagePermissions() {
     enabled: () => privacy.trackerBlock,
     onBlocked: () => { blockedRequests += 1; },
   });
+  // Explicit per-host certificate bypass for "proceed anyway" choices this
+  // session only; -3 defers to Chromium's verifier for every other request.
+  ses.setCertificateVerifyProc((request, callback) =>
+    callback(insecureBypass.has(request.hostname) ? 0 : -3));
 }
 
 function configureCloudPreviewHeaders(){
@@ -1870,6 +1876,12 @@ function wireRendererIpc() {
     if (typeof enabled !== "boolean") throw new Error("Choose whether tracker blocking is on or off.");
     savePrivacy({ ...privacy, trackerBlock: enabled });
     return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests };
+  });
+  ipcMain.handle("app.proceedInsecure", (event, url: unknown) => {
+    requireShellUi(event);
+    if (typeof url !== "string") throw new Error("An HTTPS address is required.");
+    insecureBypass.proceed(url);
+    return true;
   });
   ipcMain.handle("app.clearSitePermission", (event, origin: unknown, permission?: unknown) => {
     requireShellUi(event);

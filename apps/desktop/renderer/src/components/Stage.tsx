@@ -4,7 +4,7 @@ import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
 import { forwardRef, useRef, useState } from "react";
 import type { PageTarget } from "@vector/contracts";
-import { inElectron, inMock } from "../bridge";
+import { bridge, inElectron, inMock } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { EngineView } from "./EngineView";
 import { MockPage } from "./MockPage";
@@ -16,12 +16,13 @@ const Overview = deferSurface(async () => { const module = await import("./Overv
 const ResultsTable = deferSurface(async () => { const module = await import("./ResultsTable"); return {default:module.ResultsTable}; }, "Results", true);
 
 function PageRecovery({ page }: { page: PageTarget }) {
-  const [busy, setBusy] = useState<"reload" | "back" | null>(null);
+  const [busy, setBusy] = useState<"reload" | "back" | "proceed" | null>(null);
   const pending = useRef(false);
   const [actionError, setActionError] = useState("");
   const error = page.navigationError;
   const crashed = page.viewStatus === "crashed";
   const failure = crashed ? {title:"This tab crashed",detail:"Reload to try again. Unsaved changes on this page may be lost."} : navigationFailure(error!);
+  const insecure = !crashed && !!error && /ERR_CERT_/.test(error.message);
   const recover = async (action: "reload" | "back") => {
     if (pending.current) return;
     pending.current = true;
@@ -33,6 +34,17 @@ function PageRecovery({ page }: { page: PageTarget }) {
     }
     finally { pending.current = false; setBusy(null); }
   };
+  const proceed = async () => {
+    if (pending.current || !error) return;
+    pending.current = true;
+    setBusy("proceed"); setActionError("");
+    try {
+      await bridge.proceedInsecure(error.url);
+      await call("pages.reload", { pageId: page.pageId });
+    } catch (reason) {
+      setActionError(`Couldn’t proceed. ${reason instanceof Error ? reason.message : String(reason)}`);
+    } finally { pending.current = false; setBusy(null); }
+  };
   return <div className="stage-message"><div className="empty-state navigation-error" role="status">
     <span className={`empty-ico ${crashed ? "err" : ""}`}>{crashed ? I.alert : I.globe}</span><h2>{failure.title}</h2>
     <p>{failure.detail}</p>
@@ -41,6 +53,7 @@ function PageRecovery({ page }: { page: PageTarget }) {
       <button className="btn primary" disabled={busy !== null} onClick={() => void recover("reload")}>{busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}</button>
       <button className="btn" onClick={() => useStore.getState().focusCommandBar()}>Edit address</button>
       {page.canGoBack && <button className="btn" disabled={busy !== null} onClick={() => void recover("back")}>{busy === "back" ? "Going back…" : "Go back"}</button>}
+      {insecure && <button className="btn ghost" disabled={busy !== null} onClick={() => void proceed()}>{busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}</button>}
     </div>
     {actionError && <p role="alert">{actionError}</p>}
     {error && !crashed && <details className="navigation-error-details"><summary>Connection details</summary><p className="selectable">{error.message} ({error.code})</p></details>}
