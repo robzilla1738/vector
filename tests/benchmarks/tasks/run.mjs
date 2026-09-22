@@ -24,6 +24,7 @@
  *   node tests/benchmarks/tasks/run.mjs --suite local --adapter vector,vector-engine
  *   node tests/benchmarks/tasks/run.mjs --suite assistantbench --adapter vector,playwright-mcp --limit 10
  *   node tests/benchmarks/tasks/run.mjs --list-adapters
+ *   node tests/benchmarks/tasks/run.mjs --validate    # offline self-check; no API key needed
  *
  * Needs AI_GATEWAY_API_KEY (root .env is loaded). Reports land in
  * tests/benchmarks/reports/tasks-<suite>-<timestamp>.json.
@@ -68,6 +69,40 @@ if (has("list-adapters")) {
     console.log(`${name.padEnd(16)} ${a.kind.padEnd(8)} ${avail.ok ? "available" : `not available: ${avail.reason}`}${a.note ? `  — ${a.note}` : ""}`);
   }
   process.exit(0);
+}
+
+if (has("validate")) {
+  // Offline self-check: manifest shape, scorer semantics, fixture reachability.
+  // Needs no AI_GATEWAY_API_KEY; run in CI to keep the harness honest.
+  const checks = [];
+  const ok = (name, cond) => checks.push([name, !!cond]);
+  const manifest = JSON.parse(readFileSync(join(here, "manifest.json"), "utf8"));
+  const types = new Set(["text", "number", "list", "object"]);
+  ok("manifest has tasks", Array.isArray(manifest.tasks) && manifest.tasks.length > 0);
+  ok("task ids unique", new Set(manifest.tasks.map((t) => t.id)).size === manifest.tasks.length);
+  ok("expected types known", manifest.tasks.every((t) => types.has(t.expected?.type)));
+  ok("scoring: exact text", scoreAnswer("Jordan Lee", { type: "text", value: "Jordan Lee" }) === 1);
+  ok("scoring: normalization", scoreAnswer("  jordan   lee ", { type: "text", value: "Jordan Lee" }) === 1);
+  ok("scoring: wrong text fails", scoreAnswer("Lee Jordan", { type: "text", value: "Jordan Lee" }) === 0);
+  ok("scoring: number +/-1%", scoreAnswer("6.04", { type: "number", value: 6 }) === 1 && scoreAnswer("7", { type: "number", value: 6 }) === 0);
+  ok("scoring: list set-equality", scoreAnswer("a,b", { type: "list", value: ["b", "a"] }) === 1 && scoreAnswer("a,b,c", { type: "list", value: ["a", "b"] }) === 0);
+  ok("scoring: object key-wise", scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1);
+  ok("extractAnswer unwraps", extractAnswer({ answer: "x" }) === "x" && extractAnswer("y") === "y");
+  const fx = await import(pathToFileURL(join(repoRoot, "scripts/fixtures.mjs")).href);
+  const spawned = await fx.startFixturesIfNeeded();
+  try {
+    await fx.waitForFixtures();
+    const res = await fetch(manifest.tasks[0].url).catch(() => ({ ok: false }));
+    ok("fixtures respond", res.ok);
+  } finally {
+    for (const proc of spawned ?? []) proc.kill?.();
+  }
+  let failed = 0;
+  for (const [name, pass] of checks) {
+    if (!pass) failed++;
+    console.log(`${pass ? "ok  " : "FAIL"} ${name}`);
+  }
+  process.exit(failed ? 1 : 0);
 }
 
 if (!process.env.AI_GATEWAY_API_KEY) {

@@ -6,6 +6,7 @@ matters for "best agentic browser"; `pnpm bench` measures the browser layer
 only.
 
 ```bash
+pnpm bench:tasks --validate                       # offline self-check (no API key); runs in CI
 pnpm bench:tasks --suite local --adapter vector,vector-engine,vector-mcp,playwright-mcp
 pnpm bench:tasks --suite assistantbench --adapter vector,playwright-mcp --limit 10
 pnpm bench:tasks --list-adapters
