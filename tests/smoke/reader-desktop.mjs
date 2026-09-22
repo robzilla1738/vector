@@ -18,7 +18,7 @@ try{
  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1260,900));
- const opened=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/article');
+ await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/article');
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===base+'/article');if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);
  await fixture.getByLabel('Original draft').fill('preserve this draft');
  await fixture.evaluate(()=>scrollTo(0,240));

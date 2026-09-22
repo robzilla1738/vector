@@ -1,6 +1,6 @@
 // Fake Chromium capture devices only; no system camera, microphone or clipboard access.
 import {createRequire} from 'node:module';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
@@ -11,7 +11,7 @@ const electron=createRequire(join(root,'apps/desktop/package.json'))('electron')
 const dir=mkdtempSync(join(tmpdir(),'aux-media-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Meeting fixture</title><h1>Synthetic meeting</h1>');});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const base=`http://localhost:${server.address().port}`,other=`http://127.0.0.1:${server.address().port}`;
+const base=`http://localhost:${server.address().port}`;
 const file=join(dir,'data/site-permissions.json');mkdirSync(join(dir,'data'));
 writeFileSync(file,JSON.stringify({[base]:{media:'allow'}}));
 let app,page,fixture;

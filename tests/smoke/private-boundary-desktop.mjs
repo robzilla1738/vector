@@ -5,7 +5,6 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
-import {poll} from './poll.mjs';
 const root=resolve(import.meta.dirname,'../..');
 const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');

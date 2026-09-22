@@ -202,7 +202,7 @@ export class OperationService {
     const pageId = pageIds[0]!;
     const siteKey = opts.siteKey ?? this.siteKeyOf(pageId);
     if (!siteKey) throw new VectorError("invalid_params", "cannot determine siteKey — pass one explicitly");
-    const raw: Step[] = steps.map((s, i) => ({ id: `s${i + 1}`, op: s.op, ...(s.inputs ?? {}) }) as Step);
+    const raw: Step[] = steps.map((s, i) => ({ id: `s${i + 1}`, op: s.op, ...s.inputs }) as Step);
     const translated = this.deps.translateSteps ? this.deps.translateSteps(pageId, raw) : raw;
     const name = opts.name ?? `trace:${opts.runId.slice(0, 12)}`;
     const saved = this.saveFromProgram({
@@ -417,7 +417,7 @@ export class OperationService {
     if (opts.runId) {
       const run = this.deps.repo.getRun(opts.runId);
       if (run) {
-        run.config = { ...(run.config ?? {}), implementation: route.kind, routeReason: route.reason };
+        run.config = { ...run.config, implementation: route.kind, routeReason: route.reason };
         this.deps.repo.saveRun(run);
       }
     }
@@ -482,7 +482,7 @@ export class OperationService {
 
         // promote/degrade from evidence (§9.9): ≥3 distinct successful
         // input sets validates a candidate; unverified demotes a validated impl
-        const stats = { ...(impl.stats ?? {}) } as Record<string, unknown>;
+        const stats = { ...impl.stats } as Record<string, unknown>;
         let newState = impl.state;
         if (!failed && effectOutcome !== "unverified") {
           const key = JSON.stringify(opts.inputs ?? {});
@@ -514,7 +514,7 @@ export class OperationService {
 
         // §9.6 — a landed write invalidates page-held state; reads don't
         if (!failed && effectOutcome !== "unverified" && op.effectClass !== "read" && opts.pageId) {
-          this.deps.repo.markDatasetsStale(opts.pageId, 0);
+          this.deps.repo.markDatasetsStale(opts.pageId);
           this.deps.events.emit("page.invalidated", { pageId: opts.pageId, by: `operation:${opts.siteKey}/${opts.name}` });
         }
 
@@ -577,7 +577,7 @@ export class OperationService {
       const program: Program = {
         ...prepared.program,
         nodes: saved.nodes,
-        inputs: { ...(saved.inputs ?? {}), ...(opts.inputs ?? {}) },
+        inputs: { ...saved.inputs, ...opts.inputs },
       };
       return this.deps.pages.execute(program, { runId: opts.runId, allowEval: false, journaled: opts.journaled });
     }
@@ -627,7 +627,7 @@ export class OperationService {
         const res = await fetch(${JSON.stringify(url)}, {
           method: ${JSON.stringify(req.method)},
           redirect: "error",
-          headers: ${JSON.stringify({ ...(req.headers ?? {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) })},
+          headers: ${JSON.stringify({ ...req.headers, ...(body !== undefined ? { "content-type": "application/json" } : {}) })},
           body: ${body !== undefined ? JSON.stringify(JSON.stringify(body)) : "undefined"},
         });
         const text = await res.text();
@@ -666,7 +666,7 @@ export class OperationService {
     const res = await fetch(url, {
       method: req.method,
       redirect: "error",
-      headers: { ...(req.headers ?? {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+      headers: { ...req.headers, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     const bytes=new Uint8Array(await res.arrayBuffer());const truncated=bytes.byteLength>MAX_REQUEST_RESPONSE_BYTES;const text=new TextDecoder().decode(bytes.slice(0,MAX_REQUEST_RESPONSE_BYTES));

@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
 import { probeEngineNative } from "@vector/engine-client";
-import type { Observation, ObservationContent, PageTarget, ProgramResult } from "@vector/contracts";
+import type { Observation, PageTarget, ProgramResult } from "@vector/contracts";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import { findChromium } from "../../scripts/chromium.mjs";
 import type { ChildProcess } from "node:child_process";
@@ -85,11 +85,10 @@ describeIfEngine("vector-engine backend", () => {
     expect(d.engine.connected).toBe(true);
     expect(d.engine.version).toBe(engine.version);
     expect(d.engine.mode).toBe("always");
-    if (process.env.VECTOR_ENGINE_PROFILE === "production" || process.env.VECTOR_ENGINE_PROFILE === "prod") {
-      expect(d.engine.securityProfile).toBe("production");
-      expect(d.engine.isolation).toBe("process");
-      expect(d.engine.hostPath, JSON.stringify(d.engine)).toMatch(/ve-host/);
-    }
+    const profilingProduction = process.env.VECTOR_ENGINE_PROFILE === "production" || process.env.VECTOR_ENGINE_PROFILE === "prod";
+    expect(profilingProduction ? d.engine.securityProfile : "production").toBe("production");
+    expect(profilingProduction ? d.engine.isolation : "process").toBe("process");
+    expect(profilingProduction ? d.engine.hostPath : "ve-host", JSON.stringify(d.engine)).toMatch(/ve-host/);
   });
 
   it("always: opens a static fixture on the engine, observes refs, runs a program in one native call", async () => {
@@ -189,4 +188,5 @@ describeIfEngine("vector-engine backend", () => {
 });
 
 // keep vitest happy when the addon is missing (a file with zero tests fails the run)
+// oxlint-disable-next-line vitest/no-conditional-tests, vitest/no-disabled-tests
 if (!engine.available) it.skip(`vector-engine addon not built: ${engine.error?.split("\n")[0]}`, () => {});

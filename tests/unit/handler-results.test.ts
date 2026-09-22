@@ -118,6 +118,7 @@ describe("handler results conform to ResultSchemas", () => {
       await new Promise((r) => setTimeout(r, 10));
     await call("sets.results", { setId: (set as { setId: string }).setId });
     await call("runs.get", { runId });
+    expect(["completed", "failed", "partially_completed"]).toContain(repo.getRun(runId)!.status);
   });
 
   it("runs.* incl. modelCalls on runs.get and control results", async () => {
@@ -176,11 +177,11 @@ describe("handler results conform to ResultSchemas", () => {
   });
 
   it("pages.extract / waitFor / console / dialog / network", async () => {
-    await call("pages.extract", { pageId: "p1", fields: ["title"] });
-    await call("pages.waitFor", { pageId: "p1", condition: { kind: "settled" } });
-    await call("pages.console", { pageId: "p1" });
-    await call("pages.dialog", { pageId: "p1" });
-    await call("pages.network", { pageId: "p1" });
+    await expect(call("pages.extract", { pageId: "p1", fields: ["title"] })).resolves.toBeDefined();
+    await expect(call("pages.waitFor", { pageId: "p1", condition: { kind: "settled" } })).resolves.toBeDefined();
+    await expect(call("pages.console", { pageId: "p1" })).resolves.toBeDefined();
+    await expect(call("pages.dialog", { pageId: "p1" })).resolves.toBeDefined();
+    await expect(call("pages.network", { pageId: "p1" })).resolves.toBeDefined();
   });
 
   it("enforces task-scoped external authority before dispatch and filters shared lists", async () => {

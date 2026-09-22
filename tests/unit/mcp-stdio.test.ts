@@ -186,7 +186,7 @@ describe("Gate F MCP stdio session", () => {
       capabilities: {},
       clientInfo: { name: "review-gates", version: "0" },
     });
-    expect(init.result).toBeTruthy();
+    if (!init.result) throw new Error("MCP initialize handshake failed");
     mcp.write({ jsonrpc: "2.0", method: "notifications/initialized" });
   }, 15_000);
 

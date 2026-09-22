@@ -77,6 +77,7 @@ describe("CookieService.importCookies — attached source", () => {
     expect(res.imported).toBe(1);
     expect(res.skipped).toBe(1);
     expect(res.domains).toBe(1);
+    expect(setCount).toBe(1);
   });
 
   it("errors clearly when 'attached' is requested but nothing is connected", async () => {

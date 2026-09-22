@@ -105,7 +105,8 @@ const rpc = (port, method, params) =>
         res.on("end", () => {
           try {
             const j = JSON.parse(body);
-            j.error ? reject(new Error(`${method}: ${j.error.message ?? JSON.stringify(j.error)}`)) : resolve(j.result);
+            if (j.error) reject(new Error(`${method}: ${j.error.message ?? JSON.stringify(j.error)}`));
+            else resolve(j.result);
           } catch (e) { reject(e); }
         });
       },

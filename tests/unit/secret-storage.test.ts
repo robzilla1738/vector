@@ -55,7 +55,7 @@ it("encrypts at rest, restores through the vault, and removes active legacy copi
   const encrypted = join(f.dir, "secrets", "gatewayApiKey");
   expect(readFileSync(encrypted).includes(Buffer.from("synthetic-new"))).toBe(false);
   expect(readFileSync(f.settingsPath, "utf8")).not.toContain("synthetic");
-  if (process.platform !== "win32") expect(statSync(encrypted).mode & 0o777).toBe(0o600);
+  expect(process.platform === "win32" || (statSync(encrypted).mode & 0o777) === 0o600).toBe(true);
   const restarted = new SettingsService(f.repo, f.settingsPath, {});
   restarted.attachNative(f.native);
   await restarted.initializeCredentials();

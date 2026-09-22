@@ -12,7 +12,6 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
-import { recoverAfterCrash } from "./recovery.js";
 import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
@@ -24,7 +23,6 @@ import {
   TERMINAL_STATUSES,
   runCoordinatorLoop,
   tryVisionPlan,
-  verifyDoneAgainstObservation,
 } from "./coordinator-loop.js";
 
 export { verifyDoneAgainstObservation } from "./coordinator-loop.js";
@@ -243,7 +241,7 @@ export class RunCoordinator {
       authorizationScope: run.pageIds,
       recoveryStatus: run.status,
     };
-    run.config = { ...(run.config ?? {}), checkpoint };
+    run.config = { ...run.config, checkpoint };
     this.deps.repo.saveRun(run);
     this.deps.repo.saveCheckpoint(`run:${run.runId}`, "coordinator", checkpoint);
     const taskKey = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
@@ -266,7 +264,7 @@ export class RunCoordinator {
     run.failure = failure;
     run.endedAt = Date.now();
     if (message !== undefined) run.statusMessage = message;
-    run.config = { ...(run.config ?? {}), modelCalls: this.deps.repo.listModelCalls(runId).length };
+    run.config = { ...run.config, modelCalls: this.deps.repo.listModelCalls(runId).length };
     this.deps.repo.saveRun(run);
     this.persistCheckpoint(run);
     this.deps.events.emit(EventTypes.RunStatus, { runId, status, error }, runId);

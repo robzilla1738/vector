@@ -1,7 +1,6 @@
 import {
   newResultId,
   PlanChunkSchema,
-  VectorError,
   type ResultRecord,
   type SetMember,
   type Step,

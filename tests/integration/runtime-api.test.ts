@@ -7,8 +7,8 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import type { ObservationContent, PageTarget, ProgramResult, ResultRecord, Run } from "@vector/contracts";
-import { startFixturesIfNeeded, waitForFixtures, FIXTURES } from "../../scripts/fixtures.mjs";
+import type { ObservationContent, PageTarget, ProgramResult } from "@vector/contracts";
+import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import type { ChildProcess } from "node:child_process";
 
 const RECORDS = "http://127.0.0.1:4810";
@@ -351,7 +351,7 @@ describe("pages", () => {
       },
     });
     expect(res.status, JSON.stringify(res.steps)).toBe("completed");
-    expect((res.extracted?.out as { late?: string }).late).toBe("late");
+    expect((res.extracted?.out as { late?: string } | undefined)?.late).toBe("late");
   }, 60_000);
 
   it("settled is bounded: a slow in-flight request times out at the deadline, not later", async () => {
@@ -401,7 +401,7 @@ describe("pages", () => {
       },
     });
     expect(res.status).toBe("completed");
-    const rows = (res.extracted?.rows as { items: { text: string }[]; count: number }).items;
+    const rows = (res.extracted?.rows as { items: { text: string }[]; count: number } | undefined)?.items ?? [];
     expect(rows.length).toBeGreaterThanOrEqual(60);
     const keys = new Set(rows.map((r) => r.text.split(" ")[0]));
     expect(keys.size).toBe(rows.length); // deduped, all unique

@@ -170,6 +170,8 @@ describeIfEngine("Gate F live MCP + vector-engine", () => {
   }, 60_000);
 });
 
+// oxlint-disable-next-line vitest/no-conditional-tests
 if (!engine.available) {
+  // oxlint-disable-next-line vitest/no-disabled-tests
   it.skip(`live MCP skipped: ${engine.error?.split("\n")[0]}`, () => {});
 }

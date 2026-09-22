@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { DurableWriteLedger, openDb, beginConsequentialWrite, stepSignature, Repo, RunCoordinator, EventBus } from "@vector/runtime";
+import type { Step } from "@vector/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -54,9 +55,9 @@ it("keeps explicit logical action identity stable and includes all parameters in
   const first = f.ledger.begin({ ...action, logicalActionId: "invoice-123" });
   f.ledger.confirm(first.intent.id);
   expect(f.ledger.begin({ ...action, pageId: "new-page", documentEpoch: 4, revision: 99, logicalActionId: "invoice-123" }).duplicate).toBe(true);
-  expect(stepSignature([{ op: "navigate", ...{ url: "https://one.test" } }])).not.toBe(stepSignature([{ op: "navigate", ...{ url: "https://two.test" } }]));
+  expect(stepSignature([{ op: "navigate", url: "https://one.test" } as Step])).not.toBe(stepSignature([{ op: "navigate", url: "https://two.test" } as Step]));
   expect(stepSignature([{ op: "fill", target: { name: "a", role: "textbox" } }])).toBe(stepSignature([{ target: { role: "textbox", name: "a" }, op: "fill" }]));
-  const destructive = beginConsequentialWrite(f.ledger, { ...action, runId: "another", steps: [{ op: "evaluate", ...{ expression: "mutate()" } }] });
+  const destructive = beginConsequentialWrite(f.ledger, { ...action, runId: "another", steps: [{ op: "evaluate", expression: "mutate()" } as Step] });
   expect(destructive.intentId).toBeTruthy();
 });
 
@@ -81,7 +82,7 @@ it("cannot report completion while the persistent journal contains an unresolved
   expect(run.status).toBe("interrupted");
   expect(run.result).toBeUndefined();
   expect(run.error).toContain("Uncertain action outcome");
-  expect((run.config?.checkpoint as { unresolvedEffects: string[] }).unresolvedEffects).toHaveLength(1);
+  expect((run.config?.checkpoint as { unresolvedEffects: string[] } | undefined)?.unresolvedEffects).toHaveLength(1);
 });
 
 it("fails closed on corrupt legacy state and imports valid legacy state once without changing the file", () => {

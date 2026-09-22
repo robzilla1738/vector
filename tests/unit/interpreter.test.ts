@@ -88,6 +88,7 @@ describe("node interpreter", () => {
       {
         kind: "if",
         when: { op: "gt", a: { variable: "n" }, b: { literal: 3 } },
+        // oxlint-disable-next-line unicorn/no-thenable — `then` is a DSL field, not a promise hook
         then: [{ kind: "step", step: { id: "t1", op: "click", target: "yes" } }],
         else: [{ kind: "step", step: { id: "t2", op: "click", target: "no" } }],
       },

@@ -25,7 +25,7 @@ try{
  await page.getByRole('button',{name:'Previous match',exact:true}).click();await page.locator('.fb-n').filter({hasText:'1 of 3'}).waitFor();
  await field.fill('no match');await page.locator('.fb-n').filter({hasText:'No results'}).waitFor();
  await field.fill('needle');await page.locator('.fb-n').filter({hasText:'1 of 3'}).waitFor();
- const second=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),url+'/two');
+ await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),url+'/two');
  await page.getByText('Reading /two',{exact:true}).waitFor();await page.locator('.fb-n').filter({hasText:'1 of 1'}).waitFor();
  await page.getByText('Reading /one',{exact:true}).click();await page.locator('.fb-n').filter({hasText:'1 of 3'}).waitFor();
  await page.evaluate(({pageId,url})=>window.vector.invoke('pages.navigate',{pageId,url}),{pageId:first.pageId,url:url+'/updated'});

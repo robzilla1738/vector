@@ -10,7 +10,7 @@ import { sidebarAction } from "./sidebar-action.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
-const { openDb, Repo, ArtifactStore, EventBus } = await import(join(root, "apps/runtime/dist/index.js"));
+const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
 const temporary = mkdtempSync(join(tmpdir(), "aux-conversation-lifecycle-"));
 const dataDir = join(temporary, "data");

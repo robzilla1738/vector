@@ -137,7 +137,7 @@ describe("StateService", () => {
   it("marks stale datasets after navigation invalidates them", () => {
     const { state, repo } = svc();
     state.saveDataset({ source: "test", pageId: "p1", rows: [{ a: 1 }] });
-    repo.markDatasetsStale("p1", 1);
+    repo.markDatasetsStale("p1");
     const listed = state.listDatasets({ pageId: "p1" });
     expect(listed[0]!.stale).toBe(true);
     expect(listed[0]!.freshness).toBe("previously-observed");

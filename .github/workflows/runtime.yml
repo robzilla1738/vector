@@ -25,7 +25,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm bench:tasks --validate
       - run: pnpm build
       - run: pnpm --filter @vector/desktop typecheck
       - run: pnpm --filter @vector/desktop build

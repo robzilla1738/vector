@@ -168,10 +168,9 @@ describe("VEC-017 crash injection", () => {
     for (const crashAt of COORDINATOR_TRANSITIONS) {
       const r = recoverAfterCrash({ crashAt, journal });
       expect(r.duplicateWrites).toBe(0);
-      if (crashAt === "dispatch" || crashAt === "observe") {
-        expect(r.needsUserReview).toBe(true);
-        expect(r.restartSafe).toBe(false);
-      }
+      const flagged = crashAt === "dispatch" || crashAt === "observe";
+      expect(flagged ? r.needsUserReview : true).toBe(true);
+      expect(flagged ? r.restartSafe === false : true).toBe(true);
     }
     const fb = reconcileFallback({ code: "needs-chromium:webgl", expiresAt: 1, version: 3 });
     expect(fb.originWideBan).toBe(false);

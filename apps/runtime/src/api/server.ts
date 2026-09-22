@@ -140,7 +140,7 @@ export class ApiServer {
         return send(400, { error: { code: "invalid_params", message: "bad JSON" } });
       }
       const out = await this.dispatch(payload, client);
-      if (out.error?.code === "not_found" && !("result" in out) && /^unknown method/.test(out.error.message)) {
+      if (out.error?.code === "not_found" && !("result" in out) && out.error.message.startsWith('unknown method')) {
         return send(404, { error: out.error });
       }
       return send(200, out.error ? { error: out.error } : { result: out.result });

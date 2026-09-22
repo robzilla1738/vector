@@ -100,17 +100,16 @@ describe("saved programs", () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records/rec-07`, background: true });
     const { runId } = await invoke<{ runId: string }>("programs.run", { programId: saved.programId, pageId: page.pageId });
     const deadline = Date.now() + 60_000;
+    let run: { status: string; result?: Record<string, unknown> } | undefined;
     for (;;) {
-      const { run } = await invoke<{ run: { status: string; result?: Record<string, unknown> } }>("runs.get", { runId });
-      if (["completed", "failed"].includes(run.status)) {
-        expect(run.status).toBe("completed");
-        const rec = (run.result?.rec ?? {}) as { title?: string };
-        expect(rec.title).toContain("Record");
-        break;
-      }
+      ({ run } = await invoke<{ run: { status: string; result?: Record<string, unknown> } }>("runs.get", { runId }));
+      if (["completed", "failed"].includes(run.status)) break;
       if (Date.now() > deadline) throw new Error("program run timed out");
       await new Promise((r) => setTimeout(r, 250));
     }
+    expect(run!.status).toBe("completed");
+    const rec = (run!.result?.rec ?? {}) as { title?: string };
+    expect(rec.title).toContain("Record");
 
     // useCount increments on success
     const progs = await invoke<SavedProgram[]>("programs.list");

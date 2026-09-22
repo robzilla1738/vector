@@ -104,7 +104,7 @@ export class ExtensionManager {
 
   async loadAll(session: Session, configured: string[] = []) {
     this.failures.clear();
-    for (const path of [...new Set([...this.managedPaths(true), ...configured.map(path => resolve(path))])]) {
+    for (const path of new Set([...this.managedPaths(true), ...configured.map(path => resolve(path))])) {
       try { await session.extensions.loadExtension(path, { allowFileAccess: false }); }
       catch (error) { this.failures.set(resolve(path), error instanceof Error ? error.message : String(error)); }
     }

@@ -15,7 +15,7 @@ import {
   type DriverSet,
   type Services,
 } from "@vector/runtime";
-import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/engine-client";
+import type { BrowserDriver, DriverPage } from "@vector/engine-client";
 import { MethodSchemas, ResultSchemas, type Condition, type MethodName, type ObservationContent, type Step } from "@vector/contracts";
 import type { SetService, RunService, ArtifactStore, SettingsService } from "@vector/runtime";
 
@@ -41,7 +41,6 @@ const content = (url: string, over: Partial<ObservationContent> = {}): Observati
 function fakeEngine() {
   const calls: string[] = [];
   let capture = async () => ({ buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 });
-  let events: DriverPageEvents = {};
   let n = 0;
   const targets = new Map<string, string>();
   const makePage = (targetId: string, pageId: string, url: string): DriverPage => {
@@ -92,9 +91,7 @@ function fakeEngine() {
       },
       evaluate: async () => null,
       console: async () => [{ level: "log", message: "hello from page", atMs: 10 }],
-      setEvents: (e) => {
-        events = e;
-      },
+      setEvents: () => {},
       dispose: async () => {
         attached = false;
       },

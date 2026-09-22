@@ -88,7 +88,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
       crashAt: "dispatch",
       journal: prior.unresolvedEffects.map((id) => ({ id, idempotencyKey: id, committed: true })),
     });
-    run.config = { ...(run.config ?? {}), lastCrashRecovery: recovery as unknown as Record<string, unknown> };
+    run.config = { ...run.config, lastCrashRecovery: recovery as unknown as Record<string, unknown> };
     self.deps.repo.saveRun(run);
     if (recovery.needsUserReview) {
       self.finish(runId, "partially_completed", undefined, "Uncertain dispatched effects need review after crash", "Needs review — already-dispatched writes were not retried");

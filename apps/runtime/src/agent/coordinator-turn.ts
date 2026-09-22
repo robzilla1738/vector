@@ -125,7 +125,7 @@ export async function structuredCall<T>(
       providerMetadata:
         firstDispatchAt === undefined
           ? call.providerMetadata
-          : { ...(call.providerMetadata ?? {}), stream: { firstDispatchMs: firstDispatchAt - started, totalMs: call.durationMs } },
+          : { ...call.providerMetadata, stream: { firstDispatchMs: firstDispatchAt - started, totalMs: call.durationMs } },
     });
     return call;
   } catch (e) {
@@ -328,7 +328,7 @@ export async function planTurn(
   let visionPlanned = false;
   const claimedGrants = promptCannotGrant(`${obs.content.title}\n${obs.content.text}`, []);
   if (claimedGrants.length) {
-    s.run.config = { ...(s.run.config ?? {}), ignoredPageGrants: claimedGrants };
+    s.run.config = { ...s.run.config, ignoredPageGrants: claimedGrants };
   }
   const reuse = s.run.config?.contextImageArtifactIds?.length ? {skipped:"Image references require a fresh plan"} : tryReuseSkill(s.self.skills, s.run.goal, obs.content, obs.content.url, obs.documentEpoch);
   try {

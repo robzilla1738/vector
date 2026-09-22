@@ -1,7 +1,7 @@
 import type { TaskReceipt } from "@vector/contracts";
 
 const status = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
-const text = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\\`*_{}\[\]()#+!|]/g, "\\$&").replace(/^([-=>])/gm, "\\$1");
+const text = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\\`*_{}[\]()#+!|]/g, "\\$&").replace(/^([-=>])/gm, "\\$1");
 const time = (value: number) => new Date(value).toISOString();
 
 /** Portable review snapshot. Untrusted evidence is text, never embedded HTML/images. */
