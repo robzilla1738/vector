@@ -1202,8 +1202,6 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .user-message { margin: 0 0 18px auto; max-width: min(78%, 420px); width: fit-content; border-radius: 18px; background: color-mix(in srgb, var(--ink-0) 7%, transparent); padding: 10px 14px; white-space: pre-wrap; font-size: 15px; line-height: 1.5; }
 .conversation .run-goal { display: none; }
 .conversation .run-panel { padding: 0; gap: 0; }
-.conversation .run-status,
-.conversation .run-section,
 .conversation .run-msg { display: none; }
 .conversation:not(.conversation-embedded) .answer { font-size: 16px; line-height: 1.7; color: var(--ink-0); max-width: 62ch; }
 .conversation .answer { font-size: var(--fs-md); line-height: var(--lh-relaxed); }
