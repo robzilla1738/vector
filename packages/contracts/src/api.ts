@@ -33,7 +33,7 @@ import {
   VaultAccessRecordSchema, VaultGrantParams, VaultGrantSchema, VaultItemSchema, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultStatusSchema, VaultUnlockParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineUpdateParams,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
@@ -551,6 +551,12 @@ export const MethodSchemas = {
   "routines.due": z.object({now:z.number().optional()}),
   "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
   "routines.compare": z.object({leftRunId:id,rightRunId:id}).strict(),
+  "routines.export": z.object({ routineIds: z.array(id).min(1).max(500).optional() }).strict(),
+  "routines.import": z.object({
+    routines: z.array(RoutineShareSchema).max(500).optional(),
+    path: z.string().trim().min(1).max(4096).optional(),
+    workspaceId: id.optional(),
+  }).strict().refine(value => (value.routines === undefined) !== (value.path === undefined), { message: "Pass routines or a file path, not both" }),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -879,6 +885,13 @@ export const ResultSchemas = {
   "routines.due": z.array(RoutineRunSchema),
   "routines.alerts": z.array(RoutineAlertSchema),
   "routines.compare": RoutineCompareSchema,
+  "routines.export": RoutineShareEnvelopeSchema,
+  "routines.import": z.object({
+    ok: z.boolean(),
+    imported: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    routineIds: z.array(id),
+  }),
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
   "agentConnections.revoke": AgentConnectionSchema,

@@ -121,6 +121,8 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "routines.get",
   "routines.list",
   "routines.pause",
+  "routines.export",
+  "routines.import",
   "routines.reconcile",
   "routines.run",
   "routines.update",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task } from "@vector/contracts";
 import { call } from "../store";
+import { bridge } from "../bridge";
 import { I } from "./icons";
 import { RoutineSchedule } from "./RoutineSchedule";
 
@@ -14,6 +15,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [title, setTitle] = useState("");
   const [parameter, setParameter] = useState("");
   const [query, setQuery] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   async function refresh(routineId?: string) {
     const [items, nextAlerts] = await Promise.all([
@@ -37,7 +39,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     return () => { active = false; };
   }, [workspaceId]);
   async function action(work: () => Promise<void>) {
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setNotice("");
     try { await work(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
@@ -45,14 +47,30 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const visibleRoutines = routines.filter(item => `${item.title} ${item.objective}`.toLowerCase().includes(query.toLowerCase()));
   return <section className="routines-section" aria-label="Routines" aria-busy={loading || busy}>
-    <div className="routines-heading"><div><h4>Routines</h4><p className="hint">Your repeatable work, on a schedule.</p></div>{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
+    <div className="routines-heading"><div><h4>Routines</h4><p className="hint">Your repeatable work, on a schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
       const routine = await call<Routine>("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: parameter ? [{ name: "topic", label: "Topic", value: parameter }] : [] });
       setTitle(""); setParameter(""); await refresh(routine.routineId);
-    })}>Make routine from this task</button>}</div>
+    })}>Make routine from this task</button>}
+      <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
+        const ids = routines.filter(item => !item.archivedAt).map(item => item.routineId);
+        if (!ids.length) { setNotice("No active routines to export."); return; }
+        const envelope = await call<{ format: string; routines: unknown[] }>("routines.export", { routineIds: ids });
+        const path = await bridge.saveFile("aux-routines.json", JSON.stringify(envelope, null, 2));
+        if (path) setNotice(`Exported ${ids.length} routine${ids.length === 1 ? "" : "s"}.`);
+      })}>Export…</button>
+      <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
+        const path = await bridge.openFile();
+        if (!path) return;
+        const result = await call<{ imported: number; skipped: number }>("routines.import", { path, workspaceId });
+        setNotice(`Imported ${result.imported} routine${result.imported === 1 ? "" : "s"}${result.skipped ? ` · ${result.skipped} duplicates skipped` : ""}.`);
+        await refresh();
+      })}>Import…</button>
+    </div></div>
     <details className="routine-safety"><summary>How routines run safely</summary><p className="hint">Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until you reconcile an uncertain write.</p></details>
     {alerts.length > 0 && <section className="field" aria-label="Routine alerts"><strong>Alerts</strong><span className="hint">Local run records only. They do not prove a business outcome.</span>{alerts.map(alert => <div className="hint" key={alert.routineRunId}>{alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}{alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}</div>)}</section>}
     {task && <div className="row"><input aria-label="Routine title" placeholder="Routine title" value={title} onChange={event => setTitle(event.target.value)} /><input aria-label="Topic parameter" placeholder="Optional topic parameter" value={parameter} onChange={event => setParameter(event.target.value)} /></div>}
     {error && <p className="field-error" role="alert">{error}</p>}
+    {notice && <p className="hint" role="status">{notice}</p>}
     {!selected && <>
       <label className="routine-search">{I.search}<input aria-label="Search routines" placeholder="Search routines…" value={query} onChange={event => setQuery(event.target.value)} /></label>
       {loading ? <p className="hint" role="status">Loading routines…</p> : <div className="routine-grid">
