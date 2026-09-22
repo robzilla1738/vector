@@ -104,6 +104,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "pages.observe",
   "pages.open",
   "pages.openLive",
+  "pages.pickElement",
   "pages.resume",
   "pages.stopFind",
   "pages.takeover",

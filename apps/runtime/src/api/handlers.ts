@@ -553,6 +553,10 @@ export function makeInvoker(s: Services) {
         return s.pages.zoom(p.pageId, p.level, p.delta, p.reset, p.direction);
       }
       case "pages.takeover": return s.pages.takeover(params.pageId);
+      case "pages.pickElement": {
+        if (client.external) throw new AuxError("permission_denied", "Element picks are interactive and run in Aux.");
+        return s.pages.pickElement(params.pageId, { timeoutMs: params.timeoutMs });
+      }
       case "pages.resume": return s.pages.resume(params.pageId);
       case "pages.openLive": {
         const page = s.pages.get(params.pageId);

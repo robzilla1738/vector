@@ -427,6 +427,8 @@ export function installMockBridge(q: URLSearchParams) {
         return { observation: { ...OBSERVATION, pageId: p.pageId as string } };
       case "pages.find":
         return { matches: 7, activeMatch: 2 };
+      case "pages.pickElement":
+        return { picked: false };
       case "pages.stopFind": return { ok: true };
       case "bookmarks.add": {
         bookmarks = [{ url: String(p.url), title: String(p.title) }, ...bookmarks.filter(item => item.url !== p.url)];

@@ -133,6 +133,20 @@ export const PagesFindParams = z.object({
 export const PagesStopFindParams = z.object({ pageId: id, action: z.enum(["clear", "keep"]).default("clear") });
 export const PagesZoomParams = z.object({ pageId: id, level: z.number().optional(), delta: z.number().optional(), reset: z.boolean().optional(), direction: z.enum(["in", "out"]).optional() });
 export const PagesTakeoverParams = z.object({ pageId: id });
+export const PagesPickElementParams = z.object({ pageId: id, timeoutMs: z.number().int().min(1_000).max(120_000).optional() });
+export const ElementPickSchema = z.object({
+  tag: z.string().max(100),
+  id: z.string().max(500).optional(),
+  classes: z.array(z.string().max(200)).max(8),
+  text: z.string().max(160).optional(),
+  role: z.string().max(200).optional(),
+  ariaLabel: z.string().max(500).optional(),
+  href: z.string().max(4000).optional(),
+  selector: z.string().max(2000),
+  rect: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }),
+});
+export type ElementPick = z.infer<typeof ElementPickSchema>;
+export const PagesPickElementResult = z.object({ picked: z.boolean(), element: ElementPickSchema.optional() });
 export const PagesResumeParams = z.object({ pageId: id });
 export const PagesOpenLiveParams = z.object({ pageId: id }).describe("focus a borrowed Chrome tab in real Chrome");
 
@@ -591,6 +605,7 @@ export const MethodSchemas = {
   "pages.stopFind": PagesStopFindParams,
   "pages.zoom": PagesZoomParams,
   "pages.takeover": PagesTakeoverParams,
+  "pages.pickElement": PagesPickElementParams,
   "pages.resume": PagesResumeParams,
   "pages.openLive": PagesOpenLiveParams,
   "sets.create": SetsCreateParams,
@@ -954,6 +969,7 @@ export const ResultSchemas = {
   "pages.stopFind": z.object({ ok: z.boolean() }),
   "pages.zoom": z.object({ level: z.number() }),
   "pages.takeover": PageTargetSchema,
+  "pages.pickElement": PagesPickElementResult,
   "pages.resume": PageTargetSchema,
   "pages.openLive": z.object({ ok: z.boolean() }),
   "sets.create": PageSetSchema,

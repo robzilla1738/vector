@@ -25,6 +25,7 @@ import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import type { VaultService } from "./vault.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
+import { pickElementInPage, ELEMENT_PICK_TIMEOUT_MS, type PickedElement } from "../execution/element-picker.js";
 import { authorizeProgram, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -781,6 +782,32 @@ export class PageService {
       await this.driverPageLenient(pageId).stop();
       return this.get(pageId);
     });
+  }
+
+  private pickInFlight = new Set<string>();
+
+  /**
+   * Interactive element pick ("request edit") — the tab stays under human
+   * control; a small overlay resolves on click, Escape, or timeout. The pick
+   * is deliberately not enqueued: it must run while the user keeps clicking.
+   */
+  async pickElement(pageId: string, opts: { timeoutMs?: number } = {}): Promise<{ picked: boolean; element?: PickedElement }> {
+    const lp = this.live.get(pageId);
+    if (!lp?.driver || !lp.driver.isAttached()) throw new AuxError("target_detached", `page ${pageId} is not attached`);
+    if (lp.target.controller === "agent") throw new AuxError("conflict", "The agent is driving this page. Take it over before picking an element.");
+    if (this.pickInFlight.has(pageId)) throw new AuxError("conflict", "An element pick is already waiting on this page.");
+    const timeoutMs = Math.min(Math.max(opts.timeoutMs ?? ELEMENT_PICK_TIMEOUT_MS, 1_000), 120_000);
+    this.pickInFlight.add(pageId);
+    try {
+      const expression = `(${pickElementInPage.toString()})(${timeoutMs})`;
+      const result = await Promise.race([
+        lp.driver.evaluate(expression) as Promise<PickedElement | null>,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs + 5_000)),
+      ]).catch(() => null);
+      return result ? { picked: true, element: result } : { picked: false };
+    } finally {
+      this.pickInFlight.delete(pageId);
+    }
   }
 
   // ---------- observation ----------

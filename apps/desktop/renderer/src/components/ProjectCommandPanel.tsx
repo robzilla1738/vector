@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState,useRef} from 'react';
-import type {ProjectCommand,LocalPreviewCheck,ProjectEnvironment,ProjectEnvironmentSuggestion,ProjectIncidentReport,ResponseRecord,Task} from '@aux/contracts';
+import type {ElementPick,ProjectCommand,LocalPreviewCheck,ProjectEnvironment,ProjectEnvironmentSuggestion,ProjectIncidentReport,ResponseRecord,Task} from '@aux/contracts';
 import {bridge} from '../bridge';
 import {tabCommand,useStore} from '../store';
 
@@ -46,11 +46,14 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
   const [diagnosticsError,setDiagnosticsError]=useState('');
   const [diagnosticsBusy,setDiagnosticsBusy]=useState(false);
   const [incident,setIncident]=useState<ProjectIncidentReport|null>(null);
+  const [pick,setPick]=useState<ElementPick|null>(null);
+  const [picking,setPicking]=useState(false);
+  const [editText,setEditText]=useState('');
   const pages=useStore(state=>state.pages);
   const previewEdited=useRef(false);
   const autoRefreshKey=useRef('');
   const previousActive=useRef(new Set<string>());
-  useEffect(()=>{setPreviewLink(readPreviewLink(projectId));setDiagnostics(null);setDiagnosticsError('');setStackCommands([]);autoRefreshKey.current='';previousActive.current=new Set();},[projectId]);
+  useEffect(()=>{setPreviewLink(readPreviewLink(projectId));setDiagnostics(null);setDiagnosticsError('');setStackCommands([]);setPick(null);setPicking(false);setEditText('');autoRefreshKey.current='';previousActive.current=new Set();},[projectId]);
   const refreshEnvironment=useCallback(async()=>setEnvironment((await bridge.inspectProject(projectId)).environment),[projectId]);
   useEffect(()=>{let active=true;void Promise.all([bridge.listProjects(),bridge.inspectProject(projectId)]).then(([projects,inspection])=>{if(!active)return;setEnvironment(inspection.environment);const saved=projects.find(project=>project.projectId===projectId)?.preview;if(saved){setCheck(saved);if(!previewEdited.current)setPreview(saved.url);}}).catch(error=>{if(active)setError(String(error));});return()=>{active=false;};},[projectId]);
   const [error,setError]=useState('');
@@ -63,6 +66,25 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
   async function action(work:()=>Promise<void>){setBusy(true);setError('');try{await work();}catch(error){setError(error instanceof Error?error.message:String(error));}finally{setBusy(false);}}
   const linkedPage=previewLink?pages.find(page=>page.pageId===previewLink.pageId):undefined;
   const previewReady=!!linkedPage&&linkedPage.url===previewLink?.url;
+  const describePick=(element:ElementPick)=>`${element.tag}${element.id?`#${element.id}`:''} at "${element.selector}"${element.text?` — "${element.text}"`:''}`;
+  const beginPick=async()=>{
+    if(!linkedPage||picking)return;
+    setPicking(true);setError('');
+    try{
+      const result=await bridge.invoke('pages.pickElement',{pageId:linkedPage.pageId}) as {picked:boolean;element?:ElementPick};
+      if(result.picked&&result.element){setPick(result.element);setEditText('');}
+    }catch(error){setError(error instanceof Error?error.message:String(error));}
+    finally{setPicking(false);}
+  };
+  const sendEditRequest=async()=>{
+    if(!pick||!linkedPage||!editText.trim())return;
+    await action(async()=>{
+      const context=[`EDIT REQUEST on the project preview`, `Page: ${linkedPage.title} (${linkedPage.url})`, `Element: ${describePick(pick)}`, `Requested change: ${editText.trim()}`].join('\n');
+      await bridge.invoke('tasks.start',{taskId:task.taskId,expectedRevision:task.revision,context,pageIds:[linkedPage.pageId]});
+      setPick(null);setEditText('');
+      useStore.getState().toast('Edit request sent — the task is working on it.');
+    });
+  };
   const refreshDiagnostics=useCallback(async(pageId:string)=>{
     setDiagnosticsBusy(true);setDiagnosticsError('');
     try{
@@ -153,8 +175,19 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
       <div className="project-diagnostics-head"><div><strong>Preview diagnostics</strong><p className="hint">Console and network activity from the linked Aux preview tab.</p></div><div className="row">
         {previewReady&&<button className="btn sm" onClick={()=>void useStore.getState().activate(linkedPage.pageId)}>Open tab</button>}
         {previewReady&&<button className="btn sm" disabled={busy} onClick={()=>void action(async()=>setIncident(await bridge.invoke('development.prepareIncidentFix',{taskId:task.taskId,expectedRevision:task.revision,projectId,pageId:linkedPage.pageId}) as ProjectIncidentReport))}>Prepare incident snapshot</button>}
+        {previewReady&&!pick&&<button className="btn sm" disabled={busy||picking} onClick={()=>void beginPick()}>{picking?'Click an element in the preview…':'Request edit…'}</button>}
         <button className="btn sm" disabled={!previewReady||diagnosticsBusy} onClick={()=>previewReady&&void refreshDiagnostics(linkedPage.pageId)}>{diagnosticsBusy?'Refreshing…':'Refresh'}</button>
       </div></div>
+      {pick&&<div className="field" aria-label="Edit request">
+        <strong>Edit request</strong>
+        <span className="hint">{`Element: ${describePick(pick)}`}</span>
+        <textarea aria-label="What should change" placeholder="Describe the change for this element…" value={editText} onChange={event=>setEditText(event.target.value)} />
+        <div className="row">
+          <button className="btn sm" disabled={busy||!editText.trim()} onClick={()=>void sendEditRequest()}>Send edit request</button>
+          <button className="btn sm ghost" disabled={busy} onClick={()=>{setPick(null);setEditText('');}}>Cancel</button>
+        </div>
+        <span className="hint">Starts the task on this preview tab with your request as its context.</span>
+      </div>}
       {!linkedPage&&<p className="hint" role="status">The linked preview tab was closed. Check and open the preview again to resume diagnostics.</p>}
       {linkedPage&&linkedPage.url!==previewLink.url&&<p className="hint" role="status">The linked tab navigated to {displayUrl(linkedPage.url)}. Diagnostics are paused until you check and open {displayUrl(previewLink.url)} again.</p>}
       {diagnosticsError&&<p role="alert">{diagnosticsError}</p>}
