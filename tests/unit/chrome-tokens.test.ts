@@ -9,13 +9,10 @@ const styles = readFileSync(join(here, "../../apps/desktop/renderer/src/styles.c
 const css = tokens + "\n" + styles;
 
 function block(theme: "dark" | "light"): string {
-  if (theme === "dark") {
-    const m = tokens.match(/:root\s*\{([\s\S]*?)\n\}/);
-    expect(m, "dark tokens on :root").toBeTruthy();
-    return m![1]!;
-  }
-  const m = tokens.match(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/);
-  expect(m, "light theme block").toBeTruthy();
+  const m = theme === "dark"
+    ? tokens.match(/:root\s*\{([\s\S]*?)\n\}/)
+    : tokens.match(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/);
+  expect(m, `${theme} theme block`).toBeTruthy();
   return m![1]!;
 }
 
@@ -222,7 +219,11 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(images).toContain(">Capture</button>");
     expect(conversation).toContain('aria-label={contextOpen ? "Close attachments" : "Add to this reply"}');
     expect(styles).toContain(".conversation .composer-options, .conversation .composer-attach { display:none; }");
-    expect(styles).toContain(".conversation .run-status,\n.conversation .run-section,\n.conversation .run-msg { display: none; }");
+    expect(styles).toContain(".conversation .run-msg { display: none; }");
+    // Run status (Pause/Stop/state badge) and Work history stay visible in chat panels;
+    // hiding them regresses the live-run controls — see .conversation .run-msg above.
+    expect(styles).not.toMatch(/\.conversation \.run-status[^{}]*display:\s*none/);
+    expect(styles).not.toMatch(/\.conversation \.run-section[^{}]*display:\s*none/);
     const send = styles.indexOf(".conversation-input > .icon-btn { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
     const plus = styles.indexOf(".conversation-input > .icon-btn.context-toggle { background: transparent; color: var(--ink-2); }");
     expect(plus).toBeGreaterThan(send);
