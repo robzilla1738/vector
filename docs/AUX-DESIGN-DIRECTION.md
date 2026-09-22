@@ -39,10 +39,13 @@ OS versions, wallpapers and activation states.
 
 ## Shell and navigation
 
-- Keep the toolbar's 40px layout slot in both tab orientations, but reveal the
-  URL and surrounding icons together on hover/focus with a 180ms transition.
-  Touch keeps controls visible; reduced motion removes the transition.
-  Command-L focuses it, except on new-tab where it focuses the hero field.
+- On a loaded page the toolbar leaves the layout. The page sits flush under
+  the window. The address row and its icons float in together when the
+  pointer reaches the top of the page or the field is focused, and they
+  leave when the pointer does. Touch keeps the row in the layout. Reduced
+  motion removes the transition. Command-L focuses the row, except on a new
+  tab, where it focuses the hero field. The Tab hint on that hero matches
+  the Search and Ask pills.
 - Sidebar: collapse control, bookmarks/pins, Chats with New chat and recent
   conversations, then Tabs/folders. Put the local profile/space control below.
 - Collapse completely, with no logo strip. Hover the left edge for a floating
@@ -61,7 +64,10 @@ Empty chats show a subdued Aux mark rather than an oversized greeting.
 The bottom composer has attachment, dictation and send controls, with real
 permission/model/context actions underneath. Dictation is reviewed locally
 before insertion; attachments and active-run safety gates remain intact.
-Conversation previews render existing saved answers and never fabricate activity.
+A conversation with a web tab shows that page's preview beside the messages
+as soon as the chat opens. The globe hides it, and a narrow column hides it.
+The preview is a capture of the real tab. History cards show saved answers
+and do not invent activity.
 Show successful answers once, without a duplicate completion badge/status summary.
 Keep partial-result and failure notices. Work history starts collapsed in chat.
 Task promotion is optional under Options → Save as task, never an automatic form

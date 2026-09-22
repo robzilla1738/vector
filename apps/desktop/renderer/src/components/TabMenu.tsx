@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PageTarget } from "@vector/contracts";
 import { bridge, inElectron } from "../bridge";
-import { isScrimOverlay } from "../chrome";
+import { requestStageReport } from "../stage-obstruction";
 import { call, errToast, toast, useStore } from "../store";
 import { canSplitPage, hostOf, isPinned, tabsInSpace } from "../workspace";
 import { moveMenuFocus } from "../keyboard-list";
@@ -56,10 +56,10 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     const menu = ref.current;
     if (!menu) return;
     positionContextMenu(menu, x, y);
+    requestStageReport();
   }, [x, y, folders.length, layout.spaces.length, windows.length, moving, query]);
 
   useEffect(() => {
-    void bridge.overlay(true);
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeRef.current(); } };
     document.addEventListener("mousedown", outside);
@@ -68,7 +68,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     return () => {
       document.removeEventListener("mousedown", outside);
       document.removeEventListener("keydown", escape);
-      void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
+      requestStageReport();
       if (previous.current?.isConnected) previous.current.focus();
     };
   }, []);

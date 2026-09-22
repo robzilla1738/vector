@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { bridge } from "../bridge";
-import { isScrimOverlay } from "../chrome";
+import { requestStageReport } from "../stage-obstruction";
 import { moveMenuFocus } from "../keyboard-list";
 import { useMenuDismiss } from "../use-menu-dismiss";
 import { positionContextMenu } from "../position-context-menu";
@@ -20,9 +19,9 @@ export function PinMenu({ pin, spaceId, x, y, onClose: finishClose }: {
     const menu = ref.current;
     if (!menu) return;
     positionContextMenu(menu, x, y);
+    requestStageReport();
   }, [x, y]);
   useEffect(() => {
-    void bridge.overlay(true);
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) close.current(); };
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close.current(); }
@@ -33,7 +32,7 @@ export function PinMenu({ pin, spaceId, x, y, onClose: finishClose }: {
     return () => {
       document.removeEventListener("mousedown", outside);
       document.removeEventListener("keydown", escape);
-      void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
+      requestStageReport();
       if (trigger.current?.isConnected) trigger.current.focus();
     };
   }, []);

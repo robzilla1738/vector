@@ -252,6 +252,7 @@ export class RunCoordinator {
 
   finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
     const run = this.get(runId);
+    if (run.status === "cancelled") return;
     const unresolved = this.durable.unresolved(runId);
     if (unresolved.length) {
       if (status === "completed") result = undefined;

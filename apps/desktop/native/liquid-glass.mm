@@ -35,8 +35,27 @@ static napi_value SetEnabled(napi_env env, napi_callback_info info) {
       NSView *content = window.contentView;
       NSGlassEffectView *glass = [[NSGlassEffectView alloc] initWithFrame:content.frame];
       glass.style = NSGlassEffectViewStyleRegular;
-      glass.cornerRadius = 0;
+      // One curve, the window's. A square glass clipped by a round window
+      // leaves a second edge at every corner.
+      CGFloat corner = 16;
+      SEL cornerSelector = @selector(_cornerRadius);
+      if ([window respondsToSelector:cornerSelector]) {
+        NSMethodSignature *signature = [window methodSignatureForSelector:cornerSelector];
+        NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+        invocation.selector = cornerSelector;
+        invocation.target = window;
+        [invocation invoke];
+        CGFloat value = 0;
+        [invocation getReturnValue:&value];
+        if (value > 0) corner = value;
+      }
+      // Match the window curve without clipping. A clip punches a clear ring
+      // inside the window mask, and that ring composites as a black border.
+      glass.cornerRadius = corner;
+      glass.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
       window.contentView = glass;
+      content.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+      content.frame = glass.bounds;
       glass.contentView = content;
       objc_setAssociatedObject(window, &glassKey, glass, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     } else if (!enabled && installed) {

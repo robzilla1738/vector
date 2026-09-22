@@ -23,6 +23,8 @@ skips ports that are already listening.
 pnpm test            # unit + integration (vitest run tests/unit tests/integration)
 pnpm test:unit       # contracts, refs, rpc, executor, repo, pool, chrome shell
                      # (address vs search, overlay→native-view, stylesheet tokens)
+                     # plus agent navigation, offscreen holds, bookmark drop,
+                     # stage clearance beside a menu, and toolbar-edge geometry
 pnpm test:e2e        # launches real Electron, drives the loopback API
 pnpm exec vitest run tests/integration   # real headless-Chrome runtime + fixtures
 ```

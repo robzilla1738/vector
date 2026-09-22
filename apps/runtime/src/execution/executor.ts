@@ -60,12 +60,23 @@ const stepInputs = (s: Step): Record<string, unknown> => {
   return rest;
 };
 
+/** `javascript:` and `vbscript:` navigations run script in the current page. */
+function isActiveScriptUrl(url: string): boolean {
+  try {
+    const scheme = new URL(url).protocol;
+    return scheme === "javascript:" || scheme === "vbscript:";
+  } catch {
+    return false;
+  }
+}
+
 /** Reject page-JS surfaces unless the program came from a trusted source. */
 function assertEvalAllowed(step: Step, allowEval: boolean) {
   if (allowEval) return;
   const usesExpression = (c: Condition | undefined) => c?.kind === "expression";
   if (
     step.op === "evaluate" ||
+    step.op === "navigate" && isActiveScriptUrl(step.url) ||
     (step.op === "waitFor" && usesExpression(step.condition)) ||
     (step.expect ?? []).some((c) => usesExpression(c as Condition))
   ) {

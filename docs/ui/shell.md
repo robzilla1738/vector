@@ -20,7 +20,7 @@ Nothing in the shell talks to Electron except through the preload
     ├── .sidebar                  pins · bookmarks · chats · tabs/folders · space footer
     │                             fully hidden or floating edge-hover peek when closed
     └── .main-col
-        ├── .toolbar              40px slot: nav · CommandBar · chrome; hover/focus reveal
+        ├── .toolbar              loaded page: out of flow until top-edge hover or focus; otherwise a 40px row
         └── .main
             ├── .stage-wrap       FindBar? · Stage (.stage-card) · Downloads?
             └── .rail             AgentRail (RunPanel | SetPanel | home) + composer
@@ -34,14 +34,15 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | File | Role |
 | --- | --- |
 | `App.tsx` | Frame, shortcut dispatch (renderer + main-process shortcuts), stage-rect reporting to the native view, `narrow` media query |
-| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode with floating edge peek, tab/folder context menus |
-| `components/Toolbar.tsx` | Always reserves its layout slot; back/forward/reload, `CommandBar`, controller chip, overview, bookmark and rail toggle reveal together on hover/focus |
+| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode with floating edge peek, tab/folder context menus. A web tab dropped on Bookmarks is saved |
+| `components/Toolbar.tsx` | On a loaded page the row is out of the layout until the pointer reaches the top or the field is focused. Back/forward/reload, `CommandBar`, the controller chip, overview, bookmark and the rail toggle reveal together. Touch keeps the row in the layout. ⌘L still focuses it |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again) |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
 | `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `EngineView` (`pages.capture`) for engine pages; `MockPage` in mock mode |
 | `components/EngineBadge.tsx`, `engine.ts` | Chromium / Your Chrome / Vector Engine badge with hover card (route reason, route ms, first paint) |
 | `components/AgentRail.tsx` | Rail chrome, home view (live, sets, searchable past runs — virtualized at 30+), composer, `ResizeHandle` |
 | `components/RunPanel.tsx` | Goal, status/elapsed/model calls/cost, page chip, takeover banner + Return control, needs-input prompt, final answer with copy, `StepTimeline`, `ObservationPanel` |
+| `components/Conversation.tsx` | Chat transcript and composer. A web-tab context shows that page's preview beside the messages as soon as the chat opens. The globe hides it. The preview is a sibling of the message column and hides when the chat column is under 900px |
 | `components/StepTimeline.tsx` | Steps with outcome, duration, detail, inspect-observation affordance |
 | `components/ObservationPanel.tsx` | Compact observation: title/url/viewport, headings, refs, raw text |
 | `components/SetPanel.tsx` | Set status, per-member segmented bar, member grid, failed list, Results |
@@ -89,6 +90,8 @@ Prefixes: `/` command, `>` force a run, `?` force a search.
 Sidebar tab rows are a roving-tabindex `tablist`: `↑/↓` move focus,
 `⌥↑ / ⌥↓` reorder, `⌫` closes, middle-click closes, right-click opens the
 context menu (reload, duplicate, copy URL, pin, move to space, close others).
+Opening that menu leaves the loaded page painted: the stage moves aside for
+the menu, and the menu does not cover the page with the shell overlay.
 
 ## Design tokens (`tokens.css`)
 
@@ -104,7 +107,12 @@ property defined once in `tokens.css`. Components never introduce literals.
 - **Shell metrics** — `--toolbar-h 40`, fully closed sidebar width 0;
   both panels are user-resizable and their widths persist in
   localStorage `vector.sb-w` / `vector.rail-w`. Controls are 28/32px;
-  `--traffic-inset 80` (macOS traffic lights).
+  `--traffic-inset 80` (macOS traffic lights). On a loaded page the native
+  view radius is 0 so the page sits flush; the rounded edge is `.main-col`,
+  with a 14px radius on the stage card in horizontal tabs. The window glass
+  matches the window corner radius and stays unclipped, so the corner stays
+  clear. The home Tab hint matches the Search and Ask pills (26px, medium
+  weight, same radius and fill).
 - **Motion** — `--t-fast 150`, `--t-med 150`, `--t-slow 240` ms; toolbar reveal 180ms; eases
   `--ease-out`, `--ease-spring`, `--ease-in-out`. `prefers-reduced-motion`
   zeroes the durations and collapses every animation/transition to 0.01 ms.
@@ -140,6 +148,10 @@ property defined once in `tokens.css`. Components never introduce literals.
 - **Controller** — a status chip marks agent vs human control; taking over
   shows *You're in control · Return* (toolbar when visible, otherwise the
   sidebar / run panel). The stage card does not use a colored agent ring.
+  A page an agent is driving stays laid out when it is not the visible tab.
+  A conversation preview keeps its own hold, so the capture cannot release
+  that lease, and releasing the lease cannot hide a page the preview is
+  still capturing.
 
 ## Accessibility
 
@@ -179,7 +191,11 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
 - `pnpm -C apps/desktop test` — vitest: `intent.test.ts` (command-bar intent
   detection), `workspace.test.ts` (space / tab / pin / folder reducers),
   `favicon.test.ts`, `EngineView.test.tsx`, `StepTimeline.test.tsx` and
-  `ObservationPanel.test.tsx`.
+  `ObservationPanel.test.tsx`. Repo unit tests also cover toolbar-edge
+  geometry, bookmark drop, stage clearance beside a menu, and the separate
+  preview and agent-stage holds (`tests/unit/toolbar-edge.test.ts`,
+  `bookmark-drop.test.ts`, `stage-obstruction.test.ts`,
+  `offscreen-holds.test.ts`).
 - `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
   (native material layering, row-filling pins, coordinated toolbar reveal).
 

@@ -6,6 +6,7 @@ import { installSitePermissions } from "./site-permissions.js";
 import { offerExternalLink } from "./external-links.js";
 import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
 import { pageShortcut } from "./page-shortcuts.js";
+import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
 /**
  * Aux private browser process.
  *
@@ -49,7 +50,8 @@ let stagePageId: string | null = null;
 let splitPageId: string | null = null;
 let splitRatio = .5;
 let stageBounds: {x:number;y:number;width:number;height:number} | null = null;
-let stageRadius = 12;
+let toolbarEdge: ReturnType<typeof attachToolbarEdgeWatch> | null = null;
+let stageRadius = 0;
 let overlayOpen = false;
 let exitApproved = false;
 let exitPending = false;
@@ -113,6 +115,7 @@ function applyStage(focus = false) {
       page.view.setVisible(shown);
       if(shown){page.view.setBounds({x:0,y:0,width:size.width,height:size.height});page.view.setBorderRadius(0);}
     }
+    toolbarEdge?.sync();
     return;
   }
   const visible = (id: string | null) => {
@@ -133,6 +136,7 @@ function applyStage(focus = false) {
     if (page.target.viewStatus!=="crashed") page.target={...page.target,viewStatus:shown?"visible":"hidden"};
   }
   if(focus && primary)primary.view.webContents.focus();
+  toolbarEdge?.sync();
 }
 
 function activate(pageId: string) {
@@ -474,13 +478,14 @@ async function boot(){
   win=new BaseWindow({width:1320,height:900,minWidth:900,minHeight:620,title:"Aux — Private",titleBarStyle:"hiddenInset",trafficLightPosition:{x:16,y:18},roundedCorners:true,backgroundColor:"#1c1c1e"});
   shellView=new WebContentsView({webPreferences:{preload:join(import.meta.dirname,"..","preload","index.cjs"),session:shellSession,additionalArguments:["--aux-private-renderer"],contextIsolation:true,sandbox:true,nodeIntegration:false}});
   shellView.setBackgroundColor("#1c1c1e");win.contentView.addChildView(shellView);
+  toolbarEdge=attachToolbarEdgeWatch(win,shellView.webContents,()=>({page:!!stagePageId&&!overlayOpen,stage:stageBounds}));
   const layout=()=>{if(win&&shellView){const {width,height}=win.getContentBounds();shellView.setBounds({x:0,y:0,width,height});applyStage();}};win.on("resize",layout);layout();
   const devUrl=process.env.VITE_DEV_SERVER_URL;const shellFile=join(import.meta.dirname,"..","renderer","index.html");const allowed=(url:string)=>isShellDocument(url,shellFile,devUrl);
   shellView.webContents.on("will-navigate",(event,url)=>{if(!allowed(url))event.preventDefault();});shellView.webContents.setWindowOpenHandler(()=>({action:"deny"}));
   if(devUrl)await shellView.webContents.loadURL(devUrl);else await shellView.webContents.loadFile(shellFile);
   const initial=(webUrl(process.env.AUX_PRIVATE_TEST_INITIAL_URL)?process.env.AUX_PRIVATE_TEST_INITIAL_URL:process.argv.find(webUrl))??"about:blank";const initialPage=await openPage(initial,true);
   if(process.env.AUX_PRIVATE_TEST_DIRTY==="1")await pages.get(initialPage.pageId)?.view.webContents.executeJavaScript(`const field=document.querySelector('textarea,input,[contenteditable=true]');if(field){if('value' in field)field.value='Synthetic private draft';else field.textContent='Synthetic private draft';field.dispatchEvent(new Event('input',{bubbles:true}));}`,true);
-  win.on("close",event=>{if(!exitApproved){event.preventDefault();void requestExit();}});win.on("closed",()=>{win=null;});
+  win.on("close",event=>{if(!exitApproved){event.preventDefault();void requestExit();}});win.on("closed",()=>{toolbarEdge?.stop();toolbarEdge=null;win=null;});
   const sendShortcut=(key:string,opt:{shift?:boolean;alt?:boolean}={})=>()=>shellView?.webContents.send("shortcut",{key,meta:true,shift:!!opt.shift,alt:!!opt.alt});
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {label:"Aux Private",submenu:[{role:"about",label:"About Aux"},{type:"separator"},{role:"quit",label:"Close Private Window"}]},

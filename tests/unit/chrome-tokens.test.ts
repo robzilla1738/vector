@@ -114,10 +114,18 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/\.sb-pins\s*\{[^}]*repeat\(5/);
   });
 
+  it("keeps a loaded page flush and floats the address bar in from the top edge", () => {
+    expect(styles).toContain(".app.electron .main-col:has(.stage-card.has-page) > .toolbar");
+    expect(styles).toMatch(/\.app\.electron \.main-col:has\(\.stage-card\.has-page\) > \.toolbar\s*\{[^}]*position:\s*absolute/s);
+    expect(styles).toMatch(/\.app\.electron \.main-col:has\(\.stage-card\.has-page\) > \.toolbar\s*\{[^}]*background:\s*transparent/s);
+    expect(styles).toContain(".main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right)");
+    expect(styles).toContain(".app.electron .main-col.toolbar-revealed:has(.stage-card.has-page)");
+  });
+
   it("reveals the URL field and both icon groups together without moving page layout", () => {
     const controls = ".toolbar > :is(.cmdbar, .tb-left, .tb-right)";
     expect(styles).toContain(`${controls} {\n  opacity: 0;`);
-    expect(styles).toContain(".toolbar:is(:hover, :focus-within, :has(.cmdbar.editing)) > :is(.cmdbar, .tb-left, .tb-right)");
+    expect(styles).toContain(".toolbar:is(:hover, :focus-within, :has(.cmdbar.editing)) > :is(.cmdbar, .tb-left, .tb-right),");
     expect(styles).toContain(`@media (hover: none) {\n  ${controls} { opacity: 1; transform: none; }`);
     expect(styles).toContain(`@media (prefers-reduced-motion: reduce) {\n  ${controls} { transform: none; transition: none; }`);
   });

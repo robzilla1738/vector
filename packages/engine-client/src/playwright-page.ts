@@ -15,7 +15,6 @@ import { parseTarget, RefRegistry } from "./ref-registry.js";
 import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
 import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
 import {
-  POST_NAVIGATION_SETTLE_MS,
   READINESS_INIT_SCRIPT,
   SETTLED_CONDITION_MS,
   SETTLED_QUIET_MS,
@@ -245,23 +244,19 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async navigate(url: string, timeoutMs = 30_000) {
     await this.page.goto(url, { timeout: timeoutMs, waitUntil: "domcontentloaded" });
-    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
   async back(timeoutMs = 15_000) {
     const res = await this.page.goBack({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
     if (!res) throw new VectorError("step_failed", "No back history");
-    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
   async forward(timeoutMs = 15_000) {
     const res = await this.page.goForward({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
     if (!res) throw new VectorError("step_failed", "No forward history");
-    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
   async reload(timeoutMs = 30_000) {
     await this.page.reload({ timeout: timeoutMs, waitUntil: "domcontentloaded" });
     // A successful explicit reload recovers a crashed renderer on this same tab.
     this.attached = true;
-    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
 
   /**

@@ -46,6 +46,11 @@ const vector = {
     ipcRenderer.on("shortcut", l);
     return () => ipcRenderer.removeListener("shortcut", l);
   },
+  onToolbarEdge: (cb: (near: boolean) => void) => {
+    const listener = (_event: unknown, near: boolean) => cb(near);
+    ipcRenderer.on("toolbar-edge", listener);
+    return () => ipcRenderer.removeListener("toolbar-edge", listener);
+  },
   onDownload: (cb: (d: unknown) => void) => {
     const l = (_e: unknown, d: unknown) => cb(d);
     ipcRenderer.on("download", l);

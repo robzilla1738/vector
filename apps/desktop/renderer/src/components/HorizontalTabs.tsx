@@ -8,6 +8,7 @@ import { TabAudioButton } from "./TabAudioButton";
 import { useTabSelection } from "../use-tab-selection";
 import { TabMenu } from "./TabMenu";
 import { I } from "./icons";
+import { TAB_DRAG_TYPE } from "../bookmark-drop";
 
 export function HorizontalTabs() {
   const layout = useStore(state => state.layout);
@@ -31,7 +32,7 @@ export function HorizontalTabs() {
     <div className="horizontal-tabs-row">
     <div ref={strip} className="horizontal-tabs" role="tablist" aria-multiselectable="true" aria-label="Browser tabs" aria-orientation="horizontal" onKeyDown={event => { if (selection.keyDown(event)) return; moveListFocus(event, '[role="tab"]', false); }}>
       {tabs.map((page, index) => <div className={`horizontal-tab ${selection.ids.includes(page.pageId) ? "multi-selected" : ""} ${dropIndex === index ? "drop-before" : ""} ${dropIndex === tabs.length && index === tabs.length - 1 ? "drop-after" : ""}`} key={page.pageId}
-        draggable onDragStart={event => { dragging.current = page.pageId; dragIds.current = selection.ids.includes(page.pageId) ? [...selection.ids] : [page.pageId]; event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", page.pageId); }}
+        draggable onDragStart={event => { dragging.current = page.pageId; dragIds.current = selection.ids.includes(page.pageId) ? [...selection.ids] : [page.pageId]; event.dataTransfer.effectAllowed = "copyMove"; event.dataTransfer.setData("text/plain", dragIds.current.join("\n")); event.dataTransfer.setData(TAB_DRAG_TYPE, dragIds.current.join("\n")); }}
         onDragOver={event => { if (!dragging.current) return; event.preventDefault(); const bounds = event.currentTarget.getBoundingClientRect(); setDropIndex(index + (event.clientX > bounds.x + bounds.width / 2 ? 1 : 0)); }}
         onDrop={event => { event.preventDefault(); const from = tabs.findIndex(tab => tab.pageId === dragging.current); if (from >= 0 && dropIndex !== null) { if (dragIds.current.length > 1) { const before = tabs.slice(dropIndex).find(tab => !dragIds.current.includes(tab.pageId)); useStore.getState().moveTabs(tabs.filter(tab => dragIds.current.includes(tab.pageId)).map(tab => tab.pageId), layout.activeSpaceId, undefined, before?.pageId ?? null); } else useStore.getState().reorderTabs(layout.activeSpaceId, from, dropIndex); } dragging.current = null; setDropIndex(null); }}
         onDragEnd={() => { dragging.current = null; setDropIndex(null); }}

@@ -197,14 +197,16 @@ not a claim that every roadmap acceptance line is met.
 In tree now (not the old M1 “no script” list):
 
 - **Script** — WebIDL-generated traits + `dom_prelude.js`. `evaluate`,
-  `waitFor expression`, `javascript:` URLs, dialogs, fetch/XHR, Worker
+  `waitFor expression`, `javascript:` URLs when the context allows page
+  script (`allowEvaluate`), dialogs, fetch/XHR, Worker
   `importScripts`, SW `importScripts` + `clients.claim`, IndexedDB abort.
 - **Conformance** — geometry `wpt-runner` (`m1.txt`); testharness +
   idlharness (`testharness.txt`, 114 files); official
   `html/dom/partial-updates` 28 PASS / 2 FAIL of 30 (Mac combined
   tree-family 142/2 of 144); `--tree --tree-family html/dom`
   302 PASS / 29 FAIL (`docs/engine/evidence/wpt-tree-latest.json`).
-- **Product** — `ve-shell` is the product. Electron is a labeled hybrid.
+- **Product** — `pnpm dev` is the desktop app (Electron, Chromium-backed
+  pages). `pnpm dev:native-engine` is the engine development shell.
   `describe()`: `websocket:true`, `serviceWorkers:true`, `http3:false`,
   `webgl:false`, `webgpu:false`.
 - **Held-out** — p95 vs Chromium measured; token stretch `meetsStretch`

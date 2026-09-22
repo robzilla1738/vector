@@ -31,12 +31,14 @@ import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, SidebarMaterialSche
 import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@vector/contracts/installation";
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
 import { createPageView, destroyPageView, downloadsSession, profileSession, setEngineFrame } from "./native-views.js";
+import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
 import { interruptedDownloadHistory } from "./download-recovery.js";
 import { controlDownload } from "./download-control.js";
 import { hasPageWork } from "./page-suspension.js";
 import { setPageZoom } from "./page-zoom.js";
 import { PageFinder } from "./page-find.js";
 import { printPage, savePagePdf } from "./page-output.js";
+import { createOffscreenHolds } from "./offscreen-holds.js";
 import { readArticle } from "./read-article.js";
 import { ProjectFiles } from "./project-files.js";
 import { DownloadLocation } from "./download-location.js";
@@ -48,6 +50,7 @@ import { readEvidenceImage } from "./image-evidence.js";
 import { readEvidenceDocument } from "./document-evidence.js";
 import { SecretStore } from "./secret-store.js";
 import { isShellDocument } from "./shell-origin.js";
+import { rendererMayInvoke } from "./renderer-methods.js";
 import { ExtensionManager } from "./extensions.js";
 import { spawnRuntime } from "./runtime-proc.js";
 import { normalizeLocalPreviewUrl } from "./local-preview.js";
@@ -197,6 +200,7 @@ interface RegularWindowState {
   closeApproved: boolean;
 }
 const regularWindows = new Map<string, RegularWindowState>();
+const toolbarEdges = new Map<string, ReturnType<typeof attachToolbarEdgeWatch>>();
 const pageWindowOwners = new Map<string, string>();
 const stateForWindowId = (id?: string) => regularWindows.get(id ?? PRIMARY_WINDOW_ID) ?? regularWindows.get(PRIMARY_WINDOW_ID) ?? regularWindows.values().next().value;
 const stateForEntry = (entry?: ViewEntry) => stateForWindowId(entry?.windowId);
@@ -222,13 +226,11 @@ let runtimeGeneration = 0;
 let runtimeRestartAttempt = 0;
 let runtimeRestartTimer: NodeJS.Timeout | null = null;
 let runtimeCdpPort = 0;
-// Pointer input only lands on a visible, laid-out view. Pages a program is
-// driving are kept visible *offscreen* (stage-sized, just outside the window)
-// instead of hidden, so Chromium keeps them laid out and rendering while the
-// human's focused tab stays on the stage. Any number of pages can be active
-// at once — there is no global lease (plan A8). A `setVisible(false)` view
-// stops producing frames and Playwright's stability checks stall on it.
-const offscreenActive = new Set<string>();
+// Pointer input only lands on a visible, laid-out view. An agent lease and a
+// conversation preview each keep their page visible offscreen (stage-sized,
+// beneath the shell) so Chromium keeps laying it out. Any number of pages can
+// be held at once. setVisible(false) stops frames and Playwright stalls.
+const offscreen = createOffscreenHolds();
 const idleFreezeTimers=new Map<string,NodeJS.Timeout>();
 const frozenPages=new Set<string>();
 const desiredFrozenPages=new Set<string>();
@@ -247,7 +249,7 @@ function setPageFrozen(entry:ViewEntry,frozen:boolean){
       let mediaAllowed = false;
       try { mediaAllowed = Object.entries(sitePermissions[new URL(wc.getURL()).origin] ?? {}).some(([permission, decision]) => permission.startsWith("media:") && decision === "allow"); } catch { /* no website origin */ }
       const protectedPage = !state || state.focusedPageId === entry.pageId || state.splitPageId === entry.pageId
-        || entry.runtimeOwned || offscreenActive.has(entry.pageId)
+        || entry.runtimeOwned || offscreen.holds(entry.pageId)
         || [...liveDownloads.values()].some(download => download.snapshot().pageId === entry.pageId);
       if (busy || protectedPage || mediaAllowed || wc.isDestroyed() || wc.isLoading() || wc.isCurrentlyAudible() || wc.isBeingCaptured() || !desiredFrozenPages.has(entry.pageId)) {
         desiredFrozenPages.delete(entry.pageId);
@@ -262,8 +264,8 @@ function setPageFrozen(entry:ViewEntry,frozen:boolean){
 }
 function wakePage(entry?:ViewEntry){if(!entry)return Promise.resolve();const timer=idleFreezeTimers.get(entry.pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(entry.pageId);return setPageFrozen(entry,false);}
 function scheduleIdleFreeze(entry:ViewEntry){
-  if(entry.popup||entry.kind==='engine'||entry.runtimeOwned||offscreenActive.has(entry.pageId)||entry.view.webContents.isDestroyed()||frozenPages.has(entry.pageId)||idleFreezeTimers.has(entry.pageId))return;
-  const timer=setTimeout(()=>{idleFreezeTimers.delete(entry.pageId);const state=stateForEntry(entry),wc=entry.view.webContents;if(!state||wc.isDestroyed()||entry.runtimeOwned)return;if(state.focusedPageId===entry.pageId||state.splitPageId===entry.pageId||offscreenActive.has(entry.pageId))return;if(wc.isCurrentlyAudible()||wc.isLoading()){scheduleIdleFreeze(entry);return;}void setPageFrozen(entry,true);},IDLE_FREEZE_MS);timer.unref();idleFreezeTimers.set(entry.pageId,timer);
+  if(entry.popup||entry.kind==='engine'||entry.runtimeOwned||offscreen.holds(entry.pageId)||entry.view.webContents.isDestroyed()||frozenPages.has(entry.pageId)||idleFreezeTimers.has(entry.pageId))return;
+  const timer=setTimeout(()=>{idleFreezeTimers.delete(entry.pageId);const state=stateForEntry(entry),wc=entry.view.webContents;if(!state||wc.isDestroyed()||entry.runtimeOwned)return;if(state.focusedPageId===entry.pageId||state.splitPageId===entry.pageId||offscreen.holds(entry.pageId))return;if(wc.isCurrentlyAudible()||wc.isLoading()){scheduleIdleFreeze(entry);return;}void setPageFrozen(entry,true);},IDLE_FREEZE_MS);timer.unref();idleFreezeTimers.set(entry.pageId,timer);
 }
 function forgetPageLifecycle(pageId:string){const timer=idleFreezeTimers.get(pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(pageId);desiredFrozenPages.delete(pageId);frozenPages.delete(pageId);lifecycleOperations.delete(pageId);}
 const pageFinder = new PageFinder();
@@ -576,7 +578,7 @@ const viewHooks = {
   },
   onAudio: (pageId:string,state:{muted:boolean;audible:boolean})=>shellForPage(pageId)?.webContents.send('view.audio',{pageId,...state}),
   onLoading: (pageId: string, loading: boolean) => {
-    const entry=registry.get(pageId);if(loading)void wakePage(entry);else if(entry){const state=stateForEntry(entry);if(state&&state.focusedPageId!==pageId&&state.splitPageId!==pageId&&!offscreenActive.has(pageId))scheduleIdleFreeze(entry);}
+    const entry=registry.get(pageId);if(loading)void wakePage(entry);else if(entry){const state=stateForEntry(entry);if(state&&state.focusedPageId!==pageId&&state.splitPageId!==pageId&&!offscreen.holds(pageId))scheduleIdleFreeze(entry);}
     shellForPage(pageId)?.webContents.send("view.loading", { pageId, loading });
     notifyRuntime("view.loading", { pageId, loading });
   },
@@ -597,7 +599,7 @@ const viewHooks = {
     // acquireStage is held for the whole program, including when the human is
     // watching the same tab. Playwright clicks land as mouseDown/keyDown and
     // must not steal the page. A real click after the program still takeovers.
-    if (offscreenActive.has(pageId)) return;
+    if (offscreen.holds(pageId)) return;
     notifyRuntime("view.takeover", { pageId });
   },
   openAsTab: (url: string, options?: { windowId?: string; background?: boolean; referrer?: Electron.Referrer }) => {
@@ -725,7 +727,7 @@ function registerNativeHandlers(ch: RpcChannel) {
     // stale pointers would leave every other view hidden
     if (state?.focusedPageId === pageId) state.focusedPageId = null;
     if (state?.splitPageId === pageId) state.splitPageId = null;
-    offscreenActive.delete(pageId);
+    offscreen.forget(pageId);
     forgetPageLifecycle(pageId);
     if (state) applyStage(state);
     return { ok: true };
@@ -747,7 +749,7 @@ function registerNativeHandlers(ch: RpcChannel) {
   ch.onMethod("native.hidePage", (p) => {
     const { pageId } = p as { pageId: string };
     const entry = registry.get(pageId);
-    if (entry && !entry.popup && !offscreenActive.has(pageId)){entry.view.setVisible(false);scheduleIdleFreeze(entry);}
+    if (entry && !entry.popup && !offscreen.holds(pageId)){entry.view.setVisible(false);scheduleIdleFreeze(entry);}
     return { ok: true };
   });
   ch.onMethod("native.recoverPage", async (p) => {
@@ -789,7 +791,7 @@ function registerNativeHandlers(ch: RpcChannel) {
     const entry = registry.get(pageId);
     const state = stateForEntry(entry);
     if (!entry || !state) return { ok: false };
-    offscreenActive.add(pageId);
+    offscreen.acquireStage(pageId);
     wakePage(entry);
     applyStage(state);
     return { ok: true };
@@ -797,7 +799,8 @@ function registerNativeHandlers(ch: RpcChannel) {
   ch.onMethod("native.releaseStage", (p) => {
     const { pageId } = p as { pageId: string };
     const state = stateForEntry(registry.get(pageId));
-    if (offscreenActive.delete(pageId) && state) applyStage(state);
+    // A preview still capturing this page keeps it laid out.
+    if (offscreen.releaseStage(pageId) && state) applyStage(state);
     return { ok: true };
   });
   ch.onMethod("native.capturePage", async (p) => {
@@ -1048,6 +1051,7 @@ function updateWindowTitle(state: RegularWindowState, pageTitle?: string) {
 
 function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
   if (!state) return;
+  const syncToolbarEdge = () => toolbarEdges.get(state.id)?.sync();
   updateWindowTitle(state);
   const { win } = state;
   const bounds = state.stageBounds ?? win.getContentBounds();
@@ -1064,6 +1068,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       entry.view.setVisible(shown);
       if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);}
     }
+    syncToolbarEdge();
     return;
   }
   // Deliberate two-page inspection: a split companion shares the stage beside
@@ -1105,7 +1110,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       const w = splitWidths(bounds.width, state.splitRatio).right;
       entry.view.setBounds({ x: bounds.x + bounds.width - w, y: bounds.y, width: w, height: bounds.height });
       entry.view.setVisible(true);
-    } else if (offscreenActive.has(entry.pageId)) {
+    } else if (offscreen.holds(entry.pageId)) {
       wakePage(entry);
       win.contentView.addChildView(entry.view, 0);
       entry.view.setBounds(bounds);
@@ -1116,6 +1121,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
     }
   }
   if (state.sidebarPeek) win.contentView.addChildView(state.shellView);
+  syncToolbarEdge();
 }
 
 // ---------- renderer IPC ----------
@@ -1187,6 +1193,7 @@ function wireRendererIpc() {
   ipcMain.handle("api.invoke", async (event, method: string, params: unknown) => {
     const state = requireShellUi(event);
     if (!channel) throw new Error("runtime not connected");
+    if (!rendererMayInvoke(method)) throw new Error("This action is not available from the Aux window.");
     if (method === "pages.open" && params && typeof params === "object") params = { ...params, windowId: state.id };
     const requestedPageId = params && typeof params === "object" && "pageId" in params ? (params as { pageId?: unknown }).pageId : undefined;
     if (typeof requestedPageId === "string") {
@@ -1307,12 +1314,23 @@ function wireRendererIpc() {
     const state = requireShellUi(event);
     let entry: ViewEntry;
     try { entry = requireOwnedEntry(state, pageId); } catch { return null; }
+    const reveal = !entry.popup && !entry.view.getVisible();
+    if (!entry.popup) offscreen.beginPreview(entry.pageId);
     try {
-      const img = await entry.view.webContents.capturePage();
+      await wakePage(entry);
+      if (reveal) {
+        applyStage(state);
+        await new Promise(resolve => setTimeout(resolve, 180));
+      }
+      const img = await entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true });
+      if (img.isEmpty()) return null;
       const size = img.getSize();
-      return img.resize({ width: Math.max(160, Math.round(size.width * 0.25)) }).toDataURL();
+      return img.resize({ width: Math.max(320, Math.min(640, Math.round(size.width * 0.5))) }).toDataURL();
     } catch {
       return null;
+    } finally {
+      // Hide only when this preview was the last reason the page stayed laid out.
+      if (!entry.popup && offscreen.endPreview(entry.pageId)) applyStage(state);
     }
   });
   ipcMain.handle("ui.contextMenu", (event, pageId: string | null) => {
@@ -1344,7 +1362,8 @@ function wireRendererIpc() {
     Menu.buildFromTemplate(template).popup();
     return true;
   });
-  ipcMain.handle("ui.openExternal", (_e, url: unknown) => {
+  ipcMain.handle("ui.openExternal", (event, url: unknown) => {
+    requireShellUi(event);
     if (!isWebUrl(url)) return false;
     return shell.openExternal(url).then(() => true);
   });
@@ -1499,16 +1518,24 @@ function wireRendererIpc() {
     const r = await dialog.showOpenDialog(state.win, { title: "Open File", properties: ["openFile"] });
     return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
   });
-  ipcMain.handle("ui.revealPath", (_e, p: string) => {
+  ipcMain.handle("ui.revealPath", (event, p: unknown) => {
+    requireShellUi(event);
+    if (typeof p !== "string" || !p) return false;
     shell.showItemInFolder(p);
     return true;
   });
-  ipcMain.handle("ui.openPath", async (_e, p: string) => shell.openPath(p));
+  ipcMain.handle("ui.openPath", async (event, p: unknown) => {
+    requireShellUi(event);
+    if (typeof p !== "string" || !p) return "";
+    return shell.openPath(p);
+  });
   ipcMain.handle("ui.saveWorkbook",(event,content:unknown,format:unknown)=>{const state=requireShellUi(event);return saveWorkbookSnapshot(state.win,content,false,format);});
   ipcMain.handle("ui.saveFile", async (event, name: string, content: string) => {
     const state=requireShellUi(event);
     if (typeof name !== "string" || typeof content !== "string") throw new Error("Invalid export content");
-    const r = await dialog.showSaveDialog(state.win, { defaultPath: join(app.getPath("downloads"), name) });
+    const leaf = basename(name);
+    const safeName = leaf && leaf !== "." && leaf !== ".." ? leaf : "export";
+    const r = await dialog.showSaveDialog(state.win, { defaultPath: join(app.getPath("downloads"), safeName) });
     if (r.canceled || !r.filePath) return null;
     try { await writeFile(r.filePath, content, "utf8"); }
     catch { throw new Error("Couldn’t save the export. Choose a writable destination and try again."); }
@@ -1819,6 +1846,10 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
   regularShell.setBackgroundColor(backgroundColor);
   const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false, sidebarPeek: false,
     stageBounds: null, stagePageId: null, focusedPageId: null, splitPageId: null, splitRatio: .5, stageRadius: 0, closeApproved: false };
+  toolbarEdges.set(id, attachToolbarEdgeWatch(regularWindow, regularShell.webContents, () => ({
+    page: !!state.stagePageId && !state.overlayOpen,
+    stage: state.stageBounds,
+  })));
   regularWindows.set(id, state);
   if (id === PRIMARY_WINDOW_ID || !win || !shellView) { win = regularWindow; shellView = regularShell; }
 
@@ -1855,6 +1886,8 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     else void requestRegularWindowClose(state);
   });
   regularWindow.on("closed", () => {
+    toolbarEdges.get(id)?.stop();
+    toolbarEdges.delete(id);
     regularWindows.delete(id);
     if (win === regularWindow || shellView === regularShell) {
       const next = regularWindows.values().next().value as RegularWindowState | undefined;

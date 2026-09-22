@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { executeProgram } from "@vector/runtime";
-import { READINESS_INIT_SCRIPT, READINESS_GLOBAL, POST_NAVIGATION_SETTLE_MS } from "@vector/engine-client";
+import { READINESS_INIT_SCRIPT, READINESS_GLOBAL } from "@vector/engine-client";
 import type { DriverPage } from "@vector/engine-client";
 import type { Condition } from "@vector/contracts";
 
@@ -55,9 +55,6 @@ describe("readiness init script", () => {
     expect(calls.filter((c) => c === "fetch")).toHaveLength(1); // the original fetch was called exactly once
   });
 
-  it("bounds the implicit post-navigation wait at 500 ms", () => {
-    expect(POST_NAVIGATION_SETTLE_MS).toBeLessThanOrEqual(500);
-  });
 });
 
 describe("executor: waitFor settled", () => {

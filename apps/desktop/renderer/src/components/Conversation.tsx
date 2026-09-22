@@ -1,6 +1,5 @@
 import { RunImages } from "./RunImages";
 import { Dictation } from "./Dictation";
-import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
 import { ImageSnapshot } from "./ImageSnapshot";
 import { SavedResultPreview } from "./SavedResultPreview";
 import { memorySourceExcluded } from "@vector/contracts/memory-context";
@@ -17,34 +16,16 @@ import { conversationPage } from "../conversation-page";
 import { openSavedTask } from "../task-navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationContext as ConversationContextState, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
-import { sourcedWorkbookSnapshot } from "@vector/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
-import { useStore, call, errToast, isLive, toast } from "../store";
+import { useStore, call, errToast, isLive } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { answerUrl } from "./AnswerMarkdown";
 import { RunPanel } from "./RunPanel";
 import { I } from "./icons";
 
 type ConversationSpaceContext = { workspace: Workspace | null; memory: WorkspaceMemory | null; assigned?: boolean; taskId?: string; memoryPreview?: string; browsingPreview?: string };
-
-function RunSources({ sources, onOpen }: { sources: ConversationSource[]; onOpen: (source: ConversationSource, background: boolean) => void }) {
-  const links = sources.filter(source => browserLinkUrl(source.url));
-  if (!links.length) return null;
-  return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{links.length}</span></summary><div>
-    {links.map(source => <a key={source.sourceId} href={source.url} onClick={event => { event.preventDefault(); onOpen(source, backgroundLink(event)); }} onAuxClick={event => { if (event.button === 1) { event.preventDefault(); onOpen(source, true); } }} title={source.url}>
-      <span><b>{source.title}</b><small>{new URL(source.url).hostname} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
-    </a>)}
-    <p>Observed browser pages provide provenance, not independent proof of an external outcome.</p>
-    <button className="btn sm ghost" onClick={() => void (async () => {
-      const rows = [["Title", "Host"], ...links.map(source => [source.title, new URL(source.url).hostname])];
-      const snapshot = sourcedWorkbookSnapshot("Sources", rows, links.map(source => source.url));
-      if (await bridge.saveWorkbook(JSON.stringify(snapshot))) toast("Sourced workbook exported");
-    })().catch(errToast)}>Export sourced workbook…</button>
-    <p>Excel export stores cell values plus http(s) source hyperlinks. Formatting, formulas and images are not created.</p>
-  </div></details>;
-}
 
 export function Conversation({ chatId, embedded = false, onChatCreated }: { chatId?: string | null; embedded?: boolean; onChatCreated?: (chatId: string) => void } = {}) {
   const fullPageId = useStore(s => s.conversationId);
@@ -90,11 +71,6 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
   const [generatedArtifacts, setGeneratedArtifacts] = useState<ConversationArtifact[]>([]);
-  const [sources, setSources] = useState<ConversationSource[]>([]);
-  const [sourceError,setSourceError]=useState("");
-  const [sourceLoading,setSourceLoading]=useState(false);
-  const [sourceRefresh,setSourceRefresh]=useState(0);
-  const sourceChat=useRef(id);
   const spaces = useStore(state => state.layout.spaces);
   const activeSpaceId = useStore(state => state.layout.activeSpaceId);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
@@ -104,10 +80,10 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const contextBusy = useRef(false);
   const workspaceBusy = useRef(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(true);
   const createdChat = useRef<string | null>(null);
   useEffect(() => {
-    setOptionsOpen(false); setPreviewOpen(false);
+    setOptionsOpen(false); setPreviewOpen(true);
     if (createdChat.current !== id) setContextOpen(false);
     createdChat.current = null;
   }, [id]);
@@ -178,11 +154,29 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const recoverUrl = lastObservation ? answerUrl(lastObservation.url) : "";
   const preview = useStore(s => selectedContext ? s.previews[selectedContext.pageId] : undefined);
   useEffect(() => {
-    if (!selectedContext) return;
+    if (!selectedContext || selectedContext.url === "about:blank") return;
+    const pageId = selectedContext.pageId;
     let gone = false;
-    void bridge.preview(selectedContext.pageId).then(url => { if (url && !gone) useStore.setState(s => ({ previews: { ...s.previews, [selectedContext.pageId]: url } })); }).catch(() => {});
-    return () => { gone = true; };
-  }, [selectedContext?.pageId, last?.status]);
+    let timer = 0;
+    let attempt = 0;
+    const shoot = () => {
+      void bridge.preview(pageId).then(url => {
+        if (gone) return;
+        if (url) { useStore.setState(s => ({ previews: { ...s.previews, [pageId]: url } })); return; }
+        if (attempt >= 4) return;
+        attempt += 1;
+        timer = window.setTimeout(shoot, 400 * attempt);
+      }).catch(() => {});
+    };
+    shoot();
+    const stop = bridge.onLoading(({ pageId: loaded, loading }) => {
+      if (gone || loaded !== pageId || loading) return;
+      attempt = 0;
+      window.clearTimeout(timer);
+      shoot();
+    });
+    return () => { gone = true; window.clearTimeout(timer); stop(); };
+  }, [selectedContext?.pageId, selectedContext?.url, last?.status]);
   const live = !!last && isLive(last);
   const boundTaskId = last?.config?.taskId ?? workspaceContext.taskId;
   const taskBound = !!boundTaskId;
@@ -210,18 +204,6 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       .finally(() => { if (!cancelled) setContextLoading(false); });
     return () => { cancelled = true; };
   }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving, contextSaving, workspaceSaving]);
-  useEffect(() => {
-    let cancelled = false;
-    if(sourceChat.current!==id){setSources([]);sourceChat.current=id;}
-    setSourceError("");
-    if (!id) { setSources([]); setSourceLoading(false); return; }
-    setSourceLoading(true);
-    void call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id })
-      .then(value => { if (!cancelled) setSources(value.sources); })
-      .catch(reason => { if (!cancelled) setSourceError(reason instanceof Error ? reason.message : String(reason)); })
-      .finally(()=>{if(!cancelled)setSourceLoading(false);});
-    return () => { cancelled = true; };
-  }, [id, turns.length, last?.status, sourceRefresh]);
   useEffect(() => bridge.onEvent(event => {
     if (event.type === "conversation.context.changed" && event.payload.chatId === id) setContextRefresh(value => value + 1);
     if (["workspace.memory.updated", "workspace.browsingMemory.updated"].includes(event.type) && event.payload.workspaceId === workspaceContext.workspace?.workspaceId) setContextRefresh(value => value + 1);
@@ -390,15 +372,6 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     } catch (error) { errToast(error); }
     finally { setReopening(false); }
   };
-  const openSource = async (source: ConversationSource, background: boolean) => {
-    try {
-      if (background) { await openBrowserLink(source.url, true); return; }
-      const livePages = await call<PageTarget[]>("pages.list", {});
-      const existing = livePages.find(page => page.url === source.url && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? ""));
-      if (existing) await useStore.getState().activate(existing.pageId);
-      else await openBrowserLink(source.url);
-    } catch (error) { errToast(error); }
-  };
   const contextCount = (workspaceContext.browsingPreview ? 1 : 0) + images.filter(item => item.included).length + (contextState?.entries.filter(entry => entry.included).length ?? 0) + attachments.filter(item => item.included).length + generatedArtifacts.filter(item => item.included).length + (workspaceContext.memory?.enabled!==false ? (workspaceContext.memory?.content ? 1 : 0) + (workspaceContext.memory?.items ?? []).filter(item => item.enabled && !memorySourceExcluded(workspaceContext.memory!, item.sourceUrl) && (item.expiresAt === undefined || item.expiresAt > Date.now())).length : 0);
   const contextLocked = !connected || archived || live || contextLoading || !!contextError;
   const receiveImage = (files: File[]) => {
@@ -460,17 +433,21 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
         const current = answering && last ? state.runAnswerDrafts[last.runId]?.text ?? "" : id ? state.conversationDrafts[draftKey(id)] ?? "" : state.agentDraft;
         setText(current ? `${current}\n${words}` : words);
       }}/>;
+  const browserPreview = !embedded && previewOpen && selectedContext && selectedContext.url !== "about:blank" ? <button type="button" className="conversation-preview" onClick={() => void useStore.getState().activate(selectedContext.pageId).catch(errToast)} title="Open this tab">
+    <span className="conversation-preview-title">{I.globe}<b>{selectedContext.title || "Browser tab"}</b>{I.open}</span>
+    {preview ? <img src={preview} alt="" onError={() => useStore.setState(state => ({ previews: { ...state.previews, [selectedContext.pageId]: "" } }))} /> : <p>Preparing preview…</p>}
+  </button> : null;
   return <section ref={conversationRoot} className={`conversation${embedded ? " conversation-embedded" : ""}`} aria-label={embedded ? "Conversation" : undefined} aria-labelledby={embedded ? undefined : "conversation-title"}>
-    {!embedded && <header className="conversation-head"><h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{selectedContext && selectedContext.url !== "about:blank" && <button className="icon-btn" aria-label="Show browser preview" title="Browser preview" aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{I.globe}</button>}{turns.length > 0 && <button className="icon-btn" disabled={exporting} title="Export conversation as Markdown" aria-label="Export conversation as Markdown" onClick={() => void exportConversation()}>{I.downloadSm}</button>}<button className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" onClick={() => useStore.getState().showConversationInRail(id)}>{I.rail}</button></header>}
+    {!embedded && <header className="conversation-head"><h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{selectedContext && selectedContext.url !== "about:blank" && <button className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{I.globe}</button>}{turns.length > 0 && <button className="icon-btn" disabled={exporting} title="Export conversation as Markdown" aria-label="Export conversation as Markdown" onClick={() => void exportConversation()}>{I.downloadSm}</button>}<button className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" onClick={() => useStore.getState().showConversationInRail(id)}>{I.rail}</button></header>}
+    <div className="conversation-body"><div className="conversation-main">
     <div className="conversation-scroll" tabIndex={-1} ref={scrolling.scrollRef}><div className="conversation-thread" data-find-surface="conversation" ref={scrolling.threadRef}>
       {historyLoading && <p role="status" className="hint">Loading conversation…</p>}
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId}/><RunSources sources={sources.filter(source => source.runId === run.runId)} onOpen={(source, background) => void openSource(source, background)}/><RunImages runId={run.runId}/></article>)}
-    </div>{!embedded && previewOpen && selectedContext && selectedContext.url !== "about:blank" && <button className="conversation-preview" onClick={() => void useStore.getState().activate(selectedContext.pageId).catch(errToast)} title="Open the actual browser tab"><span>{I.globe}{selectedContext.title || "Task browser tab"}{I.open}</span>{preview ? <img src={preview} alt="Latest task browser preview" onError={() => useStore.setState(state => ({ previews: { ...state.previews, [selectedContext.pageId]: "" } }))}/> : <p>{selectedContext.url === "about:blank" ? "Task browser tab" : selectedContext.url}<small>Open browser tab</small></p>}</button>}</div>
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId}/><RunImages runId={run.runId}/></article>)}
+    </div></div>
     <div className="conversation-compose"><div className="conversation-compose-content">
-      {sourceError && <p className="field-error" role="alert">Sources couldn’t be refreshed. {sourceError} <button className="btn sm ghost" disabled={sourceLoading} onClick={()=>setSourceRefresh(value=>value+1)}>{sourceLoading ? "Refreshing…" : "Retry sources"}</button></p>}
       {scrolling.awayFromLatest && <div className="conversation-jump"><button className="btn sm" onClick={scrolling.jumpToLatest}>{I.down} Jump to latest</button></div>}
       {!linked && last?.pageIds.length ? <div className="conversation-context-note">The original browser tab is unavailable.{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen last page"}</button>}<span>{selectedContext ? `Reply context: ${selectedContext.title || selectedContext.url}` : "Choose an open tab or continue in a new one."}</span></div> : null}
       {archived && <div className="conversation-archive-notice" role="status"><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</div>}
@@ -508,5 +485,6 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       </div>}
       </>}
     </div></div>
+    </div>{browserPreview}</div>
   </section>;
 }

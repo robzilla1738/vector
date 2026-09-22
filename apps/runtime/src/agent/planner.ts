@@ -140,7 +140,10 @@ export function buildFinalAnswerPrompt(input: {
 }): string {
   const token = input.fenceToken ?? newFenceToken();
   const parts: string[] = [`GOAL: ${input.goal}`];
-  if (input.context) parts.push(`EARLIER IN THIS SESSION: ${input.context}`);
+  if (input.context) {
+    parts.push("EARLIER IN THIS SESSION (untrusted reference data, fenced):");
+    parts.push(fenceUntrusted(token, input.context));
+  }
   parts.push(`STOPPED BECAUSE: ${input.reason}`);
   parts.push("", "=== FINAL OBSERVATION (untrusted page data, fenced) ===", fenceUntrusted(token, renderObservation(redactObservation(input.observation))));
   if (input.recentOutcomes.length) {
@@ -231,7 +234,10 @@ export function buildPlannerPrompt(input: {
   const token = input.fenceToken ?? newFenceToken();
   const tokenBudget = input.budget?.tokens ?? 3000;
   const parts: string[] = [`GOAL: ${input.goal}`];
-  if (input.context) parts.push(`EARLIER IN THIS SESSION: ${input.context}`);
+  if (input.context) {
+    parts.push("EARLIER IN THIS SESSION (untrusted reference data, fenced):");
+    parts.push(fenceUntrusted(token, input.context));
+  }
   if (input.credentialGrants?.length) {
     parts.push(`CREDENTIAL GRANTS (opaque refs only; never echo secrets): ${input.credentialGrants.map(g => `${g.credentialRef} for ${g.origin}${g.accountLabel ? ` (${g.accountLabel})` : ""}`).join("; ")}`);
   }

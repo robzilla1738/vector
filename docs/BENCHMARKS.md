@@ -2,12 +2,16 @@
 
 Every published performance number has a row here. Numbers without a table row are not claims.
 
+The 1.3–3.8 ms rows are the paired engine profile in the README (`pnpm bench --backend both`, 2026-09-16). The 15.5 ms and 13.2 ms rows are a later chrome-only run of the same records fixture, after Chromium navigation returned at DOMContentLoaded.
+
 | Metric | Value | Profile | n | Source |
 |---|---|---|---|---|
 | `pages.observe` compact (records fixture) | 1.3 ms p50 | production-labelled agent path | 5 | `pnpm bench --backend both` / README |
 | `pages.observe` full (records fixture) | 1.5 ms p50 | same | 5 | README |
 | `pages.open` | 7.8 ms p50 | same | 5 | README |
 | navigate + observe | 3.8 ms p50 | same | 5 | README |
+| `observe.full.ms` p50 (records fixture, chrome) | 15.5 ms | `node tests/benchmarks/run.mjs --backend chrome --repeats 5 --warmup 1` | 5 | local bench 2026-09-21, report `tests/benchmarks/reports/2026-09-21T23-40-16-886Z.json` |
+| `navigate+observe.ms` p50 (records fixture, chrome) | 13.2 ms | same run | 5 | same report; navigate itself 6.5 ms p50 after DOMContentLoaded, no post-navigation settle |
 | full observation size | 5,917 bytes | engine Compact/Full mix | 5 | README and `docs/engine/architecture.md` §0 |
 | `perf --gate m1` observe p95 | see last `perf` JSON | `production` | 200 | `cargo run --release -p perf -- --gate m1` |
 | Speedometer 3.0 displayed | 1.83 | profiling input, not a target | — | `docs/ROADMAP.md` §3 |
