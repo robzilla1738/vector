@@ -26,6 +26,15 @@ fn open(html: &str, allow_evaluate: bool) -> Page {
 }
 
 #[test]
+fn javascript_navigation_requires_allow_evaluate() {
+    let mut page = open("<p id=\"p\">before</p>", false);
+    let err = page
+        .navigate("javascript:document.getElementById('p').textContent='pwned'")
+        .unwrap_err();
+    assert!(err.to_string().contains("allowEvaluate"), "{err}");
+}
+
+#[test]
 fn incremental_observe_is_under_two_milliseconds() {
     let mut page = open(
         "<body><h1>observe</h1><p>one</p><p>two</p><p>three</p></body>",

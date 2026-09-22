@@ -7,8 +7,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { MethodSchemas, PlanStepSchema, errorAdvice, toErrorPayload, VectorError, requireScopedAuxMcpCatalog } from "@vector/contracts";
+import { MethodSchemas, errorAdvice, toErrorPayload, VectorError, requireScopedAuxMcpCatalog } from "@vector/contracts";
 import { rpc } from "./client.js";
+import { McpStepSchema } from "./steps.js";
 
 requireScopedAuxMcpCatalog();
 
@@ -33,14 +34,6 @@ server.registerTool=((name:string,config:Parameters<typeof server.registerTool>[
   if(!catalogAllows(name))tool.disable();
   return tool;
 }) as typeof server.registerTool;
-
-const FlattenedStepSchema = z
-  .object({
-    id: z.string(),
-    op: z.string(),
-  })
-  .passthrough();
-export const McpStepSchema = z.union([PlanStepSchema, FlattenedStepSchema]);
 
 const text = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
 const err = (e: unknown) => {
@@ -257,7 +250,7 @@ server.registerTool(
     inputSchema: {
       setId: z.string(),
       goal: z.string().optional(),
-      steps: z.array(z.record(z.string(), z.unknown())).optional(),
+      steps: z.array(McpStepSchema).optional(),
       concurrency: z.number().int().min(1).max(16).optional(),
     },
   },

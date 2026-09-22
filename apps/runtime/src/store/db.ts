@@ -325,6 +325,13 @@ export function openDb(path: string): DatabaseSync {
         const backup = join(directory, "state.sqlite");
         db.prepare("VACUUM INTO ?").run(backup);
         chmodSync(backup, 0o600);
+        const snapshot = new DatabaseSync(backup);
+        try {
+          const hasKv = snapshot.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='kv'").get();
+          if (hasKv) snapshot.exec("DELETE FROM kv WHERE key='setting:gatewayApiKey'");
+        } finally {
+          snapshot.close();
+        }
       }
       db.exec("BEGIN IMMEDIATE");
       try {

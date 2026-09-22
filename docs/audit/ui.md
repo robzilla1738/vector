@@ -1,6 +1,6 @@
 # Vector desktop — UI/UX audit against the Dia / macOS bar
 
-> **Historical (Sep 2026, pre-M1).** Written against the first desktop shell, which was replaced by the Arc-style sidebar shell described in [`docs/ui/shell.md`](../ui/shell.md). Kept for the reasoning; the specific bugs and line references no longer apply.
+> **Historical (Sep 2026, pre-M1).** The current audit is [2026-09-21.md](2026-09-21.md). Written against the first desktop shell, which was replaced by the Arc-style sidebar shell described in [`docs/ui/shell.md`](../ui/shell.md). Kept for the reasoning; the specific bugs and line references no longer apply.
 
 Scope: `apps/desktop/{main,preload,renderer}` read-only. ~4.7k LOC total; renderer is 14 components + one 692-line `styles.css`. All line refs are to files under `/agent/workspace/vector/apps/desktop/`.
 

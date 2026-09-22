@@ -961,7 +961,7 @@ export function makeInvoker(s: Services) {
             // Runs are crash-safe (the ledger marks them interrupted) but NOT
             // resumable after a restart; program checkpoints (`resumeFrom`)
             // are the only resume primitive. Advertise exactly that.
-            checkpointResume: true,
+            checkpointResume: false,
             programCheckpoints: true,
             invocationIdempotency: true,
             routeFallback: true,

@@ -5,6 +5,8 @@ import { useStore, call, errToast, toast } from "../store";
 import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
 
 import { isScrimOverlay } from "../chrome";
+import { bookmarkTabsFromDrop, TAB_DRAG_TYPE } from "../bookmark-drop";
+import { requestStageReport } from "../stage-obstruction";
 import { detailsMenuKey, moveMenuFocus, moveListFocus } from "../keyboard-list";
 import { ResizeHandle } from "./ResizeHandle";
 import { SidebarSection } from "./SidebarSection";
@@ -448,6 +450,7 @@ export function Sidebar() {
   const [pinDrop, setPinDrop] = useState<string | null>(null);
   const dragIds = useRef<string[]>([]);
   const [drag, setDrag] = useState(IDLE_DRAG);
+  const [bookmarkHover, setBookmarkHover] = useState(false);
   const [ctx, setCtx] = useState<{ p: PageTarget; x: number; y: number } | null>(null);
   const [pinCtx, setPinCtx] = useState<{ pin: Pin; spaceId: string; x: number; y: number } | null>(null);
   const [folderCtx, setFolderCtx] = useState<{ folder: Folder; x: number; y: number } | null>(null);
@@ -515,8 +518,9 @@ export function Sidebar() {
   const onClose = useCallback((id: string) => void closeTab(id), [closeTab]);
   const onDragStart = useCallback((folderId: string | null, index: number, pageId: string, e: React.DragEvent) => {
     dragIds.current = selection.ids.includes(pageId) ? selection.pagesFor(tabs.find(tab => tab.pageId === pageId)!).map(tab => tab.pageId) : [pageId];
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", pageId);
+    e.dataTransfer.effectAllowed = "copyMove";
+    e.dataTransfer.setData("text/plain", dragIds.current.join("\n"));
+    e.dataTransfer.setData(TAB_DRAG_TYPE, dragIds.current.join("\n"));
     setDrag({ folderId, from: index, to: null, pageId, over: folderId });
   }, [selection, tabs]);
   const onDragOver = useCallback((folderId: string | null, index: number, e: React.DragEvent) => {
@@ -621,18 +625,23 @@ export function Sidebar() {
       )}
 
       {!bridge.privateMode && <SidebarSection title="Bookmarks" open={sections.bookmarks} onToggle={() => toggleSection("bookmarks")}>
-        {bookmarks.length ? <div className="sb-bookmark-list">{bookmarks.map(bookmark => <button className="sb-link" key={bookmark.url} title={bookmark.title || bookmark.url}
-          onClick={event => openPin(bookmark, event)} onAuxClick={event => openPin(bookmark, event)}>
-          <FavIcon url={bookmark.url} src={pages.find(page => page.url === bookmark.url)?.favicon} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
-        </button>)}</div> : <button className="sb-bookmarks-empty" onClick={() => setOverlay("bookmarks")}
-          onDragOver={event => { if (drag.pageId) { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; } }}
+        <div className={`sb-bookmarks${bookmarkHover ? " drop" : ""}`}
+          onDragOver={event => { if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return; event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setBookmarkHover(true); }}
+          onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setBookmarkHover(false); }}
           onDrop={event => {
-            if (!drag.pageId) return;
+            if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
             event.preventDefault();
-            const dropped = new Map(pages.filter(page => dragIds.current.includes(page.pageId) && /^https?:\/\//.test(page.url)).map(page => [page.url, page]));
-            void Promise.all([...dropped.values()].map(tab => call("bookmarks.add", {url: tab.url, title: tab.title}))).catch(errToast);
+            setBookmarkHover(false);
+            const added = bookmarkTabsFromDrop(event.dataTransfer.getData(TAB_DRAG_TYPE), pages);
+            if (!added.length) { toast("Only web tabs can be bookmarked"); return; }
+            void Promise.all(added.map(tab => call("bookmarks.add", tab))).then(() => toast(added.length === 1 ? "Bookmarked" : `Bookmarked ${added.length} tabs`)).catch(errToast);
             dragIds.current = []; setDrag(IDLE_DRAG);
-          }}>Drag tabs here to add bookmarks</button>}
+          }}>
+          {bookmarks.length ? <div className="sb-bookmark-list">{bookmarks.map(bookmark => <button className="sb-link" key={bookmark.url} title={bookmark.title || bookmark.url}
+            onClick={event => openPin(bookmark, event)} onAuxClick={event => openPin(bookmark, event)}>
+            <FavIcon url={bookmark.url} src={pages.find(page => page.url === bookmark.url)?.favicon} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
+          </button>)}</div> : <div className="sb-bookmarks-empty">Drag tabs here to add bookmarks</div>}
+        </div>
       </SidebarSection>}
       {!bridge.privateMode && <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
         <div className="sb-chats">
@@ -804,6 +813,7 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
     const menu = ref.current;
     if (!menu) return;
     positionContextMenu(menu, x, y);
+    requestStageReport();
   }, [x, y, folder.name]);
   useEffect(() => {
     const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && closeRef.current();
@@ -814,6 +824,7 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
     return () => {
       document.removeEventListener("mousedown", h);
       document.removeEventListener("keydown", k);
+      requestStageReport();
     };
   }, []);
   return (

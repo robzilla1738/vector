@@ -168,7 +168,8 @@ describe("handler results conform to ResultSchemas", () => {
     await call("downloads.list");
     await call("sessions.list");
     await call("workspace.get");
-    await call("runtime.describe");
+    const described = await call("runtime.describe") as { features: { checkpointResume: boolean } };
+    expect(described.features.checkpointResume).toBe(false);
     await expect(invoke("history.clear", {})).rejects.toMatchObject({ code: "permission_denied" });
     const cleared = await invoke("history.clear", {}, { external: false });
     expect(ResultSchemas["history.clear"].parse(cleared)).toEqual({ ok: true, removed: 1 });

@@ -12,8 +12,6 @@
 
 export const READINESS_GLOBAL = "__vectorReady";
 
-/** Default bound for the implicit post-navigation wait. */
-export const POST_NAVIGATION_SETTLE_MS = 500;
 /** Default bound for an explicit `waitFor { kind: "settled" }`. */
 export const SETTLED_CONDITION_MS = 2_000;
 /** DOM must be mutation-free for this long. */

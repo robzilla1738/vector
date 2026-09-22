@@ -36,8 +36,24 @@ function fmtCost(usd: number, estimated: boolean): string {
   return `${estimated ? "≈" : ""}$${usd < 0.01 ? usd.toFixed(4) : usd.toFixed(2)}`;
 }
 
+function ResultValue({ value }: { value: unknown }) {
+  if (Array.isArray(value)) return <ul>{value.map((item, i) => <li key={i}>{typeof item === "object" ? JSON.stringify(item) : String(item)}</li>)}</ul>;
+  if (typeof value === "object" && value !== null) return <pre>{JSON.stringify(value, null, 2)}</pre>;
+  if (typeof value === "string") return <AnswerMarkdown text={value} />;
+  return String(value);
+}
+
+function ResultFields({ result, labeled }: { result: Record<string, unknown>; labeled: boolean }) {
+  return <dl className="answer-result">{Object.entries(result).map(([key, value]) => (
+    <div key={key} className="answer-row">
+      {labeled && <dt>{key.replace(/_/g, " ")}</dt>}
+      <dd><ResultValue value={value} /></dd>
+    </div>
+  ))}</dl>;
+}
+
 /** Final answer as prose — no status chrome, copy is an icon. */
-function Answer({ run }: { run: Run }) {
+function Answer({ run, conversation = false }: { run: Run; conversation?: boolean }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
   const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const [copied, setCopied] = useState(false);
@@ -65,23 +81,10 @@ function Answer({ run }: { run: Run }) {
       )}
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
-      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && (
-        <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><dl className="answer-result">
-          {Object.entries(run.result).map(([k, v]) => (
-            <div key={k} className="answer-row">
-              <dt>{k.replace(/_/g, " ")}</dt>
-              <dd>
-                {Array.isArray(v) ? (
-                  <ul>{v.map((item, i) => <li key={i}>{typeof item === "object" ? JSON.stringify(item) : String(item)}</li>)}</ul>
-                ) : typeof v === "object" && v !== null ? (
-                  <pre>{JSON.stringify(v, null, 2)}</pre>
-                ) : (
-                  typeof v === "string" ? <AnswerMarkdown text={v}/> : String(v)
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl></details>
+      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && !(conversation && showSummary) && (
+        conversation
+          ? <ResultFields result={run.result} labeled={false} />
+          : <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={run.result} labeled /></details>
       )}
       {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
     </section>
@@ -200,13 +203,14 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
     } finally { if(version===observationRequest.current)setObsLoading(false); }
   };
 
+  const quietConversation = conversation && !live && run.status === "completed" && !run.failure;
   return (
     <div className="run-panel" data-testid="run-panel">
       <div className="run-goal">
         <h2>{run.goal}</h2>
       </div>
 
-      <div className="run-status nums">
+      {!quietConversation && <div className="run-status nums">
         {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {!conversation && <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>}
         {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
@@ -231,7 +235,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
                 ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>
                 : null)}
         </span>
-      </div>
+      </div>}
       {!live && latestConversationTurn && !run.config?.taskId && !page && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
         <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</button>
@@ -280,11 +284,11 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </div>
       )}
 
-      <Answer run={run} />
+      <Answer run={run} conversation={conversation} />
 
-      {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
-        <summary>{conversation ? "Response details" : [stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
-        <div>{conversation && <span>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")} · {fmtElapsed(elapsed)} · {stats.calls} calls</span>}<span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
+      {!conversation && stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
+        <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
+        <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
       </details>}
 
       {run.failure && (

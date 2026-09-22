@@ -11,6 +11,8 @@ import { LIVE_RUN, useStore, call, toast, errToast, type SidebarMode } from "./s
 import { bridge, inElectron, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
+import { useToolbarReveal } from "./toolbar-reveal";
+import { onStageReport, stageAvoiding } from "./stage-obstruction";
 import { isTab, tabsInSpace } from "./workspace";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { HttpAuthPrompt } from "./components/HttpAuthPrompt";
@@ -35,7 +37,7 @@ const Tasks = deferSurface(async () => { const module = await import("./componen
 
 type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean };
 
-const STAGE_RADIUS = 12;
+const STAGE_RADIUS = 0;
 
 export function App() {
   useBrowsingMemory();
@@ -109,6 +111,10 @@ export function App() {
   const activePageId = useStore((s) => s.activePageId);
   const pages = useStore((s) => s.pages);
   const activePage = pages.find((p) => p.pageId === activePageId);
+  const pageChrome = inElectron && !quickAsk && !!activePage && activePage.backend !== "chrome"
+    && activePage.viewStatus !== "crashed" && !activePage.navigationError
+    && (!!activePage.showBlankDocument || (!!activePage.url && activePage.url !== "about:blank"));
+  const toolbarReveal = useToolbarReveal(pageChrome);
   const splitPageId = useStore((s) => s.splitPageId);
   const splitRatio = useStore(s => s.layout.splitRatio ?? .5);
   const settings = useStore((s) => s.settings);
@@ -214,20 +220,42 @@ export function App() {
         const split = showPage && companion && companion.pageId !== showPage && nativePageId({mode,overlay,activePageId:companion.pageId,...companion}) ? splitPageId : null;
         // Reserve an invisible edge target outside the native page's input surface.
         const edge = sidebar === "expanded" ? 0 : 6;
-        void bridge.setStage(showPage, { x: Math.round(r.x) + edge, y: Math.round(r.y), width: Math.max(1, Math.round(r.width) - edge), height: Math.round(r.height) }, split, STAGE_RADIUS, splitRatio);
+        let cover = 0;
+        const card = el.closest(".stage-card");
+        if (toolbarReveal.inset && card?.classList.contains("has-page")) {
+          const bar = el.closest(".main-col")?.querySelector(":scope > .toolbar");
+          const pop = bar?.querySelector(".cb-pop");
+          const bottom = (pop ?? bar)?.getBoundingClientRect().bottom;
+          if (bottom != null) cover = Math.max(0, Math.min(Math.round(r.height) - 80, Math.round(bottom - r.top)));
+        }
+        const menus = [...document.querySelectorAll<HTMLElement>(".ctx-menu")].map(menu => {
+          const box = menu.getBoundingClientRect();
+          return { x: box.x, y: box.y, width: box.width, height: box.height };
+        });
+        const fitted = stageAvoiding(
+          { x: Math.round(r.x) + edge, y: Math.round(r.y) + cover, width: Math.max(1, Math.round(r.width) - edge), height: Math.max(1, Math.round(r.height) - cover) },
+          menus,
+        );
+        void bridge.setStage(showPage, fitted, split, STAGE_RADIUS, splitRatio);
       });
     };
     const ro = new ResizeObserver(report);
     ro.observe(el);
+    const bar = el.closest(".main-col")?.querySelector(":scope > .toolbar");
+    const popover = bar ? new MutationObserver(report) : null;
+    if (bar) popover?.observe(bar, { childList: true, subtree: true });
     report();
+    const stopStageReport = onStageReport(report);
     // panels animate with transforms; re-report once they settle
     const t = window.setTimeout(report, 280);
     return () => {
       ro.disconnect();
+      popover?.disconnect();
+      stopStageReport();
       cancelAnimationFrame(raf);
       window.clearTimeout(t);
     };
-  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, pages, splitPageId, splitRatio, mode, overlay, railOpen, sidebar, settings.tabLayout]);
+  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, pages, splitPageId, splitRatio, mode, overlay, railOpen, sidebar, settings.tabLayout, toolbarReveal.inset]);
 
   const dispatchShortcut = (s: Shortcut) => {
     const k = s.key.toLowerCase().replace(/^arrow/, "");
@@ -373,7 +401,7 @@ export function App() {
       )}
       <div className="app-body">
         <Sidebar />
-        <div className="main-col">
+        <div className={`main-col${toolbarReveal.revealed ? " toolbar-revealed" : ""}`}>
           {settings.tabLayout === "horizontal" && <HorizontalTabs />}
           <Toolbar />
           <div className="main">

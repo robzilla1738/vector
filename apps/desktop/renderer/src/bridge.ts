@@ -48,6 +48,8 @@ export interface VectorBridge {
   onEvent(cb: (e: VectorEvent) => void): () => void;
   onRuntimeStatus(cb: (status: { connected: boolean; detail?: string }) => void): () => void;
   onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => void): () => void;
+  /** Pointer is at the top of a loaded native page, where the shell cannot see the hover. */
+  onToolbarEdge(cb: (near: boolean) => void): () => void;
   onDownload(cb: (d: unknown) => void): () => void;
   retryDownload(id:string):Promise<void>;
   tabAudio():Promise<Record<string,{muted:boolean;audible:boolean}>>;
@@ -159,6 +161,7 @@ const stub: VectorBridge = {
   onEvent: noop,
   onRuntimeStatus: noop,
   onShortcut: noop,
+  onToolbarEdge: noop,
   onPageAction: noop,
   onDownload: noop,
   onLoading: noop,

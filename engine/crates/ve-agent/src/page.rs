@@ -5851,6 +5851,13 @@ impl Page {
         let parsed = url::Url::parse(&resolved)
             .map_err(|e| Error::invalid_params(format!("invalid url {url:?}: {e}")))?;
         if parsed.scheme() == "javascript" {
+            // Same gate as the evaluate step. Page-authored javascript: links
+            // call run_javascript_url directly; an agent navigate must not.
+            if !self.allow_evaluate() {
+                return Err(Error::capability_unsupported(
+                    "javascript: URLs need a context created with allowEvaluate",
+                ));
+            }
             self.run_javascript_url(&resolved)?;
             return Ok(());
         }

@@ -5,6 +5,10 @@ import { join } from "node:path";
 export default defineConfig({
   root: join(import.meta.dirname, "renderer"),
   base: "./",
+  resolve: {
+    // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
+    extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
+  },
   plugins: [react()],
   build: {
     outDir: join(import.meta.dirname, "dist", "renderer"),

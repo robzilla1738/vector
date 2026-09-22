@@ -840,7 +840,8 @@ export class RunService {
       // cannot contain evaluate) — a trusted source
       .execute(program, { runId: run.runId, allowEval: true })
       .then((res) => {
-        const r = this.deps.repo.getRun(run.runId)!;
+        const r = this.deps.repo.getRun(run.runId);
+        if (!r || r.status === "cancelled") return;
         r.status = res.status === "completed" ? "completed" : res.status === "cancelled" ? "cancelled" : "failed";
         r.result = res.extracted;
         r.error = res.error;
@@ -856,7 +857,7 @@ export class RunService {
       })
       .catch((e) => {
         const r = this.deps.repo.getRun(run.runId);
-        if (r) {
+        if (r && r.status !== "cancelled") {
           r.status = "failed";
           r.error = e instanceof Error ? e.message : String(e);
           r.endedAt = Date.now();
