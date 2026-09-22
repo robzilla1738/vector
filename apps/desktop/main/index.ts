@@ -5,6 +5,8 @@ import { splitRatio, splitWidths } from "@vector/contracts/split-layout";
 import { dictationStatus, startDictation, stopDictation, cancelDictation } from "./dictation.js";
 import { SiteZoomPreferences } from "./site-zoom.js";
 import { installSitePermissions, permissionOrigin } from "./site-permissions.js";
+import { installTrackerBlock } from "./tracker-block.js";
+import { createInsecureBypass } from "./insecure-bypass.js";
 import { BrowserProfiles } from "./browser-profiles.js";
 import { offerExternalLink } from "./external-links.js";
 import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
@@ -490,6 +492,27 @@ function saveSitePermissions(next: typeof sitePermissions) {
   sitePermissions = next;
 }
 
+const PRIVACY_FILE = join(DATA_DIR, "privacy.json");
+interface PrivacyState { trackerBlock: boolean }
+let privacy: PrivacyState = (() => {
+  try {
+    const parsed = JSON.parse(readFileSync(PRIVACY_FILE, "utf8")) as Partial<PrivacyState>;
+    return { trackerBlock: parsed.trackerBlock !== false };
+  } catch {
+    return { trackerBlock: true };
+  }
+})();
+let blockedRequests = 0;
+const insecureBypass = createInsecureBypass();
+
+function savePrivacy(next: PrivacyState) {
+  const temporary = `${PRIVACY_FILE}.tmp`;
+  writeFileSync(temporary, JSON.stringify(next, null, 2), { mode: 0o600 });
+  chmodSync(temporary, 0o600);
+  renameSync(temporary, PRIVACY_FILE);
+  privacy = next;
+}
+
 function configurePagePermissions() {
   const ses = profileSession();
   // On supported macOS releases Chromium hands modern getDisplayMedia requests to
@@ -515,6 +538,14 @@ function configurePagePermissions() {
     read: () => sitePermissions,
     save: saveSitePermissions,
   });
+  installTrackerBlock(ses, {
+    enabled: () => privacy.trackerBlock,
+    onBlocked: () => { blockedRequests += 1; },
+  });
+  // Explicit per-host certificate bypass for "proceed anyway" choices this
+  // session only; -3 defers to Chromium's verifier for every other request.
+  ses.setCertificateVerifyProc((request, callback) =>
+    callback(insecureBypass.has(request.hostname) ? 0 : -3));
 }
 
 function configureCloudPreviewHeaders(){
@@ -1839,6 +1870,19 @@ function wireRendererIpc() {
     return siteZoom.list();
   });
   ipcMain.handle("app.sitePermissions", event => { requireShellUi(event); return sitePermissions; });
+  ipcMain.handle("app.privacy", event => { requireShellUi(event); return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests }; });
+  ipcMain.handle("app.setTrackerBlock", (event, enabled: unknown) => {
+    requireShellUi(event);
+    if (typeof enabled !== "boolean") throw new Error("Choose whether tracker blocking is on or off.");
+    savePrivacy({ ...privacy, trackerBlock: enabled });
+    return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests };
+  });
+  ipcMain.handle("app.proceedInsecure", (event, url: unknown) => {
+    requireShellUi(event);
+    if (typeof url !== "string") throw new Error("An HTTPS address is required.");
+    insecureBypass.proceed(url);
+    return true;
+  });
   ipcMain.handle("app.clearSitePermission", (event, origin: unknown, permission?: unknown) => {
     requireShellUi(event);
     if (typeof origin !== "string" || !sitePermissions[origin]) return false;

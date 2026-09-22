@@ -768,6 +768,9 @@ export function installMockBridge(q: URLSearchParams) {
     },
     sitePermissions: async () => ({}),
     clearSitePermission: async () => true,
+    privacy: async () => ({ trackerBlock: true, blocked: 0 }),
+    setTrackerBlock: async () => ({ trackerBlock: true, blocked: 0 }),
+    proceedInsecure: async () => true,
     setAppearance: async () => true,
   };
   (window as unknown as { vector: VectorBridge; __vectorMock: boolean }).vector = bridge;

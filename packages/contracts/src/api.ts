@@ -634,6 +634,9 @@ export const MethodSchemas = {
   "chrome.importCookies": z.object({
     source: z.enum(["auto", "attached", "profile"]).optional(),
   }),
+  "chrome.importBookmarks": z.object({
+    profile: z.string().trim().min(1).max(64).optional(),
+  }),
   "chrome.openLive": ChromeOpenLiveParams,
   "models.list": z.object({}),
   "models.probe": ModelsProbeParams,
@@ -999,6 +1002,13 @@ export const ResultSchemas = {
     skipped: z.number(),
     domains: z.number(),
     detail: z.string().optional(),
+  }),
+  "chrome.importBookmarks": z.object({
+    ok: z.boolean(),
+    imported: z.number(),
+    skipped: z.number(),
+    profiles: z.array(z.string()),
+    detail: z.string(),
   }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
   "models.list": z.object({

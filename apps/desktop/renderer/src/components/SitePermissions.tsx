@@ -16,6 +16,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     .filter((page, index, all) => all.findIndex(other => new URL(other.url).origin === new URL(page.url).origin) === index);
   const chosenPage = openSites.find(page => page.pageId === selectedPage) ?? openSites[0];
   const [decisions, setDecisions] = useState<Decisions>({});
+  const [privacy, setPrivacy] = useState<{ trackerBlock: boolean; blocked: number } | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -28,7 +29,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   async function load() {
     const version=++request.current;
     setLoading(true);setLoadError("");
-    try { const result=await bridge.sitePermissions();if(version===request.current)setDecisions(result); }
+    try { const [result, privacyState]=await Promise.all([bridge.sitePermissions(),bridge.privacy()]);if(version===request.current){setDecisions(result);setPrivacy(privacyState);} }
     catch (error) { if(version===request.current)setLoadError(error instanceof Error ? error.message : String(error)); }
     finally { if(version===request.current)setLoading(false); }
   }
@@ -73,8 +74,17 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   const terms = `${search} ${/site|permission/i.test(query) ? "" : query}`.trim().toLowerCase();
   const sites = Object.entries(decisions).sort(([a], [b]) => a.localeCompare(b)).filter(([origin, permissions]) =>
     `${origin} ${Object.keys(permissions).map(key => labels[key] ?? key).join(" ")}`.toLowerCase().includes(terms));
+  const toggleTracking=()=>action("tracker-block",async()=>{
+    const next=await bridge.setTrackerBlock(!(privacy?.trackerBlock ?? true));
+    setPrivacy(next);
+    setNotice(next.trackerBlock?"Tracker and ad blocking is on. Reload open tabs to apply it everywhere.":"Tracker and ad blocking is off for all websites.");
+  });
   return <div ref={root} className="site-permissions">
     <p className="hint">Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
+    <section className="site-data-group" aria-label="Privacy">
+      <header><strong>Privacy</strong></header>
+      <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.trackerBlock ?? true} disabled={!!busy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{privacy?.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy && privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
+    </section>
     <section className="site-data-group" aria-label="Website data">
       <header><strong>Website data</strong></header>
       <p className="hint">Clear cookies and stored data for an open website. This can sign you out; cookies for related subdomains are included.</p>

@@ -16,6 +16,7 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { EngineAvailability } from "@vector/engine-client";
 import { compactObservation } from "../services/observation-render.js";
+import { chromeBookmarkFiles, readChromeBookmarksFile } from "../services/chrome-bookmarks.js";
 import type { DriverSet } from "../services/pages.js";
 import type { Router } from "../services/router.js";
 import { TaskService } from "../services/tasks.js";
@@ -671,6 +672,28 @@ export function makeInvoker(s: Services) {
       case "chrome.detach": return s.chromeDetach();
       case "chrome.tabs": return s.chromeTabs();
       case "chrome.importCookies": return s.importCookies(params);
+      case "chrome.importBookmarks": {
+        const p = MethodSchemas["chrome.importBookmarks"].parse(params);
+        const files = chromeBookmarkFiles(p.profile);
+        if (!files.length) {
+          throw new VectorError("not_found", p.profile
+            ? `Chromium profile "${p.profile}" has no bookmarks store`
+            : "no Chrome, Chromium, or Edge profile with bookmarks found on this machine");
+        }
+        const seen = new Set<string>();
+        const bookmarks = files.flatMap((f) => readChromeBookmarksFile(f.path))
+          .filter((b) => !seen.has(b.url) && !!seen.add(b.url))
+          .slice(0, 10000);
+        const result = s.repo.importBookmarks(bookmarks);
+        s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
+        return {
+          ok: true,
+          imported: result.added,
+          skipped: result.skipped,
+          profiles: files.map((f) => f.profile),
+          detail: `read ${files.length} Chromium profile${files.length === 1 ? "" : "s"} (${files.map((f) => f.profile).join(", ")})`,
+        };
+      }
       case "chrome.openLive": {
         const page = s.pages.get(params.pageId);
         const chrome = s.drivers().chrome;

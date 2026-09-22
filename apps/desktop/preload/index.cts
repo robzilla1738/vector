@@ -180,6 +180,9 @@ const vector = {
   onSiteZoomChanged: (cb: () => void) => { const listener = () => cb(); ipcRenderer.on("site-zoom-changed", listener); return () => ipcRenderer.removeListener("site-zoom-changed", listener); },
   sitePermissions: () => ipcRenderer.invoke("app.sitePermissions") as Promise<Record<string, Record<string, "allow" | "deny">>>,
   clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
+  privacy: () => ipcRenderer.invoke("app.privacy") as Promise<{ trackerBlock: boolean; blocked: number }>,
+  setTrackerBlock: (enabled: boolean) => ipcRenderer.invoke("app.setTrackerBlock", enabled) as Promise<{ trackerBlock: boolean; blocked: number }>,
+  proceedInsecure: (url: string) => ipcRenderer.invoke("app.proceedInsecure", url) as Promise<boolean>,
   setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true, material = "liquid-glass") => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls, material),
 };
 
