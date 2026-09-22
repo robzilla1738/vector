@@ -6400,3 +6400,39 @@ being treated as blockers to the first visual/interaction review.
 - Verification: `npm run typecheck` clean (all projects + renderer);
   13 new unit tests + 59 existing conversation/contracts/renderer tests
   green; oxlint 0 errors on touched files.
+
+## 2026-09-22 — AI workstream: labeled account boundary + sources surface
+
+- **AI-05 (labeled account/profile selection)** — `routine.accountLabels`
+  (schema field existed, never populated) now forms a declared account
+  boundary. `handlers.ts` stamps `run.config.accountLabels` at routine
+  dispatch; `runs.start`/`coordinator.start` carry it into the run config;
+  `coordinator-turn` passes it to `vault.grants({taskId, origin,
+  accountLabels})` so the planner only sees matching labeled grants
+  (unlabeled grants never enter a scoped run). `revealForFill` re-checks
+  the boundary at fill time — a stale skill or hand-authored
+  `credentialRef` outside the labels is `permission_denied` and journaled
+  as `denied`. Empty/absent labels keep the run unrestricted, unchanged
+  behavior. `Routines.tsx` gained an Accounts editor fed by distinct
+  `vault.list` account labels (checkbox chips → `routines.update`),
+  surviving label renames via the union of known + saved labels.
+- **AI-06/07 (sourced results, prepared-form loop)** — the context panel
+  now renders `conversations.sources.get` as a read-only "Pages read"
+  list (title + host + observed time) beside generated-results chips, so
+  a research run's provenance is inspectable in-place, not only in the
+  export. The "prepare → human edit → resume" loop already exists via
+  `SavedResultPreview` (edited copy attaches as a new source); the
+  `needs_input` ask/answer loop covers missing-information questions.
+- **AI-03/04 audit (bounded observations/batching/cached context/
+  parallel reads)** — verified present, no gap: scoped+bounded observe
+  (`maxElements`/`maxTextChars`, forms/links/tables/subtree), revision
+  diffs via `sinceRevision`, `carriedObs` reuse across turns, the
+  observation cache keyed on scope+limits, `EarlyDispatcher` safe
+  batching of streamed steps, and pilots-first bounded `Promise.all`
+  member jobs in `set-runner`. No speculative perf work added.
+- Tests: `agent-vault` +2 (grant scoping by declared labels, fill-time
+  refusal of out-of-boundary references). `image-capture` test fixture
+  typing fixed for `resize` mocks.
+- Verification: `npm run typecheck` clean; `agent-vault` 6/6, `routines`
+  7/7, `human-vault` 21/21, `image-capture` 13/13 green; oxlint 0 errors
+  on touched files (pre-existing warnings only).

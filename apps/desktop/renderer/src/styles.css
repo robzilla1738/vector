@@ -1271,6 +1271,7 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .conversation-document label > span { display: flex; flex-direction: column; min-width: 0; gap: var(--space-0); }
 .conversation-document b { font-size: var(--fs-xs); font-weight: 500; }
 .conversation-document small { color: var(--ink-2); font-size: var(--fs-2xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-source { display: flex; flex-direction: column; min-width: 0; gap: var(--space-0); flex: 1; }
 @media (prefers-reduced-transparency: reduce) { .conversation-memory { background: var(--bg-2); backdrop-filter: none; -webkit-backdrop-filter: none; } }
 .conversation-scroll:has(.conversation-empty) { align-items: safe center; }
 .conversation-empty h1 { font-size: 22px; font-weight: 500; margin-bottom: 12px; }

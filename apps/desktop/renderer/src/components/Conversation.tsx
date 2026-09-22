@@ -105,6 +105,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
   const [generatedResults, setGeneratedResults] = useState<ConversationArtifact[]>([]);
+  const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
   const [workspaceSaving] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
@@ -134,7 +135,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   activeChat.current = id;
   const documentBusy = useRef(false);
   const conversationRoot = useRef<HTMLElement>(null);
-  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setGeneratedResults([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
+  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setGeneratedResults([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
   const [taskTitle, setTaskTitle] = useState("");
   const [archived, setArchived] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -211,13 +212,14 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     let cancelled = false;
     if (!connected || attachmentSaving || contextSaving || workspaceSaving) { setContextLoading(false); return; }
     setContextError(""); setContextLoading(!!id);
-    if (!id) { setImages([]); setAttachments([]); setGeneratedResults([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
+    if (!id) { setImages([]); setAttachments([]); setGeneratedResults([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
     void Promise.all([
       call<{ images: ConversationImage[] }>("conversations.images.get", { chatId: id }),
       call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
       call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
       call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
-    ]).then(([imageReferences, documents, generated, workspace]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setGeneratedResults(generated.artifacts); setWorkspaceContext(workspace); } })
+      call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
+    ]).then(([imageReferences, documents, generated, workspace, sourceList]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setGeneratedResults(generated.artifacts); setWorkspaceContext(workspace); setConversationSources(sourceList.sources); } })
       .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setContextLoading(false); });
     return () => { cancelled = true; };
@@ -396,10 +398,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       <label><input type="checkbox" checked={item.included} disabled={attachmentSaving || contextLocked} onChange={event => void changeDocument(item.attachmentId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.sourceUrl ? `${new URL(item.sourceUrl).hostname} · ${item.sourceTruncated ? "Partial page" : "Page snapshot"}` : `${Math.max(1, Math.ceil(item.byteLength / 1024))} KB · ${item.excerpt || "Empty document"}`}</small></span></label>
       <button className="btn sm ghost" onClick={() => { setContextOpen(false); setImagePreview(null); setDocumentPreview(item.attachmentId); }}>Preview</button>
       <button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button>
-    </div>)}</div> : !images.length && !generatedResults.length ? <p className="hint">Nothing attached. Add a document, a page, or an image.</p> : null}
+    </div>)}</div> : !images.length && !generatedResults.length && !conversationSources.length ? <p className="hint">Nothing attached. Add a document, a page, or an image.</p> : null}
     {generatedResults.length > 0 && <div className="conversation-document-list" aria-label="Results generated in this conversation">{generatedResults.map(item => <div className="conversation-document" key={item.artifactId}>
       <label title={`Include “${item.filename}” as context for new replies`}><input type="checkbox" checked={item.included} disabled={attachmentSaving || contextLocked} onChange={event => void toggleResult(item.artifactId, event.target.checked)}/><span><b>{item.filename}</b><small>{`Result · ${Math.max(1, Math.ceil(item.byteLength / 1024))} KB · ${item.turnGoal || item.excerpt}`}</small></span></label>
       <button className="btn sm ghost" onClick={() => { setContextOpen(false); setImagePreview(null); useStore.setState({ resultPreview: item.artifactId }); }}>Preview</button>
+    </div>)}</div>}
+    {conversationSources.length > 0 && <div className="conversation-document-list" aria-label="Pages read in this conversation">{conversationSources.map(source => <div className="conversation-document" key={source.sourceId}>
+      <span className="conversation-source"><b>{source.title || source.url}</b><small>{`${new URL(source.url).hostname} · read ${new Date(source.observedAt).toLocaleString()}`}</small></span>
     </div>)}</div>}
   </div> : null;
   if (id === "history") return <ConversationHistory/>;
