@@ -1,6 +1,6 @@
 import {existsSync,readFileSync} from 'node:fs';
-import {MethodSchemas,ResultSchemas,type MethodName,type MethodParams,type MethodResult,type VectorEvent} from '@vector/contracts';
-import {resolveRuntimeDescriptor} from '@vector/contracts/installation';
+import {MethodSchemas,ResultSchemas,type MethodName,type MethodParams,type MethodResult,type AuxEvent} from '@aux/contracts';
+import {resolveRuntimeDescriptor} from '@aux/contracts/installation';
 
 export interface AuxConnection{port:number;token:string;pid?:number}
 export interface AuxClientOptions{timeoutMs?:number;fetch?:typeof fetch}
@@ -31,7 +31,7 @@ export class AuxClient{
     if(!response.ok)throw new AuxRpcError(`Aux request failed with HTTP ${response.status}.`,'http_error',response.status);
     return ResultSchemas[method].parse(body.result) as MethodResult<M>;
   }
-  async *events(lastSeq=0,options:{signal?:AbortSignal;pollMs?:number}={}):AsyncGenerator<VectorEvent>{
+  async *events(lastSeq=0,options:{signal?:AbortSignal;pollMs?:number}={}):AsyncGenerator<AuxEvent>{
     let sequence=lastSeq;const pollMs=options.pollMs??400;
     while(!options.signal?.aborted){const result=await this.call('events.since',{sinceSeq:sequence,limit:500});for(const event of result.events)yield event;sequence=result.lastSeq;if(pollMs)await new Promise<void>(resolve=>{const done=()=>{clearTimeout(timer);options.signal?.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,pollMs);options.signal?.addEventListener('abort',done,{once:true});});}
   }

@@ -2,8 +2,8 @@ import { documentReference, boundedDocumentReference } from "./document-context.
 import { isTextResult, isTextResultContent, resultFilename } from "./text-result.js";
 import { readWorkspaceMemory } from "./workspace-memory.js";
 import { BrowsingMemory } from "./browsing-memory.js";
-import { workspaceMemoryText } from "@vector/contracts/memory-context";
-import { documentSnapshotExcerpt, textContextShares } from "@vector/contracts";
+import { workspaceMemoryText } from "@aux/contracts/memory-context";
+import { documentSnapshotExcerpt, textContextShares } from "@aux/contracts";
 import { ConversationImages } from "./conversation-images.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -12,7 +12,7 @@ import {
   newResultId,
   newRunId,
   newStepId,
-  VectorError,
+  AuxError,
   type Program,
   type ConversationContext,
   type ConversationAttachment,
@@ -22,14 +22,13 @@ import {
   type SavedProgram,
   type SetMember,
   type Step,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { ArtifactStore } from "./artifacts.js";
 import type { PageService } from "./pages.js";
 import type { SetService } from "./sets.js";
 import type { SettingsService } from "./settings.js";
-import { join } from "node:path";
 import { RunCoordinator } from "../agent/coordinator.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
@@ -55,7 +54,7 @@ export function substituteParameters(stepsJson: string, parameters: Record<strin
     return JSON.stringify(String(v)).slice(1, -1);
   });
   if (missing.size) {
-    throw new VectorError("invalid_params", `program requires parameters: ${[...missing].join(", ")}`, { missing: [...missing] });
+    throw new AuxError("invalid_params", `program requires parameters: ${[...missing].join(", ")}`, { missing: [...missing] });
   }
   return out;
 }
@@ -143,17 +142,17 @@ export class RunService {
 
   readAttachment(opts: { chatId: string; attachmentId: string }) {
     const record = this.documentContext(opts.chatId).find(item => item.attachmentId === opts.attachmentId);
-    if (!record) throw new VectorError("not_found", "Document attachment not found.");
+    if (!record) throw new AuxError("not_found", "Document attachment not found.");
     return { attachment: this.attachments(opts.chatId).attachments.find(item => item.attachmentId === opts.attachmentId)!, content: record.content, contextCharacters: record.text.length, contextText: record.text, contextTotalCharacters: record.contextTotalCharacters };
   }
 
   addAttachment(opts: { chatId: string; filename: string; content: string; sourceUrl?: string; sourceTruncated?: boolean }) {
-    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new VectorError("conflict", "Restore this conversation before changing its context.");
+    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before changing its context.");
     const records = this.attachmentRecords(opts.chatId);
-    if (records.length >= 5) throw new VectorError("conflict", "A conversation can include up to five document or page snapshots.");
+    if (records.length >= 5) throw new AuxError("conflict", "A conversation can include up to five document or page snapshots.");
     const content = opts.content;
     const byteLength = new TextEncoder().encode(content).length;
-    if (byteLength > 512 * 1024) throw new VectorError("invalid_params", "Use a UTF-8 text document up to 512 KB.");
+    if (byteLength > 512 * 1024) throw new AuxError("invalid_params", "Use a UTF-8 text document up to 512 KB.");
     records.push({ attachmentId: newStepId(), filename: opts.filename, sourceUrl: opts.sourceUrl, sourceTruncated: opts.sourceTruncated, content, byteLength, createdAt: Date.now(), included: true });
     this.deps.repo.setSetting(`conversationAttachments:${opts.chatId}`, records);
     this.deps.events.emit("conversation.context.changed", {chatId:opts.chatId});
@@ -162,16 +161,16 @@ export class RunService {
 
   async attachPage(opts: { chatId: string; pageId: string; expectedDocumentEpoch: number }) {
     const before = this.deps.pages.get(opts.pageId);
-    if (before.documentEpoch !== opts.expectedDocumentEpoch) throw new VectorError("conflict", "This tab changed. Choose it again.");
-    if (!/^https?:\/\//.test(before.url)) throw new VectorError("invalid_params", "Choose a web page to attach.");
+    if (before.documentEpoch !== opts.expectedDocumentEpoch) throw new AuxError("conflict", "This tab changed. Choose it again.");
+    if (!/^https?:\/\//.test(before.url)) throw new AuxError("invalid_params", "Choose a web page to attach.");
     const observed = await this.deps.pages.observe(opts.pageId, {});
     const after = this.deps.pages.get(opts.pageId);
     if (observed.documentEpoch !== opts.expectedDocumentEpoch || after.documentEpoch !== opts.expectedDocumentEpoch || after.url !== observed.content.url)
-      throw new VectorError("conflict", "This tab changed while reading. Choose it again.");
+      throw new AuxError("conflict", "This tab changed while reading. Choose it again.");
     const source = new URL(observed.content.url);
-    if (!["http:", "https:"].includes(source.protocol) || source.username || source.password) throw new VectorError("invalid_params", "Choose a page address without credentials.");
+    if (!["http:", "https:"].includes(source.protocol) || source.username || source.password) throw new AuxError("invalid_params", "Choose a page address without credentials.");
     const text = observed.content.text.trim();
-    if (!text) throw new VectorError("capability_unsupported", "No readable text was found. Capture an image of this page instead.");
+    if (!text) throw new AuxError("capability_unsupported", "No readable text was found. Capture an image of this page instead.");
     const sourceTruncated = observed.content.truncated || text.length > 20_000;
     const title = (observed.content.title || source.hostname).replace(/[/\\\x00-\x1f]/g, " ").slice(0, 180);
     return this.addAttachment({ chatId: opts.chatId, filename: `${title}.txt`, sourceUrl: source.href, sourceTruncated,
@@ -179,10 +178,10 @@ export class RunService {
   }
 
   toggleAttachment(opts: { chatId: string; attachmentId: string; included: boolean }) {
-    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new VectorError("conflict", "Restore this conversation before changing its context.");
+    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before changing its context.");
     const records = this.attachmentRecords(opts.chatId);
     const record = records.find(item => item.attachmentId === opts.attachmentId);
-    if (!record) throw new VectorError("not_found", "Document attachment not found.");
+    if (!record) throw new AuxError("not_found", "Document attachment not found.");
     record.included = opts.included;
     this.deps.repo.setSetting(`conversationAttachments:${opts.chatId}`, records);
     this.deps.events.emit("conversation.context.changed", {chatId:opts.chatId});
@@ -190,9 +189,9 @@ export class RunService {
   }
 
   removeAttachment(opts: { chatId: string; attachmentId: string }) {
-    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new VectorError("conflict", "Restore this conversation before changing its context.");
+    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before changing its context.");
     const records = this.attachmentRecords(opts.chatId);
-    if (!records.some(item => item.attachmentId === opts.attachmentId)) throw new VectorError("not_found", "Document attachment not found.");
+    if (!records.some(item => item.attachmentId === opts.attachmentId)) throw new AuxError("not_found", "Document attachment not found.");
     this.deps.repo.setSetting(`conversationAttachments:${opts.chatId}`, records.filter(item => item.attachmentId !== opts.attachmentId));
     this.deps.events.emit("conversation.context.changed", {chatId:opts.chatId});
     return this.attachments(opts.chatId);
@@ -238,9 +237,9 @@ export class RunService {
   }
 
   toggleConversationArtifact(opts: { chatId: string; artifactId: string; included: boolean }) {
-    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new VectorError("conflict", "Restore this conversation before changing its context.");
+    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before changing its context.");
     const available = this.conversationArtifacts(opts.chatId).artifacts;
-    if (!available.some(item => item.artifactId === opts.artifactId)) throw new VectorError("not_found", "Generated artifact not found in this conversation.");
+    if (!available.some(item => item.artifactId === opts.artifactId)) throw new AuxError("not_found", "Generated artifact not found in this conversation.");
     const selected = new Set(this.artifactSelection(opts.chatId));
     if (opts.included) selected.add(opts.artifactId); else selected.delete(opts.artifactId);
     this.deps.repo.setSetting(`conversationArtifacts:${opts.chatId}`, [...selected].slice(0, 20));
@@ -279,14 +278,14 @@ export class RunService {
   }
 
   setConversationWorkspace(opts: { chatId: string; workspaceId: string | null }) {
-    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new VectorError("conflict", "Restore this conversation before changing its context.");
+    if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before changing its context.");
     const taskId = this.deps.repo.taskForConversation(opts.chatId) ?? this.deps.repo.listRuns(1, { chatId: opts.chatId })[0]?.config?.taskId;
     if (taskId) {
       const row = this.deps.repo.db.prepare("SELECT workspace_id AS workspaceId FROM tasks WHERE task_id=?").get(taskId) as { workspaceId: string } | undefined;
-      if (!row) throw new VectorError("not_found", "Saved task does not exist.");
-      if (opts.workspaceId !== row.workspaceId) throw new VectorError("conflict", "A saved task conversation always uses its task workspace.");
+      if (!row) throw new AuxError("not_found", "Saved task does not exist.");
+      if (opts.workspaceId !== row.workspaceId) throw new AuxError("conflict", "A saved task conversation always uses its task workspace.");
     }
-    if (opts.workspaceId && !this.deps.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(opts.workspaceId)) throw new VectorError("not_found", "Workspace does not exist.");
+    if (opts.workspaceId && !this.deps.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(opts.workspaceId)) throw new AuxError("not_found", "Workspace does not exist.");
     this.deps.repo.setSetting(`conversationWorkspace:${opts.chatId}`, opts.workspaceId);
     this.deps.events.emit("conversation.context.changed", {chatId:opts.chatId});
     this.deps.events.emit("conversation.changed", {chatId:opts.chatId});
@@ -317,7 +316,7 @@ export class RunService {
     if (opts.historyEnabled !== undefined) preference.historyEnabled = opts.historyEnabled;
     if (opts.runId && opts.included !== undefined) {
       const belongs = this.deps.repo.listRuns(500, { chatId: opts.chatId }).some(run => run.runId === opts.runId);
-      if (!belongs) throw new VectorError("not_found", "That turn does not belong to this conversation.");
+      if (!belongs) throw new AuxError("not_found", "That turn does not belong to this conversation.");
       const excluded = new Set(preference.excludedRunIds);
       if (opts.included) excluded.delete(opts.runId); else excluded.add(opts.runId);
       preference.excludedRunIds = [...excluded].slice(-500);
@@ -334,34 +333,34 @@ export class RunService {
   conversation(chatId: string) { return this.deps.repo.getConversation(chatId) ?? null; }
 
   renameConversation(chatId: string, title: string) {
-    if (this.deps.repo.taskForConversation(chatId) || this.deps.repo.conversationRuns(chatId).some(run => run.config?.taskId)) throw new VectorError("conflict", "Rename this conversation by renaming its saved task.");
+    if (this.deps.repo.taskForConversation(chatId) || this.deps.repo.conversationRuns(chatId).some(run => run.config?.taskId)) throw new AuxError("conflict", "Rename this conversation by renaming its saved task.");
     const conversation = this.deps.repo.renameConversation(chatId, title.trim());
-    if (!conversation) throw new VectorError("not_found", "Conversation not found.");
+    if (!conversation) throw new AuxError("not_found", "Conversation not found.");
     this.deps.events.emit("conversation.changed", {chatId, title:conversation.title, archived:conversation.archived});
     return conversation;
   }
 
   archiveConversation(chatId: string, archived: boolean) {
     const runs = this.deps.repo.conversationRuns(chatId);
-    if (!runs.length) throw new VectorError("not_found", "Conversation not found.");
-    if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new VectorError("conflict", "Archive or restore this conversation from its saved task.");
-    if (archived && runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new VectorError("conflict", "Stop or wait for this conversation before archiving it.");
+    if (!runs.length) throw new AuxError("not_found", "Conversation not found.");
+    if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new AuxError("conflict", "Archive or restore this conversation from its saved task.");
+    if (archived && runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "Stop or wait for this conversation before archiving it.");
     const conversation = this.deps.repo.archiveConversation(chatId, archived);
-    if (!conversation) throw new VectorError("not_found", "Conversation not found.");
+    if (!conversation) throw new AuxError("not_found", "Conversation not found.");
     this.deps.events.emit("conversation.changed", {chatId, title:conversation.title, archived:conversation.archived});
     return conversation;
   }
 
   deleteConversation(chatId: string) {
     const runs = this.deps.repo.conversationRuns(chatId);
-    if (!runs.length) throw new VectorError("not_found", "Conversation not found.");
-    if (runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new VectorError("conflict", "Stop or wait for this conversation before deleting it.");
-    if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new VectorError("conflict", "This conversation belongs to a saved task. Delete or archive it from the task workflow.");
+    if (!runs.length) throw new AuxError("not_found", "Conversation not found.");
+    if (runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "Stop or wait for this conversation before deleting it.");
+    if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new AuxError("conflict", "This conversation belongs to a saved task. Delete or archive it from the task workflow.");
     const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=?`;
     const unresolved = this.deps.repo.db.prepare(`SELECT 1 FROM action_intents WHERE run_id IN (${owned}) AND status IN ('pending','uncertain') LIMIT 1`).get(chatId);
-    if (unresolved) throw new VectorError("conflict", "Reconcile this conversation's unresolved action before deleting it.");
+    if (unresolved) throw new AuxError("conflict", "Reconcile this conversation's unresolved action before deleting it.");
     const unresolvedInvocation = this.deps.repo.db.prepare(`SELECT 1 FROM operation_invocations WHERE run_id IN (${owned}) AND (status IN ('running','interrupted') OR effect_outcome='unknown') LIMIT 1`).get(chatId);
-    if (unresolvedInvocation) throw new VectorError("conflict", "Reconcile this conversation's unresolved operation before deleting it.");
+    if (unresolvedInvocation) throw new AuxError("conflict", "Reconcile this conversation's unresolved operation before deleting it.");
     const deleted = this.deps.repo.deleteConversation(chatId);
     this.deps.events.emit("conversation.deleted", {chatId});
     this.deps.artifacts.removeFiles(deleted.artifactPaths);
@@ -422,12 +421,7 @@ export class RunService {
   }) {
     this.images = new ConversationImages(deps.repo, deps.artifacts, chatId => deps.events.emit("conversation.context.changed", {chatId}));
     this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() });
-    const durableWrites = deps.durableWrites ?? new DurableWriteLedger(
-      deps.repo.db,
-      typeof deps.settings.all === "function" && deps.settings.all().dataDir
-        ? join(deps.settings.all().dataDir, "durable-writes.json")
-        : undefined,
-    );
+    const durableWrites = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
     this.coordinator = new RunCoordinator({
       repo: deps.repo,
       events: deps.events,
@@ -608,14 +602,14 @@ export class RunService {
     }
     if (opts.chatId) {
       const taskId = this.deps.repo.taskForConversation(opts.chatId);
-      if (taskId && taskId !== opts.taskId) throw new VectorError("conflict", "Continue this conversation through its saved task to preserve task scope.");
-      if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new VectorError("conflict", "Restore this conversation before continuing it.");
+      if (taskId && taskId !== opts.taskId) throw new AuxError("conflict", "Continue this conversation through its saved task to preserve task scope.");
+      if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before continuing it.");
       const prior = this.deps.repo.db.prepare("SELECT run_id, status, config FROM runs WHERE json_extract(config,'$.chatId')=? OR run_id=?").all(opts.chatId, opts.chatId) as { run_id: string; status: Run["status"]; config: string | null }[];
-      if (prior.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new VectorError("conflict", "This conversation is still working. Answer, stop, or wait for its current turn.");
-      if (prior.some(run => { const config = run.config ? JSON.parse(run.config) : {}; return config.taskId && config.taskId !== opts.taskId; })) throw new VectorError("conflict", "Continue this conversation through its saved task to preserve task scope.");
+      if (prior.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "This conversation is still working. Answer, stop, or wait for its current turn.");
+      if (prior.some(run => { const config = run.config ? JSON.parse(run.config) : {}; return config.taskId && config.taskId !== opts.taskId; })) throw new AuxError("conflict", "Continue this conversation through its saved task to preserve task scope.");
       const uncertain = this.deps.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id
         WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1`).get(opts.chatId, opts.chatId);
-      if (uncertain) throw new VectorError("conflict", "This conversation has an unresolved action. Reconcile its outcome before continuing.");
+      if (uncertain) throw new AuxError("conflict", "This conversation has an unresolved action. Reconcile its outcome before continuing.");
     }
     if (opts.chatId && opts.taskId && opts.contextWorkspaceId) {
       this.deps.repo.setSetting(`conversationWorkspace:${opts.chatId}`, opts.contextWorkspaceId);
@@ -631,10 +625,10 @@ export class RunService {
     const contextWorkspaceRevision = opts.contextSnapshot ? opts.contextWorkspaceRevision : inherited?.workspaceRevision ?? opts.contextWorkspaceRevision;
     const pageIds = opts.pageIds ?? (opts.pageId ? [opts.pageId] : []);
     if (!pageIds.length && !opts.setId) {
-      throw new VectorError("invalid_params", "runs.start needs a pageId, pageIds, or setId scope");
+      throw new AuxError("invalid_params", "runs.start needs a pageId, pageIds, or setId scope");
     }
     if (opts.setId) {
-      if (contextImageArtifactIds?.length) throw new VectorError("capability_unsupported", "Image references currently belong to a single conversation run, not a set run.");
+      if (contextImageArtifactIds?.length) throw new AuxError("capability_unsupported", "Image references currently belong to a single conversation run, not a set run.");
       // a set-scoped goal runs through the map scheduler
       const run: Run = {
         runId: newRunId(),
@@ -671,13 +665,13 @@ export class RunService {
    */
   async retry(runId: string, replacementPageId?: string): Promise<Run> {
     const prior = this.coordinator.get(runId);
-    if (!TERMINAL_RUN_STATUSES.has(prior.status)) throw new VectorError("conflict", "Stop or wait for this turn before retrying it.");
-    if (prior.setId) throw new VectorError("invalid_params", "Retry this set from its set workflow.");
-    if (prior.config?.taskId) throw new VectorError("conflict", "Continue this turn from its saved task to preserve the task revision.");
+    if (!TERMINAL_RUN_STATUSES.has(prior.status)) throw new AuxError("conflict", "Stop or wait for this turn before retrying it.");
+    if (prior.setId) throw new AuxError("invalid_params", "Retry this set from its set workflow.");
+    if (prior.config?.taskId) throw new AuxError("conflict", "Continue this turn from its saved task to preserve the task revision.");
     const chatId = prior.config?.chatId ?? prior.runId;
     const latest = this.deps.repo.listRuns(500, { chatId }).at(0);
-    if (latest && latest.runId !== prior.runId) throw new VectorError("conflict", "A newer turn exists in this conversation. Retry it instead.");
-    if (replacementPageId && prior.pageIds.length > 1) throw new VectorError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
+    if (latest && latest.runId !== prior.runId) throw new AuxError("conflict", "A newer turn exists in this conversation. Retry it instead.");
+    if (replacementPageId && prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
     if (replacementPageId) this.deps.pages.get(replacementPageId);
     const usable = (pageId: string) => {
       try {
@@ -691,10 +685,10 @@ export class RunService {
     if (!replacementPageId) {
       const missing = prior.pageIds.filter(id => !usable(id));
       if (missing.length) {
-        if (prior.pageIds.length > 1) throw new VectorError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
-        throw new VectorError("conflict", "Reopen or choose a browser tab before retrying this turn.");
+        if (prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
+        throw new AuxError("conflict", "Reopen or choose a browser tab before retrying this turn.");
       }
-      if (!prior.pageIds.length) throw new VectorError("conflict", "Reopen or choose a browser tab before retrying this turn.");
+      if (!prior.pageIds.length) throw new AuxError("conflict", "Reopen or choose a browser tab before retrying this turn.");
     }
     return this.start({
       goal: prior.goal,
@@ -816,7 +810,7 @@ export class RunService {
 
   runProgram(opts: { programId: string; pageId: string; parameters?: Record<string, string> }): { runId: string } {
     const saved = this.deps.repo.getProgram(opts.programId);
-    if (!saved) throw new VectorError("not_found", `no program ${opts.programId}`);
+    if (!saved) throw new AuxError("not_found", `no program ${opts.programId}`);
     this.deps.pages.get(opts.pageId); // throws not_found for an unknown page before a run row is created
     const stepsJson = substituteParameters(saved.stepsJson, opts.parameters ?? {});
     const savedBody = JSON.parse(stepsJson) as Step[] | { steps?: Step[]; nodes?: Program["nodes"] };

@@ -1,4 +1,4 @@
-import type { WorkbookSnapshot } from "@vector/contracts";
+import type { WorkbookSnapshot } from "@aux/contracts";
 import { answerTableCsv } from "./answer-table";
 
 export function workbookColumnLabel(column:number):string {

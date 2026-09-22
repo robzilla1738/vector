@@ -6,8 +6,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import type { PageTarget, ProgramResult, SavedProgram } from "@vector/contracts";
+import { startRuntime, type RuntimeHandle } from "@aux/runtime";
+import type { PageTarget, ProgramResult, SavedProgram } from "@aux/contracts";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import type { ChildProcess } from "node:child_process";
 
@@ -21,11 +21,11 @@ const invoke = <T>(m: string, p?: unknown) => rt.invoke(m, p ?? {}) as Promise<T
 beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
-  dataDir = mkdtempSync(join(tmpdir(), "vector-ctrl-"));
+  dataDir = mkdtempSync(join(tmpdir(), "aux-ctrl-"));
   // This fixture deliberately exercises reload after control returns. Keep the
   // production default read-only and grant egress only inside this isolated run.
   writeFileSync(join(dataDir, "settings.json"), JSON.stringify({ effectGrants: ["effect:read", "effect:egress"] }));
-  rt = await startRuntime({ ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "", VECTOR_ENGINE_MODE: "off" });
+  rt = await startRuntime({ ...process.env, AUX_DATA_DIR: dataDir, AUX_ELECTRON_CDP: "" });
 }, 60_000);
 
 afterAll(async () => {

@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {openDb,Repo} from '@vector/runtime';
+import {openDb,Repo} from '@aux/runtime';
 
 const provider={status:'running',stop:vi.fn(),delete:vi.fn()};
 import {CloudEnvironmentService,markCloudDesktopClosed} from '../../apps/runtime/src/services/cloud-environments.js';

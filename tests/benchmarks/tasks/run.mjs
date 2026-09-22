@@ -10,8 +10,7 @@
  *                  downloaded on first use; see assistantbench.mjs)
  *
  * Adapters (tests/benchmarks/tasks/adapters.json)
- *   vector / vector-engine / vector-auto   the runtime's own agent loop
- *                  (runs.start) with engineMode off / always / auto
+ *   aux          the runtime's own agent loop (runs.start)
  *   *-mcp, agent-browser, ...              any MCP stdio browser server,
  *                  driven by ONE generic tool-calling loop with the SAME
  *                  model — so a row differs from another only by the
@@ -21,8 +20,8 @@
  * set equality for lists, key-wise strict match for objects. A task whose
  * run ends without an answer scores 0.
  *
- *   node tests/benchmarks/tasks/run.mjs --suite local --adapter vector,vector-engine
- *   node tests/benchmarks/tasks/run.mjs --suite assistantbench --adapter vector,playwright-mcp --limit 10
+ *   node tests/benchmarks/tasks/run.mjs --suite local --adapter aux
+ *   node tests/benchmarks/tasks/run.mjs --suite assistantbench --adapter aux,playwright-mcp --limit 10
  *   node tests/benchmarks/tasks/run.mjs --list-adapters
  *   node tests/benchmarks/tasks/run.mjs --validate    # offline self-check; no API key needed
  *
@@ -53,11 +52,11 @@ const flag = (name, fallback) => {
 };
 const has = (name) => argv.includes(`--${name}`);
 const suiteName = flag("suite", "local");
-const adapterNames = flag("adapter", "vector").split(",").map((s) => s.trim()).filter(Boolean);
+const adapterNames = flag("adapter", "aux").split(",").map((s) => s.trim()).filter(Boolean);
 const limit = Number(flag("limit", "0")) || 0;
 const only = flag("only", null);
 const timeoutMs = Number(flag("timeout", suiteName === "local" ? "180000" : "900000"));
-const modelId = flag("model", process.env.VECTOR_PLANNER_MODEL || "alibaba/qwen3.8-27b");
+const modelId = flag("model", process.env.AUX_PLANNER_MODEL || "alibaba/qwen3.8-27b");
 const maxToolSteps = Number(flag("max-steps", "40"));
 
 loadDotEnv(join(repoRoot, ".env"));
@@ -192,30 +191,6 @@ for (const name of adapterNames) {
   console.log(`-- ${name}: ${passed}/${rows.length} (${(summary.accuracy * 100).toFixed(1)}%), p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
 }
 
-const vector = report.adapters.vector;
-const engine = report.adapters["vector-engine"];
-if (vector?.summary && engine?.summary) {
-  try {
-    const { evaluateHeldOutAdvantage } = await import(pathToFileURL(join(repoRoot, "apps/runtime/dist/index.js")).href);
-    const tokens = (s) => {
-      if (!s.passed) return null;
-      if (typeof s.tokensMean === "number" && Number.isFinite(s.tokensMean)) return s.tokensMean / s.passed;
-      return null;
-    };
-    report.heldOut = {
-      measured: true,
-      metric: "wallMsP95",
-      ...evaluateHeldOutAdvantage(
-        { success: vector.summary.accuracy, p95Ms: vector.summary.wallMsP95 ?? 0, tokensPerSuccess: tokens(vector.summary) },
-        { success: engine.summary.accuracy, p95Ms: engine.summary.wallMsP95 ?? 0, tokensPerSuccess: tokens(engine.summary) },
-      ),
-    };
-    console.log(`held-out: p95Ratio ${report.heldOut.p95Ratio}, tokenRatio ${report.heldOut.tokenRatio}, meetsStretch ${report.heldOut.meetsStretch}`);
-  } catch (e) {
-    report.heldOut = { measured: false, reason: String(e?.message ?? e) };
-  }
-}
-
 mkdirSync(reportsDir, { recursive: true });
 const outPath = join(reportsDir, `tasks-${suite.suite}-${report.startedAt.replace(/[:.]/g, "-")}.json`);
 writeFileSync(outPath, JSON.stringify(report, null, 2));
@@ -229,12 +204,6 @@ async function adapterAvailability(name, cfg) {
   if (cfg.kind === "runtime" || cfg.needsRuntime) {
     if (!existsSync(runtimeEntry)) return { ok: false, reason: "run pnpm build first" };
   }
-  if (cfg.kind === "runtime" && cfg.engineMode !== "off") {
-    const r = spawnSync("node", ["-e", "import('@vector/engine-native').then(m=>m.describe()).then(()=>process.exit(0),()=>process.exit(1))", "--input-type=module"], {
-      cwd: join(repoRoot, "packages/browser-driver"),
-    });
-    if (r.status !== 0) return { ok: false, reason: "vector-engine addon not built (pnpm --filter @vector/engine-native build:cargo)" };
-  }
   for (const bin of cfg.requires ?? []) {
     const r = spawnSync("which", [bin]);
     if (r.status !== 0) return { ok: false, reason: `${bin} not on PATH` };
@@ -242,24 +211,22 @@ async function adapterAvailability(name, cfg) {
   return { ok: true };
 }
 
-/** Starts a runtime with the given engineMode and drives runs.start. */
-async function startRuntimeFor(cfg) {
+/** Starts a runtime and drives runs.start. */
+async function startRuntimeFor() {
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
-  const dataDir = mkdtempSync(join(tmpdir(), "vector-tasks-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-tasks-"));
   const rt = await startRuntime({
     ...process.env,
-    VECTOR_DATA_DIR: dataDir,
-    VECTOR_ELECTRON_CDP: "",
-    VECTOR_API_TOKEN: "tasks",
-    VECTOR_ENGINE_MODE: cfg.engineMode,
-    VECTOR_ENGINE: cfg.engineMode === "off" ? "0" : "1",
-    VECTOR_PLANNER_MODEL: modelId,
+    AUX_DATA_DIR: dataDir,
+    AUX_ELECTRON_CDP: "",
+    AUX_API_TOKEN: "tasks",
+    AUX_PLANNER_MODEL: modelId,
   });
   return { rt, dataDir };
 }
 
-async function runtimeAdapter(name, cfg) {
-  const { rt, dataDir } = await startRuntimeFor(cfg);
+async function runtimeAdapter() {
+  const { rt, dataDir } = await startRuntimeFor();
   const rpc = (m, p = {}) => rt.invoke(m, p);
   return {
     dataDir,
@@ -326,12 +293,12 @@ async function mcpAdapter(name, cfg) {
   let runtime = null;
   const env = { ...process.env, ...cfg.env };
   if (cfg.needsRuntime) {
-    runtime = await startRuntimeFor({ engineMode: cfg.engineMode ?? "off" });
-    env.VECTOR_DATA_DIR = runtime.dataDir;
+    runtime = await startRuntimeFor();
+    env.AUX_DATA_DIR = runtime.dataDir;
   }
   const [command, ...args] = cfg.command;
   const transport = new StdioClientTransport({ command, args, env, cwd: repoRoot, stderr: "pipe" });
-  const client = new Client({ name: "vector-task-bench", version: "0.1.0" });
+  const client = new Client({ name: "aux-task-bench", version: "0.1.0" });
   await client.connect(transport);
   const { tools: mcpTools } = await client.listTools();
   const tools = {};
@@ -349,7 +316,7 @@ async function mcpAdapter(name, cfg) {
     });
   }
   const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY });
-  const only = process.env.VECTOR_GATEWAY_ONLY === "" ? undefined : [process.env.VECTOR_GATEWAY_ONLY || "cerebras"];
+  const only = process.env.AUX_GATEWAY_ONLY === "" ? undefined : [process.env.AUX_GATEWAY_ONLY || "cerebras"];
   const system = [
     "You are a web agent. Use the browser tools to complete the task. Prefer reading structured snapshots over screenshots.",
     "Act, observe the result, and continue until the task is done or clearly impossible.",

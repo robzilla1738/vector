@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { CompactObservation } from "@vector/contracts";
+import type { CompactObservation } from "@aux/contracts";
 import { useStore, call } from "../store";
 import { ObservationPanel } from "./ObservationPanel";
 import { I } from "./icons";
@@ -10,11 +10,10 @@ import { I } from "./icons";
  * ObservationPanel so the two never drift.
  */
 export function Inspector() {
-  const activePageId = useStore((s) => s.activePageId);
-  const pages = useStore((s) => s.pages);
   const setOverlay = useStore((s) => s.setOverlay);
   const inspectorObs = useStore((s) => s.inspectorObs) as CompactObservation | null;
-  const page = pages.find((p) => p.pageId === (inspectorObs?.pageId ?? activePageId));
+  const page = useStore((s) => s.pages.find((p) => p.pageId === ((s.inspectorObs as CompactObservation | null)?.pageId ?? s.activePageId)));
+  const activePageId = (inspectorObs?.pageId ?? page?.pageId) || null;
   const [liveObs, setLiveObs] = useState<CompactObservation | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<"readable" | "raw">("readable");

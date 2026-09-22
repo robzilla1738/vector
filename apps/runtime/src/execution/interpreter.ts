@@ -1,14 +1,14 @@
 import {
-  VectorError,
-  type VectorErrorCode,
+  AuxError,
+  type AuxErrorCode,
   type Predicate,
   type Program,
   type ProgramNode,
   type ProgramResult,
   type Step,
   type StepOutcome,
-} from "@vector/contracts";
-import type { DriverPage } from "@vector/engine-client";
+} from "@aux/contracts";
+import type { DriverPage } from "@aux/chromium-driver";
 import type { makeStepRunner } from "./executor.js";
 
 type StepRunner = ReturnType<typeof makeStepRunner>;
@@ -71,7 +71,7 @@ function resolveExpr(expr: { input?: string; variable?: string; literal?: unknow
   }
   if ("literal" in expr) return expr.literal;
   if (expr.eval !== undefined) {
-    if (!allowEval) throw new VectorError("invalid_params", "eval expressions are disabled for this program source");
+    if (!allowEval) throw new AuxError("invalid_params", "eval expressions are disabled for this program source");
     // trusted-input escape hatch — same trust tier as the `evaluate` step
     // op but in-process; only reachable when allowEval is set.
     const fn = new Function("vars", "inputs", `"use strict"; return (${expr.eval});`);
@@ -163,7 +163,7 @@ export async function executeNodes(
   let resumeAt: string | undefined;
   if (program.resumeFrom) {
     const saved = ctx.loadCheckpoint?.(program.resumeFrom);
-    if (!saved) throw new VectorError("not_found", `no persisted checkpoint "${program.resumeFrom}" to resume from`);
+    if (!saved) throw new AuxError("not_found", `no persisted checkpoint "${program.resumeFrom}" to resume from`);
     env.inputs = { ...saved.inputs, ...env.inputs };
     Object.assign(env.vars, saved.vars ?? {});
     state.emitted.push(...(saved.emitted ?? []));
@@ -191,10 +191,10 @@ export async function executeNodes(
         if (node.kind === "checkpoint" && (node.name ?? "") === resumeAt) resumeAt = undefined;
         continue;
       }
-      if (ctx.signal?.aborted) throw new VectorError("cancelled", "program cancelled");
+      if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
       if (state.returned) return;
-      if (deadline && Date.now() > deadline) throw new VectorError("condition_timeout", "program deadline exceeded");
-      if (++state.nodeCount > maxNodes) throw new VectorError("step_failed", `node budget ${maxNodes} exceeded`);
+      if (deadline && Date.now() > deadline) throw new AuxError("condition_timeout", "program deadline exceeded");
+      if (++state.nodeCount > maxNodes) throw new AuxError("step_failed", `node budget ${maxNodes} exceeded`);
 
       const nodeId = path ? `${path}.${nodeIdOf(node, i)}` : nodeIdOf(node, i);
       ctx.onNode?.({ kind: node.kind, id: nodeId });
@@ -211,14 +211,14 @@ export async function executeNodes(
                 { stepId: nodeId, op: step.op, status: "failed", startedAt: Date.now(), durationMs: 0, error: { code: "invalid_params", message: "expectDownload must precede the step that triggers the download" } },
                 step,
               );
-              throw new VectorError("invalid_params", "expectDownload must precede the trigger step");
+              throw new AuxError("invalid_params", "expectDownload must precede the trigger step");
             }
             const emitPair = (o: StepOutcome, s: Step) => ctx.emit({ ...o, stepId: `${nodeId}/${s.id}` }, s);
             const { early } = await runner.runDownloadPair(step, next.step, emitPair);
             i++;
             if (early) {
-              if (early.status === "cancelled") throw new VectorError("cancelled", "program cancelled");
-              throw new VectorError("step_failed", early.error ?? "download pair failed");
+              if (early.status === "cancelled") throw new AuxError("cancelled", "program cancelled");
+              throw new AuxError("step_failed", early.error ?? "download pair failed");
             }
             break;
           }
@@ -231,9 +231,9 @@ export async function executeNodes(
           const named = { ...outcome, stepId: `${nodeId}/${step.id}` };
           ctx.emit(named, step);
           if (outcome.status === "failed" && !step.optional) {
-            if (ctx.signal?.aborted) throw new VectorError("cancelled", "program cancelled");
-            throw new VectorError(
-              (outcome.error?.code as VectorErrorCode | undefined) ?? "step_failed",
+            if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
+            throw new AuxError(
+              (outcome.error?.code as AuxErrorCode | undefined) ?? "step_failed",
               outcome.error?.message ?? `step ${step.id} failed`,
             );
           }
@@ -259,10 +259,10 @@ export async function executeNodes(
           // sequential: shared env, in-order side effects
           if (conc === 1) {
             for (let idx = 0; idx < cap; idx++) {
-              if (ctx.signal?.aborted) throw new VectorError("cancelled", "program cancelled");
+              if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
               if (state.returned) return;
               if (++state.iterationCount > maxIterations)
-                throw new VectorError("step_failed", `iteration budget ${maxIterations} exceeded`);
+                throw new AuxError("step_failed", `iteration budget ${maxIterations} exceeded`);
               env.vars[node.itemName] = list[idx];
               if (node.indexName) env.vars[node.indexName] = idx;
               await runNodeList(node.body, `${nodeId}[${idx}]`, env);
@@ -272,13 +272,13 @@ export async function executeNodes(
           // declared concurrency (§7.1): bounded batches, isolated var scope
           // per iteration — `let` inside a body stays local to that item
           for (let b = 0; b < cap; b += conc) {
-            if (ctx.signal?.aborted) throw new VectorError("cancelled", "program cancelled");
+            if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
             if (state.returned) return;
             await Promise.all(
               list.slice(b, Math.min(b + conc, cap)).map(async (item, j) => {
                 const idx = b + j;
                 if (++state.iterationCount > maxIterations)
-                  throw new VectorError("step_failed", `iteration budget ${maxIterations} exceeded`);
+                  throw new AuxError("step_failed", `iteration budget ${maxIterations} exceeded`);
                 const childEnv: Env = { inputs: env.inputs, vars: { ...env.vars } };
                 childEnv.vars[node.itemName] = item;
                 if (node.indexName) childEnv.vars[node.indexName] = idx;
@@ -292,11 +292,11 @@ export async function executeNodes(
           let iter = 0;
           const untilDeadline = node.deadlineMs ? Date.now() + node.deadlineMs : undefined;
           while (true) {
-            if (ctx.signal?.aborted) throw new VectorError("cancelled", "program cancelled");
+            if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
             if (++state.iterationCount > maxIterations || ++iter > node.maxIterations)
-              throw new VectorError("step_failed", `until loop hit iteration bound ${node.maxIterations}`);
+              throw new AuxError("step_failed", `until loop hit iteration bound ${node.maxIterations}`);
             if (untilDeadline && Date.now() > untilDeadline)
-              throw new VectorError("condition_timeout", "until loop deadline exceeded");
+              throw new AuxError("condition_timeout", "until loop deadline exceeded");
             await runNodeList(node.body, `${nodeId}[${iter}]`, env);
             if (state.returned) return;
             if (evalPredicate(node.until, env, ctx.allowEval)) break;
@@ -304,7 +304,7 @@ export async function executeNodes(
           break;
         }
         case "observe": {
-          if (!ctx.observe) throw new VectorError("backend_unavailable", "observe node requires an observation hook");
+          if (!ctx.observe) throw new AuxError("backend_unavailable", "observe node requires an observation hook");
           const obs = await ctx.observe({ scope: node.scope, subtreeRef: node.subtreeRef });
           env.vars[node.saveAs ?? "observation"] = obs;
           ctx.emit({ ...nodeOutcome(nodeId, "observe", node.scope ?? "full") , stepId: nodeId }, fakeStep(nodeId, "observe"));
@@ -314,7 +314,7 @@ export async function executeNodes(
           if (!evalPredicate(node.check, env, ctx.allowEval)) {
             const msg = node.message ?? `assert ${nodeId} failed`;
             ctx.emit({ ...nodeOutcome(nodeId, "assert", msg, "failed"), stepId: nodeId }, fakeStep(nodeId, "assert"));
-            throw new VectorError("assertion_failed", msg);
+            throw new AuxError("assertion_failed", msg);
           }
           ctx.emit(nodeOutcome(nodeId, "assert"), fakeStep(nodeId, "assert"));
           break;
@@ -340,7 +340,7 @@ export async function executeNodes(
           return;
         }
         case "call": {
-          if (!ctx.callOperation) throw new VectorError("backend_unavailable", "call node requires an operation registry");
+          if (!ctx.callOperation) throw new AuxError("backend_unavailable", "call node requires an operation registry");
           try {
             const args = Object.fromEntries(
               Object.entries(node.args ?? {}).map(([k, v]) => [k, resolveValue(v, env, ctx.allowEval)]),
@@ -364,9 +364,9 @@ export async function executeNodes(
   try {
     await runNodeList(program.nodes ?? [], "", env);
     if (resumeAt !== undefined)
-      throw new VectorError("not_found", `checkpoint "${program.resumeFrom}" not found among top-level nodes`);
+      throw new AuxError("not_found", `checkpoint "${program.resumeFrom}" not found among top-level nodes`);
   } catch (e) {
-    if (e instanceof VectorError && e.code === "cancelled") {
+    if (e instanceof AuxError && e.code === "cancelled") {
       return {
         status: "cancelled",
         steps: ctx.outcomes,

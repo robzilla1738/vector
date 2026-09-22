@@ -1,2 +1,0 @@
-# Tests that may fail without blocking the supported testharness suite.
-# Currently empty: listed files still run and are reported, but do not fail CI.

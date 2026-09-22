@@ -20,7 +20,7 @@ const env = Object.fromEntries(["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "DIS
 Object.assign(env, {
   AUX_PROFILE_DIR: join(previewRoot, "Browser Profile"),
   AUX_DATA_DIR: join(previewRoot, "Runtime"),
-  AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off",
+  AUX_LOAD_DOTENV: "0",
 });
 console.log(`Opening Aux private preview. Review data stays in ${previewRoot}`);
 const child = spawn(executable, [], { cwd: previewRoot, env, stdio: "inherit" });

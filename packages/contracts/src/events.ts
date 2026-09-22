@@ -11,7 +11,7 @@ export const EventSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
   ts: z.number(),
 });
-export type VectorEvent = z.infer<typeof EventSchema>;
+export type AuxEvent = z.infer<typeof EventSchema>;
 
 export const EventTypes = {
   PageUpdated: "page.updated",

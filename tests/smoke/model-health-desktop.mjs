@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
@@ -25,7 +25,7 @@ let app;
 try {
   app = await _electron.launch({
     executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"],
-    env: { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" },
+    env: { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" },
   });
   let page;
   for (let attempt = 0; attempt < 150; attempt++) {
@@ -43,7 +43,7 @@ try {
   await settings.getByLabel("Planner model", { exact: true }).fill("changed-model");
   await settings.getByRole("button", { name: "Save model", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "Failed — Last connection test failed" }).waitFor({ state: "hidden" });
-  assert.equal((await page.evaluate(() => window.vector.invoke("settings.get", {}))).modelProbe, undefined);
+  assert.equal((await page.evaluate(() => window.aux.invoke("settings.get", {}))).modelProbe, undefined);
   console.log("Saved nonsecret model health survives reopening and is cleared when the selected model changes.");
 } finally {
   await app?.close().catch(() => {});

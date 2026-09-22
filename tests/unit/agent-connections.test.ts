@@ -2,7 +2,7 @@ import { afterEach, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AgentConnectionService, EventBus, openDb, Repo, TaskService } from "@vector/runtime";
+import { AgentConnectionService, EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { for (const dispose of cleanup.splice(0).reverse()) dispose(); });

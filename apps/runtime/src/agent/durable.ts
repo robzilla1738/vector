@@ -1,7 +1,5 @@
 /** Persist intent before dispatch; uncertainty never authorizes a retry. */
-import { readFileSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
-import { resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { openDb } from "../store/db.js";
 import { classifyStep } from "./permissions.js";
@@ -22,13 +20,9 @@ export class DurableWriteLedger {
   private readonly db: DatabaseSync;
   private readonly ownsDb: boolean;
 
-  constructor(storage?: DatabaseSync | string, legacyPath?: string) {
+  constructor(storage?: DatabaseSync | string) {
     this.ownsDb = !storage || typeof storage === "string";
-    // Preserve the historical path-based API without overwriting its JSON file.
     this.db = typeof storage === "string" ? openDb(`${storage}.sqlite`) : storage ?? openDb(":memory:");
-    const source = typeof storage === "string" ? storage : legacyPath;
-    try { if (source) this.importLegacy(source); }
-    catch (error) { if (this.ownsDb) this.db.close(); throw error; }
   }
 
   close(): void { if (this.ownsDb) this.db.close(); }
@@ -109,32 +103,6 @@ export class DurableWriteLedger {
     } catch (error) { this.db.exec("ROLLBACK"); throw error; }
   }
 
-  private importLegacy(path: string): void {
-    const source = resolve(path);
-    if (this.db.prepare("SELECT 1 FROM journal_imports WHERE source=?").get(source)) return;
-    let text: string;
-    try { text = readFileSync(source, "utf8"); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
-    const parsed = JSON.parse(text) as { seq: number; intents: WriteIntent[] };
-    if (!parsed || !Number.isSafeInteger(parsed.seq) || parsed.seq < 0 || !Array.isArray(parsed.intents)) throw new Error("Invalid legacy action journal; recovery is required");
-    for (const intent of parsed.intents) {
-      if (!intent || ![intent.id, intent.runId, intent.pageId, intent.idempotencyKey].every(v => typeof v === "string" && v.length > 0)
-        || !Number.isSafeInteger(intent.documentEpoch) || !["pending", "confirmed", "failed"].includes(intent.status)) {
-        throw new Error("Invalid legacy action intent; recovery is required");
-      }
-    }
-    this.db.exec("BEGIN IMMEDIATE");
-    try {
-      for (const intent of parsed.intents) {
-        // Legacy keys cannot be matched reliably after replanning. Preserve every
-        // row as uncertain until independent reconciliation, including 'failed'.
-        const key = createHash("sha256").update(JSON.stringify(["legacy", source, intent.idempotencyKey])).digest("hex");
-        this.insert({ ...intent, id: randomUUID(), idempotencyKey: key, status: "uncertain" });
-      }
-      this.db.prepare("INSERT INTO journal_imports VALUES(?,?)").run(source, Date.now());
-      this.db.exec("COMMIT");
-    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
-  }
 }
 
 export function stepSignature(ops: Array<{ op: string; target?: unknown; value?: unknown }>): string {

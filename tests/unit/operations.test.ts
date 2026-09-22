@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { openDb, Repo, EventBus, OperationService } from "@vector/runtime";
-import type { PageTarget, Program } from "@vector/contracts";
+import { openDb, Repo, EventBus, OperationService } from "@aux/runtime";
+import type { PageTarget, Program } from "@aux/contracts";
 
 const repo = () => new Repo(openDb(":memory:"));
 
 const page = (over: Partial<PageTarget> = {}): PageTarget => ({
   pageId: "p1",
-  backend: "vector",
-  targetId: "vtab-p1",
+  backend: "aux",
+  targetId: "atab-p1",
   url: "http://app.test/records",
   title: "records",
   documentEpoch: 0,

@@ -1,5 +1,5 @@
 /**
- * Compiled guarded skills (VEC-018 / H2-C6).
+ * Compiled guarded skills (AUX-018 / H2-C6).
  *
  * A skill is a bounded program plus semantic guards. Reuse is allowed only
  * when every precondition holds on a fresh observation. Failures stop at the
@@ -7,7 +7,7 @@
  * plus a control-fingerprint of the observation ref set.
  */
 import { createHash } from "node:crypto";
-import type { ObservationContent, Program, Step } from "@vector/contracts";
+import type { ObservationContent, Program, Step } from "@aux/contracts";
 
 export interface SkillGuard {
   /** Role or accessible name that must exist. */
@@ -147,7 +147,7 @@ export function verifySkillPostconditions(
   return guardsHold(obs, url, skill.postconditions, documentEpoch);
 }
 
-/** Measured task metrics for VEC-021 / M3 stretch comparison. */
+/** Measured task metrics for AUX-021 / M3 stretch comparison. */
 export interface HeldOutMetrics {
   success: number;
   p95Ms: number;

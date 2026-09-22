@@ -2,7 +2,7 @@
  * Repair taxonomy (H2-C3). Each failure class has its own budget so a
  * stale-ref storm cannot burn the same counter as a permission denial.
  */
-import { VectorError } from "@vector/contracts";
+import { AuxError } from "@aux/contracts";
 
 export const REPAIR_CLASSES = ["stale", "timeout", "miss", "model", "auth", "generic"] as const;
 export type RepairClass = (typeof REPAIR_CLASSES)[number];
@@ -26,7 +26,7 @@ export function emptyRepairState(): RepairState {
 }
 
 export function classifyRepair(error: unknown): RepairClass {
-  const code = error instanceof VectorError ? error.code : "";
+  const code = error instanceof AuxError ? error.code : "";
   const message = typeof error === "string"
     ? error
     : error instanceof Error

@@ -15,7 +15,7 @@ export function runtimeEntry(): string {
     return join(process.resourcesPath, "runtime", "dist", "main.js");
   }
   try {
-    const pkg = require_.resolve("@vector/runtime/package.json");
+    const pkg = require_.resolve("@aux/runtime/package.json");
     return join(pkg.replace(/\/package\.json$/, ""), "dist", "main.js");
   } catch {
     // dev fallback: sibling workspace package (apps/desktop → apps/runtime)
@@ -40,10 +40,7 @@ export function spawnRuntime(opts: {
     env: desktopRuntimeEnv({
       dataDir: opts.dataDir,
       cdpPort: opts.cdpPort,
-      packaged: app.isPackaged,
       electronVersion: String(process.versions.electron ?? "dev"),
-      resourcesPath: app.isPackaged ? process.resourcesPath : undefined,
-      workspaceRoot: app.isPackaged ? undefined : join(app.getAppPath(), "..", ".."),
     }),
   });
   proc.stdout?.on("data", (d) => process.stdout.write(`[runtime] ${d}`));

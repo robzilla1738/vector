@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { conversationPage } from "./conversation-page";
 
 const overrides: Partial<PageTarget>[] = [
@@ -9,7 +9,7 @@ const overrides: Partial<PageTarget>[] = [
   { pageId: "closed", viewStatus: "detached" },
 ];
 const pages: PageTarget[] = overrides.map(value => ({
-  pageId: "fixture", backend: "vector", targetId: "fixture", url: "https://example.test", title: "Fixture",
+  pageId: "fixture", backend: "aux", targetId: "fixture", url: "https://example.test", title: "Fixture",
   documentEpoch: 0, lastRevision: 0, viewStatus: "visible", controller: "human", controllerEpoch: 0,
   ownedByRuntime: false, createdAt: 0, lastActiveAt: 0, ...value,
 }));

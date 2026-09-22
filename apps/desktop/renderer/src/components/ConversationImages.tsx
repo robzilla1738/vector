@@ -1,6 +1,6 @@
 import { ImagePreview } from "./ImageSnapshot";
 import { useEffect, useRef, useState } from "react";
-import type { ConversationImage, PageTarget } from "@vector/contracts";
+import type { ConversationImage, PageTarget } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";

@@ -103,7 +103,7 @@ local runtime.
 
 Earlier Aux-generated configurations used `AUX_MCP_TOOL_PREFIX=aux` without a scoped
 token. They now fail closed and tell the user to create a new connection in Settings.
-Hand-written legacy `vector_*` configurations can still read the broad local runtime
+Hand-written legacy `aux_*` configurations can still read the broad local runtime
 descriptor for compatibility; replace them with a scoped connection. This local
 boundary does not defend against another process running as the same OS user that
 can already read Aux's data directory.

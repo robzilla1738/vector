@@ -7,10 +7,10 @@ import {
   noteRepair,
   emptyRepairState,
   REPAIR_BUDGETS,
-} from "@vector/runtime";
-import { EventBus } from "@vector/runtime";
-import type { ModelClient } from "@vector/runtime";
-import { VectorError, type Observation, type StepOutcome } from "@vector/contracts";
+} from "@aux/runtime";
+import { EventBus } from "@aux/runtime";
+import type { ModelClient } from "@aux/runtime";
+import { AuxError, type Observation, type StepOutcome } from "@aux/contracts";
 
 const obs = (): Observation => ({
   observationId: "o1",
@@ -101,13 +101,13 @@ async function waitForRun(repo: Repo, runId: string, ms = 5000) {
 
 describe("H2-C3 repair taxonomy", () => {
   it("classifies error codes and messages into budgeted classes", () => {
-    expect(classifyRepair(new VectorError("ref_stale", "r12 is from epoch 2"))).toBe("stale");
-    expect(classifyRepair(new VectorError("target_detached", "gone"))).toBe("stale");
-    expect(classifyRepair(new VectorError("condition_timeout", "wait"))).toBe("timeout");
+    expect(classifyRepair(new AuxError("ref_stale", "r12 is from epoch 2"))).toBe("stale");
+    expect(classifyRepair(new AuxError("target_detached", "gone"))).toBe("stale");
+    expect(classifyRepair(new AuxError("condition_timeout", "wait"))).toBe("timeout");
     expect(classifyRepair("locator not found")).toBe("miss");
-    expect(classifyRepair(new VectorError("target_ambiguous", "two buttons"))).toBe("miss");
-    expect(classifyRepair(new VectorError("model_output_invalid", "bad json"))).toBe("model");
-    expect(classifyRepair(new VectorError("permission_denied", "permission denied for click"))).toBe("auth");
+    expect(classifyRepair(new AuxError("target_ambiguous", "two buttons"))).toBe("miss");
+    expect(classifyRepair(new AuxError("model_output_invalid", "bad json"))).toBe("model");
+    expect(classifyRepair(new AuxError("permission_denied", "permission denied for click"))).toBe("auth");
     expect(classifyRepair("step blew up")).toBe("generic");
     expect(REPAIR_BUDGETS.stale).toBe(4);
     expect(REPAIR_BUDGETS.miss).toBe(3);
@@ -123,7 +123,7 @@ describe("H2-C3 repair taxonomy", () => {
     expect(missLast).toMatchObject({ klass: "miss", allowed: true, recover: true, used: 3 });
     expect(noteRepair(state, "locator not found").allowed).toBe(false);
 
-    const stale = noteRepair(state, new VectorError("ref_stale", "epoch"));
+    const stale = noteRepair(state, new AuxError("ref_stale", "epoch"));
     expect(stale).toMatchObject({ klass: "stale", allowed: true, used: 1 });
 
     const auth = noteRepair(emptyRepairState(), "permission denied for click (effect:write)");

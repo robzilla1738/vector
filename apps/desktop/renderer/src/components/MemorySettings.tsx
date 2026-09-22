@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { WorkspaceMemory } from "@vector/contracts";
+import type { WorkspaceMemory } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { SpaceMemoryEditor } from "./SpaceMemoryEditor";

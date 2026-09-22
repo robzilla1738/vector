@@ -4,20 +4,18 @@
 import { describe, it, expect } from "vitest";
 import {
   EventBus,
-  MemoryRouterStore,
   NullNativeBridge,
   PageService,
   Repo,
   ResponseStore,
-  Router,
   makeInvoker,
   openDb,
   type DriverSet,
   type Services,
-} from "@vector/runtime";
-import type { BrowserDriver, DriverPage } from "@vector/engine-client";
-import { MethodSchemas, ResultSchemas, type Condition, type MethodName, type ObservationContent, type Step } from "@vector/contracts";
-import type { SetService, RunService, ArtifactStore, SettingsService } from "@vector/runtime";
+} from "@aux/runtime";
+import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
+import { MethodSchemas, ResultSchemas, type Condition, type MethodName, type ObservationContent } from "@aux/contracts";
+import type { SetService, RunService, ArtifactStore, SettingsService } from "@aux/runtime";
 
 const content = (url: string, over: Partial<ObservationContent> = {}): ObservationContent => ({
   url,
@@ -38,7 +36,7 @@ const content = (url: string, over: Partial<ObservationContent> = {}): Observati
   ...over,
 });
 
-function fakeEngine() {
+function fakeChromium() {
   const calls: string[] = [];
   let capture = async () => ({ buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 });
   let n = 0;
@@ -50,7 +48,7 @@ function fakeEngine() {
       calls.push(s);
     };
     return {
-      identity: { pageId, targetId, backend: "vector-engine" },
+      identity: { pageId, targetId, backend: "aux" },
       url: () => current,
       title: async () => "Inspect",
       isAttached: () => attached,
@@ -95,21 +93,10 @@ function fakeEngine() {
       dispose: async () => {
         attached = false;
       },
-      executeProgram: async (steps: Step[]) => ({
-        status: "completed" as const,
-        steps: steps.map((s) => ({
-          stepId: s.id,
-          op: s.op,
-          status: "ok" as const,
-          startedAt: 1,
-          durationMs: 1,
-          detail: s.op === "waitFor" ? (s as { condition?: { kind: string } }).condition?.kind : s.op,
-        })),
-      }),
     };
   };
   const driver: BrowserDriver = {
-    backend: "vector-engine",
+    backend: "aux",
     connect: async () => {},
     disconnect: async () => {},
     isConnected: () => true,
@@ -119,7 +106,6 @@ function fakeEngine() {
       targets.set(id, url);
       return id;
     },
-    routingOf: () => ({ requiresScript: false }),
     attach: async (targetId, pageId) => makePage(targetId, pageId, targets.get(targetId) ?? "about:blank"),
   };
   return { driver, calls, setCapture: (next: typeof capture) => { capture = next; } };
@@ -128,38 +114,32 @@ function fakeEngine() {
 function harness(grants: string[] = ["effect:read"]) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
-  const engine = fakeEngine();
-  const drivers: DriverSet = { vector: null, chrome: null, engine: engine.driver };
-  const router = new Router({
-    mode: () => "always",
-    engineAvailable: () => true,
-    store: new MemoryRouterStore(),
-  });
+  const chromium = fakeChromium();
+  const drivers: DriverSet = { aux: chromium.driver, chrome: null };
   const responses = new ResponseStore({ repo, events, flushDelayMs: 0 });
   const pages = new PageService({
     repo,
     events,
     native: new NullNativeBridge(),
     drivers: () => drivers,
-    router,
     responses,
     grants,
   });
-  return { pages, repo, events, responses, engine };
+  return { pages, repo, events, responses, chromium };
 }
 
 describe("H2-C7 pages inspect RPCs", () => {
   it("rejects outdated, navigated and empty page captures", async () => {
-    const { pages, engine } = harness();
+    const { pages, chromium } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     await expect(pages.capture(page.pageId, { expectedDocumentEpoch: page.documentEpoch + 1 })).rejects.toThrow("changed before capture");
     expect((await pages.capture(page.pageId)).width).toBe(20);
-    engine.setCapture(async () => {
+    chromium.setCapture(async () => {
       await pages.navigate(page.pageId, "https://a.test/next");
       return { buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 };
     });
     await expect(pages.capture(page.pageId)).rejects.toThrow("changed during capture");
-    engine.setCapture(async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }));
+    chromium.setCapture(async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }));
     await expect(pages.capture(page.pageId)).rejects.toThrow("no image available");
   });
 
@@ -233,11 +213,11 @@ describe("H2-C7 pages inspect RPCs", () => {
         runProgram: async () => ({}),
       } as unknown as RunService,
       artifacts: { list: () => [], read: () => ({}) } as unknown as ArtifactStore,
-      settings: { listModels: () => ({ models: [], source: "static" }), probe: async () => ({ ok: true, modelId: "m" }), all: () => ({}), set: () => ({ ok: true }), engineMode: () => "always" } as unknown as SettingsService,
+      settings: { listModels: () => ({ models: [], source: "static" }), probe: async () => ({ ok: true, modelId: "m" }), all: () => ({}), set: () => ({ ok: true }) } as unknown as SettingsService,
       events,
       repo,
       responses,
-      drivers: () => ({ vector: null, chrome: null, engine: null }),
+      drivers: () => ({ aux: null, chrome: null }),
       chromeAttach: async () => ({}),
       chromeDetach: async () => ({}),
       chromeTabs: async () => [],
@@ -260,19 +240,19 @@ describe("H2-C7 pages inspect RPCs", () => {
 
 describe("external page attachment lifecycle", () => {
   it("does not resurrect a native page removed while driver attachment is pending", async () => {
-    const { pages, engine } = harness();
-    const attach = engine.driver.attach.bind(engine.driver);
+    const { pages, chromium } = harness();
+    const attach = chromium.driver.attach.bind(chromium.driver);
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
     let disposed = false;
-    engine.driver.attach = async (marker, id) => {
+    chromium.driver.attach = async (marker, id) => {
       await gate;
       const page = await attach(marker, id);
       const dispose = page.dispose.bind(page);
       page.dispose = async () => { disposed = true; await dispose(); };
       return page;
     };
-    const pending = pages.registerExternal({ pageId: "popup-race", marker: "popup-marker", url: "https://a.test/", backend: "vector-engine" });
+    const pending = pages.registerExternal({ pageId: "popup-race", marker: "popup-marker", url: "https://a.test/", backend: "aux" });
     pages.onNativeRemoved("popup-race");
     release();
     await expect(pending).rejects.toMatchObject({ code: "not_found" });

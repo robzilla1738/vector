@@ -4,6 +4,7 @@ import { bridge, inElectron, type BrowserProfile } from "../bridge";
 export function BrowserProfiles() {
   const [profiles,setProfiles]=useState<BrowserProfile[]>([]);
   const [editing,setEditing]=useState<string|null>(null);
+  const [confirming,setConfirming]=useState<string|null>(null);
   const [name,setName]=useState("");
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -40,7 +41,12 @@ export function BrowserProfiles() {
       {!profile.current&&<button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{if(!await bridge.openBrowserProfile(profile.id))throw new Error("This profile could not be opened.");setMessage(`Opening ${profile.name} in a separate window…`);})}>Open</button>}
       <button className="btn sm ghost" disabled={busy} onClick={()=>{setEditing(profile.id);setName(profile.name);}}>Rename</button>
       {!profile.current&&profile.id!=="default"&&<button className="btn sm ghost" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.archiveBrowserProfile(profile.id,true));if(editing===profile.id)setEditing(null);setMessage(`${profile.name} archived. Its data and any open windows are kept.`);})}>Archive</button>}
+      {!profile.current&&profile.id!=="default"&&(confirming===profile.id
+        ?<><button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.deleteBrowserProfile(profile.id));setConfirming(null);setMessage(`${profile.name} and its browsing data were deleted.`);})}>Delete permanently</button>
+          <button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(null)}>Keep</button></>
+        :<button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(profile.id)}>Delete…</button>)}
     </div>)}
+    {confirming&&<p className="hint err">Deleting removes the profile’s sign-ins, tabs, history, chats, memory and connections on this Mac. This cannot be undone.</p>}
     {editing!==null?<form className="browser-profile-editor" onSubmit={event=>{event.preventDefault();void action(async()=>{
       if(editing==="new"){
         const profile=await bridge.createBrowserProfile(name);
@@ -64,6 +70,10 @@ export function BrowserProfiles() {
       {profiles.filter(profile=>profile.archived&&!profile.current).map(profile=><div className="browser-profile-row" key={profile.id}>
         <span className="browser-profile-name">{profile.name}</span>
         <button className="btn sm ghost" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.archiveBrowserProfile(profile.id,false));setMessage(`${profile.name} restored.`);})}>Restore</button>
+        {confirming===profile.id
+          ?<><button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.deleteBrowserProfile(profile.id));setConfirming(null);setMessage(`${profile.name} and its browsing data were deleted.`);})}>Delete permanently</button>
+            <button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(null)}>Keep</button></>
+          :<button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(profile.id)}>Delete…</button>}
       </div>)}
     </details>}
     {error&&<div role="alert"><p className="hint err">{error}</p><button className="btn sm ghost" disabled={busy} onClick={()=>setRefresh(value=>value+1)}>Refresh profiles</button></div>}

@@ -1,7 +1,7 @@
 import { STATUS_LABEL } from "../run-status";
 import { recentConversations } from "../conversations";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { Run } from "@vector/contracts";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { Run } from "@aux/contracts";
 import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { ResizeHandle } from "./ResizeHandle";
@@ -19,12 +19,12 @@ const ago = (ts: number) => {
   return `${Math.floor(h / 24)}d`;
 };
 
-function RunRow({ r, onOpen, selected }: { r: Run; onOpen: () => void; selected: boolean }) {
-  const pages = useStore((s) => s.pages);
-  const page = pages.find((p) => p.pageId === r.pageIds[0]);
+/** Memoized so a ticking run only re-renders its own row. */
+const RunRow = memo(function RunRow({ r, selected }: { r: Run; selected: boolean }) {
+  const page = useStore((s) => s.pages.find((p) => p.pageId === r.pageIds[0]));
   const live = isLive(r);
   return (
-    <button className={`run-row ${selected ? "on" : ""} ${live ? "live" : ""}`} onClick={onOpen} title={r.goal}>
+    <button className={`run-row ${selected ? "on" : ""} ${live ? "live" : ""}`} onClick={() => useStore.getState().setRailView({ kind: "run", runId: r.runId })} title={r.goal}>
       <span className={`run-row-ico ${r.status}`}>{r.status === "completed" ? I.check : r.status === "failed" ? I.alert : r.status === "needs_input" ? I.chat : live ? I.agentSm : I.circle}</span>
       <span className="run-row-main">
         <span className="run-row-title">{r.goal}</span>
@@ -36,7 +36,7 @@ function RunRow({ r, onOpen, selected }: { r: Run; onOpen: () => void; selected:
       </span>
     </button>
   );
-}
+});
 
 /** One entry per recent conversation; full history remains searchable from Chats. */
 function RailHome() {
@@ -58,7 +58,7 @@ function RailHome() {
       {live.length > 0 && (
         <section className="rail-block">
           <div className="rail-label"><span>Live</span><span className="count nums">{live.length}</span></div>
-          {live.map((r) => <RunRow key={r.runId} r={r} selected={false} onOpen={() => setRailView({ kind: "run", runId: r.runId })} />)}
+          {live.map((r) => <RunRow key={r.runId} r={r} selected={false} />)}
         </section>
       )}
       {sets.length > 0 && (
@@ -95,9 +95,9 @@ function RailHome() {
         {past.length === 0 ? (
           <div className="rail-empty small">{q ? "No recent conversations match." : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}</div>
         ) : past.length > 30 ? (
-          <VirtualList items={past} rowHeight={56} className="run-list virtual" keyOf={(r) => r.runId} renderRow={(r) => <RunRow r={r} selected={false} onOpen={() => setRailView({ kind: "run", runId: r.runId })} />} />
+          <VirtualList items={past} rowHeight={56} className="run-list virtual" keyOf={(r) => r.runId} renderRow={(r) => <RunRow r={r} selected={false} />} />
         ) : (
-          <div className="run-list">{past.map((r) => <RunRow key={r.runId} r={r} selected={false} onOpen={() => setRailView({ kind: "run", runId: r.runId })} />)}</div>
+          <div className="run-list">{past.map((r) => <RunRow key={r.runId} r={r} selected={false} />)}</div>
         )}
         <button className="btn sm ghost" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Browse all conversations</button>
       </section>

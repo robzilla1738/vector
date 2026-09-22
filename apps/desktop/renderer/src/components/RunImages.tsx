@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Artifact } from "@vector/contracts";
+import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { I } from "./icons";
 

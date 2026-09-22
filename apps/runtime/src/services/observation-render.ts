@@ -1,4 +1,4 @@
-import type { CompactObservation, Observation } from "@vector/contracts";
+import type { CompactObservation, Observation } from "@aux/contracts";
 
 /**
  * Renders an observation into the compact text form the model reads. Shared

@@ -1,5 +1,5 @@
 {
-  "name": "@vector/runtime",
+  "name": "@aux/runtime",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,7 @@
     }
   },
   "bin": {
-    "aux-runtime": "./dist/main.js",
-    "vector-runtime": "./dist/main.js"
+    "aux-runtime": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc -b",
@@ -23,8 +22,8 @@
     "@ai-sdk/gateway": "4.0.75",
     "@ai-sdk/google": "4.0.64",
     "@ai-sdk/openai": "4.0.60",
-    "@vector/contracts": "workspace:*",
-    "@vector/engine-client": "workspace:*",
+    "@aux/contracts": "workspace:*",
+    "@aux/chromium-driver": "workspace:*",
     "@vercel/sandbox": "3.3.0",
     "ai": "7.0.93",
     "ws": "8.21.3",

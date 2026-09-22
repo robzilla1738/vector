@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { normalizeAuxEnvironment } from "@vector/contracts";
-import { resolveDataDirectory, resolveDatabasePath } from "@vector/contracts/installation";
+import { normalizeAuxEnvironment } from "@aux/contracts";
+import { resolveDataDirectory, resolveDatabasePath } from "@aux/contracts/installation";
 
 export const defaultDataDir = () => resolveDataDirectory({});
 
@@ -103,8 +103,8 @@ export function loadConfig(source = process.env): RuntimeConfig {
     benchmarksDir,
     dbPath,
     settingsPath: join(dataDir, "settings.json"),
-    electronCdp: env.VECTOR_ELECTRON_CDP ?? null,
-    apiPort: Number(env.VECTOR_API_PORT ?? 0),
-    apiToken: env.VECTOR_API_TOKEN ?? "",
+    electronCdp: env.AUX_ELECTRON_CDP ?? null,
+    apiPort: Number(env.AUX_API_PORT ?? 0),
+    apiToken: env.AUX_API_TOKEN ?? "",
   };
 }

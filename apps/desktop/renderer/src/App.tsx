@@ -4,10 +4,11 @@ import { conversationEntryChange, applyConversationStorageChange } from "./conve
 import { QuickAsk } from "./components/QuickAsk";
 import { useBrowsingMemory } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
-import type { WorkspaceMemory } from "@vector/contracts";
+import type { WorkspaceMemory, ShortcutOverrides } from "@aux/contracts";
+import { effectiveShortcuts, matchShortcut } from "@aux/contracts";
 import { deferSurface } from "./components/DeferredSurface";
 import { useEffect, useRef, useState } from "react";
-import { LIVE_RUN, useStore, call, toast, errToast, type SidebarMode } from "./store";
+import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, type SidebarMode } from "./store";
 import { bridge, inElectron, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
@@ -17,6 +18,7 @@ import { onStageReport, stageAvoiding } from "./stage-obstruction";
 import { isTab, tabsInSpace } from "./workspace";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { HttpAuthPrompt } from "./components/HttpAuthPrompt";
+import { VaultOfferBanner } from "./components/VaultOfferBanner";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
@@ -36,7 +38,8 @@ const Library = deferSurface(async () => { const module = await import("./compon
 const Inspector = deferSurface(async () => { const module = await import("./components/Inspector"); return {default:module.Inspector}; }, "Page inspection");
 const Tasks = deferSurface(async () => { const module = await import("./components/Tasks"); return {default:module.Tasks}; }, "Tasks");
 
-type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean };
+type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string };
+type StoreState = ReturnType<typeof useStore.getState>;
 
 const STAGE_RADIUS = 0;
 
@@ -110,8 +113,7 @@ export function App() {
   const sidebar = useStore((s) => s.sidebar);
   const sidebarPeek = useStore(s => s.sidebarPeek);
   const activePageId = useStore((s) => s.activePageId);
-  const pages = useStore((s) => s.pages);
-  const activePage = pages.find((p) => p.pageId === activePageId);
+  const activePage = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const pageChrome = inElectron && !quickAsk && !!activePage && activePage.backend !== "chrome"
     && activePage.viewStatus !== "crashed" && !activePage.navigationError
     && (!!activePage.showBlankDocument || (!!activePage.url && activePage.url !== "about:blank"));
@@ -122,6 +124,7 @@ export function App() {
   const nativeShowing = !!nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
   usePagePointerForward(toolbarStacked && nativeShowing);
   const splitPageId = useStore((s) => s.splitPageId);
+  const splitCompanion = useStore((s) => (s.splitPageId ? s.pages.find((p) => p.pageId === s.splitPageId) : undefined));
   const splitRatio = useStore(s => s.layout.splitRatio ?? .5);
   const settings = useStore((s) => s.settings);
   const toasts = useStore((s) => s.toasts);
@@ -217,6 +220,8 @@ export function App() {
   useEffect(() => {
     void useStore.getState().refresh();
     const offEvent = bridge.onEvent((e) => useStore.getState().applyEvent(e));
+    const offTabs = bridge.onTabsPatch(patch => useStore.getState().applyTabsPatch(patch));
+    const offPlacement = bridge.onTabsPlacement(payload => useStore.getState().applyTabsPlacement(payload));
     const offRuntime = bridge.onRuntimeStatus(status => {
       useStore.setState({ connected: status.connected });
       if (status.connected) void useStore.getState().refresh();
@@ -230,12 +235,24 @@ export function App() {
     void bridge.tabAudio().then(snapshot=>{if(audioLive)useStore.setState(current=>({tabAudio:{...Object.fromEntries(Object.entries(snapshot).filter(([id])=>!changedAudio.has(id))),...Object.fromEntries(Object.entries(current.tabAudio).filter(([id])=>changedAudio.has(id)))}}));}).catch(()=>{});
     const offDownload = bridge.onDownload((d) => useStore.getState().applyDownload(d as never));
     const offShortcut = bridge.onShortcut((s) => dispatchShortcut(s));
+    const offVault = bridge.onVaultOffer(offer => useStore.getState().setVaultOffer(offer));
+    const offTranslation = bridge.onTranslationChanged(payload => {
+      const s = useStore.getState();
+      if (payload.pending) { s.setTranslationPending(payload.pageId); return; }
+      if (s.translationPending === payload.pageId) s.setTranslationPending(null);
+      if (payload.error) { s.toast(payload.error, "error"); return; }
+      s.setTranslation(payload.lang ? { pageId: payload.pageId, lang: payload.lang, count: payload.count ?? 0, truncated: !!payload.truncated } : null);
+    });
     return () => {
       offEvent();
+      offTabs();
+      offPlacement();
       offRuntime();
       offLoading();
       offDownload();audioLive=false;offAudio();
       offShortcut();
+      offVault();
+      offTranslation();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -251,7 +268,7 @@ export function App() {
       raf = requestAnimationFrame(() => {
         const r = el.getBoundingClientRect();
         const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
-        const companion = pages.find(page => page.pageId === splitPageId);
+        const companion = splitCompanion;
         const split = showPage && companion && companion.pageId !== showPage && nativePageId({mode,overlay,activePageId:companion.pageId,...companion}) ? splitPageId : null;
         const menus = [...document.querySelectorAll<HTMLElement>(".ctx-menu")].map(menu => {
           const box = menu.getBoundingClientRect();
@@ -276,86 +293,85 @@ export function App() {
       cancelAnimationFrame(raf);
       window.clearTimeout(t);
     };
-  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, pages, splitPageId, splitRatio, mode, overlay, railOpen, settings.tabLayout]);
+  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, splitCompanion?.url, splitCompanion?.backend, splitCompanion?.viewStatus, splitCompanion?.navigationError, splitCompanion?.showBlankDocument, splitPageId, splitRatio, mode, overlay, railOpen, settings.tabLayout]);
 
-  const dispatchShortcut = (s: Shortcut) => {
-    const k = s.key.toLowerCase().replace(/^arrow/, "");
-    const st = useStore.getState();
-    const meta = s.meta;
-
-    if (s.ctrl && k === "tab") return cycleTab(s.shift ? -1 : 1);
-    if (meta && s.alt && k === "left") return cycleTab(-1);
-    if (meta && s.alt && k === "right") return cycleTab(1);
-    if (meta && s.alt && k === "i") return st.activePageId && void bridge.devTools(st.activePageId);
-    if (meta && s.alt && k === "u") {
-      const p = st.pages.find((x) => x.pageId === st.activePageId);
-      if (p?.url.startsWith("http")) void call("pages.navigate", { pageId: p.pageId, url: `view-source:${p.url}` }).catch(errToast);
+  const findG = (st: StoreState, forward: boolean) => {
+    if (st.overlay === "reader") {
+      useStore.setState({readerFindOpen:true});
+      if (st.findText) void st.find(st.findText,true,forward).catch(errToast);
       return;
     }
-    if (meta && s.shift && k === "c") return st.activePageId && void bridge.devTools(st.activePageId);
-    if (meta && s.shift && k === "r") return st.activePageId && void bridge.hardReload(st.activePageId).catch(errToast);
-    if (meta && s.shift && k === "w") return void bridge.closeWindow();
-    if (meta && s.shift && k === "d") return bookmarkAll();
-    if (meta && s.shift && k === "backspace") return setOverlay("clear-history");
-    if (meta && s.alt && k === "r") return setOverlay(st.overlay === "reader" ? null : "reader");
-    if (meta && s.shift && k === "a") return bridge.privateMode ? undefined : st.toggleRail();
-    if (meta && s.shift && k === "o") return setMode(st.mode === "overview" ? "focus" : "overview");
-    if (meta && s.shift && k === "j") return setOverlay("downloads");
-    if (meta && s.shift && k === "t") return void st.reopenClosedTab();
-    if (meta && s.shift && (k === "]" || k === "}")) return cycleTab(1);
-    if (meta && s.shift && (k === "[" || k === "{")) return cycleTab(-1);
-    if (meta && k === "p" && s.shift) return void savePagePdf(st.activePageId).catch(errToast);
-    if (meta && k === "g") {
-      if (st.overlay === "reader") {
-        useStore.setState({readerFindOpen:true});
-        if (st.findText) void st.find(st.findText,true,!s.shift).catch(errToast);
-        return;
-      }
-      if (!st.findText) return setOverlay("find");
-      if (st.overlay !== "find") setOverlay("find");
-      return void st.find(st.findText, true, !s.shift).catch(errToast);
-    }
-    if (meta && (k === "=" || k === "+")) return st.activePageId && void st.zoomPage(st.activePageId, { direction: "in" }).catch(errToast);
-    if (meta && (k === "-" || k === "_")) return st.activePageId && void st.zoomPage(st.activePageId, { direction: "out" }).catch(errToast);
-    if (meta && k === "0") return st.activePageId && void st.zoomPage(st.activePageId, { reset: true }).catch(errToast);
-    if (meta && s.shift) return;
+    if (!st.findText) return setOverlay("find");
+    if (st.overlay !== "find") setOverlay("find");
+    return void st.find(st.findText, true, forward).catch(errToast);
+  };
 
-    if (meta && k === "k") return bridge.privateMode ? undefined : setOverlay(st.overlay === "palette" ? null : "palette");
-    if (meta && (k === "l" || k === "e")) return st.focusCommandBar();
-    if (meta && k === "f") {
+  /** commandId → action. The registry owns chords; this owns behavior. */
+  const SHORTCUT_ACTIONS: Record<string, (st: StoreState) => unknown> = {
+    "new-tab": st => st.newTab(),
+    "open-file": () => openLocalFile().catch(errToast),
+    "reopen-closed-tab": st => st.reopenClosedTab(),
+    "close-window": () => bridge.closeWindow(),
+    "print": st => printCurrentPage(st.activePageId).catch(errToast),
+    "save-pdf": st => savePagePdf(st.activePageId).catch(errToast),
+    "find": st => {
       if (st.overlay === "reader") useStore.setState({readerFindOpen:true}); else setOverlay("find");
       void bridge.focusShell().then(() => { const input = document.querySelector<HTMLInputElement>(".findbar input"); input?.focus(); input?.select(); }).catch(errToast);
-      return;
-    }
-    if (meta && k === "o") return void openLocalFile().catch(errToast);
-    if (meta && k === "p") return void printCurrentPage(st.activePageId).catch(errToast);
-    if (meta && k === "t") return void st.newTab();
-    if (meta && k === "w") {
+    },
+    "find-next": st => findG(st, true),
+    "find-previous": st => findG(st, false),
+    "reload": st => st.activePageId && tabCommand({ kind: "reload", pageId: st.activePageId }).catch(errToast),
+    "hard-reload": st => st.activePageId && bridge.hardReload(st.activePageId).catch(errToast),
+    "actual-size": st => st.activePageId && st.zoomPage(st.activePageId, { reset: true }).catch(errToast),
+    "zoom-in": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "in" }).catch(errToast),
+    "zoom-out": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "out" }).catch(errToast),
+    "reader": st => setOverlay(st.overlay === "reader" ? null : "reader"),
+    "sidebar": st => st.toggleSidebar(),
+    "overview": st => setMode(st.mode === "overview" ? "focus" : "overview"),
+    "devtools": st => st.activePageId && bridge.devTools(st.activePageId),
+    "inspect-element": st => st.activePageId && bridge.devTools(st.activePageId),
+    "view-source": st => {
+      const p = st.pages.find((x) => x.pageId === st.activePageId);
+      if (p?.url.startsWith("http")) void st.navigatePage(p.pageId, `view-source:${p.url}`).catch(errToast);
+    },
+    "back": st => st.activePageId && tabCommand({ kind: "back", pageId: st.activePageId }).catch(errToast),
+    "forward": st => st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
+    "open-address": st => st.focusCommandBar(),
+    "palette": st => bridge.privateMode ? undefined : setOverlay(st.overlay === "palette" ? null : "palette"),
+    "settings": () => bridge.privateMode ? undefined : setOverlay("settings"),
+    "history": () => setOverlay("history"),
+    "downloads": () => setOverlay("downloads"),
+    "bookmark": st => {
+      const p = st.pages.find((x) => x.pageId === st.activePageId);
+      if (!p || !isTab(p) || !bookmarkWebUrl(p.url)) return;
+      void st.toggleBookmark(p.url, p.title).catch(errToast);
+    },
+    "bookmark-all": () => bookmarkAll(),
+    "agent-rail": st => bridge.privateMode ? undefined : st.toggleRail(),
+    "clear-history": () => setOverlay("clear-history"),
+    "tab-next": () => cycleTab(1),
+    "tab-previous": () => cycleTab(-1),
+    "close-tab": st => {
       if (st.overlay) return setOverlay(null);
       if (!st.activePageId) return void bridge.closeWindow();
       if (st.mode === "focus") return void closeSelectedTabs().then(handled => { if (!handled && st.activePageId) return st.closeTab(st.activePageId); }).catch(errToast);
       return void st.closeTab(st.activePageId);
-    }
-    if (meta && k === "r") return st.activePageId && void call("pages.reload", { pageId: st.activePageId }).catch(errToast);
-    if (meta && k === ",") return bridge.privateMode ? undefined : setOverlay("settings");
-    if (meta && k === "y") return setOverlay("history");
-    if (meta && k === "s") return st.toggleSidebar();
-    if (meta && k === "d") {
-      const p = st.pages.find((x) => x.pageId === st.activePageId);
-      if (!p || !isTab(p) || !bookmarkWebUrl(p.url)) return;
-      void st.toggleBookmark(p.url, p.title).catch(errToast);
-      return;
-    }
-    if (meta && /^[1-9]$/.test(k)) {
+    },
+    ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`tab-${i + 1}`, (st: StoreState) => {
       const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
-      const p = k === "9" ? tabs[tabs.length - 1] : tabs[Number(k) - 1];
+      const p = i === 8 ? tabs[tabs.length - 1] : tabs[i];
       if (p) void st.activate(p.pageId).catch(errToast);
-      return;
-    }
-    if (s.alt && k === "left") return st.activePageId && void call("pages.back", { pageId: st.activePageId }).catch(errToast);
-    if (s.alt && k === "right") return st.activePageId && void call("pages.forward", { pageId: st.activePageId }).catch(errToast);
-    if (meta && k === "[") return st.activePageId && void call("pages.back", { pageId: st.activePageId }).catch(errToast);
-    if (meta && k === "]") return st.activePageId && void call("pages.forward", { pageId: st.activePageId }).catch(errToast);
+    }])),
+  };
+
+  const dispatchShortcut = (s: Shortcut) => {
+    const st = useStore.getState();
+    // Menus and page interception resolve the command before sending; only
+    // raw chords (shell keydown) need matching here.
+    const id = s.commandId ?? matchShortcut(effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined), {
+      key: s.key, meta: s.meta, ctrl: s.ctrl ?? false, shift: s.shift, alt: s.alt,
+    }, { platform: bridge.platform })?.id;
+    if (id) void SHORTCUT_ACTIONS[id]?.(st);
   };
 
   const cycleTab = (dir: 1 | -1) => {
@@ -383,15 +399,14 @@ export function App() {
     const h = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
       if (e.metaKey || e.ctrlKey) {
-        const k = e.key.toLowerCase().replace(/^arrow/, "");
-        const swallow =
-          (e.metaKey &&
-            (["k", "l", "f", "g", "e", "o", "p", "t", "w", "r", "d", "y", ",", "s", "[", "]", "{", "}", "=", "+", "-", "_", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(k) ||
-              (e.shiftKey && ["a", "o", "j", "c", "t", "r", "w", "d", "g", "backspace"].includes(k)) ||
-              (e.altKey && ["f", "i", "u", "left", "right"].includes(k)))) ||
-          (e.ctrlKey && k === "tab");
-        if (swallow) e.preventDefault();
-        dispatchShortcut({ key: e.key, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey });
+        const st = useStore.getState();
+        const def = matchShortcut(effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined), {
+          key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey,
+        }, { platform: bridge.platform });
+        if (def) {
+          e.preventDefault();
+          dispatchShortcut({ key: e.key, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey, commandId: def.id });
+        }
         return;
       }
       if (e.key === "Escape" && !e.defaultPrevented && useStore.getState().overlay) setOverlay(null);
@@ -444,6 +459,7 @@ export function App() {
       {overlay === "observe" && <Inspector />}
       {overlay === "site" && <SiteControls />}
       <HttpAuthPrompt />
+      <VaultOfferBanner />
       <div className={`toasts ${sidebar === "hidden" || sidebar === "rail" ? "top" : ""}`} aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast rise ${t.kind}`}>

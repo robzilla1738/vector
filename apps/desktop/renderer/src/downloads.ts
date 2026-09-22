@@ -1,4 +1,4 @@
-import type { Download } from "@vector/contracts";
+import type { Download } from "@aux/contracts";
 
 /** A live update received while the snapshot was in flight always wins. */
 export function mergeDownloadSnapshot(current: Download[], snapshot: Download[], updated: ReadonlySet<string>): Download[] {

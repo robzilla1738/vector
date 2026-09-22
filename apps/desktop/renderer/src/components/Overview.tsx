@@ -1,8 +1,8 @@
 import { duplicateTabs } from "../duplicate-tabs";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { PageTarget } from "@vector/contracts";
-import { useStore, call, errToast, toast } from "../store";
+import type { PageTarget } from "@aux/contracts";
+import { useStore, call, errToast, tabCommand, toast } from "../store";
 import { bridge, inElectron } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { hostOf, isPinned } from "../workspace";
@@ -112,7 +112,7 @@ export function Overview() {
         if (!page || page.viewStatus !== "visible") continue;
         captured.current.add(pageId);
         try {
-          const image = page.backend === "vector" ? await bridge.preview(pageId)
+          const image = page.backend === "aux" ? await bridge.preview(pageId)
             : (await call<{ dataUrl?: string }>("pages.capture", { pageId })).dataUrl;
           if (!cancelled && image) setShots(previous => ({ ...previous, [pageId]: image }));
         } catch {
@@ -219,7 +219,7 @@ export function Overview() {
           const current=state.pages.find(item=>item.pageId===page.pageId);
           if(!current || current.controller === "agent" || current.controller === "external")throw new Error(`Audio changed for ${changed} tabs. A remaining tab closed or changed control.`);
           if(state.tabAudio[page.pageId]?.muted === muteSelection)continue;
-          try { await bridge.setTabMuted(page.pageId,muteSelection); changed++; }
+          try { await tabCommand({ kind: "setMuted", pageId: page.pageId, muted: muteSelection }); changed++; }
           catch(reason) { throw new Error(`Audio changed for ${changed} tabs. ${reason instanceof Error ? reason.message : String(reason)}`); }
         }
         setProgress(`${changed} ${changed === 1 ? "tab" : "tabs"} ${muteSelection ? "muted" : "unmuted"}.`);

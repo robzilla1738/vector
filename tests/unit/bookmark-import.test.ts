@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { openDb, Repo } from '@vector/runtime';
-import { MethodSchemas } from '@vector/contracts';
+import { openDb, Repo } from '@aux/runtime';
+import { MethodSchemas } from '@aux/contracts';
 it('imports atomically and preserves existing titles on repeated imports', () => {
  const db=openDb(':memory:');const repo=new Repo(db);
  try {

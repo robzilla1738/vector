@@ -1,4 +1,4 @@
-import type { TaskReceipt } from "@vector/contracts";
+import type { TaskReceipt } from "@aux/contracts";
 
 const status = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
 const text = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\\`*_{}[\]()#+!|]/g, "\\$&").replace(/^([-=>])/gm, "\\$1");

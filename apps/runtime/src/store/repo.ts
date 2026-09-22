@@ -13,14 +13,26 @@ import type {
   SavedProgram,
   SetMember,
   StepRecord,
-  VectorEvent,
-} from "@vector/contracts";
-import { VectorError } from "@vector/contracts";
+  AuxEvent,
+} from "@aux/contracts";
+import { AuxError } from "@aux/contracts";
 import { kvGetJson, kvSetJson } from "./db.js";
 
 const now = () => Date.now();
 const J = JSON.stringify;
 const P = <T>(s: string | null | undefined, fb: T): T => (s ? (JSON.parse(s) as T) : fb);
+
+/**
+ * Free text → FTS5 MATCH: every word becomes a quoted prefix term AND-ed
+ * together. Returns null when nothing tokenizes (LIKE handles those).
+ */
+const ftsMatch = (query: string): string | null => {
+  const terms = query
+    .split(/[^\p{L}\p{N}_]+/u)
+    .map((term) => term.replaceAll('"', '""'))
+    .filter(Boolean);
+  return terms.length ? terms.map((term) => `"${term}"*`).join(" ") : null;
+};
 
 /** Repository: the runtime's single-writer persistence surface. */
 export class Repo {
@@ -360,7 +372,7 @@ export class Repo {
     this.transaction(() => {
       for (const image of images) this.db.prepare("DELETE FROM artifacts WHERE artifact_id=?").run(image.artifactId);
       this.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationImages:${chatId}`);
-      this.db.prepare(`DELETE FROM action_transitions WHERE intent_id IN (SELECT id FROM action_intents WHERE run_id IN (${owned}))`).run(chatId);
+      this.db.prepare(`DELETE FROM operation_reconciliations WHERE invocation_id IN (SELECT invocation_id FROM operation_invocations WHERE run_id IN (${owned}))`).run(chatId);
       for (const table of ["action_intents", "operation_invocations", "response_metadata", "datasets", "spans", "events", "model_calls", "artifacts", "results", "steps"])
         this.db.prepare(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId);
       for (const runId of runIds) {
@@ -527,7 +539,7 @@ export class Repo {
   }
 
   // ---- events ----
-  appendEvent(e: Omit<VectorEvent, "seq">): number {
+  appendEvent(e: Omit<AuxEvent, "seq">): number {
     const info = this.db
       .prepare("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
       .run(e.runId ?? null, e.type, J(e.payload), e.ts);
@@ -541,7 +553,7 @@ export class Repo {
     const info = this.db.prepare("DELETE FROM events WHERE ts < ?").run(cutoff);
     return Number(info.changes ?? 0);
   }
-  eventsSince(sinceSeq: number, limit = 500, runId?: string): { events: VectorEvent[]; lastSeq: number } {
+  eventsSince(sinceSeq: number, limit = 500, runId?: string): { events: AuxEvent[]; lastSeq: number } {
     const rows = runId
       ? (this.db.prepare("SELECT * FROM events WHERE seq>? AND run_id=? ORDER BY seq LIMIT ?").all(sinceSeq, runId, limit) as any[])
       : (this.db.prepare("SELECT * FROM events WHERE seq>? ORDER BY seq LIMIT ?").all(sinceSeq, limit) as any[]);
@@ -554,24 +566,59 @@ export class Repo {
   }
 
   // ---- history / bookmarks / downloads ----
+  importHistory(rows: { url: string; title: string; visitedAt: number }[]) {
+    return this.transaction(() => {
+      const insert = this.db.prepare("INSERT OR IGNORE INTO history(url,title,page_id,visited_at) VALUES(?,?,NULL,?)");
+      let added = 0;
+      for (const row of rows) {
+        if (!row.url || !Number.isFinite(row.visitedAt)) continue;
+        added += Number(insert.run(row.url, row.title, Math.round(row.visitedAt)).changes);
+      }
+      return { added, skipped: rows.length - added };
+    });
+  }
   addHistory(url: string, title: string, pageId?: string) {
     this.db.prepare("INSERT OR REPLACE INTO history(url,title,page_id,visited_at) VALUES(?,?,?,?)").run(url, title, pageId ?? null, now());
   }
   listHistory(query?: string, limit = 100, options: { since?: number; before?: { visitedAt: number; url: string } } = {}): HistoryEntry[] {
-    const clauses: string[] = [];
+    // `filters` qualify columns explicitly so the same clauses work on the
+    // bare table and the FTS join (`h.` prefix would break the former).
+    const filters: string[] = [];
     const values: (string | number)[] = [];
-    if (query) {
-      clauses.push("(url LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\')");
-      const term = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
-      values.push(term, term);
-    }
-    if (options.since !== undefined) { clauses.push("visited_at >= ?"); values.push(options.since); }
+    if (options.since !== undefined) { filters.push("visited_at >= ?"); values.push(options.since); }
     if (options.before) {
-      clauses.push("(visited_at < ? OR (visited_at = ? AND url < ?))");
+      filters.push("(visited_at < ? OR (visited_at = ? AND url < ?))");
       values.push(options.before.visitedAt, options.before.visitedAt, options.before.url);
     }
-    const rows = this.db.prepare(`SELECT * FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""} ORDER BY visited_at DESC, url DESC LIMIT ?`).all(...values, limit) as any[];
-    return rows.map((r) => ({ url: r.url, title: r.title, pageId: r.page_id ?? undefined, visitedAt: r.visited_at }));
+    const where = filters.length ? `AND ${filters.join(" AND ")}` : "";
+    const rows: any[] = [];
+    // Token-prefix FTS is the fast path for omnibox queries; a LIKE scan fills
+    // the remainder so mid-token substrings ("ithub" → github) still match.
+    const match = query && ftsMatch(query);
+    if (match) {
+      try {
+        rows.push(...this.db.prepare(
+          `SELECT history.* FROM history_fts JOIN history ON history.rowid = history_fts.rowid WHERE history_fts MATCH ? ${where} ORDER BY history.visited_at DESC, history.url DESC LIMIT ?`,
+        ).all(match, ...values, limit) as any[]);
+      } catch { /* FTS unavailable or bad query syntax — LIKE covers below */ }
+    }
+    if (query && rows.length < limit) {
+      const seen = new Set(rows.map((r) => `${r.url}${r.visited_at}`));
+      const term = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+      const likeRows = this.db.prepare(
+        `SELECT * FROM history WHERE (url LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\') ${where} ORDER BY visited_at DESC, url DESC LIMIT ?`,
+      ).all(term, term, ...values, limit + seen.size) as any[];
+      for (const row of likeRows) {
+        if (rows.length >= limit) break;
+        const key = `${row.url}${row.visited_at}`;
+        if (!seen.has(key)) { seen.add(key); rows.push(row); }
+      }
+      rows.sort((a, b) => b.visited_at - a.visited_at || (a.url < b.url ? -1 : 1));
+    }
+    if (!query) {
+      rows.push(...this.db.prepare(`SELECT * FROM history WHERE 1=1 ${where} ORDER BY visited_at DESC, url DESC LIMIT ?`).all(...values, limit) as any[]);
+    }
+    return rows.slice(0, limit).map((r) => ({ url: r.url, title: r.title, pageId: r.page_id ?? undefined, visitedAt: r.visited_at }));
   }
   removeHistory(url: string, visitedAt: number): boolean {
     return this.db.prepare("DELETE FROM history WHERE url=? AND visited_at=?").run(url, visitedAt).changes > 0;
@@ -583,14 +630,41 @@ export class Repo {
     if (range.before !== undefined) { clauses.push("visited_at < ?"); values.push(range.before); }
     return Number(this.db.prepare(`DELETE FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`).run(...values).changes);
   }
-  addBookmark(url: string, title: string, folderPath?: string[]) {
+  addBookmark(url: string, title: string, folderPath?: string[], readingList?: boolean) {
     this.transaction(() => {
       if (folderPath) this.createBookmarkFolder(folderPath);
-      this.db.prepare(`INSERT INTO bookmarks(url,title,created_at,folder_path) VALUES(?,?,?,?)
+      this.db.prepare(`INSERT INTO bookmarks(url,title,created_at,folder_path,reading_list) VALUES(?,?,?,?,?)
         ON CONFLICT(url) DO UPDATE SET title=excluded.title,
-          folder_path=CASE WHEN ? THEN excluded.folder_path ELSE bookmarks.folder_path END`)
-        .run(url, title, now(), J(folderPath ?? []), folderPath === undefined ? 0 : 1);
+          folder_path=CASE WHEN ? THEN excluded.folder_path ELSE bookmarks.folder_path END,
+          reading_list=CASE WHEN ? THEN excluded.reading_list ELSE bookmarks.reading_list END`)
+        .run(url, title, now(), J(folderPath ?? []), readingList ? 1 : 0, folderPath === undefined ? 0 : 1, readingList === undefined ? 0 : 1);
     });
+  }
+  /** Toggle the reading-list flag; creates the bookmark when the URL is not saved yet. */
+  setReadingList(url: string, readingList: boolean, title?: string) {
+    this.transaction(() => {
+      const existing = this.db.prepare("SELECT 1 FROM bookmarks WHERE url=?").get(url);
+      if (!existing) {
+        if (!readingList) return;
+        if (title === undefined) throw new Error("A title is required to save this page to the reading list.");
+        this.db.prepare("INSERT INTO bookmarks(url,title,created_at,reading_list) VALUES(?,?,?,1)").run(url, title, now());
+        return;
+      }
+      // Leaving the list also clears read progress so a re-add starts fresh.
+      this.db.prepare("UPDATE bookmarks SET reading_list=?, read_at=CASE WHEN ? THEN read_at ELSE NULL END WHERE url=?").run(readingList ? 1 : 0, readingList ? 1 : 0, url);
+      if (!readingList) this.db.prepare("DELETE FROM bookmark_articles WHERE url=?").run(url);
+    });
+  }
+  markBookmarkRead(url: string, read: boolean) {
+    if (!this.db.prepare("UPDATE bookmarks SET read_at=? WHERE url=? AND reading_list=1").run(read ? now() : null, url).changes)
+      throw new Error("This page is not on the reading list.");
+  }
+  saveBookmarkArticle(url: string, json: string) {
+    this.db.prepare("INSERT INTO bookmark_articles(url,json,saved_at) VALUES(?,?,?) ON CONFLICT(url) DO UPDATE SET json=excluded.json,saved_at=excluded.saved_at").run(url, json, now());
+  }
+  getBookmarkArticle(url: string): { article: string; savedAt: number } | null {
+    const row = this.db.prepare("SELECT json,saved_at FROM bookmark_articles WHERE url=?").get(url) as { json: string; saved_at: number } | undefined;
+    return row ? { article: row.json, savedAt: row.saved_at } : null;
   }
   updateBookmark(input: { originalUrl: string; url: string; title: string; folderPath?: string[]; expected: { title: string; folderPath?: string[] } }) {
     this.transaction(() => {
@@ -601,6 +675,7 @@ export class Repo {
       const folder = input.folderPath ?? previous.folderPath ?? [];
       this.createBookmarkFolder(folder);
       this.db.prepare("UPDATE bookmarks SET url=?,title=?,folder_path=? WHERE url=?").run(input.url, input.title, J(folder), input.originalUrl);
+      this.db.prepare("UPDATE bookmark_articles SET url=? WHERE url=?").run(input.url, input.originalUrl);
     });
   }
   moveBookmarks(input: { bookmarks: {url:string;folderPath:string[]}[]; folderPath:string[]; createFolder?:boolean }) {
@@ -648,11 +723,21 @@ export class Repo {
     });
   }
   removeBookmark(url: string) {
-    this.db.prepare("DELETE FROM bookmarks WHERE url=?").run(url);
+    this.transaction(() => {
+      this.db.prepare("DELETE FROM bookmark_articles WHERE url=?").run(url);
+      this.db.prepare("DELETE FROM bookmarks WHERE url=?").run(url);
+    });
   }
   listBookmarks(): Bookmark[] {
-    const rows = this.db.prepare("SELECT url,title,created_at,folder_path FROM bookmarks ORDER BY created_at DESC").all() as { url: string; title: string; created_at: number; folder_path: string }[];
-    return rows.map(row => ({ url: row.url, title: row.title, createdAt: row.created_at, ...(row.folder_path !== "[]" ? { folderPath: JSON.parse(row.folder_path) as string[] } : {}) }));
+    const rows = this.db.prepare("SELECT url,title,created_at,folder_path,reading_list,read_at FROM bookmarks ORDER BY created_at DESC").all() as { url: string; title: string; created_at: number; folder_path: string; reading_list: number; read_at: number | null }[];
+    const offline = new Set((this.db.prepare("SELECT url FROM bookmark_articles").all() as { url: string }[]).map(row => row.url));
+    return rows.map(row => ({
+      url: row.url, title: row.title, createdAt: row.created_at,
+      ...(row.folder_path !== "[]" ? { folderPath: JSON.parse(row.folder_path) as string[] } : {}),
+      ...(row.reading_list ? { readingList: true } : {}),
+      ...(row.read_at != null ? { readAt: row.read_at } : {}),
+      ...(offline.has(row.url) ? { offline: true } : {}),
+    }));
   }
   bookmarkFolders(): string[][] {
     const rows = this.db.prepare("SELECT path FROM bookmark_folders ORDER BY path").all() as { path: string }[];
@@ -669,9 +754,9 @@ export class Repo {
     return this.transaction(() => {
       const key = J(path);
       const replacement = [...path.slice(0, -1), name];
-      if (!this.db.prepare("SELECT 1 FROM bookmark_folders WHERE path=?").get(key)) throw new VectorError("not_found", "This bookmark folder no longer exists.");
+      if (!this.db.prepare("SELECT 1 FROM bookmark_folders WHERE path=?").get(key)) throw new AuxError("not_found", "This bookmark folder no longer exists.");
       if (key === J(replacement)) return this.bookmarkFolders();
-      if (this.db.prepare("SELECT 1 FROM bookmark_folders WHERE path=?").get(J(replacement))) throw new VectorError("conflict", "A folder with this name already exists here.");
+      if (this.db.prepare("SELECT 1 FROM bookmark_folders WHERE path=?").get(J(replacement))) throw new AuxError("conflict", "A folder with this name already exists here.");
       const descendants = (candidate: string[]) => candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
       const updateFolder = this.db.prepare("UPDATE bookmark_folders SET path=? WHERE path=?");
       for (const folder of this.bookmarkFolders().filter(descendants)) updateFolder.run(J([...replacement, ...folder.slice(path.length)]), J(folder));
@@ -685,7 +770,7 @@ export class Repo {
   removeBookmarkFolder(path: string[]): string[][] {
     const descendants = (candidate: string[]) => candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
     if (this.bookmarkFolders().some(folder => folder.length > path.length && descendants(folder)) || this.listBookmarks().some(bookmark => descendants(bookmark.folderPath ?? []))) {
-      throw new VectorError("conflict", "Move this folder’s bookmarks and remove its subfolders before deleting it.");
+      throw new AuxError("conflict", "Move this folder’s bookmarks and remove its subfolders before deleting it.");
     }
     this.db.prepare("DELETE FROM bookmark_folders WHERE path=?").run(J(path));
     return this.bookmarkFolders();
@@ -735,14 +820,6 @@ export class Repo {
       startedAt: r.started_at,
       endedAt: r.ended_at ?? undefined,
     }));
-  }
-
-  // ---- engine router: needs-chromium table (architecture §11) ----
-  loadRouterTable<T>(): T[] {
-    return kvGetJson<T[]>(this.db, "router:needsChromium") ?? [];
-  }
-  saveRouterTable(entries: unknown[]) {
-    kvSetJson(this.db, "router:needsChromium", entries);
   }
 
   // ---- settings ----

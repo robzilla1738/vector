@@ -1,7 +1,7 @@
 /**
  * Privilege-independent permission checks (Gate D / H2-C4). Model text cannot grant.
  */
-import type { Step } from "@vector/contracts";
+import type { Step } from "@aux/contracts";
 
 export type EffectClass = "read" | "write" | "destructive" | "egress";
 

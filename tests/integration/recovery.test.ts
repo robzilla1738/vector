@@ -6,9 +6,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startRuntime, openDb, Repo, type RuntimeHandle } from "@vector/runtime";
-import type { PageTarget, Run } from "@vector/contracts";
-import { resolveDatabasePath } from "@vector/contracts/installation";
+import { startRuntime, openDb, Repo, type RuntimeHandle } from "@aux/runtime";
+import type { PageTarget, Run } from "@aux/contracts";
+import { resolveDatabasePath } from "@aux/contracts/installation";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import type { ChildProcess } from "node:child_process";
 
@@ -20,7 +20,7 @@ let dataDir: string;
 beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
-  dataDir = mkdtempSync(join(tmpdir(), "vector-recover-"));
+  dataDir = mkdtempSync(join(tmpdir(), "aux-recover-"));
 }, 60_000);
 
 afterAll(() => {
@@ -30,7 +30,7 @@ afterAll(() => {
 
 describe("restart recovery", () => {
   it("marks live runs interrupted and detaches pages on reopen", async () => {
-    const env = { ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "", VECTOR_ENGINE_MODE: "off" };
+    const env = { ...process.env, AUX_DATA_DIR: dataDir, AUX_ELECTRON_CDP: "" };
 
     const rt1: RuntimeHandle = await startRuntime(env);
     const page = await rt1.invoke("pages.open", { url: `${RECORDS}/records`, background: true }) as PageTarget;

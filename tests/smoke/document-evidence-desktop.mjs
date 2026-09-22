@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { sidebarAction } from './sidebar-action.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
-const { _electron } = createRequire(join(root, 'packages/engine-client/package.json'))('playwright-core');
+const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
 const electron = createRequire(join(root, 'apps/desktop/package.json'))('electron');
 const temp = mkdtempSync(join(tmpdir(), 'aux-document-ui-'));
 const source = join(temp, 'receipt.md');
@@ -17,7 +17,7 @@ const sha256 = createHash('sha256').update(content).digest('hex');
 const artifacts = join(root, 'release/test-artifacts'); mkdirSync(artifacts, {recursive:true});
 writeFileSync(source, content);
 let app, page, taskId, evidenceId;
-const env = {PATH:process.env.PATH, HOME:temp, TMPDIR:temp, AUX_PROFILE_DIR:join(temp,'profile'), AUX_DATA_DIR:join(temp,'data'), AUX_ENGINE:'0', AUX_ENGINE_MODE:'off', AUX_LOAD_DOTENV:'0'};
+const env = {PATH:process.env.PATH, HOME:temp, TMPDIR:temp, AUX_PROFILE_DIR:join(temp,'profile'), AUX_DATA_DIR:join(temp,'data'), AUX_LOAD_DOTENV:'0'};
 async function launch() {
   app = await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env,timeout:30000});
   for(let i=0;i<100;i++) {
@@ -27,7 +27,7 @@ async function launch() {
   assert.ok(page); await page.locator('.aux-home').waitFor();
   await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
 }
-const receipt = () => page.evaluate(id=>window.vector.invoke('tasks.receipt',{taskId:id}),taskId);
+const receipt = () => page.evaluate(id=>window.aux.invoke('tasks.receipt',{taskId:id}),taskId);
 const choose = async path => app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:!path,filePaths:path?[path]:[]});},path);
 try {
   await launch(); await sidebarAction(page,'Tasks');
@@ -39,7 +39,7 @@ try {
   await tasks.getByLabel('What must be true when this is done?',{exact:true}).fill('The order is paid with quantity one.');
   await tasks.getByRole('button',{name:'Save task',exact:true}).click();
   await tasks.getByText('Revision 1',{exact:true}).waitFor();
-  taskId=await page.evaluate(async()=>{const ws=await window.vector.invoke('workspaces.list',{});return (await window.vector.invoke('tasks.list',{workspaceId:ws.find(w=>w.name==='Document review').workspaceId}))[0].taskId;});
+  taskId=await page.evaluate(async()=>{const ws=await window.aux.invoke('workspaces.list',{});return (await window.aux.invoke('tasks.list',{workspaceId:ws.find(w=>w.name==='Document review').workspaceId}))[0].taskId;});
   await choose(null); await tasks.getByRole('button',{name:'Import document',exact:true}).click();
   assert.equal((await receipt()).criteria[0].evidence.length,0);
   assert.equal(await tasks.getByRole('region',{name:'Document preview'}).count(),0);
@@ -86,7 +86,7 @@ try {
   assert.equal((await receipt()).criteria[0].evidence.length,1);
   await choose(source); await reopened.getByRole('button',{name:'Import document',exact:true}).click();
   await reopened.getByRole('region',{name:'Document preview'}).waitFor();
-  await page.evaluate(taskId=>window.vector.invoke('tasks.update',{taskId,expectedRevision:1,title:'Updated elsewhere'}),taskId);
+  await page.evaluate(taskId=>window.aux.invoke('tasks.update',{taskId,expectedRevision:1,title:'Updated elsewhere'}),taskId);
   await reopened.getByRole('button',{name:'Save document evidence',exact:true}).click();
   await reopened.getByRole('alert').filter({hasText:'revision changed'}).waitFor();
   assert.equal((await receipt()).criteria[0].evidence.length,0,'Stale import cannot enter the new revision');

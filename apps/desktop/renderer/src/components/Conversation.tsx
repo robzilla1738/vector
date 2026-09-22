@@ -10,7 +10,8 @@ import { ConversationTask } from "./ConversationTask";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { useEffect, useRef, useState } from "react";
-import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
+import { useShallow } from "zustand/react/shallow";
+import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
@@ -69,7 +70,9 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     if (pending) useStore.setState({ conversationId: pending });
   }, [id, embedded]);
   const runs = useStore(s => s.runs);
-  const pages = useStore(s => s.pages);
+  // Digest re-renders on structure/navigation change only — loading/favicon churn doesn't.
+  useStore(useShallow(s => s.pages.map(p => `${p.pageId}${p.url}${p.title}${p.ownedByRuntime ? 1 : 0}${p.viewStatus}${p.backend}${p.navigationError ? 1 : 0}${p.showBlankDocument ? 1 : 0}`)));
+  const pages = useStore.getState().pages;
   const activePageId = useStore(s => s.activePageId);
   const layout = useStore(s => s.layout);
   const connected = useStore(s => s.connected);

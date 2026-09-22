@@ -1,4 +1,4 @@
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import type { Layout } from "./workspace";
 
 /** Propose redundant visible tabs; never close anything or combine different Spaces. */

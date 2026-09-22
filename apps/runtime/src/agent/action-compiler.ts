@@ -2,7 +2,7 @@
  * Validated action compiler (Gate F). Rebinds recorded refs to the current
  * observation using semantic guards. Stale document epochs fail closed.
  */
-import type { ObservationContent, Program, Step } from "@vector/contracts";
+import type { ObservationContent, Program, Step } from "@aux/contracts";
 import { queryPage, type PageQuery } from "./page-query.js";
 import type { SkillGuard } from "./skills.js";
 import { authorizeProgram, type EffectClass, type GrantSource } from "./permissions.js";

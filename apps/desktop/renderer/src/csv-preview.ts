@@ -1,4 +1,4 @@
-import { readCsvRows } from "@vector/contracts";
+import { readCsvRows } from "@aux/contracts";
 
 /** Bound only the rendered preview; copy and export retain the source. */
 export function csvPreview(source: string): {rows:string[][]; rowCount:number; columnCount:number} {

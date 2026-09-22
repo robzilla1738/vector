@@ -1,7 +1,7 @@
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { MockPage } from "./MockPage";
 import { useEffect, useRef, useState } from "react";
-import { splitWidths } from "@vector/contracts/split-layout";
+import { splitWidths } from "@aux/contracts/split-layout";
 import { useStore } from "../store";
 
 /** The native pages leave this gutter uncovered, so resizing belongs to the shell. */

@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { recentConversations } from "./conversations";
-import type { Run } from "@vector/contracts";
+import type { Run } from "@aux/contracts";
 afterEach(() => vi.restoreAllMocks());
 const first: Run = { runId: "first", goal: "Find order", status: "completed", pageIds: ["page"], config: { chatId: "chat" }, createdAt: 1, result: { answer: "Order 123" } };
 it("continues the same saved conversation while leaving context assembly to the runtime", async () => {

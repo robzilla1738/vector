@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDb, Repo, SettingsService } from "@vector/runtime";
+import { openDb, Repo, SettingsService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native";
 import { SecretStore } from "../../apps/desktop/main/secret-store";
 

@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const temporary = mkdtempSync(join(tmpdir(), "aux-connected-agent-"));
 const dataDir = join(temporary, "data");
@@ -84,8 +84,6 @@ const env = {
   AUX_PROFILE_DIR: join(temporary, "profile"),
   AUX_DATA_DIR: dataDir,
   AUX_LOAD_DOTENV: "0",
-  AUX_ENGINE: "0",
-  AUX_ENGINE_MODE: "off",
 };
 let app;
 const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
@@ -123,31 +121,31 @@ try {
   await settings.getByRole("button", { name: "Test connection", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "Connection tested" }).waitFor();
   await page.screenshot({ path: join(artifacts, "aux-openai-compatible-settings.png") });
-  const configured = await page.evaluate(() => window.vector.invoke("settings.get", {}));
+  const configured = await page.evaluate(() => window.aux.invoke("settings.get", {}));
   assert.equal(configured.modelEndpoint, endpoint);
   assert.equal(configured.modelApiKey, "••••••••");
   assert.equal(configured.modelConfigured, true);
   await settings.getByRole("button", { name: "Close settings", exact: true }).click();
 
-  const browser = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), pageUrl);
-  await page.waitForFunction(id => window.vector.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
-  const run = await page.evaluate(pageId => window.vector.invoke("runs.start", { goal: "Inspect the local page while I can intervene", pageIds: [pageId], chatId: "connected-agent-chat" }), browser.pageId);
+  const browser = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), pageUrl);
+  await page.waitForFunction(id => window.aux.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
+  const run = await page.evaluate(pageId => window.aux.invoke("runs.start", { goal: "Inspect the local page while I can intervene", pageIds: [pageId], chatId: "connected-agent-chat" }), browser.pageId);
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Inspect the local page while I can intervene" }).click();
   const take = page.getByRole("button", { name: "Take control of browser tab", exact: true });
   await take.waitFor();
   await take.click();
-  await page.waitForFunction(runId => window.vector.invoke("runs.get", { runId }).then(item => item.run.status === "paused"), run.runId);
+  await page.waitForFunction(runId => window.aux.invoke("runs.get", { runId }).then(item => item.run.status === "paused"), run.runId);
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Inspect the local page while I can intervene" }).click();
   await page.getByText("You're in control", { exact: true }).waitFor();
   await page.screenshot({ path: join(artifacts, "aux-agent-human-control.png") });
   await page.getByRole("button", { name: "Return control", exact: true }).click();
   await take.waitFor();
-  await page.waitForFunction(runId => window.vector.invoke("runs.get", { runId }).then(item => item.run.status === "planning" || item.run.status === "running"), run.runId);
+  await page.waitForFunction(runId => window.aux.invoke("runs.get", { runId }).then(item => item.run.status === "planning" || item.run.status === "running"), run.runId);
   await page.getByRole("button", { name: "Stop run", exact: true }).click();
   await page.getByText("Cancelled", { exact: true }).waitFor();
-  assert.equal((await page.evaluate(runId => window.vector.invoke("runs.get", { runId }), run.runId)).run.status, "cancelled");
+  assert.equal((await page.evaluate(runId => window.aux.invoke("runs.get", { runId }), run.runId)).run.status, "cancelled");
   const provenance = page.locator(".run-provenance");
   await provenance.getByText(/openai-compatible · aux-fixture-model/).waitFor();
   await provenance.locator("summary").click();
@@ -159,7 +157,7 @@ try {
   app = undefined;
   app = await launch();
   page = await shell();
-  const restored = await page.evaluate(() => window.vector.invoke("settings.get", {}));
+  const restored = await page.evaluate(() => window.aux.invoke("settings.get", {}));
   assert.equal(restored.modelProvider, "openai-compatible");
   assert.equal(restored.modelEndpoint, endpoint);
   assert.equal(restored.modelApiKey, "••••••••");
@@ -172,7 +170,7 @@ try {
   await page.getByLabel("Reply to conversation", { exact: true }).fill("What heading did you find?");
   await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page.waitForFunction(async () => {
-    const runs = await window.vector.invoke("runs.list", { chatId: "connected-agent-chat", limit: 10 });
+    const runs = await window.aux.invoke("runs.list", { chatId: "connected-agent-chat", limit: 10 });
     return runs.length === 2 && runs[0].status === "completed";
   });
   assert.equal(await page.locator(".conversation-turn").count(), 2, "A provider-backed follow-up must remain in the same conversation");

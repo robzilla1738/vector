@@ -10,20 +10,8 @@ export { EventBus } from "./events.js";
 export { NullNativeBridge, type NativeBridge } from "./native.js";
 export { ApiServer, MAX_BODY_BYTES } from "./api/server.js";
 export { loadConfig, loadDotEnv, parseDotEnv, dotEnvCandidates } from "./config.js";
-export { RpcChannel, memoryTransportPair, type Transport } from "@vector/contracts";
+export { RpcChannel, memoryTransportPair, type Transport } from "@aux/contracts";
 export { PageService, type DriverSet, type ExecuteResult } from "./services/pages.js";
-export {
-  Router,
-  MemoryRouterStore,
-  isFallbackError,
-  originOf,
-  stepTargetsRef,
-  NEEDS_CHROMIUM_TTL_MS,
-  type NeedsChromiumEntry,
-  type RouteDecision,
-  type ReplayPlan,
-  type RouterStore,
-} from "./services/router.js";
 export { SetService } from "./services/sets.js";
 export { RunService, substituteParameters } from "./services/runs.js";
 export { makeInvoker, type Services } from "./api/handlers.js";
@@ -32,6 +20,8 @@ export { ArtifactStore } from "./services/artifacts.js";
 export { conversationSourceFromArtifact, dedupeConversationSources, isObservationArtifactContent } from "./services/conversation-sources.js";
 export { summarizeModelUsage } from "./services/model-usage.js";
 export { CookieService, decryptValue, chromeEpochToUnix, mapSameSite } from "./services/cookies.js";
+export { BrowserImporter } from "./services/browser-import.js";
+export { readArcSidebar, readChromiumBookmarks, readChromiumHistory, readFirefoxBookmarks, readFirefoxHistory, readSafariBookmarks, readSafariHistory, snapshotSqlite, listImportSources } from "./services/import-sources.js";
 export { RunCoordinator, verifyDoneAgainstObservation } from "./agent/coordinator.js";
 export { initialMachine, reduce as reduceMachine, MACHINE_STATES } from "./agent/machine.js";
 export { MockModelClient } from "./agent/mock-client.js";

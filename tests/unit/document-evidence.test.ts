@@ -26,7 +26,7 @@ it("reads only bounded UTF-8 regular documents and preserves exact bytes includi
 });
 
 it("accepts extracted Word snapshots while rejecting binary or unsafe attachment input", async () => {
-  const { ConversationAttachmentAddParams, EvidenceDocumentParams } = await import("@vector/contracts");
+  const { ConversationAttachmentAddParams, EvidenceDocumentParams } = await import("@aux/contracts");
   expect(ConversationAttachmentAddParams.safeParse({ chatId: "word-chat", filename: "Notes.DOCX", content: "Extracted notes" }).success).toBe(true);
   expect(ConversationAttachmentAddParams.safeParse({ chatId: "workbook-chat", filename: "Budget.xlsx", content: '{"format":"aux.workbook.v1","sheets":[]}' }).success).toBe(true);
   for (const filename of ["Notes.docx", "Budget.xlsx", "Research.pdf"]) expect(EvidenceDocumentParams.safeParse({ taskId: "task-documents", expectedRevision: 1, criterionId: "result", filename, content: "Saved text" }).success).toBe(true);

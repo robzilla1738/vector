@@ -3,11 +3,12 @@ import { isScrimOverlay, nativePageId } from "../chrome";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
 import { forwardRef, useRef, useState } from "react";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { bridge, inElectron, inMock } from "../bridge";
-import { useStore, call, errToast } from "../store";
-import { EngineView } from "./EngineView";
+import { useStore, call, errToast, tabCommand } from "../store";
+
 import { MockPage } from "./MockPage";
+import { TranslationBar } from "./TranslationBar";
 import { Conversation } from "./Conversation";
 import { StartPage } from "./StartPage";
 import { I } from "./icons";
@@ -21,13 +22,14 @@ function PageRecovery({ page }: { page: PageTarget }) {
   const [actionError, setActionError] = useState("");
   const error = page.navigationError;
   const crashed = page.viewStatus === "crashed";
-  const failure = crashed ? {title:"This tab crashed",detail:"Reload to try again. Unsaved changes on this page may be lost."} : navigationFailure(error!);
-  const insecure = !crashed && !!error && /ERR_CERT_/.test(error.message);
+  const httpFallback = !crashed && !!error?.upgradedFrom;
+  const failure = crashed ? {title:"This tab crashed",detail:"Reload to try again. Unsaved changes on this page may be lost."} : httpFallback ? {title:"This site doesn't support secure connections",detail:"Aux tried to load it over encrypted HTTPS but the site didn't respond securely. You can continue over unencrypted HTTP — information you send won't be private on this site."} : navigationFailure(error!);
+  const insecure = !crashed && !httpFallback && !!error && /ERR_CERT_/.test(error.message);
   const recover = async (action: "reload" | "back") => {
     if (pending.current) return;
     pending.current = true;
     setBusy(action); setActionError("");
-    try { await call(action === "reload" ? "pages.reload" : "pages.back", { pageId: page.pageId }); }
+    try { await tabCommand({ kind: action === "reload" ? "reload" : "back", pageId: page.pageId }); }
     catch (reason) {
       const detail = reason instanceof Error ? reason.message : String(reason);
       setActionError(`${action === "reload" ? "Couldn’t reload this tab" : "Couldn’t go back"}. ${detail}`);
@@ -39,8 +41,11 @@ function PageRecovery({ page }: { page: PageTarget }) {
     pending.current = true;
     setBusy("proceed"); setActionError("");
     try {
-      await bridge.proceedInsecure(error.url);
-      await call("pages.reload", { pageId: page.pageId });
+      if (error.upgradedFrom) await bridge.useHttp(page.pageId, error.upgradedFrom);
+      else {
+        await bridge.proceedInsecure(error.url);
+        await tabCommand({ kind: "reload", pageId: page.pageId });
+      }
     } catch (reason) {
       setActionError(`Couldn’t proceed. ${reason instanceof Error ? reason.message : String(reason)}`);
     } finally { pending.current = false; setBusy(null); }
@@ -53,6 +58,7 @@ function PageRecovery({ page }: { page: PageTarget }) {
       <button className="btn primary" disabled={busy !== null} onClick={() => void recover("reload")}>{busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}</button>
       <button className="btn" onClick={() => useStore.getState().focusCommandBar()}>Edit address</button>
       {page.canGoBack && <button className="btn" disabled={busy !== null} onClick={() => void recover("back")}>{busy === "back" ? "Going back…" : "Go back"}</button>}
+      {httpFallback && <button className="btn" disabled={busy !== null} onClick={() => void proceed()}>{busy === "proceed" ? "Continuing…" : "Continue over HTTP"}</button>}
       {insecure && <button className="btn ghost" disabled={busy !== null} onClick={() => void proceed()}>{busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}</button>}
     </div>
     {actionError && <p role="alert">{actionError}</p>}
@@ -77,6 +83,7 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
   return (
     <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
       <div className="stage-progress" role="progressbar" aria-hidden={!loading} aria-valuetext={loading ? "Loading" : "Idle"} />
+      {page && <TranslationBar pageId={page.pageId} />}
       <div id="stage" ref={ref}>
         {mode === "focus" && page?.backend === "chrome" && page.viewStatus !== "crashed" && !page.navigationError && (
           <div className="stage-message">
@@ -106,7 +113,6 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
             </div>
           </div>
         )}
-        {mode === "focus" && hasUrl && page?.backend === "vector-engine" && page.viewStatus !== "crashed" && !page.navigationError && inElectron && <EngineView page={page} />}
         {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inElectron && inMock && !splitVisible && <MockPage page={page} />}
         {splitVisible && <SplitDivider preview={!inElectron && inMock ? [page!, companion!] : undefined} />}
         {mode === "conversation" && <Conversation />}

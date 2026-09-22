@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Task, TaskReceipt } from "@vector/contracts";
+import type { Task, TaskReceipt } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { TaskReceiptView } from "./TaskReceiptView";
 

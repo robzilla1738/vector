@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compactObservation, renderObservation } from "@vector/runtime";
-import { CompactObservationSchema, type Observation } from "@vector/contracts";
+import { compactObservation, renderObservation } from "@aux/runtime";
+import { CompactObservationSchema, type Observation } from "@aux/contracts";
 
 function sampleObservation(n = 40): Observation {
   const elements = Array.from({ length: n }, (_, i) => ({

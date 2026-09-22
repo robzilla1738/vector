@@ -5,7 +5,7 @@
  * for the current platform (unsigned dir target).
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync, copyFileSync, readdirSync, chmodSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,7 +19,12 @@ const run = (cmd, args, opts = {}) => {
 };
 
 console.log("▸ build workspace");
-run("node_modules/.bin/tsc", ["-b", "tsconfig.json"]);
+// Clean vendored outputs first: tsc --force re-emits sources but never removes
+// orphaned files from renamed/deleted modules, and stale emit would ship.
+for (const dist of ["packages/contracts", "packages/chromium-driver", "apps/runtime"]) {
+  rmSync(join(root, dist, "dist"), { recursive: true, force: true });
+}
+run("node_modules/.bin/tsc", ["-b", "tsconfig.json", "--force"]);
 
 const desktopDir = join(root, "apps", "desktop");
 
@@ -46,20 +51,7 @@ const vendor = (pkgDir, destName) => {
 };
 
 vendor("packages/contracts", "contracts");
-vendor("packages/engine-client", "engine-client");
-{
-  const src = join(root, "engine/crates/ve-napi");
-  const dest = join(rtOut, "vendor", "engine-native");
-  mkdirSync(dest, { recursive: true });
-  for (const name of ["package.json", "index.js", "index.d.ts"]) {
-    if (existsSync(join(src, name))) copyFileSync(join(src, name), join(dest, name));
-  }
-  for (const name of readdirSync(src)) {
-    if (name.endsWith(".node") || name === "ve-host" || name === "ve-host.exe") {
-      copyFileSync(join(src, name), join(dest, name));
-    }
-  }
-}
+vendor("packages/chromium-driver", "chromium-driver");
 run("cp", ["-R", join(root, "apps/runtime/dist"), join(root, "apps/runtime/package.json"), rtOut + "/"]);
 
 // rewrite workspace:* deps → file:../vendor/*
@@ -71,14 +63,13 @@ const rewriteFileDeps = (pkgPath, mapping) => {
   delete pkg.devDependencies;
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 };
-rewriteFileDeps(join(rtOut, "vendor/engine-client/package.json"), {
-  "@vector/contracts": "file:../contracts",
-  "@vector/engine-native": "file:../engine-native",
+rewriteFileDeps(join(rtOut, "vendor/chromium-driver/package.json"), {
+  "@aux/contracts": "file:../contracts",
 });
 // npm treats file:-directory deps as links and does NOT install their deps —
 // hoist vendor packages' registry deps into the runtime manifest instead.
 const vendorDeps = {};
-for (const name of ["contracts", "engine-client", "engine-native"]) {
+for (const name of ["contracts", "chromium-driver"]) {
   const pkgFile = join(rtOut, "vendor", name, "package.json");
   if (!existsSync(pkgFile)) continue;
   const vp = JSON.parse(readFileSync(pkgFile, "utf8"));
@@ -109,55 +100,13 @@ run("npm", ["install", "--omit=dev", "--no-package-lock", "--no-audit", "--no-fu
 
 // npm file: deps install as symlinks into ./vendor — replace with real
 // copies so resolution stays inside runtime/node_modules.
-for (const name of ["contracts", "engine-client", "engine-native"]) {
-  const link = join(rtOut, "node_modules", "@vector", name);
+for (const name of ["contracts", "chromium-driver"]) {
+  const link = join(rtOut, "node_modules", "@aux", name);
   const real = join(rtOut, "vendor", name);
   if (!existsSync(real)) continue;
   rmSync(link, { recursive: true, force: true });
-  mkdirSync(join(rtOut, "node_modules", "@vector"), { recursive: true });
+  mkdirSync(join(rtOut, "node_modules", "@aux"), { recursive: true });
   run("cp", ["-R", real, link]);
-}
-
-console.log("▸ stage Mac engine bins");
-const engineStage = join(root, "release", ".staging", "engine");
-rmSync(engineStage, { recursive: true, force: true });
-mkdirSync(engineStage, { recursive: true });
-{
-  const bin = (name) => (process.platform === "win32" ? `${name}.exe` : name);
-  const search = [
-    join(root, "release"),
-    join(root, "engine", "target", "release"),
-    join(root, "engine", "target", "debug"),
-    join(root, "engine", "crates", "ve-napi"),
-  ];
-  for (const name of ["ve-shell", "ve-host"]) {
-    const file = bin(name);
-    for (const dir of search) {
-      const src = join(dir, file);
-      if (!existsSync(src)) continue;
-      copyFileSync(src, join(engineStage, file));
-      try { chmodSync(join(engineStage, file), 0o755); } catch { /* windows */ }
-      break;
-    }
-  }
-  if (process.platform === "darwin" && !existsSync(join(engineStage, "ve-host"))) {
-    console.log("▸ cargo build -p ve-host --release (Mac production containment)");
-    run("cargo", ["build", "-p", "ve-host", "--release"], { cwd: join(root, "engine") });
-    const built = join(root, "engine", "target", "release", "ve-host");
-    if (existsSync(built)) {
-      copyFileSync(built, join(engineStage, "ve-host"));
-      chmodSync(join(engineStage, "ve-host"), 0o755);
-    }
-  }
-  if (process.platform === "darwin" && !existsSync(join(engineStage, "ve-shell"))) {
-    console.log("▸ cargo build -p ve-shell --release --features product");
-    run("cargo", ["build", "-p", "ve-shell", "--release", "--features", "product"], { cwd: join(root, "engine") });
-    const built = join(root, "engine", "target", "release", "ve-shell");
-    if (existsSync(built)) {
-      copyFileSync(built, join(engineStage, "ve-shell"));
-      chmodSync(join(engineStage, "ve-shell"), 0o755);
-    }
-  }
 }
 
 console.log("▸ electron-builder");
@@ -182,10 +131,7 @@ if (!existsSync(appResources)) {
 {
   rmSync(join(appResources, "runtime", "node_modules"), { recursive: true, force: true });
   run("cp", ["-R", join(rtOut, "node_modules"), join(appResources, "runtime", "node_modules")]);
-  if (existsSync(engineStage)) {
-    rmSync(join(appResources, "engine"), { recursive: true, force: true });
-    run("cp", ["-R", engineStage, join(appResources, "engine")]);
-  }
+  rmSync(join(appResources, "engine"), { recursive: true, force: true });
 }
 
 const out = join(root, "release");

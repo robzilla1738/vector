@@ -1,5 +1,5 @@
 import { isTextResult, isTextResultContent, resultFilename } from "./text-result.js";
-import { VectorError } from "@vector/contracts";
+import { AuxError } from "@aux/contracts";
 import type { ArtifactStore } from "./artifacts.js";
 import type { Repo } from "../store/repo.js";
 
@@ -31,11 +31,11 @@ export class SavedResults {
   }
   read(artifactId: string) {
     const artifact = this.repo.getArtifact(artifactId);
-    if (!artifact?.runId || !isTextResult(artifact)) throw new VectorError("not_found", "This saved text result is unavailable.");
+    if (!artifact?.runId || !isTextResult(artifact)) throw new AuxError("not_found", "This saved text result is unavailable.");
     const run = this.repo.getRun(artifact.runId);
-    if (!run) throw new VectorError("not_found", "The result's conversation no longer exists.");
+    if (!run) throw new AuxError("not_found", "The result's conversation no longer exists.");
     const content = Buffer.from(this.artifacts.read(artifactId).dataBase64,"base64").toString("utf8");
-    if (!isTextResultContent(artifact.mediaType,content)) throw new VectorError("invalid_params", "This result cannot be displayed as text.");
+    if (!isTextResultContent(artifact.mediaType,content)) throw new AuxError("invalid_params", "This result cannot be displayed as text.");
     return { artifactId, chatId: run.config?.chatId ?? run.runId, filename: resultFilename(artifactId,artifact.path), mediaType: artifact.mediaType, content, createdAt: artifact.createdAt };
   }
 }

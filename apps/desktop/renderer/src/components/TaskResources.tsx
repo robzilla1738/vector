@@ -1,6 +1,6 @@
 import {LocalProjectResources} from "./LocalProjectResources";
 import {useState} from "react";
-import type {PageTarget, Task} from "@vector/contracts";
+import type {PageTarget, Task} from "@aux/contracts";
 import {useStore, errToast} from "../store";
 import {resourceWebUrl} from "../task-resource-url";
 

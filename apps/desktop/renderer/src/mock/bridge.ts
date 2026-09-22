@@ -1,8 +1,9 @@
-import { steppedZoomLevel } from "@vector/contracts";
-import { workspaceMemoryText } from "@vector/contracts/memory-context";
-import { textContextShares } from "@vector/contracts/text-context";
+import { steppedZoomLevel } from "@aux/contracts";
+import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
+import { workspaceMemoryText } from "@aux/contracts/memory-context";
+import { textContextShares } from "@aux/contracts/text-context";
 /**
- * Scripted VectorBridge for `vite --mode mock`. Runs the whole shell in a
+ * Scripted AuxBridge for `vite --mode mock`. Runs the whole shell in a
  * plain browser with no Electron and no runtime — for visual review, screenshot
  * baselines, and poking at states that are hard to reproduce live.
  *
@@ -17,8 +18,8 @@ import { textContextShares } from "@vector/contracts/text-context";
  *   ?scenario=disconnected  runtime unreachable → degraded banner
  *   &theme=dark|light  &sidebar=expanded|rail  &live=1 (stream new steps)
  */
-import type { Download, BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, VectorEvent } from "@vector/contracts";
-import type { BrowserExtension, VectorBridge } from "../bridge";
+import type { Download, BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
+import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
 
@@ -38,7 +39,7 @@ export function installMockBridge(q: URLSearchParams) {
   const zoomListeners = new Set<() => void>();
   let spaces: BrowserSpace[] = [{ ...DEFAULT_SPACE, workspaceId: `workspace:${DEFAULT_SPACE.id}`, archived: false }];
   const scenario = q.get("scenario") ?? "browsing";
-  type DictationEvent = Parameters<Parameters<VectorBridge["onDictation"]>[0]>[0];
+  type DictationEvent = Parameters<Parameters<AuxBridge["onDictation"]>[0]>[0];
   const dictationListeners = new Set<(event: DictationEvent) => void>();
   const dictationEvent = (event: DictationEvent) => dictationListeners.forEach(listener => listener(event));
 
@@ -56,10 +57,10 @@ export function installMockBridge(q: URLSearchParams) {
   const theme = q.get("theme") ?? "dark";
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   const sidebar = q.get("sidebar");
-  if (sidebar) localStorage.setItem("vector.sidebar", sidebar);
-  else localStorage.removeItem("vector.sidebar");
+  if (sidebar) localStorage.setItem("aux.sidebar", sidebar);
+  else localStorage.removeItem("aux.sidebar");
   localStorage.setItem(
-    "vector.layout.v1",
+    "aux.layout.v1",
     JSON.stringify({
       spaces: [DEFAULT_SPACE],
       activeSpaceId: DEFAULT_SPACE.id,
@@ -82,17 +83,17 @@ export function installMockBridge(q: URLSearchParams) {
       },
     }),
   );
-  localStorage.setItem("vector.sb-w", q.get("sbw") ?? "260");
-  localStorage.setItem("vector.rail-w", q.get("railw") ?? "380");
-  if (q.get("rail")) localStorage.setItem("vector.mock.rail", q.get("rail")!);
-  else localStorage.removeItem("vector.mock.rail");
+  localStorage.setItem("aux.sb-w", q.get("sbw") ?? "260");
+  localStorage.setItem("aux.rail-w", q.get("railw") ?? "380");
+  if (q.get("rail")) localStorage.setItem("aux.mock.rail", q.get("rail")!);
+  else localStorage.removeItem("aux.mock.rail");
 
   // ---- state ----
   let seq = 100;
-  const eventListeners = new Set<Listener<VectorEvent>>();
+  const eventListeners = new Set<Listener<AuxEvent>>();
   const loadingListeners = new Set<Listener<{ pageId: string; loading: boolean }>>();
   const emit = (type: string, payload: Record<string, unknown>, runId?: string) => {
-    const ev: VectorEvent = { seq: ++seq, type, payload, ts: Date.now(), ...(runId ? { runId } : {}) };
+    const ev: AuxEvent = { seq: ++seq, type, payload, ts: Date.now(), ...(runId ? { runId } : {}) };
     for (const l of eventListeners) l(ev);
   };
 
@@ -122,11 +123,10 @@ export function installMockBridge(q: URLSearchParams) {
   let steps: Record<string, StepRecord[]> = {};
   const settings: Record<string, unknown> = {
     theme,
-    searchEngine: "https://duckduckgo.com/?q=%s",
+    searchEngine: DEFAULT_SEARCH_ENGINE,
     plannerModel: "alibaba/qwen3.8-27b",
     maxWorkers: 4,
     maxModelCalls: 8,
-    engineMode: q.get("engine") ?? "off",
     gatewayApiKey: "••••••••",
     effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };
@@ -143,24 +143,15 @@ export function installMockBridge(q: URLSearchParams) {
     runs = [run, ...runs];
     steps[RUN_ID] = makeSteps(RUN_ID, scenario === "run" ? 6 : 8);
     pages = pages.map((p) => (p.pageId === "page-1" ? { ...p, controller: scenario === "takeover" ? "human" : "agent", controllerEpoch: 2 } : p));
-    if (settings.engineMode !== "off") {
-      pages = pages.map((p) => (p.pageId === "page-1" ? ({ ...p, route: { backend: "vector-engine", routeReason: "engineMode=auto · github.com is in the engine allowlist", routeMs: 14, firstPaintMs: 212 } } as PageTarget) : p));
-    }
   } else if (scenario !== "start" && pages.length) {
-    pages = pages.map((p, i) =>
-      settings.engineMode !== "off" && i === 2
-        ? ({ ...p, route: { backend: "vector-engine", routeReason: "engineMode=auto · docs site, static", routeMs: 9, firstPaintMs: 141 } } as PageTarget)
-        : i === 4
-          ? { ...p, backend: "chrome" }
-          : p,
-    );
+    pages = pages.map((p, i) => (i === 4 ? { ...p, backend: "chrome" } : p));
   }
   if (scenario === "many") pages = pages.map((p, i) => (i === 7 ? { ...p, loading: true } : i === 21 ? { ...p, viewStatus: "crashed" } : p));
 
   const sets = scenario === "set" || withRun ? [SET] : [];
   const members = sets.length ? MEMBERS : [];
 
-  const workspace = () => ({ pages, sets, members, runs, sessions: [{ sessionId: "sess-1", backend: "vector", label: "Aux", status: "connected" }], activePageId, lastSeq: seq });
+  const workspace = () => ({ pages, sets, members, runs, sessions: [{ sessionId: "sess-1", backend: "aux", label: "Aux", status: "connected" }], activePageId, lastSeq: seq });
 
   const page = (id: string) => {
     const p = pages.find((x) => x.pageId === id);
@@ -316,7 +307,7 @@ export function installMockBridge(q: URLSearchParams) {
       case "browser.recovery.list": return recoveryTabs;
       case "browser.recovery.retry": {
         const saved=recoveryTabs.find(tab=>tab.pageId===p.pageId);if(!saved)throw new Error("This tab has already been restored.");
-        const page=makePage(pages.length,{...saved,backend:"vector",viewStatus:"visible"});pages.push(page);
+        const page=makePage(pages.length,{...saved,backend:"aux",viewStatus:"visible"});pages.push(page);
         recoveryTabs=recoveryTabs.filter(tab=>tab.pageId!==p.pageId);
         emit("page.added",{page});emit("browser.recovery.changed",{});
         return {ok:true,pageId:page.pageId};
@@ -427,21 +418,6 @@ export function installMockBridge(q: URLSearchParams) {
         return page(p.pageId as string);
       case "pages.observe":
         return { observation: { ...OBSERVATION, pageId: p.pageId as string } };
-      case "pages.engineInput":
-        return { ok: true };
-      case "pages.scene":
-        return {
-          kind: "displayList",
-          transport: "scene",
-          png: false,
-          width: 800,
-          height: 600,
-          itemCount: 2,
-          items: [
-            { kind: "rect", x: 0, y: 0, w: 800, h: 600, color: "rgb(255,255,255)" },
-            { kind: "text", x: 16, y: 32, text: "Aux", size: 18, color: "rgb(0,0,0)" },
-          ],
-        };
       case "pages.find":
         return { matches: 7, activeMatch: 2 };
       case "pages.stopFind": return { ok: true };
@@ -619,14 +595,26 @@ export function installMockBridge(q: URLSearchParams) {
     })();
   }
 
-  const bridge: VectorBridge = {
+  const bridge: AuxBridge = {
     browserProfiles:async()=>[],
     createBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
     renameBrowserProfile:async()=>[],
     archiveBrowserProfile:async()=>[],
+    deleteBrowserProfile:async()=>[],
     openBrowserProfile:async()=>false,
+    defaultBrowser:async()=>({isDefault:false}),
+    setDefaultBrowser:async()=>({isDefault:false}),
+    autofill:async()=>0,
+    vaultFill:async()=>false,
+    vaultSave:async()=>({ok:false,updated:false}),
+    vaultDismiss:async()=>false,
+    vaultExport:async()=>null,
+    vaultImport:async()=>null,
+    onVaultOffer:()=>()=>{},
     privateMode: false,
     windowId: "main",
+    platform: "darwin",
+    setShortcutOverrides: async () => ({}),
     invoke,
     onEvent: (cb) => (eventListeners.add(cb), () => eventListeners.delete(cb)),
     onRuntimeStatus: () => () => {},
@@ -641,6 +629,29 @@ export function installMockBridge(q: URLSearchParams) {
     retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
     tabAudio:async()=>({}),
     setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
+    // Mock tab commands reuse the local page list — the real surface is the
+    // main-owned catalog; visual dev only needs the pages themselves to move.
+    tabCommand:async(command)=>{
+      const p=command as {kind:string;pageId?:string;url?:string;background?:boolean;activate?:boolean;muted?:boolean;windowId?:string};
+      await sleep(12);
+      switch(command.kind){
+        case"open":{
+          const result=await invoke("pages.open",{url:p.url??"about:blank",background:p.background,activate:p.activate??!p.background}) as PageTarget;
+          return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:result.pageId};
+        }
+        case"close":await invoke("pages.close",{pageId:p.pageId});return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:p.pageId};
+        case"activate":await invoke("pages.activate",{pageId:p.pageId});emit("page.updated",{pageId:p.pageId,activePageId});return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:p.pageId};
+        case"navigate":await invoke("pages.navigate",{pageId:p.pageId,url:p.url});return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:p.pageId};
+        case"reload":await invoke("pages.reload",{pageId:p.pageId});return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:p.pageId};
+        case"move":return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:p.pageId,windowId:p.windowId??"mock-window"};
+        case"back":case"forward":case"stop":case"setMuted":case"reorder":return{commandId:"",status:"applied" as const,catalogVersion:0,pageId:p.pageId};
+        default:return{commandId:"",status:"rejected" as const,catalogVersion:0,error:{code:"unknown",message:"Unknown mock command."}};
+      }
+    },
+    tabsSnapshot:async()=>({version:1,tabs:pages.map(p=>({pageId:p.pageId,windowId:"main",url:p.url,title:p.title,favicon:p.favicon,loading:!!p.loading,muted:false,audible:false,canGoBack:!!p.canGoBack,canGoForward:!!p.canGoForward,popup:false,crashed:p.viewStatus==="crashed",runtimeOwned:p.ownedByRuntime,generation:0,createdAt:p.createdAt,lastActiveAt:p.lastActiveAt})),windows:[{windowId:"main",order:pages.map(p=>p.pageId),activePageId}]}),
+    tabsSince:async()=>({kind:"snapshot" as const,snapshot:await bridge.tabsSnapshot()}),
+    onTabsPatch:()=>()=>{},
+    onTabsPlacement:()=>()=>{},
     onAudio:()=>()=>{},
     downloadFolder: async()=>({path:"~/Downloads",custom:false}),
     chooseDownloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
@@ -752,7 +763,7 @@ export function installMockBridge(q: URLSearchParams) {
     respondHttpAuth: async()=>false,
     onHttpAuthChanged: ()=>()=>{},
     clearSiteData: async () => { throw new Error("Website data controls require the desktop browser."); },
-    siteInfo: async (pageId: string) => ({pageId,url:"https://example.com/",origin:"https://example.com",title:"Example",security:"secure" as const,cookieCount:2,permissions:{notifications:"deny" as const}}),
+    siteInfo: async (pageId: string) => ({pageId,url:"https://example.com/",origin:"https://example.com",title:"Example",security:"secure" as const,cookieCount:2,permissions:{notifications:"deny" as const},trackersAllowed:false}),
     onSiteZoomChanged: cb => { zoomListeners.add(cb); return () => { zoomListeners.delete(cb); }; },
     siteZoom: async origin => {
       const sizes = new Map<string, number>();
@@ -768,13 +779,24 @@ export function installMockBridge(q: URLSearchParams) {
     },
     sitePermissions: async () => ({}),
     clearSitePermission: async () => true,
-    privacy: async () => ({ trackerBlock: true, blocked: 0 }),
+    privacy: async () => ({ trackerBlock: true, blocked: 0, allowedHosts: [], httpsUpgrade: true }),
     setTrackerBlock: async () => ({ trackerBlock: true, blocked: 0 }),
+    setSiteTrackers: async () => { throw new Error("Site controls require the desktop browser."); },
+    removeAllowedHost: async () => [],
+    filterLists: async () => ({ sources: [], hosts: 0, builtinHosts: 0 }),
+    updateFilters: async () => ({ sources: [], hosts: 0, builtinHosts: 0 }),
+    addFilterSource: async () => [],
+    removeFilterSource: async () => [],
     proceedInsecure: async () => true,
+    useHttp: async () => true,
+    setHttpsUpgrade: async () => true,
+    translatePage: async () => { throw new Error("Translation is unavailable in the preview."); },
+    showOriginal: async () => 0,
+    onTranslationChanged: () => () => {},
     setAppearance: async () => true,
   };
-  (window as unknown as { vector: VectorBridge; __vectorMock: boolean }).vector = bridge;
-  (window as unknown as { __vectorMock: boolean }).__vectorMock = true;
+  (window as unknown as { aux: AuxBridge; __auxMock: boolean }).aux = bridge;
+  (window as unknown as { __auxMock: boolean }).__auxMock = true;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

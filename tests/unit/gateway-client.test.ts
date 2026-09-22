@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { PlanChunkSchema, VectorError } from "@vector/contracts";
+import { PlanChunkSchema, AuxError } from "@aux/contracts";
 import {
   assignMissingStepIds,
   extractJson,
@@ -101,7 +101,7 @@ describe("stripReasoning / oneOf errors", () => {
         prompt: "what color",
         imageDataUrl: "data:image/png;base64,AAAA",
       }),
-    ).rejects.toBeInstanceOf(VectorError);
+    ).rejects.toBeInstanceOf(AuxError);
     await expect(
       client.generateText({
         modelId: "alibaba/qwen3.8-27b",

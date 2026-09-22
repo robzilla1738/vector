@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { EventBus, openDb, Repo, RoutineService, TaskService, nextScheduledTime } from "@vector/runtime";
+import { EventBus, openDb, Repo, RoutineService, TaskService, nextScheduledTime } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });

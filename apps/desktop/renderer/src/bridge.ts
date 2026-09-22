@@ -2,9 +2,11 @@
  * Typed access to the preload bridge. In a plain browser (vite dev without
  * electron) we expose a stub so the UI renders for visual development; in
  * `--mode mock` main.tsx installs a scripted bridge before this module reads
- * window.vector (see mock/bridge.ts).
+ * window.aux (see mock/bridge.ts).
  */
-import type { VectorEvent, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope } from "@vector/contracts";
+import type { AuxEvent, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
+
+export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
 export interface StageBounds {
   x: number;
@@ -21,7 +23,10 @@ export interface BrowserSiteInfo {
   security:"secure"|"local"|"insecure";
   cookieCount:number;
   permissions:Record<string,"allow"|"deny">;
+  trackersAllowed:boolean;
 }
+export interface FilterSourceStatus { id:string;name:string;url:string;enabled:boolean;meta?:{fetchedAt:number;etag?:string;hosts:number;sha256:string;error?:string} }
+export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;builtinHosts:number }
 export interface BrowserHealthSummary {
   recordingSince?:number;latestAt?:number;samples:number;sessions:number;observedMinutes:number;spanDays:number;sevenDaySpan:boolean;startupMs?:number;
   cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
@@ -31,23 +36,38 @@ export const emptyBrowserHealthSummary=():BrowserHealthSummary=>({samples:0,sess
 export type ReaderNode = string | {tag:string;href?:string;sourceId?:string;children:ReaderNode[]};
 export interface ReaderArticle { title:string;byline:string;site:string;url:string;minutes:number;content:ReaderNode }
 
-export interface VectorBridge {
+export interface VaultOffer { pageId:string; username:string; origin:string; kind:"save"|"update"; itemId?:string; locked?:boolean }
+
+export interface AuxBridge {
   browserProfiles():Promise<BrowserProfile[]>;
+  defaultBrowser():Promise<{isDefault:boolean}>;
+  autofill(pageId:string):Promise<number>;
+  vaultFill(pageId:string,itemId:string):Promise<boolean>;
+  vaultSave(pageId:string,origin:string):Promise<{ok:boolean;updated:boolean}>;
+  vaultDismiss(pageId:string,origin:string):Promise<boolean>;
+  vaultExport():Promise<{path:string}|null>;
+  vaultImport():Promise<{added:number;skipped:number}|null>;
+  onVaultOffer(cb:(offer:VaultOffer)=>void):()=>void;
+  setDefaultBrowser():Promise<{isDefault:boolean}>;
   createBrowserProfile(name:string):Promise<BrowserProfile>;
   renameBrowserProfile(id:string,name:string):Promise<BrowserProfile[]>;
   archiveBrowserProfile(id:string,archived:boolean):Promise<BrowserProfile[]>;
+  deleteBrowserProfile(id:string):Promise<BrowserProfile[]>;
   openBrowserProfile(id:string):Promise<boolean>;
-  onPageAction(cb: (action: import("@vector/contracts").PageQuickAction) => void): () => void;
+  onPageAction(cb: (action: import("@aux/contracts").PageQuickAction) => void): () => void;
   quickAskShortcut(enabled?:boolean):Promise<{enabled:boolean;registered:boolean;error:string}>;
   quickAskMode: boolean;
   quickAsk(action:"open"|"expand"|"dismiss"|"status"):Promise<boolean>;
   onQuickAskState(cb:(compact:boolean)=>void):()=>void;
   privateMode: boolean;
   windowId: string;
+  platform: string;
+  /** push saved binding overrides to main (menus + page interception) */
+  setShortcutOverrides(overrides: unknown): Promise<unknown>;
   invoke(method: string, params?: unknown): Promise<unknown>;
-  onEvent(cb: (e: VectorEvent) => void): () => void;
+  onEvent(cb: (e: AuxEvent) => void): () => void;
   onRuntimeStatus(cb: (status: { connected: boolean; detail?: string }) => void): () => void;
-  onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => void): () => void;
+  onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string }) => void): () => void;
   /** Pointer is at the top of a loaded native page, where the shell cannot see the hover. */
   onToolbarEdge(cb: (near: boolean) => void): () => void;
   /** Pointer is on the left edge of a loaded page, where a hidden sidebar can open. */
@@ -56,6 +76,13 @@ export interface VectorBridge {
   retryDownload(id:string):Promise<void>;
   tabAudio():Promise<Record<string,{muted:boolean;audible:boolean}>>;
   setTabMuted(pageId:string,muted:boolean):Promise<void>;
+  /** typed human tab commands (§7.2) — actuated in main, no runtime round trip */
+  tabCommand(command:TabCommand,catalogVersion?:number):Promise<TabCommandAck>;
+  tabsSnapshot():Promise<TabCatalogSnapshot>;
+  tabsSince(version:number):Promise<TabsSinceResult>;
+  onTabsPatch(cb:(patch:TabPatch)=>void):()=>void;
+  /** workspace placement relayed by main when a `move` lands in this window */
+  onTabsPlacement(cb:(payload:{pageId:string;windowId:string;placement:TabPlacement})=>void):()=>void;
   onAudio(cb:(state:{pageId:string;muted:boolean;audible:boolean;removed?:boolean})=>void):()=>void;
   downloadFolder():Promise<{path:string;custom:boolean;error?:string}>;
   chooseDownloadFolder(reset?:boolean):Promise<{path:string;custom:boolean;error?:string}>;
@@ -151,18 +178,39 @@ export interface VectorBridge {
   onSiteZoomChanged(cb: () => void): () => void;
   sitePermissions(): Promise<Record<string, Record<string, "allow" | "deny">>>;
   clearSitePermission(origin: string, permission?: string): Promise<boolean>;
-  privacy(): Promise<{ trackerBlock: boolean; blocked: number }>;
+  privacy(): Promise<{ trackerBlock: boolean; blocked: number; allowedHosts?: string[]; httpsUpgrade?: boolean }>;
   setTrackerBlock(enabled: boolean): Promise<{ trackerBlock: boolean; blocked: number }>;
+  setHttpsUpgrade(enabled: boolean): Promise<boolean>;
+  setSiteTrackers(pageId: string, allowed: boolean): Promise<{ hostname: string; allowed: boolean }>;
+  removeAllowedHost(hostname: string): Promise<string[]>;
+  filterLists(): Promise<FilterListStatus>;
+  updateFilters(): Promise<FilterListStatus>;
+  addFilterSource(name: string, url: string): Promise<FilterSourceStatus[]>;
+  removeFilterSource(id: string): Promise<FilterSourceStatus[]>;
   proceedInsecure(url: string): Promise<boolean>;
+  useHttp(pageId: string, url: string): Promise<boolean>;
+  translatePage(pageId: string): Promise<{ lang: string; count: number; truncated: boolean }>;
+  showOriginal(pageId: string): Promise<number>;
+  onTranslationChanged(cb: (payload: { pageId: string; lang?: string | null; count?: number; truncated?: boolean; pending?: boolean; error?: string }) => void): () => void;
   setAppearance(theme: "system" | "dark" | "light", translucent?: boolean, windowControls?: boolean, material?: "liquid-glass" | "titlebar" | "sidebar" | "under-window"): Promise<boolean>;
 }
 
 const noop = () => () => {};
-const stub: VectorBridge = {
+const stub: AuxBridge = {
   browserProfiles:async()=>[],
+  defaultBrowser:async()=>({isDefault:false}),
+  autofill:async()=>0,
+  vaultFill:async()=>false,
+  vaultSave:async()=>({ok:false,updated:false}),
+  vaultDismiss:async()=>false,
+  vaultExport:async()=>null,
+  vaultImport:async()=>null,
+  onVaultOffer:noop,
+  setDefaultBrowser:async()=>({isDefault:false}),
   createBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
   renameBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
   archiveBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+  deleteBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
   openBrowserProfile:async()=>false,
   quickAskShortcut: async enabled => ({enabled:!!enabled,registered:!!enabled,error:""}),
   quickAskMode: false,
@@ -170,6 +218,8 @@ const stub: VectorBridge = {
   onQuickAskState: noop,
   privateMode: false,
   windowId: "main",
+  platform: "darwin",
+  setShortcutOverrides: async () => ({}),
   invoke: async () => {
     throw new Error("Aux bridge unavailable — running outside Electron");
   },
@@ -184,6 +234,11 @@ const stub: VectorBridge = {
   retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
   tabAudio:async()=>({}),
   setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
+  tabCommand:async()=>({commandId:"",status:"rejected",catalogVersion:0,error:{code:"no_bridge",message:"Tab commands require Aux desktop"}}),
+  tabsSnapshot:async()=>({version:0,tabs:[],windows:[]}),
+  tabsSince:async()=>({kind:"snapshot",snapshot:{version:0,tabs:[],windows:[]}}),
+  onTabsPatch:noop,
+  onTabsPlacement:noop,
   onAudio:noop,
   downloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
   chooseDownloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
@@ -274,17 +329,28 @@ const stub: VectorBridge = {
   onSiteZoomChanged: noop,
   sitePermissions: async () => ({}),
   clearSitePermission: async () => true,
-  privacy: async () => ({ trackerBlock: true, blocked: 0 }),
+  privacy: async () => ({ trackerBlock: true, blocked: 0, allowedHosts: [] }),
   setTrackerBlock: async () => ({ trackerBlock: true, blocked: 0 }),
+  setHttpsUpgrade: async () => true,
+  setSiteTrackers: async () => { throw new Error("Site controls require Aux desktop"); },
+  removeAllowedHost: async () => { throw new Error("Site controls require Aux desktop"); },
+  filterLists: async () => ({ sources: [], hosts: 0, builtinHosts: 0 }),
+  updateFilters: async () => ({ sources: [], hosts: 0, builtinHosts: 0 }),
+  addFilterSource: async () => { throw new Error("Filter lists require Aux desktop"); },
+  removeFilterSource: async () => { throw new Error("Filter lists require Aux desktop"); },
   proceedInsecure: async () => true,
+  useHttp: async () => true,
+  translatePage: async () => { throw new Error("Translation requires Aux desktop"); },
+  showOriginal: async () => 0,
+  onTranslationChanged: () => () => {},
   setAppearance: async () => true,
 };
 
-type W = Window & { vector?: VectorBridge; __vectorMock?: boolean };
+type W = Window & { aux?: AuxBridge; __auxMock?: boolean };
 const w = window as unknown as W;
 
-export const bridge: VectorBridge = w.vector ?? stub;
+export const bridge: AuxBridge = w.aux ?? stub;
 /** true only inside the real Electron shell — native page views exist */
-export const inElectron = !!w.vector && !w.__vectorMock;
+export const inElectron = !!w.aux && !w.__auxMock;
 /** scripted bridge for visual development and screenshots */
-export const inMock = !!w.__vectorMock;
+export const inMock = !!w.__auxMock;

@@ -7,13 +7,13 @@ import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 
 const root = resolve(import.meta.dirname, '../..');
-const { _electron } = createRequire(join(root, 'packages/engine-client/package.json'))('playwright-core');
+const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
 const platformDirectory = process.arch === 'x64' ? 'mac' : `mac-${process.arch}`;
 const bundle = join(root, 'release', platformDirectory, 'Aux Browser.app');
 const plist = JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', join(bundle, 'Contents/Info.plist')], { encoding: 'utf8' }));
 assert.equal(plist.CFBundleDisplayName, 'Aux');
 assert.equal(plist.CFBundleExecutable, 'Aux Browser');
-assert.equal(plist.CFBundleIdentifier, 'dev.vector.browser');
+assert.equal(plist.CFBundleIdentifier, 'dev.aux.browser');
 const dir = mkdtempSync(join(tmpdir(), 'aux-identity-'));
 let app;
 let encrypted;
@@ -24,7 +24,7 @@ try {
       executablePath: join(bundle, 'Contents/MacOS/Aux Browser'), args: ['--use-mock-keychain'],
       env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir,
         AUX_PROFILE_DIR: join(dir, 'profile'), AUX_DATA_DIR: join(dir, 'data'),
-        AUX_LOAD_DOTENV: '0', AUX_ENGINE: '0', AUX_ENGINE_MODE: 'off' },
+        AUX_LOAD_DOTENV: '0' },
     });
     let page;
     for (let i = 0; i < 100; i++) {
@@ -38,7 +38,7 @@ try {
       name: app.getName(), version: app.getVersion(),
       menu: Menu.getApplicationMenu().items[0].submenu.items.map(item => item.label),
     }));
-    assert.equal(identity.name, '@vector/desktop', 'encryption identity remains unchanged');
+    assert.equal(identity.name, '@aux/desktop', 'encryption identity remains unchanged');
     for (const label of ['About Aux', 'Hide Aux', 'Quit Aux']) assert.ok(identity.menu.includes(label));
     if (round === 0) {
       encrypted = await app.evaluate(({ safeStorage }) => safeStorage.encryptString('aux-synthetic-restart-fixture').toString('base64'));

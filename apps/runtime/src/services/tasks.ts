@@ -1,7 +1,7 @@
 import { readWorkspaceMemory } from "./workspace-memory.js";
-import { memoryOrigin } from "@vector/contracts/memory-context";
+import { memoryOrigin } from "@aux/contracts/memory-context";
 import { randomUUID } from "node:crypto";
-import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, VectorError, taskConversationId, taskMatchesQuery, type Task, type Workspace, type WorkspaceMemory } from "@vector/contracts";
+import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, AuxError, taskConversationId, taskMatchesQuery, type Task, type Workspace, type WorkspaceMemory } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 
@@ -13,7 +13,7 @@ export class TaskService {
 
   createWorkspace(name: string): Workspace {
     const workspace = { workspaceId: randomUUID(), name: name.trim(), createdAt: Date.now() };
-    if (!workspace.name || workspace.name.length > 100) throw new VectorError("invalid_params", "Workspace name must contain 1–100 characters");
+    if (!workspace.name || workspace.name.length > 100) throw new AuxError("invalid_params", "Workspace name must contain 1–100 characters");
     this.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run(workspace.workspaceId, workspace.name, workspace.createdAt);
     this.events.emit("workspace.created", { workspace });
     return workspace;
@@ -40,14 +40,14 @@ export class TaskService {
 
   setWorkspaceMemory(workspaceId: string, expectedRevision: number, content: string, enabled?:boolean, items?: WorkspaceMemory["items"], excludedOrigins?: string[]): WorkspaceMemory {
     const prior = this.workspaceMemory(workspaceId);
-    if (prior.revision !== expectedRevision) throw new VectorError("conflict", "Workspace memory changed; reload it before saving.");
+    if (prior.revision !== expectedRevision) throw new AuxError("conflict", "Workspace memory changed; reload it before saving.");
     if (items && (items.length > 40 || new Set(items.map(item => item.itemId)).size !== items.length || items.some(item => !WorkspaceMemoryItemSchema.safeParse(item).success)))
-      throw new VectorError("invalid_params", "Use up to 40 valid memory notes with distinct identities.");
+      throw new AuxError("invalid_params", "Use up to 40 valid memory notes with distinct identities.");
     let origins = prior.excludedOrigins ?? [];
     if (excludedOrigins) {
-      if (excludedOrigins.length > 100) throw new VectorError("invalid_params", "Use up to 100 excluded sites.");
+      if (excludedOrigins.length > 100) throw new AuxError("invalid_params", "Use up to 100 excluded sites.");
       try { origins = [...new Set(excludedOrigins.map(memoryOrigin))]; }
-      catch { throw new VectorError("invalid_params", "Use web addresses without credentials for excluded sites."); }
+      catch { throw new AuxError("invalid_params", "Use web addresses without credentials for excluded sites."); }
     }
     const next = { workspaceId, excludedOrigins: origins, items: items ?? prior.items ?? [], enabled:enabled??prior.enabled??true, content: content.slice(0, 16_000), revision: prior.revision + 1, updatedAt: Date.now() };
     this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
@@ -57,19 +57,19 @@ export class TaskService {
 
   create(input: unknown): Task {
     const definition = TaskCreateParams.parse(input);
-    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId)) throw new VectorError("not_found", "Workspace does not exist");
+    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId)) throw new AuxError("not_found", "Workspace does not exist");
     if (definition.parentTaskId) {
       const parent = this.get(definition.parentTaskId);
-      if (parent.workspaceId !== definition.workspaceId) throw new VectorError("permission_denied", "A child task must remain in its parent workspace");
-      if (parent.state === "archived") throw new VectorError("conflict", "Restore the parent task before adding a child task");
+      if (parent.workspaceId !== definition.workspaceId) throw new AuxError("permission_denied", "A child task must remain in its parent workspace");
+      if (parent.state === "archived") throw new AuxError("conflict", "Restore the parent task before adding a child task");
       let cursor: Task | undefined = parent;
       let depth = 1;
       while (cursor.parentTaskId) {
-        if (++depth > 4) throw new VectorError("conflict", "Aux limits child-task coordination to four levels");
+        if (++depth > 4) throw new AuxError("conflict", "Aux limits child-task coordination to four levels");
         cursor = this.get(cursor.parentTaskId);
       }
       const children = this.list({ workspaceId: definition.workspaceId, includeArchived: true, limit: 500 }).filter(task => task.parentTaskId === parent.taskId);
-      if (children.length >= 20) throw new VectorError("conflict", "This task already has 20 child tasks");
+      if (children.length >= 20) throw new AuxError("conflict", "This task already has 20 child tasks");
     }
     const now = Date.now();
     const task: Task = { ...definition, taskId: randomUUID(), revision: 1, state: "open", createdAt: now, updatedAt: now };
@@ -88,14 +88,14 @@ export class TaskService {
       const existing = this.repo.taskForConversation(chatId);
       if (existing) return this.get(existing);
       const conversation = this.repo.getConversation(chatId);
-      if (!conversation) throw new VectorError("not_found", "Conversation not found.");
-      if (conversation.archived) throw new VectorError("conflict", "Restore the conversation before saving it as a task.");
+      if (!conversation) throw new AuxError("not_found", "Conversation not found.");
+      if (conversation.archived) throw new AuxError("conflict", "Restore the conversation before saving it as a task.");
       if (conversation.taskId) return this.get(conversation.taskId);
-      if (conversation.latestRun.runId !== expectedRunId) throw new VectorError("conflict", "The conversation changed. Review its latest reply before saving the task.");
-      if (this.repo.db.prepare(`SELECT 1 FROM runs WHERE (json_extract(config,'$.chatId')=? OR run_id=?) AND status IN ${ACTIVE_RUNS} LIMIT 1`).get(chatId, chatId)) throw new VectorError("conflict", "Wait for or stop the current turn before saving a task.");
+      if (conversation.latestRun.runId !== expectedRunId) throw new AuxError("conflict", "The conversation changed. Review its latest reply before saving the task.");
+      if (this.repo.db.prepare(`SELECT 1 FROM runs WHERE (json_extract(config,'$.chatId')=? OR run_id=?) AND status IN ${ACTIVE_RUNS} LIMIT 1`).get(chatId, chatId)) throw new AuxError("conflict", "Wait for or stop the current turn before saving a task.");
       if (this.repo.db.prepare("SELECT 1 FROM action_intents a JOIN runs r ON r.run_id=a.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1").get(chatId, chatId)
-        || this.repo.db.prepare("SELECT 1 FROM operation_invocations o JOIN runs r ON r.run_id=o.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND (o.status IN ('running','interrupted') OR o.effect_outcome='unknown') LIMIT 1").get(chatId, chatId)) throw new VectorError("conflict", "Resolve this conversation's uncertain actions before saving it as a task.");
-      if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId)) throw new VectorError("not_found", "Space does not exist.");
+        || this.repo.db.prepare("SELECT 1 FROM operation_invocations o JOIN runs r ON r.run_id=o.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND (o.status IN ('running','interrupted') OR o.effect_outcome='unknown') LIMIT 1").get(chatId, chatId)) throw new AuxError("conflict", "Resolve this conversation's uncertain actions before saving it as a task.");
+      if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId)) throw new AuxError("not_found", "Space does not exist.");
       const now = Date.now();
       const task: Task = { ...definition, conversationId: chatId, taskId: randomUUID(), revision: 1, state: "open", createdAt: now, updatedAt: now };
       this.repo.db.prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)").run(task.taskId, task.workspaceId, task.revision, task.state, now, JSON.stringify(task));
@@ -123,7 +123,7 @@ export class TaskService {
 
   get(taskId: string): Task {
     const row = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as { json: string } | undefined;
-    if (!row) throw new VectorError("not_found", "Task does not exist");
+    if (!row) throw new AuxError("not_found", "Task does not exist");
     return TaskSchema.parse(JSON.parse(row.json));
   }
 
@@ -164,11 +164,11 @@ export class TaskService {
     if (archived) {
       this.requireResolved(taskId);
       const openChild = this.descendants(taskId).slice(1).find(child => child.state === "open");
-      if (openChild) throw new VectorError("conflict", `Archive child task “${openChild.title}” before archiving its parent`);
+      if (openChild) throw new AuxError("conflict", `Archive child task “${openChild.title}” before archiving its parent`);
     } else if (task.parentTaskId) {
       let parent = this.get(task.parentTaskId);
       while (true) {
-        if (parent.state === "archived") throw new VectorError("conflict", `Restore parent task “${parent.title}” before restoring this child`);
+        if (parent.state === "archived") throw new AuxError("conflict", `Restore parent task “${parent.title}” before restoring this child`);
         if (!parent.parentTaskId) break;
         parent = this.get(parent.parentTaskId);
       }
@@ -186,7 +186,7 @@ export class TaskService {
       this.requireRetainedCloudProjects(prior,next);
       const result = this.repo.db.prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
         .run(next.revision, next.state, next.updatedAt, JSON.stringify(next), taskId, expectedRevision);
-      if (result.changes !== 1) throw new VectorError("conflict", "Task was changed by another client; refresh it before editing");
+      if (result.changes !== 1) throw new AuxError("conflict", "Task was changed by another client; refresh it before editing");
       this.repo.db.prepare("UPDATE conversations SET title=?,archived=? WHERE chat_id=?").run(next.title.slice(0, 160), next.state === "archived" ? 1 : 0, next.conversationId ?? taskConversationId(taskId));
       this.saveRevision(next);
       return next;
@@ -199,7 +199,7 @@ export class TaskService {
     const task = this.get(taskId);
     this.requireRevision(task, expectedRevision);
     this.requireLocalAuthority(taskId,expectedRevision);
-    if (task.state === "archived") throw new VectorError("conflict", "Restore this task before starting a run");
+    if (task.state === "archived") throw new AuxError("conflict", "Restore this task before starting a run");
     this.requireIdle(taskId);
     for(const resource of task.resources)if(resource.kind==='repository'&&resource.projectId)this.requireProjectAvailable(resource.projectId,taskId);
     this.requireResolved(taskId);
@@ -218,28 +218,28 @@ export class TaskService {
 
   prepareProjectAccess(taskId:string,expectedRevision:number,projectId:string,write=false):Task{
     const task=this.get(taskId);this.requireRevision(task,expectedRevision);
-    if(task.state==='archived')throw new VectorError('conflict','Restore this task before using its project');
-    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===projectId))throw new VectorError('permission_denied','Attach this project to the saved task before using it');
+    if(task.state==='archived')throw new AuxError('conflict','Restore this task before using its project');
+    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===projectId))throw new AuxError('permission_denied','Attach this project to the saved task before using it');
     const resource=task.resources.find(item=>item.kind==='repository'&&item.projectId===projectId)!;
     const access=resource.access ?? "write";
-    if(write && access !== "write")throw new VectorError('permission_denied', access === "read" ? "This checkout is attached for reading. Set write access in Aux before saving files or running mutating commands." : "This checkout is a reference only. Set write access in Aux before using it.");
-    if(!write && access === "reference")throw new VectorError('permission_denied','This checkout is a reference only. Set read or write access in Aux before inspecting it.');
+    if(write && access !== "write")throw new AuxError('permission_denied', access === "read" ? "This checkout is attached for reading. Set write access in Aux before saving files or running mutating commands." : "This checkout is a reference only. Set write access in Aux before using it.");
+    if(!write && access === "reference")throw new AuxError('permission_denied','This checkout is a reference only. Set read or write access in Aux before inspecting it.');
     if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireProjectAvailable(projectId,taskId);}
     return task;
   }
   prepareCloudMutation(taskId:string,expectedRevision:number,projectId:string,environmentId:string):Task{
     const task=this.prepareProjectAccess(taskId,expectedRevision,projectId);const authority=this.cloudAuthority(taskId,expectedRevision),projectAuthority=this.cloudProjectAuthority(projectId);
-    if(authority&&authority.environmentId!==environmentId)throw new VectorError('conflict','Another cloud environment currently owns this task revision. Stop it before using this environment.');
-    if(projectAuthority&&projectAuthority.environmentId!==environmentId)throw new VectorError('conflict',`Cloud environment ${projectAuthority.remoteName} already owns this project through another task. Stop it before starting work here.`);
-    if(!authority)throw new VectorError('conflict','Hand off this task revision to the cloud environment before starting cloud work.');return task;
+    if(authority&&authority.environmentId!==environmentId)throw new AuxError('conflict','Another cloud environment currently owns this task revision. Stop it before using this environment.');
+    if(projectAuthority&&projectAuthority.environmentId!==environmentId)throw new AuxError('conflict',`Cloud environment ${projectAuthority.remoteName} already owns this project through another task. Stop it before starting work here.`);
+    if(!authority)throw new AuxError('conflict','Hand off this task revision to the cloud environment before starting cloud work.');return task;
   }
   prepareCloudLifecycle(taskId:string,expectedRevision:number,projectId:string,environmentId:string):Task{
     const task=this.prepareProjectAccess(taskId,expectedRevision,projectId);const authority=this.cloudAuthority(taskId,expectedRevision),projectAuthority=this.cloudProjectAuthority(projectId);
-    if(authority&&authority.environmentId!==environmentId)throw new VectorError('conflict','Another cloud environment currently owns this task revision. Stop it before changing this environment.');
-    if(projectAuthority&&projectAuthority.environmentId!==environmentId)throw new VectorError('conflict',`Cloud environment ${projectAuthority.remoteName} owns this project through another task.`);
+    if(authority&&authority.environmentId!==environmentId)throw new AuxError('conflict','Another cloud environment currently owns this task revision. Stop it before changing this environment.');
+    if(projectAuthority&&projectAuthority.environmentId!==environmentId)throw new AuxError('conflict',`Cloud environment ${projectAuthority.remoteName} owns this project through another task.`);
     if(!authority)this.requireIdle(taskId);return task;
   }
-  requireLocalAuthority(taskId:string,revision:number):void{const authority=this.cloudAuthority(taskId,revision);if(authority)throw new VectorError('conflict',`This task revision is handed off to cloud environment ${authority.remoteName}. Stop and checkpoint that environment before changing or running the task locally.`);}
+  requireLocalAuthority(taskId:string,revision:number):void{const authority=this.cloudAuthority(taskId,revision);if(authority)throw new AuxError('conflict',`This task revision is handed off to cloud environment ${authority.remoteName}. Stop and checkpoint that environment before changing or running the task locally.`);}
   currentCloudAuthority(taskId:string,revision:number):{environmentId:string;remoteName:string}|undefined{return this.cloudAuthority(taskId,revision);}
   private cloudAuthority(taskId:string,revision:number):{environmentId:string;remoteName:string}|undefined{
     const value=this.repo.getSetting<unknown>('cloudEnvironments');if(!Array.isArray(value))return undefined;
@@ -250,33 +250,33 @@ export class TaskService {
     for(const item of value){if(!item||typeof item!=='object')continue;const record=item as Record<string,unknown>;if(record.projectId===projectId&&record.authority==='cloud'&&typeof record.environmentId==='string'&&typeof record.remoteName==='string'&&typeof record.taskId==='string'&&record.status!=='deleted')return{environmentId:record.environmentId,remoteName:record.remoteName,taskId:record.taskId};}return undefined;
   }
   private requireProjectAvailable(projectId:string,taskId:string):void{
-    const cloud=this.cloudProjectAuthority(projectId);if(cloud)throw new VectorError('conflict',`Cloud environment ${cloud.remoteName} owns this project through task ${cloud.taskId}. Stop and checkpoint it before running or writing locally.`);
+    const cloud=this.cloudProjectAuthority(projectId);if(cloud)throw new AuxError('conflict',`Cloud environment ${cloud.remoteName} owns this project through task ${cloud.taskId}. Stop and checkpoint it before running or writing locally.`);
     const row=this.repo.db.prepare(`SELECT json_extract(r.config,'$.taskId') AS taskId FROM runs r JOIN tasks t ON t.task_id=json_extract(r.config,'$.taskId') WHERE r.status IN ${ACTIVE_RUNS} AND t.task_id!=? AND EXISTS (SELECT 1 FROM json_each(t.json,'$.resources') resource WHERE json_extract(resource.value,'$.kind')='repository' AND json_extract(resource.value,'$.projectId')=?) LIMIT 1`).get(taskId,projectId) as {taskId:string}|undefined;
-    if(row)throw new VectorError('conflict',`Another task is actively using this project. Stop that task before starting a second coordinator on the same checkout.`);
+    if(row)throw new AuxError('conflict',`Another task is actively using this project. Stop that task before starting a second coordinator on the same checkout.`);
   }
   prepareProjectList(taskId:string,expectedRevision:number):Task{
     const task=this.get(taskId);this.requireRevision(task,expectedRevision);
-    if(task.state==='archived')throw new VectorError('conflict','Restore this task before using its projects');
+    if(task.state==='archived')throw new AuxError('conflict','Restore this task before using its projects');
     return task;
   }
 
   private requireRevision(task: Task, expectedRevision: number) {
-    if (task.revision !== expectedRevision) throw new VectorError("conflict", "Task revision changed; refresh before continuing");
+    if (task.revision !== expectedRevision) throw new AuxError("conflict", "Task revision changed; refresh before continuing");
   }
 
   private requireIdle(taskId: string) {
     if (this.repo.db.prepare(`SELECT 1 FROM runs WHERE json_extract(config,'$.taskId')=? AND status IN ${ACTIVE_RUNS} LIMIT 1`).get(taskId)) {
-      throw new VectorError("conflict", "This task has an active run. Stop it before revising the task or starting another run.");
+      throw new AuxError("conflict", "This task has an active run. Stop it before revising the task or starting another run.");
     }
   }
 
   private requireResolved(taskId:string){
     const unresolved=this.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id
       WHERE json_extract(r.config,'$.taskId')=? AND a.status IN ('pending','uncertain') LIMIT 1`).get(taskId);
-    if(unresolved)throw new VectorError('conflict','This task has an unresolved action; reconcile its outcome before continuing or archiving it');
+    if(unresolved)throw new AuxError('conflict','This task has an unresolved action; reconcile its outcome before continuing or archiving it');
     const operation=this.repo.db.prepare(`SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id JOIN runs r ON r.run_id=i.run_id
       WHERE json_extract(r.config,'$.taskId')=? AND o.effect_class!='read' AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') LIMIT 1`).get(taskId);
-    if(operation)throw new VectorError('conflict','This task has an unresolved operation; reconcile its outcome before continuing or archiving it');
+    if(operation)throw new AuxError('conflict','This task has an unresolved operation; reconcile its outcome before continuing or archiving it');
   }
 
   private requireRetainedCloudProjects(prior:Task,next:Task){
@@ -284,7 +284,7 @@ export class TaskService {
     const attached=new Set(next.resources.flatMap(resource=>resource.kind==='repository'&&resource.projectId?[resource.projectId]:[]));
     for(const item of value){
       if(!item||typeof item!=='object')continue;const record=item as Record<string,unknown>;
-      if(record.taskId===prior.taskId&&record.status!=='deleted'&&typeof record.projectId==='string'&&!attached.has(record.projectId))throw new VectorError('conflict','Delete or reconcile the retained cloud environment before removing its project from this task');
+      if(record.taskId===prior.taskId&&record.status!=='deleted'&&typeof record.projectId==='string'&&!attached.has(record.projectId))throw new AuxError('conflict','Delete or reconcile the retained cloud environment before removing its project from this task');
     }
   }
 

@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState,useRef} from 'react';
-import type {ProjectCommand,LocalPreviewCheck,ProjectEnvironment,ProjectEnvironmentSuggestion,ProjectIncidentReport,ResponseRecord,Task} from '@vector/contracts';
+import type {ProjectCommand,LocalPreviewCheck,ProjectEnvironment,ProjectEnvironmentSuggestion,ProjectIncidentReport,ResponseRecord,Task} from '@aux/contracts';
 import {bridge} from '../bridge';
-import {useStore} from '../store';
+import {tabCommand,useStore} from '../store';
 
 type PreviewLink={pageId:string;url:string};
 type ConsoleLine={level:string;message:string;atMs?:number};
@@ -146,7 +146,7 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
       const result=await bridge.checkLocalPreview(projectId,preview);setCheck(result);
       if(result.state!=='responding')return;
       const current=previewLink&&useStore.getState().pages.find(page=>page.pageId===previewLink.pageId&&page.url===result.url);
-      const page=current?(await bridge.invoke('pages.reload',{pageId:current.pageId}),await useStore.getState().activate(current.pageId),current):await useStore.getState().newTab(result.url);
+      const page=current?(await tabCommand({kind:'reload',pageId:current.pageId}),await useStore.getState().activate(current.pageId),current):await useStore.getState().newTab(result.url);
       if(page){const link={pageId:page.pageId,url:result.url};setPreviewLink(link);savePreviewLink(projectId,link);setDiagnostics(null);autoRefreshKey.current='';useStore.getState().setOverlay(null);}
     })}>Check & open preview</button></div>
     {previewLink&&<section className="project-diagnostics" aria-label="Preview diagnostics">

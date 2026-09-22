@@ -18,7 +18,7 @@ export interface DiagnosticInput{
 }
 
 export function buildDiagnosticReport(input:DiagnosticInput){
-  const runtime=record(input.runtime),engine=record(runtime.engine),settings=record(input.settings),probe=record(settings.modelProbe);
+  const runtime=record(input.runtime),settings=record(input.settings),probe=record(settings.modelProbe);
   const payload={
     schemaVersion:1,
     generatedAt:new Date().toISOString(),
@@ -27,10 +27,10 @@ export function buildDiagnosticReport(input:DiagnosticInput){
       excluded:['credentials and secret references','URLs and page titles','history and bookmarks','prompts, responses and task text','account names and email addresses','local file and profile paths','page, artifact and document contents'],
     },
     build:{version:input.appVersion,packaged:input.packaged,platform:input.platform,architecture:input.arch,versions:input.versions},
-    runtime:{connected:input.runtimeConnected,contractVersion:number(runtime.version),methodCount:list(runtime.methods).length,backends:list(runtime.backends).filter(value=>typeof value==='string'),engine:{available:bool(engine.available)??false,connected:bool(engine.connected)??false,mode:text(engine.mode),routingMode:text(engine.routingMode)}},
+    runtime:{connected:input.runtimeConnected,contractVersion:number(runtime.version),methodCount:list(runtime.methods).length,backends:list(runtime.backends).filter(value=>typeof value==='string')},
     browser:{regularWindows:input.regularWindows,pageCount:input.pages.length,pageBackends:counts(input.pages,'backend'),pageStates:counts(input.pages,'viewStatus'),extensionCount:input.extensions.length,loadedExtensions:input.extensions.filter(item=>bool(record(item).loaded)).length,extensionErrors:input.extensions.filter(item=>!!text(record(item).error)).length,health:record(input.health)},
     work:{workspaceCount:input.workspaces.length,taskCount:input.tasks.length,taskStates:counts(input.tasks,'state'),runCount:input.runs.length,runStates:counts(input.runs,'status')},
-    configuration:{theme:text(settings.theme),sidebarAppearance:text(settings.sidebarAppearance),tabLayout:text(settings.tabLayout),engineMode:text(settings.engineMode),modelProvider:text(settings.modelProvider),plannerModel:text(settings.plannerModel),modelConfigured:bool(settings.modelConfigured)??false,modelConnectionLastOk:bool(probe.ok),credentialSources:{model:text(settings.modelCredentialSource),github:text(settings.githubCredentialSource),vercel:text(settings.vercelCredentialSource),sentry:text(settings.sentryCredentialSource)}},
+    configuration:{theme:text(settings.theme),sidebarAppearance:text(settings.sidebarAppearance),tabLayout:text(settings.tabLayout),modelProvider:text(settings.modelProvider),plannerModel:text(settings.plannerModel),modelConfigured:bool(settings.modelConfigured)??false,modelConnectionLastOk:bool(probe.ok),credentialSources:{model:text(settings.modelCredentialSource),github:text(settings.githubCredentialSource),vercel:text(settings.vercelCredentialSource),sentry:text(settings.sentryCredentialSource)}},
     compatibility:{browserShell:'Electron development shell',extensions:'Managed unpacked extensions on Electron’s supported API subset; Chrome Web Store and broad API parity are unqualified.',passkeys:'Virtual WebAuthn protocol is qualified; platform and synced passkeys require signed-bundle qualification.',passwordManagers:'1Password and Apple Passwords integration remain unqualified.',screenSharing:'Modern display capture uses the native macOS source picker when the OS supports it; legacy source-id capture and older fallback paths are denied.',packaging:input.packaged?'Packaged build identity active.':'Development build; signing, native identity and update behavior are unqualified.'},
   };
   return{...payload,integrity:{algorithm:'sha256',payloadSha256:createHash('sha256').update(JSON.stringify(payload)).digest('hex'),scope:'All fields except this integrity object.'}};

@@ -8,10 +8,10 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {sidebarAction} from './sidebar-action.mjs';
 const root=join(dirname(fileURLToPath(import.meta.url)),'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const temp=mkdtempSync(join(tmpdir(),'aux-history-ui-'));let app,page,taskId;
-const env={PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'};
+const env={PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0'};
 async function launch(){
  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env,timeout:30000});
  page=null;
@@ -28,10 +28,10 @@ try{
  await tasks.getByLabel('Objective',{exact:true}).fill('Check the original launch record.');
  await tasks.getByLabel('What must be true when this is done?',{exact:true}).fill('The original record is reviewed.');
  await tasks.getByRole('button',{name:'Save task',exact:true}).click();await tasks.getByText('Revision 1',{exact:true}).waitFor();
- taskId=await page.evaluate(async()=>{const ws=await window.vector.invoke('workspaces.list',{});return (await window.vector.invoke('tasks.list',{workspaceId:ws.find(w=>w.name==='History project').workspaceId}))[0].taskId;});
+ taskId=await page.evaluate(async()=>{const ws=await window.aux.invoke('workspaces.list',{});return (await window.aux.invoke('tasks.list',{workspaceId:ws.find(w=>w.name==='History project').workspaceId}))[0].taskId;});
  const evidence=await page.evaluate(async taskId=>{
-   const {task}=await window.vector.invoke('tasks.get',{taskId});
-   return window.vector.invoke('tasks.importDocumentEvidence',{taskId,expectedRevision:1,criterionId:task.criteria[0].criterionId,filename:'launch.md',content:'# Launch record\nOriginal result: ready for review.\n'});
+   const {task}=await window.aux.invoke('tasks.get',{taskId});
+   return window.aux.invoke('tasks.importDocumentEvidence',{taskId,expectedRevision:1,criterionId:task.criteria[0].criterionId,filename:'launch.md',content:'# Launch record\nOriginal result: ready for review.\n'});
  },taskId);
  // Reload through the real task UI to expose the newly saved evidence.
  await tasks.getByRole('button',{name:'Discard draft and reload saved task',exact:true}).click();
@@ -59,7 +59,7 @@ try{
  assert.equal(await tasks.getByLabel('Objective',{exact:true}).inputValue(),draft);
  await app.close();app=null;
  // Seed a completed synthetic task run only while the isolated app is stopped.
- const dbPath=join(temp,'data',existsSync(join(temp,'data','aux-state.sqlite'))?'aux-state.sqlite':'vector.sqlite');
+ const dbPath=join(temp,'data',existsSync(join(temp,'data','aux-state.sqlite'))?'aux-state.sqlite':'aux.sqlite');
  const db=new DatabaseSync(dbPath);db.exec("PRAGMA busy_timeout=5000");
  const chatId=`task:${taskId}`,now=Date.now();
  const taskRecord=JSON.parse(db.prepare('SELECT json FROM tasks WHERE task_id=?').get(taskId).json);
@@ -91,8 +91,8 @@ try{
  assert.equal(await reopened.getByLabel('Objective',{exact:true}).inputValue(),draft);
  // Navigation from both run surfaces must select this exact task without dispatching a generic run.
  const other=await page.evaluate(async()=>{
-   const workspace=await window.vector.invoke('workspaces.create',{name:'Unrelated project'});
-   return window.vector.invoke('tasks.create',{workspaceId:workspace.workspaceId,title:'Unrelated task',objective:'Keep this separate',criteria:[{criterionId:'other',description:'Unrelated criterion',verification:'manual'}]});
+   const workspace=await window.aux.invoke('workspaces.create',{name:'Unrelated project'});
+   return window.aux.invoke('tasks.create',{workspaceId:workspace.workspaceId,title:'Unrelated task',objective:'Keep this separate',criteria:[{criterionId:'other',description:'Unrelated criterion',verification:'manual'}]});
  });
  const setWrongRememberedTask=()=>page.evaluate(task=>localStorage.setItem('aux.task-selection.v1',JSON.stringify({workspaceId:task.workspaceId,tasks:{[task.workspaceId]:task.taskId}})),other);
  await reopened.getByRole('button',{name:'completed · Earlier task revision',exact:true}).click();
@@ -113,7 +113,7 @@ try{
  await page.locator('.conversation-task-note').getByRole('button',{name:'Open saved task',exact:true}).click();
  await reopened.getByLabel('Title',{exact:true}).waitFor();
  assert.equal(await reopened.getByLabel('Title',{exact:true}).inputValue(),'Review launch evidence');
- assert.equal((await page.evaluate(()=>window.vector.invoke('runs.list',{}))).length,2,'Task navigation must never start an unscoped replacement run');
+ assert.equal((await page.evaluate(()=>window.aux.invoke('runs.list',{}))).length,2,'Task navigation must never start an unscoped replacement run');
  await page.keyboard.press('Escape');
  await sidebarAction(page,'Chats');
  await page.getByRole('button',{name:/Review launch evidence Saved task/}).waitFor();
@@ -127,9 +127,9 @@ try{
  await reopened.getByRole('button',{name:'Task history',exact:true}).click();
  await saved.getByRole('combobox',{name:'Saved revision',exact:true}).selectOption('1');
  await saved.getByText('Document: launch.md',{exact:true}).waitFor();
- const details=await page.evaluate(taskId=>window.vector.invoke('tasks.get',{taskId}),taskId);
+ const details=await page.evaluate(taskId=>window.aux.invoke('tasks.get',{taskId}),taskId);
  assert.equal(details.task.revision,3);assert.equal(details.task.state,'archived');assert.equal(details.revisions.length,3);
- const archivedChats=await page.evaluate(()=>window.vector.invoke('conversations.list',{archived:true}));
+ const archivedChats=await page.evaluate(()=>window.aux.invoke('conversations.list',{archived:true}));
  assert.equal(archivedChats.find(item=>item.taskId===taskId)?.turnCount,2,'Archiving the task should archive its unified conversation');
  console.log('PASS: earlier receipts, durable multi-revision conversation/context, draft/restart/archive preservation, exact task navigation, no unscoped rerun');
 }finally{if(app)await app.close();rmSync(temp,{recursive:true,force:true});}

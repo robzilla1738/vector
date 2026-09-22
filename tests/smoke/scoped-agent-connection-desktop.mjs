@@ -11,7 +11,7 @@ import { sidebarAction } from "./sidebar-action.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const desktopRequire = createRequire(join(root, "apps/desktop/package.json"));
 const mcpRequire = createRequire(join(root, "packages/mcp/package.json"));
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const { Client } = mcpRequire("@modelcontextprotocol/sdk/client/index.js");
 const { StdioClientTransport } = mcpRequire("@modelcontextprotocol/sdk/client/stdio.js");
 const electron = desktopRequire("electron");
@@ -42,14 +42,12 @@ const launch = () => _electron.launch({
     AUX_PROFILE_DIR: join(temporary, "profile"),
     AUX_DATA_DIR: join(temporary, "data"),
     AUX_LOAD_DOTENV: "0",
-    AUX_ENGINE: "0",
-    AUX_ENGINE_MODE: "off",
   },
 });
 async function shell() {
   for (let attempt = 0; attempt < 150; attempt++) {
     const found = app.windows().find(page => page.url().includes("renderer/index.html"));
-    if (found && await found.evaluate(() => Boolean(window.vector?.windowId)).catch(() => false)) return found;
+    if (found && await found.evaluate(() => Boolean(window.aux?.windowId)).catch(() => false)) return found;
     await delay(100);
   }
   throw new Error("Aux shell did not start");
@@ -89,33 +87,33 @@ try {
   await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},repository);
 
   const setup = await page.evaluate(async baseUrl => {
-    const selection=await window.vector.selectRepository();
+    const selection=await window.aux.selectRepository();
     if(!selection)throw new Error('Repository selection failed');
-    const project=await window.vector.createProject(selection.selectionId);
-    const authorizedPage = await window.vector.invoke("pages.open", { url: `${baseUrl}/authorized`, activate: true });
-    const unrelatedPage = await window.vector.invoke("pages.open", { url: `${baseUrl}/unrelated`, activate: true });
-    const authorizedWorkspace = await window.vector.invoke("workspaces.create", { name: "Authorized workspace" });
-    const unrelatedWorkspace = await window.vector.invoke("workspaces.create", { name: "Unrelated workspace" });
-    const authorizedTask = await window.vector.invoke("tasks.create", {
+    const project=await window.aux.createProject(selection.selectionId);
+    const authorizedPage = await window.aux.invoke("pages.open", { url: `${baseUrl}/authorized`, activate: true });
+    const unrelatedPage = await window.aux.invoke("pages.open", { url: `${baseUrl}/unrelated`, activate: true });
+    const authorizedWorkspace = await window.aux.invoke("workspaces.create", { name: "Authorized workspace" });
+    const unrelatedWorkspace = await window.aux.invoke("workspaces.create", { name: "Unrelated workspace" });
+    const authorizedTask = await window.aux.invoke("tasks.create", {
       workspaceId: authorizedWorkspace.workspaceId,
       title: "Authorized research",
       objective: "Inspect only the authorized fixture.",
       criteria: [{ criterionId: "summary", description: "Record the authorized page title", verification: "browser" }],
       resources: [{ resourceId: "authorized-page", kind: "page", locator: authorizedPage.pageId, label: "Authorized fixture" },{resourceId:'project',kind:'repository',projectId:project.projectId,locator:project.path,label:`${project.name} · ${project.branch}`}],
     });
-    const unrelatedTask = await window.vector.invoke("tasks.create", {
+    const unrelatedTask = await window.aux.invoke("tasks.create", {
       workspaceId: unrelatedWorkspace.workspaceId,
       title: "Unrelated private work",
       objective: "Remain outside the external connection.",
       criteria: [{ criterionId: "private", description: "Keep unrelated context private", verification: "manual" }],
       resources: [{ resourceId: "unrelated-page", kind: "page", locator: unrelatedPage.pageId, label: "Unrelated fixture" }],
     });
-    const config = await window.vector.agentConfig({
+    const config = await window.aux.agentConfig({
       name: "Codex · Authorized research",
       client: "codex",
       scope: { kind: "task", workspaceId: authorizedWorkspace.workspaceId, taskId: authorizedTask.taskId },
     });
-    const workspaceConfig = await window.vector.agentConfig({
+    const workspaceConfig = await window.aux.agentConfig({
       name: "Claude · Authorized workspace",
       client: "claude",
       scope: { kind: "workspace", workspaceId: authorizedWorkspace.workspaceId },
@@ -131,7 +129,7 @@ try {
   client = await connect(setup.config);
   const catalog = (await client.listTools()).tools.map(tool => tool.name);
   assert.ok(catalog.includes("aux_workspaces_list") && catalog.includes("aux_task_record_evidence")&&catalog.includes('aux_development_read_file')&&catalog.includes('aux_development_run_command')&&catalog.includes('aux_development_open_preview')&&catalog.includes('aux_development_commit')&&catalog.includes('aux_cloud_environments')&&catalog.includes('aux_cloud_task_result'));
-  assert.ok(!catalog.some(name => name.startsWith("vector_")));
+  assert.ok(!catalog.some(name => name.startsWith("aux_")));
   assert.ok(catalog.includes('aux_page_observe')&&catalog.includes('aux_task_start')&&catalog.includes('aux_run_control'));
   assert.ok(catalog.includes('aux_task_create'));
   assert.ok(!catalog.includes('aux_page_open')&&!catalog.includes('aux_run_start')&&!catalog.includes('aux_workspace_create')&&!catalog.includes('aux_events')&&!catalog.includes('aux_chrome_attach'));
@@ -173,7 +171,7 @@ try {
   const review=await ok('aux_development_review',development);assert.match(review.content,/AGENT_COMMAND_OK/);assert.match(review.content,/src\/agent.ts/);assert.equal(readFileSync(review.path,'utf8'),review.content);assert.equal(existsSync(join(setup.project.path,'review-summary.md')),false);
   const sourceHead=git('rev-parse','HEAD');const committed=await ok('aux_development_commit',{...development,expectedPatchHash:review.patch.sha256,expectedTree:review.snapshotTree,message:'Agent-reviewed checkpoint',authorName:'Aux Agent',authorEmail:'aux-agent@example.test'});assert.ok(committed.commit);assert.equal(execFileSync('/usr/bin/git',['-C',setup.project.path,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),committed.commit);assert.equal(git('rev-parse','HEAD'),sourceHead);assert.equal(execFileSync('/usr/bin/git',['-C',setup.project.path,'status','--porcelain'],{encoding:'utf8'}).trim(),'');assert.equal(execFileSync('/usr/bin/git',['-C',setup.project.path,'show','-s','--format=%an <%ae>'],{encoding:'utf8'}).trim(),'Aux Agent <aux-agent@example.test>');
   const approvals=await app.evaluate(()=>globalThis.__auxDevelopmentApprovals);assert.equal(approvals.length,7);assert.ok(approvals.some(item=>item.detail.includes('export const value = 2')));assert.ok(approvals.some(item=>item.detail.includes('printf AGENT_COMMAND_OK')));assert.ok(approvals.some(item=>item.title==='Open agent local preview'&&item.message.includes(`127.0.0.1:${previewPort}`)));assert.ok(approvals.some(item=>item.title==='Create local commit'&&item.detail.includes('does not push, publish, or open a pull request')));
-  await page.evaluate(({taskId})=>window.vector.invoke('tasks.update',{taskId,expectedRevision:1,objective:'Revision changed after the agent request.'}),{taskId:development.taskId});
+  await page.evaluate(({taskId})=>window.aux.invoke('tasks.update',{taskId,expectedRevision:1,objective:'Revision changed after the agent request.'}),{taskId:development.taskId});
   await failed('aux_development_read_file',{...development,name:'app.ts'},/conflict|revision changed/i);
 
   await sidebarAction(page, "Settings");

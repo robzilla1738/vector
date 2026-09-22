@@ -1,7 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogle } from "@ai-sdk/google";
-import type { ModelProvider } from "@vector/contracts";
+import type { ModelProvider } from "@aux/contracts";
 import { GatewayModelClient } from "./gateway-client.js";
 
 export const DIRECT_PROVIDERS = ["openai", "anthropic", "google", "openai-compatible"] as const;

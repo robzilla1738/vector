@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { VaultAccessRecord, VaultGrant, VaultItem, VaultStatus } from "@vector/contracts";
-import { call } from "../store";
+import type { VaultAccessRecord, VaultGrant, VaultItem, VaultStatus } from "@aux/contracts";
+import { bridge } from "../bridge";
+import { call, toast } from "../store";
 
 export function VaultSettings() {
   const [status, setStatus] = useState<VaultStatus | null>(null);
@@ -34,8 +35,8 @@ export function VaultSettings() {
     finally { setBusy(false); }
   }
   return <section className="field" aria-label="Agent vault">
-    <div className="drawer-section">Agent vault</div>
-    <p className="hint">Optional locked store for site credentials the agent may fill. Secrets stay in OS encryption. Models, logs, observations and saved results receive opaque references only.</p>
+    <div className="drawer-section">Sign-ins and agent vault</div>
+    <p className="hint">Locked store for site credentials. Aux offers to save sign-ins and fills them natively on the matching site; agents receive opaque fill references only. Secrets stay in OS encryption and never reach models, logs, observations or saved results.</p>
     {status && <p className="hint" role="status">{!status.available ? (status.error ?? "Vault requires the Aux desktop app.") : status.locked ? "Locked. Unlock to save or fill credentials." : status.configured ? `Unlocked · ${status.itemCount} saved ${status.itemCount === 1 ? "credential" : "credentials"}` : "No credentials saved."}</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="row">
@@ -55,8 +56,24 @@ export function VaultSettings() {
       <label>Username<input value={username} maxLength={200} onChange={event => setUsername(event.target.value)} /></label>
       <label>Account<input value={accountLabel} maxLength={120} placeholder="Optional account label" onChange={event => setAccountLabel(event.target.value)} /></label>
       <label>Secret<input type="password" autoComplete="off" value={secret} required onChange={event => setSecret(event.target.value)} /></label>
-      <button className="btn sm" disabled={busy || !label.trim() || !origin.trim() || !secret}>Save credential</button>
+      <div className="row">
+        <button className="btn sm" disabled={busy || !label.trim() || !origin.trim() || !secret}>Save credential</button>
+        <button type="button" className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
+          const generated = await call<{ password: string }>("vault.generate", { length: 20 });
+          setSecret(generated.password);
+        })}>Generate password</button>
+      </div>
     </form>}
+    {status && status.available && !status.locked && status.configured && <div className="row">
+      <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
+        const exported = await bridge.vaultExport();
+        if (exported?.path) toast(`Vault exported to ${exported.path}`);
+      })}>Export credentials…</button>
+      <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
+        const imported = await bridge.vaultImport();
+        if (imported) toast(`${imported.added} credential${imported.added === 1 ? "" : "s"} imported${imported.skipped ? ` · ${imported.skipped} skipped` : ""}.`);
+      })}>Import credentials…</button>
+    </div>}
     {items.map(item => <div className="task-resource" key={item.itemId}>
       <strong>{item.label}</strong>
       <span className="hint">{item.origin}{item.accountLabel ? ` · ${item.accountLabel}` : ""}{item.username ? ` · ${item.username}` : ""}{item.revokedAt ? " · revoked" : ""}</span>

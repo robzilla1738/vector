@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { openDb, Repo, ArtifactStore, EventBus } from '../../apps/runtime/dist/index.js';
 const root = resolve(import.meta.dirname, '../..');
-const req = createRequire(join(root, 'packages/engine-client/package.json'));
+const req = createRequire(join(root, 'packages/chromium-driver/package.json'));
 const desktop = createRequire(join(root, 'apps/desktop/package.json'));
 const { _electron } = req('playwright-core');
 const dir = mkdtempSync(join(tmpdir(), 'aux-redesign-'));
@@ -38,7 +38,7 @@ answersDb.close();
 let app;
 try {
  const packaged = process.argv.includes('--packaged');
- app = await _electron.launch({executablePath:packaged ? join(root,'release/mac-arm64/Aux Browser.app/Contents/MacOS/Aux Browser') : desktop('electron'),args:[...(packaged?[]:[join(root,'apps/desktop')]),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:data,AUX_ENGINE:'0',AUX_ENGINE_MODE:'off',AUX_LOAD_DOTENV:'0'}});
+ app = await _electron.launch({executablePath:packaged ? join(root,'release/mac-arm64/Aux Browser.app/Contents/MacOS/Aux Browser') : desktop('electron'),args:[...(packaged?[]:[join(root,'apps/desktop')]),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:data,AUX_LOAD_DOTENV:'0'}});
  let page;
  for (let n=0;n<100;n++) {page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}
  assert.ok(page);
@@ -64,10 +64,10 @@ try {
  assert.equal(await page.locator('.conversation-turn').count(),2);
  await page.locator('.conversation-image img').waitFor();
  await page.getByRole('button',{name:'Reopen last page',exact:true}).waitFor();
- const beforeRecovery = await page.evaluate(() => window.vector.invoke('pages.list',{}));
+ const beforeRecovery = await page.evaluate(() => window.aux.invoke('pages.list',{}));
  await page.getByRole('button',{name:'Reopen last page',exact:true}).click();
  await page.locator('.conversation-preview').waitFor();
- assert.equal((await page.evaluate(() => window.vector.invoke('pages.list',{}))).length,beforeRecovery.length,'recovery reuses an already open human tab');
+ assert.equal((await page.evaluate(() => window.aux.invoke('pages.list',{}))).length,beforeRecovery.length,'recovery reuses an already open human tab');
  assert.notEqual(await page.getByRole('combobox',{name:'Attach browser context'}).inputValue(),'');
  await page.screenshot({path:join(root,'release/test-artifacts/aux-conversation-recovery.png')});
  await page.locator('.conversation-preview').click();
@@ -76,7 +76,7 @@ try {
  await page.locator('.history-conversation').filter({hasText:'Check whether there is a duplicate'}).click();
  assert.notEqual(await page.getByRole('combobox',{name:'Attach browser context'}).inputValue(),'','selected context survives view changes');
  const recoveredId = await page.getByRole('combobox',{name:'Attach browser context'}).inputValue();
- await page.evaluate(pageId => window.vector.invoke('pages.close',{pageId}), recoveredId);
+ await page.evaluate(pageId => window.aux.invoke('pages.close',{pageId}), recoveredId);
  await page.waitForFunction(pageId => !document.querySelector(`option[value="${pageId}"]`), recoveredId);
  await page.getByRole('button',{name:'Reopen last page',exact:true}).click();
  await page.locator('.conversation-preview').waitFor();
@@ -111,7 +111,7 @@ try {
  await page.getByRole('button',{name:'New chat',exact:true}).click();await page.getByRole('textbox',{name:'Reply to conversation'}).fill('Draft a fresh research request');await page.getByRole('combobox',{name:'Attach browser context'}).selectOption(reopenedId);
  await page.getByRole('button',{name:'Toggle agent rail',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Ask the agent',exact:true}).inputValue(),'Draft a fresh research request','new chat and side panel share one draft');await page.getByRole('button',{name:'Toggle agent rail',exact:true}).click();
  await page.reload();await page.getByRole('button',{name:'New chat',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Reply to conversation'}).inputValue(),'Draft a fresh research request','new chat draft survives renderer restart');assert.equal(await page.getByRole('combobox',{name:'Attach browser context'}).inputValue(),reopenedId,'new chat context survives renderer restart');
- await page.evaluate(pageId=>window.vector.invoke('pages.close',{pageId}),reopenedId);await page.waitForFunction(pageId=>!document.querySelector(`option[value="${pageId}"]`),reopenedId);assert.equal(await page.getByRole('combobox',{name:'Attach browser context'}).inputValue(),'','closed context falls back without discarding the draft');assert.equal(await page.getByRole('textbox',{name:'Reply to conversation'}).inputValue(),'Draft a fresh research request');
+ await page.evaluate(pageId=>window.aux.invoke('pages.close',{pageId}),reopenedId);await page.waitForFunction(pageId=>!document.querySelector(`option[value="${pageId}"]`),reopenedId);assert.equal(await page.getByRole('combobox',{name:'Attach browser context'}).inputValue(),'','closed context falls back without discarding the draft');assert.equal(await page.getByRole('textbox',{name:'Reply to conversation'}).inputValue(),'Draft a fresh research request');
  await page.screenshot({path:join(root,'release/test-artifacts/aux-new-chat-continuity.png')});
  await page.getByRole('button',{name:'New Tab',exact:true}).click();await page.getByRole('group',{name:'Search or Ask'}).getByRole('button',{name:'Ask',exact:true}).click();const heroAsk=page.getByRole('combobox',{name:/^Ask Aux/});await heroAsk.fill('Continue this prompt from the home page');await page.reload();const restoredAsk=page.getByRole('combobox',{name:/^Ask Aux/});await restoredAsk.waitFor();assert.equal(await restoredAsk.inputValue(),'Continue this prompt from the home page','home Ask mode and prompt survive reload');await page.screenshot({path:join(root,'release/test-artifacts/aux-home-ask-continuity.png')});await page.getByRole('button',{name:'New chat',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Reply to conversation'}).inputValue(),'Continue this prompt from the home page','home Ask and new chat share one draft');
 

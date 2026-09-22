@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MethodSchemas } from "@vector/contracts";
+import { MethodSchemas } from "@aux/contracts";
 import { RENDERER_METHODS, rendererMayInvoke } from "../../apps/desktop/main/renderer-methods.js";
 
 const rendererRoot = join(dirname(fileURLToPath(import.meta.url)), "../../apps/desktop/renderer/src");

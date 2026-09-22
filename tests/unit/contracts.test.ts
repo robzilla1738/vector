@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice, isElementRef } from "@vector/contracts";
+import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice, isElementRef } from "@aux/contracts";
 
 describe("StepSchema", () => {
   it("accepts every core op", () => {
@@ -80,7 +80,7 @@ describe("API schemas", () => {
       "artifacts.list", "artifacts.read",
       "vault.status", "vault.save", "vault.grant", "vault.renewGrant", "vault.expiredGrants",
       "routines.list", "routines.fromResult", "routines.alerts", "routines.compare",
-      "installation.legacyStatus", "installation.listBackups", "installation.backupRetention",
+      "installation.listBackups", "installation.backupRetention",
       "tasks.verifyCriterion", "tasks.replaceAgent", "cloud.reconnectStatus", "development.prepareIncidentFix",
     ]) {
       expect(MethodSchemas, m).toHaveProperty(m);

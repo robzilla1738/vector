@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-private-product-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<title>${req.url==='/second'?'Private second':'Private fixture'}</title><h1>${req.url==='/second'?'Private second':'Private fixture'}</h1><textarea id="private-draft" aria-label="Private draft"></textarea><a href="/second">Second page</a>${req.url==='/start'?`<script>addEventListener('beforeunload',event=>{if(document.getElementById('private-draft').value){event.preventDefault();event.returnValue='';}});</script>`:''}`);});
@@ -31,12 +31,12 @@ try{
  assert.notEqual(await shell.locator('.sidebar').evaluate(element=>getComputedStyle(element).width),'0px','private sidebar must restore without losing its structure');
  await shell.screenshot({path:join(root,'release/test-artifacts/aux-private-home.png')});
  assert.equal(await shell.getByText('New chat',{exact:true}).count(),0);assert.equal(await shell.getByLabel('Toggle agent rail').count(),0);assert.equal(await shell.getByLabel('Settings').count(),0);
- const blank=(await shell.evaluate(()=>window.vector.invoke('pages.list',{})))[0];assert.equal(blank.url,'about:blank');
- await shell.evaluate(({pageId,url})=>window.vector.invoke('pages.navigate',{pageId,url}),{pageId:blank.pageId,url:base+'/start'});
- await poll(shell,async url=>(await window.vector.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/start');
+ const blank=(await shell.evaluate(()=>window.aux.invoke('pages.list',{})))[0];assert.equal(blank.url,'about:blank');
+ await shell.evaluate(({pageId,url})=>window.aux.invoke('pages.navigate',{pageId,url}),{pageId:blank.pageId,url:base+'/start'});
+ await poll(shell,async url=>(await window.aux.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/start');
  let site=app.windows().find(page=>page.url()===base+'/start');assert.ok(site);site.on('dialog',()=>{});await site.getByRole('heading',{name:'Private fixture',exact:true}).waitFor();
  assert.equal(await app.evaluate(({webContents},url)=>webContents.getAllWebContents().find(contents=>contents.getURL()===url)?.session.isPersistent(),base+'/start'),false);
- assert.equal(await site.evaluate(()=>globalThis.__vectorTid),undefined);
+ assert.equal(await site.evaluate(()=>globalThis.__auxTid),undefined);
  await site.evaluate(()=>{document.cookie='private_cookie=synthetic; SameSite=Lax; Path=/';localStorage.setItem('private-value','synthetic');});
  await site.getByLabel('Private draft').fill('Private unsaved work');
  await shell.getByRole('button',{name:'Site controls',exact:true}).click();
@@ -46,14 +46,14 @@ try{
  assert.equal(await site.evaluate(()=>document.cookie),'');assert.equal(await site.evaluate(()=>localStorage.getItem('private-value')),null);
  await siteControls.getByRole('button',{name:'Close site controls',exact:true}).click();
  await site.evaluate(()=>{document.cookie='private_cookie=synthetic; SameSite=Lax; Path=/';localStorage.setItem('private-value','synthetic');});
- await shell.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/second');
- await poll(shell,async url=>(await window.vector.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/second');
- assert.equal((await shell.evaluate(()=>window.vector.invoke('pages.list',{}))).length,2);
- const second=(await shell.evaluate(()=>window.vector.invoke('pages.list',{}))).find(page=>page.url===base+'/second');await shell.evaluate(pageId=>window.vector.invoke('pages.close',{pageId}),second.pageId);
+ await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/second');
+ await poll(shell,async url=>(await window.aux.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/second');
+ assert.equal((await shell.evaluate(()=>window.aux.invoke('pages.list',{}))).length,2);
+ const second=(await shell.evaluate(()=>window.aux.invoke('pages.list',{}))).find(page=>page.url===base+'/second');await shell.evaluate(pageId=>window.aux.invoke('pages.close',{pageId}),second.pageId);
  await shell.waitForFunction(()=>!Array.from(document.querySelectorAll('.tab-title')).some(element=>element.textContent==='Private second'));
  assert.deepEqual(await shell.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('aux.closed-tabs.'))),[],'private tabs must not enter recently closed recovery storage');
- await shell.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/second');
- await poll(shell,async url=>(await window.vector.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/second');
+ await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/second');
+ await poll(shell,async url=>(await window.aux.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/second');
  assert.equal(await site.getByLabel('Private draft').inputValue(),'Private unsaved work');
  await shell.screenshot({path:join(root,'release/test-artifacts/aux-private.png')});
  const scratch=await app.evaluate(({app})=>app.getPath('userData'));
@@ -62,7 +62,7 @@ try{
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].close());
  for(let i=0;i<150&&!JSON.parse(readFileSync(playwrightReportPath,'utf8')).controlEvents.includes('unload-prompt:0');i++)await new Promise(r=>setTimeout(r,100));
  assert.equal(JSON.parse(readFileSync(playwrightReportPath,'utf8')).controlEvents.includes('unload-prompt:0'),true);
- assert.equal((await shell.evaluate(()=>window.vector.invoke('pages.list',{}))).length,2,'staying must preserve every private tab');
+ assert.equal((await shell.evaluate(()=>window.aux.invoke('pages.list',{}))).length,2,'staying must preserve every private tab');
  assert.equal(await site.getByLabel('Private draft').inputValue(),'Private unsaved work','staying must preserve the private draft');
  const privateClosed=new Promise(resolve=>app.once('close',resolve));
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].close());
@@ -70,14 +70,14 @@ try{
  assert.equal(existsSync(scratch),false,'private process scratch data should be removed after a clean close');
 
  started=await launch();app=started.next;shell=started.shell;
- const freshBlank=(await shell.evaluate(()=>window.vector.invoke('pages.list',{})))[0];assert.equal(freshBlank.url,'about:blank');
- assert.deepEqual(await shell.evaluate(()=>window.vector.invoke('history.list',{})),[]);
- await shell.evaluate(({pageId,url})=>window.vector.invoke('pages.navigate',{pageId,url}),{pageId:freshBlank.pageId,url:base+'/start'});
- await poll(shell,async url=>(await window.vector.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/start');
- const fresh=await shell.evaluate(()=>window.vector.invoke('pages.list',{}));assert.equal(fresh.length,1);assert.equal(fresh[0].url,base+'/start');
+ const freshBlank=(await shell.evaluate(()=>window.aux.invoke('pages.list',{})))[0];assert.equal(freshBlank.url,'about:blank');
+ assert.deepEqual(await shell.evaluate(()=>window.aux.invoke('history.list',{})),[]);
+ await shell.evaluate(({pageId,url})=>window.aux.invoke('pages.navigate',{pageId,url}),{pageId:freshBlank.pageId,url:base+'/start'});
+ await poll(shell,async url=>(await window.aux.invoke('pages.list',{})).some(page=>page.url===url&&!page.loading),base+'/start');
+ const fresh=await shell.evaluate(()=>window.aux.invoke('pages.list',{}));assert.equal(fresh.length,1);assert.equal(fresh[0].url,base+'/start');
  site=app.windows().find(page=>page.url()===base+'/start');assert.ok(site);
  assert.equal(await site.evaluate(()=>document.cookie),'');assert.equal(await site.evaluate(()=>localStorage.getItem('private-value')),null);assert.equal(await site.getByLabel('Private draft').inputValue(),'');
- const currentHistory=await shell.evaluate(()=>window.vector.invoke('history.list',{}));assert.equal(currentHistory.length,1);assert.equal(currentHistory[0].url,base+'/start');
+ const currentHistory=await shell.evaluate(()=>window.aux.invoke('history.list',{}));assert.equal(currentHistory.length,1);assert.equal(currentHistory[0].url,base+'/start');
  await app.close();app=undefined;
 
  const reportPath=join(dir,'direct-private-report.json');
@@ -85,7 +85,7 @@ try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{direct.kill();reject(new Error('Direct private process did not exit'));},15000);direct.once('error',reject);direct.once('exit',()=>{clearTimeout(timer);resolve();});});
  const report=JSON.parse(readFileSync(reportPath,'utf8'));assert.equal(report.remoteDebugging,false);assert.equal(report.pageSessionPersistent,false);assert.equal(existsSync(join(report.userData,'DevToolsActivePort')),false);assert.equal(existsSync(report.userData),false);
  const menuReportPath=join(dir,'menu-private-report.json');
- const regular=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{...env,AUX_ENGINE:'0',AUX_ENGINE_MODE:'off',AUX_PRIVATE_TEST_REPORT:menuReportPath,AUX_PRIVATE_TEST_EXIT:'1'}});
+ const regular=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{...env,AUX_PRIVATE_TEST_REPORT:menuReportPath,AUX_PRIVATE_TEST_EXIT:'1'}});
  let regularEnded=false;
  try{
   let regularShell;for(let i=0;i<100;i++){regularShell=regular.windows().find(page=>page.url().includes('renderer/index.html'));if(regularShell)break;await new Promise(r=>setTimeout(r,100));}assert.ok(regularShell);await regularShell.locator('.app').waitFor();

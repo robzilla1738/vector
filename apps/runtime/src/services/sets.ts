@@ -2,11 +2,11 @@ import {
   EventTypes,
   newMemberId,
   newSetId,
-  VectorError,
+  AuxError,
   type PageSet,
   type ResultRecord,
   type SetMember,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "./pages.js";
@@ -24,7 +24,7 @@ export class SetService {
 
   get(setId: string): { set: PageSet; members: SetMember[] } {
     const set = this.repo.getSet(setId);
-    if (!set) throw new VectorError("not_found", `no set ${setId}`);
+    if (!set) throw new AuxError("not_found", `no set ${setId}`);
     return { set, members: this.repo.listMembers(setId) };
   }
 

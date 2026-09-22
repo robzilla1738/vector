@@ -1,9 +1,9 @@
 import { conversationDraftEntries } from "../conversation-drafts";
-import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEntry, Task } from "@vector/contracts";
+import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEntry, Task } from "@aux/contracts";
 import { openSavedTask } from "../task-navigation";
 import { savePagePdf, printCurrentPage } from "../page-export";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useStore, call, toast, errToast } from "../store";
+import { useStore, call, toast, errToast, tabCommand } from "../store";
 import { bridge } from "../bridge";
 import { detectIntent } from "../intent";
 import { canSplitPage, hostOf } from "../workspace";
@@ -58,7 +58,11 @@ export function Palette() {
   const startRun = useStore((s) => s.startRun);
   const newTab = useStore((s) => s.newTab);
   const activate = useStore((s) => s.activate);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => {
+    const seed = useStore.getState().paletteSeed;
+    if (seed) useStore.setState({ paletteSeed: "" });
+    return seed;
+  });
   const [sel, setSel] = useState(0);
   const [filter,setFilter]=useState<"all"|"tabs"|"work"|"pages">("all");
   const [searching,setSearching]=useState(false);
@@ -67,6 +71,7 @@ export function Palette() {
   const [matches,setMatches]=useState<{query:string;prepared:PreparedConversation[];results:SavedResult[];chats:ConversationSummary[];tasks:Task[];history:HistoryEntry[];memory:{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]}>({query:"",prepared:[],results:[],chats:[],tasks:[],history:[],memory:[]});
   const [chromeTabs, setChromeTabs] = useState<ChromeTab[] | null>(null);
   const [splitPick, setSplitPick] = useState(false);
+  const [vaultItems, setVaultItems] = useState<import("@aux/contracts").VaultItem[] | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const restoreFocus = useRef<Element | null>(document.activeElement);
   const close = () => {
@@ -85,7 +90,7 @@ export function Palette() {
 
   useEffect(()=>{
     const query=q.trim();
-    if(query.length<2||query.startsWith("/")||query.startsWith("@")||chromeTabs||splitPick||filter==="tabs") {setSearching(false);setSearchError(false);return;}
+    if(query.length<2||query.startsWith("/")||query.startsWith("@")||chromeTabs||vaultItems||splitPick||filter==="tabs") {setSearching(false);setSearchError(false);return;}
     let live=true;setSearching(true);setSearchError(false);
     const timer=window.setTimeout(()=>{
       const work=!bridge.privateMode&&filter!=="pages",history=filter!=="work";
@@ -138,6 +143,14 @@ export function Palette() {
       if (out.length === 0) out.push({ id: "none", section: "chrome", t: "No attachable Chrome tabs", run: () => setChromeTabs(null) });
       return out;
     }
+    if (vaultItems) {
+      for (const item of vaultItems) {
+        if (!match(`${item.label} ${item.username ?? ""}`)) continue;
+        out.push({ id: `vf-${item.itemId}`, section: "window", t: item.username ? `${item.label} — ${item.username}` : item.label, d: item.origin, icon: I.lock, run: async () => { if (activePageId) await bridge.vaultFill(activePageId, item.itemId); } });
+      }
+      if (out.length === 0) out.push({ id: "none", section: "window", t: "No vault credentials for this site", run: () => setVaultItems(null) });
+      return out;
+    }
     if (splitPick) {
       for (const p of pages) {
         if (p.pageId === activePageId || !canSplitPage(p) || !canSplitPage(activePage) || layout.tabSpace[p.pageId] !== layout.activeSpaceId || !match(`${p.title} ${p.url}`)) continue;
@@ -157,7 +170,7 @@ export function Palette() {
           t: intent.kind === "navigate" ? `Open ${intent.display}` : `Search for “${intent.query}”`,
           k: "↵",
           run: async () => {
-            if (activePage) await call("pages.navigate", { pageId: activePage.pageId, url: intent.url });
+            if (activePage) await useStore.getState().navigatePage(activePage.pageId, intent.url);
             else await newTab(intent.url);
           },
         });
@@ -185,7 +198,7 @@ export function Palette() {
         await call("sets.create", { name: `Tabs ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, source: "tabs", pageIds: ids });
         toast(`Set created from ${ids.length} tabs`);
       } },
-      { id: "reload", section: "window", t: "Reload page", k: "⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await call("pages.reload", { pageId: activePageId }); } },
+      { id: "reload", section: "window", t: "Reload page", k: "⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await tabCommand({ kind: "reload", pageId: activePageId }); } },
       { id: "reader", section: "window", t: "Reader view", d: "Read this page with fewer distractions", k: "⌥⌘R", icon: I.result, run: () => setOverlay("reader") },
       { id: "hard", section: "window", t: "Hard reload", k: "⇧⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
       { id: "find", section: "window", t: "Find in page", k: "⌘F", icon: I.findSm, run: async () => setOverlay("find") },
@@ -195,11 +208,38 @@ export function Palette() {
         if (!activePage || !activePage.url.startsWith("http")) return;
         await useStore.getState().toggleBookmark(activePage.url, activePage.title);
       } },
+      { id: "rl", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url && b.readingList) ? "Remove from reading list" : "Read later", d: "Save this page to your reading list", icon: I.clockSm, run: async () => {
+        if (!activePage || !activePage.url.startsWith("http")) return;
+        await useStore.getState().toggleReadingList(activePage.url, activePage.title);
+      } },
+      ...(activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "autofill", section: "window" as const, t: "Fill personal info", d: "Fill this form with your saved contact and address details", icon: I.person, run: async () => {
+        if (!activePage) return;
+        await bridge.autofill(activePage.pageId);
+      } }] : []),
+      ...(activePage?.backend === "aux" ? [
+        { id: "translate", section: "window" as const, t: "Translate this page", d: "Sends visible page text to your model provider", icon: I.globe, run: async () => {
+          if (!activePage || !activePage.url.startsWith("http")) return;
+          useStore.getState().setTranslationPending(activePage.pageId);
+          try { await bridge.translatePage(activePage.pageId); }
+          finally { if (useStore.getState().translationPending === activePage.pageId) useStore.getState().setTranslationPending(null); }
+        } },
+        ...(useStore.getState().translation?.pageId === activePage.pageId ? [{ id: "translate-original", section: "window" as const, t: "Show original page", d: "Restore the untranslated text", icon: I.reopen, run: async () => {
+          if (!activePage) return;
+          await bridge.showOriginal(activePage.pageId);
+        } }] : []),
+      ] : []),
+      ...(activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "vault-fill", section: "window" as const, t: "Fill sign-in…", d: "Fill this login form with a vault credential", icon: I.lock, keep: true, run: async () => {
+        if (!activePage || !activePage.url.startsWith("http")) return;
+        let origin: string;
+        try { origin = new URL(activePage.url).origin; } catch { return; }
+        setVaultItems(await call<import("@aux/contracts").VaultItem[]>("vault.itemsForOrigin", { origin }));
+        setQ("");
+      } }] : []),
       { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
       ...(canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
       ...(splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => useStore.getState().setSplitPage(null) }] : []),
       { id: "open", section: "window", t: "Open file…", k: "⌘O", icon: I.folder, run: openLocalFile },
-      ...(activePage?.backend === "vector" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: "⌘⇧P", icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
+      ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: "⌘⇧P", icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
       { id: "print", section: "window", t: "Print…", k: "⌘P", icon: I.print, run: async () => printCurrentPage(activePageId) },
       { id: "dev", section: "window", t: "Developer tools", k: "⌥⌘I", icon: I.code, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
       { id: "settings", section: "window", t: "Settings", k: "⌘,", icon: I.gear, run: async () => setOverlay("settings") },
@@ -253,9 +293,9 @@ export function Palette() {
     const exact = rest.filter(c => [c.t.replace(/[…]+$/g, ""), ...(c.aliases ?? [])].some(label => label.toLocaleLowerCase() === term.toLocaleLowerCase()));
     const combined=[...exact,...out,...saved,...rest.filter(c=>!exact.includes(c))];
     return combined.filter(command=>filter==="all"||commandOnly||(filter==="tabs"?command.section==="tabs":filter==="work"?["chats","tasks","memory","results"].includes(command.section):["bookmarks","history"].includes(command.section)));
-  }, [q, filter, matches, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
+  }, [q, filter, matches, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
 
-  useEffect(() => setSel(0), [q, filter, chromeTabs, splitPick]);
+  useEffect(() => setSel(0), [q, filter, chromeTabs, vaultItems, splitPick]);
   const previousCommands=useRef<string[]>([]);
   useLayoutEffect(()=>{
     const previous=previousCommands.current;previousCommands.current=cmds.map(command=>command.id);
@@ -267,6 +307,7 @@ export function Palette() {
 
   const back = () => {
     if (chromeTabs) return setChromeTabs(null);
+    if (vaultItems) return setVaultItems(null);
     if (splitPick) return setSplitPick(false);
     if (q.trim().startsWith("@")) return setQ("");
     close();
@@ -283,7 +324,7 @@ export function Palette() {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }}>
         <div className="palette-field">
-          {chromeTabs || splitPick || q.trim().startsWith("@") ? <button className="icon-btn sm" aria-label="Back" onClick={back}>{I.left}</button> : <span className="palette-ico">{I.searchLg}</span>}
+          {chromeTabs || vaultItems || splitPick || q.trim().startsWith("@") ? <button className="icon-btn sm" aria-label="Back" onClick={back}>{I.left}</button> : <span className="palette-ico">{I.searchLg}</span>}
           <input
             autoFocus
             value={q}
@@ -292,7 +333,7 @@ export function Palette() {
             aria-controls="palette-list"
             aria-activedescendant={shown[sel] ? `pal-${shown[sel]!.id}` : undefined}
             aria-label="Command palette"
-            placeholder={chromeTabs ? "Pick a Chrome tab to borrow…" : splitPick ? "Pick a page for split view…" : "Search tabs, chats, tasks, pages… / for commands"}
+            placeholder={chromeTabs ? "Pick a Chrome tab to borrow…" : vaultItems ? "Pick a credential to fill…" : splitPick ? "Pick a page for split view…" : "Search tabs, chats, tasks, pages… / for commands"}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
@@ -304,7 +345,7 @@ export function Palette() {
           />
           <kbd>esc</kbd>
         </div>
-        {!chromeTabs&&!splitPick&&!/^[/@]/.test(q.trim())&&<div className="palette-filters" role="group" aria-label="Search types">{([['all','All'],['tabs','Tabs'],['work','Work'],['pages','Saved pages']] as const).filter(([type])=>!bridge.privateMode||type!=="work").map(([type,label])=><button key={type} className="btn sm ghost" aria-pressed={filter===type} onClick={()=>setFilter(type)}>{label}</button>)}</div>}
+        {!chromeTabs&&!vaultItems&&!splitPick&&!/^[/@]/.test(q.trim())&&<div className="palette-filters" role="group" aria-label="Search types">{([['all','All'],['tabs','Tabs'],['work','Work'],['pages','Saved pages']] as const).filter(([type])=>!bridge.privateMode||type!=="work").map(([type,label])=><button key={type} className="btn sm ghost" aria-pressed={filter===type} onClick={()=>setFilter(type)}>{label}</button>)}</div>}
         {searching&&<p className="palette-search-status hint" role="status">Searching saved work…</p>}
         {searchError&&<p className="palette-search-status hint" role="status">Some saved results couldn’t be searched. <button className="btn sm ghost" onClick={()=>setSearchRefresh(value=>value+1)}>Retry</button></p>}
         <div className="palette-list" ref={listRef} role="listbox" id="palette-list">

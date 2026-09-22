@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from "react";
-import type { CompactObservation } from "@vector/contracts";
+import type { CompactObservation } from "@aux/contracts";
 import { I } from "./icons";
 
 interface ParsedObs {

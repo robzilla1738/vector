@@ -7,7 +7,6 @@ interface ViewIdentity {
   showBlankDocument?: boolean;
   owned: boolean;
   runtimeOwned?:boolean;
-  kind?: "chromium" | "engine";
   lastPreview?: string;
   visibleBounds?: { x: number; y: number; width: number; height: number };
 }

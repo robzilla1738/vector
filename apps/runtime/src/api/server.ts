@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { toErrorPayload, type AgentConnectionScope, type VectorEvent } from "@vector/contracts";
-import { MethodSchemas } from "@vector/contracts";
+import { toErrorPayload, type AgentConnectionScope, type AuxEvent } from "@aux/contracts";
+import { MethodSchemas } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 
 export type ClientContext = { external: boolean; connectionId?: string; scope?: AgentConnectionScope };
@@ -101,7 +101,7 @@ export class ApiServer {
     });
   }
 
-  private broadcast(e: VectorEvent) {
+  private broadcast(e: AuxEvent) {
     const frame = JSON.stringify({ event: e });
     for (const ws of this.sockets) if (ws.readyState === ws.OPEN) ws.send(frame);
   }
@@ -113,7 +113,7 @@ export class ApiServer {
       res.end(JSON.stringify(body));
     };
 
-    if (url.pathname === "/health") return send(200, { ok: true, service: "vector-runtime" });
+    if (url.pathname === "/health") return send(200, { ok: true, service: "aux-runtime" });
     const client = this.client(req);
     if (!client) return send(401, { error: { code: "unauthorized", message: "missing, revoked, or invalid bearer token" } });
 

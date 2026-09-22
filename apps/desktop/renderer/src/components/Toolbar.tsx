@@ -6,8 +6,7 @@ import { I } from "./icons";
 
 export function Toolbar() {
   const sidebar = useStore(s => s.sidebar);
-  const pages = useStore((s) => s.pages);
-  const activePageId = useStore((s) => s.activePageId);
+  const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const mode = useStore((s) => s.mode);
   const setMode = useStore((s) => s.setMode);
   const railOpen = useStore((s) => s.railOpen);
@@ -15,7 +14,6 @@ export function Toolbar() {
   const setSidebar = useStore((s) => s.setSidebar);
   const bookmarks = useStore((s) => s.bookmarks);
   const returnControl = useStore((s) => s.returnControl);
-  const page = pages.find((p) => p.pageId === activePageId);
   const web = !!page && page.url.startsWith("http");
   const bookmarked = web && bookmarks.some((b) => b.url === page.url);
 

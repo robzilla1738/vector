@@ -38,8 +38,7 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | `components/Toolbar.tsx` | On a loaded page the row is out of the layout until the pointer reaches the top or the field is focused. Back/forward/reload, `CommandBar`, the controller chip, overview, bookmark and the rail toggle reveal together. Touch keeps the row in the layout. ⌘L still focuses it |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again). The primary suggestion's enter mark is the same circular accent up-arrow as the composer send control. Other hints stay text keys |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
-| `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `EngineView` (`pages.capture`) for engine pages; `MockPage` in mock mode |
-| `components/EngineBadge.tsx`, `engine.ts` | Chromium / Your Chrome / Vector Engine badge with hover card (route reason, route ms, first paint) |
+| `components/Stage.tsx` | Inset rounded card; load progress line; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `MockPage` in mock mode |
 | `components/AgentRail.tsx` | Rail chrome, home view (live, sets, searchable past runs — virtualized at 30+), composer, `ResizeHandle` |
 | `components/RunPanel.tsx` | Goal, status/elapsed/model calls/cost, page chip, takeover banner + Return control, needs-input prompt, final answer with copy, `StepTimeline`, `ObservationPanel` |
 | `components/Conversation.tsx` | Chat transcript and composer. A web-tab context shows a live preview of that page beside the messages as soon as the chat opens. The globe hides it. The preview is a sibling of the message column and hides when the chat column is under 900px. Clicking it offers Open in tab, and Split view only when `previewSplit` can pair the page with the current tab or another tab in the same Space. The composer plus opens one attachment row — Document, Page, Image, Capture — not a history or memory switcher. A finished turn hides options and work history |
@@ -107,7 +106,7 @@ property defined once in `tokens.css`. Components never introduce literals.
   Tab close targets and the suggestion send mark stay circular; the shared squircle does not flatten them.
 - **Shell metrics** — `--toolbar-h 40`, fully closed sidebar width 0;
   both panels are user-resizable and their widths persist in
-  localStorage `vector.sb-w` / `vector.rail-w`. Controls are 28/32px;
+  localStorage `aux.sb-w` / `aux.rail-w`. Controls are 28/32px;
   `--traffic-inset 80` (macOS traffic lights). On a loaded page the native
   view radius is 0 so the page sits flush; the rounded edge is `.main-col`,
   with a 14px radius on the stage card in horizontal tabs. The window glass
@@ -178,7 +177,6 @@ browser. Query parameters:
 | `rail` | `1` opens the agent rail on the live run |
 | `live` | `1` keeps streaming new steps into the run |
 | `sbw`, `railw` | initial sidebar / rail widths in px |
-| `engine` | `off`, `auto`, `always` — mocked `settings.engineMode` |
 
 Screenshots: with the mock server running,
 `node apps/desktop/scripts/screenshots.mjs [outDir] [only]` renders the
@@ -191,7 +189,7 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
 - `pnpm -C apps/desktop build` — tsc + esbuild bundle + vite build.
 - `pnpm -C apps/desktop test` — vitest: `intent.test.ts` (command-bar intent
   detection), `workspace.test.ts` (space / tab / pin / folder reducers),
-  `favicon.test.ts`, `EngineView.test.tsx`, `StepTimeline.test.tsx` and
+  `favicon.test.ts`, `StepTimeline.test.tsx` and
   `ObservationPanel.test.tsx`. Repo unit tests also cover toolbar-edge
   geometry, bookmark drop, stage clearance beside a menu, and the separate
   preview and agent-stage holds (`tests/unit/toolbar-edge.test.ts`,
@@ -204,25 +202,9 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
 
 ## Runtime contract dependencies
 
-`engine.ts` was written against the pre-engine contract and keeps local
-unions (`EngineBackend`, `EngineMode`, `EngineRoute`) plus a defensive
-`engineOf(page)` reader. On `m1/integrate` the contract has landed, so the
-runtime now emits what the shell reads:
-
-- `Backend` / `PageTarget.backend` is `"vector" | "chrome" | "vector-engine"`
-  (`contracts/ids.ts`, `BackendSchema`) — the badge shows *Chromium*, *Your
-  Chrome* or *Vector Engine* from it.
-- `settings.engineMode: "off" | "auto" | "always"` (desktop default `auto`)
-  is in `SettingsSetParams`
-  and returned by `settings.get`; the Settings radio writes it through
-  `settings.set` and the runtime applies it on the next `pages.open`.
+- `Backend` / `PageTarget.backend` is `"aux" | "chrome"`
+  (`contracts/ids.ts`, `BackendSchema`) — embedded Chromium or attached
+  Chrome.
 - `PageTarget.routeReason` is set on every page (`pages.open` result,
-  `workspace.get`, `page.added` / `page.updated` events) — the hover card
-  shows it.
+  `workspace.get`, `page.added` / `page.updated` events).
 - `Run.config.implementation` / `routeReason` are read when present.
-
-Still local to the shell: `EngineRoute.routeMs` and `firstPaintMs` (and the
-`route` object they hang off) exist only in the mock bridge — the runtime
-does not report them, so the hover card shows the reason alone on real
-pages. The two `TODO(contracts)` comments (`engine.ts`, `Settings.tsx`) mark
-where the local unions can collapse onto `@vector/contracts`.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { RoutineTrigger } from "@vector/contracts";
+import type { RoutineTrigger } from "@aux/contracts";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

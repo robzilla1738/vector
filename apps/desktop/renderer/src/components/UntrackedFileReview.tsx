@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import type {ProjectFile} from '@vector/contracts';
+import type {ProjectFile} from '@aux/contracts';
 import {bridge} from '../bridge';
 
 /** Explicit, read-only snapshots; never automatically reads every untracked file. */

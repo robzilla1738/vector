@@ -7,8 +7,8 @@ only.
 
 ```bash
 pnpm bench:tasks --validate                       # offline self-check (no API key); runs in CI
-pnpm bench:tasks --suite local --adapter vector,vector-engine,vector-mcp,playwright-mcp
-pnpm bench:tasks --suite assistantbench --adapter vector,playwright-mcp --limit 10
+pnpm bench:tasks --suite local --adapter aux,aux-mcp,playwright-mcp
+pnpm bench:tasks --suite assistantbench --adapter aux,playwright-mcp --limit 10
 pnpm bench:tasks --list-adapters
 ```
 
@@ -24,9 +24,8 @@ Needs `AI_GATEWAY_API_KEY` in `.env`. Reports: `tests/benchmarks/reports/tasks-*
 
 ## Adapters (`adapters.json`)
 
-- `vector`, `vector-engine`, `vector-auto` — the runtime's own agent loop
-  (`runs.start`) with `engineMode` off / always / auto.
-- `vector-mcp`, `playwright-mcp`, `agent-browser`, `browser-use-mcp`,
+- `aux` — the runtime's own agent loop (`runs.start`).
+- `aux-mcp`, `playwright-mcp`, `agent-browser`, `browser-use-mcp`,
   `lightpanda-mcp` — MCP stdio servers driven by one generic tool-calling
   loop in `run.mjs` with the same model. Rows differ only by the browser and
   its tool surface (the methodology Lightpanda used for its published
@@ -39,9 +38,8 @@ equality for lists, key-wise match for objects. No LLM judge.
 
 | Adapter | Pass | p50 wall | Model calls (mean) | Tokens (mean) |
 |---|---:|---:|---:|---:|
-| `vector` (runtime loop, Chromium) | 6/8 | 1.5 s | 2.8 | 5.7 k |
-| `vector-engine` (runtime loop, Vector Engine) | 6/8 | 1.0 s | 4.8 | 11.1 k |
-| `vector-mcp` (generic loop, Vector tools) | 8/8 | 2.6 s | 5.5 | 32.7 k |
+| `aux` (runtime loop, Chromium) | 6/8 | 1.5 s | 2.8 | 5.7 k |
+| `aux-mcp` (generic loop, Aux tools) | 8/8 | 2.6 s | 5.5 | 32.7 k |
 | `playwright-mcp` (generic loop, Playwright tools) | 8/8 | 4.0 s | 5.4 | 36.1 k |
 
 Findings from this run:
@@ -50,8 +48,5 @@ Findings from this run:
   loses two tasks by returning `done` with the wrong value (a table row
   instead of a count on L07; `null` on L08). Answer extraction from
   `result`, not navigation, is the gap.
-- Vector's tool surface beats Playwright MCP under the identical loop on
+- Aux's tool surface beats Playwright MCP under the identical loop on
   latency (2.6 vs 4.0 s p50) and tokens (33 k vs 36 k) at equal accuracy.
-- The engine backend failed the write task (L06, 21 calls): the status
-  `<select>` on the edit form was not actionable through the engine's
-  observation. Tracked under plan A10/A18.

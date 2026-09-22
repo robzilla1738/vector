@@ -4,7 +4,7 @@ import {promisify} from 'node:util';
 import {createHash,randomUUID} from 'node:crypto';
 import {chmod,copyFile,lstat,mkdir, readFile, readdir, rename, unlink, writeFile, realpath} from 'node:fs/promises';
 import {basename, isAbsolute, join, resolve} from 'node:path';
-import {LocalProjectSchema,ProjectCommitRequestSchema,ProjectGithubStatusSchema,type LocalProject, type RepositorySelection, type ProjectInspection, type ProjectCommand, type ProjectCommitRequest, type ProjectCommitResult, type ProjectReviewContext, type ProjectReviewSummary, type ProjectGithubStatus, type ProjectIncidentReport, type ProjectCommandTask} from '@vector/contracts';
+import {LocalProjectSchema,ProjectCommitRequestSchema,ProjectGithubStatusSchema,type LocalProject, type RepositorySelection, type ProjectInspection, type ProjectCommand, type ProjectCommitRequest, type ProjectCommitResult, type ProjectReviewContext, type ProjectReviewSummary, type ProjectGithubStatus, type ProjectIncidentReport, type ProjectCommandTask} from '@aux/contracts';
 import {inspectProjectEnvironment} from './project-environment.js';
 const exec = promisify(execFile);
 const ID = /^[a-f0-9-]{36}$/;

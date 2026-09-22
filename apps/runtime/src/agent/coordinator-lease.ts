@@ -1,7 +1,7 @@
 /** In-process SQLite fencing for one coordinator owner per task or run. */
 import type { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
-import { VectorError } from "@vector/contracts";
+import { AuxError } from "@aux/contracts";
 
 export const COORDINATOR_LEASE_TTL_MS = 15 * 60_000;
 
@@ -29,7 +29,7 @@ export class CoordinatorLease {
       ).get(leaseKey) as CoordinatorLeaseRecord | undefined;
       if (existing && existing.ownerId !== ownerId && existing.expiresAt > now && !existing.fenced) {
         this.db.exec("ROLLBACK");
-        throw new VectorError("conflict", `Coordinator lease ${leaseKey} is held until ${new Date(existing.expiresAt).toISOString()}. Stop that run or wait for the lease to expire.`);
+        throw new AuxError("conflict", `Coordinator lease ${leaseKey} is held until ${new Date(existing.expiresAt).toISOString()}. Stop that run or wait for the lease to expire.`);
       }
       const generation = existing ? existing.generation + (existing.ownerId === ownerId && existing.expiresAt > now && !existing.fenced ? 0 : 1) : 1;
       const fencedTakeover = !!existing && (existing.ownerId !== ownerId || existing.fenced || existing.expiresAt <= now);
@@ -62,7 +62,7 @@ export class CoordinatorLease {
     const updated = this.db.prepare(
       "UPDATE coordinator_leases SET expires_at=? WHERE lease_key=? AND owner_id=? AND fenced=0",
     ).run(now + ttlMs, leaseKey, ownerId);
-    if (updated.changes !== 1) throw new VectorError("conflict", "This coordinator lease was fenced or taken over.");
+    if (updated.changes !== 1) throw new AuxError("conflict", "This coordinator lease was fenced or taken over.");
   }
 
   release(leaseKey: string, ownerId: string): void {

@@ -1,7 +1,7 @@
 import { clearResultDrafts } from "./result-drafts";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { readRunAnswerDrafts, writeRunAnswerDraft, clearSubmittedRunAnswer, type RunAnswerDraft } from "./run-answer-drafts";
-import { splitRatio } from "@vector/contracts/split-layout";
+import { splitRatio } from "@aux/contracts/split-layout";
 import { setDictationDraft } from "./dictation-drafts";
 import { conversationFinder, readerFinder } from "./text-surface-find";
 import { canSplitPage, splitForPage, rememberActiveTab } from "./workspace";
@@ -21,8 +21,13 @@ import type {
   SavedProgram,
   SetMember,
   StepRecord,
-  VectorEvent,
-} from "@vector/contracts";
+  AuxEvent,
+  TabCatalogSnapshot,
+  TabCommand,
+  TabPatch,
+  TabPlacement,
+  TabRecord,
+} from "@aux/contracts";
 import { nextSidebarMode, readSidebarMode, sidebarFocusSelector, type SidebarMode } from "./sidebar-mode";
 import { bridge } from "./bridge";
 import { isScrimOverlay } from "./chrome";
@@ -39,6 +44,7 @@ import {
   removeFolder,
   removeSpace,
   renameFolder,
+  updateFolder,
   renameSpace,
   reorderGroup,
   reorderPin,
@@ -48,8 +54,10 @@ import {
   syncSpaces,
   toggleFolder,
   togglePin,
+  type Folder,
   type Layout,
   type Pin,
+  type Space,
   type SpaceColor,
 } from "./workspace";
 
@@ -136,12 +144,21 @@ interface Workspace {
   setConversationDraft(id: string, text: string): void;
   bookmarkPending: Record<string, boolean>;
   toggleBookmark(url: string, title: string): Promise<void>;
-  bookmarks: { url: string; title: string; folderPath?: string[] }[];
+  toggleReadingList(url: string, title: string): Promise<void>;
+  bookmarks: { url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean }[];
   closedTabs: ClosedTab[];
   reopeningTab: boolean;
   downloads: Download[];
   tabAudio: Record<string,{muted:boolean;audible:boolean}>;
   toasts: { id: number; text: string; kind: "info" | "error" }[];
+  vaultOffer: import("./bridge").VaultOffer | null;
+  setVaultOffer(offer: Workspace["vaultOffer"]): void;
+  /** Active in-place page translation for the focused tab. */
+  translation: { pageId: string; lang: string; count: number; truncated: boolean } | null;
+  setTranslation(translation: Workspace["translation"]): void;
+  /** Page currently being translated — drives the bar's progress state. */
+  translationPending: string | null;
+  setTranslationPending(pageId: string | null): void;
   splitPageId: string | null;
   setSplitPage(pageId: string | null): void;
   setSplitRatio(value: number, persist?: boolean): void;
@@ -153,6 +170,8 @@ interface Workspace {
   /** bumps each time something asks the command bar to take focus */
   focusRequest: number;
   focusSlot: CommandSlot;
+  /** `/query` from the omnibox seeds the command palette's shared registry. */
+  paletteSeed: string;
   /** window is too narrow for sidebar + stage + agent rail side by side */
   narrow: boolean;
   layout: Layout;
@@ -172,8 +191,8 @@ interface Workspace {
   find(text: string, findNext?: boolean, forward?: boolean): Promise<void>;
   zoomLevels: Record<string, number>;
   zoomPage(pageId: string, options?: { level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" }): Promise<void>;
-  newTab(url?: string): Promise<PageTarget | null>;
-  openBackgroundTab(url: string, spaceId: string, reuseExisting?: boolean): Promise<PageTarget>;
+  newTab(url?: string, reuseId?: string): Promise<PageTarget | null>;
+  openBackgroundTab(url: string, spaceId: string, reuseExisting?: boolean, reuseId?: string): Promise<PageTarget>;
   closeTab(pageId: string): Promise<void>;
   duplicateTab(pageId: string): Promise<void>;
   closingTabs: boolean;
@@ -203,6 +222,7 @@ interface Workspace {
   reorderPin(spaceId: string, url: string, beforeUrl: string | null): void;
   addFolder(name: string): string;
   renameFolder(folderId: string, name: string): void;
+  updateFolder(folderId: string, patch: { name?: string; color?: SpaceColor | null; emoji?: string | null }): void;
   deleteFolder(folderId: string): void;
   toggleFolder(folderId: string): void;
   moveTabToFolder(pageId: string, folderId: string | null): void;
@@ -213,8 +233,16 @@ interface Workspace {
   railWidth: number;
   setSidebarWidth(w: number): void;
   setRailWidth(w: number): void;
-  applyEvent(e: VectorEvent): void;
+  applyEvent(e: AuxEvent): void;
   applyDownload(d: Download): void;
+  /** last applied catalog patch version — gap detection for the patch stream */
+  catalogVersion: number;
+  applyTabsPatch(patch: TabPatch): void;
+  syncTabsSnapshot(snapshot: TabCatalogSnapshot): void;
+  /** Workspace placement relayed with a `move` — the destination window files
+   *  the arriving tab into the Space/folder the source window chose. */
+  applyTabsPlacement(payload: { pageId: string; windowId: string; placement: TabPlacement }): void;
+  resyncTabs(): Promise<void>;
   toast(text: string, kind?: "info" | "error"): void;
   refresh(): Promise<void>;
   refreshResults(setId: string): Promise<void>;
@@ -224,6 +252,122 @@ async function call<T>(method: string, params?: unknown): Promise<T> {
   return (await bridge.invoke(method, params)) as T;
 }
 
+/** Typed human tab command (§7.2) — main actuates, the patch stream confirms. */
+export async function tabCommand(command: TabCommand): Promise<void> {
+  const ack = await bridge.tabCommand(command, useStore.getState().catalogVersion);
+  if (ack.status === "rejected") throw new Error(ack.error?.message ?? "This tab command was rejected.");
+}
+
+/** Catalog → PageTarget for a tab the runtime has not announced yet. */
+const pageFromTab = (tab: TabRecord): PageTarget => ({
+  pageId: tab.pageId,
+  windowId: tab.windowId,
+  backend: "aux",
+  targetId: `atab-${tab.pageId}`,
+  url: tab.url,
+  title: tab.title,
+  favicon: tab.favicon,
+  documentEpoch: 0,
+  lastRevision: 0,
+  viewStatus: tab.crashed ? "crashed" : "hidden",
+  lifecycle: tab.lifecycle,
+  controller: "none",
+  controllerEpoch: 0,
+  ownedByRuntime: tab.runtimeOwned,
+  createdAt: tab.createdAt,
+  lastActiveAt: tab.lastActiveAt,
+  loading: tab.loading,
+  canGoBack: tab.canGoBack,
+  canGoForward: tab.canGoForward,
+  navigationError: tab.navigationError ?? null,
+});
+
+/**
+ * Overlay catalog-owned fields on a live target. Runtime-owned fields —
+ * controller, epochs, documentEpoch, driver state — are never touched here.
+ */
+const mergeTabInto = (page: PageTarget, tab: TabRecord): PageTarget => ({
+  ...page,
+  windowId: tab.windowId,
+  url: tab.url,
+  title: tab.title,
+  favicon: tab.favicon ?? page.favicon,
+  loading: tab.loading,
+  canGoBack: tab.canGoBack,
+  canGoForward: tab.canGoForward,
+  navigationError: tab.navigationError ?? null,
+  lastActiveAt: tab.lastActiveAt,
+  viewStatus: tab.crashed ? "crashed" : page.viewStatus === "crashed" ? "hidden" : page.viewStatus,
+  lifecycle: tab.lifecycle ?? "live",
+});
+
+/** Push the window's strip order to the catalog — the window op echo converges the rest. */
+const syncCatalogOrder = (order: string[], pages: PageTarget[], catalogVersion: number) =>
+  void bridge.tabCommand({ kind: "reorder", order: order.filter(id => pages.some(page => page.pageId === id && (page.windowId ?? "main") === bridge.windowId)) }, catalogVersion).catch(() => {});
+
+/** Space/folder snapshot carried on a move so the destination window can file the tab. */
+const tabPlacementFor = (state: { layout: Workspace["layout"] }, pageId: string): TabPlacement | undefined => {
+  const spaceId = state.layout.tabSpace[pageId] ?? state.layout.activeSpaceId;
+  const space = [...state.layout.spaces, ...(state.layout.archivedSpaces ?? [])].find(item => item.id === spaceId);
+  if (!space) return undefined;
+  const folder = state.layout.folders.find(item => item.id === state.layout.tabFolder[pageId]);
+  return {
+    space: { id: space.id, name: space.name, color: space.color, ...(space.workspaceId ? { workspaceId: space.workspaceId } : {}) },
+    ...(folder ? { folder: { id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: folder.collapsed, ...(folder.color ? { color: folder.color } : {}), ...(folder.emoji ? { emoji: folder.emoji } : {}) } } : {}),
+  };
+};
+
+/** Strip order after a window op: catalog order wins, uncataloged ids keep their relative tail. */
+const reconcileWindowOrder = (order: string[], catalogOrder: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[]) => {
+  const live = new Set(pages.map(page => page.pageId));
+  const fromCatalog = catalogOrder.filter(id => live.has(id));
+  const known = new Set(fromCatalog);
+  return syncOrder([...fromCatalog, ...order.filter(id => !known.has(id))], pages, preservedIds);
+};
+
+/**
+ * Everything a removal touches — shared by the runtime `page.removed` event
+ * and catalog `remove` ops. Returns the state pieces plus the tab the caller
+ * should activate when nothing else already chose a successor.
+ */
+function applyRemoval(st: Workspace, id: string, activeHint: string | null) {
+  const group = closingGroups.get(id);
+  closingGroups.delete(id);
+  const gone = st.pages.find(p => p.pageId === id);
+  const closedTabs = gone && isTab(gone) && gone.url && gone.url !== "about:blank" && !st.closedTabs.some(tab => tab.pageId === id)
+    ? [...st.closedTabs, {
+      pageId: gone.pageId, url: gone.url, title: gone.title,
+      spaceId: st.layout.tabSpace[id] ?? st.layout.activeSpaceId,
+      folderId: st.layout.tabFolder[id], index: Math.max(0, st.layout.order.indexOf(id)), closedAt: Date.now(), ...group,
+    }].slice(-CLOSED_TAB_LIMIT) : st.closedTabs;
+  if (closedTabs !== st.closedTabs) persistClosedTabs(closedTabs);
+  const previews = { ...st.previews };
+  delete previews[id];
+  const zoomLevels = { ...st.zoomLevels };
+  delete zoomLevels[id];
+  const pages = st.pages.filter(p => p.pageId !== id);
+  // closing the active tab focuses its neighbour, like every browser
+  let activePageId = st.activePageId;
+  let activateNext: string | undefined;
+  if (activePageId === id) {
+    if (activeHint && pages.some(page => page.pageId === activeHint && st.layout.tabSpace[activeHint] === st.layout.activeSpaceId)) {
+      activePageId = activeHint;
+    } else {
+      const visible = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId).map(page => page.pageId);
+      const order = visible.filter(pageId => pageId !== id);
+      const idx = visible.indexOf(id);
+      activePageId = order[Math.min(Math.max(idx, 0), order.length - 1)] ?? order[order.length - 1] ?? null;
+      activateNext = activePageId ?? undefined;
+    }
+  }
+  const layout = { ...st.layout, order: syncOrder(st.layout.order, pages, st.pendingRestoreIds) };
+  persistLayout(layout);
+  return {
+    next: { pages, closedTabs, previews, zoomLevels, layout, splitPageId: splitForPage(layout, pages, activePageId), activePageId },
+    activateNext,
+  };
+}
+
 /** artifacts.read returns base64 of UTF-8 bytes — atob alone would mangle anything outside Latin-1 */
 export function decodeBase64Json<T>(b64: string): T {
   const bin = atob(b64);
@@ -231,15 +375,21 @@ export function decodeBase64Json<T>(b64: string): T {
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
-const LAYOUT_KEY = `vector.layout.v1:${bridge.windowId}`;
+const LAYOUT_KEY = `aux.layout.v1:${bridge.windowId}`;
 const CLOSED_TABS_KEY=`aux.closed-tabs.v1:${bridge.windowId}`;
 const storage = typeof localStorage !== "undefined" ? localStorage : null;
-const persistLayout = (l: Layout) => storage?.setItem(LAYOUT_KEY, JSON.stringify(l));
+let lastPersistedLayout = storage?.getItem(LAYOUT_KEY) ?? null;
+const persistLayout = (l: Layout) => {
+  const json = JSON.stringify(l);
+  if (json === lastPersistedLayout) return;
+  lastPersistedLayout = json;
+  storage?.setItem(LAYOUT_KEY, json);
+};
 const persistClosedTabs=(tabs:ClosedTab[])=>{if(bridge.privateMode)return;try{storage?.setItem(CLOSED_TABS_KEY,JSON.stringify(tabs));}catch{/* Recovery remains available for this window. */}};
 const initialLayout = (() => {
   if (!storage) return emptyLayout();
   const current = storage.getItem(LAYOUT_KEY);
-  const legacy = bridge.windowId === "main" ? storage.getItem("vector.layout.v1") : null;
+  const legacy = bridge.windowId === "main" ? storage.getItem("aux.layout.v1") : null;
   const layout = parseLayout(current ?? legacy);
   if (!current && legacy) persistLayout(layout);
   return layout;
@@ -255,6 +405,8 @@ const modelAuxValue = (call: Partial<ModelCall> | undefined, key: "provider" | "
 };
 
 const closingGroups = new Map<string, {groupId: string; index: number; wasActive: boolean}>();
+/** one in-flight catalog resync per shell — gap storms collapse into a single fetch */
+let tabsResyncing = false;
 
 export const useStore = create<Workspace>((set, get) => ({
   pages: [],
@@ -293,7 +445,7 @@ export const useStore = create<Workspace>((set, get) => ({
   memoryWorkspaceId: null,
   railOpen: false,
   railView: { kind: "home" },
-  sidebar: readSidebarMode(storage?.getItem("vector.sidebar")),
+  sidebar: readSidebarMode(storage?.getItem("aux.sidebar")),
   sidebarPeek: false,
   findText: "",
   findMatches: null,
@@ -346,11 +498,29 @@ export const useStore = create<Workspace>((set, get) => ({
       set(state => {const bookmarkPending = {...state.bookmarkPending}; delete bookmarkPending[url]; return {bookmarkPending};});
     }
   },
+  toggleReadingList: async (url, title) => {
+    if (bridge.privateMode || !bookmarkWebUrl(url) || get().bookmarkPending[url]) return;
+    const saved = get().bookmarks.find(item => item.url === url);
+    set(state => ({bookmarkPending: {...state.bookmarkPending, [url]: true}}));
+    try {
+      await call("bookmarks.readingList", {url, readingList: !saved?.readingList, title});
+      // Same contract as toggleBookmark — the runtime event owns list updates.
+      get().toast(saved?.readingList ? "Removed from reading list" : "Added to reading list");
+    } finally {
+      set(state => {const bookmarkPending = {...state.bookmarkPending}; delete bookmarkPending[url]; return {bookmarkPending};});
+    }
+  },
   closedTabs: bridge.privateMode?[]:readClosedTabs(storage,CLOSED_TABS_KEY),
   reopeningTab: false,
   downloads: [],
   tabAudio: {},
   toasts: [],
+  vaultOffer: null,
+  setVaultOffer: (vaultOffer) => set({ vaultOffer }),
+  translation: null,
+  setTranslation: (translation) => set({ translation }),
+  translationPending: null,
+  setTranslationPending: (translationPending) => set({ translationPending }),
   splitPageId: null,
   setSplitRatio: (value, persist = true) => {
     const layout = { ...get().layout, splitRatio: splitRatio(value) };
@@ -379,6 +549,7 @@ export const useStore = create<Workspace>((set, get) => ({
   pendingRestoreIds: [],
   focusRequest: 0,
   focusSlot: "sidebar" as CommandSlot,
+  paletteSeed: "",
   narrow: false,
   layout: initialLayout,
 
@@ -407,7 +578,7 @@ export const useStore = create<Workspace>((set, get) => ({
   setSidebar: (sidebar) => {
     const focused = typeof document === 'undefined' ? null : document.activeElement;
     const moveFocus = focused && focused instanceof HTMLElement && !!focused.closest('.sidebar, .sidebar-reveal, .sidebar-rail');
-    storage?.setItem("vector.sidebar", sidebar);
+    storage?.setItem("aux.sidebar", sidebar);
     set({ sidebar, sidebarPeek: false });
     if (moveFocus) requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(sidebarFocusSelector(sidebar))?.focus();
@@ -438,6 +609,135 @@ export const useStore = create<Workspace>((set, get) => ({
       return { downloads: [d, ...rest].slice(0, 200) };
     }),
 
+  catalogVersion: 0,
+
+  /**
+   * Main-owned catalog patches (§7.2). Ops apply in order inside one state
+   * transition; a base-version gap or a reconnect routes through resyncTabs,
+   * which replays the retained log or falls back to a snapshot — a suspended
+   * renderer never has to guess.
+   */
+  applyTabsPatch: (patch) => {
+    let activateNext: string | undefined;
+    let resyncNeeded = false;
+    let windowChoseActive = false;
+    set((st) => {
+      if (patch.baseVersion !== st.catalogVersion) { resyncNeeded = true; return {}; }
+      let pages = st.pages;
+      let layout = st.layout;
+      let layoutDirty = false;
+      let closedTabs = st.closedTabs;
+      let previews = st.previews;
+      let zoomLevels = st.zoomLevels;
+      let activePageId = st.activePageId;
+      let splitPageId = st.splitPageId;
+      for (const op of patch.ops) {
+        if (op.op === "upsert") {
+          const tab = op.tab;
+          if (tab.windowId !== bridge.windowId) {
+            // The tab moved to another window — a transfer, not a close, so
+            // no closed-tabs bookkeeping; the page.moved event does layout.
+            if (pages.some(page => page.pageId === tab.pageId)) {
+              pages = pages.filter(page => page.pageId !== tab.pageId);
+              layout = { ...layout, order: syncOrder(layout.order, pages, st.pendingRestoreIds) };
+              if (activePageId === tab.pageId) activePageId = tabsInSpace(layout, pages, layout.activeSpaceId)[0]?.pageId ?? null;
+              splitPageId = splitForPage(layout, pages, activePageId);
+              layoutDirty = true;
+            }
+            continue;
+          }
+          const existing = pages.find(page => page.pageId === tab.pageId);
+          if (existing) {
+            pages = pages.map(page => page.pageId === tab.pageId ? mergeTabInto(page, tab) : page);
+          } else {
+            pages = [...pages, pageFromTab(tab)];
+            if (!st.restoringTabs) {
+              layout = syncSpaces({ ...layout, order: syncOrder(layout.order, pages, st.pendingRestoreIds) }, pages, st.pendingRestoreIds);
+              layoutDirty = true;
+            }
+          }
+        } else if (op.op === "remove") {
+          const applied = applyRemoval({ ...st, pages, layout, closedTabs, previews, zoomLevels, activePageId, splitPageId }, op.pageId, null);
+          ({ pages, closedTabs, previews, zoomLevels, layout, activePageId, splitPageId } = applied.next);
+          activateNext = applied.activateNext ?? activateNext;
+          layoutDirty = true;
+        } else if (op.op === "window" && op.window.windowId === bridge.windowId) {
+          windowChoseActive = true;
+          const order = reconcileWindowOrder(layout.order, op.window.order, pages, st.pendingRestoreIds);
+          if (order.join() !== layout.order.join()) { layout = { ...layout, order }; layoutDirty = true; }
+          activePageId = op.window.activePageId;
+        }
+      }
+      if (windowChoseActive) {
+        layout = rememberActiveTab(layout, activePageId);
+        splitPageId = splitForPage(layout, pages, activePageId);
+        layoutDirty = true;
+      }
+      if (layoutDirty) persistLayout(layout);
+      return { pages, layout, closedTabs, previews, zoomLevels, activePageId, splitPageId, catalogVersion: patch.version };
+    });
+    if (resyncNeeded) void get().resyncTabs();
+    // The catalog's window op carries main's activation pick — only command
+    // our local pick when no op arrived (out-of-band destroy).
+    else if (activateNext && !windowChoseActive) void tabCommand({ kind: "activate", pageId: activateNext }).catch(() => {});
+  },
+
+  syncTabsSnapshot: (snapshot) => {
+    set((st) => {
+      // A resync can land an older snapshot after newer patches — keep the newer truth.
+      if (snapshot.version < st.catalogVersion) return {};
+      const tabs = snapshot.tabs.filter(tab => tab.windowId === bridge.windowId);
+      const known = new Set(tabs.map(tab => tab.pageId));
+      // The catalog is authoritative for this window's human tab set; pages it
+      // does not own (runtime workers, other windows) are left to the runtime.
+      const pages = st.pages.filter(page => known.has(page.pageId) || page.ownedByRuntime || (page.windowId ?? "main") !== bridge.windowId);
+      for (const tab of tabs) {
+        const existing = pages.find(page => page.pageId === tab.pageId);
+        if (!existing) pages.push(pageFromTab(tab));
+        else pages[pages.indexOf(existing)] = mergeTabInto(existing, tab);
+      }
+      const mine = snapshot.windows.find(window => window.windowId === bridge.windowId);
+      let layout = st.layout;
+      if (!st.restoringTabs) layout = syncSpaces({ ...layout, order: syncOrder(layout.order, pages, st.pendingRestoreIds) }, pages, st.pendingRestoreIds);
+      if (mine) layout = rememberActiveTab({ ...layout, order: reconcileWindowOrder(layout.order, mine.order, pages, st.pendingRestoreIds) }, mine.activePageId);
+      persistLayout(layout);
+      const activePageId = mine ? mine.activePageId : st.activePageId;
+      return { pages, layout, activePageId, splitPageId: splitForPage(layout, pages, activePageId), catalogVersion: snapshot.version };
+    });
+  },
+
+  applyTabsPlacement: ({ pageId, windowId, placement }) => {
+    if (windowId !== bridge.windowId) return;
+    set(s => {
+      if (!s.pages.some(page => page.pageId === pageId)) return {};
+      const space: Space = { id: placement.space.id, name: placement.space.name, color: placement.space.color as SpaceColor, ...(placement.space.workspaceId ? { workspaceId: placement.space.workspaceId } : {}) };
+      let layout = s.layout.spaces.some(item => item.id === space.id) ? s.layout
+        : { ...s.layout, spaces: [...s.layout.spaces, space], archivedSpaces: s.layout.archivedSpaces?.filter(item => item.id !== space.id) };
+      layout = assignSpace(layout, pageId, space.id);
+      if (placement.folder) {
+        const folder: Folder = { ...placement.folder, color: placement.folder.color as SpaceColor | undefined };
+        if (!layout.folders.some(item => item.id === folder.id)) layout = { ...layout, folders: [...layout.folders, folder] };
+        layout = assignFolder(layout, pageId, folder.id);
+      }
+      persistLayout(layout);
+      return { layout };
+    });
+  },
+
+  resyncTabs: async () => {
+    if (tabsResyncing) return;
+    tabsResyncing = true;
+    try {
+      const result = await bridge.tabsSince(get().catalogVersion);
+      if (result.kind === "snapshot") get().syncTabsSnapshot(result.snapshot);
+      else for (const patch of result.patches) get().applyTabsPatch(patch);
+    } catch {
+      /* the next patch re-triggers the resync */
+    } finally {
+      tabsResyncing = false;
+    }
+  },
+
   activate: async (pageId) => {
     const spaceId = get().layout.tabSpace[pageId];
     if (spaceId && spaceId !== get().layout.activeSpaceId) {
@@ -452,14 +752,14 @@ export const useStore = create<Workspace>((set, get) => ({
     set({ layout: selectionLayout });
     if (get().overlay !== "find") get().setOverlay(null);
     set({ activePageId: pageId, mode: "focus", splitPageId: splitForPage(get().layout, get().pages, pageId) });
-    await call("pages.activate", { pageId });
+    await tabCommand({ kind: "activate", pageId });
   },
 
   navigatePage: async (pageId, url) => {
     // Reveal the destination before loading. A failure belongs in the browser,
     // and a slow response must never select this tab over a newer user selection.
     await get().activate(pageId);
-    try { await call("pages.navigate", { pageId, url }); }
+    try { await tabCommand({ kind: "navigate", pageId, url }); }
     catch (reason) {
       const page = get().pages.find(page => page.pageId === pageId);
       if (page?.navigationError?.url !== url) throw reason;
@@ -480,48 +780,53 @@ export const useStore = create<Workspace>((set, get) => ({
     }finally{if(zoomRequests.get(pageId)===token)zoomRequests.delete(pageId);}
   },
 
-  newTab: async (url = "about:blank") => {
+  newTab: async (url = "about:blank", reuseId?: string) => {
     const observed = new Set(get().pages.map(page => page.pageId));
     const unsubscribe = useStore.subscribe(state => { for (const page of state.pages) observed.add(page.pageId); });
     try {
       get().setOverlay(null);
       set({ mode: "focus" });
-      const p = await call<PageTarget>("pages.open", { url, activate: true });
+      const ack = await bridge.tabCommand({ kind: "open", url, activate: true, ...(reuseId ? { pageId: reuseId } : {}) }, get().catalogVersion);
+      if (ack.status === "rejected" || !ack.pageId) throw new Error(ack.error?.message ?? "The tab could not be opened.");
+      const pageId = ack.pageId;
       set((s) => {
-        const existing = s.pages.some(x => x.pageId === p.pageId);
-        if (!existing && observed.has(p.pageId)) return {}; // Closed while the open response was pending.
-        const pages = existing ? s.pages : [...s.pages, p];
-        const layout = assignSpace({ ...s.layout, order: syncOrder(s.layout.order, pages,s.pendingRestoreIds) }, p.pageId, s.layout.activeSpaceId);
+        const existing = s.pages.some(x => x.pageId === pageId);
+        if (!existing && observed.has(pageId)) return {}; // Closed while the open response was pending.
+        const pages = existing ? s.pages : [...s.pages, pageFromTab({ pageId, windowId: bridge.windowId, url, title: "", loading: url !== "about:blank", muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 0, createdAt: Date.now(), lastActiveAt: Date.now() })];
+        const layout = assignSpace({ ...s.layout, order: syncOrder(s.layout.order, pages,s.pendingRestoreIds) }, pageId, s.layout.activeSpaceId);
         persistLayout(layout);
-        return { pages, layout, ...(!existing ? { activePageId: p.pageId, mode: "focus" as const, overlay: null } : {}) };
+        return { pages, layout, ...(!existing ? { activePageId: pageId, mode: "focus" as const, overlay: null } : {}) };
       });
-      if (url === "about:blank" && get().activePageId === p.pageId) get().focusCommandBar("hero");
-      return p;
+      if (url === "about:blank" && get().activePageId === pageId) get().focusCommandBar("hero");
+      return get().pages.find(page => page.pageId === pageId) ?? null;
     } catch (e) {
       errToast(e);
       return null;
     } finally { unsubscribe(); }
   },
 
-  openBackgroundTab: async (url, spaceId, reuseExisting = true) => {
+  openBackgroundTab: async (url, spaceId, reuseExisting = true, reuseId?: string) => {
     if (!get().layout.spaces.some(space => space.id === spaceId)) throw new Error("This Space is no longer available.");
     const existing = get().pages.find(page => page.url === url && isTab(page) && page.viewStatus !== "crashed" && get().layout.tabSpace[page.pageId] === spaceId);
     if (reuseExisting && existing) return existing;
     const observed = new Set(get().pages.map(page => page.pageId));
     const unsubscribe = useStore.subscribe(state => { for (const page of state.pages) observed.add(page.pageId); });
     try {
-      const page = await call<PageTarget>("pages.open", { url, background: true, activate: false });
+      const ack = await bridge.tabCommand({ kind: "open", url, background: true, activate: false, ...(reuseId ? { pageId: reuseId } : {}) }, get().catalogVersion);
+      if (ack.status === "rejected" || !ack.pageId) throw new Error(ack.error?.message ?? "The tab could not be opened.");
+      const pageId = ack.pageId;
+      const stub = pageFromTab({ pageId, windowId: bridge.windowId, url, title: "", loading: true, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 0, createdAt: Date.now(), lastActiveAt: Date.now() });
       set(state => {
-        const existing = state.pages.some(item => item.pageId === page.pageId);
-        if (!existing && observed.has(page.pageId)) return {};
-        const pages = existing ? state.pages : [...state.pages, page];
+        const existing = state.pages.some(item => item.pageId === pageId);
+        if (!existing && observed.has(pageId)) return {};
+        const pages = existing ? state.pages : [...state.pages, stub];
         // Preserve the requested destination even if the user switches Spaces while loading.
         const destination = [...state.layout.spaces, ...(state.layout.archivedSpaces ?? [])].some(space => space.id === spaceId) ? spaceId : state.layout.activeSpaceId;
-        const layout = { ...state.layout, order: syncOrder(state.layout.order, pages,state.pendingRestoreIds), tabSpace: { ...state.layout.tabSpace, [page.pageId]: destination } };
+        const layout = { ...state.layout, order: syncOrder(state.layout.order, pages,state.pendingRestoreIds), tabSpace: { ...state.layout.tabSpace, [pageId]: destination } };
         persistLayout(layout);
         return { pages, layout };
       });
-      return page;
+      return get().pages.find(item => item.pageId === pageId) ?? stub;
     } finally { unsubscribe(); }
   },
 
@@ -538,7 +843,9 @@ export const useStore = create<Workspace>((set, get) => ({
           get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.update", { id: entry.spaceId, archived: false }));
         }
         const destinationSpace = get().layout.spaces.some(space => space.id === entry.spaceId) ? entry.spaceId : get().layout.activeSpaceId;
-        const page = entries.length > 1 ? await get().openBackgroundTab(entry.url, destinationSpace, false) : await get().newTab(entry.url);
+        const page = entries.length > 1
+          ? await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId)
+          : await get().newTab(entry.url, entry.pageId);
         if (!page) return; // Keep the entry available if opening failed.
         lastOpened = page.pageId;
         if (entry.wasActive) foreground = page.pageId;
@@ -609,11 +916,11 @@ export const useStore = create<Workspace>((set, get) => ({
           closingGroups.set(pageId, {groupId, index: Math.max(0, originalOrder.indexOf(pageId)), wasActive: originalActive === pageId});
           if (closingGroups.size > 200) closingGroups.delete(closingGroups.keys().next().value!);
         }
-        let result: {ok: boolean};
-        try { result = await call<{ok: boolean}>("pages.close", {pageId}); }
+        let ok: boolean;
+        try { ok = (await bridge.tabCommand({ kind: "close", pageId }, get().catalogVersion)).status !== "rejected"; }
         catch (error) { closingGroups.delete(pageId); throw error; }
-        if (!result.ok) closingGroups.delete(pageId);
-        if (!result.ok) { toast(`Closing stopped. ${closed} ${closed === 1 ? "tab" : "tabs"} closed.`); return false; }
+        if (!ok) closingGroups.delete(pageId);
+        if (!ok) { toast(`Closing stopped. ${closed} ${closed === 1 ? "tab" : "tabs"} closed.`); return false; }
         closed++;
         options?.onClosed?.(pageId, closed);
       }
@@ -623,7 +930,7 @@ export const useStore = create<Workspace>((set, get) => ({
   },
   closeTab: async (pageId) => {
     try {
-      await call("pages.close", { pageId });
+      await tabCommand({ kind: "close", pageId });
     } catch (e) {
       errToast(e);
     }
@@ -777,6 +1084,7 @@ export const useStore = create<Workspace>((set, get) => ({
     set((s) => {
       const layout = reorderInSpace(s.layout, spaceId, from, to, s.pages);
       persistLayout(layout);
+      syncCatalogOrder(layout.order, s.pages, s.catalogVersion);
       return { layout };
     }),
   moveTabs: (pageIds, spaceId, folder, beforeId) => {
@@ -810,7 +1118,8 @@ export const useStore = create<Workspace>((set, get) => ({
       ? tabsInSpace(layout, state.pages, layout.activeSpaceId)[0]?.pageId ?? null : state.activePageId;
     persistLayout(layout);
     set({ layout, activePageId, splitPageId: splitForPage(layout, state.pages, activePageId) });
-    if (activePageId && activePageId !== state.activePageId) void call("pages.activate", { pageId: activePageId }).catch(errToast);
+    if (activePageId && activePageId !== state.activePageId) void tabCommand({ kind: "activate", pageId: activePageId }).catch(errToast);
+    if (beforeId !== undefined) syncCatalogOrder(layout.order, state.pages, state.catalogVersion);
   },
   moveTabToSpace: (pageId, spaceId) =>
     set((s) => {
@@ -818,7 +1127,7 @@ export const useStore = create<Workspace>((set, get) => ({
       persistLayout(layout);
       const activePageId = s.activePageId === pageId && spaceId !== layout.activeSpaceId
         ? tabsInSpace(layout, s.pages, layout.activeSpaceId)[0]?.pageId ?? null : s.activePageId;
-      if (activePageId && activePageId !== s.activePageId) void call("pages.activate", { pageId: activePageId }).catch(errToast);
+      if (activePageId && activePageId !== s.activePageId) void tabCommand({ kind: "activate", pageId: activePageId }).catch(errToast);
       return { layout, activePageId, splitPageId: splitForPage(layout, s.pages, activePageId) };
     }),
   syncBrowserSpaces: (spaces) => {
@@ -832,10 +1141,17 @@ export const useStore = create<Workspace>((set, get) => ({
     if (!bridge.privateMode) get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.list"));
   },
   moveTabToWindow: async (pageId, windowId) => {
-    const layout = get().layout;
-    const spaceId = layout.tabSpace[pageId] ?? layout.activeSpaceId;
-    const folder = layout.folders.find(folder => folder.id === layout.tabFolder[pageId]);
-    await call("pages.moveToWindow", { pageId, windowId, spaceId, folder });
+    const page = get().pages.find(item => item.pageId === pageId);
+    if (!page || page.viewStatus === "detached" || page.ownedByRuntime || page.controller === "agent" || page.controller === "external") {
+      throw new Error("Take control of the tab before moving it.");
+    }
+    const placement = tabPlacementFor(get(), pageId);
+    const ack = await bridge.tabCommand({
+      kind: "move", pageId, activate: get().activePageId === pageId,
+      ...(windowId ? { windowId } : {}),
+      ...(placement ? { placement } : {}),
+    }, get().catalogVersion);
+    if (ack.status === "rejected") throw new Error(ack.error?.message ?? "Aux could not move the tab.");
   },
   moveTabsToWindow: async (pageIds, windowId) => {
     const state = get();
@@ -844,19 +1160,21 @@ export const useStore = create<Workspace>((set, get) => ({
       if (!page || page.viewStatus === "detached" || page.ownedByRuntime || page.controller === "agent" || page.controller === "external") {
         throw new Error("Take control of every selected tab before moving the group.");
       }
-      const spaceId = state.layout.tabSpace[pageId] ?? state.layout.activeSpaceId;
-      const folder = state.layout.folders.find(item => item.id === state.layout.tabFolder[pageId]);
-      return {pageId, spaceId, folder};
+      return {pageId, placement: tabPlacementFor(state, pageId)};
     });
     let destination = windowId;
     const foreground = placements.find(item => item.pageId === state.activePageId)?.pageId ?? placements[0]?.pageId;
     let moved = 0;
     for (const placement of placements) {
       try {
-        const page = await call<PageTarget>("pages.moveToWindow", {...placement, windowId: destination, activate: placement.pageId === foreground});
+        const ack = await bridge.tabCommand({
+          kind: "move", pageId: placement.pageId, activate: placement.pageId === foreground,
+          ...(destination ? { windowId: destination } : {}),
+          ...(placement.placement ? { placement: placement.placement } : {}),
+        }, get().catalogVersion);
         // The first transfer creates the window; every subsequent transfer reuses it.
-        if (!page.windowId) throw new Error("Aux could not confirm the destination window. Check your windows before trying again.");
-        destination = page.windowId;
+        if (ack.status === "rejected" || !ack.windowId) throw new Error(ack.error?.message ?? "Aux could not confirm the destination window. Check your windows before trying again.");
+        destination = ack.windowId;
         moved++;
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
@@ -909,7 +1227,7 @@ export const useStore = create<Workspace>((set, get) => ({
     persistLayout(layout);
     set({ layout, activePageId, splitPageId: splitForPage(layout, state.pages, activePageId), mode: "focus", overlay: null });
     void bridge.overlay(false);
-    if (activePageId) void call("pages.activate", { pageId: activePageId }).catch(errToast);
+    if (activePageId) void tabCommand({ kind: "activate", pageId: activePageId }).catch(errToast);
   },
   togglePin: (pin, spaceId) =>
     set((s) => {
@@ -927,6 +1245,7 @@ export const useStore = create<Workspace>((set, get) => ({
     set((s) => {
       const layout = reorderGroup(s.layout, spaceId, folderId, from, to, s.pages);
       persistLayout(layout);
+      syncCatalogOrder(layout.order, s.pages, s.catalogVersion);
       return { layout };
     }),
   addFolder: (name) => {
@@ -942,6 +1261,12 @@ export const useStore = create<Workspace>((set, get) => ({
   renameFolder: (folderId, name) =>
     set((s) => {
       const layout = renameFolder(s.layout, folderId, name);
+      persistLayout(layout);
+      return { layout };
+    }),
+  updateFolder: (folderId, patch) =>
+    set((s) => {
+      const layout = updateFolder(s.layout, folderId, patch);
       persistLayout(layout);
       return { layout };
     }),
@@ -964,7 +1289,7 @@ export const useStore = create<Workspace>((set, get) => ({
       return { layout };
     }),
 
-  sidebarWidth: Number(storage?.getItem("vector.sb-w")) || 280,
+  sidebarWidth: Number(storage?.getItem("aux.sb-w")) || 280,
   sidebarSections: {
     bookmarks: storage?.getItem("aux.sidebar.bookmarks") !== "closed",
     chats: storage?.getItem("aux.sidebar.chats") !== "closed",
@@ -975,17 +1300,19 @@ export const useStore = create<Workspace>((set, get) => ({
     storage?.setItem(`aux.sidebar.${section}`, open ? "open" : "closed");
     set({ sidebarSections: { ...get().sidebarSections, [section]: open } });
   },
-  railWidth: Number(storage?.getItem("vector.rail-w")) || 400,
+  railWidth: Number(storage?.getItem("aux.rail-w")) || 400,
   setSidebarWidth: (w) => {
-    storage?.setItem("vector.sb-w", String(w));
+    storage?.setItem("aux.sb-w", String(w));
     set({ sidebarWidth: w });
   },
   setRailWidth: (w) => {
-    storage?.setItem("vector.rail-w", String(w));
+    storage?.setItem("aux.rail-w", String(w));
     set({ railWidth: w });
   },
 
   refresh: async () => {
+    // The main-owned catalog converges independently of runtime health.
+    void bridge.tabsSnapshot().then(snapshot => get().syncTabsSnapshot(snapshot)).catch(() => {});
     try {
       const ws = await call<{
         pages: PageTarget[];
@@ -1037,6 +1364,7 @@ export const useStore = create<Workspace>((set, get) => ({
           ? ws.activePageId : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null;
         return { ...ws, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
       });
+      void bridge.setShortcutOverrides(settings.shortcutOverrides ?? {}).catch(() => {});
     } catch {
       set({ connected: false });
       setTimeout(() => void get().refresh(), 1500);
@@ -1108,7 +1436,7 @@ export const useStore = create<Workspace>((set, get) => ({
             ? tabsInSpace(layout, pages, layout.activeSpaceId).find(page => page.pageId === moved.sourceActivePageId)?.pageId
               ?? tabsInSpace(layout, pages, layout.activeSpaceId)[0]?.pageId ?? null : s.activePageId;
           set({ pages, layout, activePageId, splitPageId: splitForPage(layout, pages, activePageId) });
-          if (activePageId && activePageId !== moved.sourceActivePageId) void call("pages.activate", { pageId: activePageId }).catch(errToast);
+          if (activePageId && activePageId !== moved.sourceActivePageId) void tabCommand({ kind: "activate", pageId: activePageId }).catch(errToast);
         }
         break;
       }
@@ -1141,37 +1469,14 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       case "page.removed": {
         const id = e.payload.pageId as string;
-        const group = closingGroups.get(id); closingGroups.delete(id);
+        const hint = typeof e.payload.activePageId === "string" ? e.payload.activePageId : null;
+        let activateNext: string | undefined;
         set((st) => {
-          const gone = st.pages.find((p) => p.pageId === id);
-          const closedTabs = gone && isTab(gone) && gone.url && gone.url !== "about:blank" ? [...st.closedTabs, {
-            pageId: gone.pageId, url: gone.url, title: gone.title,
-            spaceId: st.layout.tabSpace[id] ?? st.layout.activeSpaceId,
-            folderId: st.layout.tabFolder[id], index: Math.max(0, st.layout.order.indexOf(id)),closedAt:Date.now(), ...group,
-          }].slice(-CLOSED_TAB_LIMIT) : st.closedTabs;
-          if(closedTabs!==st.closedTabs)persistClosedTabs(closedTabs);
-          const previews = { ...st.previews };
-          delete previews[id];
-          const zoomLevels = { ...st.zoomLevels };
-          delete zoomLevels[id];
-          const pages = st.pages.filter((p) => p.pageId !== id);
-          // closing the active tab focuses its neighbour, like every browser
-          let activePageId = st.activePageId;
-          if (activePageId === id) {
-            const runtimeChoice = typeof e.payload.activePageId === "string" ? e.payload.activePageId : null;
-            if (runtimeChoice && pages.some(page => page.pageId === runtimeChoice && st.layout.tabSpace[page.pageId] === st.layout.activeSpaceId)) activePageId = runtimeChoice;
-            else {
-              const visible = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId).map(page => page.pageId);
-              const order = visible.filter(pageId => pageId !== id);
-              const idx = visible.indexOf(id);
-              activePageId = order[Math.min(Math.max(idx, 0), order.length - 1)] ?? order[order.length - 1] ?? null;
-              if (activePageId) void call("pages.activate", { pageId: activePageId }).catch(() => {});
-            }
-          }
-          const layout = { ...st.layout, order: syncOrder(st.layout.order, pages,st.pendingRestoreIds) };
-          persistLayout(layout);
-          return { pages, closedTabs, previews, zoomLevels, layout, splitPageId: splitForPage(layout, pages, activePageId), activePageId };
+          const applied = applyRemoval(st, id, hint);
+          activateNext = applied.activateNext;
+          return applied.next;
         });
+        if (activateNext) void tabCommand({ kind: "activate", pageId: activateNext }).catch(() => {});
         break;
       }
       case "page.crashed": {
@@ -1322,7 +1627,10 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       case "settings.changed": {
         const settings = e.payload.settings as Record<string, unknown> | undefined;
-        if (settings) set({ settings });
+        if (settings) {
+          set({ settings });
+          void bridge.setShortcutOverrides(settings.shortcutOverrides ?? {}).catch(() => {});
+        }
         break;
       }
       case "bookmarks.changed": {

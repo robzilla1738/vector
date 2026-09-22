@@ -1,6 +1,6 @@
 import {join} from 'node:path';
-import {resolveDataDirectory,resolveRuntimeDescriptor} from '@vector/contracts/installation';
-import {AuxClient,readRuntimeDescriptor,type AuxConnection} from '@aux-browser/sdk';
+import {resolveDataDirectory,resolveRuntimeDescriptor} from '@aux/contracts/installation';
+import {AuxClient,readRuntimeDescriptor,type AuxConnection} from '@aux/sdk';
 
 export type RuntimeDescriptor=AuxConnection&{pid:number};
 

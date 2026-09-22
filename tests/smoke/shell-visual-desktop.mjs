@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 import {openDb,Repo} from '../../apps/runtime/dist/index.js';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const dir=mkdtempSync(join(tmpdir(),'aux-shell-')); const out=join(root,'release/test-artifacts');mkdirSync(out,{recursive:true});
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<title>${req.url.includes('notes')?'Project notes':'Design reference'}</title><h1>Aux visual fixture</h1>`);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
@@ -17,12 +17,12 @@ for(const [i,goal,result] of [[1,'Review the design references','Collected the l
 db.close();
 let app;
 try {
- app=await _electron.launch({executablePath:createRequire(join(root,'apps/desktop/package.json'))('electron'),args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:createRequire(join(root,'apps/desktop/package.json'))('electron'),args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:1200,height:944}));
- const pages=await page.evaluate(async base=>{const a=await window.vector.invoke('pages.open',{url:base+'/notes',activate:true});const b=await window.vector.invoke('pages.open',{url:base+'/design',activate:true});const c=await window.vector.invoke('pages.open',{url:'about:blank',activate:true});return[a,b,c];},base);
- await page.evaluate(({pages,base})=>{localStorage.setItem('vector.layout.v1',JSON.stringify({spaces:[{id:'personal',name:'Personal',color:'slate'},{id:'work',name:'Studio',color:'slate'}],activeSpaceId:'work',tabSpace:Object.fromEntries(pages.map(p=>[p.pageId,'work'])),order:pages.map(p=>p.pageId),pins:{work:[{url:base+'/notes',title:'Project notes'},{url:base+'/design',title:'Design reference'}]},folders:[{id:'research',name:'Research',spaceId:'work',collapsed:false}],tabFolder:{[pages[0].pageId]:'research'}}));},{pages,base});
+ const pages=await page.evaluate(async base=>{const a=await window.aux.invoke('pages.open',{url:base+'/notes',activate:true});const b=await window.aux.invoke('pages.open',{url:base+'/design',activate:true});const c=await window.aux.invoke('pages.open',{url:'about:blank',activate:true});return[a,b,c];},base);
+ await page.evaluate(({pages,base})=>{localStorage.setItem('aux.layout.v1',JSON.stringify({spaces:[{id:'personal',name:'Personal',color:'slate'},{id:'work',name:'Studio',color:'slate'}],activeSpaceId:'work',tabSpace:Object.fromEntries(pages.map(p=>[p.pageId,'work'])),order:pages.map(p=>p.pageId),pins:{work:[{url:base+'/notes',title:'Project notes'},{url:base+'/design',title:'Design reference'}]},folders:[{id:'research',name:'Research',spaceId:'work',collapsed:false}],tabFolder:{[pages[0].pageId]:'research'}}));},{pages,base});
  await page.reload();await page.getByRole('group',{name:'Research',exact:true}).waitFor();await page.locator('.aux-home').waitFor();
  assert.equal(await page.locator('.sb-bookmarks,.sb-conversations').count(),0);
  assert.equal(await page.getByRole('list',{name:'Pinned sites'}).count(),1);

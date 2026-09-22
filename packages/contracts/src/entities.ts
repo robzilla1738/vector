@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { StepOutcomeSchema } from "./program.js";
 
-export const BackendSchema = z.enum(["vector", "chrome", "vector-engine"]);
+export const BackendSchema = z.enum(["aux", "chrome"]);
 export type BackendT = z.infer<typeof BackendSchema>;
 
 export const BrowserSessionSchema = z.object({
@@ -10,12 +10,6 @@ export const BrowserSessionSchema = z.object({
   label: z.string(),
   status: z.enum(["connected", "disconnected", "degraded"]),
   detail: z.string().optional(),
-  abiVersion: z.number().int().optional(),
-  protocolVersion: z.number().int().optional(),
-  engineVersion: z.string().optional(),
-  isolation: z.enum(["process", "in-process"]).optional(),
-  securityProfile: z.enum(["production", "developer"]).optional(),
-  routingMode: z.enum(["chromium-only", "hybrid", "native-only"]).optional(),
 });
 export type BrowserSession = z.infer<typeof BrowserSessionSchema>;
 
@@ -38,6 +32,9 @@ export const PageTargetSchema = z.object({
   lastRevision: z.number().int().nonnegative(),
   /** visible = shown natively; hidden = resident; background = worker; detached = gone */
   viewStatus: z.enum(["visible", "hidden", "background", "detached", "crashed"]),
+  /** Resident-view lifecycle from the catalog — frozen/discarded tabs still
+   *  exist but hold few or no renderer resources until activated. */
+  lifecycle: z.enum(["placeholder", "live", "frozen", "discarded"]).optional(),
   controller: ControllerSchema,
   /** bumped on every takeover/resume — in-flight programs compare epochs */
   controllerEpoch: z.number().int().nonnegative().default(0),
@@ -48,15 +45,8 @@ export const PageTargetSchema = z.object({
   canGoBack: z.boolean().optional(),
   canGoForward: z.boolean().optional(),
   error: z.string().optional(),
-  navigationError: z.object({ url: z.string(), code: z.number(), message: z.string() }).nullable().optional(),
-  /**
-   * Why the router placed this page on its backend (architecture §11):
-   * `engine-mode-off`, `explicit-backend:<b>`, `needs-chromium-table`,
-   * `hybrid:chromium-default`, `hybrid:qualified-cohort:<cohort>`,
-   * `hybrid:transient-document:<scheme>`, `engine-always`,
-   * `hybrid:engine-unavailable`,
-   * `fallback:<reason>` (engine classified/failed → reopened on Chromium).
-   */
+  navigationError: z.object({ url: z.string(), code: z.number(), message: z.string(), upgradedFrom: z.string().optional() }).nullable().optional(),
+  /** Why this page was placed on its backend — e.g. `explicit-backend:<b>`. */
   routeReason: z.string().optional(),
 });
 export type PageTarget = z.infer<typeof PageTargetSchema>;
@@ -140,7 +130,7 @@ export const RunSchema = z.object({
       taskRevision: z.number().int().positive().optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */
       retryOfRunId: z.string().optional(),
-      /** VEC-017 durable coordinator snapshot. */
+      /** AUX-017 durable coordinator snapshot. */
       checkpoint: z
         .object({
           planBoundary: z.string().optional(),
@@ -150,9 +140,9 @@ export const RunSchema = z.object({
           recoveryStatus: z.string().optional(),
         })
         .optional(),
-      /** VEC-019 page-claimed grants that were ignored. */
+      /** AUX-019 page-claimed grants that were ignored. */
       ignoredPageGrants: z.array(z.string()).optional(),
-      /** VEC-017 last crash-recovery decision. */
+      /** AUX-017 last crash-recovery decision. */
       lastCrashRecovery: z.record(z.string(), z.unknown()).optional(),
     })
     .optional(),
@@ -304,6 +294,11 @@ export const BookmarkSchema = z.object({
   url: z.string(),
   title: z.string(),
   createdAt: z.number(),
+  /** Reading-list subtype — the same bookmark row, flagged for later reading. */
+  readingList: z.boolean().optional(),
+  readAt: z.number().optional(),
+  /** An offline article copy is stored for this bookmark. */
+  offline: z.boolean().optional(),
 });
 export type Bookmark = z.infer<typeof BookmarkSchema>;
 
@@ -321,6 +316,8 @@ export const DownloadSchema = z.object({
   state: z.enum(["started", "progressing", "completed", "interrupted", "cancelled"]),
   startedAt: z.number(),
   endedAt: z.number().optional(),
+  /** Why the user was asked to confirm this download, if they were. */
+  warning: z.enum(["executable", "insecure"]).optional(),
 });
 export type Download = z.infer<typeof DownloadSchema>;
 

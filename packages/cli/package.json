@@ -1,5 +1,5 @@
 {
-  "name": "@vector/cli",
+  "name": "@aux/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,16 +7,15 @@
     "dist"
   ],
   "bin": {
-    "auxctl": "./dist/main.js",
-    "vector": "./dist/main.js"
+    "auxctl": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --force"
   },
   "dependencies": {
-    "@aux-browser/sdk": "workspace:*",
-    "@vector/contracts": "workspace:*",
+    "@aux/sdk": "workspace:*",
+    "@aux/contracts": "workspace:*",
     "zod": "4.5.4"
   },
   "devDependencies": {

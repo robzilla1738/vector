@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { canResumeAfterPageRelease } from "@vector/runtime";
+import { canResumeAfterPageRelease } from "@aux/runtime";
 
 it("keeps a multi-page run paused until every human-held page is returned", () => {
   const pages = [

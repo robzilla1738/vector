@@ -77,6 +77,41 @@ export const VaultUnlockParams = z.object({
   passphrase: z.string().min(1).max(200),
   ttlMs: z.number().int().min(60_000).max(12 * 60 * 60_000).default(15 * 60_000),
 }).strict();
+export const VaultGenerateParams = z.object({
+  length: z.number().int().min(12).max(64).default(20),
+}).strict();
+export const VaultItemsForOriginParams = z.object({
+  origin: z.string().url(),
+}).strict();
+export const VaultHumanFillParams = z.object({
+  itemId: text,
+  pageId: text,
+  origin: z.string().url(),
+}).strict();
+export const VaultExportItemSchema = z.object({
+  label: z.string().max(120),
+  kind: VaultItemKindSchema,
+  username: z.string().max(200).optional(),
+  accountLabel: z.string().max(120).optional(),
+  origin: z.string().url(),
+  secret: z.string().max(4096),
+  expiresAt: z.number().optional(),
+});
+export const VaultExportSchema = z.object({
+  exportedAt: z.number(),
+  items: z.array(VaultExportItemSchema),
+});
+export const VaultImportParams = z.object({
+  items: z.array(VaultExportItemSchema).max(500),
+}).strict();
+export const VaultUpdateParams = z.object({
+  itemId: text,
+  secret: text.max(4096),
+}).strict();
+export const VaultSecretMatchParams = z.object({
+  itemId: text,
+  secret: z.string().max(4096),
+}).strict();
 
 export type VaultItem = z.infer<typeof VaultItemSchema>;
 export type VaultGrant = z.infer<typeof VaultGrantSchema>;

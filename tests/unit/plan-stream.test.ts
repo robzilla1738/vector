@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { EventBus, openDb, Repo, RunCoordinator } from "@vector/runtime";
-import { EarlyDispatcher, PlanStreamParser } from "@vector/runtime";
-import type { ModelClient } from "@vector/runtime";
-import type { Observation, PlanStep, ProgramResult } from "@vector/contracts";
+import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
+import { EarlyDispatcher, PlanStreamParser } from "@aux/runtime";
+import type { ModelClient } from "@aux/runtime";
+import type { Observation, PlanStep, ProgramResult } from "@aux/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));
 

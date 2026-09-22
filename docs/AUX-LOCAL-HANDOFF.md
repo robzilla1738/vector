@@ -12,6 +12,14 @@ Related: [AUX-HANDOFF.md](AUX-HANDOFF.md) (checkpoint history),
 
 ## Current state
 
+**Update 2026-09-23:** the entire browser workstream (BR-01–07) is now
+implemented and verified — see `AUX-PROGRESS.md` for the per-slice evidence.
+Remaining roadmap workstreams are CH-01–04 (conversation), AI-01–07 (agent
+capability), WS-01–06 (projects/agents/cloud), ME-01–02 (memory), SK-01–02
+(skills/schedules). The workspace was checkpointed to a branch for a Devin
+Cloud macOS environment; the B-items below still mark what genuinely needs
+the founder's own Mac/accounts.
+
 Landed from PR 14 (`cursor/aux-remaining-implementation-4932`) onto `main`.
 PR 13 remains an earlier handoff-only draft and is superseded.
 
@@ -21,19 +29,20 @@ PR 13 remains an earlier handoff-only draft and is superseded.
   task promotion, documents/results, values-only Excel with optional http(s) source
   hyperlinks.
 - Locked agent vault with opaque `cref_` grants. `fillCredential` never batches
-  secrets through engine IPC and never writes secret values into steps, observations,
+  secrets through shared IPC and never writes secret values into steps, observations,
   or results.
 - Parameterized routines, occurrence identity, uncertain-write block, honest missed
   runs when the desktop is closed.
-- Schema 13: coordinator leases and criterion verifications. Additive migration with
-  `VACUUM INTO` backup. Newer schemas fail closed.
+- Schema v1: consolidated tables with explicit foreign keys and the `aux_meta`
+  marker. Pre-versioning and legacy databases are refused unchanged; newer schemas
+  fail closed.
 - Task-level logical action IDs hashed without run id, so the same write cannot be
   re-issued from a later run.
 - Agent replace, resource access (`reference` / `read` / `write`; CLI/MCP cannot set
   write), task search (title/objective/criteria/labels, not locators), exportable
   receipts, honest local `tasks.verifyCriterion`.
-- Fail-closed Vector→Aux copy: skip secrets/cookies/password stores; retained
-  `persist:vector-*` and `@vector` / `vector_*` identities.
+- Legacy Vector data is preserved and refused fail-closed; canonical
+  `persist:aux-*`, `@aux` packages and `aux_*` MCP identities.
 - Backup list/retention/restore; incomplete folders skipped.
 - MCP scoped catalog grouping/filter; Preview vs Console split; incident companion
   markdown local-only.
@@ -42,8 +51,8 @@ PR 13 remains an earlier handoff-only draft and is superseded.
 - Download retry after restart is a new transfer (`canResumePartialDownload() === false`).
 - After crash/restart, detached originals are missing: `runs.retry` requires a live
   replacement tab.
-- Mid-program engine `capability_unsupported` after a completed write does not migrate
-  or replay remaining writes. The origin is recorded so the next open uses Chromium.
+- A failed write does not migrate or replay remaining steps. Uncertain outcomes
+  stay blocked until reconciled with evidence.
 - Landed on main (PRs 17–21): green-main repair (renderer gate drift,
   conversation run-panel controls), oxlint in CI with a warnings ratchet,
   tracker/ad blocking + scoped HTTPS bypass + Chromium-family bookmark import,
@@ -82,10 +91,10 @@ credentials.
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
-pnpm --filter @vector/desktop typecheck
-pnpm --filter @vector/desktop build
+pnpm --filter @aux/desktop typecheck
+pnpm --filter @aux/desktop build
 pnpm test:unit
-AUX_LOAD_DOTENV=0 AUX_ENGINE=0 pnpm dev
+AUX_LOAD_DOTENV=0 pnpm dev
 ```
 
 Desktop typecheck force-emits unbundled main output: run the desktop build afterward
@@ -131,14 +140,20 @@ licensed CDM (Google Cast licensing program or Electron's shipped binary
 caveat). Track whether the license is attainable before promising DRM
 playback.
 
-### R4 — Deferred daily-driver parity (Electron-capped)
+### R4 — Deferred daily-driver parity (Electron-capped) — mostly landed
 
-Deliberately not in the parity PR: password-store and history import, Safari
-bookmark import, cosmetic ad filtering (network block exists; element hiding
-needs a different layer), Google Safe-Browsing API integration, Chromium
-translate, autofill/form-fill profiles. Each is small but needs its own
-design pass; some (translate, autofill) are Electron-capped or need
-third-party service terms.
+BR-05/06/07 closed most of this list: password-store + bookmark/history/tab
+import (Chromium-family, Arc, Firefox; Safari needs Full Disk Access),
+cosmetic ad filtering (isolated-world stylesheet), in-place translation
+through the configured model provider, and autofill/form-fill profiles all
+ship. Still open:
+
+- **Google Safe Browsing API integration** — downloads/phishing today get a
+  local extension+scheme heuristic plus a confirm prompt, not reputation
+  lookup. Needs an API key + service-terms decision.
+- **Safari import without Full Disk Access** — currently a documented blocker;
+  Safari bookmarks live behind TCC.
+- **Platform passkeys / 1Password unlock** — needs the signed identity (B2).
 
 ### R5 — Warn-level lint debt (~400 findings)
 
@@ -261,7 +276,7 @@ can be re-attempted on that identity, and the founder finishes the pilot notes.
 - Weaken tests or policy to greenwash CI.
 - Treat local `tasks.verifyCriterion` or routine alerts as business-outcome proof.
 - Journal human address-bar `pages.navigate` as agent writes.
-- Batch `fillCredential` through engine IPC or render secret values in tool cards.
+- Batch `fillCredential` through shared IPC or render secret values in tool cards.
 - Merge spaces/workspaces by name. IDs stay distinct.
 - Let CLI/MCP set resource `write` access.
 - Fake B1–B7 complete.

@@ -1,4 +1,4 @@
-import { WorkbookSnapshotSchema, textContextShares } from "@vector/contracts";
+import { WorkbookSnapshotSchema, textContextShares } from "@aux/contracts";
 
 function columnLabel(column: number): string {
   let result = "";

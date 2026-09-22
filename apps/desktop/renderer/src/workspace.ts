@@ -1,11 +1,11 @@
 import { nativePageId } from "./chrome";
-import { splitRatio } from "@vector/contracts/split-layout";
+import { splitRatio } from "@aux/contracts/split-layout";
 /**
  * Pure reducers for the sidebar's local organisation: spaces, tab order,
  * pinned sites. The runtime owns pages; the shell owns how they are arranged.
  * Everything here is deterministic and unit-tested.
  */
-import type { BrowserSpace, PageTarget } from "@vector/contracts";
+import type { BrowserSpace, PageTarget } from "@aux/contracts";
 
 export type SpaceColor = "blue" | "violet" | "pink" | "orange" | "green" | "teal" | "slate";
 export const SPACE_COLORS: SpaceColor[] = ["blue", "violet", "pink", "orange", "green", "teal", "slate"];
@@ -29,6 +29,9 @@ export interface Folder {
   name: string;
   spaceId: string;
   collapsed: boolean;
+  color?: SpaceColor;
+  /** Single grapheme shown instead of the folder glyph. */
+  emoji?: string;
 }
 
 export interface Layout {
@@ -256,6 +259,22 @@ export function renameFolder(layout: Layout, folderId: string, name: string): La
   const n = name.trim();
   if (!n) return layout;
   return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, name: n } : f)) };
+}
+
+/** Partial folder update — name, accent colour and emoji glyph share one path. */
+export function updateFolder(layout: Layout, folderId: string, patch: { name?: string; color?: SpaceColor | null; emoji?: string | null }): Layout {
+  if (!layout.folders.some((f) => f.id === folderId)) return layout;
+  return {
+    ...layout,
+    folders: layout.folders.map((f) => {
+      if (f.id !== folderId) return f;
+      const next = { ...f };
+      if (patch.name !== undefined && patch.name.trim()) next.name = patch.name.trim();
+      if (patch.color !== undefined) { if (patch.color) next.color = patch.color; else delete next.color; }
+      if (patch.emoji !== undefined) { if (patch.emoji) next.emoji = patch.emoji; else delete next.emoji; }
+      return next;
+    }),
+  };
 }
 
 export function toggleFolder(layout: Layout, folderId: string): Layout {

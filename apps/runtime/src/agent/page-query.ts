@@ -2,7 +2,7 @@
  * Task-specific page query (Gate F). Binds role/name/tag against a fresh
  * observation. Refs from a previous layout are not required to match.
  */
-import type { ObservationContent } from "@vector/contracts";
+import type { ObservationContent } from "@aux/contracts";
 
 export interface PageQuery {
   role?: string;

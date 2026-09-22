@@ -3,7 +3,7 @@ import { useState } from "react";
 import { bridge } from "../bridge";
 import { call } from "../store";
 import { taskReceiptMarkdown } from "../task-receipt-export";
-import type { TaskReceipt, Task, ProjectCommand } from "@vector/contracts";
+import type { TaskReceipt, Task, ProjectCommand } from "@aux/contracts";
 
 const STATUS = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
 

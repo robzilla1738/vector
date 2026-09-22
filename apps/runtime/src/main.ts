@@ -1,6 +1,6 @@
 import { BrowsingMemory } from "./services/browsing-memory.js";
 /**
- * Vector runtime entry point.
+ * Aux runtime entry point.
  *
  * Spawned by the Electron main process via child_process.fork with
  * ELECTRON_RUN_AS_NODE=1, or run standalone (`node dist/main.js`) for
@@ -11,23 +11,20 @@ import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { EventTypes, VectorError, isElementRef, normalizeAuxEnvironment, type Step } from "@vector/contracts";
-import { RpcChannel, type Transport } from "@vector/contracts";
+import { EventTypes, AuxError, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
+import { RpcChannel, type Transport } from "@aux/contracts";
 import {
   AttachedChromeDriver,
   StandaloneDriver,
-  VectorElectronDriver,
-  VectorEngineDriver,
+  ManagedChromiumDriver,
   type BrowserDriver,
-  type EngineAvailability,
-} from "@vector/engine-client";
+} from "@aux/chromium-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb } from "./store/db.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
 import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
 import { PageService, type DriverSet } from "./services/pages.js";
-import { Router, type NeedsChromiumEntry } from "./services/router.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
 import { ArtifactStore } from "./services/artifacts.js";
@@ -65,12 +62,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   repo.pruneEvents();
   const events = new EventBus(repo);
   const settings = new SettingsService(repo, config.settingsPath, env);
-  const durableWrites = new DurableWriteLedger(repo.db, join(config.dataDir, "durable-writes.json"));
+  const durableWrites = new DurableWriteLedger(repo.db);
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
 
   // ---- channel to the desktop shell (fork IPC) ----
   let channel: RpcChannel | null = null;
-  if (env.VECTOR_IPC === "1" && typeof process.send === "function") {
+  if (env.AUX_IPC === "1" && typeof process.send === "function") {
     const transport: Transport = {
       send: (m) => {
         try {
@@ -88,7 +85,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
-  type InvokeFn = (m: string, p: unknown, client?: { external: boolean; connectionId?: string; scope?: import("@vector/contracts").AgentConnectionScope }) => Promise<unknown>;
+  type InvokeFn = (m: string, p: unknown, client?: { external: boolean; connectionId?: string; scope?: import("@aux/contracts").AgentConnectionScope }) => Promise<unknown>;
   let resolveInvoker: (fn: InvokeFn) => void;
   const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
   channel?.onMethod("api.invoke", (p) => {
@@ -99,13 +96,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // ---- drivers ----
   const drivers: DriverSet = {
-    vector: null,
+    aux: null,
     chrome: null,
-    engine: null,
   };
   // socket drops mark the session degraded and tell the UI; the next
   // pages.open attempts a lazy reconnect and, on success, restores it
-  const watchDriver = (d: BrowserDriver, sessionId: "vector" | "chrome" | "vector-engine", label: string) => {
+  const watchDriver = (d: BrowserDriver, sessionId: "aux" | "chrome", label: string) => {
     d.onDisconnected = () => {
       repo.upsertSession({ sessionId, backend: d.backend, label, status: "degraded", detail: "backend connection dropped — reconnecting on next use" });
       events.emit("session.changed", { backend: d.backend, status: "degraded" });
@@ -116,129 +112,41 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     };
   };
   if (config.electronCdp) {
-    const d = new VectorElectronDriver(config.electronCdp);
-    watchDriver(d, "vector", "Vector");
+    const d = new ManagedChromiumDriver(config.electronCdp);
+    watchDriver(d, "aux", "Aux");
     try {
       await d.connect();
-      drivers.vector = d;
-      repo.upsertSession({ sessionId: "vector", backend: "vector", label: "Vector", status: "connected" });
+      drivers.aux = d;
+      repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux", status: "connected" });
     } catch (e) {
       repo.upsertSession({
-        sessionId: "vector",
-        backend: "vector",
-        label: "Vector",
+        sessionId: "aux",
+        backend: "aux",
+        label: "Aux",
         status: "degraded",
         detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
       });
     }
-  } else if (env.VECTOR_STANDALONE !== "0") {
+  } else if (env.AUX_STANDALONE !== "0") {
     // No Electron shell — drive a headless system Chrome so the full API still works.
     const d = new StandaloneDriver();
-    watchDriver(d, "vector", "Vector (headless)");
+    watchDriver(d, "aux", "Aux (headless)");
     try {
       await d.connect();
-      drivers.vector = d;
-      repo.upsertSession({ sessionId: "vector", backend: "vector", label: "Vector (headless)", status: "connected" });
+      drivers.aux = d;
+      repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux (headless)", status: "connected" });
     } catch (e) {
       repo.upsertSession({
-        sessionId: "vector",
-        backend: "vector",
-        label: "Vector (headless)",
+        sessionId: "aux",
+        backend: "aux",
+        label: "Aux (headless)",
         status: "degraded",
         detail: e instanceof Error ? e.message : String(e),
       });
     }
   }
 
-  // ---- Vector Engine (architecture §11) ----
-  // The native addon is loaded whenever it is present so `runtime.describe`
-  // can report it; whether pages are *routed* to it is the `engineMode`
-  // setting (default "auto" — Chromium unless the origin is qualified for
-  // the engine, with explicit fallback on qualified engine routes).
-  let engineInfo: EngineAvailability = { available: false, error: "not loaded" };
-  const engineMode = () => settings.engineMode();
-  const routingMode = () =>
-    engineMode() === "off" ? "chromium-only" : engineMode() === "always" ? "native-only" : "hybrid";
-  const production =
-    env.VECTOR_ENGINE_PROFILE === "production" ||
-    env.VECTOR_ENGINE_PROFILE === "prod" ||
-    env.VECTOR_ENGINE_STRICT === "1";
-  if (env.VECTOR_ENGINE !== "0") {
-    const extraAllow = (env.VECTOR_ENGINE_ALLOWLIST ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const d = new VectorEngineDriver({
-      serviceAddr: env.VECTOR_BROWSER_SERVICE,
-      serviceToken: env.VECTOR_BROWSER_SERVICE_TOKEN,
-      config: {
-        dataDir: config.dataDir,
-        scripting: env.VECTOR_ENGINE_SCRIPTING !== "0",
-        securityProfile: production ? "production" : "developer",
-        isolation: production ? "requireProcess" : "auto",
-        policy: {
-          blockLoopback: true,
-          allowFile: env.VECTOR_ENGINE_ALLOW_FILE === "1",
-          allowPrivateNetwork: false,
-          allowAgentEgress: env.VECTOR_ENGINE_AGENT_EGRESS === "1",
-          allowlist: [
-            "127.0.0.1:4810",
-            "127.0.0.1:4811",
-            "127.0.0.1:4812",
-            "localhost:4810",
-            "localhost:4811",
-            "localhost:4812",
-            ...extraAllow,
-          ],
-        },
-      },
-    });
-    watchDriver(d, "vector-engine", "Vector Engine");
-    try {
-      await d.connect();
-      drivers.engine = d;
-      engineInfo = d.describe();
-      repo.upsertSession({
-        sessionId: "vector-engine",
-        backend: "vector-engine",
-        label: "Vector Engine",
-        status: "connected",
-        detail: `v${engineInfo.version ?? "?"} abi=${engineInfo.abiVersion ?? "?"} ${engineInfo.isolation ?? "in-process"} ${routingMode()}`,
-        abiVersion: engineInfo.abiVersion,
-        protocolVersion: engineInfo.protocolVersion,
-        engineVersion: engineInfo.version,
-        isolation: engineInfo.isolation,
-        securityProfile: engineInfo.securityProfile,
-        routingMode: routingMode(),
-      });
-    } catch (e) {
-      engineInfo = { available: false, error: e instanceof Error ? e.message : String(e) };
-      repo.upsertSession({
-        sessionId: "vector-engine",
-        backend: "vector-engine",
-        label: "Vector Engine",
-        status: "disconnected",
-        detail: engineInfo.error,
-        routingMode: routingMode(),
-        securityProfile: production ? "production" : "developer",
-      });
-    }
-  }
   const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
-  const router = new Router({
-    mode: () => settings.engineMode(),
-    engineAvailable: () => !!drivers.engine?.isConnected(),
-    nativeOnly: () => env.VECTOR_NATIVE_ONLY === "1",
-    engineCohorts: () => settings.engineCohorts(),
-    store: {
-      load: () => repo.loadRouterTable<NeedsChromiumEntry>(),
-      save: (entries) => repo.saveRouterTable(entries),
-    },
-    log: (message, attrs) => {
-      tracer.incr(message);
-      if (env.VECTOR_ROUTER_LOG === "1") console.error(`[vector-runtime] ${message}`, JSON.stringify(attrs));
-    },
-  });
   const responses = new ResponseStore({ repo, events, artifacts });
   const vault = new VaultService(repo, native);
   // pages↔operations are mutually dependent — late-bind via a lazy ref
@@ -248,7 +156,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     native,
     drivers: () => drivers,
-    router,
     artifacts,
     responses,
     tracer,
@@ -257,7 +164,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
-    electronEngineView: () => env.VECTOR_ELECTRON === "1",
     grants: () => settings.effectGrants(),
     grantsForRun: () => settings.effectGrantsForRun(),
     callOperation: async (name, args, pageId) => {
@@ -265,7 +171,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
       const opName = slash > 0 ? name.slice(slash + 1) : name;
       const r = await operations.invoke({ siteKey, name: opName, inputs: args, pageId });
-      if (r.status === "failed") throw new VectorError("step_failed", r.error ?? `operation ${opName} failed`);
+      if (r.status === "failed") throw new AuxError("step_failed", r.error ?? `operation ${opName} failed`);
       return r.result;
     },
   });
@@ -300,7 +206,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const sets = new SetService(repo, events, pages);
 
   const refLookup = (pageId: string, ref: string) =>
-    drivers.vector?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref) ?? drivers.engine?.refEntry?.(pageId, ref);
+    drivers.aux?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref);
   const translateSteps = (pageId: string, steps: Step[]): Step[] =>
     steps
       .filter((s) => s.op !== "navigate")
@@ -324,7 +230,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     durableWrites,
     grants: () => settings.effectGrants(),
     egressAllowlist: () =>
-      (env.VECTOR_ENGINE_ALLOWLIST ?? "")
+      (env.AUX_EGRESS_ALLOWLIST ?? "")
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
@@ -406,8 +312,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tracer,
     vault,
     drivers: () => drivers,
-    router,
-    engine: () => engineInfo,
     chromeAttach,
     chromeDetach,
     chromeTabs,
@@ -415,7 +319,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     benchRun: async (task, repeats) =>
       runBench({
         pages,
-        url: task ?? env.VECTOR_BENCH_URL ?? "http://127.0.0.1:4810/records",
+        url: task ?? env.AUX_BENCH_URL ?? "http://127.0.0.1:4810/records",
         repeats: repeats ?? 10,
         dir: config.benchmarksDir,
       }),
@@ -457,21 +361,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.navigationError": return pages.onNativeNavigationError(str(pl.pageId)!, pl.error as { url: string; code: number; message: string } | null);
       case "view.crashed": return pages.onNativeCrashed(str(pl.pageId)!);
       case "view.takeover": return pages.onNativeTakeover(str(pl.pageId)!);
-      case "view.engineInput":
-        void pages.onEngineInput(str(pl.pageId)!, {
-          type: str(pl.type) ?? "",
-          x: Number(pl.x ?? 0),
-          y: Number(pl.y ?? 0),
-          button: Number(pl.button ?? 0),
-          key: str(pl.key),
-          text: str(pl.text),
-          start: pl.start === undefined ? undefined : Number(pl.start),
-          end: pl.end === undefined ? undefined : Number(pl.end),
-          width: pl.width === undefined ? undefined : Number(pl.width),
-          height: pl.height === undefined ? undefined : Number(pl.height),
-          name: str(pl.name),
-        });
-        return;
       case "view.downloadStarted":
         return pages.onNativeDownloadStarted(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
@@ -502,12 +391,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           marker: str(pl.marker)!,
           url: str(pl.url) ?? "about:blank",
           title: str(pl.title),
-          backend: "vector",
+          backend: "aux",
           active: pl.activate === true,
           showBlankDocument: pl.showBlankDocument === true,
         }).then(page => pl.activate === true ? pages.activate(page.pageId) : undefined).catch(() => {});
         return;
       case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!);
+      // Main-owned tab catalog patches — presence/focus/placement truth for
+      // human tabs; field convergence still rides view.* above (§7.1/§7.2).
+      case "tabs.catalog": return pages.syncCatalog(payload as Parameters<typeof pages.syncCatalog>[0]);
       case "app.closing": return pages.shuttingDown();
     }
   });
@@ -525,9 +417,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     process.off("uncaughtException", onUncaughtException);
     runs.coordinator.markInterrupted();
     try { markCloudDesktopClosed(repo); } catch { /* local records only */ }
-    await drivers.vector?.disconnect().catch(() => {});
+    await drivers.aux?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
-    await drivers.engine?.disconnect().catch(() => {});
     await api.close().catch(() => {});
     tracer.close();
     repo.db.close();
@@ -543,17 +434,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const describeFault = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
   const onUnhandledRejection = (reason: unknown) => {
     if (closed) return;
-    console.error("[vector-runtime] unhandled rejection:", reason instanceof Error ? reason.stack ?? reason.message : reason);
+    console.error("[aux-runtime] unhandled rejection:", reason instanceof Error ? reason.stack ?? reason.message : reason);
     try {
       const failed = runs.coordinator.failActive(`runtime fault — unhandled rejection: ${describeFault(reason)}`);
-      if (failed.length) console.error(`[vector-runtime] marked ${failed.length} active run(s) failed`);
+      if (failed.length) console.error(`[aux-runtime] marked ${failed.length} active run(s) failed`);
     } catch {
       /* the ledger itself may be the thing that failed */
     }
   };
   const onUncaughtException = (err: Error) => {
     if (closed) return;
-    console.error("[vector-runtime] uncaught exception:", err.stack ?? err.message);
+    console.error("[aux-runtime] uncaught exception:", err.stack ?? err.message);
     try {
       runs.coordinator.failActive(`runtime fault — uncaught exception: ${describeFault(err)}`);
     } catch {
@@ -585,9 +476,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isDirectRun || normalizeAuxEnvironment(process.env).AUX_RUNTIME_AUTOSTART === "1") {
   startRuntime().then((h) => {
-    console.log(`[vector-runtime] api=http://127.0.0.1:${h.port}`);
+    console.log(`[aux-runtime] api=http://127.0.0.1:${h.port}`);
   }).catch((e) => {
-    console.error("[vector-runtime] failed:", e);
+    console.error("[aux-runtime] failed:", e);
     process.exit(1);
   });
 }

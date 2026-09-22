@@ -6,17 +6,32 @@ export interface BrowserShortcut {
   shift: boolean;
   alt: boolean;
   ctrl?: boolean;
+  /** Registry id when the sender already resolved the command (menus, interception). */
+  commandId?: string;
 }
 
 /** Commands belonging to an independent browser popup, not the main tab strip. */
 export function popupCommand(window: BrowserWindow, shortcut: BrowserShortcut): boolean {
   if (window.isDestroyed()) return false;
   const wc = window.webContents;
+  const history = wc.navigationHistory;
+  // A resolved registry id keeps menu clicks and rebound chords working;
+  // the chord fallback covers anything that arrives without one.
+  switch (shortcut.commandId) {
+    case "back": if (history.canGoBack()) history.goBack(); return true;
+    case "forward": if (history.canGoForward()) history.goForward(); return true;
+    case "close-tab": window.close(); return true;
+    case "reload": wc.reload(); return true;
+    case "hard-reload": wc.reloadIgnoringCache(); return true;
+    case "actual-size": wc.setZoomLevel(0); return true;
+    case "zoom-in": wc.setZoomLevel(Math.max(-5, Math.min(5, wc.getZoomLevel() + 0.5))); return true;
+    case "zoom-out": wc.setZoomLevel(Math.max(-5, Math.min(5, wc.getZoomLevel() - 0.5))); return true;
+    case "print": wc.print(); return true;
+  }
   const key = shortcut.key.toLowerCase();
   const arrowNavigation = shortcut.alt && !shortcut.meta && ['left', 'arrowleft', 'right', 'arrowright'].includes(key);
   const bracketNavigation = shortcut.meta && !shortcut.alt && !shortcut.shift && ['[', ']'].includes(key);
   if (arrowNavigation || bracketNavigation) {
-    const history = wc.navigationHistory;
     if (key.endsWith('left') || key === '[') { if (history.canGoBack()) history.goBack(); }
     else if (history.canGoForward()) history.goForward();
     return true;

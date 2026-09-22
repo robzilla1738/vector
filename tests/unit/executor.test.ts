@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { executeProgram } from "@vector/runtime";
-import type { DriverPage } from "@vector/engine-client";
-import { VectorError, type Condition, type Program } from "@vector/contracts";
+import { executeProgram } from "@aux/runtime";
+import type { DriverPage } from "@aux/chromium-driver";
+import { AuxError, type Condition, type Program } from "@aux/contracts";
 
 /** Minimal fake DriverPage — records calls, configurable failures. */
 function fakePage(failOn: Record<string, unknown> = {}) {
   const calls: string[] = [];
   const page: DriverPage = {
-    identity: { pageId: "p1", targetId: "t1", backend: "vector" },
+    identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     url: () => "http://x.test/",
     title: async () => "Fake",
     isAttached: () => true,
@@ -77,7 +77,7 @@ describe("executeProgram", () => {
   });
 
   it("stops on failure unless step is optional", async () => {
-    const { page } = fakePage({ click: new VectorError("step_failed", "nope") });
+    const { page } = fakePage({ click: new AuxError("step_failed", "nope") });
     const program: Program = {
       pageId: "p1",
       steps: [
@@ -141,7 +141,7 @@ describe("executeProgram", () => {
     page.waitForDownload = async () => {
       order.push("wait-armed");
       await new Promise((r) => setTimeout(r, 5));
-      if (!order.includes("click")) throw new VectorError("condition_timeout", "waiter armed before trigger");
+      if (!order.includes("click")) throw new AuxError("condition_timeout", "waiter armed before trigger");
       order.push("download-resolved");
       return { suggestedFilename: "f.txt", path: "/tmp/f.txt" };
     };

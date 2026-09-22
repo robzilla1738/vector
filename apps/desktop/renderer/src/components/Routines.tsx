@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task } from "@vector/contracts";
+import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task } from "@aux/contracts";
 import { call } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";

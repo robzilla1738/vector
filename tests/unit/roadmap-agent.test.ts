@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   ActionReceiptSchema,
   StepOutcomeSchema,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import {
   compileSkill,
   tryReuseSkill,
@@ -20,8 +20,8 @@ import {
   speculatePlan,
   COORDINATOR_TRANSITIONS,
   attachBidiRuntime,
-} from "@vector/runtime";
-import type { ObservationContent } from "@vector/contracts";
+} from "@aux/runtime";
+import type { ObservationContent } from "@aux/contracts";
 
 const obs = (name: string, role = "button"): ObservationContent =>
   ({
@@ -32,7 +32,7 @@ const obs = (name: string, role = "button"): ObservationContent =>
     formFields: [],
   }) as unknown as ObservationContent;
 
-describe("VEC-016 receipts", () => {
+describe("AUX-016 receipts", () => {
   it("parses action receipts without claiming remote success", () => {
     const r = ActionReceiptSchema.parse({
       observed: "button clicked",
@@ -54,7 +54,7 @@ describe("VEC-016 receipts", () => {
   });
 });
 
-describe("VEC-018 skills", () => {
+describe("AUX-018 skills", () => {
   it("reuses a skill only when guards hold", () => {
     const skill = compileSkill({
       id: "inc",
@@ -122,7 +122,7 @@ describe("VEC-018 skills", () => {
   });
 });
 
-describe("VEC-019 agent policy", () => {
+describe("AUX-019 agent policy", () => {
   it("redacts secrets and ignores page-claimed grants", () => {
     expect(redactForModel({ authorization: "Bearer abc", n: 1 })).toMatchObject({ n: 1 });
     expect(String((redactForModel({ authorization: "Bearer abc" }) as { authorization: string }).authorization)).toMatch(/^\{handle:/);
@@ -132,7 +132,7 @@ describe("VEC-019 agent policy", () => {
   });
 });
 
-describe("VEC-020 BiDi", () => {
+describe("AUX-020 BiDi", () => {
   it("keeps tool output untrusted and requires authorization", () => {
     const s = negotiateBidi({ webmcp: true });
     expect(s.webmcp).toBe(true);
@@ -162,7 +162,7 @@ describe("VEC-020 BiDi", () => {
   });
 });
 
-describe("VEC-017 crash injection", () => {
+describe("AUX-017 crash injection", () => {
   it("never duplicates writes and flags uncertain dispatch", () => {
     const journal = [{ id: "w1", idempotencyKey: "k1", committed: true }];
     for (const crashAt of COORDINATOR_TRANSITIONS) {

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
@@ -22,7 +22,7 @@ const fixture = createServer((_request, response) => {
 });
 await new Promise(resolve => fixture.listen(0, "127.0.0.1", resolve));
 const url = `http://127.0.0.1:${fixture.address().port}/memory`;
-const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" };
+const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" };
 let app;
 const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
 async function shell() {
@@ -47,9 +47,9 @@ async function openRepo() {
 try {
   app = await launch();
   let page = await shell();
-  const browser = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), url);
-  await page.waitForFunction(id => window.vector.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
-  const workspace = await page.evaluate(() => window.vector.invoke("workspaces.create", { name: "Travel research" }));
+  const browser = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), url);
+  await page.waitForFunction(id => window.aux.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
+  const workspace = await page.evaluate(() => window.aux.invoke("workspaces.create", { name: "Travel research" }));
   await app.close(); app = undefined;
 
   const repo = await openRepo();
@@ -75,15 +75,15 @@ try {
   await page.getByRole("button", { name: "Context · 2", exact: true }).click();
   assert.equal(await page.getByRole("combobox", { name: "Conversation workspace" }).inputValue(), workspace.workspaceId);
   assert.match(await page.getByRole("textbox", { name: "Workspace memory" }).inputValue(), /offline-capable/);
-  await page.evaluate(pageId => window.vector.invoke("runs.start", { goal: "Apply workspace memory.", chatId: "memory-chat", pageIds: [pageId] }), browser.pageId);
-  await page.waitForFunction(() => window.vector.invoke("runs.list", { chatId: "memory-chat", limit: 10 }).then(runs => runs.length === 2));
-  const conversationRuns = await page.evaluate(() => window.vector.invoke("runs.list", { chatId: "memory-chat", limit: 10 }));
+  await page.evaluate(pageId => window.aux.invoke("runs.start", { goal: "Apply workspace memory.", chatId: "memory-chat", pageIds: [pageId] }), browser.pageId);
+  await page.waitForFunction(() => window.aux.invoke("runs.list", { chatId: "memory-chat", limit: 10 }).then(runs => runs.length === 2));
+  const conversationRuns = await page.evaluate(() => window.aux.invoke("runs.list", { chatId: "memory-chat", limit: 10 }));
   assert.equal(conversationRuns[0].config.contextWorkspaceId, workspace.workspaceId);
   assert.equal(conversationRuns[0].config.contextWorkspaceRevision, 1);
   assert.match(conversationRuns[0].config.context, /cite limitations/);
 
-  const task = await page.evaluate(workspaceId => window.vector.invoke("tasks.create", { workspaceId, title: "Workspace task", objective: "Recommend a travel tool", criteria: [{ criterionId: "recommendation", description: "Recommendation reflects workspace preferences", verification: "manual" }], resources: [] }), workspace.workspaceId);
-  const taskRun = await page.evaluate(({ taskId, pageId }) => window.vector.invoke("tasks.start", { taskId, expectedRevision: 1, pageIds: [pageId] }), { taskId: task.taskId, pageId: browser.pageId });
+  const task = await page.evaluate(workspaceId => window.aux.invoke("tasks.create", { workspaceId, title: "Workspace task", objective: "Recommend a travel tool", criteria: [{ criterionId: "recommendation", description: "Recommendation reflects workspace preferences", verification: "manual" }], resources: [] }), workspace.workspaceId);
+  const taskRun = await page.evaluate(({ taskId, pageId }) => window.aux.invoke("tasks.start", { taskId, expectedRevision: 1, pageIds: [pageId] }), { taskId: task.taskId, pageId: browser.pageId });
   assert.equal(taskRun.config.contextWorkspaceId, workspace.workspaceId);
   assert.equal(taskRun.config.contextWorkspaceRevision, 1);
   assert.match(taskRun.config.context, /offline-capable/);

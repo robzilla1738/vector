@@ -2,7 +2,7 @@ import {spawn,type ChildProcess} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {mkdirSync,readdirSync,readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {join} from 'node:path';
-import {ProjectCommandSchema,type ProjectCommand,type LocalProject,type ProjectCommandTask} from '@vector/contracts';
+import {ProjectCommandSchema,type ProjectCommand,type LocalProject,type ProjectCommandTask} from '@aux/contracts';
 const MAX_OUTPUT=128*1024;
 const MAX_SERVICES=4;
 type Active={child:ChildProcess;record:ProjectCommand;timeout?:NodeJS.Timeout;flush?:NodeJS.Timeout;kill?:NodeJS.Timeout;reason?:'canceled'|'timed_out'|'failed'};

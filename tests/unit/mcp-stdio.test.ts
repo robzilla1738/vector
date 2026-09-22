@@ -10,7 +10,7 @@ type Rpc = { method: string; params?: Record<string, unknown> };
 function pageTarget(overrides: Record<string, unknown> = {}) {
   return {
     pageId: "p1",
-    backend: "vector-engine",
+    backend: "aux",
     targetId: "p1",
     url: "https://app.test/form",
     title: "Form",
@@ -130,7 +130,7 @@ describe("Gate F MCP stdio session", () => {
   let controller = "agent";
 
   beforeAll(async () => {
-    dataDir = mkdtempSync(join(tmpdir(), "vector-mcp-"));
+    dataDir = mkdtempSync(join(tmpdir(), "aux-mcp-"));
     server = createServer((req, res) => {
       let raw = "";
       req.on("data", (c) => {
@@ -143,8 +143,8 @@ describe("Gate F MCP stdio session", () => {
         }
         let result: unknown = {};
         switch (body.method) {
-          case "pages.open":
-            result = pageTarget({ url: body.params?.url, backend: body.params?.backend ?? "vector" });
+          case "pages.list":
+            result = [pageTarget()];
             break;
           case "pages.observe": {
             const format = body.params?.format ?? "compact";
@@ -177,7 +177,7 @@ describe("Gate F MCP stdio session", () => {
       JSON.stringify({ port: addr.port, token: "test-token", pid: process.pid }),
     );
     child = spawn(process.execPath, [join(process.cwd(), "packages/mcp/dist/main.js")], {
-      env: { ...process.env, AUX_DATA_DIR: dataDir, VECTOR_DATA_DIR: dataDir },
+      env: { ...process.env, AUX_DATA_DIR: dataDir, AUX_MCP_TOKEN: "test-token" },
       stdio: ["pipe", "pipe", "pipe"],
     });
     mcp = new McpStdio(child);
@@ -196,34 +196,31 @@ describe("Gate F MCP stdio session", () => {
     rmSync(dataDir, { recursive: true, force: true });
   });
 
-  it("opens, observes, executes, takes over, and resumes on one stdio session", async () => {
-    const opened = await mcp.call("tools/call", {
-      name: "vector_page_open",
-      arguments: { url: "https://app.test/form", backend: "vector-engine" },
-    });
-    expect(JSON.stringify(opened)).toMatch(/p1/);
+  it("lists, observes, executes, takes over, and resumes on one stdio session", async () => {
+    const listed = await mcp.call("tools/call", { name: "aux_pages_list" });
+    expect(JSON.stringify(listed)).toMatch(/p1/);
     const observed = await mcp.call("tools/call", {
-      name: "vector_page_observe",
+      name: "aux_page_observe",
       arguments: { pageId: "p1" },
     });
     expect(JSON.stringify(observed)).toMatch(/r9 button/);
     const executed = await mcp.call("tools/call", {
-      name: "vector_page_execute",
+      name: "aux_page_execute",
       arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r9" }] },
     });
     expect(JSON.stringify(executed)).toMatch(/completed/);
     const taken = await mcp.call("tools/call", {
-      name: "vector_page_takeover",
+      name: "aux_page_takeover",
       arguments: { pageId: "p1" },
     });
     expect(JSON.stringify(taken)).toMatch(/human/);
     const resumed = await mcp.call("tools/call", {
-      name: "vector_page_resume",
+      name: "aux_page_resume",
       arguments: { pageId: "p1" },
     });
     expect(JSON.stringify(resumed)).toMatch(/agent/);
     expect(calls.map((c) => c.method)).toEqual([
-      "pages.open",
+      "pages.list",
       "pages.observe",
       "pages.execute",
       "pages.takeover",
@@ -233,7 +230,7 @@ describe("Gate F MCP stdio session", () => {
 
   it("reaches full observation over MCP", async () => {
     const observed = await mcp.call("tools/call", {
-      name: "vector_page_observe",
+      name: "aux_page_observe",
       arguments: { pageId: "p1", format: "full" },
     });
     const text = (observed.result as { content: [{ text: string }] }).content[0].text;
@@ -245,13 +242,16 @@ describe("Gate F MCP stdio session", () => {
     expect(observeCall?.params).toMatchObject({ pageId: "p1", format: "full" });
   });
 
-  it("preserves an omitted backend for runtime policy routing", async () => {
-    await mcp.call("tools/call", {
-      name: "vector_page_open",
+  it("keeps page creation outside the scoped catalog", async () => {
+    const listed = await mcp.call("tools/list");
+    const names = ((listed.result as { tools: { name: string }[] }).tools ?? []).map(t => t.name);
+    expect(names).toContain("aux_pages_list");
+    expect(names).not.toContain("aux_page_open");
+    const opened = await mcp.call("tools/call", {
+      name: "aux_page_open",
       arguments: { url: "https://app.test/auto" },
     });
-    const openCall = [...calls].reverse().find((c) => c.method === "pages.open");
-    expect(openCall?.params).toEqual({ url: "https://app.test/auto", background: false, ownedByRuntime: false });
-    expect(openCall?.params).not.toHaveProperty("backend");
+    expect(JSON.stringify(opened)).not.toMatch(/app\.test\/auto/);
+    expect(calls.some(c => c.method === "pages.open")).toBe(false);
   });
 });

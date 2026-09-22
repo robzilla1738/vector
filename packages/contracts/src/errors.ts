@@ -1,4 +1,4 @@
-export type VectorErrorCode =
+export type AuxErrorCode =
   | "not_found"
   | "invalid_params"
   | "target_detached"
@@ -18,12 +18,12 @@ export type VectorErrorCode =
   | "operation_not_found"
   | "internal";
 
-export class VectorError extends Error {
-  readonly code: VectorErrorCode;
+export class AuxError extends Error {
+  readonly code: AuxErrorCode;
   readonly detail?: unknown;
-  constructor(code: VectorErrorCode, message: string, detail?: unknown) {
+  constructor(code: AuxErrorCode, message: string, detail?: unknown) {
     super(message);
-    this.name = "VectorError";
+    this.name = "AuxError";
     this.code = code;
     this.detail = detail;
   }
@@ -32,16 +32,16 @@ export class VectorError extends Error {
   }
 }
 
-export const isVectorError = (e: unknown): e is VectorError => e instanceof VectorError;
+export const isAuxError = (e: unknown): e is AuxError => e instanceof AuxError;
 
-export function toErrorPayload(e: unknown): { code: VectorErrorCode; message: string; detail?: unknown } {
-  if (isVectorError(e)) return { code: e.code, message: e.message, detail: e.detail };
+export function toErrorPayload(e: unknown): { code: AuxErrorCode; message: string; detail?: unknown } {
+  if (isAuxError(e)) return { code: e.code, message: e.message, detail: e.detail };
   const message = e instanceof Error ? e.message : String(e);
   return { code: "internal", message };
 }
 
 /** MCP `{retryable, hint}` for a closed error code (H0-C2). */
-export function errorAdvice(code: VectorErrorCode): { retryable: boolean; hint: string | null } {
+export function errorAdvice(code: AuxErrorCode): { retryable: boolean; hint: string | null } {
   switch (code) {
     case "ref_stale":
       return { retryable: true, hint: "re-observe and retry with a fresh ref" };

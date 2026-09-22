@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const out = process.argv[2] ?? join(here, "../../../docs/ui/screenshots");
 const only = process.argv[3];
-const base = process.env.VECTOR_MOCK_URL ?? "http://127.0.0.1:5197/";
+const base = process.env.AUX_MOCK_URL ?? "http://127.0.0.1:5197/";
 mkdirSync(out, { recursive: true });
 
 /** name → [query, viewport, pre-capture actions] */

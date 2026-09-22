@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { textContextShares } from "@vector/contracts";
+import { textContextShares } from "@aux/contracts";
 
 it("keeps multiple long sources represented and returns unused short-source capacity", () => {
   expect(textContextShares([10_000, 10_000, 10_000], 6000)).toEqual([2000, 2000, 2000]);

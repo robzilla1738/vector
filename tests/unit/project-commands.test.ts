@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {ProjectCommands} from '../../apps/desktop/main/project-commands.js';
-import type {LocalProject} from '@vector/contracts';
+import type {LocalProject} from '@aux/contracts';
 
 it('runs explicitly, saves output, limits output, cancels and times out without automatic restart',async()=>{
  const root=await mkdtemp(join(tmpdir(),'aux-commands-'));

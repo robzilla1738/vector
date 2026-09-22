@@ -1,75 +1,74 @@
-# Aux runtime database upgrades
+# Aux runtime database schema
 
-The runtime database now uses SQLite `user_version`. Version 1 adopts the legacy
-unversioned schema and its existing column additions. Version 2 adds action intents,
-their transition history, and legacy-journal import records. Version 3 adds durable
-workspaces, tasks, and task revision history. Version 4 adds task evidence and
-criterion review history. Version 5 assigns durable window ownership to saved tabs.
-Version 6 adds revocable, task/workspace-scoped external-agent connections; only
-token digests are stored.
-Version 7 adds safe provider-failure metadata to persisted runs. Version 8 adds
-first-class conversation title/archive metadata and backfills it from saved turns.
-Version 9 merges every saved task's historical runs into one stable task conversation,
-retaining run/task records and carrying forward saved conversation context choices.
-These transitions cover runtime state; they do not migrate the Chromium profile,
-browser cookies, or credential stores.
+The runtime database is `aux-state.sqlite` and carries a single consolidated
+schema: `user_version` 1 with an `aux_meta` marker row (`schema = aux`). The
+schema is declared as one unit with explicit foreign keys; it includes durable
+task/workspace tables, the action-intent journal with transition history,
+scoped agent connections, routines, vault grants, coordinator leases, and
+criterion verifications. WAL mode with `synchronous = FULL` provides committed
+durability for recorded action intents.
 
-## Upgrade behavior
+Legacy development databases — including any `vector.sqlite` and any earlier
+incremental `user_version` — are not adopted. They are preserved untouched and
+the runtime fails closed with a recoverable message. These transitions cover
+runtime state only; they never touch the Chromium profile, browser cookies,
+or credential stores.
 
-- A fresh database is initialized transactionally and stamped version 9.
-- An existing unversioned database is backed up before any schema changes. SQLite
-  `VACUUM INTO` includes committed WAL contents; copying only the main database
-  file would not provide this guarantee.
-- Backups live beside the selected database in a uniquely named directory such
-  as `vector.sqlite.before-v9-XXXXXX/state.sqlite`. The directory has mode 0700
-  and the snapshot mode 0600 on POSIX systems. Backups contain sensitive browsing
-  state and remain local. They are not uploaded or automatically deleted.
-- Schema changes and the version stamp commit together. A migration error rolls
-  back the schema transaction and closes the connection; startup fails visibly.
-- If a required backup cannot be created, startup fails before migration.
-- A database with a newer version is refused before schema or journal changes.
-- Normal restarts at the current version do not repeat migrations or create extra backups.
-- Upgrades apply only missing transitions in order through version 9; the
-  baseline schema is not reapplied. Existing tasks, revisions and action intents
-  are retained. WAL uses synchronous FULL for committed action intent durability.
+## Startup behavior
 
-The runtime remains the single writer. Stop it before maintenance or recovery;
-do not run a second runtime against the same data directory. Newer-version
-protection applies to Aux builds containing this check, not historical builds
-that never checked versions.
+- A fresh database is initialized transactionally and stamped version 1.
+- An unversioned database that already contains tables is refused as a
+  pre-versioning development database; the file is never modified.
+- A versioned database without the `aux_meta` marker is a legacy development
+  database; it is refused unchanged with instructions to move it aside or
+  select another `AUX_DATA_DIR`.
+- A database with a newer version or an Aux marker beyond the supported
+  version is refused before any write. It is never reset.
+- Schema creation and the version stamp commit together; a creation error
+  rolls the transaction back and startup fails visibly.
+- Normal restarts at the current version never re-run creation or create
+  backups.
+
+## Future upgrades
+
+After external beta begins, schema changes use ordered `user_version`
+transitions: `MIGRATIONS[N]` upgrades version N to N+1 inside one transaction
+per step. Before the first step the live database is snapshotted with
+`VACUUM INTO` into a private backup directory (mode 0700, snapshot 0600 on
+POSIX); `VACUUM INTO` includes committed WAL contents, which a plain file copy
+would miss. A missing transition or a migration error fails startup without
+modifying the database. Every new transition requires a test proving existing
+data survives.
 
 ## Recovery procedure
 
-1. Stop the desktop and its runtime completely. Preserve the failed database and
-   all associated WAL/SHM files together for diagnosis; never discard them while
-   another process has the database open.
-2. Select the backup from the failed upgrade. Open it read-only to check
-   `PRAGMA integrity_check` and confirm the expected state/version. Do not select
-   a backup merely because its filename sorts last.
-3. Copy the snapshot to a separate private recovery directory using the original
-   database filename. Keep the snapshot itself unchanged. Select that directory
-   with `AUX_DATA_DIR` for a controlled recovery run of a compatible app build.
+1. Stop the desktop and its runtime completely. Preserve the failed database
+   and all associated WAL/SHM files together for diagnosis; never discard them
+   while another process has the database open.
+2. If a migration backup was created, open it read-only to check
+   `PRAGMA integrity_check` and confirm the expected version. Do not select a
+   backup merely because its filename sorts last.
+3. Copy the snapshot to a separate private recovery directory under the
+   original database filename. Keep the snapshot itself unchanged. Select that
+   directory with `AUX_DATA_DIR` for a controlled recovery run of a compatible
+   app build.
 4. Verify expected runtime records before choosing a recovered database for
-   normal use. Runtime records can reference other files; a SQLite snapshot alone
-   is not a full backup of artifacts or the browser profile.
+   normal use. Runtime records can reference other files; a SQLite snapshot
+   alone is not a full backup of artifacts or the browser profile.
 
-Do not restore state automatically after an uncertain external action: restoring
-a database cannot undo a message, deployment, or other service-side effect.
-Reconcile those effects before resuming work.
+Do not restore state automatically after an uncertain external action:
+restoring a database cannot undo a message, deployment, or other service-side
+effect. Reconcile those effects before resuming work.
 
-## Evidence and next migrations
+## Evidence
 
-`tests/unit/database-migration.test.ts` exercises fresh initialization, each recent
-ordered transitions including version 12 → 13 (coordinator leases and criterion
-verifications), restart, WAL-backed snapshots and their
-permissions, schema-error rollback and repaired retry, and refusal of newer schemas
-using synthetic temporary databases.
+`tests/unit/database-migration.test.ts` exercises fresh initialization with
+all tables and indexes, foreign-key enforcement, refusal and preservation of
+pre-versioning and legacy versioned databases, refusal of newer Aux schemas,
+and atomic upgrade steps that retain data — all on synthetic temporary
+databases.
 
-Future schema changes require a new ordered version transition and tests against
-the preceding version. Do not modify version 1 and assume existing version 1
-databases will rerun it. Runtime backup/restore UI, retention (keep 3|5|10|20),
-disk-full backup failure, and interrupt-before-manifest skip are implemented.
-Chromium Cookies, Login Data, Web Data and similar stores are classified refuse
-and never copied. OS data-root Vector→Aux copy remains
-fail-closed on dual roots. Full application/profile migration of cookies, password
-stores and credentials remains open and must never silently move secrets.
+Runtime backup/restore UI, retention (keep 3|5|10|20), disk-full backup
+failure, and interrupt-before-manifest skip are implemented and validated
+against the schema marker and `user_version`. Chromium Cookies, Login Data,
+Web Data and similar stores are classified refuse and never copied.

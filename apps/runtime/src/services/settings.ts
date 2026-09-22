@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ModelProviderSchema, SidebarMaterialSchema, type ModelProvider, type EngineMode } from "@vector/contracts";
+import { ModelProviderSchema, SidebarMaterialSchema, type ModelProvider, type ShortcutOverrides } from "@aux/contracts";
+import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
 import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { DIRECT_PROVIDERS, PROVIDER_ENV, directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "../agent/direct-providers.js";
@@ -25,6 +26,10 @@ export interface Settings {
   recoveryModel?: string;
   visionModel?: string;
   searchEngine?: string;
+  searchEngines?: { keyword: string; name: string; template: string }[];
+  searchSuggestions?: boolean;
+  /** Personal info offered to page forms on explicit request only. */
+  autofill?: { name?: string; email?: string; phone?: string; organization?: string; street?: string; city?: string; region?: string; postal?: string; country?: string };
   maxWorkers?: number;
   perOrigin?: number;
   maxModelCalls?: number;
@@ -36,17 +41,10 @@ export interface Settings {
   sidebarBlur?: number;
   sidebarOpacity?: number;
   tabLayout?: "vertical" | "horizontal";
+  /** commandId → replacement bindings; null disables the command's shortcuts. */
+  shortcutOverrides?: ShortcutOverrides;
   zoomFactor?: number;
   dataDir?: string;
-  /**
-   * Vector Engine routing (architecture §11): "off" — Chromium only;
-   * "auto" — Chromium by default with qualified engine cohorts;
-   * "always" — engine only (benchmarks/tests). Env override:
-   * VECTOR_ENGINE_MODE.
-   */
-  engineMode?: EngineMode;
-  /** Origins or host patterns qualified for automatic engine placement. */
-  engineCohorts?: string[];
   /**
    * Privilege-independent agent effect grants (Gate D / Gate F).
    * The person sets these. Model text cannot expand them.
@@ -78,8 +76,6 @@ export interface ModelProbeRecord {
   latencyMs?: number;
   vision?: boolean;
 }
-
-const ENGINE_MODES: readonly EngineMode[] = ["off", "auto", "always"];
 
 export class SettingsService {
   /** Test hook — inject a mock model instead of the real Gateway client. */
@@ -170,6 +166,8 @@ export class SettingsService {
       recoveryModel: this.recoveryModel(),
       visionModel: this.visionModel(),
       searchEngine: this.searchEngine(),
+      searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
+      searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,
       maxWorkers: this.maxWorkers(),
       perOrigin: this.perOrigin(),
       maxModelCalls: this.maxModelCalls(),
@@ -181,9 +179,9 @@ export class SettingsService {
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "vertical",
+      shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
+      autofill: (this.get("autofill") as Settings["autofill"]) ?? {},
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
-      engineMode: this.engineMode(),
-      engineCohorts: [...this.engineCohorts()],
       effectGrants: [...this.effectGrantsForRun()],
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
@@ -202,22 +200,6 @@ export class SettingsService {
     const explicit = this.get("effectGrants") ?? this.fileSettings.effectGrants;
     if (explicit !== undefined) return sanitizeGrants(explicit);
     return sanitizeGrants([...USER_RUN_GRANTS]);
-  }
-
-  /** Setting wins over the env override; anything unrecognised is "auto". */
-  engineMode(): EngineMode {
-    const v = (this.get("engineMode") as string | undefined) ?? this.env.VECTOR_ENGINE_MODE;
-    return ENGINE_MODES.includes(v as EngineMode) ? (v as EngineMode) : "auto";
-  }
-
-  engineCohorts(): readonly string[] {
-    const configured = this.get("engineCohorts") ?? this.fileSettings.engineCohorts;
-    const raw = Array.isArray(configured)
-      ? configured
-      : (this.env.VECTOR_ENGINE_COHORTS ?? "").split(",");
-    return [...new Set(raw.filter((value): value is string => typeof value === "string")
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean))];
   }
 
   set(patch: Settings): Promise<{ ok: true }> {
@@ -274,9 +256,6 @@ export class SettingsService {
       next.providerModels = { ...this.profiles(), [selectedProvider]: profile };
     }
     if (next.effectGrants !== undefined) next.effectGrants = sanitizeGrants(next.effectGrants);
-    if (next.engineCohorts !== undefined) {
-      next.engineCohorts = [...new Set(next.engineCohorts.map((value) => value.trim().toLowerCase()).filter(Boolean))];
-    }
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) this.repo.deleteSetting("modelProbe");
     for (const [k, v] of Object.entries(next)) {
@@ -427,20 +406,20 @@ export class SettingsService {
     if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.plannerModel ?? "";
     return (
       (this.get("plannerModel") as string | undefined) ||
-      this.env.VECTOR_PLANNER_MODEL ||
+      this.env.AUX_PLANNER_MODEL ||
       DEFAULT_PLANNER_MODEL
     );
   }
   recoveryModel(): string | undefined {
     if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.recoveryModel || undefined;
-    return (this.get("recoveryModel") as string) ?? this.env.VECTOR_RECOVERY_MODEL;
+    return (this.get("recoveryModel") as string) ?? this.env.AUX_RECOVERY_MODEL;
   }
   visionModel(): string | undefined {
     if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.visionModel || undefined;
-    return (this.get("visionModel") as string) || this.env.VECTOR_VISION_MODEL || undefined;
+    return (this.get("visionModel") as string) || this.env.AUX_VISION_MODEL || undefined;
   }
   searchEngine(): string {
-    return (this.get("searchEngine") as string) ?? "https://duckduckgo.com/?q=%s";
+    return (this.get("searchEngine") as string) ?? DEFAULT_SEARCH_ENGINE;
   }
   maxWorkers(): number {
     return (this.get("maxWorkers") as number) ?? 4;
@@ -463,8 +442,8 @@ export class SettingsService {
       return this.gatewayClient;
     }
     if (!this.gatewayClient) {
-      const t = Number(this.env.VECTOR_MODEL_CALL_TIMEOUT_MS);
-      const only = this.env.VECTOR_GATEWAY_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
+      const t = Number(this.env.AUX_MODEL_CALL_TIMEOUT_MS);
+      const only = this.env.AUX_GATEWAY_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
       this.gatewayClient = new GatewayModelClient(key, {
         callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
         only: only?.length ? only : undefined,

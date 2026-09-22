@@ -3,7 +3,7 @@
  * in-memory pair in tests). Used between the Electron main process (which
  * owns native surfaces) and the runtime (execution authority).
  */
-import { toErrorPayload, VectorError } from "./errors.js";
+import { toErrorPayload, AuxError } from "./errors.js";
 
 export interface Transport {
   send(msg: unknown): void;
@@ -46,12 +46,12 @@ export class RpcChannel {
   }
 
   call<T = unknown>(method: string, params?: unknown, timeoutMs = 30_000): Promise<T> {
-    if (this.closed) return Promise.reject(new VectorError("backend_unavailable", `${this.label}: channel closed`));
+    if (this.closed) return Promise.reject(new AuxError("backend_unavailable", `${this.label}: channel closed`));
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new VectorError("condition_timeout", `${this.label}: ${method} timed out`));
+        reject(new AuxError("condition_timeout", `${this.label}: ${method} timed out`));
       }, timeoutMs);
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
       this.transport.send({ kind: "req", id, method, params });
@@ -88,7 +88,7 @@ export class RpcChannel {
       this.pending.delete(f.id);
       clearTimeout(p.timer);
       if (f.error) {
-        p.reject(new VectorError((f.error.code as never) ?? "internal", f.error.message, f.error.detail));
+        p.reject(new AuxError((f.error.code as never) ?? "internal", f.error.message, f.error.detail));
       } else {
         p.resolve(f.result);
       }
@@ -103,7 +103,7 @@ export class RpcChannel {
     this.closed = true;
     for (const [, p] of this.pending) {
       clearTimeout(p.timer);
-      p.reject(new VectorError("backend_unavailable", `${this.label}: channel closed`));
+      p.reject(new AuxError("backend_unavailable", `${this.label}: channel closed`));
     }
     this.pending.clear();
   }

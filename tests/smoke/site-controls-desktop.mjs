@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-site-controls-'));
 const server=createServer((req,res)=>{res.setHeader('Set-Cookie','auxSite=session; SameSite=Lax; Path=/');res.setHeader('Content-Type','text/html');res.end('<title>Aux site controls fixture</title><h1>Private site data</h1>');});
@@ -18,11 +18,11 @@ mkdirSync(join(dir,'data'),{recursive:true});
 writeFileSync(join(dir,'data/site-permissions.json'),JSON.stringify({[base]:{notifications:'deny',geolocation:'allow'}}));
 let app;
 try{
-  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
   let shell;for(let i=0;i<100;i++){shell=app.windows().find(page=>page.url().includes('renderer/index.html'));if(shell)break;await new Promise(resolve=>setTimeout(resolve,100));}assert.ok(shell);shell.setDefaultTimeout(15000);
   await shell.locator('.aux-home').waitFor();await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
-  const target=await shell.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base);
-  await poll(shell,async id=>(await window.vector.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),target.pageId);
+  const target=await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
+  await poll(shell,async id=>(await window.aux.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),target.pageId);
   await shell.getByRole('button',{name:'Site controls',exact:true}).click();
   const dialog=shell.getByRole('dialog',{name:base});await dialog.waitFor();
   await dialog.getByText('Local connection',{exact:true}).first().waitFor();
@@ -35,7 +35,7 @@ try{
   await shell.screenshot({path:join(root,'release/test-artifacts/aux-site-controls.png')});
   await dialog.getByRole('button',{name:'Reset Notifications',exact:true}).click();
   await dialog.getByText('Notifications will ask again.',{exact:true}).waitFor();
-  assert.deepEqual((await shell.evaluate(id=>window.vector.siteInfo(id),target.pageId)).permissions,{geolocation:'allow'});
+  assert.deepEqual((await shell.evaluate(id=>window.aux.siteInfo(id),target.pageId)).permissions,{geolocation:'allow'});
   await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
   await dialog.getByRole('button',{name:'Clear…',exact:true}).click();
   await dialog.getByText('0 cookies currently visible to this page',{exact:true}).waitFor();

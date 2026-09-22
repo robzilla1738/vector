@@ -1,9 +1,10 @@
 /** Predictable address-bar routing: URLs open, text searches, and > explicitly asks Aux. */
 import { isUrlLike, toUrl } from "./chrome";
+import { engineList, resolveKeyword, type KeywordEngine } from "./engines";
 
 export type Intent =
   | { kind: "navigate"; url: string; display: string }
-  | { kind: "search"; query: string; url: string }
+  | { kind: "search"; query: string; url: string; engine?: string }
   | { kind: "run"; goal: string; scope: "page" | "new" }
   | { kind: "command"; query: string }
   | { kind: "empty" };
@@ -12,6 +13,7 @@ export interface IntentContext {
   /** the active page has a real URL the agent could work on */
   hasPage: boolean;
   searchEngine?: string;
+  searchEngines?: readonly KeywordEngine[];
 }
 
 export function detectIntent(raw: string, ctx: IntentContext): Intent {
@@ -28,6 +30,10 @@ export function detectIntent(raw: string, ctx: IntentContext): Intent {
     return { kind: "search", query: q, url: toUrl(q, ctx.searchEngine) };
   }
 
+  // A keyword engine claim (`gh aux browser`) routes to that engine's search.
+  const keyed = resolveKeyword(v, ctx.searchEngines ?? engineList());
+  if (keyed) return { kind: "search", query: keyed.terms, url: keyed.url, engine: keyed.engine.name };
+
   // URLs and bare domains win outright — never send a URL to the model.
   if (!/\s/.test(v) && isUrlLike(v)) {
     const url = toUrl(v, ctx.searchEngine);
@@ -43,7 +49,7 @@ export function intentLabel(i: Intent): string {
     case "navigate":
       return "Open";
     case "search":
-      return "Search";
+      return i.engine ?? "Search";
     case "run":
       return i.scope === "page" ? "Ask on this page" : "New task";
     case "command":

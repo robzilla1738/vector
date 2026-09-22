@@ -1,4 +1,4 @@
-import type { Run } from "@vector/contracts";
+import type { Run } from "@aux/contracts";
 /** Existing chat IDs are durable; legacy runs each remain a separate conversation. */
 export function recentConversations(runs: Run[]): Run[] {
   const seen = new Set<string>();

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CompactObservation, Run } from "@vector/contracts";
+import { useShallow } from "zustand/react/shallow";
+import type { CompactObservation, Run } from "@aux/contracts";
 import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { ObservationPanel } from "./ObservationPanel";
@@ -104,7 +105,8 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   const stats = useStore((s) => s.modelStats[runId]);
   const obs = useStore((s) => s.observations[runId]);
   const prompt = useStore((s) => s.prompt);
-  const pages = useStore((s) => s.pages);
+  // Only the pages this run can act on — unrelated tab churn does not re-render the panel.
+  const runPages = useStore(useShallow((s) => s.pages.filter((p) => (run?.pageIds ?? []).includes(p.pageId) || p.pageId === retryPageId)));
   const activePageId = useStore((s) => s.activePageId);
   const loadRun = useStore((s) => s.loadRun);
   const answerRun = useStore((s) => s.answerRun);
@@ -142,13 +144,13 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
   const live = isLive(run);
-  const originalPages = run.pageIds.map(id => pages.find(p => p.pageId === id));
-  const usable = (item?: typeof pages[number]) => !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
+  const originalPages = run.pageIds.map(id => runPages.find(p => p.pageId === id));
+  const usable = (item?: typeof runPages[number]) => !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
   const page = usable(originalPages[0]) ? originalPages[0] : undefined;
   const missingOriginals = run.pageIds.filter((id, index) => !usable(originalPages[index]) || originalPages[index]?.pageId !== id);
   const multiTabBlocked = run.pageIds.length > 1 && missingOriginals.length > 0;
-  const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? pages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
-  const humanPages = pages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
+  const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
+  const humanPages = runPages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
   const humanPage = humanPages[0];
   const humanHolds = humanPages.length > 0;
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";

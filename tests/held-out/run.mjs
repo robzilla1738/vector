@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
 const tasksPath = join(here, "tasks.json");
-const outPath = process.env.HELDOUT_OUT || join(root, "docs/engine/evidence/held-out-latest.json");
+const outPath = process.env.HELDOUT_OUT || join(root, "docs/perf/held-out-latest.json");
 const runtimeEntry = join(root, "apps/runtime/dist/index.js");
 const LUNA = "openai/gpt-5.6-luna-fast";
 
@@ -38,7 +38,7 @@ const sealed = createHash("sha256")
 
 const apiKey =
   process.env.AI_GATEWAY_API_KEY ||
-  process.env.VECTOR_GATEWAY_API_KEY ||
+  process.env.AUX_GATEWAY_API_KEY ||
   process.env.OPENAI_API_KEY ||
   process.env.ANTHROPIC_API_KEY;
 const live = Boolean(apiKey);
@@ -76,9 +76,6 @@ function skipEvidence(reason, extra = {}) {
     trialsRequested: trials,
     tasks: tasks.map((t) => t.id),
     modelId: LUNA,
-    competitorRows: [],
-    competitorSkipped: true,
-    competitorReason: extra.competitorReason ?? reason,
     artifact: { harness: "tests/held-out/run.mjs" },
     notes: "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used.",
     ...extra,
@@ -86,7 +83,7 @@ function skipEvidence(reason, extra = {}) {
 }
 
 if (!live) {
-  const evidence = skipEvidence("no VECTOR_GATEWAY_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY");
+  const evidence = skipEvidence("no AUX_GATEWAY_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY");
   writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, skippedLive: true, out: outPath, sealedHash: sealed }));
   process.exit(0);
@@ -152,21 +149,18 @@ function summarize(rows) {
   };
 }
 
-async function startRuntimeFor(engineMode, port) {
+async function startRuntimeFor(port) {
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
-  const dataDir = mkdtempSync(join(tmpdir(), "vector-heldout-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-heldout-"));
   const rt = await startRuntime({
     ...process.env,
-    VECTOR_DATA_DIR: dataDir,
-    VECTOR_ELECTRON_CDP: "",
-    VECTOR_API_TOKEN: "heldout",
-    VECTOR_ENGINE_MODE: engineMode,
-    VECTOR_ENGINE: engineMode === "off" ? "0" : "1",
-    VECTOR_PLANNER_MODEL: LUNA,
-    VECTOR_RECOVERY_MODEL: LUNA,
-    VECTOR_GATEWAY_ONLY: "",
-    VECTOR_ENGINE_ALLOWLIST: `127.0.0.1:${port},localhost:${port}`,
-    VECTOR_ENGINE_ALLOW_FILE: "1",
+    AUX_DATA_DIR: dataDir,
+    AUX_ELECTRON_CDP: "",
+    AUX_API_TOKEN: "heldout",
+    AUX_PLANNER_MODEL: LUNA,
+    AUX_RECOVERY_MODEL: LUNA,
+    AUX_GATEWAY_ONLY: "",
+    AUX_EGRESS_ALLOWLIST: `127.0.0.1:${port},localhost:${port}`,
     AI_GATEWAY_API_KEY: apiKey,
   });
   return { rt, dataDir };
@@ -256,8 +250,8 @@ async function runTrial(rpc, task, url) {
   }
 }
 
-async function runAdapter(name, engineMode, port) {
-  const { rt } = await startRuntimeFor(engineMode, port);
+async function runAdapter(name, port) {
+  const { rt } = await startRuntimeFor(port);
   const rpc = (m, p = {}) => rt.invoke(m, p);
   const rows = [];
   try {
@@ -278,25 +272,15 @@ async function runAdapter(name, engineMode, port) {
 }
 
 const { server, port } = await serveFixtures();
-let engineRows = [];
-let competitorRows = [];
-let competitorSkipped = false;
-let competitorReason = "";
+let rows = [];
 try {
   console.error(`live held-out: ${LUNA} × ${trials} trials on :${port}`);
-  engineRows = await runAdapter("vector-engine", "always", port);
-  try {
-    competitorRows = await runAdapter("vector", "off", port);
-  } catch (e) {
-    competitorSkipped = true;
-    competitorReason = e instanceof Error ? e.message : String(e);
-  }
+  rows = await runAdapter("aux", port);
 } finally {
   server.close();
 }
 
-const engine = summarize(engineRows);
-const competitor = competitorRows.length ? summarize(competitorRows) : null;
+const summary = summarize(rows);
 const evidence = {
   review: "H1-D2",
   measured: true,
@@ -306,17 +290,13 @@ const evidence = {
   sealedHash: sealed,
   trials,
   modelId: LUNA,
-  rows: engineRows,
-  median: engine.modelWaitMs.median,
-  iqr: engine.modelWaitMs.iqr,
-  ci95: engine.modelWaitMs.ci95,
-  verifiedSuccess: engine,
-  competitorRows,
-  competitorSkipped,
-  competitorReason: competitorReason || undefined,
-  competitor: competitor ?? undefined,
+  rows,
+  median: summary.modelWaitMs.median,
+  iqr: summary.modelWaitMs.iqr,
+  ci95: summary.modelWaitMs.ci95,
+  verifiedSuccess: summary,
   artifact: { harness: "tests/held-out/run.mjs", model: LUNA },
   notes: "Live GPT 5.6 Luna via AI Gateway. Independent oracle is page observe vs gold regex. Mock is not used.",
 };
 writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(JSON.stringify({ ok: true, skippedLive: false, out: outPath, sealedHash: sealed, verified: engine.verified, n: engine.n }));
+console.log(JSON.stringify({ ok: true, skippedLive: false, out: outPath, sealedHash: sealed, verified: summary.verified, n: summary.n }));

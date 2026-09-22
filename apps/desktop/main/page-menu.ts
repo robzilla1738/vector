@@ -1,6 +1,6 @@
 import { clipboard, dialog, Menu, type WebContents, type MenuItemConstructorOptions } from "electron";
 import { mediaActionScript, type MediaAction } from "./media-action.js";
-import type { PageQuickAction } from "@vector/contracts";
+import type { PageQuickAction } from "@aux/contracts";
 
 function canOpenTab(value: string) {
   try { return ["http:","https:","file:"].includes(new URL(value).protocol); }
@@ -12,6 +12,13 @@ export function showPageMenu(wc: WebContents, p: Electron.ContextMenuParams, hoo
   openAsTab(url:string, referrer?:Electron.Referrer):void;
   onAudio():void;
   onPageAction?(action:Omit<PageQuickAction,"pageId">):void;
+  /** Fill the clicked frame's form with saved personal info. */
+  autofill?(frame:Electron.WebFrameMain):void;
+  /** Vault credentials matching this page, resolved before menu build. */
+  credentials?:{items:{itemId:string;label:string;username?:string}[];fill(itemId:string):void};
+  /** Explicit translation through the configured model provider. */
+  translatePage?():void;
+  translateSelection?(text:string,x:number,y:number):void;
 }) {
   if(wc.isDestroyed())return;
   const t: MenuItemConstructorOptions[] = [];
@@ -24,6 +31,14 @@ export function showPageMenu(wc: WebContents, p: Electron.ContextMenuParams, hoo
       { label: "Summarize selection with Aux…", click: () => hooks.onPageAction?.({ ...source, action: "summarize" }) },
       { label: "Remember selection…", click: () => hooks.onPageAction?.({ ...source, action: "remember" }) },
     );
+    t.push({ type: "separator" });
+  }
+  const selectedText = p.selectionText.trim();
+  if (hooks.translateSelection && selectedText && !p.isEditable) {
+    t.push({ label: "Translate selection…", click: () => hooks.translateSelection?.(selectedText.slice(0, 12000), p.x, p.y) });
+  }
+  if (hooks.translatePage && /^https?:/.test(wc.getURL()) && !p.isEditable) {
+    t.push({ label: "Translate page…", click: () => hooks.translatePage?.() });
     t.push({ type: "separator" });
   }
   if(wc.isCurrentlyAudible()||wc.isAudioMuted())t.push({label:wc.isAudioMuted()?'Unmute tab':'Mute tab',click:()=>{wc.setAudioMuted(!wc.isAudioMuted());hooks.onAudio();}},{type:'separator'});
@@ -90,6 +105,18 @@ export function showPageMenu(wc: WebContents, p: Electron.ContextMenuParams, hoo
       { label: "Select All", enabled: p.editFlags.canSelectAll, click:()=>wc.selectAll() },
       { type: "separator" },
     );
+    if (hooks.autofill) t.push({ label: "Fill personal info", click: () => hooks.autofill?.(p.frame ?? wc.mainFrame) });
+    if (hooks.credentials?.items.length) {
+      const items = hooks.credentials.items;
+      t.push({
+        label: "Fill sign-in",
+        submenu: items.slice(0, 6).map(item => ({
+          label: item.username ? `${item.label} — ${item.username}` : item.label,
+          click: () => hooks.credentials?.fill(item.itemId),
+        })),
+      });
+    }
+    if (hooks.autofill || hooks.credentials?.items.length) t.push({ type: "separator" });
   } else if (p.selectionText) {
     t.push({ label: "Copy", click:()=>wc.copy() }, { type: "separator" });
   }

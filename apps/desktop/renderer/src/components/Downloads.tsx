@@ -154,6 +154,7 @@ export function Downloads() {
                 {active ? (pct !== null ? `${fmtSize(d.size)} of ${fmtSize(d.totalBytes)}` : `${fmtSize(d.size)}…`) : fmtSize(d.size)}
                 {" · "}
                 <span className={`dl-state ${d.state}`}>{d.paused ? "Paused" : STATE[d.state] ?? d.state}</span>
+                {d.warning&&<span className="dl-warn">{" · "}{d.warning==="executable"?"Runs code when opened":"Sent over an unencrypted connection"}</span>}
                 {d.state==='interrupted'&&!d.path&&(d.sourceUrl?' · Choose an available folder, then Retry.':' · Download folder unavailable; choose a folder and retry from the page.')}
               </span>
               {active && <span className="dl-bar" role="progressbar" aria-label={`${d.paused ? "Paused" : "Downloading"} ${d.filename}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}><span style={{ width: pct !== null ? `${pct}%` : "40%" }} className={pct === null ? "indeterminate" : ""} /></span>}

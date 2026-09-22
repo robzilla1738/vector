@@ -1,4 +1,4 @@
-import type { DriverPageEvents } from "@vector/engine-client";
+import type { DriverPageEvents } from "@aux/chromium-driver";
 import type { Repo } from "../store/repo.js";
 import type { ArtifactStore } from "./artifacts.js";
 import type { EventBus } from "../events.js";

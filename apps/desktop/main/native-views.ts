@@ -1,10 +1,12 @@
 import { pageShortcut } from "./page-shortcuts.js";
+import { NAV_GESTURE_BINDING, NAV_GESTURE_WORLD, navGestureScript } from "./page-nav-gesture.js";
 import { showPageMenu } from "./page-menu.js";
+import { installCredentialWatch } from "./credential-detect.js";
+import { installCosmeticFilter } from "./cosmetic-filter.js";
 import { popupCommand } from './popup-commands.js';
 import { session, WebContentsView, type BaseWindow, type WebContents } from "electron";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { RETAINED_SESSION_PARTITIONS, type PageQuickAction } from "@vector/contracts";
+import { SESSION_PARTITIONS, type PageQuickAction } from "@aux/contracts";
 import type { TargetRegistry, ViewEntry } from "./target-registry.js";
 
 export interface ViewHooks {
@@ -29,23 +31,30 @@ export interface ViewHooks {
   /** app-level shortcuts pressed while a page view is focused */
   sendShortcut(s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }, pageId: string): void;
   onCursor?(pageId: string, cursor: string): void;
+  /** A horizontal gesture on this page asks for history navigation. */
+  onNavGesture?(pageId: string, direction: "back" | "forward"): void;
+  /** The context menu asked to fill this frame's form with saved personal info. */
+  onAutofill?(frame: Electron.WebFrameMain): void;
+  /** Vault items matching the frame's page origin (context-menu fill list). */
+  onCredentials?(frame: Electron.WebFrameMain): Promise<{ itemId: string; label: string; username?: string }[]>;
+  /** A password-form submit was detected on this page (vault save offer). */
+  onCredentialOffer?(pageId: string, offer: { username: string; origin: string }): void;
+  /** Cosmetic ad filtering — whether this page's host stays filtered. */
+  cosmeticFiltered?(hostname: string): boolean;
+  /** Explicit page/selection translation through the configured model. */
+  onTranslatePage?(pageId: string): void;
+  onTranslateSelection?(pageId: string, text: string, x: number, y: number): void;
+  /** Fill a vault credential into the page's login form. */
+  onVaultFill?(pageId: string, frame: Electron.WebFrameMain, itemId: string): void;
 }
 
-const ENGINE_PAINT_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
-<meta charset=utf-8>
-<title>Aux Engine</title>
-<style>html,body{margin:0;height:100%;background:#fff;overflow:hidden}img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}</style>
-<body tabindex=0><img id=f alt=""></body>
-<script>document.body.focus();</script>
-`)}`;
-
 // Persisted profile identity; changing this before migration would hide existing logins.
-const PROFILE_PARTITION = RETAINED_SESSION_PARTITIONS.browsing;
+const PROFILE_PARTITION = SESSION_PARTITIONS.browsing;
 
 /** Inject the Aux target marker into a webContents — every document. */
 export function installMarker(view: Pick<WebContentsView, "webContents">, marker: string) {
   const wc = view.webContents;
-  const src = `Object.defineProperty(globalThis, "__vectorTid", {value: ${JSON.stringify(marker)}, configurable: true, writable: true});`;
+  const src = `Object.defineProperty(globalThis, "__auxTid", {value: ${JSON.stringify(marker)}, configurable: true, writable: true});`;
   const injectNow = () => wc.executeJavaScript(src, true).catch(() => {});
   injectNow();
   // dom-ready covers the initial document — a first-shot executeJavaScript can
@@ -74,23 +83,19 @@ export function createPageView(opts: {
   url: string;
   background: boolean;
   ownedByRuntime?:boolean;
-  kind?: "chromium" | "engine";
   referrer?: Electron.Referrer;
   hooks: ViewHooks;
 }): ViewEntry {
-  const enginePaint = opts.kind === "engine";
   // Human and agent tabs share the same browser profile. Control ownership is
   // enforced by the runtime; changing who drives a page must not change its
   // cookies, storage, permissions, cache, or service workers.
-  const partition = enginePaint ? RETAINED_SESSION_PARTITIONS.enginePaint : PROFILE_PARTITION;
   const view = new WebContentsView({
     webPreferences: {
-      partition,
+      partition: PROFILE_PARTITION,
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
-      spellcheck: !enginePaint,
-      preload: enginePaint ? join(import.meta.dirname, "..", "preload", "engine-paint.cjs") : undefined,
+      spellcheck: true,
     },
   });
   const entry: ViewEntry = {
@@ -100,17 +105,16 @@ export function createPageView(opts: {
     view,
     owned: true,
     runtimeOwned:opts.ownedByRuntime,
-    kind: enginePaint ? "engine" : "chromium",
   };
+  // Trackpad pinch zoom is a visual (compositor) zoom — Electron leaves the
+  // limits at 1/1 until a view opts in. Ephemeral per document, like Chrome.
+  void view.webContents.setVisualZoomLevelLimits(1, 3).catch(() => {});
   opts.registry.add(entry);
-  if (!enginePaint) installMarker(view, opts.marker);
+  installMarker(view, opts.marker);
   wireEvents(entry, opts.hooks);
   opts.win.contentView.addChildView(view);
   if (!opts.background) view.webContents.focus();
-  if (enginePaint) {
-    view.webContents.loadURL(ENGINE_PAINT_HTML).catch(() => {});
-    opts.hooks.onNavigated(opts.pageId, opts.url);
-  } else if (opts.url) {
+  if (opts.url) {
     view.webContents.loadURL(opts.url, opts.referrer ? { httpReferrer: opts.referrer } : undefined).catch(() => {});
   }
   return entry;
@@ -128,7 +132,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
     cancelPageClose(wc);
   });
   const audio=()=>hooks.onAudio?.(id,{muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()});
-  if(entry.kind!=='engine'){wc.on('audio-state-changed',audio);wc.on('dom-ready',audio);audio();}
+  wc.on('audio-state-changed',audio);wc.on('dom-ready',audio);audio();
   const navState = () => hooks.onNavState(id, wc.navigationHistory.canGoBack(), wc.navigationHistory.canGoForward());
   wc.on("did-start-navigation", (_event, _url, _inPlace, isMainFrame) => {
     if (isMainFrame) hooks.onNavigationError(id, null);
@@ -163,10 +167,18 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   });
   wc.on("did-create-window", (popup) => {
     const pageId = `pop_${randomUUID()}`;
-    const marker = `vtab-${pageId}`;
-    const child: ViewEntry = { showBlankDocument: true, pageId, windowId: entry.windowId, marker, popup, view: { webContents: popup.webContents }, owned: true, kind: "chromium" };
+    const marker = `atab-${pageId}`;
+    const child: ViewEntry = { showBlankDocument: true, pageId, windowId: entry.windowId, marker, popup, view: { webContents: popup.webContents }, owned: true };
     installMarker(child.view, marker);
     wireEvents(child, hooks);
+    // Popup windows are real BrowserWindows — they get their own gesture
+    // surface; the overscroll listener already arrived through wireEvents.
+    popup.on("swipe", (_e, direction) => {
+      if (direction === "left" || direction === "right") hooks.onNavGesture?.(pageId, direction === "left" ? "forward" : "back");
+    });
+    popup.on("app-command", (_e, command) => {
+      if (command === "browser-backward" || command === "browser-forward") hooks.onNavGesture?.(pageId, command === "browser-backward" ? "back" : "forward");
+    });
     hooks.onPopup(child);
   });
   wc.setWindowOpenHandler((details) => {
@@ -205,8 +217,8 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
             sandbox: true, contextIsolation: true, nodeIntegration: false },
         });
         const pageId = `pop_${randomUUID()}`;
-        const marker = `vtab-${pageId}`;
-        const child: ViewEntry = { showBlankDocument: true, pageId, windowId: entry.windowId, marker, view, owned: true, kind: "chromium" };
+        const marker = `atab-${pageId}`;
+        const child: ViewEntry = { showBlankDocument: true, pageId, windowId: entry.windowId, marker, view, owned: true };
         installMarker(view, marker);
         wireEvents(child, hooks);
         // Parenting the view and notifying the runtime inside Chromium's
@@ -222,11 +234,25 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
       },
     };
   });
-  wc.on("context-menu", (_e, params) => showPageMenu(entry.view.webContents, params, {
-    openAsTab: (url, referrer) => hooks.openAsTab(url, { windowId: entry.windowId, referrer }),
-    onAudio: () => hooks.onAudio?.(entry.pageId, {muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
-    onPageAction: hooks.onPageAction && !entry.runtimeOwned && entry.kind !== "engine" ? action => hooks.onPageAction?.({pageId:entry.pageId,...action}) : undefined,
-  }));
+  wc.on("context-menu", (_e, params) => {
+    const frame = params.frame ?? wc.mainFrame;
+    const finish = (credentials: { items: { itemId: string; label: string; username?: string }[]; fill: (itemId: string) => void } | undefined) => showPageMenu(entry.view.webContents, params, {
+      openAsTab: (url, referrer) => hooks.openAsTab(url, { windowId: entry.windowId, referrer }),
+      onAudio: () => hooks.onAudio?.(entry.pageId, {muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
+      onPageAction: hooks.onPageAction && !entry.runtimeOwned ? action => hooks.onPageAction?.({pageId:entry.pageId,...action}) : undefined,
+      autofill: hooks.onAutofill ? f => hooks.onAutofill?.(f) : undefined,
+      translatePage: hooks.onTranslatePage ? () => hooks.onTranslatePage?.(entry.pageId) : undefined,
+      translateSelection: hooks.onTranslateSelection ? (text, x, y) => hooks.onTranslateSelection?.(entry.pageId, text, x, y) : undefined,
+      credentials,
+    });
+    // The vault lookup only runs for right-clicks inside form fields — the
+    // one context where credential fill is a relevant action.
+    if (params.isEditable && hooks.onCredentials && hooks.onVaultFill) {
+      void hooks.onCredentials(frame)
+        .then(items => finish(items.length ? { items, fill: itemId => hooks.onVaultFill?.(entry.pageId, frame, itemId) } : undefined))
+        .catch(() => finish(undefined));
+    } else finish(undefined);
+  });
   wc.on("before-input-event", (event, input) => {
     const shortcut = pageShortcut(input);
     if (!shortcut) return;
@@ -234,16 +260,37 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
     hooks.onBrowserShortcut?.(entry);
     if (!entry.popup || !popupCommand(entry.popup, shortcut)) hooks.sendShortcut(shortcut, id);
   });
+  installNavGesture(wc, (dir) => hooks.onNavGesture?.(entry.pageId, dir));
+  if (hooks.onCredentialOffer) installCredentialWatch(wc, offer => hooks.onCredentialOffer?.(entry.pageId, offer));
+  if (hooks.cosmeticFiltered) installCosmeticFilter(wc, { filtered: hooks.cosmeticFiltered });
 }
 
-
-export function setEngineFrame(entry: ViewEntry, dataUrl: string) {
-  if (entry.kind !== "engine") return;
-  const src = JSON.stringify(dataUrl);
-  entry.view.webContents
-    .executeJavaScript(`(function(){var i=document.getElementById("f"); if(i) i.src=${src};})()`)
+/**
+ * Edge-of-content horizontal gestures report through an isolated-world wheel
+ * listener: deltas the page cannot consume accumulate into one back/forward
+ * signal per gesture, delivered over a CDP binding so the page cannot listen
+ * for or forge the channel. Shared by regular and private views; the debugger
+ * is reused when the target marker already attached it.
+ */
+export function installNavGesture(wc: WebContents, onGesture: (direction: "back" | "forward") => void) {
+  if (wc.isDestroyed()) return;
+  try { if (!wc.debugger.isAttached()) wc.debugger.attach("1.3"); } catch { return; }
+  wc.debugger.on("message", (_e, method, params?: { name?: string; payload?: string }) => {
+    if (method !== "Runtime.bindingCalled" || params?.name !== NAV_GESTURE_BINDING) return;
+    try {
+      const raw = params.payload ?? "";
+      const dir = raw === "back" || raw === "forward" ? raw : JSON.parse(raw);
+      if (dir === "back" || dir === "forward") onGesture(dir);
+    } catch { /* not our payload */ }
+  });
+  void wc.debugger.sendCommand("Runtime.enable")
+    .then(() => wc.debugger.sendCommand("Runtime.addBinding", { name: NAV_GESTURE_BINDING }))
+    .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
+      source: navGestureScript(NAV_GESTURE_BINDING), worldName: NAV_GESTURE_WORLD,
+    }))
     .catch(() => {});
 }
+
 
 const closingPages = new Map<WebContents, { promise: Promise<boolean>; finish(ok: boolean): void }>();
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RefRegistry, parseTarget } from "@vector/engine-client";
+import { RefRegistry, parseTarget } from "@aux/chromium-driver";
 
 const el = (ref: string) => ({ ref, frame: "main", tag: "button", rect: { x: 0, y: 0, w: 10, h: 10 }, selector: { css: "#b" } });
 

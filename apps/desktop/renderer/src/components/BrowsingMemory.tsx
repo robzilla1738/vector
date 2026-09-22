@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@vector/contracts";
-import { memorySourceExcluded } from "@vector/contracts/memory-context";
+import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
+import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 

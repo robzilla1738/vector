@@ -7,7 +7,7 @@ import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-page-recovery-'));
 let fail=true;
@@ -15,11 +15,11 @@ const server=createServer((req,res)=>{if(req.url==='/broken'&&fail){res.destroy(
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
 let app;
 try {
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
- const tab=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base);
+ const tab=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url().startsWith(base));if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);
  assert.equal(await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).executeJavaScript('document.querySelector("h1")?.textContent'),base),'Page is ready');
  await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).forcefullyCrashRenderer(),base);
@@ -28,12 +28,12 @@ try {
  await page.locator('.stage-message').getByRole('button',{name:'Reload',exact:true}).click();
  await page.waitForFunction(()=>!document.querySelector('.stage-message'));
  assert.equal(await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).executeJavaScript('document.querySelector("h1")?.textContent'),base),'Page is ready');
- const recovered=await page.evaluate(id=>window.vector.invoke('pages.observe',{pageId:id}),tab.pageId);
+ const recovered=await page.evaluate(id=>window.aux.invoke('pages.observe',{pageId:id}),tab.pageId);
  assert.ok(recovered,'driver remains usable after reload');
  await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).executeJavaScript('document.querySelector("a").click()'),base);
  await page.getByRole('heading',{name:'This page couldn’t load',exact:true}).waitFor();
  await page.screenshot({path:join(root,'release/test-artifacts/aux-page-load-failed.png')});
- const current=await page.evaluate(()=>window.vector.invoke('pages.list',{}));
+ const current=await page.evaluate(()=>window.aux.invoke('pages.list',{}));
  assert.equal(current.length,1);assert.equal(current[0].pageId,tab.pageId);
  assert.ok(current[0].navigationError);
  assert.equal(current[0].url,`${base}/broken`);
@@ -43,14 +43,14 @@ try {
  await page.getByRole('button',{name:'Try again',exact:true}).click();
  await page.waitForFunction(()=>!document.querySelector('.stage-message'));
  assert.equal(await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).executeJavaScript('document.querySelector("h1")?.textContent'),base),'Page is ready');
- const final=await page.evaluate(()=>window.vector.invoke('pages.list',{}));
+ const final=await page.evaluate(()=>window.aux.invoke('pages.list',{}));
  assert.equal(final[0].pageId,tab.pageId);assert.equal(final[0].navigationError,null);
  fail=true;
  await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).executeJavaScript('location.href="/"'),base);
- await poll(page, async base=>(await window.vector.invoke('pages.list',{}))[0].url===base+'/',base);
+ await poll(page, async base=>(await window.aux.invoke('pages.list',{}))[0].url===base+'/',base);
  await app.evaluate(({webContents},base)=>webContents.getAllWebContents().find(wc=>wc.getURL().startsWith(base)).executeJavaScript('document.querySelector("a").click()'),base);
  await page.getByRole('heading',{name:'This page couldn’t load',exact:true}).waitFor();
  await page.getByRole('button',{name:'Go back',exact:true}).click();
- await poll(page, async base=>{const [tab]=await window.vector.invoke('pages.list',{});return !tab.navigationError&&tab.url===base+'/';},base);
+ await poll(page, async base=>{const [tab]=await window.aux.invoke('pages.list',{});return !tab.navigationError&&tab.url===base+'/';},base);
  console.log('Same native tab recovers from renderer crash and failed navigation; runtime observation works after recovery.');
 } catch(error) { const shell=app?.windows().find(p=>p.url().includes('renderer/index.html')); if(shell) console.error(await shell.locator('body').innerText()); throw error; } finally {await app?.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}

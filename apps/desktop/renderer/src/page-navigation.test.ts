@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget, TabCommand, TabCommandAck } from "@aux/contracts";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { emptyLayout } from "./workspace";
 
 afterEach(() => vi.restoreAllMocks());
+const applied = (command: TabCommand): TabCommandAck => ({ commandId: "", status: "applied", catalogVersion: 0, pageId: "pageId" in command ? command.pageId : undefined });
 function setup() {
   const pages = ["first", "second"].map(pageId => ({ pageId, url: "https://example.com/", viewStatus: "visible" } as PageTarget));
   const layout = emptyLayout();
@@ -16,7 +17,8 @@ function setup() {
 it("reveals a failed destination from a conversation without refocusing it after a newer selection", async () => {
   const pages = setup();
   let fail!: (reason: Error) => void;
-  vi.spyOn(bridge, "invoke").mockImplementation(async method => method === "pages.navigate" ? new Promise((_, reject) => { fail = reject; }) : {});
+  vi.spyOn(bridge, "tabCommand").mockImplementation(async command =>
+    command.kind === "navigate" ? new Promise<TabCommandAck>((_, reject) => { fail = reject; }) : applied(command));
   const navigating = useStore.getState().navigatePage("first", "https://offline.example/");
   await Promise.resolve(); await Promise.resolve();
   expect(useStore.getState().mode).toBe("focus");
@@ -28,7 +30,7 @@ it("reveals a failed destination from a conversation without refocusing it after
 });
 it("keeps unexpected navigation failures visible to the caller", async () => {
   setup();
-  vi.spyOn(bridge, "invoke").mockImplementation(async method => { if (method === "pages.navigate") throw new Error("Runtime unavailable"); return {}; });
+  vi.spyOn(bridge, "tabCommand").mockImplementation(async command => { if (command.kind === "navigate") throw new Error("Runtime unavailable"); return applied(command); });
   await expect(useStore.getState().navigatePage("first", "https://example.org/")).rejects.toThrow("Runtime unavailable");
   expect(useStore.getState().mode).toBe("focus");
 });

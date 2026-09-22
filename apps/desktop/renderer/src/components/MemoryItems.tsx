@@ -1,7 +1,7 @@
 import { MemoryExclusions } from "./MemoryExclusions";
-import { memorySourceExcluded } from "@vector/contracts/memory-context";
+import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { useEffect, useRef, useState } from "react";
-import type { WorkspaceMemory, WorkspaceMemoryItem } from "@vector/contracts";
+import type { WorkspaceMemory, WorkspaceMemoryItem } from "@aux/contracts";
 import { call } from "../store";
 import { useMemoryDrafts } from "../memory-drafts";
 

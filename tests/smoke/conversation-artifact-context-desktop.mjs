@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
@@ -22,7 +22,7 @@ const fixture = createServer((_request, response) => {
 });
 await new Promise(resolve => fixture.listen(0, "127.0.0.1", resolve));
 const url = `http://127.0.0.1:${fixture.address().port}/context`;
-const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" };
+const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" };
 let app;
 const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
 async function shell() {
@@ -47,8 +47,8 @@ async function openRepo() {
 try {
   app = await launch();
   let page = await shell();
-  const browser = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), url);
-  await page.waitForFunction(id => window.vector.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
+  const browser = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), url);
+  await page.waitForFunction(id => window.aux.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
   await app.close(); app = undefined;
 
   const repo = await openRepo();
@@ -70,7 +70,7 @@ try {
   assert.equal(await page.getByText(/Option B supports offline work/).count(), 1);
   const artifactCheckbox = page.locator(".conversation-document").filter({ hasText: "travel-comparison.md" }).getByRole("checkbox");
   await artifactCheckbox.click();
-  await page.waitForFunction(() => window.vector.invoke("conversations.artifacts.get", { chatId: "artifact-chat" }).then(result => result.artifacts[0]?.included === true));
+  await page.waitForFunction(() => window.aux.invoke("conversations.artifacts.get", { chatId: "artifact-chat" }).then(result => result.artifacts[0]?.included === true));
   assert.equal(await artifactCheckbox.isChecked(), true);
   await page.getByRole("button", { name: "Context · 2", exact: true }).waitFor();
   await page.screenshot({ path: join(screenshots, "aux-conversation-artifact-context.png") });
@@ -82,7 +82,7 @@ try {
   await page.getByRole("button", { name: "Context · 2", exact: true }).click();
   const row = page.locator(".conversation-document").filter({ hasText: "travel-comparison.md" });
   assert.equal(await row.getByRole("checkbox").isChecked(), true);
-  const exposed = await page.evaluate(() => window.vector.invoke("conversations.artifacts.get", { chatId: "artifact-chat" }));
+  const exposed = await page.evaluate(() => window.aux.invoke("conversations.artifacts.get", { chatId: "artifact-chat" }));
   assert.equal("path" in exposed.artifacts[0], false, "conversation artifact API must not expose its filesystem path");
   const exportedPath = join(temporary, "conversation.md");
   await app.evaluate(({ dialog }, filePath) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath }); }, exportedPath);
@@ -94,9 +94,9 @@ try {
   assert.match(exported, /artifact-report/);
   assert.doesNotMatch(exported, /HIDDEN_PROMPT_CONTEXT/);
   assert.doesNotMatch(exported, new RegExp(temporary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  await page.evaluate(pageId => window.vector.invoke("runs.start", { goal: "Use the generated comparison.", chatId: "artifact-chat", pageIds: [pageId] }), browser.pageId);
-  await page.waitForFunction(() => window.vector.invoke("runs.list", { chatId: "artifact-chat", limit: 10 }).then(runs => runs.length === 2));
-  const runs = await page.evaluate(() => window.vector.invoke("runs.list", { chatId: "artifact-chat", limit: 10 }));
+  await page.evaluate(pageId => window.aux.invoke("runs.start", { goal: "Use the generated comparison.", chatId: "artifact-chat", pageIds: [pageId] }), browser.pageId);
+  await page.waitForFunction(() => window.aux.invoke("runs.list", { chatId: "artifact-chat", limit: 10 }).then(runs => runs.length === 2));
+  const runs = await page.evaluate(() => window.aux.invoke("runs.list", { chatId: "artifact-chat", limit: 10 }));
   assert.deepEqual(runs[0].config.contextArtifactIds, ["artifact-report"]);
   assert.match(runs[0].config.context, /Option B supports offline work/);
   assert.doesNotMatch(JSON.stringify(runs[0]), new RegExp(temporary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));

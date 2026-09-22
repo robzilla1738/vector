@@ -1,7 +1,7 @@
 import { bridge } from "../bridge";
 import { moveListFocus } from "../keyboard-list";
 import { useEffect, useRef, useState } from "react";
-import type { ConversationSummary, Run } from "@vector/contracts";
+import type { ConversationSummary, Run } from "@aux/contracts";
 import { openSavedTask } from "../task-navigation";
 import { call, errToast, useStore } from "../store";
 import { I } from "./icons";

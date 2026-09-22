@@ -1,4 +1,4 @@
-import { MethodSchemas, type Bookmark } from "@vector/contracts";
+import { MethodSchemas, type Bookmark } from "@aux/contracts";
 
 const keyOf = (path: string[]) => JSON.stringify(path);
 const within = (path: string[], parent: string[]) => path.length >= parent.length && parent.every((part, index) => path[index] === part);

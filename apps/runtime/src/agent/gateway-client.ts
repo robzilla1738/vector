@@ -12,7 +12,7 @@ import {
 } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
-import { VectorError } from "@vector/contracts";
+import { AuxError } from "@aux/contracts";
 import type { ModelClient, StructuredCallResult, TextCallResult } from "./model-client.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
@@ -120,7 +120,7 @@ done: "result" object, no steps. needs_input: "question".`;
 export function extractJson(text: string): unknown {
   const body = stripReasoning(text);
   const start = body.search(/[{[]/);
-  if (start < 0) throw new VectorError("model_output_invalid", "model returned no JSON value");
+  if (start < 0) throw new AuxError("model_output_invalid", "model returned no JSON value");
   const stack: string[] = [];
   let inStr = false;
   let esc = false;
@@ -136,7 +136,7 @@ export function extractJson(text: string): unknown {
       if (stack.length === 0) return JSON.parse(body.slice(start, i + 1));
     }
   }
-  throw new VectorError("model_output_invalid", "model returned truncated or unbalanced JSON");
+  throw new AuxError("model_output_invalid", "model returned truncated or unbalanced JSON");
 }
 
 /**
@@ -148,17 +148,17 @@ export function extractJson(text: string): unknown {
 export function imageReferenceMessage(prompt: string, images: string[] = []): ModelMessage[] {
   if (!images.length) return [{role:"user",content:prompt}];
   if (images.length > 5 || images.reduce((total, image) => total + image.length, 0) > 16_000_000)
-    throw new VectorError("invalid_params", "Use up to five images totaling at most 12 MB.");
+    throw new AuxError("invalid_params", "Use up to five images totaling at most 12 MB.");
   const files = images.map(image => {
     const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
-    if (!match || match[2]!.length % 4 !== 0) throw new VectorError("invalid_params", "Image references must be PNG, JPEG or WebP snapshots.");
+    if (!match || match[2]!.length % 4 !== 0) throw new AuxError("invalid_params", "Image references must be PNG, JPEG or WebP snapshots.");
     return {type:"file" as const, mediaType:match[1]!, data:{type:"data" as const,data:match[2]!}};
   });
   return [{role:"user",content:[{type:"text",text:prompt},...files]}];
 }
 
 /**
- * Keep `VECTOR_GATEWAY_ONLY` when it matches this model; drop it otherwise
+ * Keep `AUX_GATEWAY_ONLY` when it matches this model; drop it otherwise
  * so `openai/gpt-5.6-luna-fast` still routes when the env pins Cerebras.
  */
 export function gatewayOnlyForModel(modelId: string, only?: string[]): string[] | undefined {
@@ -193,7 +193,7 @@ export class GatewayModelClient implements ModelClient {
   private readonly only: string[] | undefined;
 
   constructor(apiKey: string, opts: { callTimeoutMs?: number; only?: string[]; model?: (id: string) => LanguageModel } = {}) {
-    if (!apiKey) throw new VectorError("invalid_params", "AI_GATEWAY_API_KEY is required");
+    if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.gateway = opts.model ? undefined : createGateway({ apiKey });
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.callTimeoutMs = opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
@@ -202,7 +202,7 @@ export class GatewayModelClient implements ModelClient {
 
   private requireVision(modelId:string, images?:string[]) {
     if (images?.length && gatewayOnlyForModel(modelId, this.only)?.includes("cerebras"))
-      throw new VectorError("capability_unsupported", "Choose an image-capable model to use these image references. The Cerebras planner accepts text only.");
+      throw new AuxError("capability_unsupported", "Choose an image-capable model to use these image references. The Cerebras planner accepts text only.");
   }
 
   async generateStructured<T>(opts: {

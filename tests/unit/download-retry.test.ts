@@ -2,7 +2,7 @@ import {it,expect} from 'vitest';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {openDb,Repo} from '@vector/runtime';
+import {openDb,Repo} from '@aux/runtime';
 import {retrySource,canResumePartialDownload} from '../../apps/desktop/main/download-retry.js';
 it('retains retry URLs with download records after restart without inventing sources for older records',()=>{
  const root=mkdtempSync(join(tmpdir(),'aux-download-retry-'));let db=openDb(join(root,'state.sqlite'));

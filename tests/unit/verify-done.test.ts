@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { EventBus, openDb, Repo, RunCoordinator, verifyDoneAgainstObservation } from "@vector/runtime";
-import type { ModelClient } from "@vector/runtime";
-import type { Observation, PlanStep } from "@vector/contracts";
+import { EventBus, openDb, Repo, RunCoordinator, verifyDoneAgainstObservation } from "@aux/runtime";
+import type { ModelClient } from "@aux/runtime";
+import type { Observation, PlanStep } from "@aux/contracts";
 
 const obs = (text = "visible page heading"): Observation =>
   ({

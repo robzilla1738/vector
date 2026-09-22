@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { StepRecord } from "@vector/contracts";
+import type { StepRecord } from "@aux/contracts";
 import { StepTimeline, fmtMs, isOpenablePath, nestSteps, opLabel, receiptKind, receiptLabel, redactedInputs, stepSummary } from "./StepTimeline";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

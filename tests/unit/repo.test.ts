@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { openDb, Repo } from "@vector/runtime";
-import type { PageTarget, Run } from "@vector/contracts";
+import { openDb, Repo } from "@aux/runtime";
+import type { PageTarget, Run } from "@aux/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));
 
 const page = (id: string, over: Partial<PageTarget> = {}): PageTarget => ({
   pageId: id,
-  backend: "vector",
-  targetId: `vtab-${id}`,
+  backend: "aux",
+  targetId: `atab-${id}`,
   url: "http://x.test/",
   title: id,
   documentEpoch: 0,
@@ -40,7 +40,7 @@ describe("Repo", () => {
     expect(pages).toHaveLength(3);
     // two tabs, same URL, distinct identities — the roadmap's hard case
     const same = pages.filter((p) => p.url === "http://x.test/same");
-    expect(same.map((p) => p.targetId).sort()).toEqual(["CDP-9", "vtab-b"]);
+    expect(same.map((p) => p.targetId).sort()).toEqual(["CDP-9", "atab-b"]);
     r.upsertPage(page("a", { title: "new title", controller: "agent" }));
     expect(r.getPage("a")?.title).toBe("new title");
     expect(r.getPage("a")?.controller).toBe("agent");
@@ -85,7 +85,7 @@ describe("Repo", () => {
     const { mkdtempSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
-    const dir = mkdtempSync(join(tmpdir(), "vector-repo-"));
+    const dir = mkdtempSync(join(tmpdir(), "aux-repo-"));
     const dbPath = join(dir, "v.sqlite");
     const r1 = new Repo(openDb(dbPath));
     r1.saveRun(run("r1", { status: "running" }));

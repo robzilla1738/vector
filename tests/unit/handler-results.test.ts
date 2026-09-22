@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ArtifactStore, EventBus, makeInvoker, openDb, Repo, RunService, SetService, substituteParameters } from "@vector/runtime";
-import type { PageService, Services, SettingsService } from "@vector/runtime";
-import { MethodSchemas, ResultSchemas, RunsStartParams, type MethodName, type PageTarget, type Program } from "@vector/contracts";
+import { ArtifactStore, EventBus, makeInvoker, openDb, Repo, RunService, SetService, substituteParameters } from "@aux/runtime";
+import type { PageService, Services, SettingsService } from "@aux/runtime";
+import { MethodSchemas, ResultSchemas, RunsStartParams, type MethodName, type PageTarget, type Program } from "@aux/contracts";
 
 /**
  * Handler results must parse against ResultSchemas — the contracts package
@@ -21,11 +21,11 @@ const projectId='11111111-1111-4111-8111-111111111111';
 const nativeProject={projectId,name:'fixture',sourcePath:'/source',path:'/managed/checkout',branch:'codex/aux-fixture',baseCommit:'a'.repeat(40),createdAt:1,state:'ready' as const};
 
 beforeAll(() => {
-  dir = mkdtempSync(join(tmpdir(), "vector-handlers-"));
+  dir = mkdtempSync(join(tmpdir(), "aux-handlers-"));
   repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const page = {
-    pageId: "p1", backend: "vector", targetId: "t1", url: "http://x.test/", title: "x",
+    pageId: "p1", backend: "aux", targetId: "t1", url: "http://x.test/", title: "x",
     documentEpoch: 0, lastRevision: 0, viewStatus: "visible", controller: "none", controllerEpoch: 0,
     ownedByRuntime: false, createdAt: Date.now(), lastActiveAt: Date.now(),
   } as PageTarget;
@@ -61,9 +61,9 @@ beforeAll(() => {
   const runs = new RunService({ repo, events, pages, sets, settings, artifacts, translateSteps: (_p, s) => s, nativeAvailable: () => false });
   const services: Services = {
     pages, sets, runs, artifacts, settings, events, repo,
-    native:{available:()=>true,createPage:async()=>({ok:true}),closePage:async()=>({ok:true}),showPage:async()=>({ok:true}),hidePage:async()=>({ok:true}),focusPage:async()=>({ok:true}),stopPage:async()=>({ok:true}),acquireStage:async()=>({ok:true}),releaseStage:async()=>({ok:true}),capturePage:async()=>({dataUrl:'',width:0,height:0,scale:1}),setEngineFrame:async()=>({ok:true}),openExternal:async()=>({ok:true}),findInPage:async()=>({matches:0}),stopFind:async()=>({ok:true}),setZoom:async()=>({level:0}),setCookies:async()=>({ok:true,count:0}),storeSecret:async()=>({ok:true}),readSecret:async()=>({}),
+    native:{available:()=>true,tabCommand:async()=>({commandId:"",status:"applied" as const,catalogVersion:0}),createPage:async()=>({ok:true}),closePage:async()=>({ok:true}),showPage:async()=>({ok:true}),hidePage:async()=>({ok:true}),focusPage:async()=>({ok:true}),stopPage:async()=>({ok:true}),acquireStage:async()=>({ok:true}),releaseStage:async()=>({ok:true}),capturePage:async()=>({dataUrl:'',width:0,height:0,scale:1}),openExternal:async()=>({ok:true}),findInPage:async()=>({matches:0}),stopFind:async()=>({ok:true}),setZoom:async()=>({level:0}),setCookies:async()=>({ok:true,count:0}),storeSecret:async()=>({ok:true}),readSecret:async()=>({}),
       developmentProjects:async ids=>ids.includes(projectId)?[nativeProject]:[],inspectProject:async()=>({project:nativeProject,status:' M app.ts\n',inspectedAt:2,environment:{detectedAt:2,tools:[],unsupported:[]},changes:{patch:'diff',untracked:[]}}),githubProject:async()=>({owner:'aux',repository:'fixture',remoteUrl:'https://github.com/aux/fixture',branch:nativeProject.branch,baseCommit:nativeProject.baseCommit,headCommit:nativeProject.baseCommit}),recordGithubStatus:async(_id,status)=>status,writeIncidentReport:async input=>({projectId:input.projectId,generatedAt:2,path:'/incident.md',content:'# incident',page:input.page,consoleCount:input.console.length,networkCount:input.network.length}),listProjectFiles:async()=>['app.ts'],readProjectFile:async()=>({projectId,name:'app.ts',content:'one',sha256:'b'.repeat(64)}),writeProjectFile:async input=>({projectId,name:input.name,content:input.content,sha256:'c'.repeat(64),recoveryPath:'/recovery'}),createProjectFile:async input=>({projectId,name:input.name,content:input.content,sha256:'d'.repeat(64)}),renameProjectFile:async input=>({projectId,name:input.nextName,content:'one',sha256:input.expectedHash,recoveryPath:'/rename-recovery'}),deleteProjectFile:async input=>({name:input.name,recoveryPath:'/delete-recovery'}),projectCommands:async()=>[],runProjectCommand:async()=>null,approveProjectPreview:async input=>({url:input.url,checkedAt:2,state:'responding',statusCode:200,message:'Received a successful HTTP response.'}),stopProjectCommand:async()=>({commandId:'22222222-2222-4222-8222-222222222222',projectId,command:'true',mode:'command',cwd:nativeProject.path,startedAt:1,finishedAt:2,state:'succeeded',exitCode:0,output:'',truncated:false}),prepareProjectReview:async()=>({projectId,generatedAt:2,path:'/review.md',content:'# review',title:'Review',snapshotTree:'e'.repeat(40),readiness:{state:'ready',reasons:[]},patch:{path:'/changes.patch',content:'diff',sha256:'a'.repeat(64),byteLength:4,complete:true},draft:{path:'/draft.md',content:'# draft',sha256:'b'.repeat(64)},manifestPath:'/manifest.json',manifestSha256:'c'.repeat(64)}),commitProject:async()=>null},
-    drivers: () => ({ vector: null, chrome: null }),
+    drivers: () => ({ aux: null, chrome: null }),
     chromeAttach: async () => ({}), chromeDetach: async () => ({ ok: true }), chromeTabs: async () => [],
     importCookies: async () => ({}), benchRun: async () => ({ reportPath: "" }),
   };

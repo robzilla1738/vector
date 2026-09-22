@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import {
   authorizeProgram,
   attributeTodoMvc,
-  BrowserAuthority,
   compileAction,
   beginConsequentialWrite,
   compileAndAuthorize,
@@ -15,22 +14,19 @@ import {
   DurableWriteLedger,
   EventBus,
   markSkillFailed,
-  MemoryRouterStore,
   MockModelClient,
   NullNativeBridge,
   PageService,
   queryPage,
   rebindSteps,
   Repo,
-  Router,
   runMemberAgent,
   openDb,
   stepSignature,
   tryReuseSkill,
-  type DriverSet,
-} from "@vector/runtime";
-import type { ObservationContent, Program, SetMember, Step } from "@vector/contracts";
-import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/engine-client";
+} from "@aux/runtime";
+import type { ObservationContent, Program, SetMember, Step } from "@aux/contracts";
+import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({
@@ -241,7 +237,7 @@ describe("Gate D permissions and durable writes", () => {
 
   it("pages.execute is the permission chokepoint; RPC grants cannot expand it", async () => {
     const makePage = (pageId: string, url: string): DriverPage => ({
-      identity: { pageId, targetId: "engine-perm", backend: "vector-engine" },
+      identity: { pageId, targetId: "engine-perm", backend: "aux" },
       url: () => url,
       title: async () => "form",
       isAttached: () => true,
@@ -276,30 +272,14 @@ describe("Gate D permissions and durable writes", () => {
       evaluate: async () => null,
       setEvents: () => {},
       dispose: async () => {},
-      executeProgram: async (steps) => {
-        if (steps.some((s) => s.op === "click")) {
-          throw new Error("click must not reach the driver");
-        }
-        return {
-          status: "completed",
-          steps: steps.map((s) => ({
-            stepId: s.id,
-            op: s.op,
-            status: "ok",
-            startedAt: 1,
-            durationMs: 1,
-          })),
-        } as ExecuteProgramResult;
-      },
     });
     const driver: BrowserDriver = {
-      backend: "vector-engine",
+      backend: "aux",
       connect: async () => {},
       disconnect: async () => {},
       isConnected: () => true,
       listTargets: async () => [],
       createTarget: async () => "engine-perm",
-      routingOf: () => ({ requiresScript: false }),
       attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
     };
     const repo = new Repo(openDb(":memory:"));
@@ -308,12 +288,7 @@ describe("Gate D permissions and durable writes", () => {
       events: new EventBus(repo),
       native: new NullNativeBridge(),
       grants: ["effect:read"],
-      drivers: () => ({ vector: null, chrome: null, engine: driver }),
-      router: new Router({
-        mode: () => "always",
-        engineAvailable: () => true,
-        store: new MemoryRouterStore(),
-      }),
+      drivers: () => ({ aux: driver, chrome: null }),
     });
     const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
     const read = await pages.execute({
@@ -339,7 +314,7 @@ describe("Gate D permissions and durable writes", () => {
   it("runs.start grants write; unsolicited pages.execute stays read-only", async () => {
     let clicked = 0;
     const makePage = (pageId: string, url: string): DriverPage => ({
-      identity: { pageId, targetId: "engine-run-grant", backend: "vector-engine" },
+      identity: { pageId, targetId: "engine-run-grant", backend: "aux" },
       url: () => url,
       title: async () => "counter",
       isAttached: () => true,
@@ -374,28 +349,14 @@ describe("Gate D permissions and durable writes", () => {
       evaluate: async () => null,
       setEvents: () => {},
       dispose: async () => {},
-      executeProgram: async (steps) => {
-        clicked += steps.filter((s) => s.op === "click").length;
-        return {
-          status: "completed",
-          steps: steps.map((s) => ({
-            stepId: s.id,
-            op: s.op,
-            status: "ok",
-            startedAt: 1,
-            durationMs: 1,
-          })),
-        } as ExecuteProgramResult;
-      },
     });
     const driver: BrowserDriver = {
-      backend: "vector-engine",
+      backend: "aux",
       connect: async () => {},
       disconnect: async () => {},
       isConnected: () => true,
       listTargets: async () => [],
       createTarget: async () => "engine-run-grant",
-      routingOf: () => ({ requiresScript: false }),
       attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/counter"),
     };
     const repo = new Repo(openDb(":memory:"));
@@ -405,12 +366,7 @@ describe("Gate D permissions and durable writes", () => {
       native: new NullNativeBridge(),
       grants: ["effect:read"],
       grantsForRun: ["effect:read", "effect:write", "effect:egress"],
-      drivers: () => ({ vector: null, chrome: null, engine: driver }),
-      router: new Router({
-        mode: () => "always",
-        engineAvailable: () => true,
-        store: new MemoryRouterStore(),
-      }),
+      drivers: () => ({ aux: driver, chrome: null }),
     });
     const opened = await pages.open({ url: "https://app.test/counter", background: true, ownedByRuntime: true });
     await expect(
@@ -495,14 +451,14 @@ async function spawnFormsWriteCounter(): Promise<{
   stop: () => void;
   dir: string;
 }> {
-  const dir = mkdtempSync(join(tmpdir(), "vector-writes-"));
+  const dir = mkdtempSync(join(tmpdir(), "aux-writes-"));
   const here = dirname(fileURLToPath(import.meta.url));
   const script = join(here, "../../fixtures/forms-app/serve.ts");
   const child = spawn(process.execPath, ["--experimental-strip-types", script], {
     env: {
       ...process.env,
       PORT: "0",
-      VECTOR_WRITE_COUNTER_PATH: join(dir, "writes.json"),
+      AUX_WRITE_COUNTER_PATH: join(dir, "writes.json"),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -587,7 +543,7 @@ describe("Gate D fixture write counter", () => {
   });
 
   it("pending intent persisted before dispatch blocks a restart replay", () => {
-    const dir = mkdtempSync(join(tmpdir(), "vector-ledger-"));
+    const dir = mkdtempSync(join(tmpdir(), "aux-ledger-"));
     const path = join(dir, "ledger.json");
     const ledger = new DurableWriteLedger(path);
     const signature = stepSignature([{ op: "click", target: "pay" }]);
@@ -652,266 +608,6 @@ describe("Finding 5 skill reuse after failed postconditions", () => {
     markSkillFailed(skill);
     const skip = tryReuseSkill([skill], "save the form", obs(), "https://app.test/form");
     expect(skip).toMatchObject({ skipped: expect.stringMatching(/blocked after failed postconditions/) });
-  });
-});
-
-describe("Gate B/F one session without Chromium", () => {
-  it("human edit, agent observe, compile, takeover, resume share one page", async () => {
-    const repo = new Repo(openDb(":memory:"));
-    const events = new EventBus(repo);
-    let fieldValue = "old";
-    const makePage = (pageId: string, url: string): DriverPage => {
-      const page: DriverPage = {
-        identity: { pageId, targetId: "engine-t1", backend: "vector-engine" },
-        url: () => url,
-        title: async () => "form",
-        isAttached: () => true,
-        navigate: async () => {},
-        back: async () => {},
-        forward: async () => {},
-        reload: async () => {},
-        stop: async () => {},
-        click: async () => {},
-        dblclick: async () => {},
-        hover: async () => {},
-        fill: async (_t, v) => {
-          fieldValue = v;
-        },
-        typeText: async (_t, v) => {
-          fieldValue = v;
-        },
-        press: async () => {},
-        check: async () => {},
-        uncheck: async () => {},
-        select: async () => {},
-        scroll: async () => {},
-        dragTo: async () => {},
-        clickPoint: async () => {},
-        uploadFiles: async () => {},
-        waitFor: async () => ({ ok: true, timedOut: false }),
-        waitForDownload: async () => ({ suggestedFilename: "f" }),
-        handleDialog: async () => {},
-        collectScroll: async () => ({ items: [], collected: 0 }),
-        screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
-        observe: async () =>
-          ({
-            ...obs({ ref: "r9", name: "Save", url }),
-            formFields: [{ ref: "r1", name: "Name", tag: "input", value: fieldValue }],
-            elements: [
-              { ref: "r1", role: "textbox", name: "Name", tag: "input", value: fieldValue },
-              { ref: "r9", role: "button", name: "Save", tag: "button" },
-            ],
-          }) as unknown as ObservationContent,
-        expandRef: async () => [],
-        extract: async () => ({ value: fieldValue }),
-        evaluate: async () => fieldValue,
-        setEvents: () => {},
-        dispose: async () => {},
-        executeProgram: async (steps) => {
-          for (const s of steps) {
-            if (s.op === "fill" && "value" in s) fieldValue = String(s.value);
-            if (s.op === "type" && "value" in s) fieldValue = String(s.value);
-          }
-          return {
-            status: "completed",
-            steps: steps.map((s) => ({
-              stepId: s.id,
-              op: s.op,
-              status: "ok",
-              startedAt: 1,
-              durationMs: 1,
-            })),
-          } as ExecuteProgramResult;
-        },
-      };
-      return page;
-    };
-    const driver: BrowserDriver = {
-      backend: "vector-engine",
-      connect: async () => {},
-      disconnect: async () => {},
-      isConnected: () => true,
-      listTargets: async () => [],
-      createTarget: async () => "engine-t1",
-      routingOf: () => ({ requiresScript: false }),
-      attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
-    };
-    const drivers: DriverSet = { vector: null, chrome: null, engine: driver };
-    const router = new Router({
-      mode: () => "always",
-      engineAvailable: () => true,
-      store: new MemoryRouterStore(),
-    });
-    const pages = new PageService({
-      repo,
-      events,
-      native: new NullNativeBridge(),
-      grants: ["effect:read", "effect:write"],
-      drivers: () => drivers,
-      router,
-    });
-    const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
-    expect(opened.backend).toBe("vector-engine");
-    const authority = new BrowserAuthority(pages);
-    expect(authority.identity(opened.pageId).chromium).toBe(false);
-    await pages.execute(
-      { pageId: opened.pageId, steps: [{ id: "h", op: "fill", target: "r1", value: "typed-by-human" }] },
-      {},
-    );
-    const seen = await authority.observe(opened.pageId);
-    expect(seen.pageId).toBe(opened.pageId);
-    const compiled = compileAction({
-      pageId: opened.pageId,
-      documentEpoch: opened.documentEpoch,
-      steps: [{ id: "c", op: "click", target: "r0" }],
-      observation: obs({ ref: "r9", name: "Save", url: "https://app.test/form" }),
-      url: "https://app.test/form",
-      guards: [{ exactOrigin: "https://app.test", role: "button", nameIncludes: "Save" }],
-    });
-    if (!("program" in compiled)) throw new Error("expected a compiled program");
-    const agent = await authority.execute(compiled.program);
-    expect(agent.status).toBe("completed");
-    await authority.takeover(opened.pageId);
-    expect(authority.identity(opened.pageId).controller).toBe("human");
-    await expect(
-      authority.execute({ pageId: opened.pageId, steps: [{ id: "x", op: "click", target: "r9" }] }),
-    ).rejects.toMatchObject({ message: /human control/i });
-    const resumed = await authority.resume(opened.pageId);
-    expect(resumed.controller).not.toBe("human");
-    const hit = queryPage(obs({ name: "Save" }), { role: "button", nameIncludes: "Save" });
-    expect(hit?.ref).toBe("r9");
-    const stale = compileAction({
-      pageId: opened.pageId,
-      documentEpoch: opened.documentEpoch,
-      observedEpoch: opened.documentEpoch + 1,
-      steps: [{ id: "c", op: "click", target: "r9" }],
-      observation: obs(),
-      url: "https://app.test/form",
-    });
-    expect("rejected" in stale).toBe(true);
-  });
-
-  it("Node takeover forwards to BrowserService so a second client is blocked", async () => {
-    let serviceController = "none";
-    let serviceEpoch = 0;
-    const clicks: string[] = [];
-    const keys: string[] = [];
-    const human: Record<string, unknown>[] = [];
-    const makePage = (pageId: string, url: string): DriverPage => ({
-      identity: { pageId, targetId: "engine-t2", backend: "vector-engine" },
-      url: () => url,
-      title: async () => "form",
-      isAttached: () => true,
-      navigate: async () => {},
-      back: async () => {},
-      forward: async () => {},
-      reload: async () => {},
-      stop: async () => {},
-      click: async () => {},
-      dblclick: async () => {},
-      hover: async () => {},
-      fill: async () => {},
-      typeText: async () => {},
-      press: async (key) => {
-        keys.push(key);
-      },
-      check: async () => {},
-      uncheck: async () => {},
-      select: async () => {},
-      scroll: async () => {},
-      dragTo: async () => {},
-      clickPoint: async (x, y) => {
-        clicks.push(`${x},${y}`);
-      },
-      humanEvent: async (event) => {
-        human.push(event);
-      },
-      uploadFiles: async () => {},
-      waitFor: async () => ({ ok: true, timedOut: false }),
-      waitForDownload: async () => ({ suggestedFilename: "f" }),
-      handleDialog: async () => {},
-      collectScroll: async () => ({ items: [], collected: 0 }),
-      screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
-      observe: async () => obs({ url }) as unknown as ObservationContent,
-      expandRef: async () => [],
-      extract: async () => ({}),
-      evaluate: async () => null,
-      setEvents: () => {},
-      dispose: async () => {},
-      executeProgram: async (steps) =>
-        ({
-          status: "completed",
-          steps: steps.map((s) => ({
-            stepId: s.id,
-            op: s.op,
-            status: "ok",
-            startedAt: 1,
-            durationMs: 1,
-          })),
-        }) as ExecuteProgramResult,
-    });
-    const driver: BrowserDriver = {
-      backend: "vector-engine",
-      connect: async () => {},
-      disconnect: async () => {},
-      isConnected: () => true,
-      listTargets: async () => [],
-      createTarget: async () => "engine-t2",
-      routingOf: () => ({ requiresScript: false }),
-      attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
-      takeover: async () => {
-        serviceController = "human";
-        serviceEpoch += 1;
-        return { controller: "human", controllerEpoch: serviceEpoch };
-      },
-      resume: async () => {
-        serviceController = "none";
-        serviceEpoch += 1;
-        return { controller: "none", controllerEpoch: serviceEpoch };
-      },
-    };
-    const repo = new Repo(openDb(":memory:"));
-    const events = new EventBus(repo);
-    const pages = new PageService({
-      repo,
-      events,
-      native: new NullNativeBridge(),
-      drivers: () => ({ vector: null, chrome: null, engine: driver }),
-      router: new Router({
-        mode: () => "always",
-        engineAvailable: () => true,
-        store: new MemoryRouterStore(),
-      }),
-    });
-    const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
-    expect(opened.backend).toBe("vector-engine");
-    const taken = await pages.takeover(opened.pageId);
-    expect(taken.controller).toBe("human");
-    expect(serviceController).toBe("human");
-    expect(serviceEpoch).toBe(1);
-    await expect(
-      pages.execute({ pageId: opened.pageId, steps: [{ id: "x", op: "click", target: "r9" }] }),
-    ).rejects.toMatchObject({ message: /human control/i });
-    await pages.onEngineInput(opened.pageId, { type: "click", x: 40, y: 12 });
-    await pages.onEngineInput(opened.pageId, { type: "key", key: "a" });
-    await pages.onEngineInput(opened.pageId, { type: "imePreedit", text: "ni" });
-    await pages.onEngineInput(opened.pageId, { type: "ime", text: "typed-by-human" });
-    await pages.onEngineInput(opened.pageId, { type: "select", start: 0, end: 4 });
-    expect(human).toEqual([
-      { type: "pointerDown", x: 40, y: 12, button: 0 },
-      { type: "key", key: "a" },
-      { type: "imePreedit", text: "ni" },
-      { type: "ime", text: "typed-by-human" },
-      { type: "select", start: 0, end: 4 },
-    ]);
-    expect(clicks).toEqual([]);
-    expect(keys).toEqual([]);
-    const seen = await pages.observe(opened.pageId, {});
-    expect(seen.content.url).toContain("app.test");
-    const resumed = await pages.resume(opened.pageId);
-    expect(resumed.controller).toBe("none");
-    expect(serviceController).toBe("none");
-    expect(serviceEpoch).toBe(2);
   });
 });
 

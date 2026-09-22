@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { PreparedConversation } from "@vector/contracts";
+import type { PreparedConversation } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { conversationDraftEntries } from "../conversation-drafts";

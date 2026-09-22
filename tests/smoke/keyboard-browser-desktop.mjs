@@ -6,21 +6,21 @@ import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-keyboard-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<title>Keyboard ${req.url.slice(1)}</title><input aria-label="Page field"><h1>Keyboard fixture</h1>`)});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
 let app;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const hero=page.locator('.cmdbar.hero input[role="combobox"]');await hero.waitFor({state:'attached'});await hero.focus();
  assert.equal(await hero.getAttribute('aria-expanded'),'false');
  await page.keyboard.press('Tab');assert.match(await hero.getAttribute('aria-label'),/Ask Aux/);assert.equal(await page.getByRole('button',{name:'Ask',exact:true}).getAttribute('aria-pressed'),'true');
  await page.keyboard.press('Tab');assert.match(await hero.getAttribute('aria-label'),/Search or address/);
- for(const name of ['One','Two','Three']){await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/'+name);await page.getByRole('tab').filter({hasText:'Keyboard '+name}).waitFor();}
+ for(const name of ['One','Two','Three']){await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/'+name);await page.getByRole('tab').filter({hasText:'Keyboard '+name}).waitFor();}
  const focused=()=>page.evaluate(()=>document.activeElement?.textContent);
  const vertical=page.getByRole('tablist',{name:'Tabs',exact:true});
  await vertical.getByRole('tab').filter({hasText:'Keyboard Three'}).focus();await page.keyboard.press('Home');assert.match(await focused(),/Keyboard One/);
@@ -49,7 +49,7 @@ try{
  const folder=page.locator('.folder-row').filter({hasText:'Keyboard folder'});
  if(await folder.getAttribute('aria-expanded')==='true')await folder.click();
  await vertical.getByRole('tab').filter({hasText:'Keyboard One'}).focus();await page.keyboard.press('ArrowDown');assert.match(await focused(),/Keyboard Three/,'collapsed folder tabs are skipped');
- await page.evaluate(()=>window.vector.invoke('settings.set',{tabLayout:'horizontal'}));
+ await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'horizontal'}));
  const horizontal=page.getByRole('tablist',{name:'Browser tabs',exact:true});await horizontal.waitFor();
  await horizontal.getByRole('tab').filter({hasText:'Keyboard One'}).focus();await page.keyboard.press('ArrowRight');assert.equal(await focused(),'Keyboard Two');await page.keyboard.press('End');assert.equal(await focused(),'Keyboard Three');await page.keyboard.press('Home');assert.equal(await focused(),'Keyboard One');
  assert.equal(await horizontal.locator('[role=tab][tabindex="0"]').count(),1);
@@ -64,7 +64,7 @@ try{
  await theme.getByRole('radio',{name:originalName,exact:true}).focus();await page.screenshot({path:join(root,'release/test-artifacts/aux-keyboard-settings-focus.png')});
  await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--t-fast').trim()),'0ms');
  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.sidebar')).transitionDuration),'0s');
- await page.getByRole('button',{name:'Close settings'}).click();await page.evaluate(()=>window.vector.invoke('settings.set',{tabLayout:'vertical'}));await vertical.waitFor();
+ await page.getByRole('button',{name:'Close settings'}).click();await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'vertical'}));await vertical.waitFor();
  await folder.click();await page.waitForTimeout(50);assert.equal(await page.evaluate(()=>document.querySelector('.folder-kids')?.getAnimations().length),0,'folder uses no motion when reduced motion is requested');
  console.log('Keyboard traversal, focus restoration, Search/Ask mode, settings navigation and radios, sidebar collapse/reveal, both tab layouts, and reduced-motion behavior pass.');
 }finally{await app?.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}

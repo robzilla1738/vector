@@ -6,8 +6,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import type { PageSet, ResultRecord, SetMember } from "@vector/contracts";
+import { startRuntime, type RuntimeHandle } from "@aux/runtime";
+import type { PageSet, ResultRecord, SetMember } from "@aux/contracts";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import type { ChildProcess } from "node:child_process";
 
@@ -33,9 +33,8 @@ beforeAll(async () => {
   await waitForFixtures();
   rt = await startRuntime({
     ...process.env,
-    VECTOR_DATA_DIR: mkdtempSync(join(tmpdir(), "vector-sets-")),
-    VECTOR_ELECTRON_CDP: "",
-    VECTOR_ENGINE_MODE: "off",
+    AUX_DATA_DIR: mkdtempSync(join(tmpdir(), "aux-sets-")),
+    AUX_ELECTRON_CDP: "",
   });
 }, 60_000);
 

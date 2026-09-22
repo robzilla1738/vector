@@ -1,5 +1,5 @@
 import ExcelJS, { type CellValue } from "exceljs";
-import { DOCUMENT_EVIDENCE_MAX_BYTES, workbookSourceHyperlink, type WorkbookCell, type WorkbookSnapshot } from "@vector/contracts";
+import { DOCUMENT_EVIDENCE_MAX_BYTES, workbookSourceHyperlink, type WorkbookCell, type WorkbookSnapshot } from "@aux/contracts";
 
 function cellText(value: CellValue): string {
   if (value == null) return "";

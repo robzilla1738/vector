@@ -9,7 +9,7 @@ import { sidebarAction } from "./sidebar-action.mjs";
 import { poll } from "./poll.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const temporary = mkdtempSync(join(tmpdir(), "aux-extensions-"));
 const source = join(temporary, "synthetic-extension");
@@ -26,7 +26,7 @@ writeFileSync(join(source, "content.js"), "document.body.insertAdjacentHTML('bef
 const fixture = createServer((_req, res) => { res.setHeader("Content-Type", "text/html"); res.end("<!doctype html><title>Extension fixture</title><h1>Regular page</h1>"); });
 await new Promise(resolve => fixture.listen(0, "127.0.0.1", resolve));
 const base = `http://127.0.0.1:${fixture.address().port}`;
-const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: join(temporary, "data"), AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" };
+const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: join(temporary, "data"), AUX_LOAD_DOTENV: "0" };
 let app;
 let privateApp;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,8 +47,8 @@ async function installDialogs(target) {
 }
 async function open(shellPage, suffix, shouldInject) {
   const url = `${base}/${suffix}`;
-  const tab = await shellPage.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), url);
-  await poll(shellPage, async id => (await window.vector.invoke("pages.list", {})).some(page => page.pageId === id && !page.loading), tab.pageId);
+  const tab = await shellPage.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), url);
+  await poll(shellPage, async id => (await window.aux.invoke("pages.list", {})).some(page => page.pageId === id && !page.loading), tab.pageId);
   const native = app.windows().find(page => page.url() === url);
   assert.ok(native, `missing page ${suffix}`);
   if (shouldInject) await native.locator("#aux-extension-proof").waitFor({ state: "attached" });
@@ -94,9 +94,9 @@ try {
   // Private browsing uses a separate nonpersistent session and never loads the managed copy.
   privateApp = await _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--aux-private"], env });
   const privateShell = await shell(privateApp);
-  const [blank] = await privateShell.evaluate(() => window.vector.invoke("pages.list", {}));
-  await privateShell.evaluate(({ pageId, url }) => window.vector.invoke("pages.navigate", { pageId, url }), { pageId: blank.pageId, url: `${base}/private` });
-  await poll(privateShell, async url => (await window.vector.invoke("pages.list", {})).some(page => page.url === url && !page.loading), `${base}/private`);
+  const [blank] = await privateShell.evaluate(() => window.aux.invoke("pages.list", {}));
+  await privateShell.evaluate(({ pageId, url }) => window.aux.invoke("pages.navigate", { pageId, url }), { pageId: blank.pageId, url: `${base}/private` });
+  await poll(privateShell, async url => (await window.aux.invoke("pages.list", {})).some(page => page.url === url && !page.loading), `${base}/private`);
   const privatePage = privateApp.windows().find(candidate => candidate.url() === `${base}/private`);
   assert.ok(privatePage);
   assert.equal(await privatePage.locator("#aux-extension-proof").count(), 0, "private pages must not load regular-profile extensions");

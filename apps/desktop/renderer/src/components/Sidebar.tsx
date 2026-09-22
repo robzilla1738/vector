@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { bridge, inElectron } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
 import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
@@ -104,11 +104,12 @@ const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, 
     if (active && !row.current?.closest('[inert]')) row.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
   const crashed = p.viewStatus === "crashed";
+  const sleeping = !crashed && (p.lifecycle === "frozen" || p.lifecycle === "discarded" || p.lifecycle === "placeholder");
   const title = p.title || (p.url && p.url !== "about:blank" ? hostOf(p.url) : "New Tab");
   return (
     <div
       ref={row}
-      className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
+      className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${sleeping ? "sleeping" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
       role="tab"
       aria-selected={selecting ? selected : active}
       tabIndex={active ? 0 : -1}
@@ -340,7 +341,7 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
-      <span className="tab-fav" aria-hidden>{I.folderClosed}</span>
+      <span className="tab-fav folder-glyph" aria-hidden data-space={folder.color}>{folder.emoji ?? I.folderClosed}</span>
       {renaming ? (
         <input
           className="folder-name-input"
@@ -362,6 +363,9 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
     </div>
   );
 }
+
+/** Preset folder glyphs — "" resets to the default folder icon. */
+const FOLDER_EMOJIS = ["", "📁", "⭐", "🔖", "📌", "🧭", "🧪", "🎯", "💼"];
 
 /* ------------------------------------------------------------------ */
 /*  Sidebar                                                             */
@@ -522,12 +526,13 @@ export function Sidebar() {
   const onActivate = useCallback((id: string) => void activate(id).catch(errToast), [activate]);
   const onClose = useCallback((id: string) => void closeTab(id), [closeTab]);
   const onDragStart = useCallback((folderId: string | null, index: number, pageId: string, e: React.DragEvent) => {
-    dragIds.current = selection.ids.includes(pageId) ? selection.pagesFor(tabs.find(tab => tab.pageId === pageId)!).map(tab => tab.pageId) : [pageId];
+    const page = useStore.getState().pages.find(tab => tab.pageId === pageId);
+    dragIds.current = page ? selection.pagesFor(page).map(tab => tab.pageId) : [pageId];
     e.dataTransfer.effectAllowed = "copyMove";
     e.dataTransfer.setData("text/plain", dragIds.current.join("\n"));
     e.dataTransfer.setData(TAB_DRAG_TYPE, dragIds.current.join("\n"));
     setDrag({ folderId, from: index, to: null, pageId, over: folderId });
-  }, [selection, tabs]);
+  }, [selection.pagesFor]);
   const onDragOver = useCallback((folderId: string | null, index: number, e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -542,7 +547,8 @@ export function Sidebar() {
       setDrag((d) => {
         if (d.from < 0 || !d.pageId) return IDLE_DRAG;
         if (dragIds.current.length > 1) {
-          const group = folderId ? tabsInFolder(layout, pages, folderId) : loose;
+          const { layout, pages } = useStore.getState();
+          const group = folderId ? tabsInFolder(layout, pages, folderId) : unfiledTabs(layout, pages, space.id);
           const before = group.slice(d.to ?? group.length).find(tab => !dragIds.current.includes(tab.pageId));
           useStore.getState().moveTabs(dragIds.current, space.id, folderId, before?.pageId ?? null);
         } else if (d.folderId !== folderId) moveTabToFolder(d.pageId, folderId);
@@ -550,7 +556,7 @@ export function Sidebar() {
         return IDLE_DRAG;
       });
     },
-    [moveTabToFolder, reorderGroup, space.id, layout, pages, loose],
+    [moveTabToFolder, reorderGroup, space.id],
   );
   const onDropFolder = useCallback(
     (folderId: string, e: React.DragEvent) => {
@@ -568,12 +574,13 @@ export function Sidebar() {
   const onContext = useCallback((p: PageTarget, x: number, y: number) => setCtx({ p, x, y }), []);
   const onKeyMove = useCallback(
     (folderId: string | null, index: number, dir: -1 | 1) => {
-      const group = folderId ? tabsInFolder(layout, pages, folderId) : loose;
+      const { layout, pages } = useStore.getState();
+      const group = folderId ? tabsInFolder(layout, pages, folderId) : unfiledTabs(layout, pages, space.id);
       const to = dir === -1 ? index - 1 : index + 2;
       if (to < 0 || to > group.length) return;
       reorderGroup(space.id, folderId, index, to);
     },
-    [layout, loose, pages, reorderGroup, space.id],
+    [reorderGroup, space.id],
   );
 
   const onListKey = (e: React.KeyboardEvent<HTMLElement>) => { if (selection.keyDown(e)) return; moveListFocus(e, '[role="tab"]'); };
@@ -746,6 +753,10 @@ export function Sidebar() {
               if (!page) return;
               void useStore.getState().toggleBookmark(page.url,page.title).catch(errToast);
             }}>{I.bookmark}<span>{bookmarks.some(b => b.url === page?.url) ? "Remove bookmark" : "Bookmark this page"}</span><kbd>⌘D</kbd></button>
+            <button role="menuitem" aria-label={bookmarks.some(b => b.url === page?.url && b.readingList) ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
+              if (!page) return;
+              void useStore.getState().toggleReadingList(page.url, page.title).catch(errToast);
+            }}>{I.clock}<span>{bookmarks.some(b => b.url === page?.url && b.readingList) ? "Remove from reading list" : "Add to reading list"}</span></button>
             <button role="menuitem" aria-label="Tab overview" onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}<span>Tab overview</span></button>
             <button role="menuitem" aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span><kbd>⌘,</kbd></button>
           </div>
@@ -832,8 +843,26 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
       requestStageReport();
     };
   }, []);
+  const updateFolder = useStore((s) => s.updateFolder);
   return (
     <div ref={ref} className="menu ctx-menu pop-in" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
+      <div className="menu-swatches" role="radiogroup" aria-label="Folder colour">
+        {SPACE_COLORS.map((color) => (
+          <button key={color} role="radio" aria-checked={folder.color === color} aria-label={color} data-space={color}
+            className={`swatch sm ${folder.color === color ? "on" : ""}`}
+            onClick={() => updateFolder(folder.id, { color: folder.color === color ? null : color })} />
+        ))}
+      </div>
+      <div className="menu-swatches" role="radiogroup" aria-label="Folder icon">
+        {FOLDER_EMOJIS.map((emoji) => {
+          const on = (folder.emoji ?? "") === emoji;
+          return (
+            <button key={emoji} role="radio" aria-checked={on} aria-label={emoji === "" ? "Default folder icon" : `Icon ${emoji}`}
+              className={`swatch emoji ${on ? "on" : ""}`}
+              onClick={() => updateFolder(folder.id, { emoji: emoji || null })}>{emoji || I.folderClosed}</button>
+          );
+        })}
+      </div>
       <button className="menu-item" role="menuitem" onClick={() => { onRename(); onClose(); }}>
         <span className="t">Rename</span>
       </button>

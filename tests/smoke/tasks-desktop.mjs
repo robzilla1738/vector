@@ -14,7 +14,7 @@ const desktopRequire = createRequire(join(root, "apps/desktop/package.json"));
 const mcpRequire = createRequire(join(root, "packages/mcp/package.json"));
 const { Client } = mcpRequire("@modelcontextprotocol/sdk/client/index.js");
 const { StdioClientTransport } = mcpRequire("@modelcontextprotocol/sdk/client/stdio.js");
-const engineRequire = createRequire(join(root, "packages/engine-client/package.json"));
+const engineRequire = createRequire(join(root, "packages/chromium-driver/package.json"));
 const { _electron } = engineRequire("playwright-core");
 const temporary = mkdtempSync(join(tmpdir(), "aux-task-ui-"));
 const screenshot = join(root, "release/test-artifacts/tasks.png");
@@ -29,8 +29,7 @@ try {
     executablePath: packaged ? join(root, "release/mac-arm64/Aux Browser.app/Contents/MacOS/Aux Browser") : desktopRequire("electron"),
     args: [...(packaged ? [] : [join(root, "apps/desktop")]), "--use-mock-keychain"],
     env: { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary,
-      AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: join(temporary, "data"),
-      AUX_ENGINE: "0", AUX_ENGINE_MODE: "off", AUX_LOAD_DOTENV: "0" },
+      AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: join(temporary, "data"), AUX_LOAD_DOTENV: "0" },
     timeout: 30000,
   });
   // The shell is a WebContentsView inside BaseWindow, not a BrowserWindow.
@@ -45,14 +44,14 @@ try {
   if (process.argv.includes("--trace-bookmarks")) await page.evaluate(() => {
     window.__bookmarkTrace = [];
     const record = value => window.__bookmarkTrace.push({at: performance.now(), ...value});
-    window.vector.onShortcut(value => record({source:"shortcut", value}));
-    window.vector.onEvent(value => { if (value.type === "bookmarks.changed") record({source:"event", value}); });
+    window.aux.onShortcut(value => record({source:"shortcut", value}));
+    window.aux.onEvent(value => { if (value.type === "bookmarks.changed") record({source:"event", value}); });
     window.addEventListener("keydown", event => record({source:"key", key:event.key, meta:event.metaKey}));
     window.addEventListener("click", event => record({source:"click", target:event.target.closest("button")?.outerHTML}));
   });
   await page.screenshot({ path: screenshot.replace("tasks.png", "aux-home.png") });
   if (process.argv.includes("--tasks-only")) {
-    await page.evaluate(url => window.vector.invoke("pages.open", {url, activate:true}), fixtureUrl);
+    await page.evaluate(url => window.aux.invoke("pages.open", {url, activate:true}), fixtureUrl);
   } else {
   await page.getByRole("button", { name: "New chat", exact: true }).click();
   await page.getByRole("textbox", { name: "Reply to conversation" }).waitFor();
@@ -63,7 +62,7 @@ try {
   await address.press("Enter");
   await page.locator(".tab-title").getByText("Aux fixture order", { exact: true }).waitFor();
   await page.keyboard.press("Meta+d");
-  await poll(page, async url => (await window.vector.invoke("bookmarks.list", {})).some(item => item.url === url), fixtureUrl);
+  await poll(page, async url => (await window.aux.invoke("bookmarks.list", {})).some(item => item.url === url), fixtureUrl);
   const browserPage = app.windows().find(window => window.url() === fixtureUrl);
   assert.ok(browserPage, "fixture must be open in a real browser view");
   await browserPage.getByRole("heading", { name: "Order 123" }).waitFor();
@@ -78,7 +77,7 @@ try {
   const nativeBounds = await app.evaluate(({ BaseWindow }, url) => BaseWindow.getAllWindows()[0].contentView.children.find(v => v.webContents?.getURL() === url)?.getBounds(), fixtureUrl);
   assert.ok(nativeBounds && Math.abs(nativeBounds.x - stage.x) <= 1 && Math.abs(nativeBounds.width - stage.width) <= 1, "native page follows sidebar transitions");
   if (process.argv.includes("--trace-bookmarks")) console.log(JSON.stringify(await page.evaluate(() => window.__bookmarkTrace), null, 2));
-  assert.ok((await page.evaluate(() => window.vector.invoke("bookmarks.list", {}))).some(item => item.url === fixtureUrl), "bookmark survives sidebar transitions");
+  assert.ok((await page.evaluate(() => window.aux.invoke("bookmarks.list", {}))).some(item => item.url === fixtureUrl), "bookmark survives sidebar transitions");
   await sidebarAction(page, "Library");
   const library = page.getByRole("dialog", { name: "Library", exact: true });
   await library.getByRole("button", { name: "Rename Aux fixture order", exact: true }).click();
@@ -94,10 +93,10 @@ try {
   await library.getByRole("textbox", { name: "Search history", exact: true }).fill(fixtureUrl);
   await library.locator(".library-open").first().waitFor();
   await library.getByRole("tab", { name: "Bookmarks", exact: true }).click();
-  const beforeLibrary = await page.evaluate(async () => (await window.vector.invoke("pages.list", {})).length);
+  const beforeLibrary = await page.evaluate(async () => (await window.aux.invoke("pages.list", {})).length);
   await library.locator(".library-open").filter({ hasText: "Saved fixture order" }).click();
   await library.waitFor({ state: "hidden" });
-  assert.equal(await page.evaluate(async () => (await window.vector.invoke("pages.list", {})).length), beforeLibrary);
+  assert.equal(await page.evaluate(async () => (await window.aux.invoke("pages.list", {})).length), beforeLibrary);
   await page.getByRole("button", { name: "Close Aux fixture order", exact: true }).click();
   await sidebarAction(page, "Library");
   await library.locator(".library-open").filter({ hasText: "Saved fixture order" }).click();
@@ -173,7 +172,7 @@ try {
   await page.keyboard.press("Meta+Shift+a");
   const prompt = page.getByRole("textbox", { name: "Ask the agent" });
   await prompt.fill("Summarize this fixture order");
-  const before = await page.evaluate(async () => ({ runs: (await window.vector.invoke("runs.list", {})).length, pages: (await window.vector.invoke("pages.list", {})).length }));
+  const before = await page.evaluate(async () => ({ runs: (await window.aux.invoke("runs.list", {})).length, pages: (await window.aux.invoke("pages.list", {})).length }));
   await prompt.press("Enter");
   const setup = page.getByRole("region", { name: "Settings", exact: true });
   await setup.getByText("Agent connection", { exact: true }).waitFor();
@@ -181,19 +180,19 @@ try {
   await setup.getByLabel("Provider API key", { exact: true }).fill("synthetic-unsaved-key");
   await setup.getByLabel("Planner model", { exact: true }).fill("fixture/custom-model");
   // Blurring a typed key must not save it or touch the OS credential provider.
-  assert.equal(await page.evaluate(async () => (await window.vector.invoke("settings.get", {})).modelConfigured), false);
+  assert.equal(await page.evaluate(async () => (await window.aux.invoke("settings.get", {})).modelConfigured), false);
   await setup.getByLabel("Provider API key", { exact: true }).fill("");
   await setup.getByRole("button", { name: "Save model", exact: true }).click();
-  await poll(page, async () => (await window.vector.invoke("settings.get", {})).plannerModel === "fixture/custom-model");
+  await poll(page, async () => (await window.aux.invoke("settings.get", {})).plannerModel === "fixture/custom-model");
   // Provider choices retain separate model preferences without importing keys.
   for (const provider of ["openai", "anthropic", "google"]) {
     await setup.getByLabel("Model provider", { exact: true }).selectOption(provider);
-    await poll(page, async selected => (await window.vector.invoke("settings.get", {})).modelProvider === selected, provider);
+    await poll(page, async selected => (await window.aux.invoke("settings.get", {})).modelProvider === selected, provider);
     await page.waitForFunction(() => document.querySelector('input[aria-label="Planner model"]').value === "");
-    assert.equal(await page.evaluate(async () => (await window.vector.invoke("settings.get", {})).modelConfigured), false);
+    assert.equal(await page.evaluate(async () => (await window.aux.invoke("settings.get", {})).modelConfigured), false);
     await setup.getByLabel("Planner model", { exact: true }).fill(`fixture-${provider}`);
     await setup.getByRole("button", { name: "Save model", exact: true }).click();
-    await poll(page, async selected => (await window.vector.invoke("settings.get", {})).plannerModel === `fixture-${selected}`, provider);
+    await poll(page, async selected => (await window.aux.invoke("settings.get", {})).plannerModel === `fixture-${selected}`, provider);
   }
   await setup.getByLabel("Model provider", { exact: true }).selectOption("openai");
   await page.waitForFunction(() => document.querySelector('input[aria-label="Planner model"]').value === "fixture-openai");
@@ -205,9 +204,9 @@ try {
   const write = setup.getByRole("button", { name: "Write", exact: true });
   assert.equal(await write.getAttribute("aria-pressed"), "true");
   await write.click();
-  await poll(page, async () => !(await window.vector.invoke("settings.get", {})).effectGrants.includes("effect:write"));
+  await poll(page, async () => !(await window.aux.invoke("settings.get", {})).effectGrants.includes("effect:write"));
   await setup.getByRole("button", { name: "Appearance", exact: true }).click();
-  const tabState = await page.evaluate(async () => ({ pages: (await window.vector.invoke("pages.list", {})).map(p => p.pageId), selected: document.querySelector('.tab-row[aria-selected="true"]')?.textContent }));
+  const tabState = await page.evaluate(async () => ({ pages: (await window.aux.invoke("pages.list", {})).map(p => p.pageId), selected: document.querySelector('.tab-row[aria-selected="true"]')?.textContent }));
   await setup.getByLabel("Tab layout", { exact: true }).selectOption("horizontal");
   await page.locator(".horizontal-tabs").waitFor();
   await page.screenshot({ path: screenshot.replace("tasks.png", "aux-settings-horizontal.png") });
@@ -219,12 +218,12 @@ try {
   await setup.getByRole("radio", { name: "Dark", exact: true }).click();
   await setup.getByLabel("Sidebar appearance", { exact: true }).selectOption("translucent");
   await setup.getByLabel("Tab layout", { exact: true }).selectOption("vertical");
-  const tabAfter = await page.evaluate(async () => ({ pages: (await window.vector.invoke("pages.list", {})).map(p => p.pageId), selected: document.querySelector('.tab-row[aria-selected="true"]')?.textContent }));
+  const tabAfter = await page.evaluate(async () => ({ pages: (await window.aux.invoke("pages.list", {})).map(p => p.pageId), selected: document.querySelector('.tab-row[aria-selected="true"]')?.textContent }));
   assert.deepEqual(tabAfter, tabState, "appearance changes must preserve open tabs and selected tab");
   await page.screenshot({ path: screenshot.replace("tasks.png", "aux-settings.png") });
   await setup.getByRole("button", { name: "Close settings" }).click();
   assert.equal(await prompt.inputValue(), "Summarize this fixture order");
-  const after = await page.evaluate(async () => ({ runs: (await window.vector.invoke("runs.list", {})).length, pages: (await window.vector.invoke("pages.list", {})).length }));
+  const after = await page.evaluate(async () => ({ runs: (await window.aux.invoke("runs.list", {})).length, pages: (await window.aux.invoke("pages.list", {})).length }));
   assert.deepEqual(after, before, "missing setup must not create a run or a blank tab");
   await sidebarAction(page, "Settings");
   await setup.getByRole("button", { name: "External agents", exact: true }).click();
@@ -237,7 +236,7 @@ try {
   const config = JSON.parse(configText).mcpServers["aux-browser"];
   assert.ok(config.args[0].endsWith("aux-mcp.mjs"));
   assert.equal(config.env.AUX_DATA_DIR, join(temporary, "data"));
-  assert.equal(config.env.AUX_MCP_TOOL_PREFIX, "aux");
+  assert.ok(!("AUX_MCP_TOOL_PREFIX" in config.env), "scoped config carries no legacy tool prefix");
   assert.equal(config.env.AUX_MCP_SCOPE_KIND, "task");
   assert.match(config.env.AUX_MCP_TOKEN, /^auxc_/);
   await page.screenshot({ path: screenshot.replace("tasks.png", "external-agents.png") });
@@ -245,7 +244,7 @@ try {
   await mcp.connect(new StdioClientTransport({ command: config.command, args: config.args, env: { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, ...config.env }, stderr: "pipe" }));
   const catalog = (await mcp.listTools()).tools.map(tool => tool.name);
   assert.ok(catalog.includes("aux_pages_list") && catalog.includes("aux_task_create"));
-  assert.ok(!catalog.some(name => name.startsWith("vector_")), "generated setup uses canonical Aux tool names");
+  assert.ok(!catalog.some(name => name.startsWith("aux_")), "generated setup uses canonical Aux tool names");
   assert.ok(!catalog.some(name => /reviewCriterion|reconcileAction/.test(name)), "human decisions are not MCP tools");
   const tool = async (name, args = {}) => {
     const result = await mcp.callTool({ name, arguments: args });

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 
 export type PageAttachmentResult = { attached: string[]; errors: string[] };
 export function AttachPage({ pages, disabled, remaining, onAttach }: { pages: PageTarget[]; disabled: boolean; remaining: number; onAttach(pages: PageTarget[]): Promise<PageAttachmentResult> }) {

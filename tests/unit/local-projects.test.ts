@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {LocalProjects} from '../../apps/desktop/main/local-projects.js';
 import {ProjectFiles} from '../../apps/desktop/main/project-files.js';
-import type {ProjectCommand} from '@vector/contracts';
+import type {ProjectCommand} from '@aux/contracts';
 const directories:string[]=[];
 afterEach(async()=>{await Promise.all(directories.splice(0).map(path=>rm(path,{recursive:true,force:true})));});
 it('creates a blank managed Git project without reading global identity or touching an external checkout',async()=>{

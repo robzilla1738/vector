@@ -1,7 +1,7 @@
 import { createCipheriv, createHash, pbkdf2Sync } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { chromeEpochToUnix, CookieService, decryptValue, mapSameSite } from "@vector/runtime";
-import type { BrowserCookie, BrowserDriver } from "@vector/engine-client";
+import { chromeEpochToUnix, CookieService, decryptValue, mapSameSite } from "@aux/runtime";
+import type { BrowserCookie, BrowserDriver } from "@aux/chromium-driver";
 
 const KEY = pbkdf2Sync("test-password", "saltysalt", 1003, 16, "sha1");
 const IV = Buffer.alloc(16, 0x20);
@@ -14,7 +14,7 @@ function encryptV10(plain: string): Buffer {
 function fakeDriver(cookies: BrowserCookie[]): BrowserDriver {
   const jar: BrowserCookie[] = [];
   return {
-    backend: "vector",
+    backend: "aux",
     async connect() {},
     async disconnect() {},
     isConnected: () => true,
@@ -65,13 +65,13 @@ describe("CookieService.importCookies — attached source", () => {
   ];
 
   it("imports from an attached chrome driver and skips malformed rows", async () => {
-    const vector = fakeDriver([]);
+    const aux = fakeDriver([]);
     let setCount = 0;
-    const spy = vector.setCookies;
-    vector.setCookies = async (cs) => { setCount = cs.length; return spy!(cs); };
+    const spy = aux.setCookies;
+    aux.setCookies = async (cs) => { setCount = cs.length; return spy!(cs); };
     const chrome = fakeDriver(cookies);
     (chrome as { backend: string }).backend = "chrome";
-    const svc = new CookieService({ drivers: () => ({ vector, chrome }), native: nullNative });
+    const svc = new CookieService({ drivers: () => ({ aux, chrome }), native: nullNative });
     const res = await svc.importCookies({ source: "auto" });
     expect(res.source).toBe("attached");
     expect(res.imported).toBe(1);
@@ -81,7 +81,7 @@ describe("CookieService.importCookies — attached source", () => {
   });
 
   it("errors clearly when 'attached' is requested but nothing is connected", async () => {
-    const svc = new CookieService({ drivers: () => ({ vector: fakeDriver([]), chrome: null }), native: nullNative });
+    const svc = new CookieService({ drivers: () => ({ aux: fakeDriver([]), chrome: null }), native: nullNative });
     await expect(svc.importCookies({ source: "attached" })).rejects.toThrow(/no Chrome attached/);
   });
 });

@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { bridge } from './bridge';
 import { useStore } from './store';
-import type { PageTarget } from '@vector/contracts';
+import type { PageTarget } from '@aux/contracts';
 afterEach(() => vi.restoreAllMocks());
 it('ignores out-of-order, previous-tab and closed-search responses; clearing stops native highlights', async () => {
   const responses: ((value: unknown) => void)[] = [];

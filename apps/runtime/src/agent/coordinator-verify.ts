@@ -1,11 +1,11 @@
 import {
   PlanChunkSchema,
-  VectorError,
+  AuxError,
   type Observation,
   type PlanChunk,
   type Run,
   type StepOutcome,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import type { ModelClient } from "./model-client.js";
 import { normalizePlannerObject } from "./gateway-client.js";
 import { buildVisionPrompt, extractJson, VISION_SYSTEM } from "./planner.js";
@@ -118,7 +118,7 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
     const shot = await self.deps.pages.capture(args.pageId, { format: "dataUrl" });
     if (!shot.dataUrl) return null;
     const run = self.get(args.runId);
-    if (run.config?.contextImageArtifactIds?.length && !self.deps.imageReferences) throw new VectorError("capability_unsupported", "Image context is unavailable for this run.");
+    if (run.config?.contextImageArtifactIds?.length && !self.deps.imageReferences) throw new AuxError("capability_unsupported", "Image context is unavailable for this run.");
     const references = run.config?.contextImageArtifactIds?.length ? self.deps.imageReferences!(run) : [];
     const res = await args.model.generateText({
       modelId: args.modelId,
@@ -143,7 +143,7 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
   } catch (e) {
     if (args.signal.aborted) throw e;
     const msg = e instanceof Error ? e.message : String(e);
-    const skip = (e instanceof VectorError && e.code === "capability_unsupported") || /screenshots are not available|vision is not available/i.test(msg);
+    const skip = (e instanceof AuxError && e.code === "capability_unsupported") || /screenshots are not available|vision is not available/i.test(msg);
     if (!skip) {
       args.onModelCall?.();
       self.deps.recordModelCall({

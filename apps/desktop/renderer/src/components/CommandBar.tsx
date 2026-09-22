@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { HistoryEntry, PageTarget, Run, SavedProgram } from "@vector/contracts";
+import { useShallow } from "zustand/react/shallow";
+import type { HistoryEntry, Run, SavedProgram } from "@aux/contracts";
 import { toUrl } from "../chrome";
 import { detectIntent, intentLabel, type Intent } from "../intent";
+import { engineList, parseSuggestResponse, suggestEndpoint } from "../engines";
+import { isPrivateAddress, rankCandidates } from "../suggest";
 import { isLive, useStore, call, errToast, toast } from "../store";
 import { hostOf } from "../workspace";
-import { EngineBadge } from "./EngineBadge";
+
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { bridge } from "../bridge";
@@ -13,7 +16,7 @@ import { rememberSiteControlsOpener } from "../site-controls-opener";
 
 interface Suggestion {
   id: string;
-  section: "intent" | "tabs" | "bookmarks" | "recent" | "programs" | "runs";
+  section: "intent" | "suggest" | "tabs" | "bookmarks" | "recent" | "programs" | "runs";
   icon: React.ReactNode;
   title: string;
   detail?: string;
@@ -28,12 +31,15 @@ interface Suggestion {
  */
 export function CommandBar({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
   const slot = hero ? "hero" : "toolbar";
-  const pages = useStore((s) => s.pages);
+  // Tab suggestions depend on identity/title/url/favicon — a digest of exactly
+  // those fields keeps loading/audio churn from re-rendering the bar.
+  const tabDigest = useStore(useShallow((s) => s.pages.map((p) => `${p.pageId}${p.title}${p.url}${p.favicon}${p.ownedByRuntime ? 1 : 0}`)));
   const activePageId = useStore((s) => s.activePageId);
   const settings = useStore((s) => s.settings);
   const runs = useStore((s) => s.runs);
   const programs = useStore((s) => s.programs);
   const bookmarks = useStore(s => s.bookmarks);
+  const closedTabs = useStore(s => s.closedTabs);
   const focusRequest = useStore((s) => s.focusRequest);
   const focusSlot = useStore((s) => s.focusSlot);
   const startRun = useStore((s) => s.startRun);
@@ -41,10 +47,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const newTab = useStore((s) => s.newTab);
   const setOverlay = useStore((s) => s.setOverlay);
   const agentDraft = useStore((s) => s.agentDraft);
-  const page = pages.find((p) => p.pageId === activePageId);
+  const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const pageAddress = page?.navigationError?.url ?? page?.url ?? "";
   const hasPage = !!page?.showBlankDocument || (!!pageAddress && pageAddress !== "about:blank");
   const searchEngine = settings.searchEngine as string | undefined;
+  const searchEngines = useMemo(() => engineList(settings.searchEngines as { keyword: string; name: string; template: string }[] | undefined), [settings.searchEngines]);
 
   const [editing, setEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -134,7 +141,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   };
 
   const raw = val.trim();
-  const baseIntent = useMemo(() => detectIntent(raw, { hasPage, searchEngine }), [raw, hasPage, searchEngine]);
+  const baseIntent = useMemo(() => detectIntent(raw, { hasPage, searchEngine, searchEngines }), [raw, hasPage, searchEngine, searchEngines]);
   const intent: Intent = useMemo(() => {
     if (bridge.privateMode && baseIntent.kind === "run") return { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     if (hero && raw) return entryMode === "ask" ? { kind: "run", goal: raw, scope: "new" } : { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
@@ -158,6 +165,47 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     return () => { cancelled = true; window.clearTimeout(t); };
   }, [raw, typedSomething, intent.kind]);
 
+  // Remote suggestions — opt-in preference, never in private mode, and never
+  // for probable private/intranet addresses or keyword-engine input.
+  const [remote, setRemote] = useState<string[]>([]);
+  const intentEngine = intent.kind === "search" ? intent.engine ?? null : null;
+  useEffect(() => {
+    let cancelled = false;
+    setRemote([]);
+    const want = !bridge.privateMode && settings.searchSuggestions === true
+      && typedSomething && intent.kind === "search" && !intent.engine
+      && raw.length >= 3 && !isPrivateAddress(raw);
+    const endpoint = want ? suggestEndpoint(searchEngine) : null;
+    if (!endpoint) return;
+    const t = window.setTimeout(() => {
+      void fetch(`${endpoint}${encodeURIComponent(raw)}`)
+        .then(response => (response.ok ? response.json() : null))
+        .then(data => { if (!cancelled && data) setRemote(parseSuggestResponse(data)); })
+        .catch(() => {});
+    }, 160);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [raw, typedSomething, intent.kind, intentEngine, searchEngine, settings.searchSuggestions]);
+
+  // Inline host completion — only a bare hostname prefix earns ghost text;
+  // ArrowRight/End accepts like every mainstream browser.
+  const inlineCompletion = useMemo(() => {
+    if (!typedSomething || intent.kind === "command" || /\s/.test(raw)) return null;
+    const q = raw.toLowerCase();
+    if (q.length < 2 || q.includes("/")) return null;
+    const urls = [
+      ...useStore.getState().pages.filter(p => !p.ownedByRuntime).map(p => p.url),
+      ...bookmarks.map(b => b.url),
+      ...history.map(h => h.url),
+    ];
+    let best: string | null = null;
+    for (const url of urls) {
+      const host = hostOf(url);
+      if (!host.startsWith(q) || host.length <= q.length) continue;
+      if (!best || host.length < best.length) best = host;
+    }
+    return best ? best.slice(q.length) : null;
+  }, [typedSomething, intent.kind, raw, tabDigest, bookmarks, history]);
+
   const exec = useCallback(
     async (i: Intent, alt = false) => {
       switch (i.kind) {
@@ -173,6 +221,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           else await startRun(i.goal, { scope: alt ? (i.scope === "page" ? "new" : "page") : i.scope });
           break;
         case "command":
+          useStore.setState({ paletteSeed: `/${i.query}` });
           setOverlay("palette");
           break;
         default:
@@ -204,19 +253,27 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         detail: hasPage ? `Use the current page · ${hostOf(page?.url ?? "")}` : "Start a conversation", hint: "Ask",
         run: () => exec({ kind: "run", goal: raw, scope: hasPage ? "page" : "new" }) });
     }
-    for (const p of pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime && (p.title.toLowerCase().includes(q) || p.url.toLowerCase().includes(q))).slice(0, 3)) {
+    for (const phrase of remote.filter(item => item.toLowerCase() !== q).slice(0, 4)) {
+      out.push({ id: `sug-${phrase}`, section: "suggest", icon: I.search, title: phrase, detail: "Web suggestion", run: () => exec({ kind: "search", query: phrase, url: toUrl(phrase, searchEngine) }) });
+    }
+    const openPages = useStore.getState().pages;
+    const openUrls = new Set(openPages.map(page => page.url.replace(/\/$/, "")));
+    for (const p of rankCandidates(q, openPages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime).map(p => ({ ...p, id: p.pageId }))).slice(0, 3)) {
       out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, title: p.title || hostOf(p.url), detail: hostOf(p.url), hint: "Switch", run: () => activate(p.pageId) });
     }
-    const seenUrls = new Set(pages.map(page => page.url));
-    for (const bookmark of bookmarks.filter(bookmark => !seenUrls.has(bookmark.url) && `${bookmark.title} ${bookmark.url} ${(bookmark.folderPath ?? []).join(" ")}`.toLowerCase().includes(q)).slice(0, 3)) {
-      seenUrls.add(bookmark.url);
+    for (const bookmark of rankCandidates(q, bookmarks.map(b => ({ ...b, id: `bookmark-${b.url}` }))).filter(b => !openUrls.has(b.url.replace(/\/$/, ""))).slice(0, 3)) {
+      openUrls.add(bookmark.url.replace(/\/$/, ""));
       out.push({ id: `bookmark-${bookmark.url}`, section: "bookmarks", icon: <FavIcon url={bookmark.url} size="sm" />, title: bookmark.title || hostOf(bookmark.url), detail: bookmark.folderPath?.join(" / ") || hostOf(bookmark.url), run: () => exec({ kind: "navigate", url: bookmark.url, display: bookmark.title }) });
     }
-    const recent = history.filter(entry => { if (seenUrls.has(entry.url)) return false; seenUrls.add(entry.url); return true; });
-    for (const h of recent.slice(0, 4)) {
+    for (const closed of rankCandidates(q, closedTabs.filter(tab => !openUrls.has(tab.url.replace(/\/$/, ""))).map(tab => ({ ...tab, id: tab.pageId }))).slice(0, 2)) {
+      openUrls.add(closed.url.replace(/\/$/, ""));
+      out.push({ id: `closed-${closed.pageId}`, section: "recent", icon: <FavIcon url={closed.url} size="sm" />, title: closed.title || hostOf(closed.url), detail: `${hostOf(closed.url)} · closed tab`, hint: "Reopen", run: () => useStore.getState().reopenClosedTab(closed.pageId) });
+    }
+    for (const h of rankCandidates(q, history.map(entry => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt }))).filter(entry => !openUrls.has(entry.url.replace(/\/$/, ""))).slice(0, 4)) {
+      openUrls.add(h.url.replace(/\/$/, ""));
       out.push({ id: `h-${h.url}`, section: "recent", icon: <FavIcon url={h.url} size="sm" />, title: h.title || hostOf(h.url), detail: hostOf(h.url), run: () => exec({ kind: "navigate", url: h.url, display: h.title }) });
     }
-    for (const pr of programs.filter((pr: SavedProgram) => pr.name.toLowerCase().includes(q)).slice(0, 3)) {
+    for (const pr of rankCandidates(q, programs.map((pr: SavedProgram) => ({ ...pr, id: pr.programId, title: pr.name }))).slice(0, 3)) {
       out.push({
         id: `prog-${pr.programId}`,
         section: "programs",
@@ -231,15 +288,24 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         },
       });
     }
-    const matchingChats = new Set(runs.filter((r: Run) => r.goal.toLowerCase().includes(q)).map(run => run.config?.chatId ?? run.runId));
+    const matchingChats = new Set(rankCandidates(q, runs.map((r: Run) => ({ ...r, id: r.runId, title: r.goal }))).map(run => run.config?.chatId ?? run.runId));
     for (const r of recentConversations(runs).filter(run => matchingChats.has(run.config?.chatId ?? run.runId)).slice(0, 3)) {
       out.push({ id: `run-${r.runId}`, section: "runs", icon: I.chats, title: r.goal, detail: isLive(r) ? "Open active conversation" : "Continue conversation", hint: "Open", run: () => useStore.getState().openConversation(r.runId) });
     }
     return out;
-  }, [typedSomething, raw, intent, hero, hasPage, pages, activePageId, bookmarks, history, programs, runs, page, exec, activate, newTab, startRun]);
+  }, [typedSomething, raw, intent, hero, hasPage, tabDigest, activePageId, bookmarks, closedTabs, history, remote, programs, runs, page, exec, activate, newTab, startRun, searchEngine]);
 
-  useEffect(() => setSel(0), [raw]);
-  useEffect(() => setSel(value => Math.min(value, Math.max(0, suggestions.length - 1))), [suggestions.length]);
+  // Selection is identity-stable: a re-ordered list keeps the same row
+  // highlighted instead of the same index pointing at a different action.
+  const selId = useRef<string | null>(null);
+  useEffect(() => { selId.current = null; setSel(0); }, [raw]);
+  useEffect(() => {
+    setSel(value => {
+      const keep = selId.current ? suggestions.findIndex(s => s.id === selId.current) : -1;
+      return keep >= 0 ? keep : Math.min(value, Math.max(0, suggestions.length - 1));
+    });
+  }, [suggestions]);
+  useEffect(() => { selId.current = suggestions[sel]?.id ?? null; }, [sel, suggestions]);
   useEffect(() => {
     listRef.current?.querySelectorAll<HTMLElement>("[role=option]")[sel]?.scrollIntoView({ block: "nearest" });
   }, [sel]);
@@ -261,6 +327,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       inputRef.current?.blur();
       return;
     }
+    if ((e.key === "ArrowRight" || e.key === "End") && inlineCompletion && e.currentTarget.selectionStart === val.length && e.currentTarget.selectionEnd === val.length) {
+      e.preventDefault();
+      setVal(val + inlineCompletion);
+      return;
+    }
     if (e.key === "ArrowDown" && suggestions.length) {
       e.preventDefault();
       setSel((s) => Math.min(s + 1, suggestions.length - 1));
@@ -273,7 +344,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     } else if (e.key === "Enter") {
       e.preventDefault();
       const chosen = suggestions[sel];
-      void submit(() => chosen && sel > 0 ? chosen.run() : exec(intent, e.metaKey));
+      // ↵ on the intent row accepts a ghost-completed host, like Chrome.
+      const completed = inlineCompletion && sel === 0 && e.currentTarget.selectionStart === val.length
+        ? detectIntent(val + inlineCompletion, { hasPage, searchEngine, searchEngines })
+        : intent;
+      void submit(() => chosen && sel > 0 ? chosen.run() : exec(completed, e.metaKey));
     }
   };
 
@@ -297,7 +372,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           hasPage && !editing ? <button type="button" className="cb-ico cb-site-trigger" title="Site controls" aria-label="Site controls" onMouseDown={event=>event.preventDefault()} onClick={event=>{rememberSiteControlsOpener(event.currentTarget);setOverlay("site");}}>{I.globe}</button> :
           <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.search}</span>
         ) : page && hasPage && !hero ? (
-          <EngineBadge page={page as PageTarget} compact />
+          <span className="cb-ico">{I.globe}</span>
         ) : (
           <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.searchLg}</span>
         )}
@@ -320,6 +395,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             )}
           </span>
         )}
+        {editing && inlineCompletion && <span className="cb-ghost" aria-hidden>{val}<span className="cb-ghost-tail">{inlineCompletion}</span></span>}
         <input
           ref={inputRef}
           className={editing ? "" : "ghost"}
@@ -413,6 +489,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
 
 const SECTION: Record<Suggestion["section"], string> = {
   intent: "",
+  suggest: "Suggestions",
   tabs: "Open tabs",
   bookmarks: "Bookmarks",
   recent: "Recent",

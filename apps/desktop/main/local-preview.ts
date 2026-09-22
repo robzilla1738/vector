@@ -1,6 +1,6 @@
 import {request as httpRequest} from 'node:http';
 import {request as httpsRequest} from 'node:https';
-import type {LocalPreviewCheck} from '@vector/contracts';
+import type {LocalPreviewCheck} from '@aux/contracts';
 
 export function normalizeLocalPreviewUrl(input:string){
   if(typeof input!=='string'||input.length>2048)throw new Error('Enter a local preview URL up to 2,048 characters.');

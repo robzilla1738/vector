@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
@@ -22,7 +22,7 @@ const fixture = createServer((_request, response) => {
 });
 await new Promise(resolve => fixture.listen(0, "127.0.0.1", resolve));
 const url = `http://127.0.0.1:${fixture.address().port}/kept`;
-const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" };
+const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" };
 let app;
 const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
 async function shell() {
@@ -49,8 +49,8 @@ async function openRepo(dbPath) {
 try {
   app = await launch();
   let page = await shell();
-  const browser = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), url);
-  await page.waitForFunction(id => window.vector.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
+  const browser = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), url);
+  await page.waitForFunction(id => window.aux.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), browser.pageId);
   await app.close(); app = undefined;
 
   const dbPath = resolveDatabasePath(dataDir);
@@ -92,7 +92,7 @@ try {
   await page.getByText("Delete permanently?", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByText("Autumn weekend planning", { exact: true }).waitFor({ state: "detached" });
-  assert.equal((await page.evaluate(() => window.vector.invoke("pages.list", {}))).some(item => item.url.includes("/kept")), true, "browser tab should survive conversation deletion");
+  assert.equal((await page.evaluate(() => window.aux.invoke("pages.list", {}))).some(item => item.url.includes("/kept")), true, "browser tab should survive conversation deletion");
   await app.close(); app = undefined;
 
   const verify = await openRepo(dbPath);

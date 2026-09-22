@@ -1,6 +1,6 @@
 # Keep the installed bundle ID and package app.name stable for saved data.
 # productName changes only the visible package; do not add it to package.json.
-appId: dev.vector.browser
+appId: dev.aux.browser
 productName: Aux Browser
 copyright: Aux
 
@@ -30,10 +30,6 @@ extraResources:
       - "**/*"
       - "**/node_modules"
       - "**/node_modules/**" # bundled runtime deps — override default exclusion
-  - from: "../../release/.staging/engine"
-    to: "engine"
-    filter:
-      - "**/*"
 
 mac:
   extendInfo:
