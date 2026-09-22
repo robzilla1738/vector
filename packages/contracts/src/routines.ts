@@ -84,7 +84,7 @@ export const RoutineRunSchema = z.object({
   revision: z.number().int().positive(),
   occurrenceId: text.optional(),
   occurrenceIdentity: text.optional(),
-  status: z.enum(["queued", "running", "completed", "failed", "cancelled", "missed", "needs_review", "uncertain"]),
+  status: z.enum(["queued", "running", "waiting_input", "completed", "failed", "cancelled", "missed", "needs_review", "uncertain"]),
   reason: z.string().max(1000).optional(),
   chatId: z.string().optional(),
   runId: z.string().optional(),

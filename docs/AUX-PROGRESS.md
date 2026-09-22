@@ -6478,3 +6478,60 @@ being treated as blockers to the first visual/interaction review.
   uninstall+reinstall dedupe), `database-migration` updated for v4.
 - Verification: `pnpm build` + `npm run typecheck` clean; full
   `npx vitest run` green; oxlint 0 errors on touched files.
+
+## 2026-09-22 — ME workstream: inspectable memory audit
+
+- **Verified complete (no code change needed).** Browsing memory is
+  opt-in per Space with retention policy, startup + read-time sweeps,
+  excluded sources (`memorySourceExcluded`), forget single entry or
+  the whole Space. It never records bodies or credentials and strips
+  query strings and fragments from stored URLs. Workspace memory
+  items carry content, source URL (https only, credentials rejected),
+  optional expiry and an enabled switch; editing merges against the
+  latest revision with a visible conflict UI instead of overwriting.
+- Retrieval entries are derived at read time — deleting a memory item
+  removes it from every future answer/context with no derived copies
+  left behind. Deletion, corrections, exclusions and retention are
+  all inspectable in Settings.
+
+## 2026-09-22 — SK workstream: run-status sync, transient retry, notifications
+
+- **Routine-run ↔ run sync (new).** `RoutineService.sync()` reconciles
+  every open dispatched run (`queued`/`running`/`waiting_input` with a
+  `runId`) against the underlying run's current status before each
+  `due()`, `run()`, `runs()`, `alerts()`, `reconcile()` and
+  `compare()` call, emitting `routine.updated` on change. Terminal
+  mapping: `completed`/`partially_completed` → completed (partial
+  flagged "review its results"), `failed`/`interrupted` → failed with
+  the run's status message, `cancelled` → cancelled. Previously a
+  dispatched routine run stayed `running` forever after its run
+  settled, so failure/completion/input never surfaced.
+- **New `waiting_input` status.** A run that goes `needs_input` maps
+  to `waiting_input` on its routine run (surfaced in the alerts feed
+  with "waiting for input") — distinct from `needs_review`, so the
+  reconcile path cannot mistakenly re-dispatch a live run. When the
+  run resumes, sync moves it back to `running`; when it settles,
+  stale reasons are cleared.
+- **Transient-read retry for monitors.** Monitor dispatches retry a
+  transient start failure once (2s backoff) before recording
+  `failed`; `AuxError` codes `backend_unavailable`, `condition_timeout`,
+  `model_error` and `target_detached` count as transient — a
+  `permission_denied`/validation failure does not retry. Failure
+  reasons record "retried once".
+- **Notifications.** The alerts feed now also includes completed
+  scheduled/monitored occurrences of review-required routines
+  (completion notifications). Failure, input (`waiting_input`),
+  missed and coalesced-missed entries were already covered.
+- **Already present (verified):** every run rechecks access (revision,
+  paused, archived, uncertain, active overlap at `run()`; task,
+  project and resolved-context gates at `prepareRun`), occurrence
+  identity + no-overlap, timezone-aware schedules, coalesced missed
+  read-only checks, missed consequential work requiring review,
+  uncertain-write reconciliation with evidence, vault expiry →
+  `permission_denied` with explicit re-grant and no silent retry.
+  Meaningful-change evidence stays the monitor run's own report,
+  linked from the routine run via `chatId`/`runId`.
+- Tests: `routines` +4 (terminal sync, waiting_input round-trip,
+  transient retry succeed/fail, non-transient no-retry).
+- Verification: `pnpm build` + `npm run typecheck` clean; full
+  `npx vitest run` 982 tests green; oxlint clean on touched files.

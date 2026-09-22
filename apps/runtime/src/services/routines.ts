@@ -9,6 +9,7 @@ import {
   type RoutineRun,
   type RoutineShare,
   type RoutineTrigger,
+  type Run,
 } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
@@ -224,6 +225,7 @@ export class RoutineService {
   }
 
   async run(input: { routineId: string; expectedRevision: number; parameters?: Record<string, string> }, occurrence?: { occurrenceId: string; identity: string; scheduledFor: number }): Promise<RoutineRun> {
+    this.sync();
     const routine = this.routine(input.routineId);
     if (routine.revision !== input.expectedRevision) throw new AuxError("conflict", "This routine changed. Refresh and try again.");
     if (routine.paused) throw new AuxError("conflict", "Resume this routine before running it.");
@@ -253,6 +255,7 @@ export class RoutineService {
   }
 
   async reconcile(routineRunId: string, outcome: "applied" | "not_applied", note: string): Promise<RoutineRun> {
+    this.sync();
     const record = this.runById(routineRunId);
     if (record.status !== "uncertain" && record.status !== "needs_review") throw new AuxError("conflict", "Only uncertain or waiting runs can be reconciled.");
     const routine = this.routine(record.routineId);
@@ -270,10 +273,12 @@ export class RoutineService {
   }
 
   runs(routineId: string, limit = 30): RoutineRun[] {
+    this.sync();
     return (this.repo.db.prepare("SELECT * FROM routine_runs WHERE routine_id=? ORDER BY created_at DESC LIMIT ?").all(routineId, limit) as Record<string, unknown>[]).map(parseRun);
   }
 
   async due(now = Date.now()): Promise<RoutineRun[]> {
+    this.sync();
     const created: RoutineRun[] = [];
     for (const routine of this.list({ includeArchived: false, limit: 200 })) {
       if (routine.paused || routine.trigger.kind === "manual") continue;
@@ -303,9 +308,10 @@ export class RoutineService {
   }
 
   alerts(limit = 30): RoutineAlert[] {
+    this.sync();
     const rows = this.repo.db.prepare(`SELECT r.routine_run_id, r.routine_id, r.status, r.reason, r.created_at, t.json
       FROM routine_runs r JOIN routines t ON t.routine_id=r.routine_id
-      WHERE (r.status IN ('missed','needs_review','uncertain','failed') OR r.reason LIKE 'Coalesced %')
+      WHERE (r.status IN ('missed','needs_review','uncertain','failed','waiting_input') OR r.reason LIKE 'Coalesced %' OR (r.status='completed' AND r.occurrence_id IS NOT NULL AND json_extract(t.json,'$.reviewRequired')=1))
       ORDER BY r.created_at DESC LIMIT ?`).all(limit) as { routine_run_id: string; routine_id: string; status: string; reason: string | null; created_at: number; json: string }[];
     return rows.map(row => {
       const routine = JSON.parse(row.json) as { title: string; trigger?: { kind?: string } };
@@ -322,6 +328,7 @@ export class RoutineService {
   }
 
   compare(leftRunId: string, rightRunId: string): RoutineCompare {
+    this.sync();
     const left = this.runById(leftRunId);
     const right = this.runById(rightRunId);
     if (left.routineId !== right.routineId) throw new AuxError("conflict", "Compare two runs of the same routine.");
@@ -345,17 +352,61 @@ export class RoutineService {
       this.events.emit("routine.updated", { routine, run: next });
       return next;
     }
-    try {
-      const started = (await this.startWork?.(routine, record.parameters)) ?? {};
-      const next: RoutineRun = { ...record, status: "running", chatId: started.chatId, runId: started.runId, startedAt: Date.now() };
+    // Read-only monitor checks retry a transient dispatch once before failing.
+    const attempts = routine.trigger.kind === "monitor" ? 2 : 1;
+    let retried = false;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        const started = (await this.startWork?.(routine, record.parameters)) ?? {};
+        const next: RoutineRun = { ...record, status: "running", chatId: started.chatId, runId: started.runId, startedAt: Date.now(), ...(retried ? { reason: "Dispatched after a transient read failure." } : {}) };
+        this.updateRun(next);
+        this.events.emit("routine.updated", { routine, run: next });
+        return next;
+      } catch (error) {
+        if (attempt < attempts && this.transient(error)) {
+          retried = true;
+          await new Promise(resolve => setTimeout(resolve, 2_000));
+          continue;
+        }
+        const reason = `${error instanceof Error ? error.message : String(error)}${retried ? " — retried once" : ""}`;
+        const next = { ...record, status: "failed" as const, reason, endedAt: Date.now() };
+        this.updateRun(next);
+        this.events.emit("routine.updated", { routine, run: next });
+        return next;
+      }
+    }
+    return record;
+  }
+
+  private transient(error: unknown): boolean {
+    if (error instanceof AuxError) return error.code === "backend_unavailable" || error.code === "condition_timeout" || error.code === "model_error" || error.code === "target_detached";
+    return true;
+  }
+
+  /** Syncs each dispatched routine run with the underlying run's current status. */
+  private sync(): void {
+    const open = this.repo.db.prepare("SELECT * FROM routine_runs WHERE run_id IS NOT NULL AND status IN ('queued','running','waiting_input')").all() as Record<string, unknown>[];
+    for (const row of open) {
+      const record = parseRun(row);
+      const run = this.repo.getRun(record.runId!);
+      if (!run) continue;
+      const next = this.mapRunStatus(record, run);
+      if (!next) continue;
       this.updateRun(next);
-      this.events.emit("routine.updated", { routine, run: next });
-      return next;
-    } catch (error) {
-      const next = { ...record, status: "failed" as const, reason: error instanceof Error ? error.message : String(error), endedAt: Date.now() };
-      this.updateRun(next);
-      this.events.emit("routine.updated", { routine, run: next });
-      return next;
+      this.events.emit("routine.updated", { routine: this.routine(record.routineId), run: next });
+    }
+  }
+
+  private mapRunStatus(record: RoutineRun, run: Run): RoutineRun | undefined {
+    const endedAt = run.endedAt ?? Date.now();
+    switch (run.status) {
+      case "completed": return { ...record, status: "completed", reason: record.status === "waiting_input" ? undefined : record.reason, endedAt };
+      case "partially_completed": return { ...record, status: "completed", reason: "The run partially completed — review its results.", endedAt };
+      case "failed": return { ...record, status: "failed", reason: run.statusMessage ?? "The run failed.", endedAt };
+      case "cancelled": return { ...record, status: "cancelled", endedAt };
+      case "interrupted": return { ...record, status: "failed", reason: "The run was interrupted by a restart.", endedAt };
+      case "needs_input": return record.status === "waiting_input" ? undefined : { ...record, status: "waiting_input", reason: "The run is waiting for input." };
+      default: return record.status === "waiting_input" ? { ...record, status: "running", reason: undefined } : undefined;
     }
   }
 
