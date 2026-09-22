@@ -3,7 +3,7 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
-## Desktop chrome
+## Desktop chrome (PR #16)
 
 The search suggestion's primary enter mark is the same circular accent
 up-arrow as the composer send control. Other suggestion hints stay text
