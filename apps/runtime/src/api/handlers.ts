@@ -1,6 +1,6 @@
 import { SavedResults } from "../services/saved-results.js";
 import { BrowsingMemory } from "../services/browsing-memory.js";
-import { EventTypes, MethodSchemas, newProgramId, originOfAddress, taskMatchesQuery, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
+import { EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, VectorError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@vector/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import type { PageService } from "../services/pages.js";
@@ -418,8 +418,10 @@ export function makeInvoker(s: Services) {
       case "routines.reconcile":
       case "routines.due":
       case "routines.alerts":
+      case "routines.export":
+      case "routines.import":
       case "routines.compare": {
-        const routineRead = method === "routines.list" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare";
+        const routineRead = method === "routines.list" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare" || method === "routines.export";
         if (client.external && (client.scope || !routineRead)) throw new VectorError("permission_denied", "Routines are managed in Aux.");
         if (method === "routines.list") return routines.list(params);
         if (method === "routines.get") return routines.get(params.routineId);
@@ -433,6 +435,24 @@ export function makeInvoker(s: Services) {
         if (method === "routines.reconcile") return routines.reconcile(params.routineRunId, params.outcome, params.note);
         if (method === "routines.alerts") return routines.alerts(params.limit);
         if (method === "routines.compare") return routines.compare(params.leftRunId, params.rightRunId);
+        if (method === "routines.export") return routines.exportRoutines(params.routineIds);
+        if (method === "routines.import") {
+          let shares = params.routines;
+          if (!shares) {
+            let raw: unknown;
+            try {
+              raw = JSON.parse(await readFile(params.path!, "utf8"));
+            } catch (error) {
+              throw new VectorError("invalid_params", `Couldn't read the routine file. ${error instanceof Error ? error.message : String(error)}`);
+            }
+            const envelope = RoutineShareEnvelopeSchema.safeParse(raw);
+            shares = envelope.success
+              ? envelope.data.routines
+              : (Array.isArray(raw) ? raw.map((item) => RoutineShareSchema.parse(item)) : []);
+            if (!shares.length) throw new VectorError("invalid_params", "That file doesn't contain routines. Export routines from Aux first.");
+          }
+          return routines.importRoutines(shares, params.workspaceId);
+        }
         return routines.due(params.now);
       }
       // pages

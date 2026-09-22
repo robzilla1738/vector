@@ -149,3 +149,48 @@ it("records cloud-capable missed runs honestly when no cloud starter exists", as
   expect(run.status).toBe("missed");
   expect(run.reason).toMatch(/desktop is closed/i);
 });
+
+it("round-trips routines through export and import without ids, deduping on repeat", () => {
+  const f = fixture();
+  const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check", parameters: [{ name: "topic", label: "Topic", value: "hosting" }] });
+  const envelope = f.routines.exportRoutines([routine.routineId]);
+  expect(envelope.format).toBe("aux-routine@1");
+  expect(envelope.routines).toHaveLength(1);
+  const share = envelope.routines[0]!;
+  expect(share).not.toHaveProperty("workspaceId");
+  expect(share).not.toHaveProperty("routineId");
+  expect(share.workspaceName).toBe("Research");
+  expect(share.title).toBe("Vendor check");
+  expect(share.siteOrigins).toContain("https://example.com");
+
+  // same workspace, same content → skipped as duplicate
+  const again = f.routines.importRoutines([share], f.workspace.workspaceId);
+  expect(again).toMatchObject({ ok: true, imported: 0, skipped: 1, routineIds: [] });
+
+  // a second workspace receives a fresh routine with its own id
+  const other = f.tasks.createWorkspace("Operations");
+  const imported = f.routines.importRoutines([share], other.workspaceId);
+  expect(imported.imported).toBe(1);
+  const clone = f.routines.get(imported.routineIds[0]!).routine;
+  expect(clone.routineId).not.toBe(routine.routineId);
+  expect(clone.revision).toBe(1);
+  expect(clone.title).toBe("Vendor check");
+  expect(clone.objective).toBe(routine.objective);
+  expect(clone.workspaceId).toBe(other.workspaceId);
+  expect(clone.parameters).toEqual(routine.parameters);
+});
+
+it("resolves a workspace by name or falls back, and rejects a named space that does not exist", () => {
+  const f = fixture();
+  const share = {
+    title: "Daily standup watch",
+    objective: "Collect the standup notes",
+    parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: true, cloudCapable: false, consecutive: false,
+    trigger: { kind: "manual" as const }, paused: false,
+  };
+  const byName = f.routines.importRoutines([{ ...share, workspaceName: "Research" }]);
+  expect(byName.imported).toBe(1);
+  expect(f.routines.get(byName.routineIds[0]!).routine.workspaceId).toBe(f.workspace.workspaceId);
+  expect(() => f.routines.importRoutines([{ ...share, title: "Other", workspaceName: "Nowhere" }])).toThrow(/No Space named/i);
+});

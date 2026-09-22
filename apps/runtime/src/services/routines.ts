@@ -5,7 +5,9 @@ import {
   type Routine,
   type RoutineAlert,
   type RoutineCompare,
+  RoutineShareSchema,
   type RoutineRun,
+  type RoutineShare,
   type RoutineTrigger,
 } from "@vector/contracts";
 import type { EventBus } from "../events.js";
@@ -173,6 +175,52 @@ export class RoutineService {
     this.persist(next);
     this.events.emit("routine.updated", { routine: next });
     return next;
+  }
+
+  /** Portable definitions for sharing or backup; ids, revisions and timestamps are dropped. */
+  exportRoutines(routineIds?: string[]): { format: "aux-routine@1"; routines: RoutineShare[] } {
+    const picked = routineIds?.length ? routineIds.map((id) => this.routine(id)) : this.list({ includeArchived: false, limit: 500 });
+    const workspaceNames = new Map<string, string>();
+    const nameOf = (workspaceId: string) => {
+      let name = workspaceNames.get(workspaceId);
+      if (name === undefined) {
+        const row = this.repo.db.prepare("SELECT name FROM workspaces WHERE workspace_id=?").get(workspaceId) as { name: string } | undefined;
+        name = row?.name ?? "";
+        workspaceNames.set(workspaceId, name);
+      }
+      return name;
+    };
+    return {
+      format: "aux-routine@1",
+      routines: picked.map((routine) => {
+        // parse drops the machine-local fields (ids, revision, timestamps)
+        const share = RoutineShareSchema.parse(routine);
+        const workspaceName = nameOf(routine.workspaceId);
+        return { ...share, ...(workspaceName ? { workspaceName } : {}) };
+      }),
+    };
+  }
+
+  /**
+   * Recreates shared routines in one Space. A routine is skipped when the
+   * target already holds one with the same title and objective — imports are
+   * safe to repeat.
+   */
+  importRoutines(routines: RoutineShare[], workspaceId?: string): { ok: true; imported: number; skipped: number; routineIds: string[] } {
+    const target = workspaceId ?? this.resolveWorkspace(routines[0]?.workspaceName);
+    this.requireWorkspace(target);
+    const existing = new Set(this.list({ workspaceId: target, includeArchived: true, limit: 500 }).map((r) => `${r.title}\n${r.objective}`));
+    const routineIds: string[] = [];
+    let skipped = 0;
+    for (const share of routines) {
+      const key = `${share.title}\n${share.objective}`;
+      if (existing.has(key)) { skipped += 1; continue; }
+      const { workspaceName: _ignored, ...definition } = share;
+      const created = this.create({ ...definition, workspaceId: target });
+      routineIds.push(created.routineId);
+      existing.add(key);
+    }
+    return { ok: true, imported: routineIds.length, skipped, routineIds };
   }
 
   async run(input: { routineId: string; expectedRevision: number; parameters?: Record<string, string> }, occurrence?: { occurrenceId: string; identity: string; scheduledFor: number }): Promise<RoutineRun> {
@@ -346,6 +394,17 @@ export class RoutineService {
     const row = this.repo.db.prepare("SELECT * FROM routine_runs WHERE routine_run_id=?").get(id) as Record<string, unknown> | undefined;
     if (!row) throw new VectorError("not_found", "That routine run was not found.");
     return parseRun(row);
+  }
+
+  private resolveWorkspace(workspaceName?: string): string {
+    if (!workspaceName) {
+      const first = this.repo.db.prepare("SELECT workspace_id FROM workspaces ORDER BY created_at,workspace_id LIMIT 1").get() as { workspace_id: string } | undefined;
+      if (first) return first.workspace_id;
+      throw new VectorError("not_found", "Create a Space before importing routines.");
+    }
+    const row = this.repo.db.prepare("SELECT workspace_id FROM workspaces WHERE name=?").get(workspaceName) as { workspace_id: string } | undefined;
+    if (row) return row.workspace_id;
+    throw new VectorError("not_found", `No Space named "${workspaceName}" — pass workspaceId to choose where the routines land.`);
   }
 
   private requireWorkspace(workspaceId: string) {

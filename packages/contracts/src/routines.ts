@@ -37,6 +37,14 @@ export const RoutineDefinitionSchema = z.object({
   trigger: RoutineTriggerSchema.default({ kind: "manual" }),
   paused: z.boolean().default(false),
 });
+/** Portable routine: everything needed to recreate it minus machine-local ids. */
+export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: true }).extend({
+  workspaceName: text.optional(),
+});
+export const RoutineShareEnvelopeSchema = z.object({
+  format: z.literal("aux-routine@1"),
+  routines: z.array(RoutineShareSchema).min(1).max(500),
+});
 export const RoutineSchema = RoutineDefinitionSchema.extend({
   routineId: text,
   revision: z.number().int().positive(),
@@ -108,6 +116,8 @@ export const RoutineCompareSchema = z.object({
 export type RoutineAlert = z.infer<typeof RoutineAlertSchema>;
 export type RoutineCompare = z.infer<typeof RoutineCompareSchema>;
 
+export type RoutineShare = z.infer<typeof RoutineShareSchema>;
+export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;
 export type RoutineTrigger = z.infer<typeof RoutineTriggerSchema>;
 export type Routine = z.infer<typeof RoutineSchema>;
