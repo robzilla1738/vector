@@ -1,5 +1,44 @@
 # Aux implementation progress
 
+## 2026-09-22 — Roadmap phases 0–2 execution batch
+
+- Dependencies: the roadmap review, the renderer method gate contract, the
+  loopback bearer boundary and the existing routine/workspace schemas.
+  Acceptance: `main` is green, lint is enforced in CI, the benchmark harness
+  validates offline, and daily-driver parity items that need no host decision
+  or founder Mac are shipped behind the same method-gate boundary.
+- PR 17 — green-main repair. Four renderer methods were missing from the
+  `RENDERER_METHODS` gate (features were dead in the packaged shell), and
+  conversation run panels rendered no Pause/Stop/Work-history controls because
+  `.conversation .run-status`/`.run-section` were hidden in CSS plus dead
+  context/artifact branches were removed from `Conversation.tsx`. 815/815 unit
+  tests pass; verified end-to-end in `dev:mock` (badge states, pause/resume,
+  takeover, retry, lazy artifact fetch).
+- PR 18 — oxlint in CI. `pnpm lint` runs in `runtime.yml` before typecheck;
+  all error-level findings fixed; ~400 warn-level findings (jsx-a11y
+  prefer-tag-over-role, exhaustive-deps, set-state-in-effect, refs) remain
+  deferred behind a `--max-warnings=400` ratchet.
+- PR 19 — daily-driver parity. Tracker/ad blocking on the shared browsing
+  profile (curated suffix-matched host list, `mainFrame` exempt, per-setting
+  toggle in Site Permissions), HTTPS certificate-error "proceed anyway" scoped
+  to the shell UI and held in memory only, and Chrome/Chromium/Edge bookmark
+  import (macOS + Linux profile discovery, folder-path preservation, dedupe).
+- PR 20 — portable routines. `routines.export` emits `aux-routine@1`
+  envelopes; `routines.import` accepts the envelope, a bare share array or a
+  file path, resolves the Space by name or explicit `workspaceId`, and dedupes
+  on title+objective for idempotent re-imports. Routines panel has
+  Export…/Import…. Export sits in the external-client read tier.
+- Benchmark harness: `tests/benchmarks/tasks/run.mjs --validate` checks the
+  manifest, scorer and fixtures offline (no `AI_GATEWAY_API_KEY`) and runs in
+  `runtime.yml`; real benchmark runs still need a paid model budget.
+- Host decision resolved without a build: the CEF layout probe passes
+  `-fsyntax-only` on Linux with the pinned SDK, and the documented macOS probe
+  rejection is platform-independent — the host stays Electron. CEF experiment
+  notes recorded under `experiments/cef-shell/`.
+- Remaining parity items documented as Electron-capped or deferred:
+  password/history import, Safari bookmarks, cosmetic ad filtering,
+  Safe-Browsing API, translate and autofill (see PR 19).
+
 ## Continuation — 2026-09-21 (agent path and loaded-page shell)
 
 This is the current shell and agent-navigation behavior. Earlier sections

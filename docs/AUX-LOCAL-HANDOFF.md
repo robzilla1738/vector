@@ -44,6 +44,12 @@ PR 13 remains an earlier handoff-only draft and is superseded.
   replacement tab.
 - Mid-program engine `capability_unsupported` after a completed write does not migrate
   or replay remaining writes. The origin is recorded so the next open uses Chromium.
+- In flight on top of main (PRs 17–20): green-main repair (renderer gate drift,
+  conversation run-panel controls), oxlint in CI with a warnings ratchet,
+  tracker/ad blocking + scoped HTTPS bypass + Chromium-family bookmark import,
+  portable `aux-routine@1` routine export/import, and an offline `--validate`
+  self-check for the task benchmark harness. The CEF host probe is resolved —
+  the shell stays Electron; macOS probe results are platform-independent.
 
 ### Current design: Aside parity with Aux branding
 
