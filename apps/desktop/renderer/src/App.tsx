@@ -96,6 +96,27 @@ export function App() {
       return;
     }
     const id = crypto.randomUUID();
+    if (action.action === "image") {
+      const state = useStore.getState();
+      const alt = action.image?.altText ? `\nAlt text: "${action.image.altText}"` : "";
+      const src = action.image?.srcURL ? `\nImage: ${action.image.srcURL}` : "";
+      state.setConversationDraft(id, `Help me understand this image.\n\nSource: ${action.title || action.url}\n${action.url}${src}${alt}`);
+      state.setConversationContext(id, action.pageId);
+      const open = () => {
+        state.openConversationDraft(id);
+        requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(".conversation-input textarea")?.focus());
+      };
+      if (action.image?.dataUrl) {
+        const image = action.image;
+        void call("conversations.images.add", { chatId: id, filename: "page-image.png", dataUrl: image.dataUrl, sourceUrl: image.srcURL })
+          .then(open)
+          .catch(error => { open(); errToast(error instanceof Error ? error : new Error(String(error))); });
+      } else {
+        if (action.image?.captureError) toast(`Aux couldn't attach that image (${action.image.captureError}). The conversation opened with its source instead.`);
+        open();
+      }
+      return;
+    }
     const instruction = action.action === "explain" ? "Explain this selected text clearly."
       : action.action === "summarize" ? action.selection ? "Summarize this selected text." : "Summarize this page and its key points."
       : "Help me understand this selected text.";

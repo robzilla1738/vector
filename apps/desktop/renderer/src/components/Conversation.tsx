@@ -104,6 +104,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [exporting, setExporting] = useState(false);
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
+  const [generatedResults, setGeneratedResults] = useState<ConversationArtifact[]>([]);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
   const [workspaceSaving] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
@@ -133,7 +134,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   activeChat.current = id;
   const documentBusy = useRef(false);
   const conversationRoot = useRef<HTMLElement>(null);
-  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
+  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setGeneratedResults([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
   const [taskTitle, setTaskTitle] = useState("");
   const [archived, setArchived] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -210,12 +211,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     let cancelled = false;
     if (!connected || attachmentSaving || contextSaving || workspaceSaving) { setContextLoading(false); return; }
     setContextError(""); setContextLoading(!!id);
-    if (!id) { setImages([]); setAttachments([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
+    if (!id) { setImages([]); setAttachments([]); setGeneratedResults([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
     void Promise.all([
       call<{ images: ConversationImage[] }>("conversations.images.get", { chatId: id }),
       call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
+      call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
       call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
-    ]).then(([imageReferences, documents, workspace]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); } })
+    ]).then(([imageReferences, documents, generated, workspace]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setGeneratedResults(generated.artifacts); setWorkspaceContext(workspace); } })
       .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setContextLoading(false); });
     return () => { cancelled = true; };
@@ -295,6 +297,16 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       if (activeChat.current === chatId) { setImages(result.images); setImagePreview(null); setContextRefresh(value => value + 1); }
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setImageOperations(count => Math.max(0,count - 1)); }
+  };
+  const toggleResult = async (artifactId: string, included: boolean) => {
+    if (!id || documentBusy.current) return;
+    documentBusy.current = true;
+    setAttachmentSaving(true);
+    try {
+      const value = await call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.toggle", { chatId: id, artifactId, included });
+      if (activeChat.current === id) setGeneratedResults(value.artifacts);
+    } catch (error) { errToast(error); }
+    finally { documentBusy.current = false; setAttachmentSaving(false); }
   };
   const changeDocument = async (attachmentId: string, included?: boolean) => {
     if (!id || documentBusy.current) return;
@@ -384,7 +396,11 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       <label><input type="checkbox" checked={item.included} disabled={attachmentSaving || contextLocked} onChange={event => void changeDocument(item.attachmentId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.sourceUrl ? `${new URL(item.sourceUrl).hostname} · ${item.sourceTruncated ? "Partial page" : "Page snapshot"}` : `${Math.max(1, Math.ceil(item.byteLength / 1024))} KB · ${item.excerpt || "Empty document"}`}</small></span></label>
       <button className="btn sm ghost" onClick={() => { setContextOpen(false); setImagePreview(null); setDocumentPreview(item.attachmentId); }}>Preview</button>
       <button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button>
-    </div>)}</div> : !images.length ? <p className="hint">Nothing attached. Add a document, a page, or an image.</p> : null}
+    </div>)}</div> : !images.length && !generatedResults.length ? <p className="hint">Nothing attached. Add a document, a page, or an image.</p> : null}
+    {generatedResults.length > 0 && <div className="conversation-document-list" aria-label="Results generated in this conversation">{generatedResults.map(item => <div className="conversation-document" key={item.artifactId}>
+      <label title={`Include “${item.filename}” as context for new replies`}><input type="checkbox" checked={item.included} disabled={attachmentSaving || contextLocked} onChange={event => void toggleResult(item.artifactId, event.target.checked)}/><span><b>{item.filename}</b><small>{`Result · ${Math.max(1, Math.ceil(item.byteLength / 1024))} KB · ${item.turnGoal || item.excerpt}`}</small></span></label>
+      <button className="btn sm ghost" onClick={() => { setContextOpen(false); setImagePreview(null); useStore.setState({ resultPreview: item.artifactId }); }}>Preview</button>
+    </div>)}</div>}
   </div> : null;
   if (id === "history") return <ConversationHistory/>;
   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending || (live && last?.status !== "needs_input")} onInsert={words => {

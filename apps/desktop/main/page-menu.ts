@@ -1,5 +1,6 @@
 import { clipboard, dialog, Menu, type WebContents, type MenuItemConstructorOptions } from "electron";
 import { mediaActionScript, type MediaAction } from "./media-action.js";
+import type { CapturedImage } from "./image-capture.js";
 import type { PageQuickAction } from "@aux/contracts";
 
 function canOpenTab(value: string) {
@@ -12,6 +13,8 @@ export function showPageMenu(wc: WebContents, p: Electron.ContextMenuParams, hoo
   openAsTab(url:string, referrer?:Electron.Referrer):void;
   onAudio():void;
   onPageAction?(action:Omit<PageQuickAction,"pageId">):void;
+  /** Capture the image at the click point as a bounded PNG before starting a conversation about it. */
+  captureImage?(x:number,y:number,srcURL:string,frame:Electron.WebFrameMain|undefined):Promise<CapturedImage>;
   /** Fill the clicked frame's form with saved personal info. */
   autofill?(frame:Electron.WebFrameMain):void;
   /** Vault credentials matching this page, resolved before menu build. */
@@ -31,6 +34,14 @@ export function showPageMenu(wc: WebContents, p: Electron.ContextMenuParams, hoo
       { label: "Summarize selection with Aux…", click: () => hooks.onPageAction?.({ ...source, action: "summarize" }) },
       { label: "Remember selection…", click: () => hooks.onPageAction?.({ ...source, action: "remember" }) },
     );
+    if (p.mediaType === "image" && p.srcURL && hooks.captureImage) {
+      const srcURL = p.srcURL;
+      t.push({ label: "Ask Aux about image…", click: () => {
+        void hooks.captureImage?.(p.x, p.y, srcURL, p.frame ?? wc.mainFrame)
+          .then(image => hooks.onPageAction?.({ ...source, action: "image", image }))
+          .catch(() => hooks.onPageAction?.({ ...source, action: "image", image: { srcURL, captureError: "The image capture failed unexpectedly." } }));
+      }});
+    }
     t.push({ type: "separator" });
   }
   const selectedText = p.selectionText.trim();

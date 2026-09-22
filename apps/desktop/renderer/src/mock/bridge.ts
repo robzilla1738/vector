@@ -119,6 +119,7 @@ export function installMockBridge(q: URLSearchParams) {
     }).sort((a,b)=>b.updatedAt-a.updatedAt||b.chatId.localeCompare(a.chatId));
   };
   const documents = new Map<string, {attachmentId:string;filename:string;sourceUrl?:string;sourceTruncated?:boolean;content:string;byteLength:number;createdAt:number;included:boolean}[]>();
+  const artifactChips = new Map<string, {artifactId:string;runId:string;filename:string;mediaType:string;excerpt:string;byteLength:number;createdAt:number;turnGoal:string;included:boolean}[]>();
   const documentList = (chatId:string) => ({chatId,attachments:(documents.get(chatId)??[]).map(({content,...item})=>({...item,excerpt:content.slice(0,1000)}))});
   let steps: Record<string, StepRecord[]> = {};
   const settings: Record<string, unknown> = {
@@ -232,7 +233,13 @@ export function installMockBridge(q: URLSearchParams) {
       case "runs.context.get": return {chatId:p.chatId,historyEnabled:true,entries:[]};
       case "results.search": return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture] : [];
       case "results.read": if(scenario!=="results"||p.artifactId!==resultFixture.artifactId)throw new Error("Saved result is unavailable.");return {...resultFixture,content:resultContent};
-      case "conversations.artifacts.get": return {chatId:p.chatId,artifacts:[]};
+      case "conversations.artifacts.get": return {chatId:p.chatId,artifacts:[...(artifactChips.get(String(p.chatId)) ?? [])]};
+      case "conversations.artifacts.toggle": {
+        const chatId=String(p.chatId);
+        const list=artifactChips.get(chatId)??[];
+        for(const item of list)if(item.artifactId===p.artifactId)item.included=!!p.included;
+        return {chatId,artifacts:[...list]};
+      }
       case "conversations.sources.get": return {chatId:p.chatId,sources:[]};
       case "conversations.workspace.get":
       case "conversations.workspace.set": {

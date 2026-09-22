@@ -6356,3 +6356,47 @@ being treated as blockers to the first visual/interaction review.
 - Verification: `npm run typecheck` clean (all projects + renderer);
   739 unit + 21 integration + 192 renderer green; oxlint 0 errors on
   touched files.
+
+## 2026-09-22 — CH-01–CH-04: conversation continuity, page-help actions, context chips, reading/search
+
+- **CH-01 (one conversation across presentations)** — verified already landed:
+  the Quick Ask popup, side rail and full-page conversation share one
+  `conversationId` and one composer draft. Drafts and page context persist in
+  `localStorage` (`conversation-drafts.ts`) and sync live across windows via
+  `storage` events with per-entry tombstones, so the mini popup, rail and full
+  page never fork text. Expand keeps the chat instead of starting a new one.
+- **CH-02 (page-help actions)** — selected-text actions (Ask/Explain/
+  Summarize/Remember) and keyboard + drag region capture already landed.
+  New: **right-click image → "Ask Aux about image…"** opens a conversation
+  seeded with the instruction and the image attached.
+  - `packages/contracts` — `PageQuickAction` gains `image` +
+    `image: { dataUrl?, srcURL?, altText?, captureError? }`.
+  - `apps/desktop/main/image-capture.ts` — `imageCaptureScript(x,y)` finds the
+    `<img>` under the click (nested overlays included) and renders it to a
+    bounded PNG (≤1600px, ≤3.8MB); tainted cross-origin canvases fall back to
+    `session.fetch` + `nativeImage` re-encode with one downscale pass.
+    Failures return honest `captureError`s, never silent blanks.
+  - `page-menu.ts` shows the item only for real `mediaType === "image"` with a
+    `srcURL`, same process gate as other quick actions; `native-views.ts`
+    wires capture through the page's own frame — runtime-owned/private pages
+    stay out of the shared quick-action path.
+  - `App.tsx` attaches via `conversations.images.add` on a fresh chatId, seeds
+    the draft with instruction + source/alt provenance, and toasts an honest
+    note when capture fails (the conversation still opens with its source).
+- **CH-03 (context chips)** — pages/documents/images/workspace memory already
+  attach; new: **generated results are context chips**. The context panel now
+  lists `conversations.artifacts.get` entries with include toggles wired to
+  `conversations.artifacts.toggle` (runtime `conversationArtifacts:` selection
+  already enforced `included` in `inheritedContext`) plus a Preview button
+  that opens `SavedResultPreview`. Mock bridge learned `artifacts.toggle`.
+- **CH-04 (typography / continuation / search)** — verified already landed:
+  `AnswerMarkdown` (headings/tables/code), conversation sources and result
+  previews, the Home "recent work" continuation list, and Palette ⌘K search
+  across chats/tasks/history/memory/results with `all|tabs|work|pages`
+  type filters.
+- Tests: `image-capture` (13 — script happy path, nested overlay, no image,
+  unloaded, tainted→fetch fallback, oversize refusal, fetch shrink +
+  failure propagation, protected-source refusal).
+- Verification: `npm run typecheck` clean (all projects + renderer);
+  13 new unit tests + 59 existing conversation/contracts/renderer tests
+  green; oxlint 0 errors on touched files.

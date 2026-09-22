@@ -323,7 +323,14 @@ export type Download = z.infer<typeof DownloadSchema>;
 
 export const PageQuickActionSchema = z.object({
   pageId: z.string(), url: z.string(), title: z.string(),
-  action: z.enum(["ask", "explain", "summarize", "remember"]),
+  action: z.enum(["ask", "explain", "summarize", "remember", "image"]),
   selection: z.string().max(12000), truncated: z.boolean(),
+  /** Present only for image actions — a PNG snapshot captured from the page, or a capture error. */
+  image: z.object({
+    dataUrl: z.string().max(4_500_000).optional(),
+    srcURL: z.string().max(4096).optional(),
+    altText: z.string().max(600).optional(),
+    captureError: z.string().max(500).optional(),
+  }).optional(),
 });
 export type PageQuickAction = z.infer<typeof PageQuickActionSchema>;

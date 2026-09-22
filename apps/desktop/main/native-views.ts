@@ -1,6 +1,7 @@
 import { pageShortcut } from "./page-shortcuts.js";
 import { NAV_GESTURE_BINDING, NAV_GESTURE_WORLD, navGestureScript } from "./page-nav-gesture.js";
 import { showPageMenu } from "./page-menu.js";
+import { captureImageAt } from "./image-capture.js";
 import { installCredentialWatch } from "./credential-detect.js";
 import { installCosmeticFilter } from "./cosmetic-filter.js";
 import { popupCommand } from './popup-commands.js';
@@ -240,6 +241,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
       openAsTab: (url, referrer) => hooks.openAsTab(url, { windowId: entry.windowId, referrer }),
       onAudio: () => hooks.onAudio?.(entry.pageId, {muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
       onPageAction: hooks.onPageAction && !entry.runtimeOwned ? action => hooks.onPageAction?.({pageId:entry.pageId,...action}) : undefined,
+      captureImage: hooks.onPageAction && !entry.runtimeOwned ? (x, y, srcURL, frame) => captureImageAt(entry.view.webContents, frame, { x, y, srcURL }) : undefined,
       autofill: hooks.onAutofill ? f => hooks.onAutofill?.(f) : undefined,
       translatePage: hooks.onTranslatePage ? () => hooks.onTranslatePage?.(entry.pageId) : undefined,
       translateSelection: hooks.onTranslateSelection ? (text, x, y) => hooks.onTranslateSelection?.(entry.pageId, text, x, y) : undefined,
