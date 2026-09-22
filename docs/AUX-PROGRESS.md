@@ -6436,3 +6436,45 @@ being treated as blockers to the first visual/interaction review.
 - Verification: `npm run typecheck` clean; `agent-vault` 6/6, `routines`
   7/7, `human-vault` 21/21, `image-capture` 13/13 green; oxlint 0 errors
   on touched files (pre-existing warnings only).
+
+## 2026-09-22 — WS workstream: select-element edit requests + thin plugins
+
+- **Select visible region to request edit.** `pages.pickElement`
+  (runtime method, renderer-gated, external-blocked) injects a
+  self-cleaning picker overlay through the page's attached driver and
+  resolves a `PickedElement` summary — tag, id, classes, text, role,
+  aria-label, href, ancestor selector, bounding rect. The picked click
+  is captured and prevented so no navigation fires; Escape or the
+  timeout resolves without a pick; agent-controlled pages refuse.
+  In `ProjectCommandPanel` preview diagnostics, "Request edit…" runs
+  the pick on the linked preview tab, collects the requested change,
+  and starts the task with the pick + instruction as run context —
+  the task binding and revision receipt stay intact.
+- **Thin plugins.** `aux-plugin@1` manifests bundle portable routines
+  (`RoutineShare`). New `plugins` table (schema v4) records each
+  install plus the routine ids it created; same-name active installs
+  in a space conflict. `plugins.inspect` previews a bundle;
+  `plugins.install` recreates its routines through the existing
+  deduplicating import path; `plugins.uninstall` archives exactly the
+  routines that install added. Connections → Plugins tab carries the
+  space picker, bundle preview, install/list/uninstall. External
+  clients are blocked — plugins are managed inside Aux.
+- **Renderer gate fix.** `conversations.artifacts.toggle` was invoked
+  by the context panel but absent from `RENDERER_METHODS` — the
+  runtime handler existed, so toggling failed with
+  method_not_allowed. Gate added; caught by the renderer-methods
+  contract test.
+- **Already present (verified, no gap):** dirty-checkout preservation
+  via isolated persisted checkouts, local-request waits
+  (`needs_input` → `localRequest` alert + "Checkpoint & continue
+  locally"), cloud continuation with task/source-tree/lease identity,
+  durable results, reconnect/export/cleanup. Exact remote-browser
+  takeover remains documented unavailable.
+- Runtime `tsconfig` now compiles with DOM lib for serialized in-page
+  functions (`pickElementInPage` is injected via `fn.toString()`).
+- Tests: `element-picker` +6 (click pick, Escape cancel, timeout,
+  click-prevention, shadow DOM, describe), `plugins` +5 (inspect,
+  format rejection, install+list, same-name conflict,
+  uninstall+reinstall dedupe), `database-migration` updated for v4.
+- Verification: `pnpm build` + `npm run typecheck` clean; full
+  `npx vitest run` green; oxlint 0 errors on touched files.
