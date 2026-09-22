@@ -4,6 +4,7 @@ export { openDb, applyMigrations } from "./store/db.js";
 export { TaskService } from "./services/tasks.js";
 export { VaultService } from "./services/vault.js";
 export { RoutineService, nextScheduledTime, previousScheduledTime } from "./services/routines.js";
+export { PluginService } from "./services/plugins.js";
 export { TaskEvidenceService } from "./services/task-evidence.js";
 export { AgentConnectionService } from "./services/agent-connections.js";
 export { EventBus } from "./events.js";

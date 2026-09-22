@@ -210,10 +210,16 @@ CREATE TRIGGER history_fts_au AFTER UPDATE ON history BEGIN
   INSERT INTO history_fts(history_fts,rowid,url,title) VALUES('delete',old.rowid,old.url,old.title);
   INSERT INTO history_fts(rowid,url,title) VALUES(new.rowid,new.url,new.title);
 END;
+CREATE TABLE plugins(
+  plugin_id TEXT PRIMARY KEY, name TEXT NOT NULL, version TEXT, description TEXT,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+  routine_ids TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL, uninstalled_at INTEGER);
+CREATE INDEX idx_plugins_workspace ON plugins(workspace_id,uninstalled_at);
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -240,6 +246,15 @@ const MIGRATIONS: Record<number, string[]> = {
     `ALTER TABLE bookmarks ADD COLUMN read_at REAL`,
     `CREATE TABLE bookmark_articles(
        url TEXT PRIMARY KEY, json TEXT NOT NULL, saved_at REAL NOT NULL)`,
+  ],
+  // v3 → v4: thin plugins — installed capability bundles and the routines each created.
+  3: [
+    `CREATE TABLE plugins(
+       plugin_id TEXT PRIMARY KEY, name TEXT NOT NULL, version TEXT, description TEXT,
+       workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+       routine_ids TEXT NOT NULL DEFAULT '[]',
+       created_at INTEGER NOT NULL, uninstalled_at INTEGER)`,
+    `CREATE INDEX idx_plugins_workspace ON plugins(workspace_id,uninstalled_at)`,
   ],
 };
 

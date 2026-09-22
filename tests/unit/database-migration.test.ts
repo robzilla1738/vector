@@ -23,7 +23,7 @@ describe("schema versioning", () => {
   it("initializes a fresh profile with every table, indexes, and the Aux marker", () => {
     const { directory, path } = fixture();
     const db = track(openDb(path));
-    expect(version(db)).toBe(3);
+    expect(version(db)).toBe(4);
     expect((db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value: string }).value).toBe("aux");
     const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all() as { name: string }[];
     for (const table of [
@@ -34,7 +34,7 @@ describe("schema versioning", () => {
       "operation_reconciliations", "action_intents", "action_transitions", "workspaces",
       "tasks", "task_revisions", "task_evidence", "criterion_reviews", "agent_connections",
       "vault_items", "vault_grants", "vault_access", "routines", "routine_revisions",
-      "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts",
+      "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts", "plugins",
     ]) {
       expect(tables.map(row => row.name), table).toContain(table);
     }
@@ -85,9 +85,9 @@ describe("schema versioning", () => {
   it("refuses newer Aux schemas without modifying them", () => {
     const { directory, path } = fixture();
     const newer = track(openDb(path));
-    newer.exec("PRAGMA user_version=4; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')");
-    expect(() => openDb(path)).toThrow(/schema 4.*newer/);
-    expect(version(newer)).toBe(4);
+    newer.exec("PRAGMA user_version=5; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')");
+    expect(() => openDb(path)).toThrow(/schema 5.*newer/);
+    expect(version(newer)).toBe(5);
     expect((newer.prepare("SELECT value FROM future").get() as { value: string }).value).toBe("keep");
     expect(readdirSync(directory).filter(name => name !== "state.sqlite" && !name.startsWith("state.sqlite-"))).toEqual([]);
   });
@@ -107,11 +107,11 @@ describe("schema versioning", () => {
     const db = track(openDb(path));
     new Repo(db).addBookmark("https://kept.test/", "Kept");
     // Simulates a future upgrade path: statements + version stamp commit together.
-    applyMigrations(db, ["ALTER TABLE kv ADD COLUMN note TEXT", "PRAGMA user_version = 4"]);
-    expect(version(db)).toBe(4);
+    applyMigrations(db, ["ALTER TABLE kv ADD COLUMN note TEXT", "PRAGMA user_version = 5"]);
+    expect(version(db)).toBe(5);
     expect(new Repo(db).listBookmarks()).toMatchObject([{ url: "https://kept.test/", title: "Kept" }]);
     expect(() => applyMigrations(db, ["THIS IS NOT SQL"])).toThrow();
-    expect(version(db)).toBe(4);
+    expect(version(db)).toBe(5);
   });
 
   it("migrates v1 databases to v2 and backfills the history index", () => {
@@ -129,7 +129,8 @@ describe("schema versioning", () => {
     `);
     legacy.close();
     const db = track(openDb(path));
-    expect(version(db)).toBe(3);
+    expect(version(db)).toBe(4);
+    expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugins'").get()).toBeDefined();
     const repo = new Repo(db);
     expect(repo.listHistory()).toHaveLength(2);
     expect(repo.listHistory("kept")).toMatchObject([{ url: "https://kept.example/", title: "Kept Page" }]);

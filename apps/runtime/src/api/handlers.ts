@@ -31,6 +31,7 @@ import {CloudEnvironmentService} from '../services/cloud-environments.js';
 import {cancelRuntimeRestore,createRuntimeBackup,listRuntimeBackups,backupRetention,setBackupRetention,stageRuntimeRestore} from '../services/runtime-backup.js';
 import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
+import { PluginService } from "../services/plugins.js";
 import { TranslateService } from "../services/translate.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
@@ -95,6 +96,7 @@ export function makeInvoker(s: Services) {
     const run = await s.runs.start({ ...prepared, goal: substituteRoutine(routine.objective, parameters), pageIds, accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined });
     return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
   });
+  const plugins = new PluginService(s.repo, routines);
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{
     const criteria=new Set(task.criteria.map(item=>item.criterionId));
     if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new AuxError('conflict','The cloud task result references a criterion outside this task revision.');
@@ -198,6 +200,18 @@ export function makeInvoker(s: Services) {
         if (client.external) throw new AuxError("permission_denied", "Connections can only be revoked in Aux Settings");
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
         return s.agentConnections.revoke(params.connectionId);
+      case "plugins.inspect":
+        if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
+        return plugins.inspect(params.path);
+      case "plugins.install":
+        if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
+        return plugins.install(params.path, params.workspaceId);
+      case "plugins.list":
+        if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
+        return plugins.list(params);
+      case "plugins.uninstall":
+        if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
+        return plugins.uninstall(params.pluginId);
       case "tasks.receipt": return taskEvidence.receipt(params.taskId, params.revision);
       case "tasks.verifyCriterion": return taskEvidence.verifyCriterion(params);
       case "tasks.replaceAgent": {

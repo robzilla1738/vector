@@ -33,7 +33,7 @@ import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
@@ -579,6 +579,11 @@ export const MethodSchemas = {
     path: z.string().trim().min(1).max(4096).optional(),
     workspaceId: id.optional(),
   }).strict().refine(value => (value.routines === undefined) !== (value.path === undefined), { message: "Pass routines or a file path, not both" }),
+
+  "plugins.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
+  "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
+  "plugins.list": z.object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) }).strict(),
+  "plugins.uninstall": z.object({ pluginId: id }).strict(),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -917,6 +922,23 @@ export const ResultSchemas = {
     imported: z.number().int().nonnegative(),
     skipped: z.number().int().nonnegative(),
     routineIds: z.array(id),
+  }),
+  "plugins.inspect": z.object({
+    name: z.string(),
+    version: z.string().optional(),
+    description: z.string().optional(),
+    routineCount: z.number().int().nonnegative(),
+    routineTitles: z.array(z.string()),
+  }),
+  "plugins.install": z.object({
+    plugin: PluginSchema,
+    imported: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+  }),
+  "plugins.list": z.array(PluginSchema),
+  "plugins.uninstall": z.object({
+    plugin: PluginSchema,
+    archivedRoutines: z.number().int().nonnegative(),
   }),
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),

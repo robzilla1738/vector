@@ -20,6 +20,7 @@ import { I } from "./icons";
 import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from "../ui-font-size";
 import { SitePermissions } from "./SitePermissions";
 import { ExternalAgents } from "./ExternalAgents";
+import { PluginsPanel } from "./PluginsPanel";
 import { Extensions } from "./Extensions";
 import { VaultSettings } from "./VaultSettings";
 import { searchSettings, type SettingsDestination } from "../settings-search";
@@ -83,7 +84,7 @@ function Field({ label, hint, children }: { label: string; hint?: React.ReactNod
   );
 }
 
-type ConnectionTab = "Models" | "Services" | "Agents" | "Vault";
+type ConnectionTab = "Models" | "Services" | "Agents" | "Vault" | "Plugins";
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
   const initialCategory = useRef(useStore.getState().settingsCategory).current;
@@ -317,7 +318,7 @@ export function Settings() {
         </div>
 
         {!searching && category === "Connections" && <div className="settings-connection-tabs" role="tablist" aria-label="Connection types" onKeyDown={event => moveListFocus(event, '[role="tab"]', false)}>
-          {(["Models", "Services", "Vault", "Agents"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
+          {(["Models", "Services", "Vault", "Agents", "Plugins"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
         </div>}
         <div className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
         {searching && <div className="settings-search-results">
@@ -432,6 +433,7 @@ export function Settings() {
         {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
         </section><section tabIndex={-1} id="connection-panel-Vault" role="tabpanel" aria-labelledby="connection-tab-Vault" hidden={!visible("Vault")}><VaultSettings /></section>
         <section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
+        <section tabIndex={-1} id="connection-panel-Plugins" role="tabpanel" aria-labelledby="connection-tab-Plugins" hidden={!(category === "Connections" && connectionTab === "Plugins")}><PluginsPanel /></section>
         <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>
 
         <section className="appearance-preferences" hidden={!visible("Appearance")}><div className="drawer-section">Appearance</div>

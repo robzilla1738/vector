@@ -214,6 +214,13 @@ export function installMockBridge(q: URLSearchParams) {
       }
       case "workspaces.memory.search": return [...memoryNotes.values()].filter(memory=>[memory.content,...(memory.items??[]).map(item=>`${item.content} ${item.sourceUrl??""}`)].join("\n").toLowerCase().includes(String(p.query).toLowerCase())||spaces.find(space=>space.workspaceId===memory.workspaceId)?.name.toLowerCase().includes(String(p.query).toLowerCase())).map(memory=>({workspaceId:memory.workspaceId,name:spaces.find(space=>space.workspaceId===memory.workspaceId)?.name??"Space",excerpt:memory.content.slice(0,240),enabled:memory.enabled}));
       case "workspaces.list": return spaces.map(space => ({ workspaceId: space.workspaceId, name: space.name, createdAt: 0 }));
+      case "plugins.inspect":
+        return { name: "Example bundle", version: "1.0", routineCount: 1, routineTitles: ["Weekly digest"] };
+      case "plugins.install":
+        return { plugin: { pluginId: "plg-1", name: "Example bundle", workspaceId: p.workspaceId, routineIds: [], installedAt: Date.now() }, imported: 0, skipped: 1 };
+      case "plugins.list": return [];
+      case "plugins.uninstall":
+        return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
       case "tasks.list": return [];
       case "conversations.prepared": return [];
       case "conversations.list": {
