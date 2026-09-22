@@ -116,12 +116,13 @@ function fakeWebContents(fetchImpl?: (url: string) => Promise<Response>) {
 }
 
 function fakeImage(png: Buffer | (() => Buffer)) {
-  return {
+  const img = {
     isEmpty: () => false,
     getSize: () => ({ width: 1024, height: 768 }),
     toPNG: () => (typeof png === "function" ? png() : png),
-    resize: vi.fn(function (this: unknown) { return this; }),
+    resize: vi.fn((_size: { width: number; height: number; quality?: string }) => img),
   };
+  return img;
 }
 
 describe("captureImageAt", () => {
@@ -151,13 +152,13 @@ describe("captureImageAt", () => {
     const small = Buffer.from("small-png");
     const inner = fakeImage(small);
     const outer = fakeImage(big);
-    outer.resize = vi.fn(() => inner);
+    outer.resize.mockReturnValue(inner);
     electron.nativeImage.createFromBuffer.mockReturnValue(outer);
     const wc = fakeWebContents();
     const frame = { executeJavaScript: vi.fn(async () => ({ error: "tainted", srcURL: target.srcURL })) };
     const result = await captureImageAt(wc as never, frame as never, target);
     expect(outer.resize).toHaveBeenCalledOnce();
-    const args = outer.resize.mock.calls[0]![0] as { width: number; height: number };
+    const args = outer.resize.mock.calls[0]![0];
     expect(args.width).toBeGreaterThan(0);
     expect(args.width).toBeLessThan(1024);
     expect(result.dataUrl).toBe(`data:image/png;base64,${small.toString("base64")}`);

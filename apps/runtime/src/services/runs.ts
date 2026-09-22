@@ -592,6 +592,8 @@ export class RunService {
     contextSnapshot?: boolean;
     chatId?: string;
     retryOfRunId?: string;
+    /** routine-declared account boundary stamped on the run */
+    accountLabels?: string[];
   }): Promise<Run> {
     if (opts.defaultWorkspaceId && !opts.taskId && !opts.contextSnapshot) {
       opts = { ...opts, chatId: opts.chatId ?? randomUUID() };
@@ -654,6 +656,7 @@ export class RunService {
       contextImageArtifactIds,
       contextWorkspaceId,
       contextWorkspaceRevision,
+      accountLabels: opts.accountLabels,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
     });
   }

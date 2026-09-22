@@ -2451,6 +2451,12 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: 999px; }
 .routines-heading h4 { font-size: var(--fs-lg); font-weight: 500; margin-bottom: 4px; }
 .task-content details.routine-safety { padding: 0; color: var(--ink-2); font-size: var(--fs-xs); }
 .routine-safety summary { cursor: pointer; }
+.task-content details.routine-accounts { padding: 0; color: var(--ink-2); font-size: var(--fs-xs); }
+.routine-accounts summary { cursor: pointer; }
+.routine-accounts p { margin: 8px 0; }
+.routine-account { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.routine-account small { color: var(--ink-3); }
+.routine-accounts .btn { margin-top: 8px; }
 .routine-search { display: flex; align-items: center; gap: 8px; width: min(320px, 100%); color: var(--ink-2); }
 .routine-search input { width: 100%; min-width: 0; padding: 6px; border: 0; background: transparent; }
 .routine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 16px; }

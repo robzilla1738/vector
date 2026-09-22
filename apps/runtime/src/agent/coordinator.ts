@@ -123,6 +123,8 @@ export class RunCoordinator {
     contextWorkspaceRevision?: number;
     chatId?: string;
     retryOfRunId?: string;
+    /** routine-declared account boundary stamped on the run */
+    accountLabels?: string[];
   }): Promise<Run> {
     const leaseKey = opts.taskId ? `task:${opts.taskId}` : undefined;
     if (leaseKey) {
@@ -150,6 +152,7 @@ export class RunCoordinator {
         chatId: opts.chatId,
         taskId: opts.taskId,
         taskRevision: opts.taskRevision,
+        accountLabels: opts.accountLabels,
         retryOfRunId: opts.retryOfRunId,
         implementation: opts.modelId ? `agent:${opts.modelId}` : "agent",
       },

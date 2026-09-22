@@ -138,3 +138,46 @@ it("renews an expired grant without duplicating the secret", async () => {
   expect([...secrets.values()].filter(value => value === "s3cret-value")).toHaveLength(1);
   expect(vault.history(item.itemId).some(row => row.detail?.includes("renewed without duplicating"))).toBe(true);
 });
+
+it("scopes the visible grants to a run's declared account labels", async () => {
+  const { vault } = memoryVault();
+  vault.lock("passphrase-ok");
+  vault.unlock("passphrase-ok");
+  const work = await vault.save({ label: "Work login", origin: "https://example.com", secret: "work-secret", accountLabel: "Work" });
+  const personal = await vault.save({ label: "Personal login", origin: "https://example.com", secret: "personal-secret", accountLabel: "Personal" });
+  const unlabeled = await vault.save({ label: "Old login", origin: "https://example.com", secret: "old-secret" });
+  const grants = {
+    work: vault.grant({ itemId: work.itemId, origin: "https://example.com" }),
+    personal: vault.grant({ itemId: personal.itemId, origin: "https://example.com" }),
+    unlabeled: vault.grant({ itemId: unlabeled.itemId, origin: "https://example.com" }),
+  };
+
+  // No declared boundary — every grant for the origin is visible (unchanged behavior).
+  expect(vault.grants({ origin: "https://example.com" }).map(grant => grant.grantId).sort())
+    .toEqual([grants.work.grantId, grants.personal.grantId, grants.unlabeled.grantId].sort());
+  expect(vault.grants({ origin: "https://example.com", accountLabels: [] })).toHaveLength(3);
+
+  // A declared boundary shows only its labeled accounts; unlabeled grants are never in scope.
+  expect(vault.grants({ origin: "https://example.com", accountLabels: ["Work"] }).map(grant => grant.grantId))
+    .toEqual([grants.work.grantId]);
+  expect(vault.grants({ origin: "https://example.com", accountLabels: ["Work", "Personal"] }).map(grant => grant.grantId).sort())
+    .toEqual([grants.work.grantId, grants.personal.grantId].sort());
+  expect(vault.grants({ origin: "https://example.com", accountLabels: ["NotSaved"] })).toEqual([]);
+});
+
+it("refuses a fill whose grant is outside the run's declared account labels", async () => {
+  const { vault } = memoryVault();
+  vault.lock("passphrase-ok");
+  vault.unlock("passphrase-ok");
+  const work = await vault.save({ label: "Work login", origin: "https://example.com", secret: "work-secret", accountLabel: "Work" });
+  const unlabeled = await vault.save({ label: "Old login", origin: "https://example.com", secret: "old-secret" });
+  const workGrant = vault.grant({ itemId: work.itemId, origin: "https://example.com" });
+  const oldGrant = vault.grant({ itemId: unlabeled.itemId, origin: "https://example.com" });
+  const fill = { pageId: "p1", origin: "https://example.com", target: "r1" };
+
+  await expect(vault.revealForFill(oldGrant.credentialRef, { ...fill, accountLabels: ["Work"] }))
+    .rejects.toMatchObject({ code: "permission_denied" });
+  await expect(vault.revealForFill(workGrant.credentialRef, { ...fill, accountLabels: ["Work"] }))
+    .resolves.toBe("work-secret");
+  await expect(vault.revealForFill(oldGrant.credentialRef, fill)).resolves.toBe("old-secret");
+});

@@ -1070,11 +1070,15 @@ export class PageService {
           pageOrigin: origin,
           taskId: ctx.taskId ?? (ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
           resolveCredential: ctx.resolveCredential ?? (this.deps.vault
-            ? (ref, info) => this.deps.vault!.revealForFill(ref, {
-                ...info,
-                origin: info.origin || origin,
-                taskId: info.taskId ?? ctx.taskId ?? (ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
-              })
+            ? (ref, info) => {
+                const runConfig = ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config : undefined;
+                return this.deps.vault!.revealForFill(ref, {
+                  ...info,
+                  origin: info.origin || origin,
+                  taskId: info.taskId ?? ctx.taskId ?? runConfig?.taskId,
+                  accountLabels: runConfig?.accountLabels,
+                });
+              }
             : undefined),
           observe: (req) => this.observe(pageId, req).then((o) => o.content),
           onEmit: (label, value) =>

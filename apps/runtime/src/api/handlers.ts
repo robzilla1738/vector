@@ -92,7 +92,7 @@ export function makeInvoker(s: Services) {
     });
     if (!pageIds.length) throw new AuxError("conflict", "Attach an open browser tab to the source task before this routine can run.");
     const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);
-    const run = await s.runs.start({ ...prepared, goal: substituteRoutine(routine.objective, parameters), pageIds });
+    const run = await s.runs.start({ ...prepared, goal: substituteRoutine(routine.objective, parameters), pageIds, accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined });
     return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
   });
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{

@@ -258,7 +258,7 @@ export async function planTurn(
   const plannerCall = async (): Promise<PlanChunk> => {
     const origin = originOfAddress(obs.content.url);
     const credentialGrants = origin && s.self.deps.vault
-      ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
+      ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin, accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
       : undefined;
     const prompt = buildPlannerPrompt({
       goal: s.run.goal,
@@ -608,7 +608,7 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
         context: s.run.config?.context,
         budget: { tokens: 3000 },
         credentialGrants: originOfAddress(fresh.content.url) && s.self.deps.vault
-          ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin: originOfAddress(fresh.content.url) }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
+          ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin: originOfAddress(fresh.content.url), accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
           : undefined,
       }),
       schema: RepairChunkSchema,

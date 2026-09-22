@@ -128,6 +128,8 @@ export const RunSchema = z.object({
       chatId: z.string().optional(),
       taskId: z.string().optional(),
       taskRevision: z.number().int().positive().optional(),
+      /** routine-declared account boundary — when non-empty, only vault grants with a matching accountLabel are visible to this run */
+      accountLabels: z.array(z.string().min(1).max(120)).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */
       retryOfRunId: z.string().optional(),
       /** AUX-017 durable coordinator snapshot. */

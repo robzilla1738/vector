@@ -197,13 +197,20 @@ export class VaultService {
     return rows.map(rowGrant);
   }
 
-  grants(filter: { taskId?: string; origin?: string } = {}): VaultGrant[] {
+  grants(filter: { taskId?: string; origin?: string; accountLabels?: string[] } = {}): VaultGrant[] {
     const now = Date.now();
     let sql = "SELECT * FROM vault_grants WHERE revoked_at IS NULL AND expires_at > ?";
     const args: Array<string | number> = [now];
     if (filter.taskId) { sql += " AND (task_id IS NULL OR task_id=?)"; args.push(filter.taskId); }
     if (filter.origin) { sql += " AND origin=?"; args.push(filter.origin); }
-    return (this.repo.db.prepare(`${sql} ORDER BY created_at DESC`).all(...args) as Record<string, unknown>[]).map(rowGrant);
+    const all = (this.repo.db.prepare(`${sql} ORDER BY created_at DESC`).all(...args) as Record<string, unknown>[]).map(rowGrant);
+    // A declared account boundary (from a routine) hides every grant that is
+    // not one of its labeled accounts — unlabeled grants are never in scope.
+    if (filter.accountLabels?.length) {
+      const allowed = new Set(filter.accountLabels);
+      return all.filter(grant => !!grant.accountLabel && allowed.has(grant.accountLabel));
+    }
+    return all;
   }
 
   history(itemId?: string, limit = 50): VaultAccessRecord[] {
@@ -241,7 +248,7 @@ export class VaultService {
     return { ok: true };
   }
 
-  async revealForFill(credentialRef: string, info: { pageId: string; runId?: string; origin: string; target?: string; taskId?: string }): Promise<string> {
+  async revealForFill(credentialRef: string, info: { pageId: string; runId?: string; origin: string; target?: string; taskId?: string; accountLabels?: string[] }): Promise<string> {
     this.assertUnlocked();
     this.requireNative();
     const origin = originOfAddress(info.origin);
@@ -265,6 +272,10 @@ export class VaultService {
     if (grant.origin !== origin || item.origin !== origin) {
       this.record("denied", { itemId: item.itemId, grantId: grant.grantId, origin, taskId: info.taskId, actor: "runtime", detail: "origin mismatch" });
       throw new AuxError("conflict", "This credential is for a different site.");
+    }
+    if (info.accountLabels?.length && !(grant.accountLabel && info.accountLabels.includes(grant.accountLabel))) {
+      this.record("denied", { itemId: item.itemId, grantId: grant.grantId, origin, taskId: info.taskId, actor: "runtime", detail: "account outside the declared boundary" });
+      throw new AuxError("permission_denied", "This credential is outside the labeled accounts this run declared. Update the account selection and run again.");
     }
     if (grant.taskId && grant.taskId !== info.taskId) {
       this.record("denied", { itemId: item.itemId, grantId: grant.grantId, origin, taskId: info.taskId, actor: "runtime", detail: "task mismatch" });

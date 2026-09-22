@@ -44,7 +44,7 @@ export interface ExecContext {
    */
   journaled?: boolean;
   /** resolve opaque vault grants immediately before fill; never persist the secret */
-  resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string }) => Promise<string>;
+  resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string; accountLabels?: string[] }) => Promise<string>;
   pageOrigin?: string;
 }
 
