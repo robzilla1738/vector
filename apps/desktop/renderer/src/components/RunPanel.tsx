@@ -209,7 +209,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         <h2>{run.goal}</h2>
       </div>
 
-      {!conversation && <div className="run-status nums">
+      <div className="run-status nums">
         {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {!conversation && <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>}
         {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
@@ -234,7 +234,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
                 ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>
                 : null)}
         </span>
-      </div>}
+      </div>
       {!live && latestConversationTurn && !run.config?.taskId && !page && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
         <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</button>
@@ -317,7 +317,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </section>
       )}
 
-      {!conversation && <section className="run-section">
+      <section className="run-section">
         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{I.right}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>
@@ -325,7 +325,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
         </button>
         {showSteps && (!!steps?.length || live) && <StepTimeline compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={(id) => void inspect(id)} />}
-      </section>}
+      </section>
 
       {(obs || observationArtifact) && (!conversation || showSteps) && (
         <section className="run-section">
