@@ -20,6 +20,8 @@ try {
  const first=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
  await page.evaluate(url=>{window.__opening=window.aux.invoke('pages.open',{url,activate:true});},base+'/slow');
  await poll(page,async slow=>{const ws=await window.aux.invoke('workspace.get',{});const tab=ws.pages.find(p=>p.url===slow);return tab&&ws.activePageId===tab.pageId;},base+'/slow');
+ // selection may land before the request does; it must never wait for the response to finish
+ for(let i=0;i<100&&!pendingResponse;i++)await new Promise(r=>setTimeout(r,50));
  assert.ok(pendingResponse && !pendingResponse.writableEnded,'selection happens while response remains open');
  await page.keyboard.press('Meta+d');
  await poll(page,async url=>(await window.aux.invoke('bookmarks.list',{})).some(b=>b.url===url),base+'/slow');
