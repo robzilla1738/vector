@@ -1,22 +1,19 @@
 // Native Reader view qualification against a synthetic article; no external accounts.
-import {createRequire} from 'node:module';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
+import { launchAux } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-reader-'));
 const paragraph='A good reading space lets the article speak clearly. Its typography supports a comfortable pace, with enough room between paragraphs to follow the argument. Browser controls remain available without competing for attention. The original page should preserve the work you have already done. ';
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(req.url==='/empty'?'<title>Empty fixture</title><button>Sign in</button>':`<title>A quieter place to read</title><meta name="author" content="Aux editorial fixture"><nav>NOISY NAVIGATION</nav><article><h1>A quieter place to read</h1><p>${paragraph.repeat(2)}</p><h2>Keep your place</h2>${Array.from({length:8},()=>`<p>${paragraph}<strong>Continuity matters.</strong></p>`).join('')}<p><a href="/related">Related article</a><a href="javascript:window.badLink=true">Unsafe link</a></p></article><textarea aria-label="Original draft"></textarea><script>window.sourceMarker=1;</script>`)});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`;
 let app;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1260,900));
  await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/article');
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===base+'/article');if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);

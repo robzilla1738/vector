@@ -1,14 +1,12 @@
 import {sidebarAction} from './sidebar-action.mjs';
-import {createRequire} from 'node:module';
 import {mkdtempSync,writeFileSync,rmSync,mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
+import { launchApp, shellWindow } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-files-site-data-'));
 const files=[join(dir,'first.txt'),join(dir,'second.txt')];files.forEach((file,index)=>writeFileSync(file,`Synthetic upload ${index}\n`));
 let uploaded=[],failUpload=true;
@@ -23,10 +21,10 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`,other=`http://127.0.0.1:${server.address().port}`;
 let app;
-const launch=()=>_electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
+const launch=()=>launchApp({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
 try{
  app=await launch();
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
+ let page = await shellWindow(app);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const target=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
  await poll(page,async id=>(await window.aux.invoke('pages.list',{})).some(p=>p.pageId===id&&!p.loading),target.pageId);
@@ -60,7 +58,7 @@ try{
  await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false})});
  assert.equal(await page.evaluate(id=>window.aux.clearSiteData(id),restored.pageId),true);
  await app.close();app=await launch();
- for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ page = await shellWindow(app);
  await poll(page,async base=>(await window.aux.invoke('pages.list',{})).some(p=>p.url===base+'/'&&!p.loading),base);
  assert.deepEqual(await read(base),{local:null,cookie:'',dbs:[]});
  assert.equal((await read(other)).local,'saved');

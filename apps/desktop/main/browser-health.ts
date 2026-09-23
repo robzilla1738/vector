@@ -19,6 +19,8 @@ interface BrowserHealthSample {
   pageCrashes?: number;
   pageUnresponsive?: number;
   suspensionFailures?:number;
+  /** Errors callers deliberately swallowed this session, by site. */
+  swallowed?: Record<string, number>;
 }
 
 export interface BrowserHealthSummary {
@@ -39,6 +41,7 @@ export interface BrowserHealthSummary {
   pageCrashes: number;
   pageUnresponsive: number;
   suspensionFailures:number;
+  swallowed: Record<string, number>;
 }
 
 type Metric = { cpu?: { percentCPUUsage?: number }; memory?: { workingSetSize?: number } };
@@ -68,6 +71,7 @@ export class BrowserHealthRecorder {
   private pageCrashes = 0;
   private pageUnresponsive = 0;
   private suspensionFailures=0;
+  private swallowed: Record<string, number> = {};
   private nextSampleAt = 0;
 
   constructor(
@@ -108,6 +112,7 @@ export class BrowserHealthRecorder {
     this.pageCrashes = 0;
     this.pageUnresponsive = 0;
     this.suspensionFailures=0;
+    this.swallowed = {};
     this.persist();
     return this.summary();
   }
@@ -115,6 +120,7 @@ export class BrowserHealthRecorder {
   notePageCrash() { this.pageCrashes += 1; }
   notePageUnresponsive() { this.pageUnresponsive += 1; }
   noteSuspensionFailure(){this.suspensionFailures+=1;}
+  noteSwallowed(site: string) { this.swallowed[site] = (this.swallowed[site] ?? 0) + 1; }
 
   summary(): BrowserHealthSummary {
     const samples = this.samples;
@@ -154,6 +160,10 @@ export class BrowserHealthRecorder {
       pageCrashes: [...sessions.values()].reduce((total, session) => total + Math.max(0, ...session.map(sample => sample.pageCrashes ?? 0)), 0),
       pageUnresponsive: [...sessions.values()].reduce((total, session) => total + Math.max(0, ...session.map(sample => sample.pageUnresponsive ?? 0)), 0),
       suspensionFailures:[...sessions.values()].reduce((total,session)=>total+Math.max(0,...session.map(sample=>sample.suspensionFailures??0)),0),
+      swallowed: [...sessions.values()].reduce<Record<string, number>>((total, session) => {
+        for (const [site, count] of Object.entries(session.at(-1)?.swallowed ?? {})) total[site] = (total[site] ?? 0) + finite(count);
+        return total;
+      }, {}),
     };
   }
 
@@ -186,6 +196,7 @@ export class BrowserHealthRecorder {
       pageCrashes: this.pageCrashes,
       pageUnresponsive: this.pageUnresponsive,
       suspensionFailures:this.suspensionFailures,
+      ...(Object.keys(this.swallowed).length ? { swallowed: { ...this.swallowed } } : {}),
     });
     this.samples = this.retain(this.samples);
     this.pendingWrites += 1;

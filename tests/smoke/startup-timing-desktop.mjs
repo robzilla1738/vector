@@ -3,14 +3,12 @@
 // AUX_SEED_FILTERS=1 starts from a profile holding a ~2.3 MB downloaded hosts
 // list (fresh, so no refetch) — the realistic returning-user startup.
 // AUX_ROOT points at another checkout to compare builds.
-import { createRequire } from 'node:module';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { createServer } from 'node:http';
-const root = resolve(process.env.AUX_ROOT ?? resolve(import.meta.dirname, '../..'));
-const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
+import { launchApp, shellWindow } from './launch.mjs';
 const server = createServer((_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<title>Timing fixture</title><h1>Fixture</h1>'); });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -33,10 +31,9 @@ try {
     let app;
     try {
       const t0 = performance.now();
-      app = await _electron.launch({ executablePath: createRequire(join(root, 'apps/desktop/package.json'))('electron'), args: [join(root, 'apps/desktop'), '--use-mock-keychain'],
-        env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, 'profile'), AUX_DATA_DIR: join(dir, 'data'), AUX_LOAD_DOTENV: '0', ...(process.env.NODE_COMPILE_CACHE ? { NODE_COMPILE_CACHE: process.env.NODE_COMPILE_CACHE } : {}) } });
+      app = await launchApp({args:['--use-mock-keychain'],env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, 'profile'), AUX_DATA_DIR: join(dir, 'data'), AUX_LOAD_DOTENV: '0', ...(process.env.NODE_COMPILE_CACHE ? { NODE_COMPILE_CACHE: process.env.NODE_COMPILE_CACHE } : {}) }});
       const runtimeReady = new Promise(resolve => app.process().stdout.on('data', chunk => { if (String(chunk).includes('runtime ready')) resolve(performance.now() - t0); }));
-      let page; for (let j = 0; j < 400; j++) { page = app.windows().find(p => p.url().includes('renderer/index.html')); if (page) break; await new Promise(r => setTimeout(r, 10)); }
+      let page = await shellWindow(app);
       samples.window.push(performance.now() - t0);
       await page.locator('.aux-home').waitFor();
       samples.home.push(performance.now() - t0);

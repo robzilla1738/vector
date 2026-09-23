@@ -115,7 +115,7 @@ export function Overview() {
         captured.current.add(pageId);
         try {
           const image = page.backend === "aux" ? await bridge.preview(pageId)
-            : (await call<{ dataUrl?: string }>("pages.capture", { pageId })).dataUrl;
+            : (await call("pages.capture", { pageId })).dataUrl;
           if (!cancelled && image) setShots(previous => ({ ...previous, [pageId]: image }));
         } catch {
           // A page that closes during capture keeps its favicon.
@@ -255,7 +255,7 @@ export function Overview() {
           return;
         }
         const bookmarks=selection.filter(page=>bookmarkWebUrl(page.url)).map(page=>({url:page.url,title:(page.title||hostOf(page.url)).slice(0,1000),folderPath:[name]}));
-        const result=await call<{added:number;skipped:number}>("bookmarks.saveFolder",{bookmarks,name});
+        const result=await call("bookmarks.saveFolder",{bookmarks,name});
         setProgress(`Saved ${result.added} pages in ${name}.${result.skipped ? ` ${result.skipped} already saved; their existing folders were kept.` : ""}`);
         setSavingFolder(false);
       });

@@ -1,5 +1,4 @@
 // User-visible unpacked extension management in an isolated regular profile.
-import { createRequire } from "node:module";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -7,10 +6,9 @@ import { createServer } from "node:http";
 import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 import { poll } from "./poll.mjs";
+import { launchApp, shellWindow } from "./launch.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
-const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const temporary = mkdtempSync(join(tmpdir(), "aux-extensions-"));
 const source = join(temporary, "synthetic-extension");
 mkdirSync(source);
@@ -29,15 +27,11 @@ const base = `http://127.0.0.1:${fixture.address().port}`;
 const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: join(temporary, "data"), AUX_LOAD_DOTENV: "0" };
 let app;
 let privateApp;
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
+const launch = () => launchApp({args:["--use-mock-keychain"],env});
 async function shell(target = app) {
-  for (let attempt = 0; attempt < 150; attempt++) {
-    const found = target.windows().find(page => page.url().includes("renderer/index.html"));
-    if (found) { await found.locator(".app").waitFor(); return found; }
-    await delay(100);
-  }
-  throw new Error("Aux shell did not start");
+  const found = await shellWindow(target, 15_000);
+  await found.locator(".app").waitFor();
+  return found;
 }
 async function installDialogs(target) {
   await target.evaluate(({ dialog }, path) => {
@@ -92,7 +86,7 @@ try {
   await page.screenshot({ path: join(root, "release/test-artifacts/aux-extensions.png") });
 
   // Private browsing uses a separate nonpersistent session and never loads the managed copy.
-  privateApp = await _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--aux-private"], env });
+  privateApp = await launchApp({args:["--aux-private"],env});
   const privateShell = await shell(privateApp);
   const [blank] = await privateShell.evaluate(() => window.aux.invoke("pages.list", {}));
   await privateShell.evaluate(({ pageId, url }) => window.aux.invoke("pages.navigate", { pageId, url }), { pageId: blank.pageId, url: `${base}/private` });

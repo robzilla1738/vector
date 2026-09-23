@@ -19,11 +19,11 @@ export function VaultSettings() {
   const [secret, setSecret] = useState("");
   async function refresh() {
     const [nextStatus, nextItems, nextGrants, nextExpired, nextHistory] = await Promise.all([
-      call<VaultStatus>("vault.status", {}),
-      call<VaultItem[]>("vault.list", {}),
-      call<VaultGrant[]>("vault.grants", {}),
-      call<VaultGrant[]>("vault.expiredGrants", {}),
-      call<VaultAccessRecord[]>("vault.history", { limit: 30 }),
+      call("vault.status", {}),
+      call("vault.list", {}),
+      call("vault.grants", {}),
+      call("vault.expiredGrants", {}),
+      call("vault.history", { limit: 30 }),
     ]);
     setStatus(nextStatus); setItems(nextItems); setGrants(nextGrants); setExpired(nextExpired); setHistory(nextHistory);
   }
@@ -59,7 +59,7 @@ export function VaultSettings() {
       <div className="row">
         <button className="btn sm" disabled={busy || !label.trim() || !origin.trim() || !secret}>Save credential</button>
         <button type="button" className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
-          const generated = await call<{ password: string }>("vault.generate", { length: 20 });
+          const generated = await call("vault.generate", { length: 20 });
           setSecret(generated.password);
         })}>Generate password</button>
       </div>

@@ -24,7 +24,7 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
   useEffect(() => {
     let live = true;
     setError("");
-    void call<PreparedConversation[]>("conversations.prepared", {})
+    void call("conversations.prepared", {})
       .then(items => { if (live) setPrepared(items); })
       .catch(() => { if (live) setError("Saved attachment drafts couldn’t be loaded."); });
     return () => { live = false; };

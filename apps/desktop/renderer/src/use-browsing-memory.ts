@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { BrowsingMemoryPolicy } from "@aux/contracts";
 import { bridge, inElectron } from "./bridge";
 import { call, useStore } from "./store";
 
@@ -27,14 +26,14 @@ export function useBrowsingMemory() {
       if (cancelled || recording || recorded) return;
       recording = true;
       try {
-        const result = await call<{ recorded: boolean }>("workspaces.browsingMemory.record", { workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch });
+        const result = await call("workspaces.browsingMemory.record", { workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch });
         recorded = result.recorded;
         if (recorded && interval !== undefined) window.clearInterval(interval);
       } catch { /* Reconnection or the next foreground check retries; never capture elsewhere. */ }
       finally { recording = false; }
     };
     const timer = window.setTimeout(() => {
-      void call<{ policy: BrowsingMemoryPolicy }>("workspaces.browsingMemory.get", { workspaceId }).then(state => {
+      void call("workspaces.browsingMemory.get", { workspaceId }).then(state => {
         if (cancelled || !state.policy.enabled) return;
         void record();
         interval = window.setInterval(() => void record(), 15_000);

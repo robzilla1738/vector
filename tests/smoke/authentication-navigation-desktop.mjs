@@ -1,15 +1,12 @@
 // Cross-origin sign-in and link-disposition journey using only isolated local sites.
 import {poll} from './poll.mjs';
-import {createRequire} from 'node:module';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
+import { launchAux } from './launch.mjs';
 
-const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-auth-navigation-'));
 let rpBase='';let idpBase='';let consentCookie='';
 const rp=createServer((req,res)=>{
@@ -39,8 +36,7 @@ await new Promise(r=>idp.listen(0,'127.0.0.1',r));idpBase=`http://127.0.0.1:${id
 let app;
 try{
  const mark=step=>console.log(`auth-navigation: ${step}`);
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let shell;for(let i=0;i<100;i++){shell=app.windows().find(p=>p.url().includes('renderer/index.html'));if(shell)break;await new Promise(r=>setTimeout(r,100));}assert.ok(shell);shell.setDefaultTimeout(15000);await shell.locator('.aux-home').waitFor();
+ let shell;({ app, page: shell } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));shell.setDefaultTimeout(15000);await shell.locator('.aux-home').waitFor();
  const opener=await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),rpBase+'/');
  await poll(shell,async id=>(await window.aux.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),opener.pageId);
  mark('relying party ready');

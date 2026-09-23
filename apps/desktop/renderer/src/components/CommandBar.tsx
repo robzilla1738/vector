@@ -160,7 +160,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       return;
     }
     const t = window.setTimeout(() => {
-      void call<HistoryEntry[]>("history.list", { query: raw, limit: 6 })
+      void call("history.list", { query: raw, limit: 6 })
         .then((h) => { if (!cancelled) setHistory(h); })
         .catch(() => { if (!cancelled) setHistory([]); });
     }, 120);

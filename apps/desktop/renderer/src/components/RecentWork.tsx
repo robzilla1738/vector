@@ -31,9 +31,9 @@ export function RecentWork() {
     let live = true;
     setLoading(true); setError("");
     const fetch = tab === "chats"
-      ? call<ConversationSummary[]>("conversations.list", {limit: 3, archived: false})
+      ? call("conversations.list", {limit: 3, archived: false})
         .then(found => { if (live) { mergeHistory(found.map(item => item.latestRun)); setItems(found); } })
-      : (workspaceId ? call<Routine[]>("routines.list", {workspaceId, includeArchived: false}) : Promise.resolve([]))
+      : (workspaceId ? call("routines.list", {workspaceId, includeArchived: false}) : Promise.resolve([]))
         .then(found => { if (live) setRoutines(found); });
     void fetch
       .catch(reason => { if (live) setError(String(reason)); })

@@ -4,7 +4,7 @@ import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { BrowsingMemoryWatch } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
-import type { WorkspaceMemory, ShortcutOverrides } from "@aux/contracts";
+import type { ShortcutOverrides } from "@aux/contracts";
 import { effectiveShortcuts, matchShortcut } from "@aux/contracts/shortcut-defs";
 import { deferSurface, preloadWhenIdle } from "./components/DeferredSurface";
 import { Conversation, AnswerPreview } from "./components/surfaces";
@@ -91,7 +91,7 @@ export function App() {
       const workspaceId = space.workspaceId, key = `item:${workspaceId}`;
       const openMemory = () => { useStore.setState({ memoryWorkspaceId: workspaceId, settingsCategory: "Memory" }); useStore.getState().setOverlay("settings"); };
       if (useMemoryDrafts.getState().drafts[key]) { openMemory(); errToast(new Error("Finish or discard the existing memory-note draft before remembering another selection.")); return; }
-      void call<WorkspaceMemory>("workspaces.memory.get", { workspaceId }).then(memory => {
+      void call("workspaces.memory.get", { workspaceId }).then(memory => {
         if (useMemoryDrafts.getState().drafts[key]) throw new Error("A memory-note draft was opened while loading. Your existing draft is preserved.");
         let sourceUrl = "";
         try { const url = new URL(action.url); if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password && url.href.length <= 2048) sourceUrl = url.href; } catch { /* Non-web selections remain explicit unsourced notes. */ }
@@ -114,7 +114,7 @@ export function App() {
       };
       if (action.image?.dataUrl) {
         const image = action.image;
-        void call("conversations.images.add", { chatId: id, filename: "page-image.png", dataUrl: image.dataUrl, sourceUrl: image.srcURL })
+        void call("conversations.images.add", { chatId: id, filename: "page-image.png", dataUrl: image.dataUrl as string, sourceUrl: image.srcURL })
           .then(open)
           .catch(error => { open(); errToast(error instanceof Error ? error : new Error(String(error))); });
       } else {
@@ -422,7 +422,7 @@ export function App() {
     const st = useStore.getState();
     const bookmarks = [...new Map(st.pages.filter(page => isTab(page) && bookmarkWebUrl(page.url)).map(page => [page.url, { url: page.url, title: page.title.slice(0, 1000) }])).values()];
     if (!bookmarks.length) return toast("No web tabs to bookmark");
-    void call<{ added: number; skipped: number }>("bookmarks.import", { bookmarks })
+    void call("bookmarks.import", { bookmarks })
       .then(result => toast(result.added ? `Bookmarked ${result.added} tab${result.added === 1 ? "" : "s"}` : "All tabs already bookmarked"))
       .catch(errToast);
   };

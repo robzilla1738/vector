@@ -36,7 +36,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled
   }
   useEffect(()=>{
     let active=true; setResult(null);setError("");
-    void call<Result>("results.read",{artifactId}).then(value=>{if(!active)return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active)setError(String(reason));});
+    void call("results.read",{artifactId}).then(value=>{if(!active)return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active)setError(String(reason));});
     return()=>{active=false;};
   },[artifactId,chatId,retry]);
   async function save(excel=false) {

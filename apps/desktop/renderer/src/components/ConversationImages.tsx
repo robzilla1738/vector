@@ -90,7 +90,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
   });
   const takeCapture = () => perform(async version => {
     if (!page) return;
-    const result = await call<{ dataUrl: string }>("pages.capture", { pageId: page.pageId, format: "dataUrl", fullPage: false, expectedDocumentEpoch: page.documentEpoch });
+    const result = await call("pages.capture", { pageId: page.pageId, format: "dataUrl", fullPage: false, expectedDocumentEpoch: page.documentEpoch }) as { dataUrl: string };
     if (version !== request.current) return;
     const current = useStore.getState().pages.find(item => item.pageId === page.pageId);
     if (!current || current.url !== page.url || current.documentEpoch !== page.documentEpoch) throw new Error("The page changed during capture. Capture it again.");
@@ -103,16 +103,16 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     const target = ensureChatId();
     // Creating a conversation changes the prop before the save finishes.
     currentChat.current = target;
-    const result = await call<{ images: ConversationImage[] }>("conversations.images.add", { chatId: target, filename: capture.filename ? (region ? `${capture.filename.replace(/\.png$/i, "")} region.png` : capture.filename) : `${capture.title.slice(0, 100)}${region ? " region" : " capture"}.png`, dataUrl, sourceUrl: capture.sourceUrl }).catch(error => { if (request.current !== version && currentChat.current === target) errToast(error); throw error; });
+    const result = await call("conversations.images.add", { chatId: target, filename: capture.filename ? (region ? `${capture.filename.replace(/\.png$/i, "")} region.png` : capture.filename) : `${capture.title.slice(0, 100)}${region ? " region" : " capture"}.png`, dataUrl, sourceUrl: capture.sourceUrl }).catch(error => { if (request.current !== version && currentChat.current === target) errToast(error); throw error; });
     if (currentChat.current === target) { onChange(target, result.images); setCapture(null); setRegion(null); }
   });
   const change = (imageId: string, included?: boolean) => perform(async version => {
     if (!chatId) return;
-    const result = await call<{ images: ConversationImage[] }>(included === undefined ? "conversations.images.remove" : "conversations.images.toggle", { chatId, imageId, ...(included === undefined ? {} : { included }) });
+    const result = await call(included === undefined ? "conversations.images.remove" : "conversations.images.toggle", { chatId, imageId, ...(included === undefined ? {} : { included }) });
     if (version === request.current) { onChange(chatId, result.images); setPreview(null); }
   });
   const inspect = (imageId: string) => perform(async version => {
-    const result = await call<{ image: ConversationImage; dataUrl: string }>("conversations.images.read", { chatId, imageId });
+    const result = await call("conversations.images.read", { chatId: chatId as string, imageId });
     if (version === request.current) { setPreview(result); setCapture(null); }
   });
   const canCapture = page && /^https?:\/\//.test(page.url) && !["crashed", "detached"].includes(page.viewStatus ?? "");

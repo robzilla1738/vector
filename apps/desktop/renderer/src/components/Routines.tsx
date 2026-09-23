@@ -19,8 +19,8 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [loading, setLoading] = useState(true);
   async function refresh(routineId?: string) {
     const [items, nextAlerts] = await Promise.all([
-      call<Routine[]>("routines.list", { workspaceId, includeArchived: true }),
-      call<RoutineAlert[]>("routines.alerts", { limit: 20 }),
+      call("routines.list", { workspaceId, includeArchived: true }),
+      call("routines.alerts", { limit: 20 }),
     ]);
     setRoutines(items);
     setAlerts(nextAlerts);
@@ -30,8 +30,8 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     let active = true;
     setLoading(true); setSelected(null); setComparison(null); setError("");
     void Promise.all([
-      call<Routine[]>("routines.list", { workspaceId, includeArchived: true }),
-      call<RoutineAlert[]>("routines.alerts", { limit: 20 }),
+      call("routines.list", { workspaceId, includeArchived: true }),
+      call("routines.alerts", { limit: 20 }),
     ]).then(([items, nextAlerts]) => {
       if (active) { setRoutines(items); setAlerts(nextAlerts); }
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : String(reason)); })
@@ -48,20 +48,20 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const visibleRoutines = routines.filter(item => `${item.title} ${item.objective}`.toLowerCase().includes(query.toLowerCase()));
   return <section className="routines-section" aria-label="Routines" aria-busy={loading || busy}>
     <div className="routines-heading"><div><h4>Routines</h4><p className="hint">Your repeatable work, on a schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
-      const routine = await call<Routine>("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: parameter ? [{ name: "topic", label: "Topic", value: parameter }] : [] });
+      const routine = await call("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: parameter ? [{ name: "topic", label: "Topic", value: parameter }] : [] });
       setTitle(""); setParameter(""); await refresh(routine.routineId);
     })}>Make routine from this task</button>}
       <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
         const ids = routines.filter(item => !item.archivedAt).map(item => item.routineId);
         if (!ids.length) { setNotice("No active routines to export."); return; }
-        const envelope = await call<{ format: string; routines: unknown[] }>("routines.export", { routineIds: ids });
+        const envelope = await call("routines.export", { routineIds: ids });
         const path = await bridge.saveFile("aux-routines.json", JSON.stringify(envelope, null, 2));
         if (path) setNotice(`Exported ${ids.length} routine${ids.length === 1 ? "" : "s"}.`);
       })}>Export…</button>
       <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
         const path = await bridge.openFile();
         if (!path) return;
-        const result = await call<{ imported: number; skipped: number }>("routines.import", { path, workspaceId });
+        const result = await call("routines.import", { path, workspaceId });
         setNotice(`Imported ${result.imported} routine${result.imported === 1 ? "" : "s"}${result.skipped ? ` · ${result.skipped} duplicates skipped` : ""}.`);
         await refresh();
       })}>Import…</button>
@@ -89,9 +89,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       <dl className="routine-overview"><div><dt>Status</dt><dd>{selected.routine.archivedAt ? "Archived" : selected.routine.paused ? "Paused" : "Ready"}</dd></div><div><dt>Trigger</dt><dd>{selected.routine.trigger.kind}</dd></div><div><dt>Runs</dt><dd>{selected.runs.length}</dd></div></dl>
       <span className="hint">{selected.routine.reviewRequired ? "Review required before writes." : "May run without extra review."} Timezone {selected.routine.trigger.kind === "manual" ? timezone : selected.routine.trigger.timezone}. Cloud {selected.routine.cloudCapable ? "can continue if configured" : "needs this Mac"}.</span>
       <div className="row">
-        <button className="btn sm" disabled={busy || selected.routine.paused || !!selected.routine.archivedAt} onClick={() => void action(async () => { const run = await call<RoutineRun>("routines.run", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, parameters: {} }); await refresh(selected.routine.routineId); if (run.reason) setError(run.reason); })}>Run now</button>
+        <button className="btn sm" disabled={busy || selected.routine.paused || !!selected.routine.archivedAt} onClick={() => void action(async () => { const run = await call("routines.run", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, parameters: {} }); await refresh(selected.routine.routineId); if (run.reason) setError(run.reason); })}>Run now</button>
         <button className="btn sm" disabled={busy} onClick={() => void action(async () => { await call("routines.pause", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, paused: !selected.routine.paused }); await refresh(selected.routine.routineId); })}>{selected.routine.paused ? "Resume" : "Pause"}</button>
-        {selected.runs.length >= 2 && <button className="btn sm" disabled={busy} onClick={() => void action(async () => { setComparison(await call<RoutineCompare>("routines.compare", { leftRunId: selected.runs[1]!.routineRunId, rightRunId: selected.runs[0]!.routineRunId })); })}>Compare latest two runs</button>}
+        {selected.runs.length >= 2 && <button className="btn sm" disabled={busy} onClick={() => void action(async () => { setComparison(await call("routines.compare", { leftRunId: selected.runs[1]!.routineRunId, rightRunId: selected.runs[0]!.routineRunId })); })}>Compare latest two runs</button>}
       </div>
       <RoutineSchedule key={`${selected.routine.routineId}:${selected.routine.revision}`} trigger={selected.routine.trigger} disabled={busy || !!selected.routine.archivedAt} onSave={trigger => void action(async () => {
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, trigger });
@@ -122,7 +122,7 @@ function RoutineAccounts({ routine, disabled, onSave }: { routine: Routine; disa
   const [loadError, setLoadError] = useState("");
   useEffect(() => {
     let live = true;
-    void call<VaultItem[]>("vault.list", { includeRevoked: false })
+    void call("vault.list", { includeRevoked: false })
       .then(list => { if (live) setItems(list); })
       .catch(reason => { if (live) setLoadError(reason instanceof Error ? reason.message : String(reason)); });
     return () => { live = false; };

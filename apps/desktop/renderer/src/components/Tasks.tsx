@@ -47,12 +47,12 @@ export function Tasks() {
     if (!workspaceId) return;
     setBusy(true);
     void (async () => {
-      const items = await call<Task[]>("tasks.list", { workspaceId, includeArchived: true });
+      const items = await call("tasks.list", { workspaceId, includeArchived: true });
       const remembered = readTaskSelection().tasks[workspaceId];
       if (!live) return;
       setTasks(items);
       if (remembered && items.some(item => item.taskId === remembered)) {
-        const [details, receipt] = await Promise.all([call<Details>("tasks.get", {taskId: remembered}), call<TaskReceipt>("tasks.receipt", {taskId: remembered})]);
+        const [details, receipt] = await Promise.all([call("tasks.get", {taskId: remembered}), call("tasks.receipt", {taskId: remembered})]);
         if (!live) return;
         edit(details); setReceipt(receipt);
       } else { reset(); setCreating(false); }
@@ -101,8 +101,8 @@ export function Tasks() {
   }
   async function refresh(taskId: string, restoreDraft = true) {
     const [details, receipt, tasks] = await Promise.all([
-      call<Details>("tasks.get", { taskId }), call<TaskReceipt>("tasks.receipt", { taskId }),
-      call<Task[]>("tasks.list", { workspaceId, includeArchived: true }),
+      call("tasks.get", { taskId }), call("tasks.receipt", { taskId }),
+      call("tasks.list", { workspaceId, includeArchived: true }),
     ]);
     edit(details, restoreDraft); setReceipt(receipt); setTasks(tasks);
   }
@@ -113,8 +113,8 @@ export function Tasks() {
       description, verification: selected?.task.criteria[index]?.verification ?? "manual",
     })) };
     const task = selected
-      ? await call<Task>("tasks.update", { ...definition, taskId: selected.task.taskId, expectedRevision: selected.task.revision })
-      : await call<Task>("tasks.create", { ...definition, workspaceId, ...(newParentTaskId ? { parentTaskId: newParentTaskId } : {}) });
+      ? await call("tasks.update", { ...definition, taskId: selected.task.taskId, expectedRevision: selected.task.revision })
+      : await call("tasks.create", { ...definition, workspaceId, ...(newParentTaskId ? { parentTaskId: newParentTaskId } : {}) });
     try { writeTaskDraft(selected ? taskDraftKey(workspaceId, selected.task.taskId) : newDraftKey(), null); } catch { /* saved task remains authoritative */ }
     await refresh(task.taskId, false);
   }
@@ -174,11 +174,11 @@ export function Tasks() {
           {selected && <>
             {needsSetup && <div className="field"><span className="hint">Set up a model connection before running this task. You can still attach a tab and review evidence.</span><button className="btn sm" onClick={() => close("settings")}>Set up agent</button></div>}
             <div className="field row"><button className="btn" disabled={needsSetup || conflict || dirty || !activePageId || selected.task.state === "archived"} onClick={() => void action(async () => {
-              const run = await call<Run>("tasks.start", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, pageIds: [activePageId] });
+              const run = await call("tasks.start", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, pageIds: [activePageId as string] });
               openRail({ kind: "run", runId: run.runId }); close(null);
             })}>Run on current tab</button>
               {selected.runs.some(({ run }) => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) && <button className="btn" disabled={needsSetup || conflict || dirty || selected.task.state === "archived"} onClick={() => void action(async () => {
-                const run = await call<Run>("tasks.replaceAgent", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, pageIds: activePageId ? [activePageId] : [] });
+                const run = await call("tasks.replaceAgent", { taskId: selected.task.taskId, expectedRevision: selected.task.revision, pageIds: activePageId ? [activePageId] : [] });
                 openRail({ kind: "run", runId: run.runId }); close(null);
               })}>Replace agent</button>}
               <button className="btn" disabled={dirty || conflict} onClick={() => void action(async () => {
@@ -196,8 +196,8 @@ export function Tasks() {
               await call("tasks.update", {taskId:selected.task.taskId, expectedRevision:selected.task.revision, resources});
               await refresh(selected.task.taskId);
             })} onEvidenceImported={()=>refresh(selected.task.taskId)}/>}
-            {receipt && !dirty && !conflict && <TaskReceiptView key={`${receipt.taskId}:${receipt.taskRevision}`} receipt={receipt} pageId={attached ? activePageId : null} submit={(method, params) => action(async () => {
-              await call(method, params); await refresh(receipt.taskId);
+            {receipt && !dirty && !conflict && <TaskReceiptView key={`${receipt.taskId}:${receipt.taskRevision}`} receipt={receipt} pageId={attached ? activePageId : null} submit={(method, ...params) => action(async () => {
+              await call(method, ...params); await refresh(receipt.taskId);
             })} />}
             {!dirty && !conflict && <Routines workspaceId={workspaceId} task={selected.task} />}
           </>}

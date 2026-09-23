@@ -19,7 +19,7 @@ export function ImageSnapshot({chatId,imageId,onClose}:{chatId:string;imageId:st
   const [retry,setRetry]=useState(0);
   useEffect(()=>{
     let live=true;setSnapshot(null);setError("");
-    void call<SavedImageSnapshot>("conversations.images.read",{chatId,imageId})
+    void call("conversations.images.read",{chatId,imageId})
       .then(value=>{if(live)setSnapshot(value);})
       .catch(reason=>{if(live)setError(reason instanceof Error?reason.message:String(reason));});
     return()=>{live=false;};

@@ -1,15 +1,13 @@
 // Revisioned workspace memory through the real conversation UI and saved-task runtime path.
-import { createRequire } from "node:module";
 import { createServer } from "node:http";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
+import { launchApp, shellWindow } from "./launch.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
-const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
 const temporary = mkdtempSync(join(tmpdir(), "aux-workspace-memory-"));
@@ -24,14 +22,12 @@ await new Promise(resolve => fixture.listen(0, "127.0.0.1", resolve));
 const url = `http://127.0.0.1:${fixture.address().port}/memory`;
 const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" };
 let app;
-const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
+const launch = () => launchApp({args:["--use-mock-keychain"],env});
 async function shell() {
-  for (let attempt = 0; attempt < 150; attempt++) {
-    const page = app.windows().find(candidate => candidate.url().includes("renderer/index.html"));
-    if (page) { page.setDefaultTimeout(20_000); await page.locator(".app").waitFor(); return page; }
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  throw new Error("Aux shell did not start");
+  const page = await shellWindow(app, 15_000);
+  page.setDefaultTimeout(20_000);
+  await page.locator(".app").waitFor();
+  return page;
 }
 async function openRepo() {
   for (let attempt = 0; attempt < 100; attempt++) {

@@ -9,10 +9,6 @@ export interface NativeBridge {
   listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>;
   /** Scoped agent tab commands (§7.3) — same controller humans use, deduplicated + ack'd. */
   tabCommand(envelope: TabCommandEnvelope): Promise<TabCommandAck>;
-  createPage(opts: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean }): Promise<{ ok: true }>;
-  closePage(pageId: string): Promise<{ ok: boolean }>;
-  showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<{ ok: boolean }>;
-  hidePage(pageId: string): Promise<{ ok: boolean }>;
   focusPage(pageId: string): Promise<{ ok: boolean }>;
   /** Recover a crashed native renderer on its existing tab. */
   recoverPage?(pageId: string, url: string): Promise<{ ok: boolean }>;
@@ -22,7 +18,6 @@ export interface NativeBridge {
   acquireStage(pageId: string): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
   capturePage(pageId: string, scale: number): Promise<{ dataUrl: string; width: number; height: number; scale: number }>;
-  openExternal(url: string): Promise<{ ok: boolean }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
   stopFind(pageId: string, action: "clear" | "keep"): Promise<{ ok: boolean }>;
   setZoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out"): Promise<{ level: number }>;
@@ -65,20 +60,8 @@ export class ChannelNativeBridge implements NativeBridge {
   tabCommand(envelope: TabCommandEnvelope) {
     return this.channel.call<TabCommandAck>("native.tabCommand", envelope, 55_000);
   }
-  createPage(o: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean }) {
-    return this.channel.call<{ ok: true }>("native.createPage", o);
-  }
   movePage(pageId: string, windowId?: string, activate = true) {
     return this.channel.call<{ windowId: string; sourceActivePageId: string | null; activePageId?: string | null }>("native.movePage", { pageId, windowId, activate });
-  }
-  closePage(pageId: string) {
-    return this.channel.call<{ ok: boolean }>("native.closePage", { pageId }, 55_000);
-  }
-  showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }) {
-    return this.channel.call<{ ok: boolean }>("native.showPage", { pageId, bounds });
-  }
-  hidePage(pageId: string) {
-    return this.channel.call<{ ok: boolean }>("native.hidePage", { pageId });
   }
   focusPage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.focusPage", { pageId });
@@ -97,9 +80,6 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   capturePage(pageId: string, scale: number) {
     return this.channel.call<{ dataUrl: string; width: number; height: number; scale: number }>("native.capturePage", { pageId, scale });
-  }
-  openExternal(url: string) {
-    return this.channel.call<{ ok: boolean }>("native.openExternal", { url });
   }
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean) {
     return this.channel.call<{ matches: number; activeMatch?: number }>("native.findInPage", { pageId, text, forward, findNext });
@@ -152,16 +132,11 @@ export class NullNativeBridge implements NativeBridge {
   }
   listPages(): never { this.fail(); }
   tabCommand(): never { this.fail(); }
-  createPage(): never { this.fail(); }
-  closePage(): never { this.fail(); }
-  showPage(): never { this.fail(); }
-  hidePage(): never { this.fail(); }
   focusPage(): never { this.fail(); }
   stopPage(): never { this.fail(); }
   acquireStage(): never { this.fail(); }
   releaseStage(): never { this.fail(); }
   capturePage(): never { this.fail(); }
-  openExternal(): never { this.fail(); }
   findInPage(): never { this.fail(); }
   stopFind(): never { this.fail(); }
   setZoom(): never { this.fail(); }

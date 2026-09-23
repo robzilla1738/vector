@@ -1,4 +1,3 @@
-import type {Task} from '@aux/contracts';
 import {call, useStore} from './store';
 import {rememberTask} from './task-drafts';
 
@@ -15,7 +14,7 @@ export async function openSavedTask(taskId: string): Promise<void> {
       && state.layout.activeSpaceId===origin.layout.activeSpaceId && state.railView===origin.railView
       && state.railOpen===origin.railOpen;
   };
-  const {task} = await call<{task:Task}>('tasks.get', {taskId});
+  const {task} = await call('tasks.get', {taskId});
   if(!current())return;
   await useStore.getState().refreshSpaces();
   if(!current())return;

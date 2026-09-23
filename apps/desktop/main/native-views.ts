@@ -5,6 +5,7 @@ import { captureImageAt } from "./image-capture.js";
 import { installCredentialWatch } from "./credential-detect.js";
 import { installCosmeticFilter } from "./cosmetic-filter.js";
 import { addDocumentBinding, addDocumentScript } from "./page-debugger.js";
+import { noteSwallowed } from "./swallowed.js";
 import { popupCommand } from './popup-commands.js';
 import { session, WebContentsView, type BaseWindow, type WebContents } from "electron";
 import { randomUUID } from "node:crypto";
@@ -121,7 +122,7 @@ export function createPageView(opts: {
   };
   // Trackpad pinch zoom is a visual (compositor) zoom — Electron leaves the
   // limits at 1/1 until a view opts in. Ephemeral per document, like Chrome.
-  void view.webContents.setVisualZoomLevelLimits(1, 3).catch(() => {});
+  void view.webContents.setVisualZoomLevelLimits(1, 3).catch(() => noteSwallowed("view.zoomLimits"));
   opts.registry.add(entry);
   installMarker(view, opts.marker);
   wireEvents(entry, opts.hooks);
@@ -349,16 +350,7 @@ export function destroyPageView(entry: ViewEntry, win: BaseWindow): Promise<bool
   return promise;
 }
 
-export function downloadsSession() {
-  return session.fromPartition(PROFILE_PARTITION);
-}
-
 /** The shared profile partition human page views run in (cookies, cache, storage). */
 export function profileSession() {
-  return session.fromPartition(PROFILE_PARTITION);
-}
-
-/** Compatibility alias: agent-driven pages use the shared browsing profile. */
-export function agentSession() {
   return session.fromPartition(PROFILE_PARTITION);
 }

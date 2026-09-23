@@ -1,14 +1,12 @@
 import {sidebarAction} from "./sidebar-action.mjs";
 // Real development Electron shell; synthetic history, no credentials or model calls.
-import { createRequire } from 'node:module';
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { openDb, Repo } from '../../apps/runtime/dist/index.js';
+import { launchAux } from './launch.mjs';
 const root = resolve(import.meta.dirname, '../..');
-const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
-const electron = createRequire(join(root, 'apps/desktop/package.json'))('electron');
 const dir = mkdtempSync(join(tmpdir(), 'aux-history-ui-'));
 mkdirSync(join(dir, 'data'));
 const db = openDb(join(dir, 'data/aux-state.sqlite'));
@@ -19,10 +17,7 @@ for (let i = 0; i < 55; i++) repo.saveRun({runId:`old-${String(i).padStart(4,'0'
 db.close();
 let app;
 try {
-  app = await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
-  let page;
-  for (let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}
-  assert.ok(page);
+  let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));
   await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
   await sidebarAction(page, "Chats");
   await page.locator('.history-conversation').nth(39).waitFor();

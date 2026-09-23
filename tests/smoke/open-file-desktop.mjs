@@ -1,5 +1,4 @@
 // Local-file journey with synthetic content and an isolated profile only.
-import {createRequire} from 'node:module';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
@@ -7,10 +6,9 @@ import {pathToFileURL} from 'node:url';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
+import { launchAux } from './launch.mjs';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-open-file-'));
 const fixture=join(dir,'Aux #1 ? café %.html');
 const fixtureUrl=pathToFileURL(fixture).href;
@@ -20,9 +18,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const startingUrl=`http://1
 const env={PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'};
 let app;
 const launch=async()=>{
-  const next=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env});
-  let shell;for(let i=0;i<100;i++){shell=next.windows().find(p=>p.url().includes('renderer/index.html'));if(shell)break;await new Promise(r=>setTimeout(r,100));}
-  assert.ok(shell);shell.setDefaultTimeout(15000);await shell.locator('.app').waitFor();return {next,shell};
+  let { app: next, page: shell } = await launchAux({args:['--use-mock-keychain'],env});shell.setDefaultTimeout(15000);await shell.locator('.app').waitFor();return {next,shell};
 };
 try{
  let started=await launch();app=started.next;let page=started.shell;

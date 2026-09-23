@@ -86,8 +86,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
     if (view === "closed") { setLoading(false); return; }
     const timer = window.setTimeout(() => {
       const request = view === "history"
-        ? call<HistoryEntry[]>("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE, since: historySince(historyRange) }).then(items => { if (live && version === historyRequest.current) { setHistory(items); setMoreHistory(items.length === HISTORY_PAGE_SIZE); } })
-        : Promise.all([call<SavedPage[]>("bookmarks.list", {}), call<string[][]>("bookmarks.folders.list", {})]).then(([items, paths]) => {
+        ? call("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE, since: historySince(historyRange) }).then(items => { if (live && version === historyRequest.current) { setHistory(items); setMoreHistory(items.length === HISTORY_PAGE_SIZE); } })
+        : Promise.all([call("bookmarks.list", {}), call("bookmarks.folders.list", {})]).then(([items, paths]) => {
           if (live) { useStore.setState({ bookmarks: items }); setFolders(paths); }
         });
       void request.catch(reason => { if (live) { setError(String(reason)); setFailedLoad("initial"); } }).finally(() => { if (live) setLoading(false); });
@@ -106,7 +106,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
     const version = historyRequest.current;
     setLoadingMore(true); setError(""); setFailedLoad(null);
     try {
-      const found = await call<HistoryEntry[]>("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE,
+      const found = await call("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE,
         since: historySince(historyRange), before: { visitedAt: last.visitedAt, url: last.url } });
       if (version !== historyRequest.current) return;
       setHistory(current => [...current, ...found]);
@@ -122,7 +122,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
     const unsubscribe = bridge.onEvent(event => {
       if (event.type !== "bookmarks.changed") return;
       const current = ++revision;
-      void call<string[][]>("bookmarks.folders.list").then(paths => {
+      void call("bookmarks.folders.list").then(paths => {
         if (!live || current !== revision) return;
         setFolders(paths);
         setFolder(previous => paths.some(path => JSON.stringify(path) === JSON.stringify(previous)) ? previous : []);
@@ -168,9 +168,9 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
   }
   async function save(item: SavedPage) {
     await call("bookmarks.add", item);
-    const items = await call<SavedPage[]>("bookmarks.list", {});
+    const items = await call("bookmarks.list", {});
     useStore.setState({ bookmarks: items });
-    setFolders(await call<string[][]>("bookmarks.folders.list"));
+    setFolders(await call("bookmarks.folders.list"));
   }
   function open(item: SavedPage, background = false, trigger?: HTMLElement) {
     void action(async () => {
@@ -270,9 +270,9 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
           </select>
           {moveFolder === "new" && <input className="field-input grow" aria-label="New destination folder name" placeholder="Folder name" maxLength={200} value={newMoveFolder} disabled={busy} onChange={event=>setNewMoveFolder(event.target.value)} />}
           <button className="btn sm" disabled={busy || !selection.length || (moveFolder === "new" && !newMoveFolder.trim())} onClick={() => void action(async () => {
-            const result = await call<{moved:number}>("bookmarks.move", {bookmarks:selection.map(item => ({url:item.url, folderPath:item.folderPath ?? []})), folderPath:moveFolder === "new" ? [...folder,newMoveFolder.trim()] : JSON.parse(moveFolder), createFolder:moveFolder === "new"});
-            useStore.setState({bookmarks:await call<SavedPage[]>("bookmarks.list")});
-            setFolders(await call<string[][]>("bookmarks.folders.list"));
+            const result = await call("bookmarks.move", {bookmarks:selection.map(item => ({url:item.url, folderPath:item.folderPath ?? []})), folderPath:moveFolder === "new" ? [...folder,newMoveFolder.trim()] : JSON.parse(moveFolder), createFolder:moveFolder === "new"});
+            useStore.setState({bookmarks:await call("bookmarks.list")});
+            setFolders(await call("bookmarks.folders.list"));
             setSelection([]); setSelecting(false); search.current?.focus(); setNotice(`${result.moved} ${result.moved === 1 ? "bookmark" : "bookmarks"} moved.`);
           })}>{busy ? "Moving…" : "Move"}</button>
         </div>
@@ -282,9 +282,9 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         <p className="hint">From {importSource} into Bookmarks · {importDuplicates} already saved · {importPreview.folders.length} folders preserved. Existing bookmarks keep their titles and folders. {importPreview.skipped > 0 ? `${importPreview.skipped} duplicate or unsupported links skipped.` : ""}</p>
         <ul>{importPreview.bookmarks.slice(0, 4).map(item => <li key={item.url}>{item.title} <span className="hint">{hostOf(item.url)}</span></li>)}</ul>
         <div className="library-tools"><button className="btn sm" disabled={busy} onClick={() => void action(async () => {
-          const result = await call<{ added: number; skipped: number }>("bookmarks.import", { bookmarks: importPreview.bookmarks, folders: importPreview.folders });
-          useStore.setState({ bookmarks: await call<SavedPage[]>("bookmarks.list", {}) });
-          setFolders(await call<string[][]>("bookmarks.folders.list")); setFolder([]);
+          const result = await call("bookmarks.import", { bookmarks: importPreview.bookmarks, folders: importPreview.folders });
+          useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
+          setFolders(await call("bookmarks.folders.list")); setFolder([]);
           setImportPreview(null); setQuery(""); setNotice(`Imported ${result.added} bookmarks. ${result.skipped} already saved.`);
         })}>Import bookmarks</button><button className="btn sm" disabled={busy} onClick={cancelImport}>Cancel import</button></div>
       </div>}
@@ -294,7 +294,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         <span className="sp" />
         {folder.length > 0 && <><button className="icon-btn" title="Rename folder" aria-label="Rename folder" onClick={() => setFolderEditor({ mode: "rename", name: folder.at(-1)! })}>{I.pencil}</button>
           <button className="icon-btn" title="Remove empty folder" aria-label="Remove empty folder" disabled={busy} onClick={() => void action(async () => {
-            setFolders(await call<string[][]>("bookmarks.folders.remove", { path: folder })); setFolder(folder.slice(0, -1));
+            setFolders(await call("bookmarks.folders.remove", { path: folder })); setFolder(folder.slice(0, -1));
           })}>{I.trash}</button></>}
       </nav>}
       {view === "bookmarks" && folder.length > 0 && !q && !loading && <div className="library-tools"><OpenBookmarkFolder key={folderKey} bookmarks={bookmarks} folder={folder} /></div>}
@@ -303,10 +303,10 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         void action(async () => {
           const name = folderEditor.name.trim();
           if (!name) return;
-          if (folderEditor.mode === "create") setFolders(await call<string[][]>("bookmarks.folders.create", { path: [...folder, name] }));
+          if (folderEditor.mode === "create") setFolders(await call("bookmarks.folders.create", { path: [...folder, name] }));
           else {
-            setFolders(await call<string[][]>("bookmarks.folders.rename", { path: folder, name }));
-            useStore.setState({ bookmarks: await call<SavedPage[]>("bookmarks.list") });
+            setFolders(await call("bookmarks.folders.rename", { path: folder, name }));
+            useStore.setState({ bookmarks: await call("bookmarks.list") });
             setFolder([...folder.slice(0, -1), name]);
           }
           setFolderEditor(null);
@@ -338,7 +338,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
           <div className="library-actions" hidden={selecting}>
             {view === "bookmarks" ? <><button className="icon-btn sm" title="Edit bookmark" disabled={busy} aria-label={`Edit ${item.title || hostOf(item.url)}`} onClick={() => setEditing({ ...item, original: item })}>{I.pencil}</button><button className="icon-btn sm" title="Remove bookmark" disabled={busy} aria-label={`Remove ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => {
               await call("bookmarks.remove", { url: item.url });
-              useStore.setState({ bookmarks: await call<SavedPage[]>("bookmarks.list", {}) });
+              useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
               setRemoved(item); setNotice(""); if (editing?.original.url === item.url) setEditing(null);
             })}>{I.trash}</button></> : view === "reading" && "readingList" in item ? <>
               {item.offline && <span className="hint library-offline" title="Offline copy saved">offline</span>}
@@ -347,16 +347,16 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
                 if (!target) return;
                 const article = await bridge.readArticle(target.pageId);
                 await call("bookmarks.offline.set", { url: item.url, article: JSON.stringify(article) });
-                useStore.setState({ bookmarks: await call<SavedPage[]>("bookmarks.list", {}) });
+                useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
                 setNotice("Offline copy saved.");
               })}>{I.downloadSm}</button>}
               <button className="icon-btn sm" title={"readAt" in item && item.readAt ? "Mark unread" : "Mark read"} disabled={busy} aria-label={`Mark ${item.title || hostOf(item.url)} ${"readAt" in item && item.readAt ? "unread" : "read"}`} onClick={() => void action(async () => {
                 await call("bookmarks.markRead", { url: item.url, read: !("readAt" in item && item.readAt) });
-                useStore.setState({ bookmarks: await call<SavedPage[]>("bookmarks.list", {}) });
+                useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
               })}>{"readAt" in item && item.readAt ? I.circle : I.check}</button>
               <button className="icon-btn sm" title="Remove from reading list" disabled={busy} aria-label={`Remove ${item.title || hostOf(item.url)} from reading list`} onClick={() => void action(async () => {
                 await call("bookmarks.readingList", { url: item.url, readingList: false });
-                useStore.setState({ bookmarks: await call<SavedPage[]>("bookmarks.list", {}) });
+                useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
               })}>{I.trash}</button>
             </> : <><button className="icon-btn sm" title={isSaved(item.url) ? "Already bookmarked" : "Bookmark page"} disabled={busy || isSaved(item.url)} aria-label={`Bookmark ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => { await save(item); setNotice("Page bookmarked."); })}>{isSaved(item.url) ? I.bookmarkFill : I.bookmark}</button>
               {"visitedAt" in item && <button className="icon-btn sm" title="Remove this visit" disabled={busy} aria-label={`Remove visit to ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => {

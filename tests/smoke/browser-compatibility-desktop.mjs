@@ -1,6 +1,5 @@
 // Capability evidence only: synthetic extension + CDP virtual authenticator.
 // Never contacts native messaging hosts, OS authenticators or credential stores.
-import {createRequire} from 'node:module';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
@@ -8,9 +7,8 @@ import {createServer} from 'node:http';
 import {createHash,createPublicKey,verify} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
+import { launchAux } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-compatibility-'));const extension=join(dir,'extension');mkdirSync(extension);
 writeFileSync(join(extension,'manifest.json'),JSON.stringify({manifest_version:3,name:'Aux synthetic capability probe',version:'1.0',permissions:['storage','tabs','nativeMessaging','scripting','contextMenus','downloads','cookies']}));
 writeFileSync(join(extension,'probe.html'),'<title>Synthetic extension probe</title>');
@@ -18,8 +16,7 @@ const server=createServer((_req,res)=>{res.setHeader('Content-Type','text/html')
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`;
 let app;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));
  await page.locator('.aux-home').waitFor();
  const capabilities=await app.evaluate(async({session,WebContentsView},path)=>{
   const profile=session.fromPartition('persist:aux-default');

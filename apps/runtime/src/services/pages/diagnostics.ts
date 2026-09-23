@@ -1,0 +1,147 @@
+import { AuxError, newStepId } from "@aux/contracts";
+import { ELEMENT_PICK_TIMEOUT_MS, type PickedElement, pickElementInPage } from "../../execution/element-picker.js";
+import type { ProgramExecutor } from "./executor.js";
+import type { ObservationService } from "./observation.js";
+import type { PageRegistry } from "./registry.js";
+
+export class PageDiagnostics {
+  constructor(private pages: PageRegistry, private observation: ObservationService, private executor: ProgramExecutor) {}
+
+  private pickInFlight = new Set<string>();
+
+  /**
+   * Interactive element pick ("request edit") — the tab stays under human
+   * control; a small overlay resolves on click, Escape, or timeout. The pick
+   * is deliberately not enqueued: it must run while the user keeps clicking.
+   */
+  async pickElement(pageId: string, opts: { timeoutMs?: number } = {}): Promise<{ picked: boolean; element?: PickedElement }> {
+    const lp = this.pages.live.get(pageId);
+    if (!lp?.driver || !lp.driver.isAttached()) throw new AuxError("target_detached", `page ${pageId} is not attached`);
+    if (lp.target.controller === "agent") throw new AuxError("conflict", "The agent is driving this page. Take it over before picking an element.");
+    if (this.pickInFlight.has(pageId)) throw new AuxError("conflict", "An element pick is already waiting on this page.");
+    const timeoutMs = Math.min(Math.max(opts.timeoutMs ?? ELEMENT_PICK_TIMEOUT_MS, 1_000), 120_000);
+    this.pickInFlight.add(pageId);
+    try {
+      const expression = `(${pickElementInPage.toString()})(${timeoutMs})`;
+      const result = await Promise.race([
+        lp.driver.evaluate(expression) as Promise<PickedElement | null>,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs + 5_000)),
+      ]).catch(() => null);
+      return result ? { picked: true, element: result } : { picked: false };
+    } finally {
+      this.pickInFlight.delete(pageId);
+    }
+  }
+
+  /** Page console lines: the page's event log merged with the driver buffer (same timestamps, so no duplicates). */
+  async console(
+    pageId: string,
+    opts?: { since?: number; limit?: number },
+  ): Promise<{ lines: { level: string; message: string; atMs?: number }[] }> {
+    const lp = this.pages.live.get(pageId);
+    const dp = this.pages.driverPageLenient(pageId);
+    let lines = lp?.consoleLines.slice() ?? [];
+    if (dp.console) {
+      const fromDriver = await dp.console();
+      if (fromDriver.length) lines = mergeConsoleLines(lines, fromDriver);
+    }
+    if (opts?.since !== undefined) lines = lines.filter((l) => (l.atMs ?? 0) >= opts.since!);
+    if (opts?.limit !== undefined) lines = lines.slice(-opts.limit);
+    return { lines };
+  }
+
+  /** List or accept/dismiss the current dialog. */
+  async dialog(
+    pageId: string,
+    action: "list" | "accept" | "dismiss" = "list",
+    promptText?: string,
+  ): Promise<{
+    ok?: boolean;
+    action?: "list" | "accept" | "dismiss";
+    dialogs?: { type: string; message: string }[];
+    pending?: { type: string; message: string } | null;
+  }> {
+    const lp = this.pages.live.get(pageId);
+    if (action === "list") {
+      const obs = await this.observation.observe(pageId, {});
+      const dialogs = obs.content.dialogs.length ? obs.content.dialogs : (lp?.lastDialog ? [lp.lastDialog] : []);
+      return { action: "list", dialogs, pending: lp?.lastDialog ?? dialogs[0] ?? null };
+    }
+    const result = await this.executor.execute({
+      pageId,
+      steps: [{ id: newStepId(), op: "dialog", action, promptText }],
+    });
+    if (lp) lp.lastDialog = undefined;
+    return { ok: result.status === "completed", action, pending: null };
+  }
+
+  /** Captured HTTP responses for the page (same store as `responses.list`). */
+  async network(
+    pageId: string,
+    opts?: { since?: number; urlIncludes?: string; limit?: number },
+  ): Promise<unknown[]> {
+    this.pages.get(pageId);
+    if (!this.pages.deps.responses) return [];
+    await this.pages.deps.responses.flush();
+    return this.pages.deps.responses.list(pageId, opts);
+  }
+
+  // ---------- find / zoom / capture ----------
+
+  async find(pageId: string, text: string, forward: boolean, findNext: boolean) {
+    if (!this.pages.deps.native.available()) throw new AuxError("backend_unavailable", "find requires the desktop shell");
+    return this.pages.deps.native.findInPage(pageId, text, forward, findNext);
+  }
+  async stopFind(pageId: string, action: "clear" | "keep") {
+    if (!this.pages.deps.native.available()) return { ok: true };
+    return this.pages.deps.native.stopFind(pageId, action);
+  }
+  async zoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out") {
+    if (!this.pages.deps.native.available()) throw new AuxError("backend_unavailable", "zoom requires the desktop shell");
+    return this.pages.deps.native.setZoom(pageId, level, delta, reset, direction);
+  }
+  async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact"; expectedDocumentEpoch?: number }) {
+    const dp = this.pages.driverPageLenient(pageId);
+    const before = this.pages.get(pageId);
+    const epoch = before.documentEpoch;
+    const url = dp.url();
+    if (opts?.expectedDocumentEpoch !== undefined && opts.expectedDocumentEpoch !== epoch)
+      throw new AuxError("conflict", "The page changed before capture. Capture it again.");
+    const shot = before.backend === "aux" && this.pages.deps.native.available() && !opts?.fullPage
+      ? await this.pages.deps.native.capturePage(pageId, 1).then(image => ({
+        buffer: Buffer.from(image.dataUrl.split(",")[1] ?? "", "base64"),
+        width: image.width, height: image.height, scale: image.scale,
+      }))
+      : await dp.screenshot({ fullPage: opts?.fullPage });
+    const after = this.pages.get(pageId);
+    if (after.documentEpoch !== epoch || dp.url() !== url || !dp.isAttached())
+      throw new AuxError("conflict", "The page changed during capture. Capture it again.");
+    if (!shot.buffer.length || shot.width <= 0 || shot.height <= 0)
+      throw new AuxError("backend_unavailable", "The page has no image available yet. Open the tab and try again.");
+    if (opts?.format === "artifact") {
+      const a = this.pages.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });
+      return { artifactId: a?.artifactId, width: shot.width, height: shot.height, scale: shot.scale };
+    }
+    return {
+      dataUrl: `data:image/png;base64,${shot.buffer.toString("base64")}`,
+      width: shot.width,
+      height: shot.height,
+      scale: shot.scale,
+    };
+  }
+}
+
+function mergeConsoleLines(
+  a: { level: string; message: string; atMs?: number }[],
+  b: { level: string; message: string; atMs?: number }[],
+): { level: string; message: string; atMs?: number }[] {
+  const seen = new Set(a.map((l) => `${l.level}|${l.message}|${l.atMs ?? 0}`));
+  const out = a.slice();
+  for (const line of b) {
+    const key = `${line.level}|${line.message}|${line.atMs ?? 0}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(line);
+  }
+  return out;
+}

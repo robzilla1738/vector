@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import assert from "node:assert/strict";
+import { shellWindow } from "./launch.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const desktopRequire = createRequire(join(root, "apps/desktop/package.json"));
@@ -35,12 +36,7 @@ try {
   });
   // The shell is a WebContentsView inside BaseWindow, not a BrowserWindow.
 
-  for (let attempt = 0; attempt < 100; attempt++) {
-    page = app.windows().find(window => window.url().includes("renderer/index.html"));
-    if (page) break;
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  assert.ok(page, "desktop renderer must be available");
+  page = await shellWindow(app);
   await page.locator(".aux-home").waitFor();
   if (process.argv.includes("--trace-bookmarks")) await page.evaluate(() => {
     window.__bookmarkTrace = [];

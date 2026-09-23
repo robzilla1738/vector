@@ -1,5 +1,4 @@
 // Synthetic HOME/profile only: real desktop persistence, no provider or OS vault.
-import {createRequire} from 'node:module';
 import {mkdtempSync,mkdirSync,readFileSync,rmSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
@@ -8,16 +7,14 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {createSpace} from './create-space.mjs';
 import {sidebarAction} from './sidebar-action.mjs';
+import { launchApp, shellWindow } from './launch.mjs';
 const root=join(dirname(fileURLToPath(import.meta.url)),'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const temp=mkdtempSync(join(tmpdir(),'aux-history-ui-'));let app,page,taskId;
 const env={PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0'};
 async function launch(){
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env,timeout:30000});
+ app=await launchApp({args:['--use-mock-keychain'],env,timeout:30000});
  page=null;
- for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}
- assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
+ page = await shellWindow(app);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
 }
 try{

@@ -17,7 +17,7 @@ export function TaskHistory({ taskId, onClose }: { taskId: string; onClose: () =
   useEffect(() => {
     let live = true;
     setError("");
-    void call<{ revisions: Task[] }>("tasks.get", { taskId }).then(details => {
+    void call("tasks.get", { taskId }).then(details => {
       if (!live) return;
       setRevisions([...details.revisions].reverse());
       setRevision(prior => prior ?? details.revisions.at(-2)?.revision ?? details.revisions.at(-1)!.revision);
@@ -28,7 +28,7 @@ export function TaskHistory({ taskId, onClose }: { taskId: string; onClose: () =
     if (revision === null) return;
     let live = true;
     setReceipt(null); setError("");
-    void call<TaskReceipt>("tasks.receipt", { taskId, revision }).then(value => { if (live) setReceipt(value); })
+    void call("tasks.receipt", { taskId, revision }).then(value => { if (live) setReceipt(value); })
       .catch(error => { if (live) setError(String(error)); });
     return () => { live = false; };
   }, [taskId, revision, retry]);

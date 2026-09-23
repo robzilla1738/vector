@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { shellWindow } from './launch.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
@@ -26,13 +27,7 @@ try {
         AUX_PROFILE_DIR: join(dir, 'profile'), AUX_DATA_DIR: join(dir, 'data'),
         AUX_LOAD_DOTENV: '0' },
     });
-    let page;
-    for (let i = 0; i < 100; i++) {
-      page = app.windows().find(page => page.url().includes('renderer/index.html'));
-      if (page) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    assert.ok(page, 'shell opens from the Aux executable');
+    let page = await shellWindow(app);
     await page.locator('.aux-home').waitFor();
     const identity = await app.evaluate(({ app, Menu }) => ({
       name: app.getName(), version: app.getVersion(),

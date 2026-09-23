@@ -19,14 +19,14 @@ export function BrowsingMemory({ memory }: { memory: WorkspaceMemory }) {
   useEffect(() => {
     const version = ++sequence.current;
     setError("");
-    void call<Saved>("workspaces.browsingMemory.get", { workspaceId: memory.workspaceId }).then(value => { if (version === sequence.current) setSaved(value); }).catch(reason => { if (version === sequence.current) setError(String(reason)); });
+    void call("workspaces.browsingMemory.get", { workspaceId: memory.workspaceId }).then(value => { if (version === sequence.current) setSaved(value); }).catch(reason => { if (version === sequence.current) setError(String(reason)); });
     return () => { ++sequence.current; };
   }, [memory.workspaceId, refresh]);
   async function change(method: "workspaces.browsingMemory.set" | "workspaces.browsingMemory.forget", params: Record<string, unknown>) {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
     ++sequence.current;
-    try { const value = await call<Saved>(method, { workspaceId: memory.workspaceId, ...params }); setSaved(value); setConfirmClear(false); }
+    try { const value = await call(method, { workspaceId: memory.workspaceId, ...params }); setSaved(value); setConfirmClear(false); }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { pending.current = false; setBusy(false); }
   }

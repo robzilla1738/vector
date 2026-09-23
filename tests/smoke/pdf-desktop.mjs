@@ -1,21 +1,18 @@
 // Real Chromium PDF output from a synthetic page; explicit temporary destinations.
-import {createRequire} from 'node:module';
 import {mkdtempSync,rmSync,readFileSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+import { launchAux } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-pdf-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Aux export fixture</title><style>@page{size:A4} .second{break-before:page}</style><h1>Aux PDF verification</h1><p>First page content.</p><h1 class="second">Second page evidence</h1>');});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${server.address().port}`;
 let app;
 try {
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));
  await page.locator('.aux-home').waitFor();
  const tab=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),url);
  const destination=join(dir,'export.pdf');

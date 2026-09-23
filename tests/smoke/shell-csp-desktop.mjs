@@ -1,13 +1,12 @@
 // The packaged shell runs under a strict CSP. Launch the built app in an
 // isolated profile, exercise the common surfaces, and fail on any refusal.
-import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
+import { launchAux } from './launch.mjs';
 const root = resolve(import.meta.dirname, '../..');
-const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
 const dir = mkdtempSync(join(tmpdir(), 'aux-csp-'));
 const out = join(root, 'release/test-artifacts'); mkdirSync(out, { recursive: true });
 const server = createServer((_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<title>CSP fixture</title><link rel="icon" href="data:,"><h1>Fixture</h1>'); });
@@ -16,10 +15,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 const refusals = [];
 let app;
 try {
-  app = await _electron.launch({ executablePath: createRequire(join(root, 'apps/desktop/package.json'))('electron'), args: [join(root, 'apps/desktop'), '--use-mock-keychain'],
-    env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, 'profile'), AUX_DATA_DIR: join(dir, 'data'), AUX_LOAD_DOTENV: '0' } });
-  let page; for (let i = 0; i < 100; i++) { page = app.windows().find(p => p.url().includes('renderer/index.html')); if (page) break; await new Promise(r => setTimeout(r, 100)); }
-  assert.ok(page, 'shell window');
+  let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, 'profile'), AUX_DATA_DIR: join(dir, 'data'), AUX_LOAD_DOTENV: '0' }}));
   page.on('console', m => { const t = m.text(); if (/Content Security Policy|Refused to/i.test(t)) refusals.push(t); });
   page.on('pageerror', e => refusals.push(`pageerror: ${e.message}`));
   await page.locator('.aux-home').waitFor();

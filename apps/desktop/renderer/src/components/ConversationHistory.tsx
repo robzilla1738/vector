@@ -58,7 +58,7 @@ export function ConversationHistory() {
       let hasMore=false;
       do {
         const limit=Math.min(200,target-found.length);
-        const page=await call<ConversationSummary[]>("conversations.list",{limit,archived,query,workspaceId,...(before ? {before} : {})});
+        const page=await call("conversations.list",{limit,archived,query,workspaceId,...(before ? {before} : {})});
         if(version!==request.current)return;
         found.push(...page);hasMore=page.length===limit;
         if(!hasMore || !page.length)break;
@@ -114,10 +114,10 @@ export function ConversationHistory() {
     setLoading(false); setSaving(true); setActionError("");
     try {
       if (action === "rename") {
-        const changed = await call<ConversationSummary>("conversations.rename", { chatId: item.chatId, title });
+        const changed = await call("conversations.rename", { chatId: item.chatId, title });
         if (view.current === origin) { setRows(old => old.map(row => row.chatId === item.chatId ? changed : row)); setRenaming(null); }
       } else if (action === "archive") {
-        const changed = await call<ConversationSummary>("conversations.archive", { chatId: item.chatId, archived: !item.archived });
+        const changed = await call("conversations.archive", { chatId: item.chatId, archived: !item.archived });
         useStore.setState(state => ({ runs: changed.archived
           ? state.runs.filter(run => (run.config?.chatId ?? run.runId) !== item.chatId)
           : state.runs.some(run => run.runId === changed.latestRun.runId) ? state.runs : [changed.latestRun, ...state.runs] }));

@@ -10,7 +10,7 @@ import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, ConversationArtifact, ConversationImage, ConversationAttachment, ConversationSummary, ConversationSource, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationSource, Run, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
@@ -117,7 +117,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     const version = ++historyRequest.current;
     setHistoryLoading(true); setHistoryError("");
     try {
-      const found = await call<Run[]>("runs.list", { chatId: id, limit: 50, ...(before ? { before } : {}) });
+      const found = await call("runs.list", { chatId: id, limit: 50, ...(before ? { before } : {}) });
       if (version !== historyRequest.current) return;
       if (before) scrolling.preservePosition();
       mergeHistory(found);
@@ -173,7 +173,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     let live = true;
     const version=++metadataRequest.current;
     setSavedTitle(""); setArchived(false);
-    if (id && id !== "history") void call<ConversationSummary | null>("conversations.get", {chatId:id})
+    if (id && id !== "history") void call("conversations.get", {chatId:id})
       .then(value => { if (live && version===metadataRequest.current) {setSavedTitle(value?.title ?? "");setArchived(value?.archived??false);} }).catch(() => {});
     return () => { live = false; };
   }, [id]);
@@ -185,7 +185,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   }),[id]);
   const restoreConversation=async()=>{
     if(!id||restoring)return;setRestoring(true);
-    try{const value=await call<ConversationSummary>("conversations.archive",{chatId:id,archived:false});if(activeChat.current===id)setArchived(value.archived);}
+    try{const value=await call("conversations.archive",{chatId:id,archived:false});if(activeChat.current===id)setArchived(value.archived);}
     catch(error){errToast(error);}finally{setRestoring(false);}
   };
   const contexts = useStore(s => s.conversationContexts);
@@ -229,10 +229,10 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     if (!runId || observations[runId]) return;
     let live = true;
     void (async () => {
-      const d = await call<{ steps: StepRecord[] }>("runs.get", { runId });
+      const d = await call("runs.get", { runId });
       const artifactId = [...(d.steps ?? [])].reverse().map(step => (step.inputs as { obsArtifactId?: string } | undefined)?.obsArtifactId).find(Boolean);
       if (!artifactId) return;
-      const res = await call<{ dataBase64: string }>("artifacts.read", { artifactId });
+      const res = await call("artifacts.read", { artifactId });
       const observation = decodeBase64Json<CompactObservation>(res.dataBase64);
       if (live && observation && typeof observation.url === "string") {
         useStore.setState(s => s.observations[runId] ? {} : { observations: { ...s.observations, [runId]: observation } });
@@ -256,7 +256,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     let cancelled = false;
     const taskId = boundTaskId;
     if (!taskId) { setTaskTitle(""); return; }
-    void call<{ task: { title: string } }>("tasks.get", { taskId }).then(value => { if (!cancelled) setTaskTitle(value.task.title); }).catch(() => { if (!cancelled) setTaskTitle(""); });
+    void call("tasks.get", { taskId }).then(value => { if (!cancelled) setTaskTitle(value.task.title); }).catch(() => { if (!cancelled) setTaskTitle(""); });
     return () => { cancelled = true; };
   }, [boundTaskId]);
 
@@ -266,10 +266,10 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     setContextError(""); setContextLoading(!!id);
     if (!id) { setImages([]); setAttachments([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
     void Promise.all([
-      call<{ images: ConversationImage[] }>("conversations.images.get", { chatId: id }),
-      call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
-      call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
-      call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
+      call("conversations.images.get", { chatId: id }),
+      call("conversations.attachments.get", { chatId: id }),
+      call("conversations.workspace.get", { chatId: id }),
+      call("conversations.sources.get", { chatId: id }),
     ]).then(([imageReferences, documents, workspace, sourceList]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); setConversationSources(sourceList.sources); } })
       .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setContextLoading(false); });
@@ -297,7 +297,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     const chatId = id;
     documentBusy.current = true; setImageOperations(count => count + 1);
     try {
-      const result = await call<{images:ConversationImage[]}>("conversations.images.remove", {chatId,imageId});
+      const result = await call("conversations.images.remove", {chatId,imageId});
       if (activeChat.current === chatId) { setImages(result.images); setImagePreview(null); setContextRefresh(value => value + 1); }
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setImageOperations(count => Math.max(0,count - 1)); }
@@ -307,7 +307,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     documentBusy.current = true;
     setAttachmentSaving(true);
     try {
-      const value = await call<{ attachments: ConversationAttachment[] }>(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", { chatId: id, attachmentId, ...(included === undefined ? {} : { included }) });
+      const value = await call(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", { chatId: id, attachmentId, ...(included === undefined ? {} : { included }) });
       if (activeChat.current === id) { setAttachments(value.attachments); setDocumentPreview(null); }
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setAttachmentSaving(false); }
@@ -319,16 +319,16 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       const all: Run[] = [];
       let before: ReturnType<typeof cursor> | undefined;
       for (;;) {
-        const page = await call<Run[]>("runs.list", { chatId: id, limit: 500, ...(before ? { before } : {}) });
+        const page = await call("runs.list", { chatId: id, limit: 500, ...(before ? { before } : {}) });
         all.push(...page);
         if (page.length < 500) break;
         before = cursor(page[page.length - 1]!);
       }
       const [documents, generated, workspace, sourceList] = await Promise.all([
-        call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
-        call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
-        call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
-        call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
+        call("conversations.attachments.get", { chatId: id }),
+        call("conversations.artifacts.get", { chatId: id }),
+        call("conversations.workspace.get", { chatId: id }),
+        call("conversations.sources.get", { chatId: id }),
       ]);
       const title = all.at(-1)?.goal || turns[0]!.goal;
       const name = `aux-conversation-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || id.slice(0, 12)}.md`;

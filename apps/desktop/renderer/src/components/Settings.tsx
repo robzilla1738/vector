@@ -106,7 +106,7 @@ export function Settings() {
   const setOverlay = useStore((s) => s.setOverlay);
   const refresh = async () => {
     const previous = useStore.getState().settings;
-    const latest = await call<Record<string,unknown>>("settings.get");
+    const latest = await call("settings.get");
     if (useStore.getState().settings === previous) useStore.setState({settings:latest});
   };
   const [key, setKey] = useState("");
@@ -194,8 +194,8 @@ export function Settings() {
     let live = true;
     void bridge.dataDir().then(value=>{if(live)setDataDir(value);}).catch(error=>{if(live)errToast(error);});
     void bridge.runtimeRestoreStatus().then(value=>{if(live)setRestoreStatus(value);}).catch(()=>{});
-    void call<{path:string;name:string;createdAt:number;bytes:number;schemaVersion:number;artifactFiles:number;missingArtifacts:number}[]>("installation.listBackups", {}).then(value=>{if(live)setBackups(value);}).catch(()=>{});
-    void call<{keep:3|5|10|20}>("installation.backupRetention", {}).then(value=>{if(live)setBackupKeep(value.keep);}).catch(()=>{});
+    void call("installation.listBackups", {}).then(value=>{if(live)setBackups(value);}).catch(()=>{});
+    void call("installation.backupRetention", {}).then(value=>{if(live)setBackupKeep(value.keep as 3|5|10|20);}).catch(()=>{});
     void bridge.healthSummary().then(value=>{if(live)setHealth(value);}).catch(()=>{});
     return()=>{live=false;};
   }, [category, searching]);
@@ -204,7 +204,7 @@ export function Settings() {
     if(searching||category!=="Connections"||connectionTab!=="Models")return;
     const sequence=++modelsSequence.current;
     setModels([]);setModelsBusy(true);
-    void call<{models:ModelEntry[]}>("models.list").then(result=>{
+    void call("models.list").then(result=>{
       if(sequence===modelsSequence.current)setModels(result.models);
     }).catch(()=>{}).finally(()=>{if(sequence===modelsSequence.current)setModelsBusy(false);});
     return()=>{++modelsSequence.current;};
@@ -220,7 +220,7 @@ export function Settings() {
     const current=()=>request===vercelProjectRequest.current&&scope===projectScope(useStore.getState().settings,"vercel");
     setVercelBusy(true);setVercelError("");
     try{
-      const projects=await call<VercelProject[]>("vercel.projects",teamId?{teamId}:{});
+      const projects=await call("vercel.projects",teamId?{teamId}:{});
       if(current()){setVercelProjects(projects);setVercelProjectsScope(scope);}
     }catch(error){if(current())setVercelError(error instanceof Error?error.message:String(error));}
     finally{if(request===vercelProjectRequest.current)setVercelBusy(false);}
@@ -232,7 +232,7 @@ export function Settings() {
     const current=()=>request===sentryProjectRequest.current&&scope===projectScope(useStore.getState().settings,"sentry");
     setSentryBusy(true);setSentryError("");
     try{
-      const projects=await call<SentryProject[]>("sentry.projects",{organization});
+      const projects=await call("sentry.projects",{organization});
       if(current()){setSentryProjects(projects);setSentryProjectsScope(scope);}
     }catch(error){if(current())setSentryError(error instanceof Error?error.message:String(error));}
     finally{if(request===sentryProjectRequest.current)setSentryBusy(false);}
@@ -265,7 +265,7 @@ export function Settings() {
     setProbing(true);
     setProbe(null);
     try {
-      const result = await call<ProbeResult>("models.probe", { modelId: (settings.plannerModel as string) || undefined });
+      const result = await call("models.probe", { modelId: (settings.plannerModel as string) || undefined });
       if (sequence === probeSequence.current) setProbe({ ...result, checkedAt: Date.now() });
     } catch (e) {
       if (sequence === probeSequence.current) setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
@@ -278,7 +278,7 @@ export function Settings() {
     const sequence=++modelsSequence.current;
     setModelsBusy(true); setConnectionError("");
     try {
-      const result = await call<{ models: ModelEntry[] }>("models.list");
+      const result = await call("models.list");
       if(sequence!==modelsSequence.current)return;
       setModels(result.models);
       if (!result.models.length) setConnectionError("The endpoint returned no models.");
@@ -420,20 +420,20 @@ export function Settings() {
           <button className="btn sm" disabled={githubBusy||!githubToken.trim()} onClick={()=>{setGithubBusy(true);setGithubError('');void set({githubCredential:githubToken.trim()}).then(ok=>{if(ok)setGithubToken('');}).finally(()=>setGithubBusy(false));}}>Save token</button>
           {settings.githubCredential===KEY_MASK&&<button className="btn sm" disabled={githubBusy} onClick={()=>{setGithubBusy(true);setGithubError('');void set({githubCredential:''}).then(ok=>{if(ok)toast('GitHub disconnected');}).finally(()=>setGithubBusy(false));}}>Disconnect</button>}</div>
         </Field>
-        <div className="field"><button className="btn sm" disabled={githubBusy||settings.githubCredential!==KEY_MASK||!!githubToken.trim()} onClick={()=>{setGithubBusy(true);setGithubError('');void call<GithubProbe>('github.probe',{}).then(()=>refresh()).catch(error=>setGithubError(error instanceof Error?error.message:String(error))).finally(()=>setGithubBusy(false));}}>{githubBusy?'Checking…':'Check connection'}</button>{githubError&&<span className="hint err" role="alert">{githubError}</span>}</div>
+        <div className="field"><button className="btn sm" disabled={githubBusy||settings.githubCredential!==KEY_MASK||!!githubToken.trim()} onClick={()=>{setGithubBusy(true);setGithubError('');void call('github.probe',{}).then(()=>refresh()).catch(error=>setGithubError(error instanceof Error?error.message:String(error))).finally(()=>setGithubBusy(false));}}>{githubBusy?'Checking…':'Check connection'}</button>{githubError&&<span className="hint err" role="alert">{githubError}</span>}</div>
 
         <div className="drawer-section">Vercel</div>
         <p className="field hint">Read deployment health from an explicitly supplied Vercel token. Aux cannot deploy, promote, roll back, or change a project through this connection.</p>
         {!!settings.vercelProbe&&<div className="field" role="status"><strong>{String((settings.vercelProbe as VercelProbe).user.name)}</strong><span className="hint">{String((settings.vercelProbe as VercelProbe).user.email)} · checked {new Date((settings.vercelProbe as VercelProbe).checkedAt).toLocaleString()}</span></div>}
         <Field label="Vercel token" hint={String(settings.vercelCredentialError??(settings.vercelCredential===KEY_MASK?'Saved with OS encryption.':'Use a read-only token for the account Aux should inspect.'))}><div className="row"><input className="grow" type="password" aria-label="Vercel token" autoComplete="off" value={vercelToken} placeholder={settings.vercelCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Vercel token'} onChange={event=>{setVercelToken(event.target.value);setVercelError('');}}/><button className="btn sm" disabled={vercelBusy||!vercelToken.trim()} onClick={()=>{setVercelBusy(true);void set({vercelCredential:vercelToken.trim()}).then(ok=>{if(ok)setVercelToken('');}).finally(()=>setVercelBusy(false));}}>Save token</button>{settings.vercelCredential===KEY_MASK&&<button className="btn sm" disabled={vercelBusy} onClick={()=>{setVercelBusy(true);void set({vercelCredential:''}).then(ok=>{if(ok){setVercelProjects([]);toast('Vercel disconnected');}}).finally(()=>setVercelBusy(false));}}>Disconnect</button>}</div></Field>
-        <div className="field"><button className="btn sm" disabled={vercelBusy||settings.vercelCredential!==KEY_MASK||!!vercelToken.trim()} onClick={()=>{setVercelBusy(true);setVercelError('');void call<VercelProbe>('vercel.probe',{}).then(async()=>{await refresh();await loadVercelProjects();}).catch(error=>setVercelError(error instanceof Error?error.message:String(error))).finally(()=>setVercelBusy(false));}}>{vercelBusy?'Checking…':'Check connection'}</button>{vercelError&&<span className="hint err" role="alert">{vercelError}</span>}</div>
+        <div className="field"><button className="btn sm" disabled={vercelBusy||settings.vercelCredential!==KEY_MASK||!!vercelToken.trim()} onClick={()=>{setVercelBusy(true);setVercelError('');void call('vercel.probe',{}).then(async()=>{await refresh();await loadVercelProjects();}).catch(error=>setVercelError(error instanceof Error?error.message:String(error))).finally(()=>setVercelBusy(false));}}>{vercelBusy?'Checking…':'Check connection'}</button>{vercelError&&<span className="hint err" role="alert">{vercelError}</span>}</div>
         {settings.vercelCredential===KEY_MASK&&!!settings.vercelProbe&&<><Field label="Vercel scope" hint="Choose the personal account or team that owns the project."><select aria-label="Vercel scope" value={String(settings.vercelTeamId??'')} onChange={event=>{const value=event.target.value;void set({vercelTeamId:value,vercelProjectId:''}).then(ok=>{if(ok)void loadVercelProjects(value);});}}><option value="">Personal account</option>{(settings.vercelProbe as VercelProbe).teams.map(team=><option key={team.id} value={team.id}>{team.name}</option>)}</select></Field><Field label="Vercel project" hint="The selected project is used for task-scoped deployment health."><div className="row"><select className="grow" aria-label="Vercel project" value={String(settings.vercelProjectId??'')} onFocus={()=>{if(!visibleVercelProjects.length&&!vercelBusy)void loadVercelProjects();}} onChange={event=>void set({vercelProjectId:event.target.value})}><option value="">Select project</option>{visibleVercelProjects.map(project=><option key={project.id} value={project.id}>{project.name}{project.framework?` · ${project.framework}`:''}</option>)}</select><button className="btn sm" disabled={vercelBusy} onClick={()=>void loadVercelProjects()}>Refresh</button></div></Field></>}
 
         <div className="drawer-section">Sentry</div>
         <p className="field hint">Read unresolved issue health from an explicitly supplied Sentry token. Aux cannot resolve, assign, delete, or change issues through this connection.</p>
         {!!settings.sentryProbe&&<div className="field" role="status"><strong>{(settings.sentryProbe as SentryProbe).organizations.length} organization{(settings.sentryProbe as SentryProbe).organizations.length===1?'':'s'} available</strong><span className="hint">Checked {new Date((settings.sentryProbe as SentryProbe).checkedAt).toLocaleString()}</span></div>}
         <Field label="Sentry token" hint={String(settings.sentryCredentialError??(settings.sentryCredential===KEY_MASK?'Saved with OS encryption.':'Use a token with organization, project, and event read access.'))}><div className="row"><input className="grow" type="password" aria-label="Sentry token" autoComplete="off" value={sentryToken} placeholder={settings.sentryCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Sentry token'} onChange={event=>{setSentryToken(event.target.value);setSentryError('');}}/><button className="btn sm" disabled={sentryBusy||!sentryToken.trim()} onClick={()=>{setSentryBusy(true);void set({sentryCredential:sentryToken.trim()}).then(ok=>{if(ok)setSentryToken('');}).finally(()=>setSentryBusy(false));}}>Save token</button>{settings.sentryCredential===KEY_MASK&&<button className="btn sm" disabled={sentryBusy} onClick={()=>{setSentryBusy(true);void set({sentryCredential:''}).then(ok=>{if(ok){setSentryProjects([]);toast('Sentry disconnected');}}).finally(()=>setSentryBusy(false));}}>Disconnect</button>}</div></Field>
-        <div className="field"><button className="btn sm" disabled={sentryBusy||settings.sentryCredential!==KEY_MASK||!!sentryToken.trim()} onClick={()=>{setSentryBusy(true);setSentryError('');void call<SentryProbe>('sentry.probe',{}).then(refresh).catch(error=>setSentryError(error instanceof Error?error.message:String(error))).finally(()=>setSentryBusy(false));}}>{sentryBusy?'Checking…':'Check connection'}</button>{sentryError&&<span className="hint err" role="alert">{sentryError}</span>}</div>
+        <div className="field"><button className="btn sm" disabled={sentryBusy||settings.sentryCredential!==KEY_MASK||!!sentryToken.trim()} onClick={()=>{setSentryBusy(true);setSentryError('');void call('sentry.probe',{}).then(refresh).catch(error=>setSentryError(error instanceof Error?error.message:String(error))).finally(()=>setSentryBusy(false));}}>{sentryBusy?'Checking…':'Check connection'}</button>{sentryError&&<span className="hint err" role="alert">{sentryError}</span>}</div>
         {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
         </section><section tabIndex={-1} id="connection-panel-Vault" role="tabpanel" aria-labelledby="connection-tab-Vault" hidden={!visible("Vault")}><VaultSettings /></section>
         <section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
@@ -531,7 +531,7 @@ export function Settings() {
               disabled={cookieImport.busy}
               onClick={() => {
                 setCookieImport({ busy: true });
-                void call<CookieImportResult>("chrome.importCookies", { source: "auto" })
+                void call("chrome.importCookies", { source: "auto" })
                   .then((r) => setCookieImport({ busy: false, result: r }))
                   .catch((e) => setCookieImport({ busy: false, error: e instanceof Error ? e.message : String(e) }));
               }}
@@ -556,7 +556,7 @@ export function Settings() {
 
         <Field label="Task data backup" hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores.">
           <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>{setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.');return call("installation.listBackups", {});}).then(value=>{if(Array.isArray(value))setBackups(value as typeof backups);}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
-          <label>Keep complete backups<select aria-label="Backup retention" value={backupKeep} disabled={backupBusy} onChange={event=>{const keep=Number(event.target.value) as 3|5|10|20;setBackupBusy(true);void call<{keep:3|5|10|20}>("installation.setBackupRetention",{keep}).then(value=>setBackupKeep(value.keep)).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{([3,5,10,20] as const).map(keep=><option key={keep} value={keep}>Keep {keep}</option>)}</select></label>
+          <label>Keep complete backups<select aria-label="Backup retention" value={backupKeep} disabled={backupBusy} onChange={event=>{const keep=Number(event.target.value) as 3|5|10|20;setBackupBusy(true);void call("installation.setBackupRetention",{keep}).then(value=>setBackupKeep(value.keep as 3|5|10|20)).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{([3,5,10,20] as const).map(keep=><option key={keep} value={keep}>Keep {keep}</option>)}</select></label>
           {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button></div>)}</details>}
           {restoreStatus.pending&&<span className="hint" role="status">A restore is staged for the next launch. Changes made before quitting will be replaced.</span>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<span className="hint" role="status">{backupMessage}</span>}
         </Field>

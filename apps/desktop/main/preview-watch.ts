@@ -36,6 +36,12 @@ export function nextFrame(wc: WebContents, timeoutMs: number): Promise<NativeIma
 }
 
 /** Downscaled JPEG bytes of a frame, or null for an empty/degenerate image. */
+/** A conversation/tab preview frame: half-width JPEG between 320 and 640px. */
+export function previewDataUrl(image: NativeImage): string | null {
+  const jpeg = previewJpeg(image, Math.max(320, Math.min(640, Math.round(image.getSize().width * 0.5))));
+  return jpeg ? `data:image/jpeg;base64,${jpeg.toString("base64")}` : null;
+}
+
 export function previewJpeg(image: NativeImage, maxWidth = 720): Buffer | null {
   const size = image.getSize();
   if (image.isEmpty() || size.width < 2 || size.height < 2) return null;

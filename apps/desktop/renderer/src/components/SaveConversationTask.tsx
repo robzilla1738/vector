@@ -18,7 +18,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
   if (!open) return <button className="btn sm ghost" onClick={() => setOpen(true)}>Save as task</button>;
   return <form className="save-conversation-task" onSubmit={event => {
     event.preventDefault(); if (pending.current) return; pending.current = true; setBusy(true); setError("");
-    void call<Task>("tasks.promote", { chatId, expectedRunId: runId, workspaceId: space, title, objective,
+    void call("tasks.promote", { chatId, expectedRunId: runId, workspaceId: space, title, objective,
       criteria: [{ criterionId: "outcome", description: success, verification: "manual" }],
       resources: page && /^https?:/.test(page.url) && page.url.length <= 4000 ? [{ resourceId: "source-page", kind: "url", locator: page.url, label: (page.title || page.url).slice(0,200) }] : [],
     }).then(onSaved).catch(reason => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => { pending.current = false; setBusy(false); });

@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { openDb, Repo, ArtifactStore, EventBus } from '../../apps/runtime/dist/index.js';
+import { shellWindow } from './launch.mjs';
 const root = resolve(import.meta.dirname, '../..');
 const req = createRequire(join(root, 'packages/chromium-driver/package.json'));
 const desktop = createRequire(join(root, 'apps/desktop/package.json'));
@@ -39,9 +40,7 @@ let app;
 try {
  const packaged = process.argv.includes('--packaged');
  app = await _electron.launch({executablePath:packaged ? join(root,'release/mac-arm64/Aux Browser.app/Contents/MacOS/Aux Browser') : desktop('electron'),args:[...(packaged?[]:[join(root,'apps/desktop')]),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:data,AUX_LOAD_DOTENV:'0'}});
- let page;
- for (let n=0;n<100;n++) {page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}
- assert.ok(page);
+ let page = await shellWindow(app);
  await app.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows()[0].setSize(1200,944));
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  const replyBox = page.locator('.conversation:not(.conversation-embedded) textarea[aria-label="Reply to conversation"]');

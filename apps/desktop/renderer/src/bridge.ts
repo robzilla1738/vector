@@ -4,7 +4,7 @@
  * `--mode mock` main.tsx installs a scripted bridge before this module reads
  * window.aux (see mock/bridge.ts).
  */
-import type { AuxEvent, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
+import type { AuxEvent, MethodName, MethodResult, RpcArgs, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
 
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
@@ -29,7 +29,7 @@ export interface FilterSourceStatus { id:string;name:string;url:string;enabled:b
 export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;builtinHosts:number }
 export interface BrowserHealthSummary {
   recordingSince?:number;latestAt?:number;samples:number;sessions:number;observedMinutes:number;spanDays:number;sevenDaySpan:boolean;startupMs?:number;
-  cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
+  cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;swallowed?:Record<string,number>;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
 }
 export const emptyBrowserHealthSummary=():BrowserHealthSummary=>({samples:0,sessions:0,observedMinutes:0,spanDays:0,sevenDaySpan:false,cpuPercent:{p50:0,p95:0,max:0},memoryMb:{p50:0,p95:0,max:0},eventLoopLagMs:{p50:0,p95:0,max:0},maxWindows:0,maxPages:0,maxSuspendedPages:0,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0});
 
@@ -64,7 +64,7 @@ export interface AuxBridge {
   platform: string;
   /** push saved binding overrides to main (menus + page interception) */
   setShortcutOverrides(overrides: unknown): Promise<unknown>;
-  invoke(method: string, params?: unknown): Promise<unknown>;
+  invoke<M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>>;
   onEvent(cb: (e: AuxEvent) => void): () => void;
   onRuntimeStatus(cb: (status: { connected: boolean; detail?: string }) => void): () => void;
   onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string }) => void): () => void;

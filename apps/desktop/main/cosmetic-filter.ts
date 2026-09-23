@@ -1,4 +1,5 @@
 import type { WebContents } from "electron";
+import { noteSwallowed } from "./swallowed.js";
 import { addDocumentBinding } from "./page-debugger.js";
 
 /**
@@ -72,7 +73,7 @@ export function cosmeticApplyScript(on: boolean): string {
 /** Applies or removes the style on an open page — live toggle/allow changes. */
 export function applyCosmetic(wc: WebContents, on: boolean) {
   if (wc.isDestroyed()) return;
-  void wc.executeJavaScript(cosmeticApplyScript(on), true).catch(() => {});
+  void wc.executeJavaScript(cosmeticApplyScript(on), true).catch(() => noteSwallowed("cosmetic.apply"));
 }
 
 export function installCosmeticFilter(wc: WebContents, hooks: {
@@ -85,7 +86,7 @@ export function installCosmeticFilter(wc: WebContents, hooks: {
     void wc.debugger.sendCommand("Runtime.evaluate", {
       expression: `document.getElementById(${JSON.stringify(STYLE_ID)})?.remove()`,
       contextId,
-    }).catch(() => {});
+    }).catch(() => noteSwallowed("cosmetic.remove"));
   }, {
     source: `(${injectorBody.toString()})(${JSON.stringify(COSMETIC_BINDING)},${JSON.stringify(STYLE_ID)},${JSON.stringify(styleSheet())})`,
     worldName: COSMETIC_WORLD,

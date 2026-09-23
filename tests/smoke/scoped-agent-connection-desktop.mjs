@@ -8,14 +8,12 @@ import {execFileSync} from 'node:child_process';
 import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 import { poll } from "./poll.mjs";
+import { launchApp } from "./launch.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const desktopRequire = createRequire(join(root, "apps/desktop/package.json"));
 const mcpRequire = createRequire(join(root, "packages/mcp/package.json"));
-const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const { Client } = mcpRequire("@modelcontextprotocol/sdk/client/index.js");
 const { StdioClientTransport } = mcpRequire("@modelcontextprotocol/sdk/client/stdio.js");
-const electron = desktopRequire("electron");
 const temporary = mkdtempSync(join(tmpdir(), "aux-scoped-agent-"));
 const repository=join(temporary,'repository');mkdirSync(repository);const git=(...args)=>execFileSync('/usr/bin/git',['-C',repository,...args],{encoding:'utf8',env:{PATH:'/usr/bin:/bin',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null'}}).trim();
 git('init','-q');git('config','user.name','Fixture');git('config','user.email','fixture@example.test');writeFileSync(join(repository,'app.ts'),'export const value = 1;\n');writeFileSync(join(repository,'package.json'),JSON.stringify({name:'agent-fixture',scripts:{check:'node --check app.ts'}}));writeFileSync(join(repository,'server.cjs'),"const http=require('node:http');http.createServer((_req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Agent preview</title><h1>Agent preview is working</h1>');}).listen(Number(process.argv[2]),'127.0.0.1',()=>console.log('AGENT_PREVIEW_READY'));\n");git('add','.');git('commit','-qm','Fixture baseline');
@@ -33,18 +31,14 @@ const previewPort=await new Promise(resolve=>{const reservation=createServer();r
 let app;
 let client;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const launch = () => _electron.launch({
-  executablePath: electron,
-  args: [join(root, "apps/desktop"), "--use-mock-keychain"],
-  env: {
+const launch = () => launchApp({args:["--use-mock-keychain"],env: {
     PATH: process.env.PATH,
     HOME: temporary,
     TMPDIR: temporary,
     AUX_PROFILE_DIR: join(temporary, "profile"),
     AUX_DATA_DIR: join(temporary, "data"),
     AUX_LOAD_DOTENV: "0",
-  },
-});
+  }});
 async function shell() {
   for (let attempt = 0; attempt < 150; attempt++) {
     const found = app.windows().find(page => page.url().includes("renderer/index.html"));

@@ -1,20 +1,17 @@
 // Prospective private-window boundary probe; synthetic accounts and isolated profile only.
-import {createRequire} from 'node:module';
 import {mkdtempSync,rmSync,readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
+import { launchAux } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-private-boundary-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<title>Draft ${req.url}</title><label>Draft<textarea id="draft"></textarea></label><a href="/destination">Continue</a><script>addEventListener('beforeunload',e=>{if(draft.value){e.preventDefault();e.returnValue='';}});</script>`)});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`;
 let app;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  const isolation=await app.evaluate(async({BrowserWindow,session},url)=>{
    const regular=session.fromPartition('persist:aux-default');
    const temporary=session.fromPartition('aux-private-boundary-test',{cache:false});

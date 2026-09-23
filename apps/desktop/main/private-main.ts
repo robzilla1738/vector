@@ -13,12 +13,19 @@ import { HttpsFirst } from "./https-first.js";
 import { createInsecureBypass } from "./insecure-bypass.js";
 import { confirmDownload, downloadWarning } from "./download-guard.js";
 import { offerExternalLink } from "./external-links.js";
-import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
-import { pageShortcut } from "./page-shortcuts.js";
+import { wirePageFullscreen, exitPageFullscreen } from "./page-fullscreen.js";
+import { pageShortcut, setPageShortcuts } from "./page-shortcuts.js";
 import { installNavGesture } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
 import { recolorToolbarGlass, syncToolbarGlass } from "./toolbar-glass.js";
-import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
+import { cssCursor } from "./page-pointer.js";
+import { appearance, applyAppearance, glassActive, parseTheme, setRequestedAppearance, watchAppearance, windowFill } from "./windows/appearance.js";
+import { fillWindow, forwardPagePointer, placeChrome, stageFullscreen, type ChromeHost } from "./windows/surface.js";
+import { appMenuTemplate, shortcutFor } from "./app/menu-template.js";
+import { wirePrivacyHandlers, type PermissionDecisions, type PrivacyScope } from "./privacy/ipc.js";
+import { createPageTranslator } from "./features/page-translator.js";
+import { throttleDownloadProgress } from "./downloads/progress.js";
+import { setWindowMaterial } from "./window-material.js";
 /**
  * Aux private browser process.
  *
@@ -44,13 +51,12 @@ import { retrySource } from "./download-retry.js";
 import { PageFinder } from "./page-find.js";
 import { readArticle } from "./read-article.js";
 import { PrivateBookmarks } from "./private-bookmarks.js";
-import { applyTranslationsScript, extractTextsScript, restoreOriginalScript, translateBubbleScript } from "./page-translate.js";
 import { setPageZoom } from "./page-zoom.js";
-import { startPreviewWatch } from "./preview-watch.js";
+import { previewDataUrl, startPreviewWatch } from "./preview-watch.js";
 import { TabCatalog } from "./tabs/catalog.js";
 import { TabController, type TabPorts } from "./tabs/controller.js";
 const siteZoom = new SiteZoomPreferences();
-import { MethodSchemas } from "@aux/contracts";
+import { effectiveShortcuts, MethodSchemas, SHORTCUTS, ShortcutOverridesSchema, SidebarMaterialSchema, type ShortcutCommandDef, type ShortcutOverrides } from "@aux/contracts";
 import type { TabPatch, TabRecord } from "@aux/contracts";
 
 const scratch = mkdtempSync(join(tmpdir(), "aux-private-process-"));
@@ -72,8 +78,9 @@ let stageRadius = 0;
 let overlayOpen = false;
 let toolbarOverlay = false;
 let toolbarOverlaySeq = 0;
-let shellFill = "#1c1c1e";
-let chromeOnTop = false;
+let chrome: ChromeHost | null = null;
+let shortcutOverrides: ShortcutOverrides = {};
+let menuShortcuts: readonly ShortcutCommandDef[] = SHORTCUTS;
 let exitApproved = false;
 let exitPending = false;
 let preparedExit: { invalidated: boolean; cleanup: () => void } | null = null;
@@ -127,7 +134,7 @@ const bookmarks = new PrivateBookmarks();
 const downloads: Download[] = [];
 const pageFinder = new PageFinder();
 const liveDownloads = new Map<string, { item: Electron.DownloadItem; update(): void }>();
-let permissionDecisions: Record<string,Record<string,"allow"|"deny">> = {};
+let permissionDecisions: PermissionDecisions = {};
 const testUnloadResponses = (process.env.AUX_PRIVATE_TEST_UNLOAD_RESPONSES ?? "").split(",").map(Number).filter(value=>value===0||value===1);
 // Blocking config arrives read-only from the regular process. Exceptions
 // chosen inside private mode live only in this process's memory and die with
@@ -205,16 +212,12 @@ function sendPage(page: PrivatePage, active = false) {
 function applyStage(focus = false) {
   if (!win || win.isDestroyed()) return;
   const bounds = stageBounds ?? win.getContentBounds();
-  let fullscreen=fullscreenContents(win);
-  if(fullscreen && (overlayOpen || pages.get(stagePageId??"")?.view.webContents!==fullscreen)) {
-    exitPageFullscreen(win);fullscreen=undefined;
-  }
+  const fullscreen=stageFullscreen(win,overlayOpen,pages.get(stagePageId??"")?.view.webContents);
   if(fullscreen) {
-    const size=win.getContentBounds();
     for(const page of pages.values()) {
       const shown=page.view.webContents===fullscreen;
       page.view.setVisible(shown);
-      if(shown){page.view.setBounds({x:0,y:0,width:size.width,height:size.height});page.view.setBorderRadius(0);win.contentView.addChildView(page.view);}
+      if(shown)fillWindow(win,page.view);
     }
     toolbarEdge?.sync();
     syncToolbarGlass("private", [], false, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
@@ -238,23 +241,14 @@ function applyStage(focus = false) {
     if (page.target.viewStatus!=="crashed") page.target={...page.target,viewStatus:shown?"visible":"hidden"};
   }
   if(focus && primary)primary.view.webContents.focus();
-  if(shellView){
-    const fill=toolbarOverlay?"#00000000":"#1c1c1e";
-    if(shellFill!==fill){shellFill=fill;shellView.setBackgroundColor(fill);}
-    if(toolbarOverlay){
-      chromeOnTop=true;
-      win.contentView.addChildView(shellView);
-    }else if(chromeOnTop){
-      chromeOnTop=false;
-      for(const id of [stagePageId, splitPageId]){
-        const page=id?pages.get(id):undefined;
-        if(page?.view.getVisible())win.contentView.addChildView(page.view);
-      }
-    }
-  }
+  if(chrome){chrome.toolbarOverlay=toolbarOverlay;placeChrome(chrome,visibleStageViews([stagePageId,splitPageId]));}
   toolbarEdge?.sync();
   const open = [primary, companion].flatMap(page => page && !page.view.webContents.isDestroyed() ? [page.view.webContents] : []);
   syncToolbarGlass("private", open, toolbarOverlay, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
+}
+
+function visibleStageViews(ids: (string | null)[]) {
+  return ids.flatMap(id => { const page = id ? pages.get(id) : undefined; return page?.view.getVisible() ? [page.view] : []; });
 }
 
 function activate(pageId: string, viaController = false) {
@@ -275,8 +269,8 @@ function wirePage(page: PrivatePage) {
   wc.on("context-menu",(_event,params)=>showPageMenu(wc,params,{
     openAsTab:(url,referrer)=>{void openPage(url,true,referrer).catch(()=>{});},
     onAudio:()=>shellView?.webContents.send("view.audio",{pageId:page.target.pageId,muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
-    translatePage:()=>{void runPrivatePageTranslate(page.target.pageId).catch(error=>shellView?.webContents.send("translation-changed",{pageId:page.target.pageId,error:error instanceof Error?error.message:String(error)}));},
-    translateSelection:(text,x,y)=>{void runPrivateSelectionTranslate(page,text,x,y).catch(error=>shellView?.webContents.send("translation-changed",{pageId:page.target.pageId,error:error instanceof Error?error.message:String(error)}));},
+    translatePage:()=>{void translator.page(page.target.pageId).catch(error=>translator.failed(page.target.pageId,error));},
+    translateSelection:(text,x,y)=>{void translator.selection(page.target.pageId,text,x,y).catch(error=>translator.failed(page.target.pageId,error));},
   }));
   wc.on("cursor-changed",(_event,type)=>{if(toolbarOverlay)shellView?.webContents.send("page-cursor",cssCursor(type));});
   wc.on("before-input-event",(event,input)=>{
@@ -321,7 +315,7 @@ function wirePage(page: PrivatePage) {
   });
   wc.on("did-start-navigation",(_event,_url,_inPlace,isMainFrame)=>{if(isMainFrame){page.target={...page.target,loading:true,navigationError:null,error:undefined,viewStatus:"hidden"};applyStage();sendPage(page);}});
   wc.on("did-fail-load",(_event,code,message,url,isMainFrame)=>{if(isMainFrame&&code!==-3){page.target={...page.target,url,title:"Page couldn’t load",loading:false,navigationError:{url,code,message,upgradedFrom:privateHttpsFirst.httpFallback(url,code)}};sendPage(page);}});
-  wc.on("did-navigate",(_event,url)=>{siteZoom.apply(wc,url);page.target={...page.target,url,title:wc.getTitle()||url,documentEpoch:page.target.documentEpoch+1,loading:false,navigationError:null};if(privatePageTranslations.delete(page.target.pageId))shellView?.webContents.send("translation-changed",{pageId:page.target.pageId,lang:null,count:0});if(url!=="about:blank")history.unshift({url,title:page.target.title,pageId:page.target.pageId,visitedAt:Date.now()});sendPage(page);});
+  wc.on("did-navigate",(_event,url)=>{siteZoom.apply(wc,url);page.target={...page.target,url,title:wc.getTitle()||url,documentEpoch:page.target.documentEpoch+1,loading:false,navigationError:null};translator.forget(page.target.pageId);if(url!=="about:blank")history.unshift({url,title:page.target.title,pageId:page.target.pageId,visitedAt:Date.now()});sendPage(page);});
   wc.on("did-navigate-in-page",(_event,url)=>{page.target={...page.target,url,documentEpoch:page.target.documentEpoch+1};sendPage(page);});
   wc.on("page-title-updated",(_event,title)=>{page.target={...page.target,title};sendPage(page);});
   wc.on("page-favicon-updated",(_event,icons)=>{page.target={...page.target,favicon:icons[0]};sendPage(page);});
@@ -444,8 +438,8 @@ function configurePermissions() {
       shellView?.webContents.send("download",{...record});
     };
     liveDownloads.set(record.id, { item, update });
-    item.on("updated",update);
-    item.once("done",(_done,state)=>{liveDownloads.delete(record.id);record.path=item.getSavePath()||record.path;record.size=item.getReceivedBytes();record.state=state;record.endedAt=Date.now();record.paused=false;record.canResume=false;record.canCancel=false;shellView?.webContents.send("download",{...record});});
+    const stopProgress=throttleDownloadProgress(item,update);
+    item.once("done",(_done,state)=>{stopProgress();liveDownloads.delete(record.id);record.path=item.getSavePath()||record.path;record.size=item.getReceivedBytes();record.state=state;record.endedAt=Date.now();record.paused=false;record.canResume=false;record.canCancel=false;shellView?.webContents.send("download",{...record});});
   });
 }
 
@@ -535,18 +529,7 @@ function registerIpc() {
   ipcMain.on("ui.pagePointer",(event,value:unknown)=>{
     if(!toolbarOverlay||overlayOpen||!win||win.isDestroyed())return;
     try{requireShell(event as Electron.IpcMainInvokeEvent);}catch{return;}
-    const message=readPagePointer(value);if(!message)return;
-    const visible=[splitPageId,stagePageId].flatMap(id=>{
-      const page=id?pages.get(id):undefined;
-      if(!page?.view.getVisible())return [];
-      return [{page,...page.view.getBounds()}];
-    });
-    const hit=boundsContaining(message.x,message.y,visible);
-    if(!hit||hit.page.view.webContents.isDestroyed())return;
-    const input=inputEventFor(message,hit.x,hit.y);
-    if(!input)return;
-    if(message.kind==="down")hit.page.view.webContents.focus();
-    hit.page.view.webContents.sendInputEvent(input);
+    forwardPagePointer(value,visibleStageViews([splitPageId,stagePageId]));
   });
   ipcMain.handle("ui.focusShell",event=>{requireShell(event);shellView?.webContents.focus();});
   let previewWatch:{pageId:string;stop:()=>void}|null=null;
@@ -570,7 +553,7 @@ function registerIpc() {
     return true;
   });
   ipcMain.handle("ui.unwatchPreview",(event,pageId:unknown)=>{requireShell(event);if(!previewWatch||typeof pageId!=="string"||previewWatch.pageId===pageId)clearPreviewWatch();return true;});
-  ipcMain.handle("ui.preview",async(event,pageId:string)=>{requireShell(event);const page=pages.get(pageId);if(!page)return null;try{return (await page.view.webContents.capturePage()).resize({width:240}).toDataURL();}catch{return null;}});
+  ipcMain.handle("ui.preview",async(event,pageId:string)=>{requireShell(event);const page=pages.get(pageId);if(!page)return null;try{return previewDataUrl(await page.view.webContents.capturePage());}catch{return null;}});
   ipcMain.handle("ui.tabAudio",event=>{requireShell(event);return Object.fromEntries([...pages].map(([id,page])=>[id,{muted:page.view.webContents.isAudioMuted(),audible:page.view.webContents.isCurrentlyAudible()}]));});
   ipcMain.handle("ui.tabCommand", (event, envelope: unknown) => { requireShell(event); return tabController.execute(envelope, PRIVATE_WINDOW_ID); });
   ipcMain.handle("ui.tabsSnapshot", event => { requireShell(event); return tabCatalog.snapshot(); });
@@ -622,73 +605,46 @@ function registerIpc() {
     if (!record || liveDownloads.has(record.id) || record.state === "completed" || !source) throw new Error("Start this download again from its private page.");
     session.fromPartition(`aux-private-pages-${process.pid}`,{cache:false}).downloadURL(source);
   });
-  ipcMain.handle("app.sitePermissions",event=>{requireShell(event);return structuredClone(permissionDecisions);});
-  ipcMain.handle("app.clearSitePermission",(event,origin:string,permission?:string)=>{requireShell(event);const next={...permissionDecisions};if(permission){next[origin]={...next[origin]};delete next[origin][permission];if(!Object.keys(next[origin]).length)delete next[origin];}else delete next[origin];permissionDecisions=next;return true;});
-  ipcMain.handle("app.privacy",event=>{requireShell(event);return {trackerBlock:privateTrackerBlock,blocked:privateBlockedCount,allowedHosts:[...privateAllowed],httpsUpgrade:privateHttpsFirst.enabled};});
-  ipcMain.handle("app.setHttpsUpgrade",(event,enabled:unknown)=>{
-    requireShell(event);if(typeof enabled!=="boolean")throw new Error("Choose whether secure connections are required first.");
-    privateHttpsFirst.enabled=enabled;shellView?.webContents.send("privacy-changed",{trackerBlock:privateTrackerBlock,blocked:privateBlockedCount});
-    return privateHttpsFirst.enabled;
+  wirePrivacyHandlers(<A extends unknown[]>(channel: string, fn: (scope: PrivacyScope, ...args: A) => unknown) => ipcMain.handle(channel, (event, ...args) => { requireShell(event); return fn(privateScope, ...(args as A)); }), {
+    settings: () => ({ trackerBlock: privateTrackerBlock, allowedHosts: [...privateAllowed], httpsUpgrade: privateHttpsFirst.enabled }),
+    blocked: () => privateBlockedCount,
+    update: next => { privateTrackerBlock = next.trackerBlock; privateAllowed.clear(); for (const host of next.allowedHosts) privateAllowed.add(host); privateHttpsFirst.enabled = next.httpsUpgrade; },
+    httpsFirst: privateHttpsFirst,
+    insecureBypass: privateInsecureBypass,
+    trackersAllowed: privateTrackersAllowed,
+    applyCosmetic: privateApplyCosmeticAll,
+    permissions: () => permissionDecisions,
+    savePermissions: next => { permissionDecisions = next; },
+    filters: {
+      status: () => privateFilterLists ? privateFilterLists.status(TRACKER_HOSTS.size) : { sources: [], hosts: 0, builtinHosts: TRACKER_HOSTS.size },
+      update: () => privateFilterOp({ action: "update" }, true),
+      add: (name, url) => privateFilterOp({ action: "add", args: { name, url } }),
+      remove: id => privateFilterOp({ action: "remove", args: { id } }),
+    },
+    broadcast: (channel, payload) => shellView?.webContents.send(channel, payload),
+    clearSiteDataPrompt: {
+      title: "Clear private website data",
+      detail: "This can sign you out and remove locally saved work in this private window. Other open pages for this site can recreate data; reload them after clearing.",
+    },
   });
-  ipcMain.handle("app.setTrackerBlock",(event,enabled:unknown)=>{
-    requireShell(event);if(typeof enabled!=="boolean")throw new Error("Choose whether tracker blocking is on or off.");
-    privateTrackerBlock=enabled;privateApplyCosmeticAll();shellView?.webContents.send("privacy-changed",{trackerBlock:privateTrackerBlock,blocked:privateBlockedCount});
-    return {trackerBlock:privateTrackerBlock,blocked:privateBlockedCount};
-  });
-  ipcMain.handle("app.setSiteTrackers",(event,pageId:unknown,allowed:unknown)=>{
-    requireShell(event);const page=typeof pageId==="string"?pages.get(pageId):undefined;if(!page)throw new Error("This browser tab is no longer available.");
-    if(typeof allowed!=="boolean")throw new Error("Choose whether this site allows trackers and ads.");
-    const hostname=new URL(page.view.webContents.getURL()).hostname.toLowerCase();
-    if(allowed)privateAllowed.add(hostname);else privateAllowed.delete(hostname);
-    privateApplyCosmeticAll();shellView?.webContents.send("privacy-changed",{trackerBlock:privateTrackerBlock,blocked:privateBlockedCount});
-    return {hostname,allowed:privateTrackersAllowed(hostname)};
-  });
-  ipcMain.handle("app.removeAllowedHost",(event,hostname:unknown)=>{requireShell(event);if(typeof hostname!=="string"||!hostname)throw new Error("Choose a website exception to remove.");privateAllowed.delete(hostname.toLowerCase());privateApplyCosmeticAll();return [...privateAllowed];});
-  ipcMain.handle("app.useHttp",(event,pageId:unknown,url:unknown)=>{
-    requireShell(event);const page=typeof pageId==="string"?pages.get(pageId):undefined;if(!page)throw new Error("This browser tab is no longer available.");
-    if(typeof url!=="string")throw new Error("An address is required.");
-    let target:URL;try{target=new URL(url);}catch{throw new Error("Invalid address.");}
-    if(target.protocol!=="http:")throw new Error("Only unencrypted addresses can be continued to.");
-    privateHttpsFirst.allowHttp(target.hostname);
-    void page.view.webContents.loadURL(target.href).catch(()=>{});
-    return true;
-  });
-  ipcMain.handle("app.proceedInsecure",(event,url:unknown)=>{
-    requireShell(event);if(typeof url!=="string")throw new Error("An HTTPS address is required.");
-    privateInsecureBypass.proceed(url);
-    return true;
-  });
-  ipcMain.handle("app.filterLists",event=>{requireShell(event);return privateFilterLists?privateFilterLists.status(TRACKER_HOSTS.size):{sources:[],hosts:0,builtinHosts:TRACKER_HOSTS.size};});
-  ipcMain.handle("app.updateFilters",async event=>{requireShell(event);if(!privateFilterLists)throw new Error("Filter lists are unavailable.");const status=await privateRequest<unknown>("aux-private-filters",{action:"update"},"Filter updates are unavailable while the regular browser is offline.");refreshPrivateBlockedHosts();return status;});
-  ipcMain.handle("app.addFilterSource",async(event,name:unknown,url:unknown)=>{requireShell(event);const sources=await privateRequest<unknown>("aux-private-filters",{action:"add",args:{name,url}},"Filter updates are unavailable while the regular browser is offline.");refreshPrivateBlockedHosts();return sources;});
-  ipcMain.handle("app.removeFilterSource",async(event,id:unknown)=>{requireShell(event);const sources=await privateRequest<unknown>("aux-private-filters",{action:"remove",args:{id}},"Filter updates are unavailable while the regular browser is offline.");refreshPrivateBlockedHosts();return sources;});
-  ipcMain.handle("app.clearSiteData",async(event,pageId:string)=>{
-    requireShell(event);const page=pages.get(pageId);if(!page||!win)return false;
-    const wc=page.view.webContents;const url=new URL(wc.getURL());if(!['http:','https:'].includes(url.protocol))throw new Error("Choose an HTTP or HTTPS website.");const origin=url.origin;
-    const {response}=await dialog.showMessageBox(win,{type:"warning",title:"Clear private website data",message:`Clear cookies and stored data for ${origin}?`,detail:"This can sign you out and remove locally saved work in this private window. Other open pages for this site can recreate data; reload them after clearing.",buttons:["Cancel","Clear website data"],defaultId:0,cancelId:0,noLink:true});
-    if(response!==1)return false;
-    if(!pages.has(pageId)||wc.isDestroyed()||new URL(wc.getURL()).origin!==origin)throw new Error("The tab changed while confirmation was open. Choose the website again.");
-    await wc.session.clearData({origins:[origin],originMatchingMode:"origin-in-all-contexts",dataTypes:["cookies","localStorage","indexedDB","fileSystems","serviceWorkers","webSQL"]});return true;
-  });
-  ipcMain.handle("app.siteInfo",async(event,pageId:string)=>{
+  ipcMain.handle("ui.shortcutOverrides",(event,value:unknown)=>{
     requireShell(event);
-    const page=pages.get(pageId);if(!page)throw new Error("This browser tab is no longer available.");
-    const wc=page.view.webContents, url=new URL(wc.getURL());
-    if(!['http:','https:'].includes(url.protocol))throw new Error("Site controls are available for HTTP and HTTPS websites.");
-    const cookies=await wc.session.cookies.get({url:url.href});
-    if(wc.isDestroyed()||pages.get(pageId)!==page||wc.getURL()!==url.href)throw new Error("The page changed. Open site controls again.");
-    const local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
-    return {pageId,url:url.href,origin:url.origin,title:wc.getTitle(),security:url.protocol==='https:'?'secure':local?'local':'insecure',cookieCount:cookies.length,permissions:{...permissionDecisions[url.origin]},trackersAllowed:privateTrackersAllowed(url.hostname)};
+    if(value===undefined)return shortcutOverrides;
+    const parsed=ShortcutOverridesSchema.safeParse(value);
+    if(!parsed.success)throw new Error("Invalid shortcut overrides.");
+    shortcutOverrides=parsed.data;menuShortcuts=effectiveShortcuts(shortcutOverrides);
+    setPageShortcuts(menuShortcuts);installPrivateMenu();
+    return shortcutOverrides;
   });
-  ipcMain.handle("ui.setAppearance",(event,theme:"system"|"dark"|"light",translucent=false)=>{requireShell(event);nativeTheme.themeSource=theme;const glass=translucent&&!nativeTheme.prefersReducedTransparency&&process.platform==="darwin";win?.setVibrancy(glass?"under-window":null);shellView?.setBackgroundColor(glass?"#00000000":nativeTheme.shouldUseDarkColors?"#1c1c1e":"#e4e4e1");recolorToolbarGlass(nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);return true;});
+  ipcMain.handle("ui.setAppearance",(event,theme:unknown,translucent:unknown,_windowControls:unknown,material:unknown)=>{requireShell(event);applyAppearance(win&&shellView?[{win,shellView}]:[],parseTheme(theme),translucent===true,SidebarMaterialSchema.default("liquid-glass").parse(material));recolorToolbarGlass(nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);return true;});
 
   ipcMain.handle("ui.readArticle",(event,pageId:string)=>{
     requireShell(event);const page=pages.get(pageId);
     if(!page)throw new Error("Open a webpage to use Reader view.");
     return readArticle(page.view.webContents,()=>pages.get(pageId)===page);
   });
-  ipcMain.handle("ui.translatePage",(event,pageId:unknown)=>{requireShell(event);return runPrivatePageTranslate(String(pageId));});
-  ipcMain.handle("ui.showOriginal",(event,pageId:unknown)=>{requireShell(event);return runPrivateShowOriginal(String(pageId));});
+  ipcMain.handle("ui.translatePage",(event,pageId:unknown)=>{requireShell(event);return translator.page(String(pageId));});
+  ipcMain.handle("ui.showOriginal",(event,pageId:unknown)=>{requireShell(event);return translator.showOriginal(String(pageId));});
   const downloadedFile=(path:unknown)=>{
     if(typeof path!=="string"||!downloads.some(download=>download.path===path&&download.state==="completed"))throw new Error("Choose a completed download from this private window.");
     return path;
@@ -741,43 +697,34 @@ function privateRequest<T>(type:"aux-private-translate"|"aux-private-filters",pa
 const privateTranslate=<T>(method:"translate.page"|"translate.text",params:Record<string,unknown>)=>
   privateRequest<T>("aux-private-translate",{method,params},"Translation is unavailable — private browsing has no model connection.");
 
-const privatePageTranslations=new Map<string,{lang:string;count:number;truncated?:boolean}>();
-function privateTranslateTarget():string{
-  const locale=app.getLocale()||"en";
-  try{return new Intl.DisplayNames([locale],{type:"language"}).of(locale.split("-")[0]!)??"English";}
-  catch{return "English";}
+const translator=createPageTranslator({
+  contents:pageId=>pages.get(pageId)?.view.webContents,
+  invoke:(method,params)=>privateTranslate(method,params),
+  ready:()=>{},
+  send:payload=>shellView?.webContents.send("translation-changed",payload),
+});
+const privateScope:PrivacyScope={
+  get win(){if(!win)throw new Error("This window is unavailable.");return win;},
+  page:pageId=>{
+    const page=typeof pageId==="string"?pages.get(pageId):undefined;
+    if(!page)throw new Error("This browser tab is no longer available.");
+    return {wc:page.view.webContents,current:()=>pages.get(page.target.pageId)===page};
+  },
+};
+async function privateFilterOp(payload:Record<string,unknown>,requireLists=false){
+  if(requireLists&&!privateFilterLists)throw new Error("Filter lists are unavailable.");
+  const result=await privateRequest<unknown>("aux-private-filters",payload,"Filter updates are unavailable while the regular browser is offline.");
+  refreshPrivateBlockedHosts();
+  return result;
 }
-async function runPrivatePageTranslate(pageId:string){
-  const page=pages.get(pageId);
-  if(!page)throw new Error("This private page is no longer available.");
-  const wc=page.view.webContents;
-  const url=wc.getURL();
-  if(!/^https?:/.test(url))throw new Error("Open a web page to translate.");
-  if(/\.pdf($|[?#])/i.test(url))throw new Error("PDF documents can't be translated in place.");
-  shellView?.webContents.send("translation-changed",{pageId,pending:true});
-  const extracted=await wc.executeJavaScript(extractTextsScript(),true) as {texts?:string[];title?:string};
-  if(!extracted?.texts?.length)throw new Error("No readable text was found on this page.");
-  const result=await privateTranslate<{lang:string;translations:string[];truncated:boolean}>("translate.page",{texts:extracted.texts,target:privateTranslateTarget(),context:(extracted.title??"").slice(0,200)});
-  if(wc.isDestroyed()||wc.getURL()!==url)throw new Error("The page changed while translating.");
-  const applied=await wc.executeJavaScript(applyTranslationsScript(result.translations),true) as {applied:number;expired:boolean};
-  if(applied.expired)throw new Error("The page changed while translating.");
-  const state={lang:result.lang,count:applied.applied,truncated:result.truncated};
-  privatePageTranslations.set(pageId,{lang:result.lang,count:applied.applied});
-  shellView?.webContents.send("translation-changed",{pageId,...state});
-  return state;
-}
-async function runPrivateSelectionTranslate(page:PrivatePage,text:string,x:number,y:number){
-  const result=await privateTranslate<{lang:string;translation:string}>("translate.text",{text:text.slice(0,12000),target:privateTranslateTarget(),context:page.view.webContents.getTitle().slice(0,200)});
-  if(page.view.webContents.isDestroyed())return;
-  await page.view.webContents.executeJavaScript(translateBubbleScript(x,y,result.lang,privateTranslateTarget(),result.translation),true).catch(()=>{});
-}
-async function runPrivateShowOriginal(pageId:string){
-  const page=pages.get(pageId);
-  if(!page)return 0;
-  const restored=await page.view.webContents.executeJavaScript(restoreOriginalScript(),true).catch(()=>0) as number;
-  privatePageTranslations.delete(pageId);
-  shellView?.webContents.send("translation-changed",{pageId,lang:null,count:0});
-  return restored;
+
+function installPrivateMenu(){
+  Menu.setApplicationMenu(Menu.buildFromTemplate(appMenuTemplate({
+    shortcuts:menuShortcuts,
+    send:id=>()=>shellView?.webContents.send("shortcut",shortcutFor(id,menuShortcuts)),
+    appMenu:{label:"Aux Private",submenu:[{role:"about",label:"About Aux"},{type:"separator"},{role:"quit",label:"Close Private Window"}]},
+    closeWindow:()=>win?.close(),
+  })));
 }
 
 process.on("message",message=>{
@@ -804,9 +751,14 @@ process.on("message",message=>{
 async function boot(){
   const shellSession=session.fromPartition(`aux-private-shell-${process.pid}`,{cache:false});
   configurePermissions();registerIpc();
-  win=new BaseWindow({width:1320,height:900,minWidth:900,minHeight:620,title:"Aux — Private",titleBarStyle:"hiddenInset",trafficLightPosition:trafficLights,roundedCorners:true,backgroundColor:"#1c1c1e"});
+  // Private settings report a solid system-theme sidebar; paint that before the shell asks.
+  setRequestedAppearance(false,appearance.material);nativeTheme.themeSource="system";
+  const glass=glassActive(),fill=windowFill(glass);
+  win=new BaseWindow({width:1320,height:900,minWidth:900,minHeight:620,title:"Aux — Private",titleBarStyle:"hiddenInset",trafficLightPosition:trafficLights,roundedCorners:true,backgroundColor:fill,transparent:process.platform==="darwin",visualEffectState:"active",show:false});
   shellView=new WebContentsView({webPreferences:{preload:join(import.meta.dirname,"..","preload","index.cjs"),session:shellSession,additionalArguments:["--aux-private-renderer"],contextIsolation:true,sandbox:true,nodeIntegration:false}});
-  shellView.setBackgroundColor("#1c1c1e");win.contentView.addChildView(shellView);
+  shellView.setBackgroundColor(fill);win.contentView.addChildView(shellView);setWindowMaterial(win,glass?appearance.material:null);
+  chrome={win,shellView,paintedFill:fill,chromeOnTop:false,toolbarOverlay:false};
+  watchAppearance(()=>win&&shellView?[{win,shellView}]:[]);
   toolbarEdge=attachToolbarEdgeWatch(win,shellView.webContents,()=>({page:!!stagePageId&&!overlayOpen,stage:stageBounds}));
   const layout=()=>{if(win&&shellView){const {width,height}=win.getContentBounds();shellView.setBounds({x:0,y:0,width,height});applyStage();}};win.on("resize",layout);layout();
   // Swipe and app-command share the page-level overscroll port so history
@@ -821,55 +773,8 @@ async function boot(){
   if(devUrl)await shellView.webContents.loadURL(devUrl);else await shellView.webContents.loadFile(shellFile);
   const initial=(webUrl(process.env.AUX_PRIVATE_TEST_INITIAL_URL)?process.env.AUX_PRIVATE_TEST_INITIAL_URL:process.argv.find(webUrl))??"about:blank";const initialPage=await openPage(initial,true);
   if(process.env.AUX_PRIVATE_TEST_DIRTY==="1")await pages.get(initialPage.pageId)?.view.webContents.executeJavaScript(`const field=document.querySelector('textarea,input,[contenteditable=true]');if(field){if('value' in field)field.value='Synthetic private draft';else field.textContent='Synthetic private draft';field.dispatchEvent(new Event('input',{bubbles:true}));}`,true);
-  win.on("close",event=>{if(!exitApproved){event.preventDefault();void requestExit();}});win.on("closed",()=>{toolbarEdge?.stop();toolbarEdge=null;win=null;});
-  const sendShortcut=(key:string,opt:{shift?:boolean;alt?:boolean}={})=>()=>shellView?.webContents.send("shortcut",{key,meta:true,shift:!!opt.shift,alt:!!opt.alt});
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {label:"Aux Private",submenu:[{role:"about",label:"About Aux"},{type:"separator"},{role:"quit",label:"Close Private Window"}]},
-    {label:"File",submenu:[
-      {label:"New Tab",accelerator:"CmdOrCtrl+T",click:sendShortcut("t")},
-      {label:"Open File…",accelerator:"CmdOrCtrl+O",click:sendShortcut("o")},
-      {type:"separator"},
-      {label:"Close Tab",accelerator:"CmdOrCtrl+W",click:sendShortcut("w")},
-      {label:"Close Window",accelerator:"CmdOrCtrl+Shift+W",click:()=>win?.close()},
-      {type:"separator"},
-      {label:"Print…",accelerator:"CmdOrCtrl+P",click:sendShortcut("p")},
-      {label:"Save Page as PDF…",accelerator:"CmdOrCtrl+Shift+P",click:sendShortcut("p",{shift:true})},
-    ]},
-    {label:"Edit",submenu:[
-      {role:"undo"},{role:"redo"},{type:"separator"},{role:"cut"},{role:"copy"},{role:"paste"},{role:"pasteAndMatchStyle"},{role:"selectAll"},
-      {type:"separator"},
-      {label:"Find…",accelerator:"CmdOrCtrl+F",click:sendShortcut("f")},
-      {label:"Find Next",accelerator:"CmdOrCtrl+G",click:sendShortcut("g")},
-      {label:"Find Previous",accelerator:"CmdOrCtrl+Shift+G",click:sendShortcut("g",{shift:true})},
-    ]},
-    {label:"View",submenu:[
-      {label:"Reload",accelerator:"CmdOrCtrl+R",click:sendShortcut("r")},
-      {label:"Hard Reload",accelerator:"CmdOrCtrl+Shift+R",click:sendShortcut("r",{shift:true})},
-      {type:"separator"},
-      {label:"Actual Size",accelerator:"CmdOrCtrl+0",click:sendShortcut("0")},
-      {label:"Zoom In",accelerator:"CmdOrCtrl+Plus",click:sendShortcut("+")},
-      {label:"Zoom Out",accelerator:"CmdOrCtrl+-",click:sendShortcut("-")},
-      {type:"separator"},
-      {label:"Reader View",accelerator:"CmdOrCtrl+Alt+R",click:sendShortcut("r",{alt:true})},
-      {label:"Toggle Sidebar",accelerator:"CmdOrCtrl+S",click:sendShortcut("s")},
-      {label:"Tab Overview",accelerator:"CmdOrCtrl+Shift+O",click:sendShortcut("o",{shift:true})},
-      {type:"separator"},
-      {label:"Developer Tools",accelerator:"CmdOrCtrl+Alt+I",click:sendShortcut("i",{alt:true})},
-      {role:"togglefullscreen"},
-    ]},
-    {label:"Navigate",submenu:[
-      {label:"Open Address",accelerator:"CmdOrCtrl+L",click:sendShortcut("l")},
-      {label:"Back",accelerator:"CmdOrCtrl+[",click:sendShortcut("[")},
-      {label:"Forward",accelerator:"CmdOrCtrl+]",click:sendShortcut("]")},
-      {type:"separator"},
-      {label:"Bookmark This Page",accelerator:"CmdOrCtrl+D",click:sendShortcut("d")},
-      {label:"Bookmark All Tabs",accelerator:"CmdOrCtrl+Shift+D",click:sendShortcut("d",{shift:true})},
-      {type:"separator"},
-      {label:"History",accelerator:"CmdOrCtrl+Y",click:sendShortcut("y")},
-      {label:"Downloads",accelerator:"CmdOrCtrl+Shift+J",click:sendShortcut("j",{shift:true})},
-    ]},
-    {label:"Window",submenu:[{role:"minimize"},{role:"zoom"},{type:"separator"},{role:"front"}]},
-  ]));
+  win.on("close",event=>{if(!exitApproved){event.preventDefault();void requestExit();}});win.on("closed",()=>{toolbarEdge?.stop();toolbarEdge=null;chrome=null;win=null;});
+  installPrivateMenu();
   win.show();
   bootReadyResolve?.();bootReadyResolve=null;try{process.send?.({type:"aux-private-ready"},()=>{});}catch{/* direct private launch */}
   writeTestReport();if(testReportPath&&process.env.AUX_PRIVATE_TEST_EXIT==="1")setTimeout(()=>{exitApproved=true;app.quit();},50);

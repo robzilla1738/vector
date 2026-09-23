@@ -24,8 +24,8 @@ export function Inspector() {
     if (inspectorObs || !activePageId) return;
     setLiveObs(null);
     setErr(null);
-    call<{ observation: CompactObservation } | CompactObservation>("pages.observe", { pageId: activePageId, format: "compact" })
-      .then((r) => setLiveObs("observation" in r ? r.observation : (r as CompactObservation)))
+    call("pages.observe", { pageId: activePageId, format: "compact" })
+      .then((r) => setLiveObs("observation" in r ? r.observation : (r as unknown as CompactObservation)))
       .catch((e) => setErr(e instanceof Error ? e.message : String(e)));
   }, [activePageId, inspectorObs]);
 
