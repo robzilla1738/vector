@@ -1,6 +1,4 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogle } from "@ai-sdk/google";
+import type { createOpenAI } from "@ai-sdk/openai";
 import type { ModelProvider } from "@aux/contracts";
 import { GatewayModelClient } from "./gateway-client.js";
 
@@ -40,13 +38,37 @@ export function providerEndpoint(provider: ModelProvider, compatibleEndpoint?: s
   return PROVIDER_ENDPOINT[provider];
 }
 
+type ProviderModel = ReturnType<ReturnType<typeof createOpenAI>["chat"]>;
+
+function memo<T>(load: () => Promise<T>): () => Promise<T> {
+  let loaded: Promise<T> | undefined;
+  return () => (loaded ??= load());
+}
+
+/** Provider SDKs are imported on the first model call, keeping them off the runtime startup path. */
+function lazyModel(provider: string, modelId: string, load: () => Promise<ProviderModel>): ProviderModel {
+  const model = memo(load);
+  return {
+    specificationVersion: "v4",
+    provider,
+    modelId,
+    get supportedUrls() { return model().then(m => m.supportedUrls); },
+    doGenerate: async options => (await model()).doGenerate(options),
+    doStream: async options => (await model()).doStream(options),
+  };
+}
+
 /** Explicit endpoints prevent unrelated process environment from redirecting keys. */
 export function directModelClient(provider: Exclude<ModelProvider, "gateway">, apiKey: string, fetchOverride?: typeof fetch, compatibleEndpoint?: string) {
   if (provider === "openai-compatible") {
-    const model = createOpenAI({ apiKey, baseURL: normalizeCompatibleEndpoint(compatibleEndpoint ?? ""), fetch: fetchOverride, name: "openai-compatible" });
-    return new GatewayModelClient(apiKey, { model: id => model.chat(id) });
+    const baseURL = normalizeCompatibleEndpoint(compatibleEndpoint ?? "");
+    const sdk = memo(async () => (await import("@ai-sdk/openai")).createOpenAI({ apiKey, baseURL, fetch: fetchOverride, name: "openai-compatible" }));
+    return new GatewayModelClient(apiKey, { model: id => lazyModel(provider, id, async () => (await sdk()).chat(id)) });
   }
   const options = { apiKey, baseURL: PROVIDER_ENDPOINT[provider], fetch: fetchOverride };
-  const model = provider === "openai" ? createOpenAI(options) : provider === "anthropic" ? createAnthropic(options) : createGoogle(options);
-  return new GatewayModelClient(apiKey, { model: id => model(id) });
+  const sdk = memo(async () =>
+    provider === "openai" ? (await import("@ai-sdk/openai")).createOpenAI(options)
+    : provider === "anthropic" ? (await import("@ai-sdk/anthropic")).createAnthropic(options)
+    : (await import("@ai-sdk/google")).createGoogle(options));
+  return new GatewayModelClient(apiKey, { model: id => lazyModel(provider, id, async () => (await sdk())(id)) });
 }

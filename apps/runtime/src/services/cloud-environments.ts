@@ -1,7 +1,7 @@
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {posix} from 'node:path';
 import {mkdir,readFile,readdir,rm,stat} from 'node:fs/promises';
-import {Sandbox,type Command} from '@vercel/sandbox';
+import type {Sandbox,Command} from '@vercel/sandbox';
 import {CloudCommandRecordSchema,CloudEnvironmentSchema,CloudReconnectStatusSchema,CloudTaskResultSchema,AuxError,type CloudCommandRecord,type CloudEnvironment,type CloudCommandResult,type CloudFile,type CloudFileEntry,type CloudReconnectStatus,type CloudTaskResult} from '@aux/contracts';
 import type {Repo} from '../store/repo.js';
 import type {SettingsService} from './settings.js';
@@ -18,6 +18,10 @@ const MAX_EXPORT=100*1024*1024;
 const CLOUD_POLICY={maxActiveEnvironments:3,maxRetainedPerTask:2,maxSessionMinutes:45,maxLifetimeCpuMs:90*60_000,maxLifetimeEgressBytes:1024*1024*1024,defaultCleanupHours:24,maxCleanupHours:72,currencyBudgetAvailable:false} as const;
 const CLEANUP_CHECKPOINT_GRACE_MS=24*60*60*1000;
 const ACTIVE_PROVIDER_STATES=new Set(['pending','running','stopping','snapshotting']);
+type SandboxProvider={get:typeof Sandbox.get;list:typeof Sandbox.list;create:typeof Sandbox.create};
+/** The Vercel Sandbox SDK loads on first cloud call, keeping it off the runtime startup path. */
+const lazySandbox=(method:keyof SandboxProvider)=>(async(...args:unknown[])=>{const {Sandbox}=await import('@vercel/sandbox');return Reflect.apply(Sandbox[method],Sandbox,args);});
+const LAZY_SANDBOX={get:lazySandbox('get'),list:lazySandbox('list'),create:lazySandbox('create')} as SandboxProvider;
 type CloudTaskBrief={taskId:string;revision:number;title:string;objective:string;criteria:{criterionId:string;description:string;verification:string}[]};
 const PREVIEW_PROXY_SOURCE=`import http from 'node:http';
 import net from 'node:net';
@@ -64,7 +68,7 @@ export class CloudEnvironmentService{
   private cleanupRunning=false;
   private activeCommandIds=new Set<string>();
   private retentionPreserver?: (record:CloudEnvironment)=>Promise<'preserved'|'none'>;
-  constructor(private repo:Repo,private settings:SettingsService,private provider:{get:typeof Sandbox.get;list:typeof Sandbox.list;create:typeof Sandbox.create}=Sandbox){const timer=setInterval(()=>void this.reconcileDue().catch(()=>{}),60_000);timer.unref();queueMicrotask(()=>void this.reconcileDue().catch(()=>{}));}
+  constructor(private repo:Repo,private settings:SettingsService,private provider:SandboxProvider=LAZY_SANDBOX){const timer=setInterval(()=>void this.reconcileDue().catch(()=>{}),60_000);timer.unref();queueMicrotask(()=>void this.reconcileDue().catch(()=>{}));}
   setRetentionPreserver(preserver:(record:CloudEnvironment)=>Promise<'preserved'|'none'>){this.retentionPreserver=preserver;}
   async list(taskId:string){await this.reconcileDue();return this.records().filter(item=>item.taskId===taskId&&item.status!=='deleted').sort((a,b)=>b.updatedAt-a.updatedAt);}
   async create(input:{taskId:string;taskRevision:number;projectId:string;runtime:CloudEnvironment['runtime'];region:string;port:number;timeoutMinutes:number;cleanupHours:number}){
