@@ -1,5 +1,31 @@
 # Aux implementation progress
 
+## 2026-09-23 — Excellence pass + merged to main (PR #23)
+
+- Holistic verification sweep of the whole workstream: `npm run typecheck`
+  clean, `npx vitest run` 989/989, oxlint green (warnings-only under the
+  ratchet), zero TODO/FIXME/placeholder controls/dead controls/debug
+  leftovers; PR body reconciled with the final state.
+- Root-caused and fixed the remaining CI-only `tab-recovery` flake: on slow
+  runners the catalog patch can lag behind a resolved open ack, so
+  `reopenClosedTab` restored space/folder/position while the page was not yet
+  in `pages` — an interim `syncOrder` then dropped the id and the tab ended
+  up appended instead of at its recorded index. The restore now waits
+  (bounded) for the page to land, and a null open result is treated as a
+  failure only after the same wait — regression-pinned in
+  `apps/desktop/renderer/src/tab-reopen-race.test.ts`.
+- Earlier CI-host flakes fixed without weakening assertions: the
+  local-projects preview probe now gates on real loopback reachability
+  (CPython `http.server` resolves `getfqdn` between `bind()` and `listen()`,
+  leaving the fixture bound-but-not-listening ~30s after READY on
+  DNS-stalling runners), and authentication-navigation polls for the consent
+  window's Playwright `Page` registration.
+- **Merged to `main` via PR #23** (merge commit `553fd26`) with 5/5 CI checks
+  green, including the release smoke suite 11/11 on the GitHub macOS runner.
+  Remaining items are all externally gated (founder-Mac B1–B7, signing/
+  notarization, paid-inference corpus, human pilots) — recorded in
+  `docs/AUX-LOCAL-HANDOFF.md`.
+
 ## 2026-09-22 — Workspace-handoff audit + grouped smoke CI gate
 
 - Audited the 2026-09-22 workspace handoff (now committed at
