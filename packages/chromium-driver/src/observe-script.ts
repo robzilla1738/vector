@@ -543,7 +543,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   // whole values) is spent and skips hidden subtrees, instead of laying out
   // the whole region through innerText and cutting it afterwards. Block
   // edges emit break markers; like innerText, adjacent edges take the
-  // largest required break (\u0002 = blank line for <p>) rather than summing.
+  // largest required break (\uFDD1 = blank line for <p>) rather than summing.
   const budget = args.maxTextChars + (protectedTexts[0]?.length ?? 0) + 1;
   let collected = shadowChunks.length ? `— shadow DOM —\n${shadowChunks.join("\n")}\n\n` : "";
   let spent = collected.length;
@@ -570,7 +570,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       const display = String(style.display || "");
       const cell = display === "table-cell" || c.tagName === "TD" || c.tagName === "TH";
       const block = !cell && (BLOCK_TAGS.has(c.tagName) || (display !== "" && !display.startsWith("inline") && display !== "contents"));
-      const edge = c.tagName === "P" ? "\u0002" : "\u0001";
+      const edge = c.tagName === "P" ? "\uFDD1" : "\uFDD0";
       if (block) push(edge);
       // hidden boxes can hold visible descendants — only those contribute
       walkText(c, style.visibility !== "hidden" && style.visibility !== "collapse");
@@ -583,7 +583,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     .join("")
     .replace(/ {2,}/g, " ")
     .replace(/ ?\t ?/g, "\t")
-    .replace(/[ \t]*[\u0001\u0002][\u0001\u0002 \t]*/g, (run) => (run.includes("\u0002") ? "\n\n" : "\n"))
+    .replace(/[ \t]*[\uFDD0\uFDD1][\uFDD0\uFDD1 \t]*/g, (run) => (run.includes("\uFDD1") ? "\n\n" : "\n"))
     .replace(/\t+\n/g, "\n")
     .replace(/[ \t]*\n[ \t]*/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
