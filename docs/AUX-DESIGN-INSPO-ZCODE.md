@@ -64,7 +64,7 @@ Port interaction patterns from ZCode tool-call cards. Do not import `packages/ui
 - Claiming Chrome Web Store, 1Password, Apple Passwords, or passkey parity via polish
 - Bright full-surface brand fills, playful gradients, casual `rounded-full` chips
 - Success color as the waiting-chip fill (`--wait` is confirmation, not `--ok`)
-- CEF Alloy, fake password-manager/passkey parity, or derailing green-CI → main → `docs/AUX-LOCAL-HANDOFF.md`
+- CEF Alloy, fake password-manager/passkey parity, or derailing green-CI → main → `docs/HANDOFF.md`
 
 ## How to know this pass is done
 

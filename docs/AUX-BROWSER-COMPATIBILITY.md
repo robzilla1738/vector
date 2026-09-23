@@ -160,7 +160,7 @@ including that later-veto case, then verifies that unanimous Leave closes everyt
 and removes both scratch profiles. Closing only the regular window still leaves private
 windows running by design. Multiple regular windows now own independent native stages,
 selected tabs and sidebar layouts while sharing the regular profile and runtime; their
-restart and dirty-document behavior is qualified in `AUX-PROGRESS.md`.
+restart and dirty-document behavior is qualified in `progress/2026-09.md`.
 Private crash recovery and agent access remain intentionally absent; ordinary process
 failure relies on the nonpersistent session boundary, while user-saved files remain
 durable.

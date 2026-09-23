@@ -13,6 +13,7 @@ jobs:
   typecheck-unit:
     name: typecheck + unit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -24,12 +25,17 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/Library/Caches/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # tsc -b emits workspace dist; a separate `pnpm build` would repeat it
       - run: pnpm typecheck
       - run: pnpm bench:tasks --validate
-      - run: pnpm build
-      - run: pnpm --filter @aux/desktop typecheck
       - run: pnpm --filter @aux/desktop build
       - run: pnpm budgets
       - run: pnpm test:unit
@@ -37,6 +43,7 @@ jobs:
   integration:
     name: integration (headless Chromium)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -44,6 +51,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Install headless Chromium (playwright-core download, no browsers bundled)
@@ -58,6 +69,7 @@ jobs:
   e2e:
     name: Electron e2e (macOS)
     runs-on: macos-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -65,10 +77,21 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @aux/desktop build
       - run: pnpm test:e2e
+      - run: node tests/smoke/shell-csp-desktop.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: release/test-artifacts
+          if-no-files-found: ignore
 
   smoke:
     name: desktop smoke (release suite)
@@ -81,8 +104,18 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @aux/desktop build
       - run: pnpm package:local
       - run: pnpm smoke:release
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: release/test-artifacts
+          if-no-files-found: ignore

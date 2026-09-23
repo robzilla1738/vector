@@ -1,6 +1,6 @@
 # Aux product architecture
 
-> Implementation direction is maintained in [Aux roadmap](AUX-ROADMAP.md).
+> Implementation direction is maintained in [Aux roadmap](ROADMAP.md).
 > This document describes the existing architecture and release gates; its
 > implemented labels are not evidence that the complete Aux product is ready.
 

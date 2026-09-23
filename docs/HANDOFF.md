@@ -4,8 +4,8 @@ Give this document to an AI on the founder Mac. It is the remaining work after
 the software-only Aux stack landed on `main`. This is not completion of the
 five-phase roadmap and not proof of B1–B7.
 
-Related: [AUX-HANDOFF.md](AUX-HANDOFF.md) (checkpoint history),
-[AUX-ROADMAP.md](AUX-ROADMAP.md), [AUX-PROGRESS.md](AUX-PROGRESS.md),
+Related: [ROADMAP.md](ROADMAP.md) (the single current roadmap), [progress log](progress/2026-09.md),
+[checkpoint history](archive/AUX-HANDOFF-2026-09-21.md),
 [AUX-DESIGN-INSPO-ZCODE.md](AUX-DESIGN-INSPO-ZCODE.md),
 [AUX-PRIVATE-BUILD.md](AUX-PRIVATE-BUILD.md),
 [AUX-FIRST-REVIEW.md](AUX-FIRST-REVIEW.md).
@@ -16,7 +16,7 @@ Related: [AUX-HANDOFF.md](AUX-HANDOFF.md) (checkpoint history),
 and **merged to `main` via PR #23** (merge commit `553fd26`): BR-01–07
 (browser), CH-01–04 (conversation), AI-01–07 (agent capability), WS-01–06
 (projects/agents/cloud), ME-01–02 (memory), SK-01–02 (skills/schedules), plus
-the TR trust/privacy and PL platform packages — see `AUX-PROGRESS.md` for the
+the TR trust/privacy and PL platform packages — see `progress/2026-09.md` for the
 per-slice evidence. CI at merge: 5/5 checks green including the release smoke
 suite on macOS. What remains genuinely open is the founder-Mac list below
 (B1–B7) and the non-gated engineering items R1–R6 — not implementation gaps

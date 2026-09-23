@@ -6,7 +6,7 @@
  *   node scripts/check-budgets.mjs bench <report>    p50 timings and bytes from a `pnpm bench` report
  *
  * Budgets live in scripts/budgets.json. Lower them as the code gets faster;
- * raising one needs a written tradeoff (docs/AUX-ROADMAP-2026-09-22.md §6).
+ * raising one needs a written tradeoff (docs/ROADMAP.md §6).
  */
 import { readFileSync, statSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

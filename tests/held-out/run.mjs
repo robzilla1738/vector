@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
 const tasksPath = join(here, "tasks.json");
-const outPath = process.env.HELDOUT_OUT || join(root, "docs/perf/held-out-latest.json");
+const outPath = process.env.HELDOUT_OUT || join(root, "tests/benchmarks/reports/held-out-latest.json");
 const runtimeEntry = join(root, "apps/runtime/dist/index.js");
 const LUNA = "openai/gpt-5.6-luna-fast";
 

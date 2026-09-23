@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "tsc -b tsconfig.main.json tsconfig.preload.json && node bundle.mjs && vite build",
-    "typecheck": "tsc -b tsconfig.main.json tsconfig.preload.json --force && tsc -p tsconfig.renderer.json",
+    "typecheck": "tsc -b tsconfig.main.json tsconfig.preload.json && tsc -p tsconfig.renderer.json",
     "dev": "electron .",
     "dev:mock": "vite --host 127.0.0.1 --mode mock",
     "test": "vitest run renderer"

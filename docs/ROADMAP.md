@@ -1,214 +1,1053 @@
-# Vector — State of the Project and Excellence Roadmap
+# Aux: the browser and workspace for the AI era
 
-> Historical engine evidence only. Implement from [Aux roadmap](AUX-ROADMAP.md).
+## Implementation handoff · 22 September 2026
 
-**macOS, own engine · 18 September 2026**  
-**Status:** historical engine roadmap. Product strategy and release gates moved to [`PRODUCT-ARCHITECTURE.md`](PRODUCT-ARCHITECTURE.md) after the architecture review on 19 September 2026. Checkmarks below are evidence about individual engine capabilities, not a product-readiness claim.
-**Scope:** make Vector the fastest, smoothest browser for agents and humans on macOS, built on the own engine. Release and Windows work are out of scope.
+**Purpose:** turn the current Aux application into a fast, fluid everyday browser and an integrated AI workspace, competitive with Aside, Dia, and Arc on the workflows that matter to its users.
 
-This document is the honest review plus the roadmap. Engineering items below are the work. Status and evidence columns are ticked only when current-tree evidence proves the acceptance criterion.
+**Status:** complete product and engineering direction for the next implementation cycle, including the final minimalism, permission-friction, and speed review. Requirements and targets below describe the intended outcome; they are not claims that the current application already meets them. This handoff supersedes the September 22 audit-plan draft and its companion review for future implementation. It incorporates the founder's subsequent design and interaction decisions.
 
----
+**Reference checkout:** `/Users/rcourson/Code/web`, inspected at commit `5829303d2a15928fd3276b90d1f977e53455ed6b`. Revalidate affected code against the implementation checkout. Component paths are navigation aids, not instructions to recreate functionality that already works.
 
-## 1. Executive verdict
+**How to use this document:** read Sections 1–7 and the permission rule in Section 13 before changing architecture or UI; implement the work packages through the single release sequence in Section 16; use Sections 17–21 for dependencies, verification, and handoff. The low-friction checks in Section 18.5 are required from the first usable release. The document is self-contained. Historical plans are background, not additional competing specifications.
 
-1. **The engine is real and unusually well built, but it is a headless agent engine, not yet a browser.** Parse → cascade → incremental layout → semantic observation → typed programs → V8 scripting → process sandbox all work. Code health is exceptional (8 `unwrap()` in ~60K lines of production Rust, 107 `unsafe` all FFI, clippy `-D warnings`, 559 tests).
-2. **The human product barely exists.** `ve-shell --gui` is a bare page in a window with **no painted chrome** (tabs and URL bar exist only as state), no back/forward binding, no find, no zoom, no selection, no hover, arrow keys dropped, IME typing into the wrong field, half-size rendering on Retina in the GPU path, time frozen while idle, and a full relayout + repaint + per-pixel copy on every wheel tick.
-3. **Text is measured with fake fonts on every page.** Layout uses `MetricShaper` (synthetic per-character widths) while paint uses real glyphs; the real shaper (`ParleyShaper`) exists but is never wired in. This corrupts wrapping, element heights, screenshots, and the `rect`/`occluded` fields agents rely on.
-4. **Modern web fidelity is far off.** ~170 CSS properties are parsed but unimplemented (border-radius, box-shadow, gradients, background-image, transitions, animations, filters, web fonts). ES modules are a regex inliner; SVG does not render; canvas is a rect filler. Speedometer 3.0 displayed score is 1.83 (Chrome on Apple silicon ≈ 20–40), RSS 1–2.9 GB.
-5. **The agent surface is ahead of the field in design, behind in plumbing.** Batch programs, rendered-text observations, `ActionReceipt`, operations replay and `state.query` are genuinely differentiated. But the path `pnpm dev` uses is single-page with stubbed cookies/screenshot/close; `format: Full` is unreachable from TS; MCP erases error codes; completion is model self-reported; permissions grant everything by default.
-6. **Effort has gone to the wrong place.** 252 of 306 commits landed on Sep 18, ~120 of them chasing official BrowserBench scores. Benchmark harnesses out-churn engine crates 2:1. `docs/ui/` has 22 touches total, all for the Electron hybrid. No screenshot in the repo shows the real product rendering a real page. The flagship "5.32× / 8.35× tokens" claim is from a mock model, n=1.
+## 1. Product outcome and fixed decisions
 
-**The thesis for the next quarter:** stop measuring, start rendering. Real text, real frames, real input, real chrome, real CSS. Fix the native product path so agents and humans share one live document. Then let evidence catch up under the production security profile.
+Aux should feel like an excellent browser every moment it is open. Its AI should understand the page and work in front of the user, complete real tasks across their signed-in websites, and communicate as naturally as a capable collaborator. Its workspace should connect chats, tabs, files, code, previews, commands, and projects without making the user assemble a toolchain for every task.
 
----
+The everyday experience is continuous: browse, ask, act, refine, continue. A quick page question can become research, a document, a website action, or a code change in the same conversation. The browser stays responsive throughout. The user can keep working, intervene immediately, and come back later without rebuilding context.
 
-## 2. What is genuinely strong (keep, build on)
+### Decisions to preserve
 
-- **Containment** (`engine/crates/ve-host/src/sandbox.rs`): macOS `sandbox_init` deny-default, no fork/exec/network, fail-closed in production; parent-stamped broker identity (`ve-net/src/broker.rs`).
-- **Observation design** (`engine/crates/ve-a11y/src/observation.rs`): occlusion by real hit test, clip-aware rects, budgets honoured during collection, frames, `changesSince` and structured `delta` (`diff.rs`), generational refs.
-- **Incremental style/layout** (`ve-style/src/invalidation.rs`, `Page::update` `page.rs`): `restyle.full_calls=0` on complex DOM.
-- **Runtime safety decisions**: planner schema excludes `evaluate`/`expression` (`packages/contracts/src/program.ts`), random-token prompt fencing (`apps/runtime/src/agent/planner.ts`), bearer-only loopback token.
-- **Shared observation rendering** (`apps/runtime/src/services/observation-render.ts`): the internal planner and MCP `format:"compact"` see identical text.
-- **Contracts**: `ActionReceipt` (observed / remoteConfirmed / uncertain / dispatchedBeforeTakeover), dual-form `Program` (steps or control-flow nodes).
-- **Benchmark methodology** (`tests/benchmarks/tasks/run.mjs`): independent state-oracle scoring, same model and tool loop across adapters.
-- **Electron chrome design** (`docs/ui/shell.md`, `docs/ui/screenshots`): Arc-style sidebar, one command bar, agent rail with inline step failures, takeover pill. The design and ~450 lines of portable logic (`workspace.ts`, `intent.ts`) should be ported, not lost.
-- **Honesty of evidence files**: every JSON declares backend, security mode, denominators and "not a published score". `conformance/capabilities.json` is a candid ledger.
+1. **Keep the current Aux design.** Preserve the sidebar, native materials, quiet palette, Geist typography, compact controls, Chats/Tabs organization, current brand, and existing layout behaviors. Refine and complete this design rather than replacing it with a new visual concept.
+2. **Results belong in the conversation.** The AI explains what it accomplished in ordinary chat, with a link, preview, file, table, or diff when useful. No dedicated Receipts destination, audit dashboard, evidence checklist, completion stamp, or compulsory post-task review flow.
+3. **Browser and workspace are both core product capabilities.** Chats, project files, changes, previews, commands, connected agents, and cloud continuation remain first-class. Their controls appear when relevant and do not crowd ordinary browsing.
+4. **Chromium is the sole web rendering engine.** Remove the Rust engine from the product path, distribution, and routine TypeScript CI. Preserve its source/history in the separate engine track.
+5. **Human browsing is independent of the agent runtime.** Opening, switching, closing, navigating, typing, and organizing tabs work when models, networks, providers, or the runtime fail.
+6. **One controlled browser for humans and agents.** AI operates the user's real permitted browser state and accounts through the same lifecycle and control rules. Avoid a second unrelated browser experience.
+7. **A one-time development reset is allowed.** Complete the Vector-to-Aux rename and remove legacy development compatibility. Once external users keep a beta profile, support upgrades and recovery for that new data.
+8. **Vercel AI Gateway remains the default transport.** Keep supported direct/local options. Choose defaults by measured quality, latency, cost, and provider capabilities; do not hardcode assumptions into scattered components.
+9. **Reliability is mostly invisible.** The user's clear request authorizes its routine steps within the selected scope; internal permission checks are not requests for another click. Keep authorization, durable intent, verification, and recovery behind the experience. Interrupt only for missing consequential information, genuinely new authority, or required native interaction.
+10. **Completion means a working experience.** UI, runtime, persistence, failure handling, packaged behavior, and relevant verification ship together. A component, endpoint, screenshot, or green unit suite alone does not establish that a workflow works.
+11. **Minimal is the default experience, not a smaller feature set.** Preserve a complete browser and substantive workspace. Reveal advanced capability in context; do not make people manage agents, permissions, logs, or panels to get ordinary work done.
 
----
+### The competitive standard
 
-## 3. Reality versus claims — the gaps that matter
+Aux must combine four qualities: browser comfort and organization, immediate contextual assistance, capable delegated website work, and a useful development workspace. The advantage comes from how well these qualities work together.
 
-| # | Claim or expectation | Reality | Where |
-|---|---|---|---|
-| 1 | Text via parley or MetricShaper | `ParleyShaper` never used in ve-agent/ve-api; every page laid out with synthetic metrics | `ve-layout/src/lib.rs`, `ve-agent/src/page.rs` |
-| 2 | `ve-shell` is the product GUI | No chrome painted; page only. No back/forward, find, zoom, selection, hover; arrows dropped | `ve-api/src/shell.rs`, `ve-shell/src/gui.rs` |
-| 3 | Smooth native rendering | Wheel → JSON `scroll` Program → relayout → full display-list rebuild → full repaint → per-pixel copy loop | `shell.rs`, `gui.rs` |
-| 4 | GPU present path | Scale hard-coded 1.0 with logical viewport → half-size on Retina; **no images drawn** (`from_layout` passes empty image map); glyph outlines re-tessellated per frame | `gpu_window.rs`, `shell.rs`, `display_list.rs`, `vello_backend.rs` |
-| 5 | Human and agent share input machinery | Human input is wrapped as JSON Programs with a 500 ms `settle()`; IME text targets the first `input` on the page, not the focused one; click dispatches only `click` (no pointer/mouse down/up) | `shell.rs`, `page.rs` |
-| 6 | Real-time page | rAF is a 16 ms virtual timer; timers advance only on input `settle()`; `ControlFlow::Wait` | `scripting.rs`, `gui.rs` |
-| 7 | ES modules "in tree" | Regex import-inliner + `(0, eval)`; `v8::Module` never used; Speedometer needs a hand-rolled bundler | `dom_prelude.js`, `tools/browserbench/src/esm.rs` |
-| 8 | Own cascade / property table | ~170 properties parsed but deferred: radius, shadows, gradients, background-image, transitions, animations, filters, `@font-face src`, object-fit, aspect-ratio, container queries; `@supports` always true | `ve-style/src/properties.rs`, `stylesheet.rs` |
-| 9 | DOM bindings | 9.4K-line JS prelude; string-dispatched `__ve.dom(op)`; node handles are `"idx:gen"` strings; structured returns JSON-stringified then `JSON.parse`d; wrapper `Map` and listener `Map` are strong and never pruned | `dom.rs`, `v8_vm.rs`, `dom_prelude.js` |
-| 10 | "Held-out p95 vs Chromium measured, 5.32×" | `MockModelClient`, `livePlanner:false`, n=1 per arm | `docs/engine/evidence/held-out-latest.json` |
-| 11 | Perf gates | 8 toy fixtures; real corpus p95 observe 19 ms (gate 5), open p95 382 ms / max 1.56 s (gate 50); all in `developer-offline` | `tools/perf/src/main.rs`, `conformance/corpus-results.json` |
-| 12 | Native product path works end to end | `BrowserService` is single-page in Rust (8 methods on `active_tab()`); TS adapter stubs cookies/close/screenshot (`pngBase64:""`) → sessions, multi-tab, vision dead on `pnpm dev` | `ve-api/src/service.rs`, `browser-service.ts` |
-| 13 | Full observation available | TS `ObservationRequestSchema` has no `format`; engine already computes Full (rect/selector/hidden/states) and structured delta | `packages/contracts/src/observation.ts`, `ve-a11y/src/observation.rs` |
-| 14 | Verified task completion | `plan.status === "done"` accepted without re-observation; `DEFAULT_GRANTS` grants all effect classes | `coordinator.ts`, `agent/permissions.ts` |
-| 15 | HTTP cache with revalidation | Revalidation round-trip not wired; fetch is sync `block_on`; DNS blocking | `ve-net/src/cache.rs`, `hyper_transport.rs`, `broker.rs` |
-| 16 | SVG / canvas | SVG excluded from decode; canvas `fillText`/`drawImage`/gradients are no-ops | `ve-gfx/src/image.rs`, `dom_prelude.js` |
+The first audience is Mac-based developers, founders, researchers, and technical operators who work across websites, documents, dashboards, repositories, and AI agents. Optimize the first complete release for this audience while keeping ordinary browsing understandable without technical knowledge.
 
-Smaller inconsistencies to clean up: README and `docs/engine/architecture.md` §0 disagree on the same benchmark table (observation size 5,917 vs 13,148 bytes); `documentEpoch` vs `generation` and `changesSince` vs `changed` drift across three transports; TS ref regex `/^r\d+$/` rejects the engine's generational refs `r12.3`; `crypto.getRandomValues` is `Math.random`; `structuredClone` is JSON; `performance.mark/measure` are no-ops.
+Success is measured through repeated real use: people retain Aux as their default work browser, finish useful tasks with less effort, and trust it with increasingly substantial work. Feature-count parity and competitor slogans do not establish that result.
 
----
+### Competitive reference points
 
-## 4. Strategic decisions (recommended, with reasoning)
+The following are vendor-documented capabilities checked September 22, 2026, not independent quality or security rankings. The Aux implications are product judgments to validate with users.
 
-**D1. The product is `ve-shell` on the own engine. Freeze Electron; do not delete yet.**
-Stop touching `apps/desktop` and the Electron e2e job. Keep it buildable as the comparison baseline for benchmarks. Delete only after the gates in D5. Port its design and the ~450 lines of portable logic to Rust.
-
-**D2. Rendering before benchmarking.** Official BrowserBench score work stops. Speedometer workloads stay as profiling inputs; the `--official-score` path and its wall-clock hacks are parked. Every perf number published from now on runs in the `production` security profile.
-
-**D3. Text, frames, input, chrome are one workstream ("make it a browser") and come first.**
-They are the largest fidelity gains per engineering hour and nothing else in the product is credible without them. Real shaping is a one-line wiring change with golden churn.
-
-**D4. Chrome architecture: AppKit owns the window, a bespoke retained `ve-chrome` widget crate draws into the same compositor as the page, secondary surfaces become `vector://` documents later.** Rejected: rendering the primary chrome as engine HTML (engine cannot draw radius/shadow/blur yet; chrome becomes hostage to engine bugs; spoofing invariant becomes non-structural) and egui/xilem (wrong look, wrong maturity). Sequence: keep winit initially, add `objc2` incrementally for scroll phases, `NSTextInputClient` IME, menus, panels, appearance.
-
-**D5. Chromium fallback removal is gated, not scheduled.** Gates: `capability_unsupported` < 1% over ≥ 500 real pages; shared backend contract suite green on both backends with zero skips; multi-page + storage-state + screenshot green on the native service; `vector-engine` adapter ≥ Chromium adapter on verified success with ≥ 5 trials. Record the numbers in an ADR at deletion time.
-
-**D6. DOM bindings: hybrid, measurement-gated.** Fix wrapper lifetime and the JSON/string marshalling first (cheap, reversible). Migrate EventTarget/Event, Node, Element, Text, Document to native V8 templates generated from the existing WebIDL only after a DOM microbenchmark proves marshalling dominates. Prelude stays for the long tail behind a per-page switch with differential CI.
-
-**D7. Stop-doing list.** Windows CI legs and sandbox work; official BrowserBench scoring; `ve-vm` (delete; route inline `on*` handlers through V8); HTTP/3 (park); Electron hybrid maintenance; `chrome.attach` investment; WebMCP; WebDriver BiDi; Linux containment depth (keep Linux fmt/clippy/test/WPT only); tentative `partial-updates` WPT chasing; per-spec coverage percentages as targets.
-
----
-
-## 5. Roadmap
-
-Four parallel workstreams, dependency-ordered into horizons. Horizons are gated by evidence, not dates.
-
-- **A — Make it a browser** (text, frames, input, chrome, essentials)
-- **B — Engine core** (DOM bindings, event loop, CSS/paint depth, network)
-- **C — Agent protocol and runtime** (contracts, native path, MCP, coordinator)
-- **D — Evidence and CI** (gates, corpus, fixtures, held-out suite)
-
-### Horizon 0 — Truth and quick wins
-
-Goal: measurement exists, the cheapest large defects are gone, and no claim in the repo is unbacked.
-
-| ID | Item | WS | Status | Evidence |
-|---|---|---|---|---|
-| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `docs/perf/section-6-this-host.json`; `docs/perf/section-6-this-host-budgets.json`; `writes_section_6_human_timings`; `writes_section_6_idle_command_rss_soak`; `wheel_does_not_rebuild_the_display_list`; `trace_frames_replay_json_has_zero_from_layout_on_wheel` (`docs/perf/frame-trace-replay.json`) |
-| H0-A2 | HiDPI: `scale_factor()` into `present_list`; CSS px list, physical px surface | A | ☑ | `NativeWindow::new` / `set_device_scale` allocate `css × scale` physical surface; `present_list_with` / software `capture_frame` take `device_scale`; GUI `ScaleFactorChanged` → `set_device_scale`; list + window.size stay CSS (`hidpi_surface_is_physical_px_while_list_stays_css`; `window_defaults` 2× → 2560×1440 surface / 1280×720 CSS) |
-| H0-A3 | Images on the GPU path: `ImageCache`/`node_images` on `Page`; `from_layout_with` | A | ☑ | `from_layout_with` + `scene_json`; `present_list_with` + software `images.extend_from`; `present_composited` takes `ImageCache` (`gpu_present_paints_cached_image_not_magenta`, `present_composited_paints_cached_image_not_magenta`, `product_chrome_present_paints_page_images`) |
-| H0-A4 | Wire `ParleyShaper` behind `EngineConfig::shaper`; identity prints shaper | A | ☑ | System in GUI/corpus/Speedometer/`ve-shell --service` (`product_config`); `BrowserServiceListener::bind` identity `shaper: system`; NAPI/JSON omitted `shaper` is System (`json_config_defaults_to_system_shaper_goldens_stay_metric`); goldens stay Metric |
-| H0-A5 | IME/typing goes to `Page::focused()`, not first `input` | A | ☑ | two-input / click-to-focus tests |
-| H0-A6 | Full key model: keyup, repeat, arrows/Home/End/PageUp/Down/Delete/F-keys, modifiers; bind Back/Forward/Find/Zoom | A | ☑ | `Page::dispatch_key` / `press` fire `keydown` then `keyup`; default action skipped on `preventDefault`; `repeat` + modifier bits (`ctrlKey`); F1–F12 parse (`Chord::parse("F5")`); caret lives on `FormState` (JS `selectionStart`/`End` + ArrowLeft/Home/End); chrome `KeyState::Up` is not dropped; `dispatch_chrome_shortcut` binds ⌘F find, ⌘G next, ⌘-/⌘+/⌘0 zoom, ⌘[/⌘] back/forward (`press_fires_keydown_and_keyup_and_honours_prevent_default`; `shadow_and_form_state`; `parses_chords_and_rejects_unknown_ones`; `chrome_find_and_zoom_chords_toggle_find_and_scale`) |
-| H0-A7 | Direct human input: `dispatch_human` → `Page` methods; no JSON Program, no 500 ms settle | A | ☑ | `NativeEvent` key/ime/click/wheel/navigate/AccessKit call `dispatch_human_*` / `navigate_active` / `Page::commit_navigation` (no `Program`, no `settle(500)`); `dispatch_human_wheel_does_not_execute_program`; `dispatch_human_key_and_ime_skip_agent_settle`; `dispatch_human_url_navigation_skips_program`; `dispatch_human_accesskit_click_skips_program` |
-| H0-A8 | Kill per-pixel blit; cache display list; coalesce wheel/move | A | ☑ | `DisplayListCache`; reused `SoftwareRenderer`; glyph bitmap + face/advance caches; opaque `fill_rect`; chrome-base + page-layer blit (`wheel_reuses_cached_chrome_base`); SQLite persist off present; `docs/perf/section-6-this-host.json` (Apple-silicon release wheel p50 ≈ 0.86 ms at 1440×900 @2x) |
-| H0-B1 | Wrapper lifetime: `WeakRef` + `FinalizationRegistry`; `listeners` → `WeakMap`; evict on slot recycle | B | ☑ | `dom_prelude.js` |
-| H0-B2 | Numeric node handles; primitive-array fast path; `VECTOR_DOM_PROFILE=1` | B | ☑ | `NodeId::to_u64`; `__veDomProfile` |
-| H0-B3 | Real `crypto.getRandomValues`, cycle-aware `structuredClone`, `performance.mark/measure` | B | ☑ | `__ve.randomBytes` CSPRNG (`/dev/urandom`); DOM `structuredClone` walks cycles/`Date`/`Map`/`Set` (not `JSON.stringify`); `performance.mark`/`measure`; `structured_clone_is_cycle_aware_and_crypto_is_csprng`; `performance_observer_delivers_mark_and_buffered_paint`; `request_idle_callback_runs_with_time_remaining`; `crypto_subtle_digests_sha256`; `crypto_subtle_digests_sha1_and_signs_hmac`; `crypto_subtle_aes_gcm_round_trips_and_matches_nist`; `crypto_subtle_verifies_hmac`; `crypto_subtle_aes_cbc_round_trips_nist`; `crypto_subtle_pbkdf2_derives_sha256_bits`; `crypto_subtle_generate_key_round_trips_aes_cbc`; `crypto_subtle_export_and_derive_key`; `crypto_subtle_digests_sha512`; `crypto_subtle_hkdf_matches_rfc5869`; `crypto_subtle_digests_sha384`; `crypto_subtle_aes_ctr_matches_nist`; `crypto_subtle_wraps_and_unwraps_aes_key`; `crypto_subtle_imports_jwk_oct_key`; `performance_resource_timing_records_fetch` |
-| H0-C1 | `format` on `ObservationRequestSchema`; unify `documentEpoch`; structured `delta`; generational-ref parser | C | ☑ | service `observe(params)`; no wire `generation`; MCP `vector_page_observe` `format: full` (`tests/unit/mcp-stdio.test.ts` `reaches full observation over MCP`); `ELEMENT_REF` / `isElementRef` (`r12` and `r12.3`) shared by contracts, `translateSteps`, router, engine-client (`tests/unit/contracts.test.ts` `isElementRef accepts generational refs`) |
-| H0-C2 | MCP structured errors `{code,message,details,retryable,hint}`; typed `steps` | C | ☑ | `errorAdvice` on `VectorErrorCode` (`ref_stale` retryable + hint; `permission_denied` not); MCP `err()` emits `{code,message,details,retryable,hint}`; `tests/unit/contracts.test.ts` `errorAdvice sets retryable and hint` |
-| H0-C3 | Native-path stubs throw `capability_unsupported` | C | ☑ | remaining stubs throw; cookies/storage/screenshot are real (`cookies_storage_contexts_and_events_are_real`) |
-| H0-C4 | `DEFAULT_GRANTS` → read-only; challenge every `done` with delta re-observe | C | ☑ | `tests/unit/verify-done.test.ts` |
-| H0-D1 | Perf gate in `production` profile; corpus p95/per-page gates | D | ☑ | `docs/perf/m1-gate-latest.json` (`profile: release`, `security_mode: production`, 8 fixtures × 200 iters, `all_gates_pass: true`); `writes_production_profile_observe_gate` / `docs/perf/production-observe-gate.json` (live `/tmp/vector-live-html` bodies, compact observe p95 ≤ 5 ms, open→observe p95 ≤ 300 ms / max ≤ 1000 ms, `appleSilicon: false`) |
-| H0-D2 | CI: drop Windows legs; one rust-cache key per job class; `ci-durations.json` | D | ☑ | `.github/ci-durations.json` |
-| H0-D3 | Evidence hygiene: retire mock held-out; `BENCHMARKS.md`; fix README vs §0 | D | ☑ | `docs/BENCHMARKS.md` |
-| H0-D4 | Delete `ve-vm`; park `--official-score` and `http3.rs`; `.gitignore` `dist/` | B/D | ☑ | not a workspace member; `engine/README.md` no longer lists the crate; `--official-score` is accepted then forced off (`official_score_parked`); `NetworkContext::try_http3` returns `None` (http3.rs stays compiled); `.gitignore` `dist/` |
-
-### Horizon 1 — Real frames, real input, protocol v1
-
-| ID | Item | WS | Status | Evidence |
-|---|---|---|---|---|
-| H1-A1 | `Clock::{Virtual, Wall}` in `ve-core`; `Page::now_ms()`; wall only in `ve-shell --gui` | A | ☑ | `Clock`; GUI `clock: Wall` |
-| H1-A2 | rAF as `TaskSource::Rendering`; drain ≤ N frames so perpetual rAF settles | A | ☑ | `MAX_RAF_DRAIN` |
-| H1-A3 | One scheduler: retire prelude `timers` Map in favour of `ve_script::EventLoop` | B | ☑ | EventLoop allocates timer ids and due times (`arm_js_timer`); V8 isolate `TimerPins` store callbacks; prelude has no `timers` Map / `__veFireTimer` (`prelude_does_not_keep_a_timers_map`; `js_timers_live_on_the_same_loop`; `document_scripts_run_in_order_and_timers_fire_inside_settle`; `event_loop_fires_string_timeouts_and_extra_args`) |
-| H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | `NativeEvent::Frame` + `NativeBrowser::tick_frame` / `needs_frame`; GUI `about_to_wait` WaitUntil only while physics is live, `ControlFlow::Wait` when idle; `MacWindow::preferred_frame_rate_range` (80–120 interacting, 10–80 idle, 10–60 reduced-motion); GUI passes `NativeBrowser::interacting()` (Began/Changed), not hardcoded `true` — coasting after Ended uses 10 Hz (`frame_loop_uses_idle_preferred_rate_when_coasting`); `frame_tick_springs_rubber_band_and_ignores_inactive_tabs`; `preferred_frame_rate_range_promotes_when_interacting` |
-| H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | `ve_gfx::TileGrid` (`TILE_PX` 256); `present_page_layer` rasters dirty tiles only; `small_rect_dirties_one_tile`; `rasterize_skips_clean_tiles`; `page_tiles_survive_scroll_and_local_damage`; compositor translate of cached tiles on scroll; `Page::scroll_by_phase` — Began resets velocity, Cancelled zeros momentum, Ended with dy=0 keeps coast; GUI `NativeEvent::Wheel.phase` from winit `TouchPhase`; `rubber_band_overshoots_then_springs_back`; `overscroll_behavior_none_clamps`; `momentum_coasts_after_a_flick`; `reduced_motion_skips_rubber_band_and_momentum`; `scroll_phase_cancelled_zeros_momentum`; `scroll_phase_began_resets_stale_velocity`; `dispatch_human_wheel_cancelled_stops_coast` |
-| H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☑ | `FontSystem::shape_retained`; `Scene::draw_glyphs`; quarter-px snap; emoji chars route to Noto/Apple Color Emoji (`glyph_face`); CBDT/COLR rasterise as RGBA (`colour_emoji_routes_to_noto_and_rasterizes_rgba`); software `blit_rgba` + GPU `draw_image` (`software_paints_colour_emoji`); `rasterize_hinted` (CSS size ≤ 18, including Retina 2×); `system_fonts_paint_inter_ui_text` |
-| H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log`; `click_at_element` fires pointerdown/mousedown/pointerup/mouseup/click (right-click `contextmenu`); hover fires pointer/mouse over+enter; `Element.setPointerCapture` retargets later pointer events (`pointer_capture_retargets_pointerup`); `fill` select-all + `select` (`fill_selects_the_control_and_fires_select`); IME `compose_text` / `dispatch_human_ime` fires compositionstart/update/end (`compose_text_fires_composition_sequence`); `events_log_human_and_agent_clicks_are_byte_identical`; `show_picker_focuses_connected_controls`; `selection_set_base_and_extent_and_delete_from_document`; `exec_command_selects_inserts_and_deletes` |
-| H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | `dom_bindings_default_is_prelude`; `writes_dombench_phase0_memo`; `docs/engine/evidence/dombench-latest.json` (`todoMvcIterations: 100`, `nodesSize`/`rssBytes` filled); `VECTOR_DOM_BINDINGS=native` installs V8 FunctionTemplates for `Element.id` / `className` / `tagName` / `innerHTML` / `outerHTML` / `matches` / `getAttribute` / `setAttribute` / `removeAttribute` / `hasAttribute` / `toggleAttribute` and `Node.textContent` / `nodeType` / `nodeName` / `nodeValue` / `isConnected` / `contains` / `hasChildNodes` / `isEqualNode` / `compareDocumentPosition` / `lookupPrefix` / `lookupNamespaceURI` (`install_native_dom_bindings`, `native_bindings_install_element_id_accessor`; missing `getAttribute` returns `null`; `lookupNamespaceURI(null)` is the XHTML URI; `lookupPrefix` of the XML namespace is `xml`; `localName` / `prefix` / `namespaceURI`; `cloneNode` / `querySelector` / `closest` wrap host handles via `__veWrap`; `parentNode` / `firstChild` / `lastChild` / `nextSibling` / `previousSibling`; `firstElementChild` / `lastElementChild` / `nextElementSibling` / `previousElementSibling`; `Document.getElementById`; `ownerDocument`; `appendChild` / `insertBefore` / `removeChild`; `replaceChild`; `createElement` / `createTextNode` / `createComment`; `createElementNS` / `createDocumentFragment` / `importNode` / `adoptNode`; `getRootNode`; `querySelectorAll` / `normalize` / `isSameNode` / `isDefaultNamespace` / `hasAttributes` / `getAttributeNames` / `remove` / `insertAdjacentHTML` / `documentElement` / `body` / `children` / `childElementCount` / `getElementsByTagName` / `getElementsByClassName` / `title` / `head` / `URL` / `cookie` / `splitText`; `childNodes` wrapList; `scrollTop` / `scrollLeft` / `clientWidth` / `clientHeight` / `offsetWidth` / `offsetHeight` / `offsetTop` / `offsetLeft` / `scrollWidth` / `scrollHeight`; `getBoundingClientRect`; `dataset`; `createAttribute` / `createAttributeNS` native overlay (`native_bindings_install_element_id_accessor`); `create_attribute_returns_attr_node`); default stays prelude until H3-2 |
-| H1-B2 | Real ES modules via `v8::Module`; delete `rewriteModule` and Speedometer bundler | B | ☑ | `es_module_export_runs_via_v8_module`; `es_module_spa_runs_without_bundler`; `es_module_relative_import_resolves_without_bundler`; `es_module_relative_import_runs_without_bundler`; `module_resolve_callback` resolves relative / `data:` specifiers from `ModuleGraph`; `esm::bundle` is identity; `rewriteModule` deleted |
-| H1-B3 | CSS by corpus frequency: abs/fixed, background-image, radius, shadows, transform, transitions, `@font-face`, object-fit | B | ☑ | `parses_font_face_src_family_weight`; `font_face_src_is_fetched_and_installed`; `animation: fade 1s` / `transition: opacity 200ms`; `border-radius` shorthand; radius + object-fit + transform + `box-shadow` + `background-image: url()` |
-| H1-B4 | Display-list primitives: transform, rounded clip, gradient, box-shadow, image src-rect, per-side border, filter, clip-path | B | ☑ | `from_layout_emits_linear_gradient_and_filter_blur`; `DisplayItem::Image.src`; RoundedClip / PushTransform / BoxShadow |
-| H1-B5 | Cache revalidation; async resolver; `preconnect`/`prefetch`; non-blocking subresource fetch | B | ☑ | `stale_entries_are_revalidated_and_a_304_refreshes_them`; `NetworkContext::preconnect` DNS-only (`preconnect_checks_policy_without_a_get`) via `Transport::warmup_dns` (returns before lookup); `<link rel=preconnect\|dns-prefetch>` + `rel=prefetch\|modulepreload` as Parser GET (`preconnect_and_prefetch_are_issued`); speculative `Initiator::Prefetch` stays denied; `Transport::start_many` / `PendingFetches` (`start_many_returns_before_join_waits`; `start_fetch_many_returns_before_join_waits`); `Page` starts the batch then decodes data-URLs / preconnects before `join_subresources` (`start_subresources_returns_before_join_waits`; `page_starts_subresource_io_before_data_images`); `HyperTransport` 2-worker runtime + `start_many` |
-| H1-C1 | `protocolVersion`, `agent.capabilities`, token budget + ranking + cursor, `frameChain`/`shadowDepth`/`scrollContainer`/`occludedBy`, `ref_stale`, closed `VectorErrorCode` | C | ☑ | `protocolVersion: 1` on observe list; `ElementRef.frameChain`/`shadowDepth`/`scrollContainer`/`occludedBy` (`protocol_fields_frame_chain_scroll_shadow_and_occluder`, `occluded_elements_are_demoted_and_flagged`); `ErrorCode::RefStale` on epoch/generation mismatch (`target_resolution_errors_carry_exact_codes_and_candidates`); `held_out_task_controls_are_in_the_top_forty` (3/3); live `taskControlRank` 484/484 |
-| H1-C2 | Multi-page `BrowserService`: `pages.*`, `contexts.*`, `cookies.*`, `storage.state.*`, real screenshot bytes, `events.subscribe` | C | ☑ | `service::tests::cookies_storage_contexts_and_events_are_real` |
-| H1-C3 | `EnginePage` replaces `DriverPage`; `packages/browser-driver` → `packages/engine-client` | C | ☑ | `export class EnginePage`; `packages/engine-client` (`@vector/engine-client`) |
-| H1-C4 | Flattened plan schema for union-less providers | C | ☑ | `McpStepSchema` |
-| H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
-| H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☑ | `tests/held-out/run.mjs` + `tests/held-out/pages/*`; `docs/engine/evidence/held-out-latest.json` (`skippedLive: false`, `livePlanner: true`, `openai/gpt-5.6-luna-fast`, sealedHash `f805b31d…`, 5 trials × 3 tasks; engine verified 15/15 median wait 3159 ms IQR 2882 CI 2691–5601; competitor `vector` 15/15 median 2869 ms; increment/submit/table oracles all 5/5) |
-| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (live fetch 514/526, 12 bot-wall/timeout kept + 26 extra fetchable URLs; engine `capability_unsupported` 0/514 opened bodies; compact observe p50 1.66 ms / p95 3.18 ms; open→observe p50 14.4 ms / p95 29.4 ms / max 80.6 ms on `117` at 256 KB parse cap + unclosed-style trim; snapshot tokens p95 2999 at `maxTokens: 3000`; taskControlRank 484/484; `ve_html::HTML_BYTES_CAP`; not a D5 deletion license) |
-| H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `layout_triage_measures_engine_and_chromium_boxes`; `docs/engine/evidence/layout-triage-2026-09-18.json` (13 boxes / 7 pages; live `google-chrome --headless=new` getBoundingClientRect vs `LayoutTree::rect_of`; 1px tolerance; flex/grid/block/abs/percent) |
-
-### Horizon 2 — Chrome, essentials, coordinator
-
-| ID | Item | WS | Status | Evidence |
-|---|---|---|---|---|
-| H2-A1 | Split `NativeBrowser` into `Browser` + `Window`; private windows via contexts | A | ☑ | `NativeBrowser` owns `NativeWindow` (`window()`/`window_mut`); `Browser` alias; `Tab.context`; `new_private_tab`/`open_private`/`new_tab_in_context`; `window_owns_surface_pointer_and_urlbar`; `private_window_context_does_not_leak_cookies` |
-| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | Electron layout: command bar in the sidebar, top toolbar only when hidden (`toolbar_is_absent_until_sidebar_is_hidden`); default `railOpen: false` + AGENT `recent_runs`; space-dot + pins + tab letters; 📁 Dev folder (`folders_in_space`/`unfiled_tabs`); start page `PINNED` + 2-col `RECENT` + 2-col `TRY ASKING` matching 01/08 (`start_page_paints_greeting_and_prompts`); collapsed 56px rail of host-letter tiles + ⌘S, no top toolbar (`collapsed_rail_screenshot_matches_electron_02`); hover peek (`peek_paints_full_sidebar_over_rail`, `ve-shell-peek.png`); ⌘L expands rail then types + intent chip (`command_bar_typing_screenshot_matches_electron_11`); RunPanel goal/steps/durations (`agent_rail_paints_run_goal_failed_step_and_banners`, `active_run_screenshot_matches_electron_04`, `ve-shell-run.png`); takeover + Return control (`takeover_screenshot_matches_electron_05`, `ve-shell-takeover.png`); needs-input + Type an answer (`needs_input_screenshot_matches_electron_06`, `ve-shell-needs-input.png`); light run (`light_run_screenshot_matches_electron_07`); many tabs (`many_tabs_screenshot_matches_electron_09`); narrow + collapsed rail (`narrow_run_screenshot_matches_electron_10`); SetPanel members (`set_progress_screenshot_matches_electron_13`, `ve-shell-set.png`); disconnected banner (`disconnected_screenshot_matches_electron_14`, `ve-shell-disconnected.png`); ⌘⇧A toggles rail; CSS geometry on the live paint list — 56px rail rect, stage `RoundedClip`, peek overlay width, agent-rail right strip (`chrome_shell_list_uses_electron_css_geometry`, `collapsed_rail_paints_tab_tiles_not_a_lone_v`, `docs/ui/screenshots/ve-chrome-geometry.json`); `docs/ui/screenshots/ve-shell-start.png`; `ve-shell-start-light.png`; `ve-shell-browse.png`; `ve-shell-rail.png`; `ve-shell-peek.png`; `ve-shell-command.png`; `ve-shell-gui.png` / palette / settings; headed `live_os_window_and_mcp_share_one_page` |
-| H2-A3 | `ve-shell-mac` (objc2): NSWindow, menus, IME, scroll phases, appearance | A | ☑ | `ve-shell --gui` attaches `MacWindow::attach_product_view` to winit's visible AppKit `NSView`/owning `NSWindow` (no second product window), installs native menus, and forwards native IME + winit `TouchPhase` + effective appearance; `live_os_window_and_mcp_share_one_page` is green on Apple silicon; `host_forwards_ime_scroll_and_appearance`; `test_double_covers_ime_scroll_appearance_menus` |
-| H2-A4 | `ve-profile` (SQLite): history, bookmarks, session restore, downloads, find, zoom, cert interstitial, permission sheets | A | ☑ | `session_restore_reopens_tabs_after_restart`; `day_of_browsing_restores_tabs_history_bookmarks_zoom_find` (open/bookmark/download/zoom/find/present/restart step times); `docs/engine/evidence/day-of-browsing.json`; `find_bar_shows_match_count`; `cert_and_permission_sheets_persist_to_profile`; `tls_navigation_error_opens_cert_sheet` (`open_url` / `navigate_active` → `show_cert_sheet` on certificate/UnknownIssuer); `Profile::open` rusqlite |
-| H2-C1 | `agent/machine.ts` pure reducer; coordinator &lt; 350 lines; ≥ 25 transition tests | C | ☑ | `coordinator.ts` 305 lines; `coordinator-loop.ts` 202 lines (`runCoordinatorLoop` applies `reduce`); verify/harvest/vision in `coordinator-verify.ts`; turn helpers in `coordinator-turn.ts`; `tests/unit/machine.test.ts` (26) |
-| H2-C2 | Independent completion: verify re-observes; grounded reads; `observed \|\| remoteConfirmed` writes | C | ☑ | `verifyDoneAgainstObservation` re-observes before accept; long claims must appear on the page; writes need `receipt.observed` or `remoteConfirmed` (`tests/unit/verify-done.test.ts`; `lying model cannot complete a run`) |
-| H2-C3 | Repair taxonomy with per-class budgets | C | ☑ | `classifyRepair` / `noteRepair` / `REPAIR_BUDGETS` (`stale:4` `timeout:3` `miss:3` `model:2` `auth:0` `generic:3`); coordinator consumes per-class counters and recovers only on that class's last budgeted attempt; `tests/unit/repair-escalation.test.ts`; machine `repairing` still applies |
-| H2-C4 | Permissions `{effect, origin, scope, expiresAt}`; page text never grants | C | ☑ | `ve-profile` PermissionGrant; runtime `parseGrant`/`grantAllows`/`authorizeProgram(steps, grants, origin, now)` — origin mismatch and expired grants deny; string `effect:write` remains any-origin session; `promptCannotGrant`; `tests/unit/review-gates.test.ts` `honours origin and expiresAt` |
-| H2-C5 | Durable runs; kill-9-mid-write = exactly one POST | C | ☑ | `review-gates.test.ts` `kill-9 mid-write is exactly one POST` |
-| H2-C6 | Skills ADR; siteKey + control fingerprints; `budget.tokens` | C | ☑ | `docs/adr/H2-C6-skills.md`; `siteKey`/`controlFingerprint`/`registrableOrigin` in `skills.ts`; `tryReuseSkill` refuses a siteKey mismatch; `ProgramBudgetSchema.tokens`; `applyTokenBudget` (~4 chars/token) + `buildPlannerPrompt({budget})` default 3000; coordinator + member-agent pass `{tokens:3000}`; `tests/unit/roadmap-agent.test.ts` siteKey; `tests/unit/prompt-injection.test.ts` `H2-C6 budget.tokens` |
-| H2-C7 | MCP resources, extract, wait_for, console/dialog/network tools | C | ☑ | `vector://page/observation` + `vector://page/console` + `vector://page/network` resolve the active page; `pages.extract` / `pages.waitFor` / `pages.console` / `pages.dialog` / `pages.network` in MethodSchemas + handlers; MCP `vector_extract` / `vector_wait_for` / `vector_console` / `vector_dialog` / `vector_network`; `tests/unit/pages-inspect.test.ts` |
-| H2-B1 | Incremental observation p95 &lt; 2 ms; spatial hit-test index; V8 heap caps; V8 snapshot startup | B | ☑ | `incremental_observe_is_under_two_milliseconds` (toy page); `incremental_observe_p95_under_2ms_on_corpus_sample` (live HTML bodies, `since_revision` cache); `HitIndex` 64px cells via `LayoutTree::hit_test` for observe occlusion and `nodes_overlapping` for attribute/geometry patches (`incremental_observe_uses_hit_index_for_attribute_patch`); `V8Vm::with_heap_limit`; startup snapshot blob; `docs/perf/incremental-observe.json` |
-
-### Horizon 3 — Gated removals and depth
-
-| ID | Item | WS | Status | Evidence |
-|---|---|---|---|---|
-| H3-1 | Remove Chromium fallback and Electron per D5 gates | D | ☐ | gated: `docs/adr/D5-chromium-removal.md` (unsupported-rate 0/514 met; Electron e2e still frozen; Chromium not deleted) |
-| H3-2 | Native bindings default-on after two weeks green differential CI | B | ☐ | switch + `.github/workflows/engine.yml` prelude/native differential jobs; default remains prelude (`dom_bindings_default_is_prelude`); window `docs/engine/evidence/h3-2-prelude-window.json` (`windowStarted` 2026-09-18, `flipAfter` 2026-10-02, `flipped: false`) |
-| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `@supports` keeps known `(property: value)` and drops `not` / unknown / invalid (`supports_keeps_known_properties_and_drops_unknown`); corpus `CssCoverage` ledger `writes_h3_3_corpus_css_coverage` / `docs/engine/evidence/h3-3-corpus-gaps.json` (`unknown` 0 / `missRatio` 0 on 100 live bodies); `column-rule` shorthand + vendor aliases (`-webkit-transform`, `-webkit-text-decoration`, `-o-object-fit`, `-webkit-user-select`, `-moz-column-gap`, `-ms-overflow-style`, `-webkit-box-pack`, `-webkit-overflow-scrolling`); `-moz-columns` shorthand; `mask-image` / `mask-composite` / `scrollbar-width` / `contain-intrinsic-size` / `animation-range` / `animation-timeline` / `view-timeline` / `border-image-slice` / `scroll-snap-stop` / `stroke-miterlimit`; `text_transform_uppercase_widens_ascii`; `font_variant_small_caps_uppercases`; `from_layout_emits_dashed_underline`; `from_layout_emits_fill_and_stroke`; `fixed_background_does_not_translate`; `css_animation_respects_delay_and_fill`; `tab_size_widens_pre_tabs`; `line_clamp_truncates_lines`; `isolation_establishes_bfc`; `from_layout_emits_text_underline` (thickness+offset); `from_layout_emits_mix_blend_mode`; `software_renderer_applies_push_blend`; `grid_auto_flow_column_fills_down_first`; `column_span_all_uses_full_width`; `from_layout_emits_column_rule`; `from_layout_emits_backdrop_filter_blur`; `visibility_collapse_zeroes_row_keeps_column_width`; `position_anchor_and_area_place_against_named_box`; `text_orientation_sideways_rotates_vertical_box`; `float_offset_shifts_placed_float`; `field_sizing_content_sizes_to_value`; `offset_path_translates_box`; `from_layout_applies_offset_path`; `shape_outside_inset_narrows_float_wrap`; `resize_establishes_bfc`; `grid_template_areas_place_named_items`; `table_layout_fixed_ignores_later_row_content`; `from_layout_hides_empty_cells`; `column_count_places_children_side_by_side`; `container_type_size_does_not_grow_from_children`; `from_layout_applies_css_clip_rect`; `from_layout_applies_individual_rotate`; `software_renderer_applies_push_rotate`; `transform_rotate_expands_axis_aligned_bounds`; `canvas_linear_gradient_fills_pixels`; `contain_size_does_not_grow_from_children`; `from_layout_applies_zoom_and_hides_content_visibility`; `from_layout_uses_background_origin_content_box`; `software_renderer_applies_push_scale`; `from_layout_applies_individual_scale`; `software_renderer_applies_push_transform`; `aspect_ratio_sizes_auto_axis`; `from_layout_applies_individual_translate`; `from_layout_emits_object_position`; `from_layout_emits_text_underline` (uses `text-decoration-color`); `from_layout_clips_background_to_content_box`; `cursor`/`user-select`/`will-change`; `from_layout_emits_background_size_cover`; `from_layout_emits_outline_and_text_shadow`; `css_animation_interpolates_opacity_from_keyframes`; `css_animation_interpolates_translate_from_keyframes`; `Compositor::animate_opacity_at`; `Compositor::animate_translate_at`; `Compositor::animate_scale_at`; `Compositor::animate_rotate_at`; `from_layout_emits_box_shadow`; `from_layout_emits_linear_gradient_and_filter_blur`; `background-image: url()`/`linear-gradient`; `filter: blur()`; `transform-origin`; SVG rect+circle+ellipse+line+polyline+path (`M`/`L`/`H`/`V`/`Z`/`Q`/`C`/`A`); canvas stroke/fill/text/image/linear-gradient (`canvas_draw_image_blits_source_pixels` blits canvas and `<img>` `ImageCache` pixels; `canvas_save_restore_translate_and_global_alpha` including `scale`; `canvas_clip_and_quadratic_curve_paint_pixels`; `canvas_radial_gradient_fills_center`; `canvas_create_pattern_repeats_source_pixels`; `canvas_is_point_in_path_hits_rect`; `canvas_rotate_maps_fill_rect`; `canvas_conic_gradient_sweeps_around_center`; `canvas_transform_multiplies_current_matrix`; `canvas_is_point_in_stroke_hits_line`; `canvas_path2d_parses_svg_quad_cubic_and_arc`; `canvas_fill_path_uses_linear_gradient`; `canvas_stroke_respects_line_width`; `canvas_path2d_parses_smooth_s_and_t`; `canvas_create_pattern_no_repeat_stays_in_tile`; `canvas_destination_over_keeps_dst`; `canvas_create_pattern_from_image_data`; `canvas_fill_text_paints_distinct_glyphs` (`FontSystem` advances + raster, space stays empty); `canvas_fill_rect_paints_shadow_offset`; `canvas_stroke_rect_honours_line_dash`; `canvas_fill_rect_paints_shadow_blur`; `canvas_stroke_path_honours_line_dash`; `canvas_stroke_honours_line_cap`; `canvas_stroke_honours_line_join`; `canvas_source_in_and_destination_in_clip_to_overlap`); `canvas_source_out_and_destination_out_punch_overlap`; `canvas_path2d_ellipse_arc_to_and_round_rect`; `canvas_stroke_text_outlines_instead_of_filling`; `canvas_draw_image_honours_source_and_dest_rects`; `canvas_pattern_set_transform_shifts_tile`; `canvas_source_atop_and_destination_atop_keep_overlap`; `canvas_filter_blur_spills_outside_fill_rect`; `canvas_filter_blur_spills_outside_fill_path`; `canvas_text_align_shifts_fill_text`; `canvas_text_baseline_shifts_fill_text`; `canvas_lighter_adds_overlapping_channels`; `canvas_multiply_and_screen_blend_channels`; `canvas_image_smoothing_blends_scaled_pixels`; `canvas_bezier_curve_paints_off_the_chord`; `canvas_overlay_and_difference_blend_channels`; `canvas_offscreen_and_image_bitmap_round_trip`; `canvas_create_image_bitmap_draws`; `canvas_draw_focus_if_needed_strokes_path`; `canvas_reset_clears_pixels_and_transform`; `canvas_bitmaprenderer_transfers_image_bitmap`; `canvas_soft_light_darkens_mid_gray`; `canvas_exclusion_and_hard_light_blend_channels`; `canvas_color_dodge_and_color_burn_blend_channels`; `canvas_filter_blur_spills_outside_stroke_path`; `data_transfer_stores_and_clears_text`; `canvas_hue_saturation_color_and_luminosity_blend`; `css_style_sheet_inserts_and_deletes_rules`; `xhr_sets_request_headers_and_reads_response_headers`; `show_picker_focuses_connected_controls`; `media_load_resets_playback_and_fast_seek_moves`; `element_internals_stores_form_value_and_validity`; `navigation_navigate_updates_location_unless_intercepted`; `close_watcher_request_close_honours_prevent_default`; `broadcast_channel_delivers_to_same_name_peers`; `document_style_sheets_exposes_style_element_rules`; `event_source_opens_and_delivers_sse_data`; `intersection_observer_clips_to_viewport_and_root_margin`; `resize_observer_reports_content_box_inside_padding`; `file_reader_reads_blob_text_and_data_url`; `abort_signal_is_event_target_and_throw_if_aborted`; `performance_observer_delivers_mark_and_buffered_paint`; `request_idle_callback_runs_with_time_remaining`; `navigator_clipboard_round_trips_and_geolocation_denies`; `offscreen_canvas_context_is_offscreen_2d`; `document_fonts_tracks_font_face_load`; `notification_request_permission_denies`; `crypto_subtle_digests_sha256`; `navigation_precommit_redirect_updates_location`; `fetch_reads_blob_object_url`; `speech_synthesis_speak_fires_start_and_end`; `visual_viewport_tracks_inner_size_and_scroll`; `window_scroll_y_tracks_document_element_scroll_top`; `selection_set_base_and_extent_and_delete_from_document`; `document_open_clears_body_and_close_finishes`; `indexeddb_exposes_idb_classes`; `crypto_subtle_digests_sha1_and_signs_hmac`; `intersection_observer_refires_after_scroll`; `resize_observer_refires_when_style_width_changes`; `mutation_record_is_a_real_class`; `exec_command_selects_inserts_and_deletes`; `element_animate_applies_opacity_and_finishes`; `element_animate_interpolates_opacity_over_time`; `dialog_show_modal_requires_connected_and_close_fires`; `inline_svg_is_a_replaced_box_from_width_height`; `from_layout_emits_inline_svg_image`; `inline_svg_paints_rect_pixels`; `element_get_animations_lists_running_and_finished`; `decode_svg_linear_gradient_use_and_text`; `decode_svg_radial_gradient_is_white_at_center`; `slot_assigned_nodes_match_named_and_manual`; `speech_synthesis_exposes_a_default_voice`; `data_transfer_files_from_item_add`; `url_can_parse_and_parse_relative`; `element_check_visibility_honours_display_and_opacity`; `form_request_submit_fires_cancelable_submit`; `document_start_view_transition_runs_callback`; `css_register_property_supplies_initial_value`; `crypto_subtle_verifies_hmac`; `scheduler_post_task_runs_callback`; `decode_svg_closed_path_fills_interior`; `popover_show_hide_fires_toggle_events`; `caches_open_put_and_match_blob_url`; `request_fullscreen_sets_document_element`; `navigator_share_and_locks_request`; `decode_svg_circle_and_ellipse_sample_gradients`; `decode_svg_text_paints_vector_letters`; `match_media_returns_media_query_list`; `history_go_after_push_state_fires_popstate`; `css_highlights_registry_stores_ranges`; `crypto_subtle_aes_cbc_round_trips_nist`; `crypto_subtle_pbkdf2_derives_sha256_bits`; `streams_and_url_pattern_are_real_classes`; `audio_context_creates_oscillator_and_gain`; `canvas_get_context_webgl_reports_version`; `crypto_subtle_generate_key_round_trips_aes_cbc`; `decode_svg_path_and_polygon_sample_gradients`; `crypto_subtle_export_and_derive_key`; `text_encoder_stream_encodes_chunks`; `rtc_peer_connection_creates_offer`; `match_media_change_fires_on_resize`; `compression_stream_round_trips_gzip`; `cookie_store_sets_and_deletes`; `clipboard_item_write_and_read`; `navigator_storage_estimates_usage`; `decode_svg_stroke_width_and_opacity`; `crypto_subtle_digests_sha384`; `abort_signal_timeout_and_any`; `decode_svg_fill_opacity_tints_rect`; `readable_stream_from_enqueues_iterable`; `decode_svg_translate_moves_rect`; `css_typed_units_and_scheduler_yield`; `promise_with_resolvers_and_try`; `decode_svg_scale_enlarges_rect`; `crypto_subtle_aes_ctr_matches_nist`; `webgl_clear_paints_and_read_pixels`; `audio_buffer_and_get_user_media_denies`; `decode_svg_rotate_moves_rect`; `file_pickers_and_wake_lock_deny`; `webgl_tex_image_draw_arrays_blits`; `decode_svg_group_translate_moves_rect`; `decode_svg_matrix_translates_rect`; `decode_svg_group_scale_enlarges_rect`; `decode_svg_group_translate_then_element_scale`; `decode_svg_matrix_scales_rect`; `credentials_and_payment_request_deny`; `decode_svg_skew_x_shears_rect`; `navigator_battery_gamepads_and_ua_data`; `device_apis_and_screen_orientation_deny`; `storage_access_and_picture_in_picture_deny`; `analyser_and_biquad_filter_nodes`; `media_stream_and_web_audio_graph_nodes`; `decode_svg_clip_path_masks_rect`; `decode_svg_clip_path_circle_masks_rect`; `crypto_subtle_wraps_and_unwraps_aes_key`; `media_play_fires_play_and_playing`; `xr_and_presentation_request_deny`; `decode_svg_clip_path_ellipse_masks_rect`; `media_can_play_type_and_ready_state`; `web_audio_factory_nodes`; `decode_svg_stroke_dasharray_skips_gaps`; `decode_svg_text_anchor_end_shifts_left`; `crypto_subtle_imports_jwk_oct_key`; `performance_navigation_timing_entry`)); `text_wrap_nowrap_keeps_one_line`; `text_align_last_center_shifts_last_line`; `hyphens_manual_breaks_at_soft_hyphen`; `from_layout_uses_background_position_x`; `from_layout_marks_pixelated_image`; `scroll_margin_insets_prepare_pointer`; `scroll_snap_aligns_to_start`; `font_stretch_condensed_narrows_text`; `font_kerning_tightens_av_pair`; `font_variant_ligatures_collapses_fi`; `break_before_column_starts_new_row`; `from_layout_emits_background_blend_mode`; `from_layout_hides_backface`; `text_size_adjust_doubles_advance`; `hanging_punctuation_shifts_first_quote`; `marker_offset_shifts_outside_marker`; `box_orient_vertical_stacks_flex_children`; `from_layout_emits_text_emphasis_marks`; `from_layout_non_scaling_stroke_ignores_zoom`; `text_justify_spreads_non_last_line`; `math_style_compact_narrows_text`; `from_layout_emits_border_image`; `decode_svg_stroke_linecap_butt_keeps_end_empty`; `decode_svg_stroke_linecap_square_extends_end`; `performance_resource_timing_records_fetch`; `decode_svg_fill_rule_evenodd_keeps_hole_empty`; `decode_svg_stroke_linejoin_miter_reaches_outer_corner`; `decode_svg_stroke_linejoin_bevel_keeps_outer_corner_empty`; `intersection_observer_refires_after_resize`; `analyser_reads_connected_oscillator`; `webgl_shader_compile_and_program_link`; `decode_svg_group_opacity_tints_rect`; `decode_svg_rect_stroke_paints_edge`; `rtc_data_channel_opens_after_offer_answer`; `decode_svg_circle_stroke_keeps_center_empty`; `decode_svg_ellipse_stroke_keeps_center_empty`; `computed_style_exposes_fill_rule_and_stroke_joins`; `decode_svg_paint_order_stroke_fill_keeps_edge_fill`; `decode_svg_marker_end_paints_at_line_end`; `decode_svg_visibility_hidden_skips_rect`; `screen_and_outer_size_track_resize`; `webgl_uniform4f_fills_draw_arrays`; `decode_svg_stroke_dashoffset_shifts_gaps`; `decode_svg_marker_start_paints_at_line_start`; `computed_style_exposes_stroke_dashoffset`; `rtc_add_track_and_transceiver`; `decode_svg_vector_effect_keeps_stroke_unscaled`; `decode_svg_pattern_tiles_rect_fill`; `decode_svg_mask_hides_unmasked_pixels`; `decode_svg_text_decoration_underline_paints_baseline`; `midi_display_and_shared_storage_deny`; `decode_svg_filter_blur_spills_outside_rect`; `webgl_framebuffer_clear_blits_via_texture`; `set_html_strips_script_and_keeps_paragraph`; `local_fonts_and_screen_details_deny`; `decode_svg_filter_offset_moves_rect`; `decode_svg_image_href_paints_referenced_rect`; `decode_svg_marker_mid_paints_at_polyline_vertex`; `trusted_types_policy_creates_trusted_html`; `canvas_transfer_control_copies_pixels`; `decode_svg_filter_flood_fills_rect`; `decode_svg_filter_saturate_greys_rect`; `decode_svg_text_path_starts_on_path`; `webgl_scissor_clips_clear`; `document_hidden_tracks_visibility_state`; `webgl_draw_arrays_fills_vertex_triangle`; `webgl_draw_elements_and_webgl2_context`; `decode_svg_nested_overflow_hidden_clips_rect`; `decode_svg_letter_spacing_shifts_second_glyph`; `decode_svg_tspan_dx_and_fill`; `decode_svg_text_decoration_line_through`; `decode_svg_filter_erode_shrinks_rect`; `decode_svg_font_size_scales_glyph`; `decode_svg_dominant_baseline_hanging_keeps_glyph`; `decode_svg_word_spacing_shifts_second_word`; `decode_svg_foreign_object_fill_paints_box`; `decode_svg_filter_dilate_grows_rect`; `decode_svg_filter_blend_multiply_tints_rect`; `decode_svg_filter_arithmetic_scales_red`; `decode_svg_filter_turbulence_varies_pixels`; `decode_svg_text_writing_mode_vertical`; `decode_svg_text_path_follows_vertical_path`; `vertical_lr_stacks_children_rightward`; `webgl_viewport_maps_clip_and_clips_clear`; `canvas_direction_rtl_flips_start_align`; `canvas_letter_spacing_shifts_second_glyph`; `decode_svg_filter_composite_out_punches_rect`; `decode_svg_filter_tile_repeats_rect`; `decode_svg_filter_component_scales_red`; `canvas_word_spacing_shifts_second_word`; `canvas_filter_grayscale_equalizes_channels`; `webgl_blend_additive_keeps_both_channels`; `decode_svg_filter_convolve_zeros_interior`; `decode_svg_filter_displace_shifts_rect`; `canvas_filter_invert_swaps_red_to_cyan`; `canvas_filter_brightness_scales_red`; `webgl_color_mask_keeps_red_channel`; `canvas_filter_contrast_flattens_to_mid_gray`; `canvas_filter_sepia_tints_red`; `canvas_filter_saturate_zero_greys_red`; `decode_svg_text_decoration_overline_paints_top`; `computed_style_exposes_accent_and_caret_color`; `webgl_unpack_flip_y_reverses_texture_rows`; `computed_style_exposes_spacing_and_ui`; `canvas_filter_hue_rotate_shifts_red_to_green`; `canvas_filter_opacity_scales_alpha`; `webgl_unpack_premultiply_alpha_scales_rgb`; `computed_style_exposes_break_and_scroll_keywords`; `decode_svg_marker_orient_rotates_end_marker`; `decode_svg_marker_orient_auto_follows_vertical_line`; `decode_svg_filter_merge_keeps_source_graphic`; `decode_svg_filter_lighting_tints_rect`; `computed_style_exposes_flex_list_and_paint_keywords`; `canvas_filter_drop_shadow_paints_offset`; `computed_style_exposes_time_radius_and_columns`; `computed_style_exposes_transform_filter_clip_and_images`; `webgl_cull_face_skips_back_facing_triangle`; `computed_style_exposes_grid_tracks_spacing_and_counters`; `decode_svg_text_length_stretches_glyphs`; `webgl_front_face_cw_flips_culling`; `decode_svg_filter_drop_shadow_paints_offset`; `decode_svg_filter_hue_rotate_shifts_red_to_green`; `decode_svg_filter_luminance_to_alpha_zeros_rgb`; `text_overflow_ellipsis_truncates_nowrap_line`; `canvas_stroke_honours_line_dash_offset`; `webgl_blend_zero_one_keeps_dest`; `decode_svg_baseline_shift_moves_glyph_down`; `canvas_font_kerning_tightens_av_pair`; `decode_svg_switch_paints_first_child_only`; `canvas_stroke_honours_miter_limit`; `canvas_font_stretch_condensed_narrows_text`; `word_break_break_all_splits_long_word`; `decode_svg_alignment_baseline_middle_shifts_glyph`; `overflow_wrap_anywhere_splits_long_word`; `canvas_font_variant_caps_small_caps_uppercases`; `canvas_image_smoothing_quality_high_blurs_more`; `decode_svg_filter_matrix_swaps_red_to_green`; `hyphens_auto_wraps_long_word`; `webgl_blend_equation_subtract_removes_src`; `decode_svg_text_anchor_middle_centers_glyph`; `text_wrap_balance_evens_two_lines`; `webgl_blend_equation_reverse_subtract_keeps_src_minus_dest`; `decode_svg_text_dy_moves_glyph_down`; `white_space_break_spaces_wraps_trailing_spaces`; `webgl_triangle_strip_fills_second_triangle`; `decode_svg_text_dx_moves_glyph_right`; `decode_svg_font_weight_bold_widens_glyph`; `webgl_triangle_fan_fills_from_hub`; `canvas_font_italic_shears_top_of_glyph`; `decode_svg_font_style_italic_shears_glyph`; `canvas_font_bold_widens_glyph`; `webgl_line_strip_strokes_polyline`; `decode_svg_viewbox_scales_rect_to_viewport`; `canvas_font_weight_property_widens_glyph`; `webgl_points_fills_vertex`; `webgl_line_loop_closes_polyline`; `decode_svg_viewbox_origin_shifts_rect`; `canvas_font_style_property_shears_glyph`; `webgl_lines_strokes_independent_segments`; `decode_svg_preserve_aspect_meet_keeps_bottom_empty`; `decode_svg_text_rotate_90_lays_glyph_sideways`; `webgl_line_width_thickens_stroke`; `decode_svg_preserve_aspect_xmax_shifts_right`; `decode_svg_xml_space_preserve_keeps_double_gap`; `webgl_get_parameter_reports_line_width`; `decode_svg_preserve_aspect_slice_fills_bottom`; `decode_svg_preserve_aspect_ymax_shifts_down`; `decode_svg_clip_path_evenodd_keeps_hole_empty`; `decode_svg_length_adjust_scales_glyphs`; `webgl_depth_test_rejects_farther_triangle`; `decode_svg_font_stretch_expands_glyph`; `decode_svg_direction_rtl_shifts_start_anchor_left`; `decode_svg_clip_path_polygon_masks_rect`; `decode_svg_preserve_aspect_slice_xmax_keeps_right`; `decode_svg_display_none_skips_rect`; `webgl_depth_func_greater_keeps_farther_triangle`; `webgl_blend_func_separate_keeps_rgb_replaces_alpha`; `decode_svg_font_kerning_tightens_av_pair`; `decode_svg_clip_path_polyline_masks_rect`; `word_break_keep_all_keeps_cjk_unbroken`; `webgl_depth_mask_false_skips_depth_write`; `webgl_stencil_test_clips_second_draw`; `canvas_filter_url_saturate_zero_greys_red`; `decode_svg_clip_path_object_bbox_maps_unit_rect`; `webgl_blend_equation_separate_adds_alpha`; `decode_svg_linear_gradient_object_bbox_spans_rect`; `decode_svg_pattern_object_bbox_scales_tile`; `webgl_polygon_offset_pulls_same_depth_nearer`; `decode_svg_linear_gradient_repeat_cycles_after_end`; `decode_svg_stop_opacity_tints_alpha`; `webgl_sample_coverage_zero_keeps_dest`; `webgl_depth_range_pushes_near_triangle_farther`; `text_indent_shifts_first_line`; `overflow_wrap_break_word_splits_long_word`; `decode_svg_linear_gradient_reflect_mirrors_after_end`; `decode_svg_linear_gradient_href_inherits_stops`; `webgl_stencil_mask_zero_skips_stencil_write`; `decode_svg_linear_gradient_transform_shifts_start`; `canvas_fill_text_paints_shadow_offset`; `webgl_clear_stencil_sets_ref_for_equal`; `canvas_filter_url_saturate_zero_greys_fill_path`; `canvas_stroke_text_paints_shadow_offset`; `webgl_clear_depth_zero_rejects_default_z`; `decode_svg_linear_gradient_scale_stretches_start`; `canvas_fill_text_paints_shadow_blur`; `decode_svg_mask_units_object_bbox_maps_unit_rect`; `decode_svg_pattern_transform_shifts_tile`; `decode_svg_linear_gradient_rotate_makes_vertical`; `canvas_filter_url_saturate_zero_greys_stroke_path`; `canvas_stroke_text_paints_shadow_blur`; `decode_svg_pattern_transform_scale_stretches_tile` |
-| H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::map_site_context` + Production `context_for_site`; `map_site_context_reuses_origin_and_isolates_sites`; `production_two_origins_use_distinct_ve_host_processes` (two origins → two `ve-host` PIDs); `docs/engine/evidence/h3-4-process-isolation.json`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open`; `Page::coep_allows_resource`; `coep_require_corp_blocks_cross_origin_without_corp`; COOP/COEP/CORP parsed on navigation + subresource fetch |
-| H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine 1.83 + Chrome 148.0.7778.96 TodoMVC-JavaScript-ES5 11.6 ms (`docs/engine/evidence/speedometer-chrome-tracked.json`; tracked, not official, not a target) |
-
-Additional H3-3 current-tree evidence: `webgl_separate_stencil_state_distinguishes_front_and_back_faces`; `webgl_texture_parameters_and_generated_mipmaps_are_observable`; `fixed_table_cell_min_width_contributes_to_column`; `text_overflow_does_not_ellipsis_flex_items`.
-
----
-
-## 6. Targets and budgets
-
-Measured on Apple silicon, 1440×900 @2x, production security profile, published as median / p95 with n and CI. This host’s software-present numbers are in `docs/perf/section-6-this-host.json` (`appleSilicon: true`). Input p50 is 20.20 ms (above the 16 ms target) and peak RSS is 535.19 MB (above the 400 MB target); the other measured human-frame, idle, command, and soak budgets pass.
-
-| Area | Metric | Target |
+| Reference | Relevant expectation | Implication for Aux |
 |---|---|---|
-| Human | Input → paint (click/keypress, simple page) | ≤ 16 ms p50, 33 ms p95 |
-| Human | Wheel scroll frame time (compositor only) | ≤ 4 ms p50, 8 ms p95, 0 jank p95 |
-| Human | Full repaint after relayout (news fixture) | ≤ 8 ms p50, 16 ms p95 |
-| Human | Idle CPU with off-screen animating page | &lt; 1% |
-| Human | Command acknowledgement / cancel | ≤ 100 ms p95 |
-| Agent | Compact observe, real corpus | ≤ 5 ms p95 (from 19 ms) |
-| Agent | Open → observe, real corpus | ≤ 300 ms p95, no page &gt; 1 s (from 382 ms / 1.56 s) |
-| Agent | Snapshot at `budget:{tokens:3000}` | ≤ 3,000 tokens p95; task control in top 40 ranked on ≥ 90% |
-| Agent | Held-out verified success | ≥ 95% with CI, ≥ 5 trials, live model |
-| Agent | `capability_unsupported` on ≥ 500 real pages | &lt; 1% |
-| Engine | Peak RSS, 100 TodoMVC iterations | &lt; 400 MB (from 1–2.9 GB) |
-| Engine | 1,000-navigation soak | no monotonic growth, ≤ 10% post-warmup |
+| [Aside](https://aside.com/) | Delegated work across signed-in websites, files, and credential-assisted login. | Qualify real multi-step actions and account continuity; ordinary chat must lead to completed work. |
+| [Dia](https://www.diabrowser.com/) | Contextual answers across tabs/tools, useful generated work, profiles, organized tabs, and remembered splits. | Make asking, producing an artifact, and returning to context feel like one continuous experience. |
+| [Arc Spaces](https://resources.arc.net/hc/en-us/articles/19228064149143-Spaces-Distinct-Browsing-Areas) and [Split View](https://resources.arc.net/hc/en-us/articles/19335393146775-Split-View-View-Multiple-Tabs-at-Once) | Durable browser organization and comfortable side-by-side work. | Preserve Aux's current sidebar identity and make organization, focus, restoration, and layout excellent. |
 
----
+Aux's intended differentiation is the complete path from a page or issue to delegated work, a useful output or code change, a live preview, and continued conversation. Benchmark the experience as a whole; do not copy a competitor's visual identity or repeat its marketing claims as measured fact.
 
-## 7. Verification of this plan
+## 2. The experience to build
 
-- Every claim in §3 can be re-checked at the cited path; wrapper maps, string handles, JSON marshalling, the image-less GPU display list and the developer-offline perf profile were re-read before inclusion.
-- Horizon 0 exit: `docs/perf/frame-baseline.md`, `dombench-latest.json`, a production-profile `perf --gate` JSON, and `BENCHMARKS.md` all committed; `pnpm dev` shows real shaped text at correct Retina scale with images, and typing lands in the focused field.
-- Horizon 1 exit: scroll trace shows 0 relayout and 0 `from_layout` calls; events-log fixture byte-identical for human and agent; ES-module SPA fixture runs without the bundler; Full observation reachable over MCP; multi-page native service test green.
-- Horizon 2 exit: MVP M1 gate (a day of ordinary browsing with restart and state retained) — `day_of_browsing_restores_tabs_history_bookmarks_zoom_find` / `docs/engine/evidence/day-of-browsing.json`; lying-model test 0 completed (`lying model cannot complete a run`); kill-9 write test exactly one POST; held-out suite with live GPT 5.6 Luna and competitor rows published (`docs/engine/evidence/held-out-latest.json`, `skippedLive: false`, engine 15/15, competitor 15/15).
-- Current-tree closeout: Rust workspace tests and clippy pass on 1.88.0; the V8 page suite passes with only the named H3-2 manual-slot regression quarantined; the pinned geometry manifest has 0 regressions; supported WPT testharness is 114/114; runtime integration and macOS Electron e2e pass with explicit test-profile grants. H3-1 remains gated and H3-2 remains prelude-default until 2026-10-02.
+### 2.1 Browsing feels immediate
 
----
+The window becomes usable quickly. Restored tabs appear immediately without loading every page. Opening a tab, typing an address, switching Spaces, revealing the sidebar, or resizing a split never waits for an AI request. Background work does not cause typing lag, scroll stutter, focus theft, or a sudden change to the active page.
 
-## 8. Prior documents
+The address field behaves like a familiar browser address field. Search is predictable, suggestions are fast, navigation does not lock the input, and the user can correct a URL or stop a load immediately. New tabs, links, popups, back/forward, downloads, permissions, and keyboard shortcuts have conventional behavior.
 
-| Document | Role |
+### 2.2 Asking is lightweight
+
+The current page is the natural starting context for a new page-related question. Small context chips show what is attached. The user can add another tab, selected text, a screenshot region, file, saved result, or project without building a formal task definition.
+
+A question streams into a readable answer. Sources are easy to open when relevant. The answer does not arrive surrounded by duplicated status cards, counters, logs, or an automatically expanded preview that leaves no room to read.
+
+### 2.3 Doing work is a normal continuation of chat
+
+“Compare these three options,” “update these records,” or “fix this issue and show me the preview” begins work in the current conversation. Aux infers the practical steps, carries out the authorized work, and asks a focused question only when the answer materially changes the outcome or the requested action needs additional authority.
+
+Users can send a correction while work is running. Aux applies it at a safe boundary, explains a relevant change briefly, and continues. Stop and takeover act locally and promptly. The user does not need to open a task management screen to control the assistant.
+
+The completion is ordinary language:
+
+> I updated the three records. One was locked, so I left it unchanged.
+
+> The fix is ready. The menu now stays aligned when you resize the window. Here's the preview.
+
+> These two options meet your requirements. I put the comparison in a spreadsheet and linked the sources.
+
+Follow-ups such as “change the second one,” “show me the diff,” “what did you change?” and “undo that” continue in the same chat. An actual uncertain outcome gets a clear explanation and a useful next step; it never becomes a false success or an administrative ritual.
+
+### 2.4 The workspace appears around the work
+
+Attaching a repository gives the conversation access to its project and reveals contextual access to Preview, Changes, Files, and Console, without opening every pane. Opening a preview uses a real browser tab with the same site controls and agent capabilities as other tabs. Selecting a region in that preview can start an edit request with the correct project, route, screenshot, and conversation context already attached.
+
+Files support useful editing, Changes supports readable diffs and feedback, and Console supports real commands and services. The user can inspect and adjust these directly while discussing the work with Aux. These surfaces are useful parts of the workspace, not mandatory checkpoints after every task.
+
+### 2.5 Returning is effortless
+
+Chats retain drafts, attachments, linked pages, project selection, results, and useful scroll position. Switching between a compact question, side panel, full conversation, and project workspace changes presentation without creating another conversation or losing context.
+
+Reopening Aux restores the browser session and makes previous work easy to continue. Interrupted work is reconciled before resumption. A completed task can become a reusable Skill without rewriting it as a program.
+
+### 2.6 The low-friction contract
+
+This is the user-facing interpretation of every later work package. Architecture terms such as grant, lease, journal, verification, and checkpoint describe internal machinery, not screens or approval steps to add.
+
+- **Ordinary browsing stays ordinary.** Opening links, moving tabs, typing, downloading, and manually using a website never require an AI permission prompt. Existing site/OS protections still apply. Human input takes control immediately; do not ask permission to take a page back from the agent.
+- **Ask once, then work.** With the relevant account/project/provider connected, a clear request starts its routine permitted steps. Do not ask the user to approve a generated plan, every new research URL, every click, each file edit/test, or a write already included in the request. Section 13 defines the few real boundaries.
+- **Use sensible defaults.** Infer ordinary implementation details and use reversible choices where possible. Ask only when an ambiguity materially changes the outcome, cost, account, recipient, or irreversible effect. Do not ask users to choose technical parameters the product can determine reliably.
+- **A short task gets a short interaction.** Answer directly or return the result. No mandatory preamble, checklist, progress essay, completion card, or generic follow-up menu. Complex requested content can be detailed; routine execution narration should not be.
+- **Long work stays quiet and controllable.** Use one compact working indicator/status that updates in place, with Stop. Add a chat update only for a meaningful finding, changed expectation, prolonged wait that needs explanation, or user decision. Do not append a message for every tool call or retry.
+- **Return one useful result.** Ordinary completions default to one to three natural sentences, plus the relevant link, file, or preview when useful. Adapt to the request; do not truncate a requested explanation or hide a material failure to satisfy a word count. Sources support substantive answers without becoming an evidence dossier.
+- **Keep the user's place.** No unsolicited panel expansion, focus change, tab switch, permission-center detour, or recurring tutorial. One bounded automatic recovery can be invisible when safe; repeated failure gets one useful explanation and next action, not a toast storm.
+
+“Inspect result” means talking about the work in the same chat. Internal diagnostics remain available when deliberately requested, never as a prerequisite for finishing or trusting an ordinary task.
+
+## 3. Preserve and refine the current design
+
+### 3.1 Design sources and change rule
+
+Use `docs/AUX-DESIGN-DIRECTION.md`, `apps/desktop/renderer/src/tokens.css`, current shell components, and a fresh capture of the running application as the visual baseline. Existing `release/test-artifacts/` images help locate prior behaviors but may predate current layout changes. Do not copy an old screenshot over a newer working design.
+
+The approved current in-app silhouette is `apps/desktop/renderer/public/arch-mark.svg`, used by `AuxMark` through its shared styling. The native icon master is `apps/desktop/brand/aux-icon-1024.png`, the silver arch artwork. Both were updated September 21 and are present on the reference checkout. September 19–20 screenshots containing the older script-style mark are historical; do not restore that logo or their older sidebar address-field layout.
+
+Before the first UI change, capture populated light/dark native windows, expanded/collapsed/hover sidebar, loaded page, new tab, active chat, and project workspace. Preserve their design language throughout implementation. Improvements should address a named usability defect, consistency problem, missing capability, or performance issue.
+
+| Element | Required direction |
 |---|---|
-| [docs/ROADMAP.md](ROADMAP.md) | This file — current |
-| [VECTOR-EXCELLENCE-ROADMAP.md](../VECTOR-EXCELLENCE-ROADMAP.md) | Sep-15 draft, superseded |
-| [vector-local-mvp-roadmap.md](../vector-local-mvp-roadmap.md) | Sep-13 draft, superseded |
-| [Vector_Engine_Roadmap.md](../Vector_Engine_Roadmap.md) | VEC-001–025 engine tickets; status block superseded |
+| Sidebar | Preserve native translucent material, compact rows, quiet selection, pins/bookmarks, Chats, Tabs/folders, and bottom Space/profile controls. Keep the user's arrangement and resizing preferences. |
+| Collapse | Collapse fully; preserve left-edge hover reveal and an accessible explicit reopen control. No permanent replacement logo strip. Keyboard users can always reveal navigation. |
+| Typography | Geist Variable and Geist Mono; retain the shared type scale, readable line height, truncation rules, and user interface text-size setting. |
+| Palette/material | Preserve neutral light/dark colors, native vibrancy/Liquid Glass where supported, solid fallback, sidebar tint, and independent content opacity. Honor existing appearance preferences and reduced transparency. |
+| Geometry | Reuse the 4 px spacing rhythm, existing radii/squircle language, hairlines, column alignment, and menu/row/control tokens. Avoid per-component approximations. |
+| Icons and branding | Keep the Aux mark and current approved icon system. Preserve meaningful icon labels, baselines, and hit targets. |
+| Address row | Preserve the current floating/revealed address-row behavior on loaded pages and hero field on a new tab; Command-L always focuses the appropriate field. Support a stable visible mode where input/accessibility needs it. |
+| Motion | Use the existing approximately 150 ms feedback and 240 ms layout rhythm. Input and navigation begin immediately; animation never delays dispatch. Cancel/reverse animations cleanly and respect reduced motion. |
+| Chat | Keep the familiar message/composer structure and optional page preview. The answer is the primary content; optional previews yield space on narrow layouts. |
+| Project workspace | Evolve the current Preview/Changes/Files/Console surfaces using the same tokens and chrome. Do not introduce a visually unrelated IDE inside the browser. |
+
+Retain existing horizontal-tab and multi-window options. Improve the primary sidebar experience first without removing working alternatives.
+
+### 3.2 Interaction polish is implementation work
+
+All important states need intentional layout: empty, populated, loading, streaming, offline, failed, needs input, paused, restored, and narrow window. Avoid unexpected panel opening, row reordering during pointer movement, unstable button positions, or layout jumps as content arrives.
+
+Menus anchor correctly to the invoking control; popovers never disappear behind native page views; drag targets remain stable; resized panes respect usable minimum widths. Focus returns to the control that opened a menu/dialog. Escape dismisses the topmost temporary surface before affecting unrelated content.
+
+The sidebar never steals focus because a task finishes. A stream follows the bottom only if the user was already following; scrolling upward preserves position and shows an unobtrusive return-to-latest control. Very long chats, tab lists, code output, and tables use measured virtualization without breaking selection, copying, search, or accessibility.
+
+Accessibility ships with each feature: keyboard navigation, VoiceOver names and ordering, visible focus, sufficient contrast, reduced motion/transparency, text scaling, and IME composition. Use semantic tables for ordinary tabular output; use interactive ARIA grids only with the full required keyboard behavior.
+
+### 3.3 Keep the default surface small
+
+Keep the current sidebar as the single global navigation structure. The default layout has one primary page/chat/workspace surface and, when useful, one companion pane. Additional splits, files, or Console appear by deliberate user action or an explicit request to show them; preserve the user's chosen layout afterward. Narrow windows collapse secondary surfaces without discarding their state.
+
+Attaching a Project makes its existing tools available; it does not automatically open Preview, Changes, Files, and Console simultaneously. Task execution does not create a permanent manager panel. Memory, Skills, Connections, and Library remain discoverable through existing menus/search/settings or deliberate pins, not mandatory new sidebar sections or nested navigation rails.
+
+Keep normal actions visible where expected, with keyboard and menu alternatives; minimalism must not make essential controls hover-only or command-palette-only. Use familiar labels such as Files, Changes, and Open preview. Keep run IDs, leases, checkpoints, policy names, model-routing events, and token counters out of normal conversation chrome. Optional cost/details belong in a deliberate secondary view.
+
+New persistent chrome needs a demonstrated repeated user need. Prefer an existing control or contextual action. Test usefulness and discoverability before adding another switch, badge, toolbar, mode, or onboarding step.
+
+## 4. Information architecture and shared state
+
+The user sees a small set of familiar concepts. Internal execution concepts should not turn into top-level destinations merely because a table or service exists.
+
+| Concept | Meaning and ownership |
+|---|---|
+| Profile | Browser account/storage and permission boundary. Owns cookies, site storage, credentials policy, history policy, and its Spaces. Separate from visual organization. |
+| Space | A persistent organization for tabs, chats, pins, notes, Skills, and optional Projects within one Profile. Changing a Space does not silently change website accounts. |
+| Tab | A browser page with stable identity, placement, lifecycle, and document generation. Main owns it. |
+| Chat | The conversation, messages, drafts, attached context, and result references. One chat can appear in several supported presentations. |
+| Task | A durable objective associated with a chat or Skill. Created internally when execution needs it; saving/pinning it remains an optional user action. |
+| Run | An internal execution attempt or continuation. Retries remain associated with the original task and chat. |
+| Project | A repository or working folder, associated checkouts, preview, services, provider connections, and chats. Attached to a Space without coupling every chat to the same branch. |
+| Environment | A local or cloud execution environment for a Project/task, with explicit identity, resource limits, and lifecycle. |
+| Artifact | A useful output: document, spreadsheet, report, image, file, comparison, patch, or saved result. The chat presents it; Library supports later discovery. |
+| Memory | Explicit notes/preferences plus optional captured context with provenance, scope, retention, and deletion. |
+| Skill | A reusable task with parameters, requirements, allowed scope, and optional schedule. User-facing terminology replaces overlapping program/routine concepts. |
+| Connection | A configured model, service, external agent, or MCP integration with visible capability and scope. Browser extensions retain their own lifecycle. |
+
+Main is authoritative for the Profile/Space/Tab catalog and browser organization; its persistence worker stores that catalog. Runtime owns chat/task/Skill/project execution records referencing stable catalog IDs. The renderer owns transient layout and selection. Personal layout preferences are persisted through one explicit settings path, not reconstructed from agent events.
+
+Use stable opaque IDs rather than names as identity. Define deletion and movement behavior between stores before implementation. Archive a Space with retained work; never silently cascade-delete chats/projects because its visual container is removed. Cross-profile moves create a new page in the destination identity after a clear user action; cookies and credentials do not move with a tab.
+
+For the private alpha, retain one regular Profile plus a separate private boundary, while carrying `profileId` in contracts. By the broader daily-browser beta, deliver multiple persistent Profiles with real account-isolation tests, so work and personal accounts do not depend on visual organization alone. Do not market Spaces as account isolation.
+
+## 5. The complete acceptance journeys
+
+These journeys define the product across workstreams. Each must be exercised in the real desktop app, including failure and return paths.
+
+| ID | Journey | Expected result |
+|---|---|---|
+| J1 | Launch with many saved tabs; type immediately; open a page; switch/reorder/split tabs; collapse/reveal sidebar; restart. | Fast interaction, correct organization and focus, no unnecessary background loads, reliable restoration. |
+| J2 | Ask about a page; select text; add another tab and a file; expand/collapse the same chat; follow a source; revise the answer. | One conversation, stable draft/context, useful streaming, relevant sources, coherent layout. |
+| J3 | Delegate work on signed-in sites; continue browsing elsewhere; correct the task; take over one page; resume; receive a result. | Work completes within scope without redundant approvals, focus theft, duplicated effects, or a separate review ceremony. |
+| J4 | Compare information across sites and a document; produce a spreadsheet/report; ask for an edit; reopen it later. | Accurate cited output, useful preview, real editable/exportable file, correct revision and provenance. |
+| J5 | Attach a repository; open an issue; reproduce in preview; ask for a fix; inspect/edit a file; run tests; view the diff. | A functioning workspace tied to the same chat, routine edits/tests without reapproval, correct checkout, preserved user changes, working preview, honest test result. |
+| J6 | Open an incident; gather permitted console/network context; use a connected agent; return to the updated preview. | Correct project/account, useful reproduction context, no secret leakage, smooth handoff and reconnection. |
+| J7 | Continue eligible project work in cloud; close desktop; reopen; recover outputs; return changes locally. | Real remote execution, clear auth/local dependencies, bounded spend, conflict-aware return, no false claim that a local process kept running. |
+| J8 | Save a successful task as a Skill; rerun with parameters; schedule a read-only monitor; pause it; handle expired auth. | Repeatable behavior, meaningful notifications, no missed-run duplication, recoverable failures. |
+| J9 | Sign in with SSO/MFA/password manager/passkey; join a meeting; share screen; upload/download; print. | Real platform/browser compatibility for supported workflows, including signed-build permission behavior. |
+| J10 | Use private browsing, close it, inspect regular history/memory/agent access; forget saved context. | Correct privacy boundaries and deletion, with explicit exceptions for files the user chose to save. |
+| J11 | Disconnect network; interrupt a model stream; kill runtime; crash a tab; restart during work. | Browsing continues where possible, drafts survive, effects are reconciled, useful recovery happens in context. |
+| J12 | Complete J1–J5 using keyboard/VoiceOver, large interface text, reduced transparency, and a smaller window. | Core functions remain discoverable, readable, operable, and correctly focused. |
+
+## 6. Performance and responsiveness contract
+
+Record baseline measurements first on a signed release build, one current Apple Silicon reference Mac, and one older supported Mac. Fix OS, power mode, workload, network conditions, and sample count. Distinguish cold/warm starts, live/discarded tabs, and local/network-bound pages. Targets are initial engineering budgets to validate; changes to a budget need a documented tradeoff and user-visible justification.
+
+| Measure | Initial budget or release condition |
+|---|---|
+| Local interaction acknowledgment | Visible response to click/key action within 50 ms p95; work begins immediately, before decorative transitions finish. |
+| Live-tab activation | Input to correct visible frame ≤50 ms p95 on the reference machine; main's view-activation work targets ≤16 ms. Measure paint, not only a function return. |
+| Shell startup | Usable shell ≤800 ms p50 / 1.5 s p95; independent of runtime/model availability. |
+| First useful tab | Cached/local fixture paints within 1.5 s p50; report network-dependent pages separately. |
+| Large-session restore | 100 logical tabs usable within 1.5 s p95, active tab prioritized, background materialization bounded. Count both tabs and actual renderer processes. |
+| Omnibox local results | <10 ms p95 with 50k history entries; end-to-end UI updates within 50 ms p95. |
+| Input under load | No repeated >50 ms main/shell stalls from agent work, indexing, import, persistence, or streamed output. Preserve the foreground budgets under the standard background workload. |
+| Chat acknowledgment | User message and working state visible within 100 ms; composer remains usable. |
+| AI latency | Record time to first useful text, first safe action, and verified completion. Initial target: first useful text ≤2 s p50 and first safe action ≤2.5 s p50 for designated simple reference tasks/provider. Do not generalize to every task/network. |
+| Stop/takeover | Feedback ≤100 ms p95; local revocation prevents subsequently authorized dispatch. Already-in-flight external effects are handled separately. |
+| Local search | Memory/document retrieval <50 ms p95 at 20k indexed documents on reference hardware; heavy indexing off the UI thread. |
+| Energy/memory | Track whole process tree, CPU, wakeups, disk writes, and energy for 20/100-tab workloads, active agents, media, and idle. Require no material regression as features land, then measure improvements against a reference browser. |
+| Bundle/startup assets | Initial renderer JS target ≤300 KB raw and shell CSS ≤80 KB; installed app <300 MB is a stretch target subject to correct packaged behavior. Lazy loading does not reduce installed bytes by itself. |
+| Reliability | Record crash-free active hours/sessions, hangs, lost acknowledged state, recovery outcomes, and update failures. No known reproducible tab/draft-loss or duplicate-effect bug may pass a release gate. |
+
+Use the existing `browser-health.ts` machinery and task benchmark reports. Add bounded local metrics, not a background analytics product. Telemetry stays off unless a user opts in; performance collection must not include page contents, credentials, or secret-bearing URLs.
+
+Foreground input wins scheduling priority. Agent observations, indexing, imports, thumbnail work, summaries, and background restores yield under foreground load. Bound concurrent work globally, by provider, and per tab. A page kept alive for a running task has an owner and a lifecycle reason that ends when the work ends; surface ownership in the existing tab/task context when useful, not as another persistent overlay.
+
+### 6.1 Optimize the actual path to the result
+
+The budgets above are ceilings to improve on, not artificial delays to fill. Profile input → dispatch → page/result paint, and request → context → model → action → verified outcome. Report p95 and long stalls as well as medians. Optimize the largest measured waits; do not trade a faster demo for worse input latency, battery use, correctness, or recovery.
+
+Keep native browsing deterministic and local: no model routing, runtime handshake, remote policy check, or catalog fetch before a human action. Query local indexes immediately and merge optional remote results later. Use event-driven readiness, cancellation, bounded batching, and valid cached snapshots; remove fixed sleeps, duplicate page reads, redundant requests, and unnecessary cross-process round trips. Cancellation propagates to work that is no longer useful.
+
+The AI path should not add a blanket planning, permission-classification, approval, or summarization model call to every action. Scope/target validation stays in the trusted execution path; qualified simple requests use the shortest correct route. Parallelize independent work within budget and stream useful output promptly. Do not speculate irreversible actions or prefetch authenticated destinations outside the user's intended scope.
+
+Compare cold/warm loads and foreground p95 against the previous accepted Aux build and a matched Chromium reference workload. Treat a repeatable foreground regression exceeding measurement noise as a release finding even if it still fits an absolute budget. Critical-path improvements land throughout R1/R2; they are not deferred to a final polish milestone. Browsing with AI disabled and browsing under agent load are both required performance runs.
+
+## 7. Architecture to implement
+
+### 7.1 One owner per fact
+
+| Layer | Owns | Required boundary |
+|---|---|---|
+| Renderer | Presentation, transient selection, pane geometry, text editing, optimistic feedback. | Typed narrow IPC; no arbitrary Node access; no model/runtime round trip in the human navigation path. |
+| Desktop main | Tab/Profile/Space catalog, native views, lifecycle, permissions, final local actuation gate, window/input ownership. | Bounded in-memory operations; validate sender and command; no large synchronous database or import work. |
+| Browser persistence worker | Durable browser catalog/history/bookmarks/favicon/session state and search indexes. | Versioned requests, batching, backpressure, explicit durable acknowledgments, recovery snapshots. |
+| Runtime process | Tasks/chats, planning, model transport, agent execution coordination, durable action records, memory, Skills, project orchestration. | Crash isolation; validated/authorized API for every client; no ownership of human tab lifecycle. |
+| Trusted Chromium adapter | Observe and operate the granted native page, using semantic/visual capabilities. | Stable identity/generation/lease validation; attach only when needed; no unrestricted external CDP exposure. |
+| Project/environment workers | File operations, commands, services, cloud jobs, indexing, and heavy document work. | Correct checkout/environment scope, bounded resources, cancellation, output recovery. |
+| Private process | Private windows and ephemeral state, reusing safe shared UI/controller code. | No regular runtime/agent bridge or shared debugging endpoint; separate storage and permissions. |
+
+Target modules should follow responsibilities, not arbitrary line-count ceilings. A reasonable direction is `main/tabs`, `main/sessions`, `main/omnibox`, `main/browser-store`, runtime `agent`, `models`, `pages`, `memory`, `projects`, `environments`, `api`, and `store`. Reuse functioning modules behind narrow interfaces and remove old paths only after their replacement passes relevant journeys.
+
+### 7.2 Human command and event protocol
+
+Human commands carry `commandId`, `windowId`, expected catalog version where necessary, and stable target IDs. Main validates the actual sender and Profile scope. New-tab UI may mint an ID optimistically; main accepts or rejects it explicitly. Navigation begins immediately and reports progress asynchronously; the address field never waits on DOMContentLoaded.
+
+Every accepted command receives an outcome acknowledgment. Repeated command IDs are deduplicated. Failures reconcile optimistic UI without overwriting a later command. Main publishes ordered, versioned patch batches; a gap or reconnect requests a fresh snapshot. Do not discard a patch because a renderer was briefly suspended.
+
+Renderer start can use a small bootstrap snapshot. Large history/session reads and imports stay in the worker. The shell can render a lightweight frame while the worker loads the catalog. Keep browser-ready, runtime-ready, and agent-attached-to-tab as separate states.
+
+### 7.3 Agent control protocol
+
+Every agent action includes principal, task/run ID and task revision, Profile ID, Tab ID, tab-instance generation, document/observation identity, control epoch, and command ID. Bind any authorization to the relevant target/account/action scope. The final trusted dispatch path checks the current lease and revision immediately before action delivery.
+
+Human input that changes a page revokes agent control for that page locally before subsequent agent input. Viewing a preview or moving the pointer does not spuriously transfer ownership. Taking over one tab leaves unrelated tasks alone. The runtime learns the transition through events and reconciles its work.
+
+Raw external CDP is not an alternative public API. External agents use the same scoped broker. Prefer per-WebContents/inherited private transport over a browser-wide exposed debugging listener if the compatibility spike supports it. While a global endpoint remains, preserve the private-process boundary and document same-OS-user threat limitations. Agent scopes cannot claim protection against a transport that bypasses them.
+
+### 7.4 Persistence and recovery
+
+Keep `synchronous=FULL` on the authoritative action journal. SQLite WAL `NORMAL` can lose committed transactions after power loss; use it only for a demonstrably rebuildable cache if needed. Application-level synchronous code is not a durability substitute. [SQLite documentation](https://www.sqlite.org/pragma.html#pragma_synchronous).
+
+Persist accepted chat messages and important task transitions before exposing them as durably saved. Drafts auto-save off the render path; window close flushes when possible. Browser session state has an explicit persistence window and a write-ack boundary: instantaneous visible navigation need not wait for disk, but a display acknowledgment must not be mislabeled a durable save. Test loss of unacknowledged recent state separately from loss of durable state.
+
+Keep an intent durable before consequential agent dispatch. Record outcome afterward. A failed connection can leave an uncertain effect; do not automatically repeat it. Local deduplication is not a universal exactly-once guarantee for remote websites. Use server idempotency where an integration actually supports it, and independent reconciliation elsewhere.
+
+Recover to a usable browser even if runtime data is unavailable. Recover chats/tasks without silently restarting irreversible work. Profile upgrades after the development reset require versioned migrations, backup/recovery behavior, and tested update compatibility.
+
+## 8. Browser workstream
+
+### BR-01 — Native navigation and tab ownership
+
+Move human open, activate, navigate, back/forward, reload, stop, close/reopen, mute, pin, duplicate, split, and cross-window operations into the main-owned tab controller. Preserve native popup/opener/referrer behavior and browser-history semantics. Agent requests that open or close pages use this same controller through scoped commands.
+
+Land complete slices rather than replacing the entire shell at once: navigation/activation, then close/reopen/popups, then movement/split, then restoration/lifecycle. Each slice switches authoritative ownership once, reconciles events, and deletes its superseded runtime path. Private windows reuse the shared controller implementation within their separate process.
+
+**Acceptance:** J1 works with the runtime child killed or missing; address input remains editable during loading; a popup is adopted once; close/reopen restores expected history; stale/repeated commands cannot affect another tab. Start in `main/index.ts`, `main/native-views.ts`, renderer `store.ts`, runtime `services/pages.ts`, and the Chromium driver.
+
+### BR-02 — Responsive stores, layout, and startup
+
+Replace broad page-array subscriptions with stable ID lists and per-tab selectors. Update only the affected row/status/progress surface. Persist layout only when its structure changes. Keep stage updates dependent on geometry/visible tabs, not unrelated page events. Add an app-root error boundary and a recoverable renderer-crash path.
+
+Split renderer state by responsibility without duplicating authority. Keep shell-critical code small; lazy-load heavy document viewers, terminal/editor features, and rarely used settings. Move shared URL helpers out of heavy Markdown modules. Load essential fonts deliberately; keep multilingual fallback behavior.
+
+Create the shell promptly and make extension/runtime startup independent where safe. Existing user-installed security or content extensions that must run before a page loads require an explicit startup readiness policy; do not open pages unprotected just to improve startup numbers. Remove busy waits and repeated full refreshes.
+
+**Acceptance:** foreground budgets in Section 6 hold during a ten-tab load storm and streaming chat; loading one tab does not rerender every row; runtime startup or a slow optional integration cannot block shell input.
+
+### BR-03 — Lifecycle, restoration, and resource management
+
+Use explicit placeholder/live/frozen/discarded/crashed states. Restore active tab first; load other saved pages on activation and under bounded idle scheduling. Keep stable logical tab IDs across materialization but increment the tab-instance generation when a WebContents is replaced.
+
+Freeze/discard only when safe. Protect active/split, audible, captured, downloading/uploading, unsaved-editing, and agent-held pages; keep uncertain pages alive. Collect minimal isolated dirty-state hints covering paste, autofill, drag/drop, rich editors, and relevant frames. Avoid a full-DOM walk on every routine lifecycle decision. Do not treat absence of a keyboard event as proof of safety.
+
+Preserve URL/title/favicon, recoverable navigation history, and appropriate scroll state. Test `navigationHistory.restore`, process ownership, renderer crashes, unload vetoes, and active media before relying on them. Qualify warm tabs, preconnect, BFCache, and debugger detachment with measured resource benefits. A paused task releases unnecessary resources; an active task holds only the pages it needs.
+
+**Acceptance:** J1/J11 restore safely, no known unsaved-work loss, measurable memory reduction on an eligible idle-tab workload, and no foreground slowdown. Use `page-suspension.ts`, `offscreen-holds.ts`, native views, and existing unsaved-work smoke tests.
+
+### BR-04 — Omnibox, commands, and fast retrieval
+
+Unify local providers for open tabs, history, bookmarks, recently closed tabs, and commands. Maintain a bounded hot index and worker-backed FTS fallback. Rank by actual intent, prefix/title matching, frequency/recency, and source relevance. Deduplicate, preserve keyboard selection across updates where possible, and keep an explicit search option.
+
+Use query sequence IDs and cancellation so stale responses never replace current results. Add inline URL completion only when confidence is high and selection/editing works conventionally. Support keyword search engines and a shared command registry. Search suggestions are a clear preference, disabled in private mode; do not send probable private/intranet addresses or arbitrary typed context to remote suggestion services.
+
+Test explicit schemes, domain-like text such as `node.js`, localhost, IP/ports, intranet names, pasted URLs, punctuation, non-English queries, and IME composition. A TLD list helps classification but is not the whole intent policy. Calculator/unit shortcuts are optional after the main ranking/latency behavior passes.
+
+**Acceptance:** J1 and local result budgets pass; learned common destinations are easy to reach; Escape/Tab/Enter/selection behaviors are stable; ambiguous input is recoverable without surprises. Begin with `CommandBar.tsx`, `chrome.ts`, history/bookmark services, and shortcut tables.
+
+### BR-05 — Organization and everyday browser completeness
+
+Preserve Spaces, pins, folders, tab search, multi-select, drag reorder, cross-window movement, collapsed sidebar, and horizontal layout. Add missing group color/emoji/collapse behavior through the existing row language. Group agent-created tabs under the owning task without moving unrelated human tabs. Let users keep, move, or close those tabs normally.
+
+Deliver persistent work/personal Profiles by R2 using the existing compact profile/Space controls. Isolate cookies, permissions, extensions, history/memory, and agent grants; define routing for external links without leaking account context. Profile switch and profile deletion are distinct actions. Test the same site signed into different accounts, including popups, downloads, suggestions, and cross-window moves.
+
+Complete and test downloads with progress/cancel/retry/show-in-folder; uploads and native file pickers; clipboard; find; persistent per-site zoom and pinch zoom; print/PDF; reader; context menus; save/open files; standard form autofill; media keys; mute; meeting devices; screen sharing; fullscreen; PiP where supported; site notifications; mouse back/forward; and trackpad navigation that respects horizontal page scrolling.
+
+Use one shortcut registry across application menus, web page interception, and renderer dispatch. Include customizable bindings with conflicts explained. Add default-browser registration, readable site controls, permission persistence/revocation, and browser error/reload surfaces. No dead controls or “coming soon” substitutes in core flows.
+
+Reading list is a bookmark subtype with `readAt` and optional offline artifact, keeping one ownership path. Cosmetic preferences must not turn it into a second bookmark system.
+
+Browser completeness is a release floor, not an optional feature menu: reliable navigation/history and reopen, bookmarks/organization, usable address/search, real login/account isolation, file/media/meeting flows, permissions/site controls, private browsing, accessibility, restore, and signed updates must work in the claimed release scope. “Qualify” means proving shipped behavior, not substituting a compatibility note for a missing essential flow. An essential login/extension/meeting failure blocks the daily-driver claim for that audience. Minimal UI is achieved through placement and defaults, not removing browser basics.
+
+**Acceptance:** J1/J9/J12 pass on the declared compatibility matrix. Preserve existing working implementations; close verified gaps rather than rewriting them from inventory labels.
+
+### BR-06 — Import, credentials, passkeys, and extension compatibility
+
+Make switching practical. Import starts with a preview of supported categories and a clear partial-result report. Implement Chrome/Arc bookmarks/history/open tabs and supported Arc Space/folder/pin/title metadata first; add Safari/Firefox through supported access paths. Copy live databases with a consistent snapshot/WAL-aware method; never modify the source profile. Large imports are cancellable and run off the UI thread.
+
+Establish a real human login solution early: qualify 1Password/Apple Passwords/passkeys and necessary native messaging on a signed build. If essential workflows are unsupported, choose and implement a concrete integration/host solution or an appropriately scoped native password experience before claiming daily-browser readiness. The agent credential broker already provides useful foundations but is not automatically a complete human password manager.
+
+For a native credential experience, use the existing secret store with origin/frame/account checks, lock/unlock, save/update prompts, generator, explicit import/export, and trusted fill. Secrets never enter model context. A task grant refers to opaque credentials. Do not assume Chrome Login Data or cookies can simply be decrypted/imported; offer supported explicit migration or fresh login. Test wrong-origin frames, lookalike domains, session changes, and keychain continuity.
+
+Publish an accurate extension support matrix and qualify required APIs, updates, and native messaging. Electron does not provide general Chrome Web Store compatibility out of the box. [Electron extension documentation](https://www.electronjs.org/docs/latest/api/extensions). DRM/passkeys/full extension requirements receive an early feasibility decision, not a late surprise.
+
+**Acceptance:** J9 works with actual authorized test accounts, devices, and the signed application. Synthetic OAuth/WebAuthn fixtures supplement but do not replace that proof.
+
+### BR-07 — Private mode, content blocking, and site behavior
+
+Retain private browsing in a process without the shared regular debugging endpoint. Share safe UI/controller code to reduce duplication. Private history, tabs, thumbnails, permissions, memory, extension state, and agent context never enter regular persistence. Files the user chooses to save remain on disk and are explained plainly. Fix private search directly rather than waiting for a large refactor.
+
+The existing `private-boundary-desktop.mjs` test and stored result demonstrate that an in-memory session alone remains visible through the shared debugger. Runtime filtering is insufficient. Any future process consolidation must first pass equivalent discovery, attachment, observation, persistence, and shutdown/crash tests.
+
+Ad/tracker blocking uses maintained filter lists and a shared request-policy router, with cached/offline startup, atomic updates, per-site controls, and a recoverable broken-site escape. Integrate cosmetic filtering through a minimal isolated preload. Only one owner installs each Electron request-event listener; later listeners otherwise replace earlier ones. [WebRequest documentation](https://www.electronjs.org/docs/latest/api/web-request).
+
+Add HTTPS-first with a comprehensible failure path, explicit local-development handling, and scoped site permissions. Keep certificate validation separate; a local development exception cannot disable TLS checks for ordinary websites. Implement or explicitly qualify phishing/malware/download protection; adblocking is not a substitute for those protections. Resolve service licensing/privacy choices before public claims.
+
+Favicons come from the page/session or a local fallback, not third-party hostname lookups. Translate starts with requested selection/page translation, clear remote-processing behavior, and reliable Show original. Avoid changing form values or executable content; qualify dynamic framework pages before automatic translation. Use robust language detection and preserve international PDF/fonts behavior.
+
+**Acceptance:** J10 passes; blocked-site exceptions are understandable; request policies compose; private content remains inaccessible to every agent route.
+
+## 9. Chat and conversational workspace workstream
+
+### CH-01 — One conversation across presentations
+
+Share chat ID, draft, attachments, context, selected Project, reply state, and history across quick question, side panel, full chat, and workspace. Preserve text and attachment operations through navigation, provider failure, panel collapse, and restart. Switching an active browser tab does not silently change an existing conversation's pinned context.
+
+New page questions default to the initiating page. Explicitly attached context remains stable; following the current tab is a visible option. Show closed/stale/missing context with a useful reopen or replace action. Opening a source never destroys the conversation or its scroll position.
+
+**Acceptance:** J2/J11 pass with unsent text, an in-progress attachment, long history, and a failed provider. Start from `Conversation.tsx`, conversation context/draft stores, `BrowserContextPicker`, and the existing lifecycle/context smoke tests.
+
+### CH-02 — High-quality streamed answers and artifacts
+
+Add sequenced text/citation/artifact events to the shared contracts and persist enough stream state for reconnect/replay without duplicated text. Render partial Markdown safely, keep tables/code legible, and batch UI updates to avoid expensive work per token. Do not stream a completion claim before its action is verified.
+
+Citations point to the relevant source/document/page location where possible. Explain an unavailable or changed source instead of silently substituting one. Images, documents, spreadsheets, and code previews open directly from chat. Generated files are real downloadable/editable artifacts, with names, revisions, and locations that stay understandable.
+
+Consolidate overlapping result/dataset/saved-result concepts behind typed artifacts; retain specialized viewers where useful. Support the current PDF/image/text/CSV/DOCX/XLSX paths with bounded parsing in workers and safe preview surfaces. Untrusted documents/scripts cannot acquire shell privileges. Preserve formatting/data during edits and report unsupported content accurately.
+
+**Acceptance:** J2/J4 pass; a resumed stream produces one final answer; links and artifact versions remain correct; long outputs keep scrolling/input fluid. Core results are readable without opening an extra administration screen.
+
+### CH-03 — Steer, stop, resume, and complete naturally
+
+The composer stays usable while an agent works. A new message defaults to steering the current task when appropriate; independent requests can start a separate chat/task deliberately. Display whether a message is applied now or queued. Do not let a queued instruction silently apply to the wrong run or stale task revision.
+
+While working, show one compact status that updates in place, with Stop as the primary control. Take over appears when a page is actually being controlled; Pause/Resume and other controls appear when relevant. Ordinary manual interaction already takes over that page. Do not create a toolbar of every possible runtime action.
+
+Tool activity is hidden by default behind a deliberately opened Details view, not one collapsed transcript card per tool call. Do not present model chain-of-thought. Apply the output defaults in Section 2.6: quick tasks can go straight to the answer, longer work gives meaningful updates, and completion is one conversational result. No duplicate success badge, receipt, checklist, toast, and answer describing the same event.
+
+Ask for missing input inside the conversation. Preserve the user's reply draft while waiting. After an actual failure, explain what completed, what did not, and the smallest useful continuation. Do not make users manually accept evidence before the task can finish.
+
+If an existing “Inspect result” or “Review work” action remains, it asks the AI to explain the work in the current chat, optionally opening the relevant preview or diff. It never opens an audit mode or a separate receipts screen.
+
+**Acceptance:** J3/J11 pass across streaming, tool dispatch, model reconnect, and human takeover, including the friction checks in Section 18.5. Cancellation prevents queued actions from restarting when an old stream reconnects.
+
+### CH-04 — Onboarding, finding work, and useful defaults
+
+Browsing works immediately without an AI account. First run opens a usable browser; import, default-browser selection, and a useful optional AI task are lightweight, skippable entry points, not a wizard blocking the first tab. Ask for native/service access when its feature is first used, not all at startup; remember declines without nagging. Preserve the current restrained new-tab composition. Show real recent work and relevant continuation; no fake activity, unread-receipt widgets, or a dashboard of every product capability.
+
+Connections provides a coherent place for models, services, and external agents. Clearly distinguish the built-in Aux agent from a connected coding agent and explain whose model/account is running. Use one good default model route after qualification, respecting the user's existing choice; expose presets and advanced controls secondarily without making provider/model selection a required step in every chat. Remember valid setup and task context rather than asking for them again on each run.
+
+The initial developer/private alpha can use a user-provided Gateway key or supported local provider. Before broader beta, make a product decision on managed onboarding/billing versus a deliberately BYO audience; do not invent subscription-login integrations or ship a claimed one-click experience that requires undocumented setup. Provider outages and exhausted budgets leave browsing and stored work available.
+
+Unified local search finds chats, saved outputs, history, bookmarks, notes, and Projects with clear type/scope filters. Keep Library for saved work and history recognizable as browsing history. Background-task notifications are meaningful and coalesced; do not duplicate a result notification while the user is already reading that chat.
+
+**Acceptance:** a new target user completes J2 and returns to prior work without coaching; setup interruptions preserve their progress and drafts.
+
+## 10. Agent capability and runtime workstream
+
+The target is human-equivalent breadth on supported ordinary website workflows, with better speed, repeatability, and cross-page synthesis where possible. Establish that through task outcomes. A fast assistant that only reads simple DOM pages does not meet the goal; neither does a capable agent that makes the human browser unpleasant to use.
+
+### AI-01 — A grounded view of the actual page
+
+Combine semantic DOM/accessibility information, visible content, frame structure, relevant text, and screenshots when needed. Preserve existing compact observations, occlusion/offscreen handling, repeated-content collapse, change detection, and grounded element references. Mark truncated/omitted content explicitly so the planner knows when to ask for a table, subtree, frame, or larger context.
+
+References are scoped to tab instance, document generation, frame, and immutable observation snapshot. Handle SPA navigation, same-document updates, detached/replaced nodes, popup adoption, shadow DOM, virtualized lists, scrolling, and cross-origin frames within the task's permitted scope. A snapshot of a page is not permission to observe unrelated tabs or accounts.
+
+Eliminate duplicate observations only when reuse is valid for scope, age, generation, and postcondition. A page can change without another agent action. Replace the old “one observation per turn” target with a measured duplicate-observation rate and explicit freshness reasons. Keep reference registration and revision updates serialized until immutable snapshot semantics are proven; initially parallelize across pages and coalesce identical same-page requests.
+
+**Acceptance:** correct targets across navigation/reflow/frame changes, no cross-snapshot ref confusion, useful observations on long/dynamic pages, and no skipped verification merely to meet an observation count. Extend `playwright-page.ts`, page observation/ref stores, and coordinator verification.
+
+### AI-02 — Complete interaction coverage
+
+Use semantic actions first for speed and precision. Use visual grounding and coordinate actions for custom/canvas interfaces or inadequate semantics, with screenshot dimensions, scale, scroll position, and generation tied to the action. Both modes obey the same control and authorization rules. Re-observe after a layout/navigation change rather than clicking a stale coordinate.
+
+| Capability | Required real behavior |
+|---|---|
+| Navigation and tabs | Links, redirects, new windows, popups, back/forward, tab creation, waits, and downloads preserve page identity and browser state. |
+| Forms | Text, checkboxes, radio/select controls, date pickers, validation errors, rich text, autocomplete, keyboard shortcuts, and multi-step forms. |
+| Complex pages | Nested frames, permitted cross-origin/OOPIF content, shadow DOM, virtualized tables, infinite scroll, sticky overlays, custom controls, and canvas interactions. |
+| Files and artifacts | Trusted file selection from authorized inputs, upload progress, download arming/completion, generated files, and correct linking into chat. No arbitrary local-file discovery. |
+| Auth and interruptions | Detect expired login, MFA/passkeys/CAPTCHA, native dialogs, account ambiguity, permissions, and unavailable site capabilities; request the specific human action and resume afterward. |
+| Reading and synthesis | Extract complete relevant data, reconcile conflicting sources, produce grounded comparisons/reports, and acknowledge missing evidence. |
+
+Do not bypass site access controls or pretend every biometric/CAPTCHA/OS prompt can be automated. Those are bounded handoffs inside an otherwise continuous workflow. Avoid broad “I can't use that website” failures when a supported visual or keyboard path exists.
+
+**Acceptance:** coverage cases in every row, success on held-out dynamic workflows, and recoverable human handoffs. Compare agent outcomes with a human completing the same supported task, not merely with a tool's return code.
+
+### AI-03 — Validated planning and provider-correct streaming
+
+Retain a strong internal discriminated action schema. Generate provider-compatible tool schemas through explicit adapters; keep semantic validation and authorization after decoding. Strict providers have different supported subsets: for example, OpenAI requires required fields with nullable values for optional semantics and allows supported nested unions. [Structured-output documentation](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+Test actual provider routes through the selected Gateway/SDK version. Treat truncation, refusal, unsupported options, malformed arguments, repeated fields, and stream interruption as normal recoverable cases. Fine-grained tool deltas may be incomplete or invalid; property order is not a permission or validation boundary. [Anthropic streaming documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming).
+
+Use one execution pipeline for streamed, non-streamed, repaired, and Skill-produced actions. In the first release, consequential actions wait for a complete validated action/tool-call envelope and durable intent. Reduce latency through small action envelopes, fast context, caching, and safe preparation; do not wait for an entire long multi-action plan unnecessarily. Independently validated low-risk operations can dispatch early only with a fixed target/control envelope and tested cancellation behavior.
+
+Local models without strict tools receive a bounded JSON/text adapter with the same post-parse validation. A fallback must be selected by tested capability, not by guessing from a model's name. Never replay completed effects because parsing a later chunk failed.
+
+**Acceptance:** one behaviorally equivalent execution path; every supported step variant round-trips; invalid streams produce no unauthorized action; real-provider tests distinguish schema quality from semantic task quality.
+
+### AI-04 — Models, context, and efficiency
+
+Create one typed registry for model IDs, route/provider options, context/output limits, modalities, structured-output support, streaming, reasoning options, caching, and current pricing metadata. The UI, runtime, mocks, and settings use it. Keep a known-good offline snapshot; refresh capabilities and verify selected routes without making basic startup depend on catalog availability.
+
+Initial candidates include the currently listed Sonnet/Haiku/Opus, GPT Luna/Mini, Gemini Flash, and other qualified models. Both `alibaba/qwen3.8-27b` and `openai/gpt-5.6-luna-fast` were present in the live catalog during the September 22 review; do not blacklist them as invalid identifiers. [Gateway model discovery](https://vercel.com/docs/ai-gateway/models-and-providers), [live catalog](https://ai-gateway.vercel.sh/v1/models).
+
+Offer a small set of useful presets after evaluation. Route by task requirements: lightweight extraction/formatting can use a utility model; difficult repair may need a stronger model; visual interaction requires qualified vision. Apply reasoning effort based on measured task outcomes rather than a universal low-effort rule. Bound escalation count, spend, and provider changes.
+
+Replace fixed tail truncation with task-aware context selection: goal and constraints, current target state, unsatisfied criteria, recent failures, relevant form/table content, then secondary context. Preserve provenance. Compact long histories without dropping authorization, pending effects, account choice, or the user's latest correction. Use provider-supported prompt caching and report actual cache usage; do not require an impossible universal cached-token floor.
+
+Put indexing, summarization, parsing, and optional local inference outside the main/UI thread. Local-model discovery is opt-in and informative about capability/resource requirements; an on-device inference mode never silently falls back to remote processing.
+
+**Acceptance:** better verified success/cost/latency on the task corpus, no hidden provider-policy change, and correct behavior when a model is unavailable or a catalog request fails.
+
+### AI-05 — Bounded concurrency, steering, and ownership
+
+Use per-tab exclusive action lanes and safe snapshot reads, plus bounded cross-tab fan-out. A task has global token/dollar/time/step budgets shared by its children. Foreground human work gets priority. Stop cancels queued model calls, pending tool work, and child tasks; losing a UI connection does not create another task.
+
+User steering increments a task revision. Apply it at a safe execution boundary; invalidate incompatible queued plans and recheck the current page. “Pause” preserves a resumable checkpoint; “Stop” ends ongoing execution while retaining the conversation. A takeover revokes only the affected page's lease, then the task either continues independent work or waits naturally for that page.
+
+**Acceptance:** J3 under multiple tabs/windows, two independent tasks, concurrent human input, and a delayed provider. No task can accidentally drive another's replacement tab or keep browsing frozen while waiting for a model.
+
+### AI-06 — Completion, uncertainty, and restart recovery
+
+Make completion task-specific. For a read, verify the answer against source content; for a file, verify the output exists and its important contents; for a project fix, verify relevant checks and actual preview behavior; for a remote write, verify an appropriate remote outcome when possible. A successful click, HTTP call, or model declaration is insufficient by itself.
+
+Keep intent/outcome/verification records internally. Explain a relevant partial or uncertain result in chat with concrete wording. Avoid claims of remote confirmation where only local page state was observed. Undo is a new action governed by the current state and user request; some effects are irreversible.
+
+Checkpoint task revision, scope/account, goals, budget, control epoch, current pages/observations, outcomes, and unresolved effects. On restart, restore browser state first, reconstruct task state, re-observe needed pages, and check access. Continue compatible read-only work under existing authority. Resume consequential work only when its prior scope remains valid and pending effects are resolved; ask a focused question if state or authority changed materially.
+
+**Acceptance:** kill-before/after dispatch, network loss after submission, disk-full/journal failure, stale checkpoint, account change, provider timeout, and human takeover produce correct recovery without silent duplicates.
+
+### AI-07 — A task-quality improvement loop
+
+Build a versioned corpus around J2–J8, with simple and difficult tasks, independent state oracles, live holdouts, and adversarial untrusted content. Include browser state changes, inaccessible controls, files, auth interruptions, and recovery. Do not use only the existing eight local fixtures as a proxy for general capability.
+
+Classify failures as perception, grounding, planning, interaction, auth, verification, provider/transport, product UX, or environment. Fix the largest observed failure families. Re-run solved failures after model/schema/browser updates and compare total user effort as well as raw agent time.
+
+**Acceptance:** releases improve real success without higher unauthorized-effect or duplication rates. An easy-case benchmark gain cannot hide a regression in logins, takeover, recovery, or foreground browsing.
+
+## 11. Development workspace and connected-agent workstream
+
+The workspace is part of Aux's core promise. Build a useful browser-centered development environment around the current `TaskWorkspace`, `ProjectFileEditor`, `ProjectCommandPanel`, local-project services, and cloud service. Avoid replacing working components with decorative mock versions.
+
+### WS-01 — Projects and workspace continuity
+
+Attach an existing folder/repository or create a new project through the conversation or Project control. Show the selected project and actual branch/checkout unobtrusively. A Project can have multiple chats/tasks and isolated working trees; distinguish the canonical project from a task's checkout. Reopening the chat restores its environment, preview, file drafts, and command state.
+
+Preserve the current outer sidebar. Reveal a compact Project section only when a project is attached. Keep Preview/Changes/Files as workspace surfaces and Console as an expandable tab/drawer according to available space. Chat stays present or one predictable action away. Opening a file or diff from a message opens the right surface without losing the conversation.
+
+Respect existing uncommitted changes. Prefer an isolated checkout for concurrent agent code changes, but preserve the user's deliberate choice to work directly. Pick a sensible checkout/environment default and show it unobtrusively; ordinary users should not need to understand worktree topology before asking for a fix. Record the starting commit/tree and preexisting modifications. Do not label unrelated user changes as the agent's work.
+
+**Acceptance:** J5 with two project chats, independent branches, a dirty source checkout, and an app restart. Context never silently switches to another folder or branch.
+
+### WS-02 — Files, editing, changes, and review in context
+
+Provide a useful file tree, quick-open, bounded repository search, line navigation, syntax-aware editing, selection-to-chat, and readable diffs. Keep large/binary/generated files responsive through limits and appropriate previews. Preserve working keyboard conventions, unsaved editor state, and external-editor changes.
+
+Save with expected-content hashes and conflict detection. Create/rename/delete operations have precise targets and recoverable behavior. Resolve paths and symlinks against the granted project scope; a path inside a repository must not authorize arbitrary filesystem access through a link. Never overwrite an existing destination silently.
+
+Changes supports file/hunk navigation, inline discussion, staged/unstaged awareness, and current baseline comparison. The assistant's result appears in chat with a link or inline diff when helpful. The user can ask for another change immediately; there is no compulsory evidence-acceptance screen.
+
+**Acceptance:** J5 with concurrent external edits, unsaved drafts, renamed/deleted files, large diffs, and untracked files. Agent edits preserve unrelated work and failed saves do not lose the draft.
+
+### WS-03 — Commands, services, and real previews
+
+Console runs real project commands and services with working directory, environment identity, output, exit status, stop/restart, and bounded logs. Interactive terminal support must be a real controlled PTY when offered; do not present a log viewer as a terminal. Keep the terminal/editor packages lazy-loaded.
+
+A clear coding request in the selected Project authorizes its ordinary file edits and test/build commands within the configured execution boundary; there is no separate Approve task ritual. Recheck scope and target integrity on every call without displaying those checks. Additional elevated access, destructive effects not already authorized, or publication/data transfer outside the request follows the focused boundary rule in Section 13. A new public research URL or routine project file is not automatically a new permission question.
+
+Project commands are not sandboxed merely because they use a separate working directory or environment variables. Use an actual sandbox when promised; otherwise explain the local execution boundary during setup. Do not inject unrelated model/provider secrets into commands. Bound process groups and output, and terminate descendants predictably on Stop when owned by that task.
+
+Preview discovers the appropriate service/port, waits for readiness, then opens a real browser tab when requested. Otherwise keep a ready preview available through the result without stealing focus. Preserve routing, hot reload, console/network diagnostics, and select-region-to-request-edit. Capture the selection with Project/checkout/page identity; do not attach a screenshot to the wrong task after tab switching. A failed build/service gets one concise chat explanation; detailed output stays in Console and opens on request.
+
+**Acceptance:** a user can ask for a change, see the updated preview, edit a file manually, rerun tests, stop/restart the service, and resume the chat without reattaching the project.
+
+### WS-04 — Issues, incidents, commits, and publication
+
+Connect GitHub/Vercel/Sentry through the existing Connections model. A selected issue or incident provides bounded context and links to the relevant Project. Reproduce in a browser tab, collect relevant redacted diagnostics, make the change, run appropriate checks, and present the result naturally.
+
+Supported commit/push/PR/deploy operations execute when included in the user's task authorization and use the correct provider/account. Present concrete changes before an additional authorization is needed; do not ask repeatedly for actions already requested. Production deployment, unexpected destructive changes, or a different destination must not be inferred from a generic request to fix code.
+
+Interpret effects by operation semantics, not HTTP verb. Provider read operations may use POST; GET does not guarantee no effects. Existing read-only connectors stay enforced until the new scoped write path is implemented and qualified. A future product capability in this plan is not permission to mutate the founder's live services during development.
+
+**Acceptance:** J5/J6 cover issue → fix → preview → diff and an authorized publication path. The recorded account, commit, checks, and destination match the chat; unrelated repository state is preserved.
+
+### WS-05 — Connected agents and MCP
+
+Make connecting one supported external coding agent easy before expanding the integration list. Reuse existing scoped connection tokens and revocation. Offer a clear setup action that shows what configuration will change, merges rather than overwrites existing settings, and provides a reversible/manual alternative. Never reuse the client's credentials as Aux credentials.
+
+A connected agent receives only allowed tabs, task/project context, files, commands, and artifacts. It uses the same action and lifecycle boundary as the built-in agent. A chat can show which agent is working, its useful progress, and a returned artifact/diff; external actions performed outside Aux's tools must not be falsely reported as observed or controlled by Aux.
+
+Tool catalogs are capability-based and concise, with typed operation schemas and useful errors. Visibility is a convenience; authorization is enforced on every call and event subscription. Include pagination, cancellation, reconnect, and resource-scope semantics. Preserve separate operations where their effects differ instead of hiding many permissions inside one catch-all tool to satisfy a tool-count quota.
+
+Expose existing API/CLI/SDK/MCP capabilities consistently. Remove legacy `vector_*` compatibility after the agreed reset. Support revoking a live connection immediately, clear reconnect behavior, and truthful cancellation of external work only where the client protocol supports it.
+
+**Acceptance:** one real user-configured client completes J5 through scoped tools; unrelated pages/projects/artifacts are rejected; revocation affects an already-running connection. Synthetic scope tests and actual client interoperability are recorded separately.
+
+### WS-06 — Continue in cloud, and return safely
+
+Continue an eligible project task in a real remote environment with source manifest, base commit, task revision, environment/worker identity, budget, expiry, outputs, and checkpoints. Local files and dependencies have explicit transfer rules. Secrets use the provider's scoped secret mechanism, not chat text or copied dotfiles. Personal browser cookies and local credentials do not move automatically.
+
+Remote work survives desktop closure only when a durable remote worker actually owns it. Persist enough state to reconnect to the same job, recover logs/artifacts, cancel it, and collect outputs after failure. Implement provider-side resource/spend limits and TTL cleanup so stopping the local UI is not the only cost control.
+
+For cloud browser work, show the actual remote session, identify its separate account state, and implement exact-session takeover before offering that control. If a task requires a local login/device/file, pause that dependent part clearly while independent authorized work continues. Do not disguise a separate fresh browser as the local authenticated one.
+
+Return changes using the recorded base, a content manifest, and a three-way merge or explicit conflict resolution. Preserve edits made locally while cloud work ran. Link the returned preview/diff with a concise outcome in the original chat; open it when requested or when continuing an already visible preview. Cleanup preserves useful outputs and reports unresolved spend/deletion failures.
+
+**Acceptance:** J7 includes desktop closure, network loss, worker restart/failure, task cancel, expired environment, local divergence, and artifact recovery. A local bookkeeping row alone does not qualify remote continuation.
+
+## 12. Memory, search, and repeatable work
+
+### ME-01 — Explicit memory and unified recall
+
+Start with explicit Remember, editable preferences/notes, and searchable saved chats/artifacts. Keep automatic browsing memory opt-in per Space, with clear site exclusions. Ordinary history metadata and saved chat history do not require enabling ambient page-content capture.
+
+Use a single durable source of truth per content type: user-edited notes under `memory/<spaceId>/MEMORY.md` and related note files; captured documents and their metadata in structured local storage; FTS/optional embeddings as derived indexes. Atomic writes, stable IDs, import/export, file-watcher rescan, and conflict handling make external edits reliable. A watcher event is only a signal to reconcile.
+
+Index relevant title, URL, text, kind, time, Profile/Space/account scope, and source identity. Retrieval returns dated, attributed snippets and respects exclusions. Current-page answers do not silently incorporate another Space's material. A remembered fact can be stale; validate consequential facts against current permitted sources automatically where possible. Ask the user only if a material ambiguity remains, not to certify every retrieved fact.
+
+**Acceptance:** fast search on the reference corpus, correct scope and source links, predictable note editing, and useful recall without ambient capture.
+
+### ME-02 — Optional ambient memory and better retrieval
+
+If enabled, capture only policy-eligible content with conservative sensitive-content handling and bounded retention. A page without a password field can still contain highly sensitive data. Exclusions apply before capture, screenshotting for memory, summarization, embedding, retrieval, and model transmission.
+
+Add hybrid/semantic retrieval only when held-out questions show a material gap over FTS. Evaluate language coverage, quality, model-download size, CPU/memory/energy, and startup cost. Keep embedding/summarization workers low priority; local inference does not run in the shell process.
+
+Forget removes source content and derived summaries/index entries. Do not silently retain deleted information because it was cited. Keep a minimal redacted reference when an internal action record must indicate a removed source. Explain limits for user-created exports/backups and expire controlled backups appropriately. Plaintext Markdown is inspectable but not encrypted; describe storage honestly.
+
+**Acceptance:** deletion/exclusion tests cover every derived path, private pages never enter memory, and the retrieval improvement justifies its resource cost.
+
+### SK-01 — Save successful work as a Skill
+
+Make “Save as Skill” available from the result's contextual actions or a direct chat request; do not append a promotion after every answer. Infer a clear name, parameters, expected inputs/output, sites/accounts, and repeat behavior from the conversation. Let the user edit these in a compact interface. Keep one user concept rather than exposing Programs, Operations, Routines, and Skills separately.
+
+Version the definition, preconditions, permissions, and compatible compiled steps. A Skill can reuse a proven program where appropriate, but must re-observe and replan when the site/state changes. A shared Skill is untrusted content and grants no authority by installation. Scope changes are visible before a future run uses them.
+
+Invoke from the composer or existing command/skill affordance with parameter completion. Results appear in the owning chat. Keep current saved tasks accessible; consolidate UI/data deliberately rather than silently discarding user work.
+
+**Acceptance:** J8 manual reruns work with changed parameters and a changed website; a failed precondition produces an understandable correction rather than a stale replay.
+
+### SK-02 — Schedules and monitors that stay quiet when appropriate
+
+Add schedules after manual runs are reliable. Specify timezone/DST, occurrence ID, execution location, account, limits, no-overlap policy, expiry, and missed-run behavior. Default to coalescing missed read-only checks; do not replay a backlog of consequential actions automatically.
+
+Local work runs while Aux's required processes are available. Work advertised to run with the desktop closed needs durable remote scheduling and the cloud execution path. Each occurrence rechecks scope/access and uses stable logical identities to prevent duplicate effects.
+
+Notify on a meaningful change, the completion of a requested deliverable, failure, or required input. Finishing an unchanged monitoring check is not itself a notification-worthy completion. Silence unchanged monitors and avoid duplicate notifications across devices/reconnects. Support pause-all, per-Skill disable, cost visibility, and a direct link to the relevant chat result. Avoid turning the new-tab page into a wall of routine status.
+
+**Acceptance:** clock changes, offline periods, expired auth, retries, restarts, overlap, and cancellation preserve expected occurrence semantics and do not spam the user.
+
+## 13. Trust, privacy, and compatibility requirements
+
+These are engineering requirements behind the fluid experience. The default UI communicates only what helps the user make a real decision.
+
+### The permission rule: enforce scope silently; ask at a real boundary
+
+A user request is an instruction to act, not the first page of an approval wizard. Derive the task's bounded authority from the actual user request, selected resources/accounts, and configured permissions. A website, generated plan, tool response, or retrieved memory cannot supply that authority. Existing valid grants survive routine steps and reconnects within their defined lifetime; do not expire them at every click.
+
+| Situation | Default experience |
+|---|---|
+| Human navigates or uses a page directly. | Act normally. No agent approval dialog. Preserve browser/site/OS protections. |
+| AI reads selected context, researches relevant public sources, navigates, or prepares a requested output within scope. | Proceed; no per-tab, per-domain, per-tool, or Approve plan prompt. Do not inspect unrelated private tabs/accounts. |
+| User clearly requests ordinary changes: update specified records, edit project files, run relevant checks, or send specified content to a known recipient. | Treat the clear request as authorization for those actions within policy; do not ask the same question again because a tool is labeled write. Resolve consequential missing details first. |
+| First use needs a project folder, service connection, model-processing choice, or device permission. | One contextual setup/request for the actual capability; remember the valid decision. Do not ask for unrelated capabilities in advance. Required OS prompts still occur. |
+| Work needs a different account, new sensitive-data recipient, broader filesystem access, elevation, unexpected spend, or a materially different external effect. | Ask one focused question for the missing authority; keep independent permitted work available. Opening another relevant public research page is not such a boundary. |
+| Financial commitments, irreversible bulk deletion, access-control changes, or production-impacting operations. | Require concrete, informed authorization bound to the actual target, amount/content, account, and environment as applicable. If not already established for that effect, request it once immediately before commitment. Never rely on a vague task title or blanket trust switch. |
+| MFA, biometrics, CAPTCHA, an OS prompt, or an unresolved account/conflict choice requires a person. | Explain the single needed action in context, keep the task state, and resume when resolved. Do not restart the task or ask for the same grant again. |
+
+Use one shared authorization model and deduplicate permission requests across the runtime, browser broker, connection, and UI. Layers still validate their own trust boundaries; they must not each display a separate approval. Bind a granted decision to the real scope/payload, invalidate it on material change, and permit immediate revocation. A coherent batch can share one decision when its targets and effects are clear.
+
+When a question is necessary, use plain language and a concrete action: “Send this to Maya?” if the user only requested a draft, or “Use the production project?” when the environment was not specified, with the relevant detail. Do not repeat these questions when that exact action is already authorized. Avoid generic “Allow tool execution?” dialogs, raw JSON, policy jargon, and multi-step permission-center visits. Ordinary task questions belong in chat; native authentication/OS controls remain native. Keep one place to review/revoke remembered access in settings, without making it part of every task.
+
+Do not solve prompt fatigue with an unrestricted everything-is-allowed mode. Solve it through clear intent, sensible scoped defaults, remembered valid decisions, reliable enforcement, and no duplicate questions. Prompt count never overrides an actual security boundary; unnecessary prompts are product defects, just as missing required boundaries are defects.
+
+### TR-01 — Untrusted content cannot expand authority
+
+Websites, screenshots, documents, repository files, retrieved memory, shared Skills, and MCP responses are untrusted task data. Content that looks like an instruction from the user must not grant new page/file/account/destination permissions. Prompt fences support interpretation; code enforces access.
+
+Use a principal/resource/capability model at every API/IPC path, including desktop calls. Validate schemas, size limits, origin/frame identity, target membership, task revision, and revocation. Page preloads expose narrowly defined capabilities, never a generic runtime invoke, filesystem bridge, arbitrary shell, token, or vault accessor. A compromised web page must not become the shell.
+
+Include adversarial cases for cross-site data transfer, hidden tab access, credential disclosure, privileged URL schemes, local-file reads, malicious documents, unsafe rendered HTML, and scope escalation through a connected agent. Preserve sandbox/context-isolation settings and revalidate them in packaged builds.
+
+**Acceptance:** adversarial regression cases fail safely without blocking unrelated normal workflows; normal authorized tasks also pass the zero-redundant-prompt checks in Section 18.5. No frontend-only permission decision is sufficient.
+
+### TR-02 — Transparent context and model processing
+
+Clearly separate where data is stored, what Aux collects, and what a selected feature sends to a provider. Local storage does not imply local inference. Page questions, translation, summaries, vision, and automatic recall follow the user's chosen processing policy. Context chips and a concise provider explanation make the normal path understandable without a warning before every request.
+
+Do not silently switch to a provider with different data handling when one route fails. Respect permitted provider/region choices. Keep secrets out of prompts, screenshots intended for the model when a secret can be avoided, routine logs, crash uploads, and support bundles. Clipboard and screen capture occur only in the user's intended interaction and supported scope.
+
+Private browsing does not participate in AI or persistent memory in this release. If private AI is ever added, it requires a separate product/security design and explicit user choice rather than inheriting regular behavior.
+
+**Acceptance:** test egress, redaction, exclusions, local-inference mode, private isolation, and user-visible explanations against the actual transport implementation.
+
+### TR-03 — Credentials, permissions, and real accounts
+
+Use the existing OS-backed secret store and opaque credential references. Resolve human and agent fill into the correct requesting origin/frame and selected account. Keep task grants revocable, bounded, and invalidated when relevant state changes. Granting access to one account at one site is not access to every account in the Profile.
+
+Persist regular site permissions through one store; private permissions remain separate and ephemeral. Validate native microphone/camera/screen-sharing prompts, certificate errors, downloads, external URL handlers, and file access on a signed build. Do not wrap an OS permission dialog in a duplicate Aux approval. Other task questions follow the conversational boundary rule above; remembered denials do not trigger repeated requests without a relevant new user action.
+
+**Acceptance:** J9/J10, wrong-account/wrong-origin tests, and signed update/keychain continuity. Neither a mock keychain nor a virtual authenticator proves the real native flow.
+
+### TR-04 — Browser maintenance is ongoing product work
+
+Track the supported Electron/Chromium line, upstream security fixes, native dependencies, and relevant advisories. Assign a release/security owner. Proposed operational targets: assess a critical relevant advisory within one working day and target shipment within 72 hours of an available compatible upstream fix, with documented mitigation if blocked. Security releases bypass a normal feature schedule.
+
+Qualify update signatures, packaged entitlements, supply-chain provenance, safe download handling, and profile recovery. Grant only required entitlements; broad library-validation exceptions need specific justification and a removal path. Signing affects macOS `safeStorage` behavior and must be tested across updates. [Electron security](https://www.electronjs.org/docs/latest/tutorial/security), [safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage).
+
+Publish a vulnerability-reporting contact, supported platform/version matrix, release notes, privacy explanation, and known compatibility limitations before public beta. Do not imply that Chromium alone supplies all Chrome browser services, protections, extensions, or licensed media support.
+
+## 14. Codebase, build, and distribution workstream
+
+### PL-01 — Remove the custom engine from the product
+
+Preserve the engine's source/history and verify the preservation before removing it from this product checkout. Remove engine binaries, runtime engine startup/routing/fallback, paint/input paths, engine-only settings/components, package scripts, and ordinary TS CI dependencies. Keep Chromium driver behavior and useful backend-independent tests.
+
+Both a managed Aux page and an explicitly attached external Chrome page use Chromium; represent connection kind separately from rendering engine. Keep external browser attachment under Advanced/Developer where appropriate, with honest differences in control/permissions. Do not preserve a generalized multi-engine routing architecture for two connections to the same engine family.
+
+**Acceptance:** desktop/runtime/typecheck/build/tests pass without Rust/engine artifacts; a TS-only CI change does not clone/build the engine; the packaged application excludes engine binaries; source/history preservation is verified. Publishing a new engine repository is a separate authorized action if needed.
+
+### PL-02 — Complete the Aux identity and clean schema
+
+Rename `@vector/*`, `VECTOR_*`, `VectorError`, wire/resource names, session partitions, product IDs, log prefixes, and package references coherently. Move the useful driver package toward `@aux/chromium-driver`; remove the dead browser-driver path. Keep historical quoted/source references where appropriate rather than corrupting archives to satisfy a grep.
+
+Use a staged codemod with reviewable diffs and typechecks between coherent stages. Do not ban model names as “legacy.” Remove environment dual writes, legacy migration UI/importers, old journal conversion, and duplicated model defaults after the development reset. Preserve meaningful defensive checks unrelated to migration.
+
+Create a new schema v1 for the new profile, with explicit foreign keys, journal durability, indexed chat/task columns, and typed rows. Unknown/newer schema versions produce a recoverable incompatibility message; they never trigger an automatic destructive reset. The implementation only resets designated disposable development data, not personal browser stores or arbitrary directories.
+
+Finalize one bundle identifier/signing identity before persistent signed profiles. After the external beta starts, new Aux schema versions receive tested migrations and recovery. That lifecycle boundary applies even though old Vector compatibility is intentionally removed.
+
+**Acceptance:** no active dual naming or legacy product path; a fresh profile works; an incompatible profile is preserved; the next supported Aux upgrade is tested without data loss.
+
+### PL-03 — Simplify contracts and services without losing behavior
+
+Consolidate visible concepts and overlapping implementations incrementally. Use typed exhaustive dispatch generated/checked from `MethodSchemas`; apply validation, authorization, and body limits equally to desktop, renderer, SDK, CLI, and external callers. Separate namespaces by coherent resource/action semantics.
+
+Split `PageService`, coordinator cycles, handler switches, and repository casts along tested boundaries. Keep a thin transition facade only while callers move; remove it at the end of its package. Enforce import direction and typed storage records with appropriate tooling. Counts of methods, tools, files, or lines are diagnostics rather than correctness gates.
+
+Preserve fan-out execution semantics until child runs replace them, retain independent action-journal identity, and distinguish artifact content from execution evidence. A cleaner user glossary does not require discarding useful internal entities.
+
+**Acceptance:** contract/authorization coverage has no drift; all clients see the same effective rules; existing journeys remain functional; a reduction in concepts corresponds to less duplicated behavior.
+
+### PL-04 — Faster development and meaningful continuous checks
+
+Make development startup incremental. Cache native compilation and built assets by relevant inputs; preserve correct rebuilds on source/toolchain changes. Improve main/runtime reload feedback while keeping renderer HMR. Pin compatible dependency/tool versions and remove duplicate packages deliberately.
+
+Parallelize independent unit files only after isolating shared ports, directories, globals, and fixtures. Keep mutation-sensitive tests serialized as needed. Wire the existing desktop smoke scripts into named suites and real CI/release gates. Maintain a quick deterministic path for ordinary changes and a broader native suite when affected.
+
+Fix warning classes that hide real issues, especially accessibility and effect dependencies; do not simply raise the lint ceiling. Run appropriate checks once per meaningful change; repeat/broaden only for new failures or risk. Paid models are a budgeted evaluation lane, not an unbounded flaky dependency of every PR.
+
+**Acceptance:** repeatable local setup, clean build output, CI artifacts that explain failures, and useful feedback time. Initial aspiration is <15 minutes for the ordinary TS validation path after baseline and infrastructure sizing.
+
+### PL-05 — Package, sign, update, and recover
+
+Bundle runtime code with explicit treatment of native modules, workers, dynamic imports, document assets, and optional features. Remove npm-install staging if the bundle makes it unnecessary. Measure installed/compressed size and startup separately. Keep fonts/PDF assets needed for supported languages and correct document rendering.
+
+Produce signed, notarized macOS artifacts with stable/beta channels, safe update timing, signature/integrity checks, staged rollout, and release provenance. Sign nested executables/add-ons correctly. An update does not silently interrupt active work; checkpoint/finish or ask for restart at an appropriate moment.
+
+Test install N → real test state → update N+1 → restart → browser/chat/project/credential continuity. Failed or interrupted installs preserve a recoverable profile. Rollback/downgrade must respect database compatibility; do not restore an old binary blindly onto a newer schema.
+
+Crash reporting starts local and uploads only with informed user choice and redaction. Provide a useful support bundle with secrets/content excluded by default. Update checks and security alerts remain functional without opting into usage analytics.
+
+**Acceptance:** Gatekeeper accepts the release, native permissions identify Aux, update/recovery journeys pass, and artifacts work outside the source checkout.
+
+### PL-06 — One roadmap and accurate documentation
+
+This is the single current roadmap; the earlier phase tracker and Vector-era roadmaps are frozen under `docs/archive/`. Preserve `AUX-DESIGN-DIRECTION.md` as the visual contract and maintain small architecture records for privacy, ownership, journal durability, and schema decisions. Freeze superseded progress/roadmap documents with pointers; avoid creating another permanent competing roadmap.
+
+Archive known obsolete engine/product plans after mapping still-relevant obligations, including actual account, extension, native, cloud, and distribution proof. Check references before moving files. Preserve untracked local backups. Changelog entries describe verified delivered behavior; check actual PR contents rather than inferring from their numbers.
+
+**Acceptance:** one product release sequence, consistent glossary/identity, intact links, preserved current design requirements, and no documentation claim that mocks or source builds prove real account/cloud/signing behavior.
+
+## 15. Work package ledger
+
+Each package above includes implementation scope, affected components, and acceptance. The milestone column is the first usable delivery, with later refinement where stated. Assign a named owner before beginning a package. Estimate after the relevant spike: S = roughly 1–3 engineer days, M = 4–10, L = 11–20, XL = split into independently usable slices. These are sizing aids, not calendar promises.
+
+| Package | First delivery | Initial size | Main dependencies |
+|---|---|---|---|
+| BR-01 Native tabs/navigation | R1 | XL, sliced | Ownership protocol; compatibility baseline |
+| BR-02 Stores/startup/layout | R1; refine R2 | L | Design baseline; BR-01 cutovers |
+| BR-03 Lifecycle/restore | R1 conservative; R2 optimization | L | BR-01; unload/dirty-state proof |
+| BR-04 Omnibox/search | R1 basics; R2 ranking | M–L | Browser worker/index; existing command UI |
+| BR-05 Browser completeness | R1 critical; R2 broad | XL, by workflow | Baseline matrix; native session policy |
+| BR-06 Import/login/extensions | R0 feasibility; R1–R2 delivery | XL, external dependencies | Signed identity; host/API proof |
+| BR-07 Private/content/site policy | R1 boundaries; R2 completion | L | Preserved private process; request router |
+| CH-01 Conversation continuity | R1 | M | Stable IDs/context; durable draft path |
+| CH-02 Streaming/artifacts | R1 core; R2 formats/polish | L | Event contracts; worker/viewer isolation |
+| CH-03 Steering/results | R1 | M–L | AI-05/06; control protocol |
+| CH-04 Onboarding/find work | R1; refine R2 | M | Model setup; import/search; real saved data |
+| AI-01 Observation/refs | R1 | L | Tab generations; trusted adapter |
+| AI-02 Interaction coverage | R1 core; R2–R3 long tail | XL, by failure family | AI-01; real fixtures/holdouts |
+| AI-03 Tool schema/execution | R1 | L | Provider route spike; durable dispatch |
+| AI-04 Registry/context | R1 | M–L | Catalog/route checks; baseline evaluation |
+| AI-05 Concurrency/control | R1 core; R2 fan-out | L | Main broker; task revisions |
+| AI-06 Verify/recover | R1 core; R2 full continuation | L | Durable journal; restored page identity |
+| AI-07 Quality loop | R0 onward | Ongoing | Versioned corpus; authorized evaluation budget |
+| WS-01 Project continuity | R1 | M | Existing project isolation; CH-01 |
+| WS-02 Files/changes | R1 existing path; R2 full | L | Project identity; hash/conflict safeguards |
+| WS-03 Commands/preview | R1 | L | Task capabilities; service lifecycle |
+| WS-04 Issue/incident/publication | R1 read/local; R2 authorized writes | L | WS-01–03; provider connections |
+| WS-05 Connected agents/MCP | R1 one client; R2 broaden | L | Scoped tokens; actual client interop |
+| WS-06 Cloud continuation | R3 | XL, sliced | WS-01–05; durable remote worker; budgets |
+| ME-01 Explicit memory/recall | R2; existing behavior retained R1 | M | Scope catalog; FTS; deletion model |
+| ME-02 Ambient/semantic memory | R3, only on measured need | M–L | Consent/deletion; ME-01 evaluation |
+| SK-01 Manual Skills | R2 | M | Successful tasks; parameter/scope model |
+| SK-02 Schedules/monitors | R3 | L | SK-01; occurrence identity; WS-06 if remote |
+| TR-01–04 Trust/maintenance | R0 onward | Embedded + specialist review | Required before exposing affected capability |
+| PL-01 Engine separation | R0–R1, before distribution | L | Verified history preservation |
+| PL-02 Rename/schema | R0–R1, before retained beta profiles | L | Identity decision; PL-01 |
+| PL-03 Contract simplification | R1–R3, alongside user slices | L, incremental | Relevant ownership/schema decisions |
+| PL-04 Developer loop/CI | R0 onward | M + ongoing | Existing checks and smoke inventory |
+| PL-05 Distribution/update | R0 start; R1 signed pilot | L | Signing account; PL-01/02; native validation |
+| PL-06 Documentation | R0 onward | S–M | Mapped obligations and current implementation |
+
+A package is not done because its first milestone shipped a subset. Record the accepted slice and remaining acceptance cases explicitly. Conversely, a later enhancement is not a reason to withhold a complete useful earlier slice.
+
+## 16. Single release sequence
+
+This is the only release sequence for this handoff. Use outcome gates rather than treating an estimated calendar as proof of completion. After R0, forecast the next milestone from measured package sizes and actual staffing. Reserve approximately one-quarter of capacity for compatibility, regressions, upstream maintenance, and findings. Keep later forecasts adjustable.
+
+Sections 2.6, 3.3, 6.1, and 18.5 apply from R1 onward, not only at final polish. Repeated approval of already-authorized work, routine tool-log output, automatic panel clutter, or a regression in ordinary browsing blocks acceptance of the affected feature. Additional agent features do not offset an incomplete daily browser.
+
+### R0 — Establish the foundation and prove the risky assumptions
+
+**Outcome:** the team understands the existing product, preserves its design, and knows how the first complete browser/AI/workspace slice will ship.
+
+Deliver:
+
+- Fresh visual baseline with the September 21 arch mark/silver icon and current sidebar/toolbar behavior; record the UI elements that must be preserved.
+- Baseline timing/resource reports and an inventory of working, incomplete, and externally unverified user journeys.
+- Small runnable spikes for main-owned control/takeover, private debugging isolation, signed identity/keychain/update, required password/passkey/extensions, target identity/BFCache, live native preview composition, and actual gateway tool schemas.
+- Begin signing/distribution immediately. Begin engine separation and then rename/schema reset as bounded separate changes; do not bundle them into the browser ownership rewrite.
+- Fix independent existing defects such as private search, third-party favicon requests, layout-persistence churn, and missing root error handling where confirmed.
+- Demonstrate an initial page answer, a delegated site task, and a local issue-to-preview workflow using existing capabilities. Record the smallest missing behavior in each.
+- Recruit 5–8 design partners from the target audience and collect real switching blockers, favorite workflows, credential/extension needs, and desktop/multi-device expectations.
+
+**Exit:** each high-risk assumption has a working proof or a documented failed result with a selected next action; baseline and preserved design are recorded; the first implementation slices and owners are concrete. R0 is not a demand that every external entitlement/account decision finish before independent coding continues. Estimate the probes separately from full engine/reset work.
+
+### R1 / 0.2 — A fast browser with a useful conversational workspace
+
+**Outcome:** an invited user can browse comfortably, ask naturally, delegate useful work, and complete one project workflow in the same application.
+
+Minimum release scope:
+
+- Main-owned human navigation and tab control; responsive shell/store; conservative lazy restore; runtime-independent browsing; existing visual style preserved.
+- Signed installation and a tested update path; reset/identity decisions complete before users keep these profiles.
+- Supported import/default-browser path and the critical login/media/file/permission flows needed by the invited cohort. Private isolation remains intact.
+- Shared chat/context/drafts, streamed answers, useful sources/files, mid-task steering, Stop/Take over, natural chat completion, and recoverable provider failure.
+- Model registry, validated tool dispatch, stable refs, bounded execution, durable writes, and independent verification for the selected task families.
+- One real connected agent and one complete local Project flow through files, command/test, preview, and diff. No dependency on completing every concept/API cleanup first.
+
+**Demonstration:** J1–J6, J9–J12 for the declared initial scope. J7/J8 cloud/scheduling can remain unexposed until later milestones rather than showing ineffective controls.
+
+**Exit gates:** a signed build works outside the checkout; target users complete the selected journeys without coaching; a frozen set of at least 15 representative agent tasks spans reading/research, website action, and project work, with repeated trials and at least 90% verified success in that explicitly bounded set. No unresolved critical authorization, private-boundary, duplicate-effect, or durable-state-loss defect. Foreground responsiveness holds during agent work. Record a week of actual pilot use and fix its concrete blockers before expansion.
+
+### R2 / 0.3 — Dependable daily browsing and productive project work
+
+**Outcome:** users keep Aux open for ordinary browsing and recurring work rather than returning to another browser whenever a serious task appears.
+
+Deliver:
+
+- Resolve the observed switching blockers: credentials/passkeys, needed extension capabilities, omnibox ranking, import gaps, site controls, filter-list blocking, media/meeting paths, shortcuts, and recovery. Deliver isolated persistent work/personal Profiles through the existing controls.
+- Improve resource management, larger sessions, long chats, multi-window behavior, and optional real agent views without foreground regressions.
+- Complete the useful Files/Changes/Console workspace, Project/account continuity, real connected-client lifecycle, and authorized provider write flows.
+- Explicit notes/FTS recall and manual Skills, with edit/delete/export, changing-site handling, and clear scope.
+- Broader document/artifact workflows, language/input coverage, accessibility, and stable behavior under network/model/service failures.
+- Incremental internal concept cleanup, keeping data/behavior intact for retained beta profiles.
+
+**Exit gates:** expand the versioned corpus to at least 50 cases with held-out tasks and difficult variants; target ≥95% verified success on supported deterministic/common-flow qualification tasks, with results per family and uncertainty reported. Do not average away any critical failure. At least 15–25 real target users exercise daily use; keep onboarding/dropouts in the denominator. Complete the declared login/extension compatibility matrix and observe useful repeated tasks over several weeks. Foreground performance and energy remain within budget.
+
+### R3 / 0.4 — Capable extended work and repeatable workflows
+
+**Outcome:** Aux carries more substantial research, multi-site operations, and software work across sessions without losing continuity.
+
+Deliver:
+
+- Broader semantic/visual interaction coverage and bounded multi-tab research with structured artifacts.
+- Reliable task continuation, deeper project/incident workflows, and improved external-agent handoffs.
+- Parameterized/shareable Skills and carefully scoped schedules/monitors with meaningful notifications.
+- Real cloud execution, reconnect, cancellation, budget/expiry, artifact recovery, and conflict-safe local return; remote browser takeover only after exact-session proof.
+- Optional ambient/semantic memory where its measured benefit and data controls justify it.
+
+**Exit gates:** J7/J8 pass their failure/return paths; the browser remains pleasant under longer/background work; comparative trials show repeated improvements in successful completion, total user effort, and/or cost for the targeted tasks. Hard cases remain visible in the reported results. No generic “best agent” claim follows from a small fixture subset.
+
+### R4 / 1.0 — Earn the default-browser and workspace promise
+
+**Outcome:** a stable, supportable product whose declared users can rely on it for both browsing and meaningful work.
+
+Deliver:
+
+- Complete the promised browser/login/workspace compatibility matrix, signed release/update/recovery qualification, and architecture/security review of the major boundaries.
+- Finish data import/export, persistent Profile qualification, support/recovery tools, native accessibility, reduced-transparency/light/dark checks, and supported architecture builds.
+- Public download, release notes, privacy/model-processing explanations, vulnerability reporting, and a maintained update/security process.
+- A broader evaluation with at least 30 target users for four weeks. Target ≥70% retaining Aux as their default work browser; disclose enrolled count and dropouts, and investigate failures by workflow.
+
+**Exit gates:** all promised journeys work on supported hardware/platforms; no unresolved critical data/control/recovery issue; retention and task usefulness meet the declared targets; there is clear ownership for maintenance. A repeated essential compatibility failure triggers a real fix or an explicit product-scope decision, not an ever-growing exception list.
+
+Evaluate sync/mobile/Windows demand during these milestones. They are not silently included in this desktop release. If the target cohort cannot adopt without one of them, reassess the roadmap explicitly rather than pretending local export meets that need.
+
+## 17. Dependencies and first implementation slices
+
+### 17.1 Critical dependency chains
+
+| Dependency chain | Why it matters |
+|---|---|
+| Current design baseline → shared state/continuity → every UI slice | Avoids accidental redesign, lost drafts, and disconnected workspace surfaces. |
+| Main-owned identity/control → native browsing → restoration/discard/live preview | Every page must have one owner and reject stale actions before lifecycle optimization. |
+| Signing/identity → real credentials/passkeys → retained beta profiles → updates | Native behavior and profile/keychain continuity cannot be proven in an unsigned dev build. |
+| Typed provider tools → authorized durable dispatch → verification/recovery → Skills/schedules | Repeatability amplifies any weakness in action correctness or uncertain-outcome handling. |
+| Stable Project/checkout → files/commands/preview → connected-agent interoperability → cloud return | Remote and external work need the same correct project identity and conflict behavior. |
+| Scope/deletion policy → explicit memory/FTS → optional ambient/semantic memory | Better recall must not broaden capture or make Forget incomplete. |
+
+Browser/distribution and agent/workspace implementation can progress independently where these contracts are fixed. Shared-contract changes need a coordinated cutover with a single owner. Do not split the architecture between multiple incompatible authorities to increase short-term throughput.
+
+### 17.2 The first reviewable slices
+
+These are implementation units, not a demand for one giant PR or exactly twelve commits. Split when a unit is too large to review while keeping each accepted slice coherent.
+
+| Slice | Deliverable | Verification |
+|---|---|---|
+| 1 | Record current assets/layout, component inventory, native/browser/task baselines, and unresolved account/host proofs. | Fresh native captures; known-good journey recordings; no product claims from historical screenshots. |
+| 2 | Confirm/fix isolated responsiveness/privacy defects: layout persistence, selectors, root boundary, favicon sourcing, private search. | Focused regression cases and actual rendered behavior. |
+| 3 | Preserve/extract engine and remove product/CI/bundle coupling. | Product build/tests/package without Rust; preserved history verified. |
+| 4 | Apply coherent Aux rename, identity, new development schema, and legacy-path removal. | Fresh-profile smoke, typecheck, contract identity checks, incompatible data preserved. |
+| 5 | Introduce typed main tab/control commands, worker persistence, patch/snapshot protocol, and runtime subscription. | Stale/repeated commands, runtime failure, reconnect, cross-window scope. |
+| 6 | Cut human navigation/activation to the native path; then close/reopen/popups and lazy restore. | J1/J11 plus dirty-editor/unload/popup cases; before/after latency. |
+| 7 | Deliver shared chat state and sequenced streamed answer/artifact events with ordinary conversational completion. | J2/J4; provider interruption/replay; draft preservation; quiet output and stable layout; current styling. |
+| 8 | Consolidate registry/provider schemas and a single validated, journaled dispatch path with correct stop/takeover. | Recorded malformed streams, actual route checks, dispatch-boundary failures, and no reapproval of routine requested steps. |
+| 9 | Connect the current Project surfaces into the chat; qualify edit → command → preview → diff. | J5 with dirty checkout, external editor, running service, restart. |
+| 10 | Complete one external-agent setup/lifecycle and scoped Project/browser flow. | Real supported client plus synthetic isolation/revocation cases. |
+| 11 | Finish signed distribution/update and required account/native compatibility proof for the invited cohort. | Install/update outside checkout, keychain/TCC, SSO/passkey/extension matrix. |
+| 12 | Run the integrated private-alpha journeys, fix the largest failures, and prepare the R1 release record. | Repeated bounded task results, performance under load, target-user pilot. |
+
+Signing/spikes and task quality work start with slice 1 and continue alongside these changes; slice 11 is qualification, not the first time distribution is considered. Engine/reset completion is not a prerequisite for designing or testing the initial conversational/workspace flow in an isolated profile.
+
+### 17.3 Every accepted slice contains
+
+A user-visible outcome; the contract/state changes supporting it; persistence and failure behavior; relevant code/tests; a demonstration in the actual app; and a short record of what was verified versus still externally blocked. Remove superseded code after its replacement passes. Update milestone status without declaring the entire workstream complete prematurely.
+
+Prefer small coordinated changes over months of architecture-only work. Internal refactors earn their place by enabling an outcome, eliminating measured latency, fixing a reliability boundary, or lowering the demonstrated cost of the next change.
+
+## 18. Verification and comparative evaluation
+
+### 18.1 Use the right proof for the claim
+
+| Layer | What it proves | When it runs |
+|---|---|---|
+| Unit and contract | State transitions, schemas, ranking, scope checks, replay, deletion, and pure layout/state logic. | Every affected change; deterministic and isolated. |
+| Fixture integration | Complete runtime/browser/project interactions with resettable data and independent final-state checks. | Relevant PRs and the main CI lane. |
+| Native desktop smoke | Real Electron views, IPC, focus, input, popups, downloads, permissions, and recovery. | Affected PRs plus a grouped release suite. |
+| Signed packaged qualification | Installation, identity, keychain, OS permissions, actual accounts/extensions, update, and operation outside the checkout. | Early feasibility probes and every release candidate affecting these paths. |
+| Budgeted live task evaluation | Held-out site behavior, provider-route compatibility, real agent effectiveness, and model/browser regression. | Scheduled evaluation and before relevant releases; explicit test accounts and cost limits. |
+| User and comparative trials | Discoverability, overall effort, daily comfort, adoption blockers, and relative value. | From R0 onward, with repeated pilots at release gates. |
+
+A fixture pass is not a signed-account pass. A screenshot is not interaction proof. A task returning `done` is not an independent outcome check. Preserve these distinctions in engineering reports without exposing a verification workflow to ordinary users.
+
+At the reference checkout, the starting commands are:
+
+```sh
+pnpm typecheck
+pnpm test:unit
+pnpm bench:tasks --validate
+pnpm --filter @vector/desktop typecheck
+pnpm --filter @vector/desktop build
+```
+
+These are existing entry points, not claims that they were rerun while writing this plan. Use the updated package name after PL-02. Add the affected integration/native suites and packaged qualification; the five commands alone are not a release gate. The existing lint command permits warnings, so its green exit is not proof that all lint issues were addressed.
+
+Group the existing smoke scripts instead of starting a second test framework. Useful starting cases include `runtime-recovery-desktop.mjs`, `tab-recovery-desktop.mjs`, `unsaved-work-desktop.mjs`, `window-unsaved-work-desktop.mjs`, `conversation-lifecycle-desktop.mjs`, `conversation-context-desktop.mjs`, `private-boundary-desktop.mjs`, `authentication-navigation-desktop.mjs`, `scoped-agent-connection-desktop.mjs`, `local-projects-desktop.mjs`, and `packaged.mjs`. Recheck setup/cleanup and isolation before enabling parallel runs.
+
+### 18.2 Required failure coverage
+
+Exercise the appropriate cases in each accepted slice:
+
+- Runtime absent, slow, crashed, or reconnecting while the user opens, navigates, switches, and closes tabs.
+- Delayed/repeated commands, event gaps, stale tab/document/reference IDs, task revision changes, account switches, and revoked tokens immediately before dispatch.
+- Page or renderer crash, unload veto, dirty rich-text editor, active call, upload/download, and disk-full or worker failure during state persistence.
+- Provider refusal, invalid schema, partial tool stream, timeout after submission, budget exhaustion, and recovery after an uncertain remote effect.
+- A user taking over a page while the agent is planning, observing, dispatching, or waiting; other permitted work remains unaffected.
+- External file edits, untracked files, simultaneous project tasks, preview-service failure, a long-running command, and cloud return after local divergence.
+- Private-page discovery/attachment attempts from every exposed debugging/API path; excluded or forgotten data in summaries, indexes, logs, caches, and model requests.
+- Interrupted update, incompatible/newer schema, keychain changes, first-install native permissions, and restoration outside the development checkout.
+
+Use isolated test profiles/repositories/accounts and authorized test destinations. Tests must not reset the founder's working browser profile, send real customer messages, purchase anything, publish code, or incur unbounded cloud/model charges. A test blocked by missing access is recorded as unverified, not passed or silently omitted.
+
+### 18.3 Task-quality methodology
+
+The current benchmark README describes eight deterministic local tasks and 33 AssistantBench validation tasks. Those are useful seeds, not evidence of human-equivalent general browsing. Keep their results separate from the broader Aux corpus.
+
+For R1, use at least 15 distinct tasks spanning reading/research, website action, and project work. For R2, expand to at least 50 covering the applicable capability matrix, including hard dynamic pages and interruption/recovery cases. Run at least five seeded repetitions per deterministic task; budget repeated live trials separately and report their smaller sample sizes honestly.
+
+Use independent state oracles for mutations, file assertions/tests for code and artifacts, and source-checked rubrics or blinded human assessment for open-ended work. An LLM judge alone cannot certify correctness. Maintain a held-out set; do not tune on every case used for the headline result.
+
+Report task count, attempts, complete/partial/failed outcomes, human interventions, unauthorized effects, duplicate effects, false completion, p50/p95 completion time, tokens/cost, and foreground responsiveness. Include per-family results and uncertainty; do not exclude failures from time/cost reporting without showing them separately. The success targets in Section 16 apply to the declared bounded corpus, not all possible websites. Zero observed safety failures does not establish zero risk.
+
+Compare two questions separately:
+
+1. **Infrastructure quality:** matched model/provider, task data, account state, hardware, and budget across compatible adapters.
+2. **Product usefulness:** Aux versus a capable human and available comparison browsers using their normal supported workflows. Record version, setup, provider differences, assistance allowed, and user effort; do not describe unlike configurations as controlled harness comparisons.
+
+Treat “as good as a human” as a measured ambition across the supported task families. Claim an advantage only for the workloads actually tested, including completion quality and intervention burden, not just a faster first click.
+
+### 18.4 Visual and interaction qualification
+
+Use fresh native captures from the implementation build, not the historical September 19–20 images. Check the current arch mark/silver icon, light/dark appearance, reduced transparency/motion, normal and enlarged text, and approximately 1024×768, 1280×800, and 1512×982 window sizes. Include a smaller/narrow layout when supported. Check populated and long-content states, not only an empty start page.
+
+Exercise the actual sidebar reveal, focus return, dragging, splits, native-view overlap, text selection, IME, VoiceOver, streaming scroll, editor interaction, and keyboard shortcuts. Measure frame pacing on supported 60/120 Hz displays where available. Preserve semantic/keyboard behavior when virtualizing or animating.
+
+Engineering evidence belongs in test reports and release notes. Users receive a fluid application and conversational results.
+
+### 18.5 Friction, clarity, and everyday-use release checks
+
+Run these in the real application with ordinary users, not just a scripted happy path. Count Aux-generated clarification/permission interruptions separately from first-time setup, genuine task ambiguities, and required site/OS authentication. The goal is no unnecessary interruption, not hiding a necessary one.
+
+| Scenario | Passing experience |
+|---|---|
+| Ask a straightforward question about the current permitted page. | One request → a useful answer; zero extra approval, mandatory plan, receipt, or unsolicited panel. |
+| Research across public sites and create a local comparison file. | No per-domain/per-click approvals; one compact in-place working state and one result with sources/file. Only meaningful progress enters the chat. |
+| Update specified ordinary records within established scope. | No reapproval per record or final “approve completion”; one concise result, with any actual exceptions. |
+| Fix a project issue and run its checks after project execution is configured. | No prompt per file, search, edit, test, or preview startup. One result with an optional preview/diff; the workspace stays where the user left it. |
+| Cross a real consequential boundary or change the target/account after approval. | One concrete question at that boundary; correct binding/revalidation; no duplicate modal from another layer. |
+| Take a page back, then ask the AI to continue. | Immediate human control without confirmation; a simple continuation without rebuilding context or reapproving unchanged scope. |
+| Finish a task while the user is typing, reading another tab, or in a meeting. | No focus theft, automatic navigation, panel expansion, or duplicate toast/system/chat alert. Notify once only when useful. |
+| Repeat a saved monitor with no relevant change. | No routine notification or new status clutter; real failure/required input remains visible. |
+
+For each J1–J12 flow, test the keyboard/menu path as well as discovery without shortcut knowledge. Watch for hesitation, accidental actions, lost place, repeated setup, and retreat to another browser. Ask whether the person could tell what was happening and what to do next without needing to interpret internal terminology. Resolve repeated confusion rather than adding a tutorial to compensate.
+
+Record time to useful result, number of user interventions, redundant prompts, default output size, and unsolicited layout/focus changes in the existing evaluation reports. No new product dashboard is required. Zero duplicate approvals, routine receipt screens, or unsolicited focus changes is a regression-suite requirement. Review longer answers in context rather than enforcing a blind word limit.
+
+Finally, spend a normal work session in Aux with AI disabled, then with background agent work: mail/docs, search, forms, files, media, meetings, many tabs, and a project preview. Passing an agent benchmark cannot compensate for a slow address field, broken login, lost form, inaccessible control, or unreliable restore. Use these observations alongside Section 6 measurements and the retention gates, not as a substitute for them.
+
+## 19. Early risks and decision rules
+
+Assign an owner and a time-boxed proof to each relevant R0 risk. The owner may also own an implementation package; this is not a new management layer. A failed proof changes the implementation or declared release scope before promises are made.
+
+| Risk | Required proof | Decision if the proof fails |
+|---|---|---|
+| Human credentials, passkeys, required extensions, or licensed media exceed the current host's capabilities. | Actual signed builds, devices, supported extension/native-messaging paths, and representative services. | Implement a concrete supported integration or evaluate a more capable Chromium host while preserving the Aux shell. Compare maintenance/distribution cost before committing. Do not revive the Rust engine or claim arbitrary Chrome compatibility. |
+| Private pages are reachable through shared debugging. | Discovery, attachment, observation, and crash tests against the actual transport. | Retain the separate private process; share safe code without sharing the debugging surface. |
+| Page identity/control changes during detach, navigation, popup creation, or BFCache. | Adversarial lifecycle tests with stable logical IDs and replaced native instances. | Keep the conservative attachment/lifecycle path until the optimized path is correct; defer the optimization, not stale-action protection. |
+| Live native preview composition breaks clipping, focus, input, or accessibility. | Actual WebContents inside chat/workspace layouts, popovers, resizing, and takeover. | Use a clearly identified snapshot/open-tab preview for the affected presentation while keeping the real page operable. Do not represent a snapshot as interactive. |
+| Main-owned persistence stalls or loses acknowledged state. | Load/crash/disk-full tests with worker backpressure and explicit durable acknowledgments. | Preserve the working journal guarantees; repair the worker protocol and expose a recoverable save failure. Do not downgrade durability globally to make benchmarks pass. |
+| A catalog model fails the required route/tool behavior. | Small live route tests plus recorded malformed/interrupted streams. | Disable that capability/route with a clear reason; use a qualified permitted route without weakening validation or changing data policy silently. |
+| Cloud work is only a local façade or has uncontrolled cost. | Close/reconnect/cancel/expiry/provider-failure tests against a real durable worker. | Keep the local workflow fully useful; withhold cloud claims until the remote execution and spend controls exist. |
+| Required signing, service access, or account approval is missing. | Real credential/entitlement and packaged-service probe, with secrets kept out of reports. | Record the exact external dependency and continue independent slices. Do not fabricate the result or remove the acceptance case. |
+| Scope expands faster than complete experiences ship. | Working R1 journeys and user trials before widening features. | Sequence by the largest adoption/task failures; split XL work. Preserve the core browser and workspace promise while postponing unproven extras. |
+| Internal safety/runtime concepts turn into permission fatigue, tool chatter, or workspace clutter. | Section 18.5 scenarios with interruption/output/layout counts and real user observation. | Remove duplicate prompts and default chrome, repair scope/default handling, and keep enforcement internal. Do not demand that users enable unrestricted access to obtain a fluid experience. |
+
+If a browser-host change becomes necessary, it is a separate architecture decision with a prototype and a continuity plan for the current design, tabs, profiles, agents, packaging, and updates. It must not quietly turn this handoff into an unbounded browser rewrite.
+
+## 20. Scope, cleanup, and evidence map
+
+### 20.1 Preserve, replace, and defer deliberately
+
+**Preserve:** the current approved design and branding; functioning browser behaviors; chats and draft/context continuity; substantive Project/editor/command/preview capabilities; useful agent grounding and control; privacy separation; durable action intent; engine source/history; and unrelated user data or working-tree changes.
+
+**Replace after equivalent behavior passes:** runtime-mediated human navigation, duplicate browser state ownership, broad rerender subscriptions, superseded Vector compatibility, obsolete custom-engine product paths, overlapping result/Skill concepts, unsafe unscoped calls, and routine completion UI centered on `TaskReceiptView` or receipts. Keep the underlying recovery/verification information internal; removing that UI does not mean removing correctness checks.
+
+**Do not build as hidden prerequisites:** a new visual identity, a mandatory task dashboard, compulsory post-task approval, a whole new agent framework, universal site-specific integrations, a full IDE replacement, or semantic memory before basic search works. A useful file editor, project commands, diffs, and real preview are required; exhaustive language-server/debugger/extension-marketplace parity is not required for the first workspace release.
+
+**Explicit later decisions:** cross-device sync, mobile/Windows support, multiplayer collaboration, a full extension marketplace, universal DRM coverage, and private AI. Revisit based on adoption evidence and host feasibility. Do not imply that local export, cloud task execution, or Spaces secretly provides any of these features.
+
+Refactor incrementally and delete obsolete implementations once callers/tests have moved. Do not leave permanent parallel paths behind every feature flag. Temporary flags have an owner, a cutover criterion, and a removal milestone; security boundaries remain enforced in every path.
+
+### 20.2 Starting source map
+
+These locations were inspected during preparation or identify the existing implementation/test entry points. Revalidate line numbers and behavior against the checkout used for implementation.
+
+| Area | Starting evidence |
+|---|---|
+| Current design/brand | `docs/AUX-DESIGN-DIRECTION.md`; renderer `tokens.css`, `styles.css`, `AuxMark.tsx`, `public/arch-mark.svg`; `apps/desktop/brand/aux-icon-1024.png`. Current assets supersede old saved screenshots. |
+| Browser/native/private | `apps/desktop/main/index.ts`, `native-views.ts`, `private-main.ts`; `tests/smoke/private-boundary-desktop.mjs`; stored `release/test-artifacts/aux-private-boundary.json`. The stored test is historical evidence, not a fresh run for this document. |
+| Journal and dispatch | `apps/runtime/src/store/db.ts`, `apps/runtime/src/agent/durable.ts`, coordinator/services/API contracts. Preserve intent-before-effect and validate the actual final dispatch path. |
+| Chromium observations | `packages/engine-client/src/playwright-page.ts` and related reference/observation stores; this useful code moves with the Chromium package rename. |
+| Chat/workspace | Current conversation components/stores, `TaskWorkspace`, `ProjectFileEditor`, `ProjectCommandPanel`, local-project/cloud services, and existing conversation/project smoke tests. |
+| Quality/build | Root/desktop package scripts, `tests/benchmarks/tasks/README.md`, task manifest/adapters, `tests/smoke/`, packaging scripts, and release artifacts. Existing reports do not automatically establish current-build health. |
+| External behavior | Primary Electron, SQLite, provider schema/streaming, and Gateway references linked at the relevant requirements above. Catalog availability is not account access or model qualification. |
+
+Repository-specific facts and stored results motivated this plan. Requirements, new targets, proposed ownership, estimates, and release gates are recommendations to implement and validate. No fresh paid inference, real-account certification, native-host migration, or completed release is asserted by this handoff.
+
+## 21. Implementation handoff and definition of done
+
+### 21.1 Instructions for the implementing team or agent
+
+1. Read applicable repository instructions, this plan, and the current design contract. Inspect the actual branch/worktree before editing; preserve unrelated changes. Treat the current approved assets as authoritative.
+2. Map the relevant packages to **working**, **partial**, **missing**, or **externally unverified**. Confirm suspected defects before fixing them. Do not repeat functioning work simply because it appears in this plan.
+3. Begin R0 and the first reviewable slices. Start native/signing/compatibility proofs early while delivering visible browser/chat/workspace improvements. Keep a single active release checklist rather than creating another competing master plan.
+4. Land complete, reviewable slices with real tests and native demonstrations. Apply the low-friction contract from the first slice: internal checks stay internal, routine requested steps proceed, results are concise, and extra panes stay contextual. Preserve the existing visual design. Every visible control should do what its label promises.
+5. Record measured outcomes and exact external blockers. Missing credentials, subscriptions, signing access, or user decisions are not permission to guess, weaken a boundary, or claim an unrun test passed. Continue independent in-scope work where possible.
+6. Follow normal authorization for resets, repository publishing, live-site writes, paid/cloud resources, deployment, and credentials. This document defines the product to build; it is not blanket authorization to perform those actions on real accounts.
+7. End each implementation handoff with the current commit/branch, accepted slice, verification actually run, remaining known failures, and the next coherent slice. Keep this concise; no new user-facing audit system is needed.
+
+### 21.2 Product definition of done
+
+The declared release is ready when:
+
+- The browser is pleasant and responsive without AI, with the current logo/sidebar/style intact and complete core navigation, organization, account, and recovery behavior.
+- The assistant works across the supported complex website workflows, uses permitted real context, can be steered/stopped, and reports verified results naturally in chat.
+- Ordinary permitted tasks do not require repeated approval, routine audit/tool transcripts, or managing a task dashboard; necessary questions are specific, rare, and in context. The default UI stays small and discoverable, and extra output/panes appear because they help the requested work.
+- A repository issue can become a real edit, command/test result, preview, and diff in the same coherent workspace; external-agent and cloud capabilities meet the claims made for that release.
+- Returning after navigation, restart, failure, or interruption preserves the user's work and gives a truthful continuation without duplicated effects.
+- Privacy, account/control boundaries, credentials, update security, and data recovery pass the appropriate actual-build checks.
+- Performance, task-quality, accessibility, compatibility, and target-user gates pass for the declared release; failures are fixed or the product promise is explicitly revised before shipping.
+- The team can maintain the browser: one roadmap, clear module ownership, fast useful tests, supported upstream updates, and accurate release/support documentation.
+
+The intended result is recognizable Aux, materially better at both browsing and doing work: fast in the hand, calm on screen, capable across real websites, and comfortable enough to become the user's everyday browser and workspace.

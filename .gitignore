@@ -21,3 +21,4 @@ packages/contracts/src/**/*.js
 packages/contracts/src/**/*.js.map
 fixtures/dist-types/
 *.local-before-main-*.md
+.playwright-mcp/
