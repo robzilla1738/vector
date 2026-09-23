@@ -7,6 +7,7 @@ import { createServer } from "node:http";
 import {execFileSync} from 'node:child_process';
 import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
+import { poll } from "./poll.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const desktopRequire = createRequire(join(root, "apps/desktop/package.json"));
@@ -82,7 +83,7 @@ const failed=async(name,args,pattern)=>{const result=await call(name,args);asser
 try {
   app = await launch();
   let page = await shell();
-  await page.locator(".aux-home").waitFor();
+  await page.locator(".app").waitFor();
   await app.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows()[0].setSize(1280, 900));
   await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},repository);
 
@@ -125,7 +126,10 @@ try {
   await app.close();
   app = await launch();
   page = await shell();
-  await page.locator(".aux-home").waitFor();
+  await page.locator(".app").waitFor();
+  await poll(page, () => !document.querySelector(".degraded"), true, 60000);
+  await page.evaluate(pageId => window.aux.invoke("browser.recovery.retry", { pageId }).catch(() => null), setup.authorizedPage.pageId);
+  await poll(page, pageId => window.aux.invoke("pages.list", {}).then(items => items.some(item => item.pageId === pageId)), setup.authorizedPage.pageId, 60000);
   client = await connect(setup.config);
   const catalog = (await client.listTools()).tools.map(tool => tool.name);
   assert.ok(catalog.includes("aux_workspaces_list") && catalog.includes("aux_task_record_evidence")&&catalog.includes('aux_development_read_file')&&catalog.includes('aux_development_run_command')&&catalog.includes('aux_development_open_preview')&&catalog.includes('aux_development_commit')&&catalog.includes('aux_cloud_environments')&&catalog.includes('aux_cloud_task_result'));

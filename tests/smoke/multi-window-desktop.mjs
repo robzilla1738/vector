@@ -84,11 +84,13 @@ try{
   assert.deepEqual(secondaryList.map(page=>page.pageId).sort(),secondaryTabs.map(page=>page.pageId).sort());
   await assert.rejects(primary.evaluate(pageId=>window.aux.invoke('pages.activate',{pageId}),secondaryTabs[1].pageId),/another Aux window/);
 
-  for(const record of [{shell:primary,name:'Primary space',tabs:primaryTabs},{shell:secondary,name:'Secondary space',tabs:secondaryTabs}]){
-    await record.shell.evaluate(({name,tabs})=>{
+  // Browser spaces are synced profile-wide — distinct ids keep each window's
+  // own space instead of collapsing two same-id fixtures into one.
+  for(const record of [{shell:primary,name:'Primary space',spaceId:'primary-space',tabs:primaryTabs},{shell:secondary,name:'Secondary space',spaceId:'secondary-space',tabs:secondaryTabs}]){
+    await record.shell.evaluate(({name,spaceId,tabs})=>{
       const id=window.aux.windowId;
-      localStorage.setItem(`aux.layout.v1:${id}`,JSON.stringify({spaces:[{id:'space',name,color:'slate'}],activeSpaceId:'space',order:tabs.map(tab=>tab.pageId),tabSpace:Object.fromEntries(tabs.map(tab=>[tab.pageId,'space'])),pins:{},folders:[],tabFolder:{}}));
-    },{name:record.name,tabs:record.tabs});
+      localStorage.setItem(`aux.layout.v1:${id}`,JSON.stringify({spaces:[{id:spaceId,name,color:'slate'}],activeSpaceId:spaceId,order:tabs.map(tab=>tab.pageId),tabSpace:Object.fromEntries(tabs.map(tab=>[tab.pageId,spaceId])),pins:{},folders:[],tabFolder:{}}));
+    },{name:record.name,spaceId:record.spaceId,tabs:record.tabs});
     await record.shell.reload();
     await record.shell.locator('.app-body').waitFor();
   }
@@ -120,7 +122,10 @@ try{
   let afterPrimary,afterSecondary;
   for(let attempt=0;attempt<150;attempt++){
     afterPrimary=await snapshot(restoredPrimary.page);afterSecondary=await snapshot(restoredSecondary.page);
-    if(afterPrimary.workspace.pages.length===2&&afterSecondary.workspace.pages.length===2&&!afterPrimary.workspace.restoringTabs&&!afterSecondary.workspace.restoringTabs)break;
+    // Space sync converges asynchronously from the runtime — wait for it with
+    // the tab restore instead of snapshotting mid-import.
+    const spacesReady=afterPrimary.layout?.spaces?.some(space=>space.name==='Primary space')&&afterSecondary.layout?.spaces?.some(space=>space.name==='Secondary space');
+    if(afterPrimary.workspace.pages.length===2&&afterSecondary.workspace.pages.length===2&&!afterPrimary.workspace.restoringTabs&&!afterSecondary.workspace.restoringTabs&&spacesReady)break;
     await delay(100);
   }
   assert.deepEqual(afterPrimary.workspace.pages.map(page=>page.pageId).sort(),primaryTabs.map(page=>page.pageId).sort());

@@ -24,7 +24,8 @@ const launch=async()=>{
 try{
  let started=await launch();app=started.next;let shell=started.shell;
  await shell.getByRole('region',{name:'Private browsing',exact:true}).waitFor();
- await shell.getByLabel('Collapse sidebar').evaluate(button=>button.click());await shell.waitForTimeout(400);
+ await shell.getByLabel('Collapse sidebar').evaluate(button=>button.click());
+ await poll(shell,()=>getComputedStyle(document.querySelector('.sidebar')).width==='0px',true);
  assert.equal(await shell.locator('.sidebar').evaluate(element=>getComputedStyle(element).width),'0px','private sidebar must collapse completely');
  assert.equal(await shell.getByLabel('Show sidebar').count(),1,'collapsed shell must retain a reveal target');
  await shell.getByLabel('Show sidebar').evaluate(button=>button.click());await shell.waitForTimeout(400);
@@ -39,10 +40,10 @@ try{
  assert.equal(await site.evaluate(()=>globalThis.__auxTid),undefined);
  await site.evaluate(()=>{document.cookie='private_cookie=synthetic; SameSite=Lax; Path=/';localStorage.setItem('private-value','synthetic');});
  await site.getByLabel('Private draft').fill('Private unsaved work');
- await shell.getByRole('button',{name:'Site controls',exact:true}).click();
- const siteControls=shell.getByRole('dialog',{name:base});await siteControls.getByText('1 cookie currently visible to this page',{exact:true}).waitFor();
+ await shell.locator('button.cb-site-trigger').evaluate(button=>button.click());
+ const siteControls=shell.getByRole('dialog',{name:base});await siteControls.getByText('1 cookie stored for this address',{exact:true}).waitFor();
  await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
- await siteControls.getByRole('button',{name:'Clear…',exact:true}).click();await siteControls.getByText('0 cookies currently visible to this page',{exact:true}).waitFor();
+ await siteControls.getByRole('button',{name:'Clear…',exact:true}).click();await siteControls.getByText('0 cookies stored for this address',{exact:true}).waitFor();
  assert.equal(await site.evaluate(()=>document.cookie),'');assert.equal(await site.evaluate(()=>localStorage.getItem('private-value')),null);
  await siteControls.getByRole('button',{name:'Close site controls',exact:true}).click();
  await site.evaluate(()=>{document.cookie='private_cookie=synthetic; SameSite=Lax; Path=/';localStorage.setItem('private-value','synthetic');});
@@ -113,4 +114,8 @@ try{
   assert.equal(existsSync(firstChild.userData),false);assert.equal(existsSync(secondChild.userData),false,'committed whole-app Quit must clean every private scratch profile');
  }finally{if(!regularEnded){await regular.evaluate(({app})=>app.exit(0)).catch(()=>{});await regular.close().catch(()=>{});}}
  console.log('Private Aux launches from the regular File menu, protects unsaved work and isolation, and coordinates whole-app Quit without sacrificing earlier windows when a later private window stays.');
-}finally{await app?.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
+}finally{const pid=(()=>{try{return JSON.parse(readFileSync(playwrightReportPath,'utf8')).pid;}catch{return undefined;}})();
+  const closed=app?app.close().catch(()=>{}):null;
+  if(closed)await Promise.race([closed,new Promise(r=>setTimeout(r,20000))]);
+  if(pid)try{process.kill(pid,'SIGKILL');}catch{}
+  await Promise.race([closed??Promise.resolve(),new Promise(r=>setTimeout(r,10000))]).catch(()=>{});server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100});}

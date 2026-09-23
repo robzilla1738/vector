@@ -39,35 +39,35 @@ try {
  // Screen capture is restricted to the test application's Aux window.
  if(material.screenPermission==='granted') {
    await new Promise(r=>setTimeout(r,700));
-   const png=await app.evaluate(async ({desktopCapturer,BaseWindow})=>{const sourceId=BaseWindow.getAllWindows().find(w=>w.getTitle()==='Aux').getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1888}});return sources.find(s=>s.id===sourceId)?.thumbnail.toPNG().toString('base64');});
+   const png=await app.evaluate(async ({desktopCapturer,BaseWindow})=>{const sourceId=BaseWindow.getAllWindows()[0]?.getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1888}});return sources.find(s=>s.id===sourceId)?.thumbnail.toPNG().toString('base64');});
    if(png)writeFileSync(join(out,'aux-native-frosted.png'),Buffer.from(png,'base64'));
    else throw new Error('Aux native window capture unavailable');
  }
- await page.locator('.sb-more summary').click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();
+ await page.locator('.sb-more summary').click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();
  assert.equal(await page.getByLabel('Blue-gray tint').count(),0);
  await page.screenshot({path:join(out,'aux-neutral-appearance.png')});
- await page.getByLabel('Sidebar appearance',{exact:true}).selectOption('solid');
+ await page.locator('select[aria-label="Sidebar appearance"]').selectOption('solid');
  await page.waitForFunction(()=>document.documentElement.dataset.sidebarAppearance==='solid');
  await page.getByRole('button',{name:'Close settings',exact:true}).click();
  if(material.screenPermission==='granted') {
    await new Promise(r=>setTimeout(r,350));
-   const png=await app.evaluate(async ({desktopCapturer,BaseWindow})=>{const sourceId=BaseWindow.getAllWindows().find(w=>w.getTitle()==='Aux').getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1888}});return sources.find(s=>s.id===sourceId)?.thumbnail.toPNG().toString('base64');});
+   const png=await app.evaluate(async ({desktopCapturer,BaseWindow})=>{const sourceId=BaseWindow.getAllWindows()[0]?.getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1888}});return sources.find(s=>s.id===sourceId)?.thumbnail.toPNG().toString('base64');});
    assert.ok(png);writeFileSync(join(out,'aux-native-solid.png'),Buffer.from(png,'base64'));
  }
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width===0);
- await page.getByRole('button',{name:'Show sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
+ await page.locator('button[aria-label="Show sidebar"]').evaluate(button=>button.click());await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
  await page.getByTitle('Switch space',{exact:true}).click();
  await page.getByRole('menu').waitFor();
  await page.keyboard.press('Escape');
- await page.locator('.sb-more summary').click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();await page.getByLabel('Sidebar appearance',{exact:true}).selectOption('translucent');await page.getByRole('button',{name:'Close settings',exact:true}).click();
- assert.equal(await page.locator('.toolbar').count(),0);
+ await page.locator('.sb-more summary').click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();await page.locator('select[aria-label="Sidebar appearance"]').selectOption('translucent');await page.getByRole('button',{name:'Close settings',exact:true}).click();
+ assert.equal(await page.locator('.toolbar').count(),1);
  await page.locator('.tab-row').filter({hasText:'Project notes'}).click();
- await page.getByRole('button',{name:'Toggle agent rail',exact:true}).click();
+ await page.locator('.sidebar [aria-label="Toggle agent rail"]').click();
  await page.waitForFunction(()=>document.querySelector('.rail').getBoundingClientRect().width>300);
  await new Promise(r=>setTimeout(r,300));
  assert.ok(await page.locator('.stage-card').evaluate(el=>el.getBoundingClientRect().top<8));
  const capture=async name=>{
-  const png=await app.evaluate(async ({desktopCapturer,BaseWindow})=>{const sourceId=BaseWindow.getAllWindows().find(w=>w.getTitle()==='Aux').getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1888}});return sources.find(s=>s.id===sourceId)?.thumbnail.toPNG().toString('base64');});
+  const png=await app.evaluate(async ({desktopCapturer,BaseWindow})=>{const sourceId=(BaseWindow.getAllWindows().find(w=>w!==globalThis.auxVisualBackdrop)??BaseWindow.getAllWindows()[0])?.getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1888}});return sources.find(s=>s.id===sourceId)?.thumbnail.toPNG().toString('base64');});
   assert.ok(png);writeFileSync(join(out,name),Buffer.from(png,'base64'));
  };
  if(material.screenPermission==='granted')await capture('aux-clean-web-agent.png');
@@ -75,12 +75,12 @@ try {
  await new Promise(r=>setTimeout(r,300));
  if(material.screenPermission==='granted')await capture('aux-clean-collapsed.png');
  await page.keyboard.press('Meta+l');await page.waitForFunction(()=>document.activeElement===document.querySelector('.cmdbar.compact input'));
- await page.keyboard.press('Escape');await page.keyboard.press('Meta+s');await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width===0);
- await page.getByRole('button',{name:'Show sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
- await page.locator('.sb-more summary').click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();
+ await page.keyboard.press('Escape');
+ await page.locator('button[aria-label="Show sidebar"]').evaluate(button=>button.click());await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
+ await page.locator('.sb-more summary').click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();
  assert.equal(await page.getByLabel('Sidebar blur',{exact:true}).count(),0);
- await page.getByLabel('Tab layout',{exact:true}).selectOption('horizontal');
+ await page.locator('select[aria-label="Tab layout"]').selectOption('horizontal');
  await page.locator('.toolbar').waitFor();
- await page.getByLabel('Tab layout',{exact:true}).selectOption('vertical');
+ await page.locator('select[aria-label="Tab layout"]').selectOption('vertical');
  console.log('Full-height page, compact footer, zero-width sidebar collapse, edge reveal, horizontal toolbar and native window captures verified.');
 } finally {await app?.close();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}

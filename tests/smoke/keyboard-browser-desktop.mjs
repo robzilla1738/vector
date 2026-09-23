@@ -45,6 +45,7 @@ try{
  await page.locator('.space-switch').click();await page.getByRole('menuitem',{name:'New folder',exact:false}).click();
  await page.locator('.folder-name-input').fill('Keyboard folder');await page.locator('.folder-name-input').press('Enter');
  await vertical.getByRole('tab').filter({hasText:'Keyboard Two'}).click({button:'right'});
+ await page.getByRole('menuitem',{name:'Move tab',exact:false}).click();
  await page.getByRole('menuitem',{name:'Keyboard folder',exact:false}).click();
  const folder=page.locator('.folder-row').filter({hasText:'Keyboard folder'});
  if(await folder.getAttribute('aria-expanded')==='true')await folder.click();

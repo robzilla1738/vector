@@ -29,7 +29,7 @@ try{
   await shell.locator('button[aria-label="Site controls"]:visible').click();
   const dialog=shell.getByRole('dialog',{name:base});await dialog.waitFor();
   await dialog.getByText('Local connection',{exact:true}).first().waitFor();
-  await dialog.getByText('1 cookie currently visible to this page',{exact:true}).waitFor();
+  await dialog.getByText('1 cookie stored for this address',{exact:true}).waitFor();
   await dialog.getByText('Notifications',{exact:true}).waitFor();
   await dialog.getByText('Blocked',{exact:true}).waitFor();
   await dialog.getByText('Location',{exact:true}).waitFor();
@@ -41,7 +41,7 @@ try{
   assert.deepEqual((await shell.evaluate(id=>window.aux.siteInfo(id),target.pageId)).permissions,{geolocation:'allow'});
   await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
   await dialog.getByRole('button',{name:'Clear…',exact:true}).click();
-  await dialog.getByText('0 cookies currently visible to this page',{exact:true}).waitFor();
+  await dialog.getByText('0 cookies stored for this address',{exact:true}).waitFor();
   await dialog.getByText('Cookies and stored website data cleared.',{exact:false}).waitFor();
   await dialog.getByRole('button',{name:'Close site controls',exact:true}).click();
   await shell.locator('button[aria-label="Site controls"]:visible').waitFor();

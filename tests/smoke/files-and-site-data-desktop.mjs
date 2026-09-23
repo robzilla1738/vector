@@ -36,8 +36,9 @@ try{
  failUpload=false;await web.getByRole('button',{name:'Upload',exact:true}).click();await web.getByText('Upload complete').waitFor();assert.deepEqual(uploaded,[{name:'first.txt',text:'Synthetic upload 0\n'},{name:'second.txt',text:'Synthetic upload 1\n'}]);
  const sibling=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),other);
  await poll(page,async id=>(await window.aux.invoke('pages.list',{})).some(p=>p.pageId===id&&!p.loading),sibling.pageId);
- const seed=async origin=>app.evaluate(async({webContents},origin)=>webContents.getAllWebContents().find(w=>w.getURL()===origin+'/').executeJavaScript(`(async()=>{localStorage.setItem('auxFixture','saved');document.cookie='auxFixture=cookie; SameSite=Lax; Path=/';await new Promise((resolve,reject)=>{const r=indexedDB.open('auxFixture',1);r.onupgradeneeded=()=>r.result.createObjectStore('items');r.onsuccess=()=>{const db=r.result;const tx=db.transaction('items','readwrite');tx.objectStore('items').put('data','key');tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)}})})()`),origin);
- const read=async origin=>app.evaluate(async({webContents},origin)=>webContents.getAllWebContents().find(w=>w.getURL()===origin+'/').executeJavaScript(`(async()=>({local:localStorage.getItem('auxFixture'),cookie:document.cookie,dbs:(await indexedDB.databases()).map(x=>x.name)}))()`),origin);
+ const wcFor=async origin=>{for(let i=0;i<100;i++){const hit=await app.evaluate(async({webContents},origin)=>{const wc=webContents.getAllWebContents().find(w=>w.getURL()===origin+'/');return wc?wc.id:null},origin);if(hit!==null)return hit;await new Promise(r=>setTimeout(r,50));}throw new Error('no webContents for '+origin);};
+ const seed=async origin=>app.evaluate(async({webContents},id)=>webContents.fromId(id).executeJavaScript(`(async()=>{localStorage.setItem('auxFixture','saved');document.cookie='auxFixture=cookie; SameSite=Lax; Path=/';await new Promise((resolve,reject)=>{const r=indexedDB.open('auxFixture',1);r.onupgradeneeded=()=>r.result.createObjectStore('items');r.onsuccess=()=>{const db=r.result;const tx=db.transaction('items','readwrite');tx.objectStore('items').put('data','key');tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)}})})()`),await wcFor(origin));
+ const read=async origin=>app.evaluate(async({webContents},id)=>webContents.fromId(id).executeJavaScript(`(async()=>({local:localStorage.getItem('auxFixture'),cookie:document.cookie,dbs:(await indexedDB.databases()).map(x=>x.name)}))()`),await wcFor(origin));
  await seed(base);await seed(other);
  await sidebarAction(page,'Settings');await page.getByRole('button',{name:'Site permissions',exact:true}).click();await page.getByLabel('Website to clear').selectOption(target.pageId);
  await app.evaluate(({dialog})=>{dialog.showMessageBox=async(...args)=>{globalThis.auxPrompt=args.at(-1);return {response:0,checkboxChecked:false}}});
@@ -51,7 +52,7 @@ try{
  await app.evaluate(({dialog})=>{globalThis.auxResolve=null;dialog.showMessageBox=()=>new Promise(resolve=>{globalThis.auxResolve=resolve})});
  await page.getByRole('button',{name:'Clear website data…',exact:true}).click();
  for(let i=0;i<100&&!await app.evaluate(()=>!!globalThis.auxResolve);i++)await new Promise(r=>setTimeout(r,20));
- await app.evaluate(async({webContents},{base,other})=>{await webContents.getAllWebContents().find(w=>w.getURL()===base+'/').loadURL(other+'/changed');globalThis.auxResolve({response:1,checkboxChecked:false})},{base,other});
+ await app.evaluate(async({webContents},{id,other})=>{await webContents.fromId(id).loadURL(other+'/changed');globalThis.auxResolve({response:1,checkboxChecked:false})},{id:await wcFor(base),other});
  await page.getByRole('alert').filter({hasText:'The tab changed'}).waitFor();assert.equal((await read(other)).local,'saved');
  const restored=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
  await poll(page,async id=>(await window.aux.invoke('pages.list',{})).some(p=>p.pageId===id&&!p.loading),restored.pageId);
