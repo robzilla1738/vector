@@ -1,4 +1,4 @@
-import type { PageTarget, TabCommand, TabRecord } from "@aux/contracts";
+import type { MethodName, MethodResult, RpcArgs, PageTarget, TabCommand, TabRecord } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { CLOSED_TAB_LIMIT } from "../closed-tabs";
 import { isTab, splitForPage, tabsInSpace, withSyncedOrder } from "../workspace";
@@ -39,8 +39,9 @@ export function patchPage<S extends { pages: PageTarget[] }>(st: S, pageId: stri
   return { pages: st.pages.with(index, { ...page, ...fields }) };
 }
 
-export async function call<T>(method: string, params?: unknown): Promise<T> {
-  return (await bridge.invoke(method, params)) as T;
+/** Typed runtime call — params and result follow the contracts' MethodSchemas/ResultSchemas. */
+export async function call<M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>> {
+  return (await bridge.invoke(method, ...params)) as MethodResult<M>;
 }
 
 export async function sendTabCommand(get: () => Workspace, command: TabCommand): Promise<void> {

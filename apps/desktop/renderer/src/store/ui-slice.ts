@@ -101,7 +101,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     zoomRequests.set(pageId,token);
     const origin=get().pages.find(page=>page.pageId===pageId);
     try{
-      const result = await call<{ level: number }>("pages.zoom", { pageId, ...options });
+      const result = await call("pages.zoom", { pageId, ...options });
       const page=get().pages.find(page=>page.pageId===pageId);
       if(zoomRequests.get(pageId)===token&&page&&page.url===origin?.url&&page.documentEpoch===origin?.documentEpoch)
         set(state => ({ zoomLevels: { ...state.zoomLevels, [pageId]: result.level } }));
@@ -128,7 +128,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
       if (id) await call("pages.stopFind", { pageId: id, action: "clear" });
       return;
     }
-    const r = await call<{ matches: number; activeMatch?: number }>("pages.find", { pageId: id, text, findNext, forward });
+    const r = await call("pages.find", { pageId: id, text, findNext, forward });
     if (sequence === findSequence && get().mode !== "conversation" && get().overlay === "find" && get().activePageId === id && get().findText === text
       && get().pages.find(page => page.pageId === id)?.documentEpoch === epoch) set({ findMatches: r });
   },

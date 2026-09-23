@@ -25,7 +25,7 @@ export function ClearHistory({ initiallyOpen = false }: { initiallyOpen?: boolea
     <div className="row"><button className="btn sm" disabled={busy} onClick={() => { setCutoff(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy} onClick={() => {
         setBusy(true); setError("");
-        void call<{ok:boolean;removed:number}>("history.clear", { before: cutoff, ...(selected.duration === undefined ? {} : { since: Math.max(0, cutoff - selected.duration) }) })
+        void call("history.clear", { before: cutoff, ...(selected.duration === undefined ? {} : { since: Math.max(0, cutoff - selected.duration) }) })
           .then(result => { setCutoff(null); toast(result.removed ? `${result.removed} ${result.removed === 1 ? "visit" : "visits"} removed` : "No visits in this period"); })
           .catch(reason => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setBusy(false));
       }}>{busy ? "Clearing…" : range === "all" ? "Clear all history" : `Clear ${selected.label.toLowerCase()}`}</button></div>

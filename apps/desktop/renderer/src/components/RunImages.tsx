@@ -9,7 +9,7 @@ function RunImage({artifact}:{artifact:Artifact}) {
   const [retry,setRetry]=useState(0);
   useEffect(()=>{
     let live=true;setUrl("");setError("");
-    void call<{dataBase64:string}>("artifacts.read",{artifactId:artifact.artifactId})
+    void call("artifacts.read",{artifactId:artifact.artifactId})
       .then(data=>{if(live)setUrl(`data:${artifact.mediaType};base64,${data.dataBase64}`);})
       .catch(reason=>{if(live)setError(reason instanceof Error ? reason.message : String(reason));});
     return()=>{live=false;};
@@ -32,7 +32,7 @@ export function RunImages({runId}:{runId:string}) {
   const [limit,setLimit]=useState(3);
   useEffect(()=>{
     let live=true;
-    void call<Artifact[]>("artifacts.list",{runId}).then(items=>{
+    void call("artifacts.list",{runId}).then(items=>{
       if(!live)return;
       setArtifacts(items.filter(item=>item.status==="complete" && /^image\/(png|jpeg|webp)$/.test(item.mediaType)).sort((a,b)=>b.createdAt-a.createdAt));setError("");
     }).catch(reason=>{if(live)setError(reason instanceof Error ? reason.message : String(reason));});

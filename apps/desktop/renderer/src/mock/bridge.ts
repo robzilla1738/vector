@@ -19,7 +19,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   ?scenario=disconnected  runtime unreachable → degraded banner
  *   &theme=dark|light  &sidebar=expanded|rail  &live=1 (stream new steps)
  */
-import type { Download, BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
+import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -170,401 +170,476 @@ export function installMockBridge(q: URLSearchParams) {
   };
 
   let nextId = pages.length + 1;
+  type MockHandler = (p: Record<string, unknown>, method: string) => Promise<unknown>;
+  const mockWorkspacesBrowsingMemoryGet: MockHandler = async (p, method) => {
+    const workspaceId = String(p.workspaceId);
+    const prior = browsingMemory.get(workspaceId) ?? { workspaceId, policy: { enabled: false, retentionDays: 7 as const }, pages: [] };
+    const policy = method === "workspaces.browsingMemory.set" ? p.policy as BrowsingMemoryPolicy : prior.policy;
+    const pages = prior.pages.filter(page => page.lastVisitedAt > Date.now() - policy.retentionDays * 86_400_000 && (method !== "workspaces.browsingMemory.forget" || (p.memoryId && page.memoryId !== p.memoryId)));
+    const next = { workspaceId, policy, pages };
+    browsingMemory.set(workspaceId, next);
+    if (method !== "workspaces.browsingMemory.get") emit("workspace.browsingMemory.updated", { workspaceId });
+    return next;
+  };
+  const mockConversationsRename: MockHandler = async (p, method) => {
+    const item=chatSummaries().find(item=>item.chatId===p.chatId);if(!item)throw new Error("Conversation not found");
+    const changed={...item,title:method.endsWith("rename")?String(p.title):item.title,archived:method.endsWith("archive")?!!p.archived:item.archived,updatedAt:Date.now()};
+    chatMetadata.set(item.chatId,changed);emit("conversation.changed",{chatId:item.chatId,title:changed.title,archived:changed.archived});return changed;
+  };
+  const mockConversationsWorkspaceGet: MockHandler = async (p, method) => {
+    const chatId = String(p.chatId);
+    if (method === "conversations.workspace.set") { conversationSpaces.set(chatId, p.workspaceId as string | null); emit("conversation.changed", {chatId}); }
+    const workspaceId = conversationSpaces.get(chatId);
+    const space = spaces.find(item => item.workspaceId === workspaceId);
+    const workspace = space ? {workspaceId: space.workspaceId!, name: space.name, createdAt: 0} : null;
+    const memory = workspace ? memoryNotes.get(workspace.workspaceId) ?? {workspaceId: workspace.workspaceId, content: "", revision: 0, enabled: true} : null;
+    return {chatId, workspace, memory, assigned: conversationSpaces.has(chatId), memoryPreview: workspaceMemoryText(memory), browsingPreview: ""};
+  };
+  const mockConversationsImagesToggle: MockHandler = async (p, method) => {
+    const chatId=String(p.chatId),items=imageReferences.get(chatId)??[];
+    imageReferences.set(chatId,method.endsWith("remove")?items.filter(item=>item.image.imageId!==p.imageId):items.map(item=>item.image.imageId===p.imageId?{...item,image:{...item.image,included:!!p.included}}:item));return imageList(chatId);
+  };
+  const mockConversationsAttachmentsToggle: MockHandler = async (p, method) => {
+    const chatId=String(p.chatId),items=documents.get(chatId)??[];
+    documents.set(chatId,method.endsWith("remove")?items.filter(item=>item.attachmentId!==p.attachmentId):items.map(item=>item.attachmentId===p.attachmentId?{...item,included:!!p.included}:item));emit("conversation.context.changed",{chatId});return documentList(chatId);
+  };
+  const mockPagesBack: MockHandler = async p => {
+    return page(p.pageId as string);
+  };
+  const handlers = {
+    "workspace.get": async () => {
+      return workspace();
+    },
+    "spaces.import": async p => {
+      for (const input of p.spaces as { id: string; name: string; color: BrowserSpace["color"] }[]) {
+        if (!spaces.some(space => space.id === input.id)) spaces.push({ ...input, workspaceId: `workspace:${input.id}`, archived: false });
+      }
+      return spaces;
+    },
+    "spaces.list": async () => {
+      return spaces;
+    },
+    "spaces.create": async p => {
+      const id = crypto.randomUUID();
+      spaces = [...spaces, { id, workspaceId: `workspace:${id}`, name: String(p.name), color: p.color as BrowserSpace["color"], archived: false }];
+      emit("spaces.updated", { spaces });
+      return spaces;
+    },
+    "spaces.update": async p => {
+      spaces = spaces.map(space => space.id === p.id ? { ...space, ...p } as BrowserSpace : space);
+      emit("spaces.updated", { spaces });
+      return spaces;
+    },
+    "workspaces.browsingMemory.get": mockWorkspacesBrowsingMemoryGet,
+    "workspaces.browsingMemory.set": mockWorkspacesBrowsingMemoryGet,
+    "workspaces.browsingMemory.forget": mockWorkspacesBrowsingMemoryGet,
+    "workspaces.browsingMemory.record": async () => {
+      return { recorded: false };
+    },
+    "workspaces.memory.get": async p => {
+      return memoryNotes.get(String(p.workspaceId))??{workspaceId:String(p.workspaceId),content:"",revision:0,enabled:true};
+    },
+    "workspaces.memory.set": async p => {
+      const workspaceId=String(p.workspaceId),prior=memoryNotes.get(workspaceId);
+      if((prior?.revision??0)!==p.expectedRevision)throw new Error("Workspace memory changed; reload it before saving.");
+      const next={workspaceId,excludedOrigins:(p.excludedOrigins as string[]|undefined)??prior?.excludedOrigins??[],content:String(p.content),items:(p.items as WorkspaceMemory["items"])??prior?.items??[],revision:(prior?.revision??0)+1,enabled:typeof p.enabled==="boolean"?p.enabled:prior?.enabled??true,updatedAt:Date.now()};
+      memoryNotes.set(workspaceId,next);emit("workspace.memory.updated",{workspaceId,revision:next.revision});return next;
+    },
+    "workspaces.memory.search": async p => {
+      return [...memoryNotes.values()].filter(memory=>[memory.content,...(memory.items??[]).map(item=>`${item.content} ${item.sourceUrl??""}`)].join("\n").toLowerCase().includes(String(p.query).toLowerCase())||spaces.find(space=>space.workspaceId===memory.workspaceId)?.name.toLowerCase().includes(String(p.query).toLowerCase())).map(memory=>({workspaceId:memory.workspaceId,name:spaces.find(space=>space.workspaceId===memory.workspaceId)?.name??"Space",excerpt:memory.content.slice(0,240),enabled:memory.enabled}));
+    },
+    "workspaces.list": async () => {
+      return spaces.map(space => ({ workspaceId: space.workspaceId, name: space.name, createdAt: 0 }));
+    },
+    "plugins.inspect": async () => {
+      return { name: "Example bundle", version: "1.0", routineCount: 1, routineTitles: ["Weekly digest"] };
+    },
+    "plugins.install": async p => {
+      return { plugin: { pluginId: "plg-1", name: "Example bundle", workspaceId: p.workspaceId, routineIds: [], installedAt: Date.now() }, imported: 0, skipped: 1 };
+    },
+    "plugins.list": async () => {
+      return [];
+    },
+    "plugins.uninstall": async p => {
+      return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
+    },
+    "tasks.list": async () => {
+      return [];
+    },
+    "conversations.prepared": async () => {
+      return [];
+    },
+    "conversations.list": async p => {
+      const query=String(p.query??"").toLowerCase(),before=p.before as {updatedAt:number;chatId:string}|undefined;
+      return chatSummaries().filter(item=>(p.workspaceId===undefined||conversationSpaces.get(item.chatId)===p.workspaceId)&&item.archived===!!p.archived&&(!query||`${item.title} ${item.latestRun.goal} ${String(item.latestRun.result?.answer??"")}`.toLowerCase().includes(query))&&(!before||item.updatedAt<before.updatedAt||(item.updatedAt===before.updatedAt&&item.chatId<before.chatId))).slice(0,Number(p.limit??40));
+    },
+    "conversations.get": async p => {
+      return chatSummaries().find(item=>item.chatId===p.chatId)??null;
+    },
+    "conversations.rename": mockConversationsRename,
+    "conversations.archive": mockConversationsRename,
+    "conversations.delete": async p => {
+      const before=runs.length;runs=runs.filter(run=>(run.config?.chatId??run.runId)!==p.chatId);chatMetadata.delete(String(p.chatId));documents.delete(String(p.chatId));emit("conversation.deleted",{chatId:p.chatId});return {ok:true,deletedRuns:before-runs.length};
+    },
+    "runs.context.get": async p => {
+      return {chatId:p.chatId,historyEnabled:true,entries:[]};
+    },
+    "results.search": async p => {
+      return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture] : [];
+    },
+    "results.read": async p => {
+      if(scenario!=="results"||p.artifactId!==resultFixture.artifactId)throw new Error("Saved result is unavailable.");return {...resultFixture,content:resultContent};
+    },
+    "conversations.artifacts.get": async p => {
+      return {chatId:p.chatId,artifacts:[...(artifactChips.get(String(p.chatId)) ?? [])]};
+    },
+    "conversations.artifacts.toggle": async p => {
+      const chatId=String(p.chatId);
+      const list=artifactChips.get(chatId)??[];
+      for(const item of list)if(item.artifactId===p.artifactId)item.included=!!p.included;
+      return {chatId,artifacts:[...list]};
+    },
+    "conversations.sources.get": async p => {
+      return {chatId:p.chatId,sources:[]};
+    },
+    "conversations.workspace.get": mockConversationsWorkspaceGet,
+    "conversations.workspace.set": mockConversationsWorkspaceGet,
+    "pages.capture": async () => {
+      const canvas = document.createElement("canvas"); canvas.width = 1280; canvas.height = 800;
+      const ctx = canvas.getContext("2d")!; ctx.fillStyle = "#f5f6fa"; ctx.fillRect(0, 0, 1280, 800);
+      ctx.fillStyle = "#202532"; ctx.font = "40px system-ui"; ctx.fillText("Project research — sample page", 90, 120);
+      ctx.font = "24px system-ui"; ctx.fillText("Mock capture for reviewing the attachment interface", 90, 180);
+      for (let i=0;i<3;i++) { ctx.fillStyle=["#dae7ff", "#e7defa", "#dbece5"][i]!; ctx.fillRect(90+i*365, 260, 330, 360); }
+      return {dataUrl:canvas.toDataURL("image/png"),width:1280,height:800,scale:1};
+    },
+    "conversations.images.get": async p => {
+      return imageList(String(p.chatId));
+    },
+    "conversations.images.add": async p => {
+      const chatId=String(p.chatId), items=imageReferences.get(chatId)??[];
+      if(items.length>=4)throw new Error("A conversation can hold four image references.");
+      const bitmap=new Image();bitmap.src=String(p.dataUrl);await bitmap.decode();
+      const image: ConversationImage={imageId:crypto.randomUUID(),artifactId:crypto.randomUUID(),filename:String(p.filename),sourceUrl:p.sourceUrl as string|undefined,width:bitmap.naturalWidth,height:bitmap.naturalHeight,byteLength:Math.floor(String(p.dataUrl).length*.75),createdAt:Date.now(),included:true};
+      items.push({image,dataUrl:String(p.dataUrl)});imageReferences.set(chatId,items);return imageList(chatId);
+    },
+    "conversations.images.read": async p => {
+      const item=(imageReferences.get(String(p.chatId))??[]).find(item=>item.image.imageId===p.imageId);
+      if(!item)throw new Error("Image reference not found.");return item;
+    },
+    "conversations.images.toggle": mockConversationsImagesToggle,
+    "conversations.images.remove": mockConversationsImagesToggle,
+    "conversations.attachments.get": async p => {
+      return documentList(String(p.chatId));
+    },
+    "conversations.attachments.page": async p => {
+      const page=pages.find(page=>page.pageId===p.pageId);
+      if(!page)throw new Error("This tab is no longer available.");
+      const chatId=String(p.chatId),items=documents.get(chatId)??[];
+      if(items.length>=5)throw new Error("Remove a snapshot before adding another.");
+      const content=`Page: ${page.title}\nSource: ${page.url}\n\nMock page text for reviewing page attachments.`;
+      items.push({attachmentId:crypto.randomUUID(),filename:`${page.title.slice(0,180)}.txt`,sourceUrl:page.url,sourceTruncated:false,content,byteLength:content.length,createdAt:Date.now(),included:true});
+      documents.set(chatId,items);emit("conversation.context.changed",{chatId});return documentList(chatId);
+    },
+    "conversations.attachments.add": async p => {
+      const chatId=String(p.chatId),items=documents.get(chatId)??[];
+      items.push({attachmentId:crypto.randomUUID(),filename:String(p.filename),content:String(p.content),byteLength:new TextEncoder().encode(String(p.content)).length,createdAt:Date.now(),included:true});
+      documents.set(chatId,items);emit("conversation.context.changed",{chatId});return documentList(chatId);
+    },
+    "conversations.attachments.toggle": mockConversationsAttachmentsToggle,
+    "conversations.attachments.remove": mockConversationsAttachmentsToggle,
+    "conversations.attachments.read": async p => {
+      const items=documents.get(String(p.chatId))??[];
+      const shares=textContextShares(items.map(item=>item.included?item.content.length:0),6000);
+      for(const [index,item] of items.entries()){
+        const contextCharacters=shares[index]!;
+        if(item.attachmentId===p.attachmentId)return {attachment:documentList(String(p.chatId)).attachments.find(entry=>entry.attachmentId===item.attachmentId),content:item.content,contextCharacters};
+      }
+      throw new Error("Document attachment not found.");
+    },
+    "settings.get": async () => {
+      return { ...settings };
+    },
+    "settings.set": async p => {
+      Object.assign(settings, p);
+      emit("settings.changed", { settings: { ...settings } });
+      return { ok: true };
+    },
+    "browser.recovery.list": async () => {
+      return recoveryTabs;
+    },
+    "browser.recovery.retry": async p => {
+      const saved=recoveryTabs.find(tab=>tab.pageId===p.pageId);if(!saved)throw new Error("This tab has already been restored.");
+      const page=makePage(pages.length,{...saved,backend:"aux",viewStatus:"visible"});pages.push(page);
+      recoveryTabs=recoveryTabs.filter(tab=>tab.pageId!==p.pageId);
+      emit("page.added",{page});emit("browser.recovery.changed",{});
+      return {ok:true,pageId:page.pageId};
+    },
+    "bookmarks.folders.list": async () => {
+      return bookmarkFolders;
+    },
+    "bookmarks.list": async () => {
+      return bookmarks;
+    },
+    "downloads.list": async () => {
+      return downloads;
+    },
+    "downloads.remove": async p => {
+      const ids = new Set(p.ids as string[]);
+      const removed = downloads.filter(item => ids.has(item.id) && !item.canCancel && ["completed", "cancelled", "interrupted"].includes(item.state)).map(item => item.id);
+      downloads = downloads.filter(item => !removed.includes(item.id));
+      emit("downloads.removed", {ids:removed});
+      return {removed};
+    },
+    "programs.list": async () => {
+      return PROGRAMS;
+    },
+    "history.list": async p => {
+      const query = ((p.query as string) ?? "").toLowerCase();
+      const before = p.before as {visitedAt:number;url:string}|undefined;
+      return history.filter(h => (!query || `${h.title} ${h.url}`.toLowerCase().includes(query))
+        && (p.since === undefined || h.visitedAt >= Number(p.since))
+        && (!before || h.visitedAt < before.visitedAt || (h.visitedAt === before.visitedAt && h.url < before.url)))
+        .sort((a,b) => b.visitedAt-a.visitedAt || (a.url < b.url ? 1 : a.url > b.url ? -1 : 0)).slice(0, Number(p.limit ?? 100));
+    },
+    "models.list": async () => {
+      return { models: modelPickerEntries(MODEL_REGISTRY), source: "static" };
+    },
+    "models.probe": async p => {
+      return { ok: true, modelId: (p.modelId as string) || "alibaba/qwen3.8-27b", latencyMs: 42, vision: false };
+    },
+    "chrome.importCookies": async () => {
+      return { ok: true, source: "mock", imported: 0, skipped: 0, domains: 0, detail: "Cookie import is not available in mock." };
+    },
+    "programs.run": async p => {
+      const id = `run-${Math.random().toString(36).slice(2, 6)}`;
+      const run: Run = { runId: id, goal: `program ${(p.programId as string) ?? ""}`, status: "running", pageIds: p.pageId ? [p.pageId as string] : [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Running saved program" };
+      runs = [run, ...runs];
+      emit("run.status", { run }, id);
+      steps[id] = [];
+      void scriptRun(id);
+      return { runId: id };
+    },
+    "sets.results": async () => {
+      return MEMBERS.filter((m) => m.resultId).map((m, i) => ({
+        resultId: m.resultId!,
+        memberId: m.memberId,
+        sourceUrl: m.url!,
+        values: { plan: ["Free", "Pro", "Business"][i % 3], price_usd: [0, 8, 15, 10, 12, 20][i], seats: i % 2 ? "per seat" : "flat" },
+        observedAt: Date.now() - i * 30_000,
+        status: "ok",
+      }));
+    },
+    "pages.open": async p => {
+      const url = (p.url as string) ?? "about:blank";
+      const np: PageTarget = { ...makePage(nextId - 1), pageId: `page-${nextId}`, url, title: url === "about:blank" ? "" : hostTitle(url), favicon: undefined, canGoBack: false, loading: url !== "about:blank" };
+      nextId++;
+      pages = [...pages, np];
+      emit("page.added", { page: np });
+      if (p.activate) {
+        activePageId = np.pageId;
+        emit("page.updated", { pageId: np.pageId, activePageId });
+      }
+      if (np.loading) setTimeout(() => patch(np.pageId, { loading: false, title: hostTitle(url) }), 900);
+      return np;
+    },
+    "pages.close": async p => {
+      const id = p.pageId as string;
+      pages = pages.filter((x) => x.pageId !== id);
+      if (activePageId === id) activePageId = null;
+      emit("page.removed", { pageId: id });
+      return { ok: true };
+    },
+    "pages.activate": async p => {
+      activePageId = p.pageId as string;
+      return page(activePageId);
+    },
+    "pages.navigate": async p => {
+      const id = p.pageId as string;
+      const url = p.url as string;
+      patch(id, { url, loading: true, title: hostTitle(url) });
+      for (const l of loadingListeners) l({ pageId: id, loading: true });
+      setTimeout(() => {
+        patch(id, { loading: false, canGoBack: true });
+        for (const l of loadingListeners) l({ pageId: id, loading: false });
+      }, 1100);
+      return page(id);
+    },
+    "pages.reload": async p => {
+      const id = p.pageId as string;
+      patch(id, { loading: true });
+      setTimeout(() => patch(id, { loading: false }), 700);
+      return page(id);
+    },
+    "pages.back": mockPagesBack,
+    "pages.forward": mockPagesBack,
+    "pages.stop": mockPagesBack,
+    "pages.resume": async p => {
+      patch(p.pageId as string, { controller: "agent" });
+      emit("page.takeover", { pageId: p.pageId, controller: "agent" });
+      runs.filter((r) => r.status === "paused").forEach((r) => patchRun(r.runId, { status: "running", statusMessage: "Resuming — re-observing the page" }, true));
+      return page(p.pageId as string);
+    },
+    "pages.takeover": async p => {
+      patch(p.pageId as string, { controller: "human" });
+      emit("page.takeover", { pageId: p.pageId, controller: "human" });
+      return page(p.pageId as string);
+    },
+    "pages.observe": async p => {
+      return { observation: { ...OBSERVATION, pageId: p.pageId as string } };
+    },
+    "pages.find": async () => {
+      return { matches: 7, activeMatch: 2 };
+    },
+    "pages.pickElement": async () => {
+      return { picked: false };
+    },
+    "pages.stopFind": async () => {
+      return { ok: true };
+    },
+    "bookmarks.add": async p => {
+      bookmarks = [{ url: String(p.url), title: String(p.title) }, ...bookmarks.filter(item => item.url !== p.url)];
+      emit("bookmarks.changed", { bookmarks }); return { ok: true };
+    },
+    "bookmarks.update": async p => {
+      const previous=bookmarks.find(item=>item.url===p.originalUrl);
+      if(!previous)throw new Error("This bookmark was removed.");
+      if(p.url!==p.originalUrl&&bookmarks.some(item=>item.url===p.url))throw new Error("That address is already bookmarked. Both bookmarks have been kept.");
+      bookmarks=bookmarks.map(item=>item===previous?{...item,url:String(p.url),title:String(p.title),folderPath:p.folderPath as string[]}:item);
+      emit("bookmarks.changed",{bookmarks});return {ok:true};
+    },
+    "bookmarks.folders.create": async p => {
+      const path = p.path as string[];
+      for (let depth = 1; depth <= path.length; depth++) {
+        const parent = path.slice(0, depth);
+        if (!bookmarkFolders.some(folder => JSON.stringify(folder) === JSON.stringify(parent))) bookmarkFolders.push(parent);
+      }
+      emit("bookmarks.changed", {bookmarks}); return bookmarkFolders;
+    },
+    "bookmarks.move": async p => {
+      const selected = p.bookmarks as {url:string;folderPath:string[]}[];
+      const destination = p.folderPath as string[];
+      for (const item of selected) {
+        const current = bookmarks.find(bookmark => bookmark.url === item.url);
+        if (!current || JSON.stringify(current.folderPath ?? []) !== JSON.stringify(item.folderPath)) throw new Error("A selected bookmark changed. Select it again; nothing was moved.");
+      }
+      if (p.createFolder) {
+        if (!destination.length || bookmarkFolders.some(path => JSON.stringify(path) === JSON.stringify(destination))) throw new Error("A folder with this name already exists. Choose another name.");
+        const parent = destination.slice(0, -1);
+        if (parent.length && !bookmarkFolders.some(path => JSON.stringify(path) === JSON.stringify(parent))) throw new Error("The parent folder no longer exists. Choose another folder.");
+        bookmarkFolders.push(destination);
+      }
+      if (destination.length && !bookmarkFolders.some(path => JSON.stringify(path) === JSON.stringify(destination))) throw new Error("The destination folder no longer exists.");
+      const urls = new Set(selected.map(item => item.url)); let moved = 0;
+      bookmarks = bookmarks.map(item => {
+        if (!urls.has(item.url) || JSON.stringify(item.folderPath ?? []) === JSON.stringify(destination)) return item;
+        moved++; return {...item, folderPath:destination};
+      });
+      emit("bookmarks.changed", {bookmarks}); return {moved};
+    },
+    "bookmarks.remove": async p => {
+      bookmarks = bookmarks.filter(item => item.url !== p.url);
+      emit("bookmarks.changed", { bookmarks }); return { ok: true };
+    },
+    "bookmarks.saveFolder": async p => {
+      const name=String(p.name);
+      if(bookmarkFolders.some(path=>path.length===1&&path[0]===name))throw new Error("A bookmark folder already has this name.");
+      const incoming=p.bookmarks as {url:string;title:string}[];let added=0;
+      if(incoming.every(item=>bookmarks.some(old=>old.url===item.url)))throw new Error("These pages are already bookmarked. Find them in Library to organize their folders.");
+      bookmarkFolders.push([name]);
+      for(const item of incoming)if(!bookmarks.some(old=>old.url===item.url)){bookmarks.push({...item,folderPath:[name]});added++;}
+      emit("bookmarks.changed",{bookmarks});return {added,skipped:incoming.length-added};
+    },
+    "bookmarks.import": async p => {
+      const incoming = p.bookmarks as { url: string; title: string }[];
+      let added = 0;
+      for (const item of incoming) if (!bookmarks.some(old => old.url === item.url)) { bookmarks.push(item); added++; }
+      emit("bookmarks.changed", { bookmarks }); return { added, skipped: incoming.length - added };
+    },
+    "history.clear": async p => {
+      const previous = history.length;
+      history = history.filter(item => (p.since !== undefined && item.visitedAt < Number(p.since)) || (p.before !== undefined && item.visitedAt >= Number(p.before)));
+      emit("history.changed", {}); return { ok: true, removed: previous - history.length };
+    },
+    "history.remove": async p => {
+      const size = history.length;
+      history = history.filter(item => item.url !== p.url || item.visitedAt !== p.visitedAt);
+      emit("history.changed", {}); return { removed: history.length < size };
+    },
+    "pages.zoom": async p => {
+      const id = String(p.pageId);
+      const current = zoomLevels.get(id) ?? 0;
+      const requested = p.reset ? 0 : p.direction === "in" || p.direction === "out" ? steppedZoomLevel(current, p.direction)
+        : typeof p.level === "number" ? p.level : current + Number(p.delta ?? 0);
+      const level = Math.max(Math.log(0.25) / Math.log(1.2), Math.min(Math.log(5) / Math.log(1.2), requested));
+      zoomLevels.set(id, level); if (p.reset || p.direction || p.level !== undefined || p.delta !== undefined) for (const listener of zoomListeners) listener(); return { level };
+    },
+    "artifacts.read": async p => {
+      return { artifact: { artifactId: p.artifactId, path: "", mediaType: "application/json", size: 0, status: "complete", createdAt: Date.now() }, dataBase64: btoa(unescape(encodeURIComponent(JSON.stringify(OBSERVATION)))) };
+    },
+    "runs.get": async p => {
+      const run = runs.find((r) => r.runId === p.runId);
+      if (!run) throw new Error("no such run");
+      return { run, steps: steps[run.runId] ?? [], modelCalls: run.config?.modelCalls ?? 3 };
+    },
+    "runs.list": async p => {
+      const key = (run: Run) => run.config?.chatId ?? run.runId;
+      const query = String(p.query ?? "").trim().toLowerCase();
+      const matches = new Set(runs.filter(run => `${run.goal} ${run.statusMessage ?? ""}`.toLowerCase().includes(query)).map(key));
+      const seen = new Set<string>();
+      const before = p.before as { createdAt: number; runId: string } | undefined;
+      return [...runs].sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId)).filter(run => {
+        if (p.groupByChat && seen.has(key(run))) return false;
+        seen.add(key(run));
+        return (!p.chatId || key(run) === p.chatId) && matches.has(key(run)) && (!before || run.createdAt < before.createdAt || (run.createdAt === before.createdAt && run.runId < before.runId));
+      }).slice(0, Number(p.limit ?? 50));
+    },
+    "runs.start": async p => {
+      const id = `run-${Math.random().toString(36).slice(2, 6)}`;
+      const run: Run = { runId: id, goal: p.goal as string, status: "planning", pageIds: (p.pageIds as string[]) ?? [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Observing the page" };
+      runs = [run, ...runs];
+      emit("run.status", { run }, id);
+      steps[id] = [];
+      void scriptRun(id);
+      return run;
+    },
+    "runs.retry": async p => {
+      const prior = runs.find((r) => r.runId === p.runId);
+      if (!prior) throw new Error("no such run");
+      const id = `run-${Math.random().toString(36).slice(2, 6)}`;
+      const run: Run = { runId: id, goal: prior.goal, status: "planning", pageIds: prior.pageIds, config: { ...prior.config, chatId: prior.config?.chatId ?? prior.runId, retryOfRunId: prior.runId }, createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Retrying the turn" };
+      runs = [run, ...runs];
+      emit("run.status", { run }, id);
+      steps[id] = [];
+      void scriptRun(id);
+      return run;
+    },
+    "runs.pause": async p => {
+      patchRun(p.runId as string, { status: "paused", statusMessage: "Paused" }, true);
+      return runs.find((r) => r.runId === p.runId);
+    },
+    "runs.resume": async p => {
+      patchRun(p.runId as string, { status: "running", statusMessage: "Resumed" }, true);
+      return runs.find((r) => r.runId === p.runId);
+    },
+    "runs.cancel": async p => {
+      patchRun(p.runId as string, { status: "cancelled", statusMessage: "Cancelled", endedAt: Date.now() }, true);
+      return runs.find((r) => r.runId === p.runId);
+    },
+    "runs.answer": async p => {
+      patchRun(p.runId as string, { status: "running", statusMessage: `Answer received — continuing` }, true);
+      return runs.find((r) => r.runId === p.runId);
+    },
+    "sets.create": async () => {
+      return SET;
+    },
+  } satisfies Partial<Record<MethodName, MockHandler>>;
+
   const invoke = async (method: string, params: unknown = {}): Promise<unknown> => {
     if (scenario === "disconnected") throw new Error("runtime not connected");
-    const p = params as Record<string, unknown>;
     await sleep(method.startsWith("pages.") ? 20 : 8);
-    switch (method) {
-      case "workspace.get":
-        return workspace();
-      case "spaces.import":
-        for (const input of p.spaces as { id: string; name: string; color: BrowserSpace["color"] }[]) {
-          if (!spaces.some(space => space.id === input.id)) spaces.push({ ...input, workspaceId: `workspace:${input.id}`, archived: false });
-        }
-        return spaces;
-      case "spaces.list": return spaces;
-      case "spaces.create": {
-        const id = crypto.randomUUID();
-        spaces = [...spaces, { id, workspaceId: `workspace:${id}`, name: String(p.name), color: p.color as BrowserSpace["color"], archived: false }];
-        emit("spaces.updated", { spaces });
-        return spaces;
-      }
-      case "spaces.update":
-        spaces = spaces.map(space => space.id === p.id ? { ...space, ...p } as BrowserSpace : space);
-        emit("spaces.updated", { spaces });
-        return spaces;
-      case "workspaces.browsingMemory.get":
-      case "workspaces.browsingMemory.set":
-      case "workspaces.browsingMemory.forget": {
-        const workspaceId = String(p.workspaceId);
-        const prior = browsingMemory.get(workspaceId) ?? { workspaceId, policy: { enabled: false, retentionDays: 7 as const }, pages: [] };
-        const policy = method === "workspaces.browsingMemory.set" ? p.policy as BrowsingMemoryPolicy : prior.policy;
-        const pages = prior.pages.filter(page => page.lastVisitedAt > Date.now() - policy.retentionDays * 86_400_000 && (method !== "workspaces.browsingMemory.forget" || (p.memoryId && page.memoryId !== p.memoryId)));
-        const next = { workspaceId, policy, pages };
-        browsingMemory.set(workspaceId, next);
-        if (method !== "workspaces.browsingMemory.get") emit("workspace.browsingMemory.updated", { workspaceId });
-        return next;
-      }
-      case "workspaces.browsingMemory.record": return { recorded: false };
-      case "workspaces.memory.get": return memoryNotes.get(String(p.workspaceId))??{workspaceId:String(p.workspaceId),content:"",revision:0,enabled:true};
-      case "workspaces.memory.set": {
-        const workspaceId=String(p.workspaceId),prior=memoryNotes.get(workspaceId);
-        if((prior?.revision??0)!==p.expectedRevision)throw new Error("Workspace memory changed; reload it before saving.");
-        const next={workspaceId,excludedOrigins:(p.excludedOrigins as string[]|undefined)??prior?.excludedOrigins??[],content:String(p.content),items:(p.items as WorkspaceMemory["items"])??prior?.items??[],revision:(prior?.revision??0)+1,enabled:typeof p.enabled==="boolean"?p.enabled:prior?.enabled??true,updatedAt:Date.now()};
-        memoryNotes.set(workspaceId,next);emit("workspace.memory.updated",{workspaceId,revision:next.revision});return next;
-      }
-      case "workspaces.memory.search": return [...memoryNotes.values()].filter(memory=>[memory.content,...(memory.items??[]).map(item=>`${item.content} ${item.sourceUrl??""}`)].join("\n").toLowerCase().includes(String(p.query).toLowerCase())||spaces.find(space=>space.workspaceId===memory.workspaceId)?.name.toLowerCase().includes(String(p.query).toLowerCase())).map(memory=>({workspaceId:memory.workspaceId,name:spaces.find(space=>space.workspaceId===memory.workspaceId)?.name??"Space",excerpt:memory.content.slice(0,240),enabled:memory.enabled}));
-      case "workspaces.list": return spaces.map(space => ({ workspaceId: space.workspaceId, name: space.name, createdAt: 0 }));
-      case "plugins.inspect":
-        return { name: "Example bundle", version: "1.0", routineCount: 1, routineTitles: ["Weekly digest"] };
-      case "plugins.install":
-        return { plugin: { pluginId: "plg-1", name: "Example bundle", workspaceId: p.workspaceId, routineIds: [], installedAt: Date.now() }, imported: 0, skipped: 1 };
-      case "plugins.list": return [];
-      case "plugins.uninstall":
-        return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
-      case "tasks.list": return [];
-      case "conversations.prepared": return [];
-      case "conversations.list": {
-        const query=String(p.query??"").toLowerCase(),before=p.before as {updatedAt:number;chatId:string}|undefined;
-        return chatSummaries().filter(item=>(p.workspaceId===undefined||conversationSpaces.get(item.chatId)===p.workspaceId)&&item.archived===!!p.archived&&(!query||`${item.title} ${item.latestRun.goal} ${String(item.latestRun.result?.answer??"")}`.toLowerCase().includes(query))&&(!before||item.updatedAt<before.updatedAt||(item.updatedAt===before.updatedAt&&item.chatId<before.chatId))).slice(0,Number(p.limit??40));
-      }
-      case "conversations.get": return chatSummaries().find(item=>item.chatId===p.chatId)??null;
-      case "conversations.rename":
-      case "conversations.archive": {
-        const item=chatSummaries().find(item=>item.chatId===p.chatId);if(!item)throw new Error("Conversation not found");
-        const changed={...item,title:method.endsWith("rename")?String(p.title):item.title,archived:method.endsWith("archive")?!!p.archived:item.archived,updatedAt:Date.now()};
-        chatMetadata.set(item.chatId,changed);emit("conversation.changed",{chatId:item.chatId,title:changed.title,archived:changed.archived});return changed;
-      }
-      case "conversations.delete": {
-        const before=runs.length;runs=runs.filter(run=>(run.config?.chatId??run.runId)!==p.chatId);chatMetadata.delete(String(p.chatId));documents.delete(String(p.chatId));emit("conversation.deleted",{chatId:p.chatId});return {ok:true,deletedRuns:before-runs.length};
-      }
-      case "runs.context.get": return {chatId:p.chatId,historyEnabled:true,entries:[]};
-      case "results.search": return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture] : [];
-      case "results.read": if(scenario!=="results"||p.artifactId!==resultFixture.artifactId)throw new Error("Saved result is unavailable.");return {...resultFixture,content:resultContent};
-      case "conversations.artifacts.get": return {chatId:p.chatId,artifacts:[...(artifactChips.get(String(p.chatId)) ?? [])]};
-      case "conversations.artifacts.toggle": {
-        const chatId=String(p.chatId);
-        const list=artifactChips.get(chatId)??[];
-        for(const item of list)if(item.artifactId===p.artifactId)item.included=!!p.included;
-        return {chatId,artifacts:[...list]};
-      }
-      case "conversations.sources.get": return {chatId:p.chatId,sources:[]};
-      case "conversations.workspace.get":
-      case "conversations.workspace.set": {
-        const chatId = String(p.chatId);
-        if (method === "conversations.workspace.set") { conversationSpaces.set(chatId, p.workspaceId as string | null); emit("conversation.changed", {chatId}); }
-        const workspaceId = conversationSpaces.get(chatId);
-        const space = spaces.find(item => item.workspaceId === workspaceId);
-        const workspace = space ? {workspaceId: space.workspaceId!, name: space.name, createdAt: 0} : null;
-        const memory = workspace ? memoryNotes.get(workspace.workspaceId) ?? {workspaceId: workspace.workspaceId, content: "", revision: 0, enabled: true} : null;
-        return {chatId, workspace, memory, assigned: conversationSpaces.has(chatId), memoryPreview: workspaceMemoryText(memory), browsingPreview: ""};
-      }
-      case "pages.capture": {
-        const canvas = document.createElement("canvas"); canvas.width = 1280; canvas.height = 800;
-        const ctx = canvas.getContext("2d")!; ctx.fillStyle = "#f5f6fa"; ctx.fillRect(0, 0, 1280, 800);
-        ctx.fillStyle = "#202532"; ctx.font = "40px system-ui"; ctx.fillText("Project research — sample page", 90, 120);
-        ctx.font = "24px system-ui"; ctx.fillText("Mock capture for reviewing the attachment interface", 90, 180);
-        for (let i=0;i<3;i++) { ctx.fillStyle=["#dae7ff", "#e7defa", "#dbece5"][i]!; ctx.fillRect(90+i*365, 260, 330, 360); }
-        return {dataUrl:canvas.toDataURL("image/png"),width:1280,height:800,scale:1};
-      }
-      case "conversations.images.get": return imageList(String(p.chatId));
-      case "conversations.images.add": {
-        const chatId=String(p.chatId), items=imageReferences.get(chatId)??[];
-        if(items.length>=4)throw new Error("A conversation can hold four image references.");
-        const bitmap=new Image();bitmap.src=String(p.dataUrl);await bitmap.decode();
-        const image: ConversationImage={imageId:crypto.randomUUID(),artifactId:crypto.randomUUID(),filename:String(p.filename),sourceUrl:p.sourceUrl as string|undefined,width:bitmap.naturalWidth,height:bitmap.naturalHeight,byteLength:Math.floor(String(p.dataUrl).length*.75),createdAt:Date.now(),included:true};
-        items.push({image,dataUrl:String(p.dataUrl)});imageReferences.set(chatId,items);return imageList(chatId);
-      }
-      case "conversations.images.read": {
-        const item=(imageReferences.get(String(p.chatId))??[]).find(item=>item.image.imageId===p.imageId);
-        if(!item)throw new Error("Image reference not found.");return item;
-      }
-      case "conversations.images.toggle":
-      case "conversations.images.remove": {
-        const chatId=String(p.chatId),items=imageReferences.get(chatId)??[];
-        imageReferences.set(chatId,method.endsWith("remove")?items.filter(item=>item.image.imageId!==p.imageId):items.map(item=>item.image.imageId===p.imageId?{...item,image:{...item.image,included:!!p.included}}:item));return imageList(chatId);
-      }
-      case "conversations.attachments.get": return documentList(String(p.chatId));
-      case "conversations.attachments.page": {
-        const page=pages.find(page=>page.pageId===p.pageId);
-        if(!page)throw new Error("This tab is no longer available.");
-        const chatId=String(p.chatId),items=documents.get(chatId)??[];
-        if(items.length>=5)throw new Error("Remove a snapshot before adding another.");
-        const content=`Page: ${page.title}\nSource: ${page.url}\n\nMock page text for reviewing page attachments.`;
-        items.push({attachmentId:crypto.randomUUID(),filename:`${page.title.slice(0,180)}.txt`,sourceUrl:page.url,sourceTruncated:false,content,byteLength:content.length,createdAt:Date.now(),included:true});
-        documents.set(chatId,items);emit("conversation.context.changed",{chatId});return documentList(chatId);
-      }
-      case "conversations.attachments.add": {
-        const chatId=String(p.chatId),items=documents.get(chatId)??[];
-        items.push({attachmentId:crypto.randomUUID(),filename:String(p.filename),content:String(p.content),byteLength:new TextEncoder().encode(String(p.content)).length,createdAt:Date.now(),included:true});
-        documents.set(chatId,items);emit("conversation.context.changed",{chatId});return documentList(chatId);
-      }
-      case "conversations.attachments.toggle":
-      case "conversations.attachments.remove": {
-        const chatId=String(p.chatId),items=documents.get(chatId)??[];
-        documents.set(chatId,method.endsWith("remove")?items.filter(item=>item.attachmentId!==p.attachmentId):items.map(item=>item.attachmentId===p.attachmentId?{...item,included:!!p.included}:item));emit("conversation.context.changed",{chatId});return documentList(chatId);
-      }
-      case "conversations.attachments.read": {
-        const items=documents.get(String(p.chatId))??[];
-        const shares=textContextShares(items.map(item=>item.included?item.content.length:0),6000);
-        for(const [index,item] of items.entries()){
-          const contextCharacters=shares[index]!;
-          if(item.attachmentId===p.attachmentId)return {attachment:documentList(String(p.chatId)).attachments.find(entry=>entry.attachmentId===item.attachmentId),content:item.content,contextCharacters};
-        }
-        throw new Error("Document attachment not found.");
-      }
-      case "settings.get":
-        return { ...settings };
-      case "settings.set":
-        Object.assign(settings, p);
-        emit("settings.changed", { settings: { ...settings } });
-        return { ok: true };
-      case "browser.recovery.list": return recoveryTabs;
-      case "browser.recovery.retry": {
-        const saved=recoveryTabs.find(tab=>tab.pageId===p.pageId);if(!saved)throw new Error("This tab has already been restored.");
-        const page=makePage(pages.length,{...saved,backend:"aux",viewStatus:"visible"});pages.push(page);
-        recoveryTabs=recoveryTabs.filter(tab=>tab.pageId!==p.pageId);
-        emit("page.added",{page});emit("browser.recovery.changed",{});
-        return {ok:true,pageId:page.pageId};
-      }
-      case "bookmarks.folders.list": return bookmarkFolders;
-      case "bookmarks.list":
-        return bookmarks;
-      case "downloads.list": return downloads;
-      case "downloads.remove": {
-        const ids = new Set(p.ids as string[]);
-        const removed = downloads.filter(item => ids.has(item.id) && !item.canCancel && ["completed", "cancelled", "interrupted"].includes(item.state)).map(item => item.id);
-        downloads = downloads.filter(item => !removed.includes(item.id));
-        emit("downloads.removed", {ids:removed});
-        return {removed};
-      }
-      case "programs.list":
-        return PROGRAMS;
-      case "history.list": {
-        const query = ((p.query as string) ?? "").toLowerCase();
-        const before = p.before as {visitedAt:number;url:string}|undefined;
-        return history.filter(h => (!query || `${h.title} ${h.url}`.toLowerCase().includes(query))
-          && (p.since === undefined || h.visitedAt >= Number(p.since))
-          && (!before || h.visitedAt < before.visitedAt || (h.visitedAt === before.visitedAt && h.url < before.url)))
-          .sort((a,b) => b.visitedAt-a.visitedAt || (a.url < b.url ? 1 : a.url > b.url ? -1 : 0)).slice(0, Number(p.limit ?? 100));
-      }
-      case "models.list":
-        return { models: modelPickerEntries(MODEL_REGISTRY), source: "static" };
-      case "models.probe":
-        return { ok: true, modelId: (p.modelId as string) || "alibaba/qwen3.8-27b", latencyMs: 42, vision: false };
-      case "chrome.importCookies":
-        return { ok: true, source: "mock", imported: 0, skipped: 0, domains: 0, detail: "Cookie import is not available in mock." };
-      case "programs.run": {
-        const id = `run-${Math.random().toString(36).slice(2, 6)}`;
-        const run: Run = { runId: id, goal: `program ${(p.programId as string) ?? ""}`, status: "running", pageIds: p.pageId ? [p.pageId as string] : [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Running saved program" };
-        runs = [run, ...runs];
-        emit("run.status", { run }, id);
-        steps[id] = [];
-        void scriptRun(id);
-        return { runId: id };
-      }
-      case "sets.results":
-        return MEMBERS.filter((m) => m.resultId).map((m, i) => ({
-          resultId: m.resultId!,
-          memberId: m.memberId,
-          sourceUrl: m.url!,
-          values: { plan: ["Free", "Pro", "Business"][i % 3], price_usd: [0, 8, 15, 10, 12, 20][i], seats: i % 2 ? "per seat" : "flat" },
-          observedAt: Date.now() - i * 30_000,
-          status: "ok",
-        }));
-      case "pages.open": {
-        const url = (p.url as string) ?? "about:blank";
-        const np: PageTarget = { ...makePage(nextId - 1), pageId: `page-${nextId}`, url, title: url === "about:blank" ? "" : hostTitle(url), favicon: undefined, canGoBack: false, loading: url !== "about:blank" };
-        nextId++;
-        pages = [...pages, np];
-        emit("page.added", { page: np });
-        if (p.activate) {
-          activePageId = np.pageId;
-          emit("page.updated", { pageId: np.pageId, activePageId });
-        }
-        if (np.loading) setTimeout(() => patch(np.pageId, { loading: false, title: hostTitle(url) }), 900);
-        return np;
-      }
-      case "pages.close": {
-        const id = p.pageId as string;
-        pages = pages.filter((x) => x.pageId !== id);
-        if (activePageId === id) activePageId = null;
-        emit("page.removed", { pageId: id });
-        return { ok: true };
-      }
-      case "pages.activate":
-        activePageId = p.pageId as string;
-        return page(activePageId);
-      case "pages.navigate": {
-        const id = p.pageId as string;
-        const url = p.url as string;
-        patch(id, { url, loading: true, title: hostTitle(url) });
-        for (const l of loadingListeners) l({ pageId: id, loading: true });
-        setTimeout(() => {
-          patch(id, { loading: false, canGoBack: true });
-          for (const l of loadingListeners) l({ pageId: id, loading: false });
-        }, 1100);
-        return page(id);
-      }
-      case "pages.reload": {
-        const id = p.pageId as string;
-        patch(id, { loading: true });
-        setTimeout(() => patch(id, { loading: false }), 700);
-        return page(id);
-      }
-      case "pages.back":
-      case "pages.forward":
-      case "pages.stop":
-        return page(p.pageId as string);
-      case "pages.resume":
-        patch(p.pageId as string, { controller: "agent" });
-        emit("page.takeover", { pageId: p.pageId, controller: "agent" });
-        runs.filter((r) => r.status === "paused").forEach((r) => patchRun(r.runId, { status: "running", statusMessage: "Resuming — re-observing the page" }, true));
-        return page(p.pageId as string);
-      case "pages.takeover":
-        patch(p.pageId as string, { controller: "human" });
-        emit("page.takeover", { pageId: p.pageId, controller: "human" });
-        return page(p.pageId as string);
-      case "pages.observe":
-        return { observation: { ...OBSERVATION, pageId: p.pageId as string } };
-      case "pages.find":
-        return { matches: 7, activeMatch: 2 };
-      case "pages.pickElement":
-        return { picked: false };
-      case "pages.stopFind": return { ok: true };
-      case "bookmarks.add": {
-        bookmarks = [{ url: String(p.url), title: String(p.title) }, ...bookmarks.filter(item => item.url !== p.url)];
-        emit("bookmarks.changed", { bookmarks }); return { ok: true };
-      }
-      case "bookmarks.update": {
-        const previous=bookmarks.find(item=>item.url===p.originalUrl);
-        if(!previous)throw new Error("This bookmark was removed.");
-        if(p.url!==p.originalUrl&&bookmarks.some(item=>item.url===p.url))throw new Error("That address is already bookmarked. Both bookmarks have been kept.");
-        bookmarks=bookmarks.map(item=>item===previous?{...item,url:String(p.url),title:String(p.title),folderPath:p.folderPath as string[]}:item);
-        emit("bookmarks.changed",{bookmarks});return {ok:true};
-      }
-      case "bookmarks.folders.create": {
-        const path = p.path as string[];
-        for (let depth = 1; depth <= path.length; depth++) {
-          const parent = path.slice(0, depth);
-          if (!bookmarkFolders.some(folder => JSON.stringify(folder) === JSON.stringify(parent))) bookmarkFolders.push(parent);
-        }
-        emit("bookmarks.changed", {bookmarks}); return bookmarkFolders;
-      }
-      case "bookmarks.move": {
-        const selected = p.bookmarks as {url:string;folderPath:string[]}[];
-        const destination = p.folderPath as string[];
-        for (const item of selected) {
-          const current = bookmarks.find(bookmark => bookmark.url === item.url);
-          if (!current || JSON.stringify(current.folderPath ?? []) !== JSON.stringify(item.folderPath)) throw new Error("A selected bookmark changed. Select it again; nothing was moved.");
-        }
-        if (p.createFolder) {
-          if (!destination.length || bookmarkFolders.some(path => JSON.stringify(path) === JSON.stringify(destination))) throw new Error("A folder with this name already exists. Choose another name.");
-          const parent = destination.slice(0, -1);
-          if (parent.length && !bookmarkFolders.some(path => JSON.stringify(path) === JSON.stringify(parent))) throw new Error("The parent folder no longer exists. Choose another folder.");
-          bookmarkFolders.push(destination);
-        }
-        if (destination.length && !bookmarkFolders.some(path => JSON.stringify(path) === JSON.stringify(destination))) throw new Error("The destination folder no longer exists.");
-        const urls = new Set(selected.map(item => item.url)); let moved = 0;
-        bookmarks = bookmarks.map(item => {
-          if (!urls.has(item.url) || JSON.stringify(item.folderPath ?? []) === JSON.stringify(destination)) return item;
-          moved++; return {...item, folderPath:destination};
-        });
-        emit("bookmarks.changed", {bookmarks}); return {moved};
-      }
-      case "bookmarks.remove": {
-        bookmarks = bookmarks.filter(item => item.url !== p.url);
-        emit("bookmarks.changed", { bookmarks }); return { ok: true };
-      }
-      case "bookmarks.saveFolder": {
-        const name=String(p.name);
-        if(bookmarkFolders.some(path=>path.length===1&&path[0]===name))throw new Error("A bookmark folder already has this name.");
-        const incoming=p.bookmarks as {url:string;title:string}[];let added=0;
-        if(incoming.every(item=>bookmarks.some(old=>old.url===item.url)))throw new Error("These pages are already bookmarked. Find them in Library to organize their folders.");
-        bookmarkFolders.push([name]);
-        for(const item of incoming)if(!bookmarks.some(old=>old.url===item.url)){bookmarks.push({...item,folderPath:[name]});added++;}
-        emit("bookmarks.changed",{bookmarks});return {added,skipped:incoming.length-added};
-      }
-      case "bookmarks.import": {
-        const incoming = p.bookmarks as { url: string; title: string }[];
-        let added = 0;
-        for (const item of incoming) if (!bookmarks.some(old => old.url === item.url)) { bookmarks.push(item); added++; }
-        emit("bookmarks.changed", { bookmarks }); return { added, skipped: incoming.length - added };
-      }
-      case "history.clear": {
-        const previous = history.length;
-        history = history.filter(item => (p.since !== undefined && item.visitedAt < Number(p.since)) || (p.before !== undefined && item.visitedAt >= Number(p.before)));
-        emit("history.changed", {}); return { ok: true, removed: previous - history.length };
-      }
-      case "history.remove": {
-        const size = history.length;
-        history = history.filter(item => item.url !== p.url || item.visitedAt !== p.visitedAt);
-        emit("history.changed", {}); return { removed: history.length < size };
-      }
-      case "pages.zoom": {
-        const id = String(p.pageId);
-        const current = zoomLevels.get(id) ?? 0;
-        const requested = p.reset ? 0 : p.direction === "in" || p.direction === "out" ? steppedZoomLevel(current, p.direction)
-          : typeof p.level === "number" ? p.level : current + Number(p.delta ?? 0);
-        const level = Math.max(Math.log(0.25) / Math.log(1.2), Math.min(Math.log(5) / Math.log(1.2), requested));
-        zoomLevels.set(id, level); if (p.reset || p.direction || p.level !== undefined || p.delta !== undefined) for (const listener of zoomListeners) listener(); return { level };
-      }
-      case "artifacts.read":
-        return { artifact: { artifactId: p.artifactId, path: "", mediaType: "application/json", size: 0, status: "complete", createdAt: Date.now() }, dataBase64: btoa(unescape(encodeURIComponent(JSON.stringify(OBSERVATION)))) };
-      case "runs.get": {
-        const run = runs.find((r) => r.runId === p.runId);
-        if (!run) throw new Error("no such run");
-        return { run, steps: steps[run.runId] ?? [], modelCalls: run.config?.modelCalls ?? 3 };
-      }
-      case "runs.list": {
-        const key = (run: Run) => run.config?.chatId ?? run.runId;
-        const query = String(p.query ?? "").trim().toLowerCase();
-        const matches = new Set(runs.filter(run => `${run.goal} ${run.statusMessage ?? ""}`.toLowerCase().includes(query)).map(key));
-        const seen = new Set<string>();
-        const before = p.before as { createdAt: number; runId: string } | undefined;
-        return [...runs].sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId)).filter(run => {
-          if (p.groupByChat && seen.has(key(run))) return false;
-          seen.add(key(run));
-          return (!p.chatId || key(run) === p.chatId) && matches.has(key(run)) && (!before || run.createdAt < before.createdAt || (run.createdAt === before.createdAt && run.runId < before.runId));
-        }).slice(0, Number(p.limit ?? 50));
-      }
-      case "runs.start": {
-        const id = `run-${Math.random().toString(36).slice(2, 6)}`;
-        const run: Run = { runId: id, goal: p.goal as string, status: "planning", pageIds: (p.pageIds as string[]) ?? [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Observing the page" };
-        runs = [run, ...runs];
-        emit("run.status", { run }, id);
-        steps[id] = [];
-        void scriptRun(id);
-        return run;
-      }
-      case "runs.retry": {
-        const prior = runs.find((r) => r.runId === p.runId);
-        if (!prior) throw new Error("no such run");
-        const id = `run-${Math.random().toString(36).slice(2, 6)}`;
-        const run: Run = { runId: id, goal: prior.goal, status: "planning", pageIds: prior.pageIds, config: { ...prior.config, chatId: prior.config?.chatId ?? prior.runId, retryOfRunId: prior.runId }, createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Retrying the turn" };
-        runs = [run, ...runs];
-        emit("run.status", { run }, id);
-        steps[id] = [];
-        void scriptRun(id);
-        return run;
-      }
-      case "runs.pause":
-        patchRun(p.runId as string, { status: "paused", statusMessage: "Paused" }, true);
-        return runs.find((r) => r.runId === p.runId);
-      case "runs.resume":
-        patchRun(p.runId as string, { status: "running", statusMessage: "Resumed" }, true);
-        return runs.find((r) => r.runId === p.runId);
-      case "runs.cancel":
-        patchRun(p.runId as string, { status: "cancelled", statusMessage: "Cancelled", endedAt: Date.now() }, true);
-        return runs.find((r) => r.runId === p.runId);
-      case "runs.answer":
-        patchRun(p.runId as string, { status: "running", statusMessage: `Answer received — continuing` }, true);
-        return runs.find((r) => r.runId === p.runId);
-      case "sets.create":
-        return SET;
-      default:
-        throw new Error(`mock: ${method} not implemented`);
-    }
+    const handler = (handlers as Partial<Record<string, MockHandler>>)[method];
+    if (!handler) throw new Error(`mock: ${method} not implemented`);
+    return handler(params as Record<string, unknown>, method);
   };
 
   // a freshly started run plays out a short script so the rail can be watched live
@@ -626,7 +701,7 @@ export function installMockBridge(q: URLSearchParams) {
     windowId: "main",
     platform: "darwin",
     setShortcutOverrides: async () => ({}),
-    invoke,
+    invoke: invoke as AuxBridge["invoke"],
     onEvent: (cb) => (eventListeners.add(cb), () => eventListeners.delete(cb)),
     onRuntimeStatus: () => () => {},
     onShortcut: () => () => {},

@@ -24,7 +24,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     if(pending.current)return;
     pending.current=true;setBusy(true); setError("");
     try {
-      const saved = await call<WorkspaceMemory>("workspaces.memory.set", { workspaceId: memory.workspaceId, expectedRevision: revision, content });
+      const saved = await call("workspaces.memory.set", { workspaceId: memory.workspaceId, expectedRevision: revision, content });
       const current = useMemoryDrafts.getState().drafts[memory.workspaceId];
       if (current?.content === content) useMemoryDrafts.getState().write(memory.workspaceId, null);
       else if (current?.revision === revision) useMemoryDrafts.getState().write(memory.workspaceId, { ...current, revision: saved.revision });
@@ -32,7 +32,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       try {
-        const latest = await call<WorkspaceMemory>("workspaces.memory.get", { workspaceId: memory.workspaceId });
+        const latest = await call("workspaces.memory.get", { workspaceId: memory.workspaceId });
         if (latest.revision !== revision) setConflict(latest);
       } catch { /* Preserve the draft and original save error while disconnected. */ }
     } finally { pending.current=false;setBusy(false); }
@@ -42,7 +42,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     if(pending.current)return;
     pending.current=true;setBusy(true);setError("");
     try {
-      const saved=await call<WorkspaceMemory>("workspaces.memory.set",{workspaceId:memory.workspaceId,expectedRevision:memory.revision,content:memory.content,enabled});
+      const saved=await call("workspaces.memory.set",{workspaceId:memory.workspaceId,expectedRevision:memory.revision,content:memory.content,enabled});
       const current=useMemoryDrafts.getState().drafts[memory.workspaceId];
       if(current?.revision===memory.revision)useMemoryDrafts.getState().write(memory.workspaceId,{...current,revision:saved.revision});
       onSaved(saved);

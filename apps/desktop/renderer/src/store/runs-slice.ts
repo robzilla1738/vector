@@ -1,4 +1,4 @@
-import type { ModelCall, ResultRecord, Run, StepRecord } from "@aux/contracts";
+import type { ModelCall, Run } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { PENDING_CHAT_KEY, draftKey } from "../conversation-drafts";
 import { clearSubmittedRunAnswer } from "../run-answer-drafts";
@@ -87,7 +87,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       }
       const n = Number(before.settings.maxModelCalls);
       const budget = n === 0 ? 0 : Math.min(256, Math.max(1, Number.isFinite(n) ? n : 8));
-      const run = await call<Run>("runs.start", { goal: g, pageIds: pageId ? [pageId] : undefined,
+      const run = await call("runs.start", { goal: g, pageIds: pageId ? [pageId] : undefined,
         maxModelCalls: budget, chatId: opts.chatId,
         defaultWorkspaceId: bridge.privateMode ? undefined : before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
       const reveal = stayed();
@@ -111,7 +111,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     const before=get();
     set(state=>({retryingRuns:{...state.retryingRuns,[runId]:true}}));
     try {
-      const run = await call<Run>("runs.retry", { runId, ...(pageId ? {pageId} : {}) });
+      const run = await call("runs.retry", { runId, ...(pageId ? {pageId} : {}) });
       const current=get();
       const stayed=current.mode===before.mode && current.conversationId===before.conversationId
         && current.activePageId===before.activePageId && current.railView===before.railView
@@ -155,7 +155,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
 
   loadRun: async (runId) => {
     try {
-      const d = await call<{ run: Run; steps: StepRecord[]; modelCalls?: number; usage?: { calls: number; modelIds: string[]; providers: string[]; destinations: string[]; inputTokens: number; outputTokens: number; knownCostUsd: number; costComplete: boolean } }>("runs.get", { runId });
+      const d = await call("runs.get", { runId });
       set((s) => ({
         runs: s.runs.some((r) => r.runId === runId) ? s.runs.map((r) => (r.runId === runId ? d.run : r)) : [d.run, ...s.runs],
         steps: { ...s.steps, [runId]: d.steps },
@@ -170,7 +170,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
   },
 
   refreshResults: async (setId) => {
-    const results = await call<ResultRecord[]>("sets.results", { setId });
+    const results = await call("sets.results", { setId });
     set({ results, activeSetId: setId });
   },
 });

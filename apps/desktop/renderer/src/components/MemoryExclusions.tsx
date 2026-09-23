@@ -14,7 +14,7 @@ export function MemoryExclusions({ memory, disabled, onSaved }: { memory: Worksp
     if (pending.current) return;
     pending.current = true; setBusy(true); setError(""); setStale(false);
     try {
-      const saved = await call<WorkspaceMemory>("workspaces.memory.set", { workspaceId: memory.workspaceId, expectedRevision: memory.revision, content: memory.content, excludedOrigins: next });
+      const saved = await call("workspaces.memory.set", { workspaceId: memory.workspaceId, expectedRevision: memory.revision, content: memory.content, excludedOrigins: next });
       setAddress(""); onSaved(saved);
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); setStale(true); }
     finally { pending.current = false; setBusy(false); }
@@ -22,7 +22,7 @@ export function MemoryExclusions({ memory, disabled, onSaved }: { memory: Worksp
   async function reload() {
     if (pending.current) return;
     pending.current = true; setBusy(true);
-    try { onSaved(await call<WorkspaceMemory>("workspaces.memory.get", { workspaceId: memory.workspaceId })); setStale(false); setError(""); }
+    try { onSaved(await call("workspaces.memory.get", { workspaceId: memory.workspaceId })); setStale(false); setError(""); }
     catch (reason) { setError(String(reason)); }
     finally { pending.current = false; setBusy(false); }
   }

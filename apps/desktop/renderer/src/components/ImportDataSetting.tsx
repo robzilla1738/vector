@@ -48,7 +48,7 @@ export function ImportDataSetting() {
   const loadPreview = async () => {
     setLoading(true); setError(""); setDone(false); setProgress([]);
     try {
-      const result = await call<{ sources: PreviewSource[] }>("import.preview", {});
+      const result = await call("import.preview", {});
       const next: Selection = {};
       for (const source of result.sources) {
         for (const entry of source.categories) {
@@ -68,11 +68,11 @@ export function ImportDataSetting() {
     const categories = [...new Set(selected.map(key => key.split(":")[1]!))];
     setLoading(true); setError(""); setDone(false); setProgress([]);
     try {
-      const { jobId: id } = await call<{ jobId: string }>("import.run", { sources, categories });
+      const { jobId: id } = await call("import.run", { sources, categories: categories as ("tabs" | "bookmarks" | "history")[] });
       jobRef.current = id;
       setJobId(id);
       // Catch up on progress emitted before the subscription learned the id.
-      const status = await call<{ done: boolean; progress: ImportCategoryResult[] }>("import.status", { jobId: id });
+      const status = await call("import.status", { jobId: id });
       if (status.progress.length) setProgress(status.progress);
       if (status.done) { setDone(true); setLoading(false); }
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); setLoading(false); }

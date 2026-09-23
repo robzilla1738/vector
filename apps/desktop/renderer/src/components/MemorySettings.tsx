@@ -25,7 +25,7 @@ export function MemorySettings() {
     if(bridge.privateMode||!query.trim()){setMatches([]);setSearching(false);setSearchError("");return;}
     let live=true;setSearching(true);setSearchError("");
     const timer=window.setTimeout(()=>{
-      void call<typeof matches>("workspaces.memory.search",{query:query.trim()}).then(items=>{if(live)setMatches(items);})
+      void call("workspaces.memory.search",{query:query.trim()}).then(items=>{if(live)setMatches(items);})
         .catch(reason=>{if(live)setSearchError(String(reason));}).finally(()=>{if(live)setSearching(false);});
     },140);
     return()=>{live=false;window.clearTimeout(timer);};
@@ -34,7 +34,7 @@ export function MemorySettings() {
     if (bridge.privateMode || !space?.workspaceId) return;
     let live = true;
     setMemory(current => current?.workspaceId === space.workspaceId ? current : null); setError(""); setLoading(true);
-    void call<WorkspaceMemory>("workspaces.memory.get", { workspaceId: space.workspaceId })
+    void call("workspaces.memory.get", { workspaceId: space.workspaceId })
       .then(value => { if (live) setMemory(value); })
       .catch(reason => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); })
       .finally(() => { if (live) setLoading(false); });

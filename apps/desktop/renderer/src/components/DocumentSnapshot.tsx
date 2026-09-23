@@ -15,7 +15,7 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
   useEffect(() => {
     let live = true;
     setSnapshot(null); setError(""); setIncludedOnly(false);
-    void call<Snapshot>("conversations.attachments.read", { chatId, attachmentId })
+    void call("conversations.attachments.read", { chatId, attachmentId })
       .then(value => { if (live) setSnapshot(value); })
       .catch(reason => { if (live) setError(String(reason)); });
     return () => { live = false; };

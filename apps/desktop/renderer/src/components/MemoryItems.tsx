@@ -32,13 +32,13 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
     try {
-      const saved = await call<WorkspaceMemory>("workspaces.memory.set", { workspaceId: memory.workspaceId, expectedRevision: base.revision, content: base.content, items: next });
+      const saved = await call("workspaces.memory.set", { workspaceId: memory.workspaceId, expectedRevision: base.revision, content: base.content, items: next });
       if (finishDraft) write(null);
       else if (savedDraft?.revision === base.revision && draft) write(draft, saved.revision);
       setLatest(null); onSaved(saved);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
-      try { const current = await call<WorkspaceMemory>("workspaces.memory.get", { workspaceId: memory.workspaceId }); if (current.revision !== base.revision) setLatest(current); } catch { /* Keep the draft during disconnection. */ }
+      try { const current = await call("workspaces.memory.get", { workspaceId: memory.workspaceId }); if (current.revision !== base.revision) setLatest(current); } catch { /* Keep the draft during disconnection. */ }
     } finally { pending.current = false; setBusy(false); }
   };
   const save = (base = memory) => {

@@ -3,14 +3,14 @@ import { useState } from "react";
 import { bridge } from "../bridge";
 import { call } from "../store";
 import { taskReceiptMarkdown } from "../task-receipt-export";
-import type { TaskReceipt, Task, ProjectCommand } from "@aux/contracts";
+import type { TaskReceipt, ProjectCommand, MethodName, RpcArgs, RpcMap } from "@aux/contracts";
 
 const STATUS = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
 
 export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
   receipt: TaskReceipt; pageId: string | null;
   readOnly?: boolean;
-  submit?: (method: string, params: Record<string, unknown>) => Promise<boolean>;
+  submit?: <M extends MethodName>(method: M, ...params: RpcArgs<M>) => Promise<boolean>;
 }) {
   const editable = !readOnly && !!submit;
   const historical = receipt.currentTaskRevision !== undefined && receipt.currentTaskRevision !== receipt.taskRevision;
@@ -19,7 +19,7 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
   async function pickCommands(criterionId:string){
     setImporting(true);setImportError('');
     try{
-      const details=await call<{task:Task}>('tasks.get',{taskId:receipt.taskId});
+      const details=await call('tasks.get',{taskId:receipt.taskId});
       if(details.task.revision!==receipt.taskRevision)throw new Error('Reload this task before attaching command evidence.');
       const ids=[...new Set(details.task.resources.flatMap(resource=>resource.kind==='repository'&&resource.projectId?[resource.projectId]:[]))];
       const commands=(await Promise.all(ids.map(id=>bridge.listProjectCommands(id)))).flat().filter(command=>!['running','stopping'].includes(command.state)).sort((a,b)=>b.startedAt-a.startedAt);
@@ -30,7 +30,8 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
     const command=commandPicker?.commands.find(item=>item.commandId===commandPicker.selectedId);
     if(!command||!commandPicker||!submit)return;
     setImporting(true);
-    try{if(await submit('tasks.importCommandEvidence',{taskId:receipt.taskId,expectedRevision:receipt.taskRevision,criterionId:commandPicker.criterionId,projectId:command.projectId,commandId:command.commandId}))setCommandPicker(null);}
+    // Main resolves commandId to the finished command record before forwarding.
+    try{if(await submit('tasks.importCommandEvidence',{taskId:receipt.taskId,expectedRevision:receipt.taskRevision,criterionId:commandPicker.criterionId,projectId:command.projectId,commandId:command.commandId} as RpcMap['tasks.importCommandEvidence']['params']))setCommandPicker(null);}
     finally{setImporting(false);}
   }
   const [importing, setImporting] = useState(false);
@@ -58,7 +59,7 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
   async function exportReceipt() {
     setExporting(true); setExportMessage(""); setExportError("");
     try {
-      const current = await call<TaskReceipt>("tasks.receipt", {taskId: receipt.taskId, ...(readOnly ? {revision: receipt.taskRevision} : {})});
+      const current = await call("tasks.receipt", {taskId: receipt.taskId, ...(readOnly ? {revision: receipt.taskRevision} : {})});
       if (current.taskRevision !== receipt.taskRevision) throw new Error("This task changed. Reload the saved task before exporting its receipt.");
       const destination = await bridge.saveFile(`aux-receipt-${receipt.taskId.replace(/[^a-zA-Z0-9_-]/g, "-")}-r${current.taskRevision}.md`, taskReceiptMarkdown(current, includeSnapshots));
       setExportMessage(destination ? "Receipt exported." : "Export canceled.");
@@ -121,7 +122,7 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
         <textarea aria-label="Evidence or review note" rows={3} placeholder="Describe the evidence you checked and what it establishes." value={note} onChange={event => setNotes(previous => ({ ...previous, [criterion.criterionId]: event.target.value }))} maxLength={4000} />
         <div className="row">
           <button className="btn sm" disabled={!note.trim()} onClick={() => void submit?.("tasks.recordEvidence", { ...base, criterionId: criterion.criterionId, summary: note })}>Add note</button>
-          <button className="btn sm" disabled={!pageId} onClick={() => void submit?.("tasks.captureEvidence", { ...base, criterionId: criterion.criterionId, pageId })}>Capture current page</button>
+          <button className="btn sm" disabled={!pageId} onClick={() => void submit?.("tasks.captureEvidence", { ...base, criterionId: criterion.criterionId, pageId: pageId as string })}>Capture current page</button>
           <button className="btn sm" disabled={active||importing||!!commandPicker} onClick={()=>void pickCommands(criterion.criterionId)}>Import command result</button>
           <button className="btn sm" disabled={active || importing || !!document} onClick={() => void pickDocument(criterion.criterionId)}>Import document</button>
         </div>
@@ -160,7 +161,7 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
       </select>
       <textarea aria-label="Reconciliation reason" rows={3} value={actionNotes[action.intentId] ?? ""} onChange={event => setActionNotes(previous => ({ ...previous, [action.intentId]: event.target.value }))} />
       <div className="row">{(["applied", "not_applied"] as const).map(outcome => <button className="btn sm" key={outcome} disabled={active || !actionEvidence[action.intentId] || !actionNotes[action.intentId]?.trim()}
-        onClick={() => void submit?.("tasks.reconcileAction", { ...base, intentId: action.intentId, evidenceId: actionEvidence[action.intentId], outcome, note: actionNotes[action.intentId] })}>
+        onClick={() => void submit?.("tasks.reconcileAction", { ...base, intentId: action.intentId, evidenceId: actionEvidence[action.intentId] as string, outcome, note: actionNotes[action.intentId] as string })}>
         {outcome === "applied" ? "Record as applied" : "Record as not applied"}
       </button>)}</div>
       </>}
@@ -173,7 +174,7 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
       {editable&&<><select aria-label="Operation reconciliation evidence" value={operationEvidence[operation.invocationId]??''} onChange={event=>setOperationEvidence(previous=>({...previous,[operation.invocationId]:event.target.value}))}>
         <option value="">Select evidence</option>{usableEvidence.map(item=><option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}</select>
       <textarea aria-label="Operation reconciliation reason" rows={3} value={operationNotes[operation.invocationId]??''} onChange={event=>setOperationNotes(previous=>({...previous,[operation.invocationId]:event.target.value}))}/>
-      <div className="row">{(['applied','not_applied'] as const).map(outcome=><button className="btn sm" key={outcome} disabled={active||!operationEvidence[operation.invocationId]||!operationNotes[operation.invocationId]?.trim()} onClick={()=>void submit?.('tasks.reconcileOperation',{...base,invocationId:operation.invocationId,evidenceId:operationEvidence[operation.invocationId],outcome,note:operationNotes[operation.invocationId]})}>{outcome==='applied'?'Record as applied':'Record as not applied'}</button>)}</div></>}
+      <div className="row">{(['applied','not_applied'] as const).map(outcome=><button className="btn sm" key={outcome} disabled={active||!operationEvidence[operation.invocationId]||!operationNotes[operation.invocationId]?.trim()} onClick={()=>void submit?.('tasks.reconcileOperation',{...base,invocationId:operation.invocationId,evidenceId:operationEvidence[operation.invocationId] as string,outcome,note:operationNotes[operation.invocationId] as string})}>{outcome==='applied'?'Record as applied':'Record as not applied'}</button>)}</div></>}
     </section>)}
   </div>;
 }

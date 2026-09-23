@@ -1,4 +1,4 @@
-import type { BrowserSpace, PageTarget, TabPlacement } from "@aux/contracts";
+import type { PageTarget, TabPlacement } from "@aux/contracts";
 import { newPageId } from "@aux/contracts/ids";
 import { bridge } from "../bridge";
 import { readClosedTabs } from "../closed-tabs";
@@ -302,7 +302,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     try {
       for (const entry of entries) {
         if (get().layout.archivedSpaces?.some(space => space.id === entry.spaceId)) {
-          get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.update", { id: entry.spaceId, archived: false }));
+          get().syncBrowserSpaces(await call("spaces.update", { id: entry.spaceId, archived: false }));
         }
         const destinationSpace = get().layout.spaces.some(space => space.id === entry.spaceId) ? entry.spaceId : get().layout.activeSpaceId;
         let page = entries.length > 1

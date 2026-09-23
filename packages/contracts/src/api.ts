@@ -1159,3 +1159,7 @@ export const ResultSchemas = {
 
 export type MethodParams<M extends MethodName> = z.input<(typeof MethodSchemas)[M]>;
 export type MethodResult<M extends MethodName> = z.output<(typeof ResultSchemas)[M]>;
+/** Request/response pair for every runtime API method — the typed IPC surface. */
+export type RpcMap = { [M in MethodName]: { params: MethodParams<M>; result: MethodResult<M> } };
+/** Positional params for `call(method, ...params)`: optional when the method takes none. */
+export type RpcArgs<M extends MethodName> = {} extends RpcMap[M]["params"] ? [params?: RpcMap[M]["params"]] : [params: RpcMap[M]["params"]];

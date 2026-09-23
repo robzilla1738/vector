@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import type { BrowserSession, BrowserSpace, Download, PageSet, PageTarget, Run, SavedProgram, SetMember, TabCommand } from "@aux/contracts";
+import type { Download, PageTarget, SavedProgram, TabCommand } from "@aux/contracts";
 import { bridge } from "./bridge";
-import { assignFolder, assignSpace, setActiveSpace, syncLayout, tabsInSpace, splitForPage, type Layout } from "./workspace";
+import { assignFolder, assignSpace, setActiveSpace, syncLayout, tabsInSpace, splitForPage } from "./workspace";
 import { createBookmarksSlice } from "./store/bookmarks-slice";
 import { createDraftsSlice } from "./store/drafts-slice";
 import { eventEffects, reduceLibraryEvent, reducePageEvent, reduceRunEvent } from "./store/events";
@@ -34,23 +34,12 @@ export const useStore = create<Workspace>((set, get, api) => ({
     // The main-owned catalog converges independently of runtime health.
     void bridge.tabsSnapshot().then(snapshot => get().syncTabsSnapshot(snapshot)).catch(() => {});
     try {
-      const ws = await call<{
-        pages: PageTarget[];
-        restoringTabs?: boolean;
-        pendingRestoreTabs?: {pageId:string;windowId:string}[];
-        tabPlacements?: Record<string, { spaceId: string; folder?: Layout["folders"][number] }>;
-        sets: PageSet[];
-        members: SetMember[];
-        runs: Run[];
-        sessions: BrowserSession[];
-        activePageId: string | null;
-        lastSeq: number;
-      }>("workspace.get");
+      const ws = await call("workspace.get");
       const [bookmarks, settings, downloads, programs] = await Promise.all([
-        call<{ url: string; title: string }[]>("bookmarks.list").catch(() => [] as { url: string; title: string }[]),
-        call<Record<string, unknown>>("settings.get").catch(() => ({}) as Record<string, unknown>),
-        call<Download[]>("downloads.list").catch(() => [] as Download[]),
-        call<SavedProgram[]>("programs.list").catch(() => [] as SavedProgram[]),
+        call("bookmarks.list").catch(() => [] as { url: string; title: string }[]),
+        call("settings.get").catch(() => ({}) as Record<string, unknown>),
+        call("downloads.list").catch(() => [] as Download[]),
+        call("programs.list").catch(() => [] as SavedProgram[]),
       ]);
       if (!bridge.privateMode) {
         const layout = get().layout;
@@ -58,7 +47,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         if (legacySpaces.length && storage && !storage.getItem(`${LAYOUT_KEY}:before-spaces`)) {
           storage.setItem(`${LAYOUT_KEY}:before-spaces`, JSON.stringify(layout));
         }
-        const spaces = await call<BrowserSpace[]>("spaces.import", { spaces: legacySpaces.map(space => ({
+        const spaces = await call("spaces.import", { spaces: legacySpaces.map(space => ({
           id: space.id, name: space.name.slice(0, 100) || "Untitled", color: space.color ?? "slate",
         })) });
         get().syncBrowserSpaces(spaces);

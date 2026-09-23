@@ -105,7 +105,7 @@ export function Downloads() {
 
   const dismissible=filtered.filter(canDismissDownload);
   const dismissDownloads=(ids:string[])=>action("clear",async()=>{
-    const result=await call<{removed:string[]}>("downloads.remove",{ids});
+    const result=await call("downloads.remove",{ids});
     const removed=new Set(result.removed);
     useStore.setState(state=>({downloads:state.downloads.filter(item=>!removed.has(item.id))}));
     toast(result.removed.length?"Removed from the list. Files remain on your computer.":"No inactive downloads to remove.");

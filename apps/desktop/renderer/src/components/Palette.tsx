@@ -74,7 +74,7 @@ export function Palette() {
   useEffect(()=>{
     if(bridge.privateMode)return;
     let live=true;
-    void call<PreparedConversation[]>("conversations.prepared",{}).then(value=>{if(live)setPrepared(value);}).catch(()=>{});
+    void call("conversations.prepared",{}).then(value=>{if(live)setPrepared(value);}).catch(()=>{});
     return()=>{live=false;};
   },[searchRefresh]);
   const [chromeTabs, setChromeTabs] = useState<ChromeTab[] | null>(null);
@@ -103,11 +103,11 @@ export function Palette() {
     const timer=window.setTimeout(()=>{
       const work=!bridge.privateMode&&filter!=="pages",history=filter!=="work";
       void Promise.allSettled([
-        work?call<ConversationSummary[]>("conversations.list",{query,limit:12,archived:false}):Promise.resolve([]),
-        work?call<Task[]>("tasks.list",{query,limit:12}):Promise.resolve([]),
-        history?call<HistoryEntry[]>("history.list",{query,limit:20}):Promise.resolve([]),
-        work?call<{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]>("workspaces.memory.search",{query}):Promise.resolve([]),
-        work?call<SavedResult[]>("results.search",{query,limit:12}):Promise.resolve([]),
+        work?call("conversations.list",{query,limit:12,archived:false}):Promise.resolve([]),
+        work?call("tasks.list",{query,limit:12}):Promise.resolve([]),
+        history?call("history.list",{query,limit:20}):Promise.resolve([]),
+        work?call("workspaces.memory.search",{query}):Promise.resolve([]),
+        work?call("results.search",{query,limit:12}):Promise.resolve([]),
       ]).then(([chats,tasks,history,memory,results])=>{
         if(!live)return;
         setMatches({query,results:results.status==="fulfilled"?results.value:[],chats:chats.status==="fulfilled"?chats.value:[],tasks:tasks.status==="fulfilled"?tasks.value:[],history:history.status==="fulfilled"?history.value:[],memory:memory.status==="fulfilled"?memory.value.slice(0,8):[]});
@@ -145,7 +145,7 @@ export function Palette() {
         if (!match(`${t.title ?? ""} ${t.url}`)) continue;
         const id = t.targetId ?? t.id;
         if (!id) continue;
-        out.push({ id: `ct-${id}`, section: "chrome", t: t.title || t.url, d: hostOf(t.url), icon: I.chromeSm, run: () => call("pages.open", { backend: "chrome", targetId: id, activate: true }) });
+        out.push({ id: `ct-${id}`, section: "chrome", t: t.title || t.url, d: hostOf(t.url), icon: I.chromeSm, run: () => call("pages.open", { url: t.url, backend: "chrome", targetId: id, activate: true }) });
       }
       if (out.length === 0) out.push({ id: "none", section: "chrome", t: "No attachable Chrome tabs", run: () => setChromeTabs(null) });
       return out;
@@ -239,7 +239,7 @@ export function Palette() {
         if (!activePage || !activePage.url.startsWith("http")) return;
         let origin: string;
         try { origin = new URL(activePage.url).origin; } catch { return; }
-        setVaultItems(await call<import("@aux/contracts").VaultItem[]>("vault.itemsForOrigin", { origin }));
+        setVaultItems(await call("vault.itemsForOrigin", { origin }));
         setQ("");
       } }] : []),
       { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
@@ -257,7 +257,7 @@ export function Palette() {
       ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", icon: I.chromeSm, keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
       { id: "detach", section: "chrome", t: "Detach Chrome", icon: I.unplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
       { id: "cookies", section: "chrome", t: "Import cookies from Chrome", d: chromeConnected ? "via attached Chrome" : "from your Chrome profile", icon: I.cookie, run: async () => {
-        const r = await call<{ imported: number; domains: number }>("chrome.importCookies", { source: "auto" });
+        const r = await call("chrome.importCookies", { source: "auto" });
         toast(`${r.imported} cookies imported from ${r.domains} domains`);
       } },
       ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", icon: I.external, run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),

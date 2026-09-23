@@ -1,4 +1,3 @@
-import type { BrowserSpace } from "@aux/contracts";
 import { splitRatio } from "@aux/contracts/split-layout";
 import { bridge } from "../bridge";
 import { errToast, toast } from "../store";
@@ -90,7 +89,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     if (previous !== layout.activeSpaceId) get().switchSpace(layout.activeSpaceId);
   },
   refreshSpaces: async () => {
-    if (!bridge.privateMode) get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.list"));
+    if (!bridge.privateMode) get().syncBrowserSpaces(await call("spaces.list"));
   },
   addSpace: async (name, color = "slate") => {
     if (bridge.privateMode) {
@@ -100,7 +99,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       return;
     }
     const previous = new Set(get().layout.spaces.map(space => space.id));
-    const spaces = await call<BrowserSpace[]>("spaces.create", { name, color });
+    const spaces = await call("spaces.create", { name, color });
     get().syncBrowserSpaces(spaces);
     const created = spaces.find(space => !space.archived && !previous.has(space.id));
     if (created) get().switchSpace(created.id);
@@ -111,7 +110,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       persistLayout(layout); set({ layout });
       return;
     }
-    get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.update", { id: spaceId, name, color }));
+    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, name, color }));
   },
   deleteSpace: async (spaceId) => {
     if (bridge.privateMode) {
@@ -120,11 +119,11 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       get().switchSpace(layout.activeSpaceId);
       return;
     }
-    get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.update", { id: spaceId, archived: true }));
+    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, archived: true }));
     toast("Space archived. Its tabs and saved work are kept for you.");
   },
   restoreSpace: async (spaceId, activate = true) => {
-    get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.update", { id: spaceId, archived: false }));
+    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, archived: false }));
     if(activate)get().switchSpace(spaceId);
   },
   switchSpace: (spaceId) => {

@@ -4,7 +4,7 @@
  * `--mode mock` main.tsx installs a scripted bridge before this module reads
  * window.aux (see mock/bridge.ts).
  */
-import type { AuxEvent, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
+import type { AuxEvent, MethodName, MethodResult, RpcArgs, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
 
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
@@ -64,7 +64,7 @@ export interface AuxBridge {
   platform: string;
   /** push saved binding overrides to main (menus + page interception) */
   setShortcutOverrides(overrides: unknown): Promise<unknown>;
-  invoke(method: string, params?: unknown): Promise<unknown>;
+  invoke<M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>>;
   onEvent(cb: (e: AuxEvent) => void): () => void;
   onRuntimeStatus(cb: (status: { connected: boolean; detail?: string }) => void): () => void;
   onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string }) => void): () => void;

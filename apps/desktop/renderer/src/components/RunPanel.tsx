@@ -229,7 +229,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
   const inspect = async (artifactId: string) => {
     const version=++observationRequest.current;setInspectedArtifact(artifactId);setShowObs(true);setObsLoading(true);setObsError("");
     try {
-      const res = await call<{ dataBase64: string }>("artifacts.read", { artifactId });
+      const res = await call("artifacts.read", { artifactId });
       if(version!==observationRequest.current)return;
       const o = decodeBase64Json<CompactObservation>(res.dataBase64);
       if(!o || typeof o.text!=="string" || !Array.isArray(o.refs))throw new Error("The saved page snapshot could not be read.");

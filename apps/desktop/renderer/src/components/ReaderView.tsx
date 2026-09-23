@@ -64,7 +64,7 @@ export function ReaderView() {
       const url = page?.url;
       if (!current || !url || bridge.privateMode) { if (current) setError(error instanceof Error ? error.message : String(error)); return; }
       try {
-        const saved = await call<{article:string|null;savedAt:number|null}>("bookmarks.offline.get", {url});
+        const saved = await call("bookmarks.offline.get", {url});
         if (!current) return;
         if (saved.article) { setLoaded({key, article: JSON.parse(saved.article) as ReaderArticle, offlineSavedAt: saved.savedAt ?? undefined}); markRead(url); return; }
       } catch { /* fall through to the live error */ }

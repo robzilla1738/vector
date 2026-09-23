@@ -22,7 +22,7 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
   useEffect(() => {
     let cancelled = false;
     setTask(current => current?.taskId === taskId ? current : null); setError("");
-    void call<{ task: Task }>("tasks.get", { taskId }).then(value => {
+    void call("tasks.get", { taskId }).then(value => {
       if (!cancelled) setTask(value.task);
     }).catch(error => { if (!cancelled) setError(String(error)); });
     return () => { cancelled = true; };
@@ -45,7 +45,7 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
     try {
       const spaceId = before.layout.spaces.find(space => space.workspaceId === task.workspaceId)?.id ?? before.layout.activeSpaceId;
       const target = page ?? await before.openBackgroundTab("about:blank", spaceId, false);
-      const run = await call<Run>("tasks.start", { taskId, expectedRevision: task.revision, pageIds: [target.pageId] });
+      const run = await call("tasks.start", { taskId, expectedRevision: task.revision, pageIds: [target.pageId] });
       useStore.setState(state => ({ runs: state.runs.some(item => item.runId === run.runId) ? state.runs : [run, ...state.runs] }));
       const current = useStore.getState();
       const currentPage = current.pages.find(item => item.pageId === before.activePageId);
@@ -82,7 +82,7 @@ function TaskSiteGrant({ taskId, workspaceId, page }: { taskId: string; workspac
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!origin) return;
-    void call<VaultItem[]>("vault.list", {}).then(setItems).catch(() => undefined);
+    void call("vault.list", {}).then(setItems).catch(() => undefined);
   }, [origin, taskId]);
   if (!origin) return null;
   const matches = items.filter(item => item.origin === origin && !item.revokedAt);

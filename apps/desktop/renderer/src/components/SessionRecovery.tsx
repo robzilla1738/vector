@@ -24,7 +24,7 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
     let live=true,sequence=0;
     const load=()=>{
       const request=++sequence;
-      void call<SavedTab[]>("browser.recovery.list").then(items=>{if(live&&request===sequence){setTabs(items);setError("");}})
+      void call("browser.recovery.list").then(items=>{if(live&&request===sequence){setTabs(items);setError("");}})
         .catch(reason=>{if(live&&request===sequence&&!compact)setError(String(reason));});
     };
     load();
@@ -42,7 +42,7 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
       setMessage(`Restoring ${index+1} of ${queue.length}…`);
       setRowErrors(errors=>{const next={...errors};delete next[tab.pageId];return next;});
       try{
-        const result=await call<{ok:boolean}>("browser.recovery.retry",{pageId:tab.pageId});
+        const result=await call("browser.recovery.retry",{pageId:tab.pageId});
         if(!result.ok)throw new Error("This tab could not be restored. Its saved address has been kept.");
         restored++;
         if(mounted.current)setTabs(items=>items.filter(item=>item.pageId!==tab.pageId));
