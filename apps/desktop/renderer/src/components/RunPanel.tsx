@@ -82,7 +82,7 @@ function Answer({ run, conversation = false }: { run: Run; conversation?: boolea
       )}
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
-      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && !(conversation && showSummary) && (
+      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && (
         conversation
           ? <ResultFields result={run.result} labeled={false} />
           : <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={run.result} labeled /></details>
@@ -287,7 +287,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
 
       <Answer run={run} conversation={conversation} />
 
-      {!conversation && stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
+      {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
         <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
         <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
       </details>}

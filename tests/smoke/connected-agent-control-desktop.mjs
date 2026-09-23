@@ -110,13 +110,14 @@ try {
   let page = await shell();
   await sidebarAction(page, "Settings");
   let settings = page.getByRole("region", { name: "Settings", exact: true });
-  await settings.getByRole("button", { name: "Models", exact: true }).click();
-  await settings.getByLabel("Model provider", { exact: true }).selectOption("openai-compatible");
-  await settings.getByLabel("OpenAI-compatible endpoint", { exact: true }).fill(`${endpoint}/`);
+  await settings.getByRole("button", { name: "Connections", exact: true }).click();
+  await settings.getByRole("tab", { name: "Models", exact: true }).click();
+  await settings.getByRole("combobox", { name: "Model provider", exact: true }).selectOption("openai-compatible");
+  await settings.getByRole("textbox", { name: "OpenAI-compatible endpoint", exact: true }).fill(`${endpoint}/`);
   await settings.getByRole("button", { name: "Save endpoint", exact: true }).click();
-  await settings.getByLabel("Provider API key", { exact: true }).fill("synthetic-local-agent");
+  await settings.getByRole("textbox", { name: "Provider API key", exact: true }).fill("synthetic-local-agent");
   await settings.getByRole("button", { name: "Save key", exact: true }).click();
-  await settings.getByLabel("Planner model", { exact: true }).fill("aux-fixture-model");
+  await settings.getByRole("combobox", { name: "Planner model", exact: true }).fill("aux-fixture-model");
   await settings.getByRole("button", { name: "Save model", exact: true }).click();
   await settings.getByRole("button", { name: "Test connection", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "Connection tested" }).waitFor();
@@ -138,7 +139,7 @@ try {
   await page.waitForFunction(runId => window.aux.invoke("runs.get", { runId }).then(item => item.run.status === "paused"), run.runId);
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Inspect the local page while I can intervene" }).click();
-  await page.getByText("You're in control", { exact: true }).waitFor();
+  await page.getByTestId("run-panel").getByText("You're in control", { exact: true }).waitFor();
   await page.screenshot({ path: join(artifacts, "aux-agent-human-control.png") });
   await page.getByRole("button", { name: "Return control", exact: true }).click();
   await take.waitFor();
@@ -181,7 +182,8 @@ try {
   }
   await sidebarAction(page, "Settings");
   settings = page.getByRole("region", { name: "Settings", exact: true });
-  await settings.getByRole("button", { name: "Models", exact: true }).click();
+  await settings.getByRole("button", { name: "Connections", exact: true }).click();
+  await settings.getByRole("tab", { name: "Models", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "Connection tested" }).waitFor();
   console.log("OpenAI-compatible setup, encrypted credential continuity, local streaming, takeover, return, cancellation, restart follow-up continuity, and durable provider provenance verified.");
 } finally {
