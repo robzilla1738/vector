@@ -11,6 +11,16 @@ Related: [ROADMAP.md](ROADMAP.md) (the single current roadmap), [progress log](p
 [AUX-FIRST-REVIEW.md](AUX-FIRST-REVIEW.md).
 
 ## Current state
+**September 23 shell follow-up:** the current refinement is documented in
+[the design checkpoint](ui/design-update-2026-09-23.md). New profiles default to
+horizontal tabs; stored choices survive. Session Projects are profile-local chat
+folders, separate from runtime Projects and saved Tasks. The vertical expanded
+sidebar remains a column; only collapsed edge reveal floats. The native input
+fix covers page scrolling after URL reveal and sidebar/toolbar dragging.
+Use the checkpoint pickup checklist when continuing. B1–B7 remain open; neither
+this change nor local packaging establishes founder acceptance or signing.
+
+
 
 **Update 2026-09-23 (3):** all roadmap workstreams are implemented, verified
 and **merged to `main` via PR #23** (merge commit `553fd26`): BR-01–07
@@ -159,7 +169,7 @@ ship. Still open:
 
 ### R5 — Warn-level lint debt (~400 findings)
 
-`pnpm lint` enforces a `--max-warnings=400` ratchet. Largest classes:
+`pnpm lint` enforces a `--max-warnings=390` ratchet. Largest classes:
 jsx-a11y `prefer-tag-over-role` (~145), react-hooks `exhaustive-deps` (~43),
 `set-state-in-effect` (~52), refs-in-render (~29), a handful of vitest
 `valid-expect` false positives. Pay down by class; do not raise the cap.

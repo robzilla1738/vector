@@ -129,7 +129,7 @@ Before the first UI change, capture populated light/dark native windows, expande
 | Chat | Keep the familiar message/composer structure and optional page preview. The answer is the primary content; optional previews yield space on narrow layouts. |
 | Project workspace | Evolve the current Preview/Changes/Files/Console surfaces using the same tokens and chrome. Do not introduce a visually unrelated IDE inside the browser. |
 
-Retain existing horizontal-tab and multi-window options. Improve the primary sidebar experience first without removing working alternatives.
+New profiles now default to horizontal tabs; explicit existing choices remain. Preserve both tab modes and multi-window support. Expanded vertical sidebars remain persistent columns; only collapsed vertical edge reveal uses a floating inset panel. See the [September 23 checkpoint](ui/design-update-2026-09-23.md) for the implemented design and next verification steps.
 
 ### 3.2 Interaction polish is implementation work
 
@@ -1051,3 +1051,16 @@ The declared release is ready when:
 - The team can maintain the browser: one roadmap, clear module ownership, fast useful tests, supported upstream updates, and accurate release/support documentation.
 
 The intended result is recognizable Aux, materially better at both browsing and doing work: fast in the hand, calm on screen, capable across real websites, and comfortable enough to become the user's everyday browser and workspace.
+
+### September 23 shell CSS budget tradeoff
+
+The Aside-inspired design checkpoint adds two maintained tab layouts, group and
+session-folder states, responsive work controls, accessible disclosures, and
+native reveal/contrast styling. Measured startup CSS is approximately 217 KB raw
+(previous enforced ceiling 190 KB). This checkpoint sets the enforced CSS ceiling
+to **225 KB**, retaining the 490 KB startup-JS and 1800 KB total-JS ceilings.
+The cost is about 27 KB more startup CSS; the benefit is keeping both requested
+layouts and their complete interaction states rather than shipping partial styles.
+This is a documented budget increase, not a performance improvement or achievement
+of the longer-term 80 KB CSS target. Future consolidation and surface-specific CSS
+loading should reduce it. The literal-token and lint ratchets remain unchanged.

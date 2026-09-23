@@ -15,6 +15,12 @@ agent contract. The custom Rust engine is preserved on the `engine-track`
 branch and is not part of the product path, packaging, or routine CI.
 
 ## Product decision
+Current shell behavior and native view/input constraints are recorded in the
+[September 23 checkpoint](ui/design-update-2026-09-23.md). Chat-list “Projects”
+are local session folders, distinct from the repository Projects described here.
+Horizontal/vertical tab choice is presentation, not a profile/security boundary.
+
+
 
 The desktop shell in `apps/desktop` is the product path. It owns the window
 and chrome, embeds Chromium pages with `WebContentsView`, and connects to the

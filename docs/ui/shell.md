@@ -18,7 +18,7 @@ Nothing in the shell talks to Electron except through the preload
 ├── .degraded                     runtime-disconnected banner (full width, only when offline)
 └── .app-body
     ├── .sidebar                  pins · bookmarks · chats · tabs/folders · space footer
-    │                             fully hidden; edge hover grows the same glass column
+    │                             expanded column; collapsed-only inset edge preview in vertical mode
     └── .main-col
         ├── .toolbar              loaded page: out of flow until top-edge hover or focus; otherwise a 40px row
         └── .main
@@ -30,11 +30,28 @@ Overlays (`Palette`, `Settings`, `History`, `Inspector`) are portalled siblings
 of `.app-body`; toasts sit bottom-left over the sidebar.
 
 ## Component map
+See the [September 23 implementation checkpoint](design-update-2026-09-23.md)
+for current behavior, storage scope, native input invariants and pickup checks.
+The diagram above shows the vertical layout. Horizontal mode adds
+`HorizontalTabs`/`HorizontalPins` above the URL row and a click-operated
+`ChatSidebar`; it is the default for profiles without an explicit tab layout.
+
+| Added/refined module | Responsibility |
+| --- | --- |
+| `HorizontalTabs.tsx`, `HorizontalPins.tsx` | Compact native-glass strip, corner joins, grouped tabs, pin activation |
+| `TabPreview.tsx` | Delayed real capture, bounded card, stable page geometry |
+| `ChatSidebar.tsx`, `ChatSessions.tsx`, `chat-folders.ts` | Shared chat projects, hover/focus actions and inline disclosures |
+| `RecentWork.tsx`, `Tasks.tsx`, `Routines.tsx`, `RoutineSchedule.tsx` | Bounded cards, filters, empty states and schedule summaries |
+| `use-window-drag.ts`, main `window-drag.ts` | Captured blank-area dragging with shell-only native IPC |
+| main `sidebar-glass.ts`, `toolbar-glass.ts`, `windows/surface.ts` | Page blur, adaptive toolbar ink and native hit order |
+
+
+
 
 | File | Role |
 | --- | --- |
 | `App.tsx` | Frame, shortcut dispatch (renderer + main-process shortcuts), stage-rect reporting to the native view, `narrow` media query |
-| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode. Edge hover grows the same glass column beside the page; it does not float a card over it. A web tab dropped on Bookmarks is saved |
+| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode. Expanded mode is a persistent column. Collapsed vertical edge hover floats an inset glass preview without changing page bounds. A web tab dropped on Bookmarks is saved |
 | `components/Toolbar.tsx` | On a loaded page the row is out of the layout until the pointer reaches the top or the field is focused. A frost on the page fades out by the bottom of that row. Back/forward/reload, `CommandBar`, the controller chip, overview, bookmark and the rail toggle reveal together and stay clickable. Touch keeps the row in the layout. ⌘L still focuses it |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again). The primary suggestion's enter mark is the same circular accent up-arrow as the composer send control. Other hints stay text keys |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
@@ -72,7 +89,7 @@ listener and from the main-process accelerator relay.
 | ⌃Tab / ⌃⇧Tab, ⌘⌥← / → , ⌘⇧[ / ] | Cycle tabs |
 | ⌘⇧A | Toggle agent rail |
 | ⌘⇧O | Tab overview |
-| ⌘S | Hide / expand sidebar (no logo strip; edge hover grows the glass column) |
+| ⌘S | Hide / expand sidebar; collapsed vertical edge hover previews an inset panel |
 | ⌘D / ⌘⇧D | Bookmark page / bookmark all tabs |
 | ⌘F, ⌘G / ⌘⇧G | Find in page, next / previous match |
 | ⌘R / ⌘⇧R | Reload / hard reload |
@@ -104,7 +121,7 @@ remain literal. `tests/unit/chrome-tokens.test.ts` ratchets the literal counts,
 so they can fall but never rise. `tokens.css` declares the cascade layers,
 `reset, tokens, base, components, overrides`: element selectors live in `base`,
 and the reduced-motion, reduced-transparency and increased-contrast rules live
-in `overrides`. Each selector is defined once per context.
+in `overrides`. The final refinement rules near the end of styles.css override earlier geometry where needed; inspect the computed style when maintaining this cascade.
 
 - **Type** — Geist Variable and Geist Mono; 14px interface default with user scaling
   (`--fs-2xs … --fs-3xl`); weights `--fw-regular 400`, `--fw-book 450`, `--fw-medium 500`,
@@ -157,6 +174,14 @@ in `overrides`. Each selector is defined once per context.
 - **Z** — `--z-stage < --z-panel < --z-peek < --z-scrim < --z-drawer < --z-toast`.
 
 ## States
+The full-page **new conversation** state centers a 56px subdued Aux mark and
+uses a bottom composer capped at 880px, with a compact context row. It is separate
+from the StartPage search hero and from embedded or populated conversation views.
+Chat Projects are session folders, not repository workspaces. Jump to latest is
+an icon-only floating arrow that does not move the composer.
+
+
+
 
 - **Empty** — no tabs: sidebar hint + `StartPage` (Aux mark, Search/Ask field,
   recent chats/routines). No runs: rail home explains where
@@ -232,7 +257,7 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
 - `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
   (native material layering, row-filling pins, coordinated toolbar reveal,
   the suggestion send mark, round tab-close targets, settings groups,
-  the glass sidebar column, and the hidden attachment row in chat).
+  sidebar states and chat attachments; focused native regressions are listed in local-testing.md).
   `workspace.test.ts` covers `previewSplit`.
 
 ## Runtime contract dependencies

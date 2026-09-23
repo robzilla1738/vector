@@ -107,6 +107,18 @@ export function syncSpaces(layout: Layout, pages: Pick<PageTarget, "pageId">[], 
   return { ...layout, tabSpace };
 }
 
+/** Horizontal groups are contiguous, positioned where their first member occurs. */
+export function groupedTabs<T extends { pageId: string }>(layout: Layout, tabs: T[]): T[] {
+  const seen = new Set<string>();
+  return tabs.flatMap(page => {
+    const folderId = layout.tabFolder[page.pageId];
+    if (!folderId || !layout.folders.some(folder => folder.id === folderId)) return [page];
+    if (seen.has(folderId)) return [];
+    seen.add(folderId);
+    return tabs.filter(item => layout.tabFolder[item.pageId] === folderId);
+  });
+}
+
 /** Ordered tabs for one space. */
 export function tabsInSpace<T extends Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">>(
   layout: Layout,

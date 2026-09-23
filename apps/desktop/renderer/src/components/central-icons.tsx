@@ -13,6 +13,8 @@ export const Archive = (props: Props) => (<svg width="1em" height="1em" aria-hid
 
 export const ArrowUp = (props: Props) => (<svg width="1em" height="1em" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 20.25V4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.75 10L12 3.75L18.25 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>);
 
+export const ArrowDown = (props: Props) => <ArrowUp {...props} style={{ ...props.style, transform: "rotate(180deg)" }} />;
+
 export const ArrowLeft = (props: Props) => (<svg width="1em" height="1em" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 5.75L3.75 12L10 18.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4.5 12H20.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>);
 
 export const ArrowRight = (props: Props) => (<svg width="1em" height="1em" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14 5.75L20.25 12L14 18.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.5 12H3.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>);

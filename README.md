@@ -24,6 +24,17 @@ shell, headless in standalone mode, or the user's Chrome attached over CDP.
 Connection kind is recorded on every page (`backend`, `routeReason`).
 
 ## Private hands-on preview
+### Current shell
+
+The [design checkpoint](docs/ui/design-update-2026-09-23.md) records the current
+Aside-inspired shell: horizontal tabs by default, optional vertical tabs, native
+glass, a persistent expanded sidebar and a separate collapsed edge preview,
+chat project folders, inline session actions, and consistent work controls.
+It also documents the native input fixes for URL reveal, scrolling and window
+dragging. Existing Aux colors and explicit preferences are preserved.
+
+
+
 
 Run `AUX_LOAD_DOTENV=0 pnpm dev` for the current private development build. `pnpm preview` opens a
 separate persistent Aux Preview profile. Follow the [local Mac handoff](docs/HANDOFF.md),

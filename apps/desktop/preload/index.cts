@@ -99,6 +99,10 @@ const aux = {
     ipcRenderer.invoke("ui.setStage", pageId, bounds, split, radius, ratio),
   /** hide native pages while a DOM overlay (palette/menus/overview) is up */
   overlay: (open: boolean) => ipcRenderer.invoke("ui.overlay", open),
+  windowDrag: (phase: "start" | "move" | "end", point?: { x: number; y: number }) => ipcRenderer.send("ui.windowDrag", phase, point),
+  sidebarGlass: (bounds: {x:number;y:number;width:number;height:number} | null) => ipcRenderer.invoke("ui.sidebarGlass", bounds) as Promise<boolean>,
+  toolbarGlass: (visible: boolean) => ipcRenderer.invoke("ui.toolbarGlass", visible) as Promise<boolean>,
+  toolbarTone: () => ipcRenderer.invoke("ui.toolbarTone") as Promise<"light" | "dark">,
   toolbarOverlay: (open: boolean, ticket: number) => ipcRenderer.invoke("ui.toolbarOverlay", open, ticket) as Promise<boolean>,
   trafficLights: (visible: boolean) => ipcRenderer.invoke("ui.trafficLights", visible) as Promise<boolean>,
   forwardPagePointer: (message: unknown) => { ipcRenderer.send("ui.pagePointer", message); },

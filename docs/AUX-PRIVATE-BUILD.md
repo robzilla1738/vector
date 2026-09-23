@@ -89,3 +89,13 @@ data are stored separately according to the repository's development configurati
 The next roadmap should come from this hands-on review. Packaging, signing, release
 preparation, a seven-day pilot, global mini popup, routines and speculative polish are
 outside this handoff.
+
+## September 23 shell checkpoint
+
+See [current shell behavior](ui/design-update-2026-09-23.md) and
+[focused native tests](local-testing.md#focused-shell-design-regressions).
+Review horizontal and vertical modes, persistent versus preview sidebars, chat
+folder actions, and URL reveal followed by page scrolling and window dragging.
+Rebuild/relaunch native main and preload code for the input fixes; refreshing a
+mock browser is insufficient. Local packages remain unsigned previews; signing,
+notarization and the founder pilot are separate handoff gates.

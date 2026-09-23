@@ -1,0 +1,47 @@
+import {mkdtempSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {launchAux,root} from './launch.mjs';
+const dir=mkdtempSync('/tmp/aux-settings-design-');
+const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.env,AUX_PROFILE_DIR:dir+'/profile',AUX_DATA_DIR:dir+'/data',AUX_LOAD_DOTENV:'0'}});
+page.setDefaultTimeout(8000);
+try {
+ await page.locator('.aux-home').waitFor();
+ await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'horizontal'}));
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:1200,height:900}));
+ if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible()) await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('navigation',{name:'Settings categories'}).getByRole('button',{name:'Appearance',exact:true}).click();
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/settings-appearance.png'});
+ const search=page.getByRole('textbox',{name:'Search settings',exact:true});
+ await search.fill('tab layout');
+ await search.press('ArrowDown');
+ assert.equal(await page.locator('.settings-search-result:focus').count(),1);
+ await page.keyboard.press('Enter');
+ await page.locator('[data-setting="Tab layout"]:focus').waitFor();
+ await search.fill('unmatched-setting-123');
+ await page.getByText('No settings found', {exact:false}).waitFor();
+ await page.getByRole('button',{name:'Clear settings search'}).click();
+ assert.equal(await search.inputValue(),'');
+ await page.getByRole('navigation',{name:'Settings categories'}).getByRole('button',{name:'Connections',exact:true}).click();
+ await page.getByRole('tab',{name:'Services',exact:true}).click();
+ await page.getByRole('tab',{name:'Services',exact:true}).press('ArrowRight');
+ await page.keyboard.press('Enter');
+ assert.equal(await page.getByRole('tab',{name:'Vault',exact:true}).getAttribute('aria-selected'),'true');
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:900,height:740}));
+ await page.getByRole('navigation',{name:'Settings categories'}).getByRole('button',{name:'Appearance',exact:true}).click();
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/settings-narrow.png'});
+ const geometry=await page.evaluate(()=>{
+ const nav=document.querySelector('.settings-nav').getBoundingClientRect();const content=document.querySelector('.settings-content').getBoundingClientRect();const box=document.querySelector('.settings-search-box').getBoundingClientRect();
+ return {navBottom:nav.bottom,contentTop:content.top,searchTop:box.top,navTop:nav.top,overflow:document.querySelector('.settings-content').scrollWidth>document.querySelector('.settings-content').clientWidth+1};});
+ assert.ok(geometry.contentTop>=geometry.navBottom-1,JSON.stringify(geometry));
+ assert.ok(geometry.searchTop>=geometry.navTop);
+ assert.equal(geometry.overflow,false);
+ await page.getByRole('button',{name:'Close settings'}).click();
+ await page.getByRole('button',{name:'Tasks',exact:true}).click();
+ await page.getByRole('button',{name:'New task',exact:true}).waitFor();
+ assert.equal(await page.locator('.routines-section').evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');
+ const heights=await page.evaluate(()=>[document.querySelector('.task-index-tools input'),document.querySelector('.task-index-tools .btn'),document.querySelector('#task-workspace')].map(el=>el.getBoundingClientRect().height));
+ assert.ok(heights.every(h=>h===36),JSON.stringify(heights));
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/work-controls.png'});
+ console.log('PASS: Settings search keyboard navigation, clearing, connection tabs, narrow layout, borderless work sections and uniform control heights.');
+} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}

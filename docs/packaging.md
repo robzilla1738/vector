@@ -68,3 +68,13 @@ curl -X POST http://127.0.0.1:<port>/rpc \
   disables dotenv loading, and does not import main-profile credentials.
 - Isolated manual `electron-builder --dir` builds also require the runtime
   dependency injection in step 4; packaging alone does not include those dependencies.
+
+## September 23 shell checkpoint
+
+See [current shell behavior](ui/design-update-2026-09-23.md) and
+[focused native tests](local-testing.md#focused-shell-design-regressions).
+Review horizontal and vertical modes, persistent versus preview sidebars, chat
+folder actions, and URL reveal followed by page scrolling and window dragging.
+Rebuild/relaunch native main and preload code for the input fixes; refreshing a
+mock browser is insufficient. Local packages remain unsigned previews; signing,
+notarization and the founder pilot are separate handoff gates.

@@ -1,0 +1,33 @@
+import {launchAux,root} from './launch.mjs';
+import {mkdtempSync,mkdirSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const dir=mkdtempSync('/tmp/aux-jump-');mkdirSync(dir+'/data',{recursive:true});
+const {openDb,Repo}=await import(root+'/apps/runtime/dist/index.js');
+const {resolveDatabasePath}=await import(root+'/packages/contracts/dist/installation.js');
+const repo=new Repo(openDb(resolveDatabasePath(dir+'/data')));
+repo.saveRun({runId:'jump-run',goal:'Review the notes',status:'completed',pageIds:[],config:{chatId:'jump-chat'},result:{answer:Array.from({length:40},(_,i)=>`### Note ${i+1}\n\nA paragraph of research notes with enough detail to read and compare.`).join('\n\n')},createdAt:Date.now(),endedAt:Date.now()});repo.db.close();
+const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.env,AUX_PROFILE_DIR:dir+'/profile',AUX_DATA_DIR:dir+'/data',AUX_LOAD_DOTENV:'0'}});
+page.setDefaultTimeout(10000);
+try {
+ await page.locator('.aux-home').waitFor();
+ if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
+ await page.locator('.chat-sessions').getByRole('button',{name:'Review the notes',exact:true}).click();
+ await page.getByRole('button',{name:'Continue in side panel',exact:true}).click();
+ const scroll=page.locator('.conversation-embedded .conversation-scroll');
+ await scroll.waitFor();
+ await page.waitForFunction(()=>document.querySelector('.conversation-embedded .conversation-scroll')?.scrollHeight>1500);
+ await scroll.evaluate(el=>{el.scrollTop=150;el.dispatchEvent(new Event('scroll'));});
+ const jump=page.getByRole('button',{name:'Jump to latest',exact:true});
+ await jump.waitFor();
+ assert.equal(await jump.textContent(),'');
+ assert.equal(await page.locator('.conversation-jump').evaluate(el=>el.getBoundingClientRect().height),0);
+ assert.deepEqual(await jump.evaluate(el=>[el.getBoundingClientRect().width,el.getBoundingClientRect().height]),[32,32]);
+ const before=await page.locator('.conversation-embedded .conversation-input').boundingBox();
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/minimal-jump.png'});
+ await jump.click();
+ await jump.waitFor({state:'hidden'});
+ assert.equal(await scroll.evaluate(el=>Math.abs(el.scrollHeight-el.clientHeight-el.scrollTop)<4),true);
+ const after=await page.locator('.conversation-embedded .conversation-input').boundingBox();
+ assert.equal(after.y,before.y);
+ console.log('PASS icon-only floating jump, zero-height wrapper, stable composer and scroll-to-latest behavior.');
+} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}

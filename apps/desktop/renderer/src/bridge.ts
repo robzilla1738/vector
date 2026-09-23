@@ -93,6 +93,10 @@ export interface AuxBridge {
   setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number, ratio?: number): Promise<boolean>;
   overlay(open: boolean): Promise<boolean>;
   /** Keep the shell painted above the native page so the address bar can slide over it. `ticket` drops stale replies. */
+  windowDrag(phase: "start" | "move" | "end", point?: { x: number; y: number }): void;
+  sidebarGlass(bounds: StageBounds | null): Promise<boolean>;
+  toolbarGlass(visible: boolean): Promise<boolean>;
+  toolbarTone(): Promise<"light" | "dark">;
   toolbarOverlay(open: boolean, ticket: number): Promise<boolean>;
   /** macOS window buttons. Hidden only while a flush page would draw through them. */
   trafficLights(visible: boolean): Promise<boolean>;
@@ -247,6 +251,10 @@ const stub: AuxBridge = {
   controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
   setStage: async () => true,
   overlay: async () => true,
+  windowDrag: () => {},
+  sidebarGlass: async () => true,
+  toolbarGlass: async () => true,
+  toolbarTone: async () => "dark",
   toolbarOverlay: async () => true,
   trafficLights: async () => true,
   forwardPagePointer: () => {},

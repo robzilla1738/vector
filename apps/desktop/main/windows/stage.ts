@@ -127,6 +127,6 @@ function stageViews(state: RegularWindowState, pageIds: (string | null)[]) {
 }
 
 export function deliverPagePointer(state: RegularWindowState, value: unknown) {
-  if (!state.toolbarOverlay || state.overlayOpen) return;
+  if (state.overlayOpen) return;
   forwardPagePointer(value, stageViews(state, [state.splitPageId, state.stagePageId]).filter(view => view.getVisible()));
 }

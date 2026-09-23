@@ -10,6 +10,16 @@ import { openSavedTask } from "../task-navigation";
 import { STATUS_LABEL } from "../run-status";
 import { I } from "./icons";
 
+function previewText(item: ConversationSummary, draft?: string) {
+  if (draft?.trim()) return draft.trim();
+  const run = item.latestRun;
+  if (typeof run.result?.answer === "string" && run.result.answer.trim()) return run.result.answer;
+  if (run.status === "failed") return "This chat couldn’t finish. Open it to review or retry.";
+  if (run.status === "cancelled") return "This chat was cancelled.";
+  if (run.status === "interrupted") return "This chat was interrupted. Open it to continue.";
+  return run.statusMessage || run.goal;
+}
+
 /** Home previews use durable chat titles and results, never invented activity. */
 export function RecentWork() {
   const [items, setItems] = useState<ConversationSummary[]>([]);
@@ -43,7 +53,13 @@ export function RecentWork() {
   const count = tab === "chats" ? items.length : routines.length;
   return <section className="home-history" aria-label="Recent work">
     <header className="home-section-head">
-      <div className="history-segment" role="group" aria-label="Recent work view">
+      <div className="history-segment" role="group" aria-label="Recent work view" onKeyDown={event => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === "Home" ? "chats" : event.key === "End" ? "routines" : tab === "chats" ? "routines" : "chats";
+        setTab(next);
+        event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next === "chats" ? 0 : 1]?.focus();
+      }}>
         <button className={tab === "chats" ? "active" : ""} aria-pressed={tab === "chats"} onClick={() => setTab("chats")}>Chats</button>
         <button className={tab === "routines" ? "active" : ""} aria-pressed={tab === "routines"} onClick={() => setTab("routines")}>Routines</button>
       </div>
@@ -52,12 +68,12 @@ export function RecentWork() {
         else { useStore.getState().openConversation(null); useStore.setState({conversationId: "history"}); }
       }}>{tab === "chats" ? "All Chats" : "Manage routines"}{I.right}</button>
     </header>
-    <div className="home-cards">
+    <div className="home-cards" aria-busy={loading}>
       {tab === "chats" ? items.map(item => <article className="home-card" key={item.chatId}>
         <div className="home-card-meta"><time dateTime={new Date(item.updatedAt).toISOString()}>{new Date(item.updatedAt).toLocaleDateString(undefined, {month: "short", day: "numeric"})}</time><span>{drafts[draftKey(item.chatId)]?.trim() ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span></div>
         <h3><button className="home-card-open" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}>{item.title}</button></h3>
-        <div className="home-excerpt" inert><AnswerPreview text={typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal}/></div>
-      </article>) : routines.map(item => <article className="home-card" key={item.routineId}>
+        <div className="home-excerpt" inert><AnswerPreview text={previewText(item, drafts[draftKey(item.chatId)])}/></div>
+      </article>) : routines.slice(0, 3).map(item => <article className="home-card" key={item.routineId}>
         <div className="home-card-meta"><span>{item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}</span></div>
         <h3><button className="home-card-open" onClick={() => item.sourceTaskId ? void openSavedTask(item.sourceTaskId).catch(errToast) : useStore.getState().setOverlay("tasks")}>{item.title}</button></h3>
         <p className="home-excerpt">{item.objective}</p>
@@ -65,7 +81,7 @@ export function RecentWork() {
       {!loading && !error && !count && <div className="home-empty"><p>{tab === "chats" ? "Your conversations will appear here." : "Your saved routines will appear here."}</p><button className="btn ghost" onClick={() => tab === "chats" ? useStore.getState().openConversation(null) : useStore.getState().setOverlay("tasks")}>{I.plusSm}{tab === "chats" ? "New chat" : "Create a task"}</button></div>}
     </div>
     {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map(item => item.chatId)} />}
-    {loading && !count && <p className="hint" role="status">Loading recent work…</p>}
+    {loading && !count && <output className="hint" data-block>Loading recent work…</output>}
     {error && <p className="field-error" role="alert">Recent work couldn’t be loaded. <button className="btn sm ghost" title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
   </section>;
 }

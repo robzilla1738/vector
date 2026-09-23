@@ -6,8 +6,8 @@ describe("sidebar-mode", () => {
     expect(readSidebarMode("rail")).toBe("hidden");
     expect(readSidebarMode("hidden")).toBe("hidden");
     expect(readSidebarMode("expanded")).toBe("expanded");
-    expect(readSidebarMode("nope")).toBe("expanded");
-    expect(readSidebarMode(null)).toBe("expanded");
+    expect(readSidebarMode("nope")).toBe("hidden");
+    expect(readSidebarMode(null)).toBe("hidden");
   });
 
   it("toggles expanded and hidden without a logo strip", () => {
@@ -17,8 +17,8 @@ describe("sidebar-mode", () => {
   });
 
   it("focuses a control that still exists after collapse", () => {
-    expect(sidebarFocusSelector("expanded")).toBe(".space-switch");
-    expect(sidebarFocusSelector("rail")).toBe('.toolbar [aria-label="Show sidebar"]');
-    expect(sidebarFocusSelector("hidden")).toBe('.toolbar [aria-label="Show sidebar"]');
+    expect(sidebarFocusSelector("expanded")).toBe(".chat-sidebar .chat-sidebar-link, .space-switch");
+    expect(sidebarFocusSelector("rail")).toBe('.chat-sidebar-toggle, .toolbar [aria-label="Show sidebar"]');
+    expect(sidebarFocusSelector("hidden")).toBe('.chat-sidebar-toggle, .toolbar [aria-label="Show sidebar"]');
   });
 });

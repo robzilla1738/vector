@@ -149,7 +149,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).toContain("var(--ease-emphasized)");
     expect(styles).not.toContain("bottom: -64px");
     expect(styles).not.toContain("backdrop-filter: blur(22px) saturate(1.4)");
-    expect(styles).toContain("transparent 72%, transparent 100%");
+    expect(styles).toMatch(/mask-image: linear-gradient\(to bottom,[^;]*transparent\)/);
     expect(styles).toContain(".app.electron .main-col.toolbar-revealed.has-page > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right)");
     expect(styles).toContain("html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)");
     expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail) .main-col.has-page .stage-wrap > .findbar { padding-left: var(--traffic-inset); }");
@@ -207,10 +207,10 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   const images = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ConversationImages.tsx"), "utf8");
   const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
 
-  it("uses one corner for the address field and its suggestion menu", () => {
+  it("uses tokenized rounded suggestions within the address popover", () => {
     expect(styles).toContain(".cmdbar, .cb-pop, .main-col");
-    expect(styles).toMatch(/\.cb-pop\s*\{[^}]*border-radius:\s*var\(--cb-radius\)/);
-    expect(styles).toMatch(/\.cb-opt\s*\{[^}]*border-radius:\s*0;/);
+    expect(styles).toMatch(/\.cb-pop\s*\{[^}]*border-radius:\s*var\(--r-xl\)/);
+    expect(styles).toMatch(/\.cb-opt\s*\{[^}]*border-radius:\s*var\(--r-lg\);/);
     expect(styles).toContain("--cb-radius: var(--r-xl)");
     expect(styles).toContain("--cb-radius: var(--r-2xl)");
   });

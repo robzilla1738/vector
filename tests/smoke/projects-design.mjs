@@ -1,0 +1,45 @@
+import {mkdtempSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {launchAux,root} from './launch.mjs';
+const dir=mkdtempSync('/tmp/aux-projects-');
+const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.env,AUX_PROFILE_DIR:dir+'/profile',AUX_DATA_DIR:dir+'/data',AUX_LOAD_DOTENV:'0'}});
+page.setDefaultTimeout(8000);
+try {
+ await page.locator('.aux-home').waitFor();
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:1200,height:900}));
+ const workspace=await page.evaluate(()=>window.aux.invoke('workspaces.create',{name:'Research'}));
+ await page.evaluate(async workspaceId=>{
+  const task=await window.aux.invoke('tasks.create',{workspaceId,title:'Compare research sources',objective:'Review the evidence and prepare a concise comparison.',criteria:[{criterionId:"c1",description:"Sources cited",verification:"manual"}]});
+  const old=await window.aux.invoke('tasks.create',{workspaceId,title:'Previous review',objective:'Completed research archive.',criteria:[{criterionId:"c1",description:"Sources cited",verification:"manual"}]});
+  await window.aux.invoke('tasks.archive',{taskId:old.taskId,expectedRevision:old.revision,archived:true});
+  await window.aux.invoke('routines.fromResult',{taskId:task.taskId,title:'Weekly research review',trigger:{kind:'schedule',timezone:'America/Chicago',hour:9,minute:0,days:[1,3,5]}});
+ },workspace.workspaceId);
+ await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'horizontal'}));
+ if (await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible()) await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
+ await page.getByRole('button',{name:'Tasks',exact:true}).click();
+ await page.getByLabel('Space',{exact:true}).selectOption({label:'Research'});
+ await page.locator('.task-index-card').first().waitFor();
+ assert.equal(await page.locator('.task-index-card').count(),2);
+ await page.getByRole('group',{name:'Task status',exact:true}).getByRole('button',{name:'Active',exact:true}).click();
+ assert.equal(await page.locator('.task-index-card').count(),1);
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/projects-index.png'});
+ await page.locator('.routine-card').click();
+ await page.getByRole('button',{name:'Weekdays',exact:true}).click();
+ await page.getByRole('button',{name:'Save schedule',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.routine-schedule-summary')?.textContent==='Weekdays at 09:00 · America/Chicago');
+ await page.locator('.routine-detail').scrollIntoViewIfNeeded();
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/routine-detail.png'});
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:850,height:740}));
+ await page.locator('.routine-schedule').scrollIntoViewIfNeeded();
+ assert.equal(await page.locator('.tasks-page').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/routine-narrow.png'});
+ await page.getByRole('button',{name:'All routines',exact:true}).click();
+ await page.getByRole('group',{name:'Routine status',exact:true}).getByRole('button',{name:'Paused',exact:true}).click();
+ await page.getByText('No matching routines',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Clear filters',exact:true}).click();
+ await page.locator('.routine-card').waitFor();
+ await page.locator('.task-index-card').click();
+ await page.getByLabel('Title',{exact:true}).waitFor();
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/task-editor.png'});
+ console.log('PASS: task status filters, routine empty/reset, saved weekday preset, narrow layout and editor.');
+} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}

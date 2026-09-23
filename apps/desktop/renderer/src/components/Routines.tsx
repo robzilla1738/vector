@@ -3,7 +3,7 @@ import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task, VaultItem
 import { call } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
-import { RoutineSchedule } from "./RoutineSchedule";
+import { RoutineSchedule, routineScheduleSummary } from "./RoutineSchedule";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -14,6 +14,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState("");
   const [parameter, setParameter] = useState("");
+  const [status, setStatus] = useState<"all" | "ready" | "paused" | "archived">("all");
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
@@ -45,7 +46,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     finally { setBusy(false); }
   }
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const visibleRoutines = routines.filter(item => `${item.title} ${item.objective}`.toLowerCase().includes(query.toLowerCase()));
+  const visibleRoutines = routines.filter(item => (status === "all" || (status === "archived" ? !!item.archivedAt : !item.archivedAt && (status === "paused" ? item.paused : !item.paused))) && `${item.title} ${item.objective}`.toLowerCase().includes(query.toLowerCase()));
   return <section className="routines-section" aria-label="Routines" aria-busy={loading || busy}>
     <div className="routines-heading"><div><h4>Routines</h4><p className="hint">Your repeatable work, on a schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
       const routine = await call("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: parameter ? [{ name: "topic", label: "Topic", value: parameter }] : [] });
@@ -73,13 +74,14 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     {notice && <p className="hint" role="status">{notice}</p>}
     {!selected && <>
       <label className="routine-search">{I.search}<input aria-label="Search routines" placeholder="Search routines…" value={query} onChange={event => setQuery(event.target.value)} /></label>
+      <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Routine status">{(["all", "ready", "paused", "archived"] as const).map(filter => <button key={filter} className={status === filter ? "active" : ""} aria-pressed={status === filter} onClick={() => setStatus(filter)}>{filter[0]!.toUpperCase() + filter.slice(1)}</button>)}</div><span className="hint" role="status">{visibleRoutines.length} {visibleRoutines.length === 1 ? "routine" : "routines"}</span></div>
       {loading ? <p className="hint" role="status">Loading routines…</p> : <div className="routine-grid">
         {visibleRoutines.map(item => <button className="routine-card" disabled={busy} key={item.routineId} onClick={() => void action(() => refresh(item.routineId))}>
           <span className="routine-card-top">{I.clock}<span className="routine-status">{item.archivedAt ? "Archived" : item.paused ? "Paused" : "Ready"}</span></span>
           <strong>{item.title}</strong><p>{item.objective}</p>
-          <span className="routine-card-trigger">{item.trigger.kind === "schedule" ? `${String(item.trigger.hour).padStart(2, "0")}:${String(item.trigger.minute).padStart(2, "0")} · ${item.trigger.timezone}` : item.trigger.kind === "monitor" ? `Every ${item.trigger.intervalMinutes} minutes` : "Run on demand"}{I.fwd}</span>
+          <span className="routine-card-trigger">{routineScheduleSummary(item.trigger)}{I.right}</span>
         </button>)}
-        {!error && !visibleRoutines.length && <div className="routine-empty">{I.clock}<strong>{query ? "No matching routines" : "Make room for repeatable work"}</strong><p>{query ? "Try another title or description." : "Open a saved task to turn it into a routine."}</p></div>}
+        {!error && !visibleRoutines.length && <div className="routine-empty">{I.clock}<strong>{query || status !== "all" ? "No matching routines" : "Make room for repeatable work"}</strong><p>{query || status !== "all" ? "Try another title or status." : "Open a saved task to turn it into a routine."}</p>{(query || status !== "all") && <button className="btn ghost" onClick={() => { setQuery(""); setStatus("all"); }}>Clear filters</button>}</div>}
       </div>}
     </>}
     {selected && <div className="routine-detail">

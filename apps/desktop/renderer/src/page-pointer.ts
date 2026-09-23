@@ -74,7 +74,11 @@ export function usePagePointerForward(active: boolean) {
     const onWheel = (event: WheelEvent) => {
       if (!hits(event)) return;
       event.preventDefault();
+      const field = document.activeElement;
+      if (field instanceof HTMLElement && field.closest(".toolbar")) field.blur();
       send("wheel", event);
+      // Scrolling resumes direct native input, even if URL editing held chrome open.
+      window.dispatchEvent(new Event("aux-page-scroll"));
     };
     const onMenu = (event: MouseEvent) => {
       if (!hits(event)) return;

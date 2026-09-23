@@ -19,13 +19,22 @@ export function placeChrome(host: ChromeHost, stageViews: WebContentsView[], tra
   }
   if (host.win.isDestroyed()) return;
   if (host.toolbarOverlay) {
+    // Detach before raising: AppKit must update native hit-testing as well as
+    // Chromium's paint order when the transparent shell covers another view.
+    if (!host.chromeOnTop || host.win.contentView.children.at(-1) !== host.shellView) {
+      host.win.contentView.removeChildView(host.shellView);
+      host.win.contentView.addChildView(host.shellView);
+    }
     host.chromeOnTop = true;
-    host.win.contentView.addChildView(host.shellView);
     return;
   }
   if (!host.chromeOnTop) return;
   host.chromeOnTop = false;
-  for (const view of stageViews) host.win.contentView.addChildView(view);
+  for (const view of stageViews) {
+    // Reordering an attached view can repaint without updating AppKit hit tests.
+    host.win.contentView.removeChildView(view);
+    host.win.contentView.addChildView(view);
+  }
 }
 
 /** Replay an untrusted shell pointer event onto whichever visible stage view it lands in. */
@@ -36,7 +45,7 @@ export function forwardPagePointer(value: unknown, views: WebContentsView[]) {
   if (!hit || hit.view.webContents.isDestroyed()) return;
   const input = inputEventFor(message, hit.x, hit.y);
   if (!input) return;
-  if (message.kind === "down") hit.view.webContents.focus();
+  if (message.kind === "down" || message.kind === "wheel") hit.view.webContents.focus();
   hit.view.webContents.sendInputEvent(input);
 }
 

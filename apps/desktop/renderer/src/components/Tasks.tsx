@@ -32,6 +32,7 @@ export function Tasks() {
   const [busy, setBusy] = useState(false);
   const [draftRevision, setDraftRevision] = useState<number | null>(null);
   const [draftNotice, setDraftNotice] = useState("");
+  const [taskFilter, setTaskFilter] = useState<"all" | "active" | "archived">("all");
   const [taskQuery, setTaskQuery] = useState("");
   const [newParentTaskId, setNewParentTaskId] = useState<string | null>(null);
 
@@ -123,14 +124,16 @@ export function Tasks() {
     const content=[`# ${details.task.title}`,'',`Task ${details.task.taskId} · revision ${details.task.revision}`,'',details.task.objective,'','## Coordinated work','',...rows,'','Each child has independent resources, execution authority, evidence and review. This snapshot does not accept criteria or prove external outcomes.',''].join('\n');
     const name=`aux-task-plan-${details.task.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||details.task.taskId.slice(0,8)}.md`;await bridge.saveFile(name,content);
   }
+  useEffect(() => { dialogRef.current?.scrollTo({ top: 0 }); }, [selected?.task.taskId, creating]);
+
   const conflict = !!selected && draftRevision !== selected.task.revision;
   const attached = !!selected && !!activePageId && (selected.task.resources.some(resource => resource.kind === "page" && resource.locator === activePageId) || selected.runs.some(({ run, currentRevision }) => currentRevision && run.pageIds.includes(activePageId)));
   const dirty = !!selected && (title !== selected.task.title || objective !== selected.task.objective || criteria !== selected.task.criteria.map(item => item.description).join("\n"));
-  const visibleTasks = tasks.filter(task => `${task.title} ${task.objective} ${task.criteria.map(item => item.description).join(" ")} ${task.resources.map(item => item.label).join(" ")}`.toLowerCase().includes(taskQuery.toLowerCase()));
+  const visibleTasks = tasks.filter(task => (taskFilter === "all" || (taskFilter === "archived" ? task.state === "archived" : task.state !== "archived")) && `${task.title} ${task.objective} ${task.criteria.map(item => item.description).join(" ")} ${task.resources.map(item => item.label).join(" ")}`.toLowerCase().includes(taskQuery.toLowerCase()));
 
   return <div className="tasks-page" role="region" aria-label="Tasks" ref={dialogRef}>
     <div className={`task-content ${!selected && !creating ? "task-index" : ""}`}>
-      <div className="drawer-head"><h3>Tasks</h3><span className="sp" /><button className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>{I.close}</button></div>
+      <div className="drawer-head"><h3>{creating ? "New task" : selected ? selected.task.title : "Tasks"}</h3><span className="sp" /><button className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>{I.close}</button></div>
       {error && <p role="alert" className="field">{error}</p>}
       {(selected || creating) && <button className="btn ghost task-back" disabled={busy} onClick={() => { setSelected(null); setCreating(false); setShowHistory(false); remember(null); }}>{I.back}All tasks</button>}
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
@@ -144,13 +147,14 @@ export function Tasks() {
         </div>
         {!selected && !creating && <>
           <div className="task-index-tools"><input aria-label="Search tasks" placeholder="Search tasks…" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} /><button className="btn primary" disabled={!workspaceId} onClick={() => reset()}>{I.plusSm}New task</button></div>
+          <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Task status">{(["all", "active", "archived"] as const).map(filter => <button key={filter} className={taskFilter === filter ? "active" : ""} aria-pressed={taskFilter === filter} onClick={() => setTaskFilter(filter)}>{filter === "all" ? "All" : filter === "active" ? "Active" : "Archived"}</button>)}</div><span className="hint" role="status">{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span></div>
           <div className="task-index-grid">
             {visibleTasks.map(task => <button key={task.taskId} className="task-index-card" onClick={() => void action(() => refresh(task.taskId))}>
-              <span>{task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"}</span><strong>{task.title}</strong><p>{task.objective}</p><small>{task.criteria.length} success criteria</small>
+              <span className="work-status">{task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"}</span><strong>{task.title}</strong><p>{task.objective}</p><small>{task.criteria.length} success {task.criteria.length === 1 ? "criterion" : "criteria"}</small>
             </button>)}
           </div>
           {!busy && !tasks.length && <div className="home-empty"><p>No saved tasks yet.</p><button className="btn ghost" disabled={!workspaceId} onClick={() => reset()}>Create your first task</button></div>}
-          {!busy && tasks.length > 0 && !visibleTasks.length && <div className="home-empty" role="status"><p>No tasks match “{taskQuery}”.</p><button className="btn ghost" onClick={() => setTaskQuery("")}>Clear search</button></div>}
+          {!busy && tasks.length > 0 && !visibleTasks.length && <div className="home-empty" role="status"><p>No tasks match these filters.</p><button className="btn ghost" onClick={() => { setTaskQuery(""); setTaskFilter("all"); }}>Clear filters</button></div>}
           {workspaceId && <Routines workspaceId={workspaceId} />}
         </>}
         {selected && !showHistory && <div className="row"><button className="btn sm" onClick={() => reset(selected.task.taskId)}>New child task</button><button className="btn sm" onClick={() => { setError(""); setShowHistory(true); }}>Task history</button>{(selected.task.conversationId || selected.runs[0]) && <button className="btn sm" onClick={() => { if (selected.task.conversationId) useStore.getState().openConversationDraft(selected.task.conversationId); else useStore.getState().openConversation(selected.runs[0]!.run.runId); close(null); }}>Open full conversation</button>}</div>}

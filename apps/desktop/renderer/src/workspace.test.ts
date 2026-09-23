@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import {
   DEFAULT_SPACE,
+  groupedTabs,
   canSplitPage,
   previewSplit,
   rememberActiveTab,
@@ -253,4 +254,13 @@ it("does not offer a split for a crashed page, a page in another Space, or a pag
   expect(previewSplit(layout, [page("current"), page("preview"), page("other")], "other", "current")).toBeNull();
   expect(previewSplit(layout, [page("only")], "only", "only")).toBeNull();
   expect(previewSplit(layout, [page("preview", { viewStatus: "crashed" }), page("current")], "preview", "current")).toBeNull();
+});
+
+it("keeps horizontal group members contiguous without losing ungrouped or orphaned tabs", () => {
+  const layout = emptyLayout();
+  layout.folders = [{ id: "research", name: "Research", spaceId: layout.activeSpaceId, collapsed: true }];
+  layout.tabFolder = { a: "research", c: "research", d: "deleted" };
+  const tabs = ["a", "b", "c", "d"].map(pageId => ({ pageId }));
+  expect(groupedTabs(layout, tabs).map(tab => tab.pageId)).toEqual(["a", "c", "b", "d"]);
+  expect(tabs.map(tab => tab.pageId)).toEqual(["a", "b", "c", "d"]);
 });

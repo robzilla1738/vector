@@ -10,33 +10,45 @@ function longestTransitionMs(el: HTMLElement): number {
 }
 
 /** The address bar stays out of the layout until the pointer reaches the top of a loaded page, or the field is focused. */
-export function useToolbarReveal(enabled: boolean): { revealed: boolean; covering: boolean } {
+export function useToolbarReveal(enabled: boolean, heldOpen = false): { revealed: boolean; covering: boolean } {
+  const [dragging, setDragging] = useState(false);
   const [edge, setEdge] = useState(false);
-  const [held, setHeld] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [covering, setCovering] = useState(false);
   useEffect(() => bridge.onToolbarEdge(near => setEdge(near)), []);
   useEffect(() => {
     if (!enabled) return;
     const bar = document.querySelector<HTMLElement>(".main-col > .toolbar");
     if (!bar) return;
-    const hold = () => setHeld(true);
-    const release = (event: PointerEvent | FocusEvent) => {
-      const next = event.relatedTarget;
-      if (next instanceof Node && bar.contains(next)) return;
-      setHeld(false);
+    const enter = () => setHovered(true);
+    const leave = () => setHovered(false);
+    const focus = () => setFocused(true);
+    const blur = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof Node && bar.contains(event.relatedTarget)) return;
+      setFocused(false);
     };
-    bar.addEventListener("pointerenter", hold);
-    bar.addEventListener("pointerleave", release);
-    bar.addEventListener("focusin", hold);
-    bar.addEventListener("focusout", release);
+    bar.addEventListener("pointerenter", enter);
+    bar.addEventListener("pointerleave", leave);
+    bar.addEventListener("focusin", focus);
+    bar.addEventListener("focusout", blur);
     return () => {
-      bar.removeEventListener("pointerenter", hold);
-      bar.removeEventListener("pointerleave", release);
-      bar.removeEventListener("focusin", hold);
-      bar.removeEventListener("focusout", release);
+      bar.removeEventListener("pointerenter", enter);
+      bar.removeEventListener("pointerleave", leave);
+      bar.removeEventListener("focusin", focus);
+      bar.removeEventListener("focusout", blur);
+      setHovered(false);
+      setFocused(false);
     };
   }, [enabled]);
-  const revealed = enabled && (edge || held);
+  useEffect(() => {
+    const drag = (event: Event) => setDragging((event as CustomEvent<boolean>).detail);
+    window.addEventListener("aux-window-drag", drag);
+    const release = () => { setEdge(false); setHovered(false); setFocused(false); setCovering(false); };
+    window.addEventListener("aux-page-scroll", release);
+    return () => { window.removeEventListener("aux-page-scroll", release); window.removeEventListener("aux-window-drag", drag); };
+  }, []);
+  const revealed = enabled && (edge || hovered || focused || heldOpen || dragging);
   useEffect(() => {
     if (!enabled) {
       setCovering(false);

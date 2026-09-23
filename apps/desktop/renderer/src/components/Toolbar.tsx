@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { useWindowDrag } from "../use-window-drag";
+import { memo, useLayoutEffect, useState } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inElectron } from "../bridge";
 import { useStore, errToast } from "../store";
@@ -9,6 +10,7 @@ import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 export const Toolbar = memo(function Toolbar() {
   const key = useShortcutLabels();
   const sidebar = useStore(s => s.sidebar);
+  const horizontal = useStore(s => (s.settings.tabLayout ?? "horizontal") === "horizontal");
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const mode = useStore((s) => s.mode);
   const setMode = useStore((s) => s.setMode);
@@ -26,19 +28,20 @@ export const Toolbar = memo(function Toolbar() {
   };
 
   return (
-    <header className={`toolbar ${inElectron && sidebar !== "expanded" ? "traffic" : ""}`}>
+    <header className={`toolbar ${inElectron && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}>
       <div className="tb-left">
-        {sidebar !== "expanded" && <button className="icon-btn" title={withShortcut("Show sidebar", key("sidebar"))} aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebarOpen}</button>}
+        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} onClick={() => setSidebar(sidebar === "expanded" ? "hidden" : "expanded")}>{I.sidebarOpen}</button>}
         <div className="nav-btns">
           <NavigationButtons page={page} />
         </div>
       </div>
 
       <CommandBar compact />
+      {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" aria-hidden="true" />}
 
       <div className="tb-right">
-        {sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
-        {sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}
         {page?.controller === "human" && (
           <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
             {I.handSm}
@@ -64,3 +67,17 @@ export const Toolbar = memo(function Toolbar() {
   );
 });
 
+/** Keep macOS drag geometry outside the address row's animated transform. */
+export function ToolbarDragRegion() {
+  const drag = useWindowDrag(true);
+  const [bounds, setBounds] = useState({ left: 0, width: 0 });
+  useLayoutEffect(() => {
+    const space = document.querySelector<HTMLElement>(".main-col .toolbar-drag-space");
+    const column = space?.closest<HTMLElement>(".main-col");
+    if (!space || !column) return;
+    const measure = () => { const a = space.getBoundingClientRect(), b = column.getBoundingClientRect(); setBounds({ left: a.left - b.left, width: a.width }); };
+    const observer = new ResizeObserver(measure); observer.observe(column); observer.observe(space); measure();
+    return () => observer.disconnect();
+  }, []);
+  return <div className="native-toolbar-drag" style={bounds} title="Drag to move window" aria-hidden="true" {...drag} />;
+}

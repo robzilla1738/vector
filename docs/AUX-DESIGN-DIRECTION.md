@@ -1,6 +1,6 @@
 # Aux visual direction: Aside parity
 
-The current direction (2026-09-21) is close visual and interaction parity with
+The current direction (updated 2026-09-23) is close visual and interaction parity with
 Aside, retaining Aux branding and real Aux functionality. This supersedes the
 earlier ZCode palette, Inter typography, sidebar address bar and minimal-shell
 direction. Do not reintroduce those choices as design requirements.
@@ -19,7 +19,8 @@ motion and increased contrast.
 
 Dark background is oklch(20.5% 0 0), popovers 26.9%, foreground 98.5%.
 Light background is white and foreground 14.5%. Secondary text and surfaces
-use the reference's alpha hierarchy rather than separate tinted grays.
+use a neutral alpha hierarchy rather than separate tinted grays. Secondary text
+uses 72% ink and glass secondary labels use 85% ink for readability.
 The content material defaults to a 95% background. Menus use an 80% popover color
 with an 8px backdrop blur and solid reduced-transparency fallback.
 Interface icons use the user-supplied Central Icons paths, retaining their
@@ -38,6 +39,18 @@ vibrancy fallback on older macOS. The native material is not promised pixel-iden
 OS versions, wallpapers and activation states.
 
 ## Shell and navigation
+The [September 23 checkpoint](ui/design-update-2026-09-23.md) is the detailed
+implementation reference. Preserve Aux's palette and brand. New profiles default
+to horizontal tabs with rounded top corners, lower corner joins, a compact native
+glass strip, group chips and pin tray. The selected tab merges into the URL area
+without an underline. Settings and tab menus can switch layouts.
+
+Prefer spacing and soft surfaces over hard divider lines. Buttons and fields on
+work/Settings screens use a common 36px height and corner treatment. Chat-row
+pickers and delete confirmation extend their parent surface; they are not nested
+black popovers. Jump to latest is a floating arrow with no extra layout row.
+
+
 
 - On a loaded page the toolbar leaves the layout. The page sits flush under
   the window and keeps the main column's corner. The address row and its
@@ -50,8 +63,9 @@ OS versions, wallpapers and activation states.
   Ask pills.
 - Sidebar: collapse control, bookmarks/pins, Chats with New chat and recent
   conversations, then Tabs/folders. Put the local profile/space control below.
-- Collapse completely, with no logo strip. Hover the left edge and the same
-  glass column grows beside the page. The toolbar keeps an explicit reopen
+- Collapse completely, with no logo strip. In Vertical mode, hover the left edge to reveal an inset glass preview over
+  the page without resizing it. Expanded mode remains a persistent column;
+  horizontal chat navigation opens by click. The toolbar keeps an explicit reopen
   button available on reveal. With the sidebar hidden, a chat title uses
   the traffic-light inset.
 - Keep a continuous rounded main surface, compact controls, quiet selected rows
@@ -64,7 +78,8 @@ OS versions, wallpapers and activation states.
 
 ## Chats, tasks and settings
 
-Empty chats show a subdued Aux mark rather than an oversized greeting.
+Full-page empty chats center a subdued Aux mark and use a bottom composer capped
+at 880px, with Add context and existing attachment/browser-context actions.
 The composer is the reply field, dictation, and send. Paste still adds
 images. Dictation is reviewed locally before insertion; active-run safety
 gates remain intact. The chat surface is opaque, so a page kept alive under

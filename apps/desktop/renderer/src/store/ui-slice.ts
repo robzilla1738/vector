@@ -21,6 +21,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   railView: { kind: "home" },
   sidebar: readSidebarMode(storage?.getItem("aux.sidebar")),
   sidebarPeek: false,
+  tabPreviewOpen: false,
   findText: "",
   findMatches: null,
   toasts: [],

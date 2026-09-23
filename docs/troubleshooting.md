@@ -116,3 +116,27 @@ planner, not on Luna Fast.
 (`routeReason: "chromium-default"`). `backend: "aux"` selects it
 explicitly. `backend: "chrome"` requires `targetId` of a tab in a Chrome
 instance attached with `chrome.attach { port }`.
+
+## URL reveal blocks scrolling or the window will not drag
+
+Use the current native build, not only a Vite refresh. Rebuild main/preload and
+renderer with `pnpm --filter @aux/desktop build`, or repackage and relaunch.
+The September 23 fix refreshes native WebContentsView hit order on toolbar
+raise/lower and keeps validated page-region forwarding available after hiding.
+Wheel input releases URL focus. Blank toolbar and sidebar areas use dedicated
+captured window dragging; controls and resize handles remain interactive.
+
+Reproduce in an isolated profile with `node tests/smoke/toolbar-glass-design.mjs`.
+Record tab layout, sidebar state, page URL, whether the field was focused, and
+whether failure begins during reveal or after dismissal. Check native page scroll
+position/window bounds, not only CSS drag properties. A preview that moves a page
+is a separate regression covered by `tab-preview-layout.mjs`.
+
+## Sidebar and chat Projects behave differently than expected
+
+Horizontal tabs are the default only when no stored layout exists. Change
+Appearance → Tab layout or use the tab context menu. Horizontal chat navigation
+opens by click. Vertical expanded mode stays a column; collapsed edge hover is
+a temporary inset preview. Keep sidebar open pins it; Escape dismisses the preview.
+Chat-list Projects are profile-local folders: removing a folder retains its chats.
+They do not create or remove repository Projects, and do not sync to a cloud account.

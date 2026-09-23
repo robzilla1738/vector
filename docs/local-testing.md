@@ -20,13 +20,13 @@ skips ports that are already listening.
 ## Test suites
 
 ```bash
-pnpm test            # unit + integration (vitest run tests/unit tests/integration)
+pnpm test            # unit suite (same as test:unit)
 pnpm test:unit       # contracts, refs, rpc, executor, repo, pool, chrome shell
                      # (address vs search, overlay→native-view, stylesheet tokens)
                      # plus agent navigation, offscreen holds, bookmark drop,
                      # stage clearance beside a menu, and toolbar-edge geometry
 pnpm test:e2e        # launches real Electron, drives the loopback API
-pnpm exec vitest run tests/integration   # real headless-Chrome runtime + fixtures
+pnpm test:integration # real headless-Chrome runtime + fixtures
 ```
 
 Integration tests need a headless Chromium: system Chrome (used headless via
@@ -62,6 +62,35 @@ node tests/smoke/run-suite.mjs private-boundary-desktop   # named files
 
 The release suite also runs in CI as the `desktop smoke (release suite)` job.
 `packaged.mjs` needs `pnpm package:local` first.
+
+## Focused shell design regressions
+
+Build after typechecking before Electron tests (`pnpm --filter @aux/desktop build`).
+Run files serially using fresh isolated fixture profiles. These tests perform
+mutations only on disposable fixture chats/tasks; do not point them at a personal
+profile. The grouped runner's cleanup can stop running Aux processes, so use
+individual commands while preserving an open review app.
+
+| Command (`node tests/smoke/<file>.mjs`) | Coverage |
+| --- | --- |
+| `tab-groups` | Group creation/rename/collapse, membership, persistence, previews |
+| `tab-preview-layout` | Horizontal/vertical preview bounds and unchanged native page geometry |
+| `floating-sidebar-design` | Expanded column versus collapsed inset reveal and dismissal |
+| `sidebar-sessions` | Chat projects, move/archive/restore/delete, focus and inline disclosure |
+| `toolbar-glass-design` | White/dark native pages, URL focus, click/scroll after hide, sidebar dragging |
+| `conversation-jump-design` | Arrow-only jump, scrolling and stable composer position |
+| `new-chat-design` | Empty-chat geometry, context/attachment controls, draft and narrow layout |
+| `projects-design` | Tasks/routines filters and schedule presets |
+| `settings-design` | Search, keyboard navigation, responsive controls |
+| `text-contrast-design` | Composed representative light/dark text and placeholder contrast |
+| `motion-design` | Hover, focus, icon sizing and reduced motion |
+
+Example: `node tests/smoke/toolbar-glass-design.mjs`.
+These focused cases are individually runnable and included by `smoke:all`; they
+are not all members of `smoke:release`. Screenshots go into ignored
+`release/test-artifacts/tabs`. Their presence in a local QA note does not mean
+screenshots are shipped with the repository. Native material and real mouse/window
+behavior also require a hands-on pass; mock Vite cannot establish those results.
 
 ## Benchmarks
 

@@ -4,7 +4,7 @@ export type SidebarMode = "expanded" | "rail" | "hidden";
 export function readSidebarMode(raw: string | null | undefined): SidebarMode {
   if (raw === "rail") return "hidden";
   if (raw === "hidden" || raw === "expanded") return raw;
-  return "expanded";
+  return "hidden";
 }
 
 export function nextSidebarMode(current: SidebarMode): SidebarMode {
@@ -12,6 +12,6 @@ export function nextSidebarMode(current: SidebarMode): SidebarMode {
 }
 
 export function sidebarFocusSelector(mode: SidebarMode): string {
-  if (mode === "expanded") return ".space-switch";
-  return '.toolbar [aria-label="Show sidebar"]';
+  if (mode === "expanded") return ".chat-sidebar .chat-sidebar-link, .space-switch";
+  return '.chat-sidebar-toggle, .toolbar [aria-label="Show sidebar"]';
 }

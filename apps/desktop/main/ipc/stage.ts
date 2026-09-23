@@ -1,7 +1,11 @@
+import { dragWindow } from "../window-drag.js";
 import { splitRatio } from "@aux/contracts/split-layout";
 import { ipcMain } from "electron";
 import { handleShell, stateForShell } from "../windows/registry.js";
-import { applyStage, deliverPagePointer } from "../windows/stage.js";
+import { applyStage, deliverPagePointer, stageWebContents } from "../windows/stage.js";
+
+import { sidebarGlassBounds, syncSidebarGlass } from "../sidebar-glass.js";
+import { toolbarTone, revealToolbarGlass } from "../toolbar-glass.js";
 
 export function wireStageIpc() {
   handleShell("ui.setStage", (state, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number, ratio?: number) => {
@@ -22,6 +26,9 @@ export function wireStageIpc() {
     applyStage(state);
     return true;
   });
+  handleShell("ui.sidebarGlass", (state, bounds: unknown) => { syncSidebarGlass(state.id, stageWebContents(state)[0], sidebarGlassBounds(bounds, state.stageBounds ?? { x: 0, y: 0 })); return true; });
+  handleShell("ui.toolbarGlass", (state, visible: unknown) => { revealToolbarGlass(state.id, visible === true); return true; });
+  handleShell("ui.toolbarTone", state => toolbarTone(stageWebContents(state)[0]));
   handleShell("ui.toolbarOverlay", (state, open: unknown, ticket: unknown) => {
     const seq = typeof ticket === "number" && Number.isFinite(ticket) ? ticket : 0;
     if (seq < state.toolbarOverlaySeq) return false;
@@ -33,6 +40,10 @@ export function wireStageIpc() {
   handleShell("ui.trafficLights", (state, visible: unknown) => {
     if (process.platform === "darwin") state.win.setWindowButtonVisibility(visible !== false);
     return true;
+  });
+  ipcMain.on("ui.windowDrag", (event, phase: unknown, point: unknown) => {
+    const state = stateForShell(event.sender.id);
+    if (state && event.senderFrame === state.shellView.webContents.mainFrame) dragWindow(state.win, phase, point);
   });
   ipcMain.on("ui.pagePointer", (event, value: unknown) => {
     const state = stateForShell(event.sender.id);

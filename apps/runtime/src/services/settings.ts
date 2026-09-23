@@ -179,7 +179,7 @@ export class SettingsService {
       contentOpacity: Number(this.get("contentOpacity") ?? 95),
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
-      tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "vertical",
+      tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "horizontal",
       shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
       autofill: (this.get("autofill") as Settings["autofill"]) ?? {},
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,

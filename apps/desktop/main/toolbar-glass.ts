@@ -1,25 +1,40 @@
 import type { WebContents } from "electron";
 
 const ID = "aux-toolbar-glass";
-/** The address row. The frost is clear at this line, not below it. */
+/** The full control row remains frosted; only the trailing edge fades. */
 const ROW = 40;
+const FEATHER = 12;
 
-/** Blur the top of a page and fade it out by the bottom of the address row. */
-export function toolbarGlassCss(dark: boolean): string {
-  const ink = dark ? "0 0 0" : "255 255 255";
-  const top = dark ? ".2" : ".32";
-  return `#${ID}{position:fixed;z-index:2147483646;top:0;left:0;right:0;height:${ROW}px;pointer-events:none;background:linear-gradient(to bottom,rgb(${ink} / ${top}),transparent 78%);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);-webkit-mask-image:linear-gradient(to bottom,#000 0%,rgb(0 0 0 / .4) 12px,transparent 32px,transparent);mask-image:linear-gradient(to bottom,#000 0%,rgb(0 0 0 / .4) 12px,transparent 32px,transparent)}`;
+/** CSS in the page can blur its pixels; the separate shell view cannot. */
+export function toolbarGlassCss(_dark: boolean): string {
+  return `#${ID}{position:fixed!important;z-index:2147483646!important;top:0!important;left:0!important;right:0!important;height:${ROW + FEATHER}px!important;pointer-events:none!important;transition:transform 560ms cubic-bezier(.22,1,.36,1),opacity 560ms cubic-bezier(.22,1,.36,1);background:transparent!important;-webkit-backdrop-filter:blur(20px) saturate(1.2)!important;backdrop-filter:blur(20px) saturate(1.2)!important;-webkit-mask-image:linear-gradient(to bottom,#000 26px,rgb(0 0 0 / .85) 34px,rgb(0 0 0 / .35) 44px,transparent)!important;mask-image:linear-gradient(to bottom,#000 26px,rgb(0 0 0 / .85) 34px,rgb(0 0 0 / .35) 44px,transparent)!important}@media(prefers-reduced-motion:reduce){#${ID}{transition:none}}`;
 }
 
 const mounted = new WeakMap<WebContents, { key: string; dark: boolean }>();
 const hooked = new WeakSet<WebContents>();
 const shownByOwner = new Map<string, WebContents[]>();
+const ownerReveal = new Map<string, boolean>();
+const pageReveal = new WeakMap<WebContents, boolean>();
 const requested = new Map<string, { pages: WebContents[]; overlay: boolean }>();
+
+function animateFrost(wc: WebContents, visible: boolean) {
+  if (wc.isDestroyed()) return;
+  void wc.executeJavaScript(`(()=>{const el=document.getElementById(${JSON.stringify(ID)});if(!el)return;el.getBoundingClientRect();el.style.opacity=${JSON.stringify(visible ? "1" : "0")};el.style.transform=${JSON.stringify(visible ? "translateY(0)" : "translateY(-52px)")}})()`).catch(() => {});
+}
+
+/** Run the page frost's exit at the same time as the shell controls. */
+export function revealToolbarGlass(owner: string, visible: boolean) {
+  ownerReveal.set(owner, visible);
+  for (const page of shownByOwner.get(owner) ?? []) {
+    pageReveal.set(page, visible);
+    animateFrost(page, visible);
+  }
+}
 
 function elementScript(present: boolean): string {
   const id = JSON.stringify(ID);
   return present
-    ? `(()=>{const id=${id};if(document.getElementById(id))return;const el=document.createElement("div");el.id=id;(document.documentElement||document.body).append(el)})()`
+    ? `(()=>{const id=${id};if(document.getElementById(id))return;const el=document.createElement("div");el.id=id;el.style.opacity="0";el.style.transform="translateY(-52px)";(document.documentElement||document.body).append(el)})()`
     : `document.getElementById(${id})?.remove()`;
 }
 
@@ -34,7 +49,7 @@ function attach(wc: WebContents, dark: boolean) {
     }
     if (wanted.key) void wc.removeInsertedCSS(wanted.key).catch(() => {});
     mounted.set(wc, { key, dark });
-    void wc.executeJavaScript(elementScript(true)).catch(() => {});
+    void wc.executeJavaScript(elementScript(true)).then(() => animateFrost(wc, pageReveal.get(wc) ?? true)).catch(() => {});
   }).catch(() => {
     const current = mounted.get(wc);
     if (current?.dark === dark && !current.key) mounted.delete(wc);
@@ -77,9 +92,22 @@ export function syncToolbarGlass(owner: string, pages: readonly WebContents[], o
   shownByOwner.set(owner, next);
   const keep = new Set(next);
   for (const page of previous) if (!keep.has(page)) hide(page);
-  for (const page of next) show(page, dark);
+  for (const page of next) { pageReveal.set(page, ownerReveal.get(owner) ?? true); show(page, dark); }
 }
 
 export function recolorToolbarGlass(dark: boolean, reduced: boolean): void {
   for (const [owner, state] of requested) syncToolbarGlass(owner, state.pages, state.overlay, dark, reduced);
+}
+
+/** Sample only the visible page's top strip locally; no image leaves the process. */
+export async function toolbarTone(page?: WebContents): Promise<"light" | "dark"> {
+  if (!page || page.isDestroyed()) return "dark";
+  try {
+    const image = (await page.capturePage({ x: 0, y: 0, width: 600, height: 40 })).resize({ width: 16, height: 1 });
+    const pixels = image.toBitmap();
+    if (!pixels.length) return "dark";
+    let luminance = 0;
+    for (let i = 0; i < pixels.length; i += 4) luminance += .2126 * pixels[i + 2]! + .7152 * pixels[i + 1]! + .0722 * pixels[i]!;
+    return luminance / (pixels.length / 4) > 145 ? "light" : "dark";
+  } catch { return "dark"; }
 }

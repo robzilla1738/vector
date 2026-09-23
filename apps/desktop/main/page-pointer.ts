@@ -15,7 +15,7 @@ export type PageInputEvent =
   | { type: "mouseDown" | "mouseUp" | "mouseMove"; x: number; y: number; button: PagePointer["button"]; clickCount: number; modifiers: PointerModifier[] }
   | { type: "mouseWheel"; x: number; y: number; button: PagePointer["button"]; deltaX: number; deltaY: number; hasPreciseScrollingDeltas: true; canScroll: true; modifiers: PointerModifier[] };
 
-const PAGE_CHROME = ".toolbar, .sidebar, .rail, .menu, .cb-pop, .palette, .sheet, .drawer, .ctx-menu, .toast, .findbar, .reader-view, .settings-page, .tasks-page, .split-divider, .conversation, .site-controls-card, .library, .scrim-soft, .downloads";
+const PAGE_CHROME = ".native-toolbar-drag, .toolbar, .sidebar, .rail, .menu, .cb-pop, .palette, .sheet, .drawer, .ctx-menu, .toast, .findbar, .reader-view, .settings-page, .tasks-page, .split-divider, .conversation, .site-controls-card, .library, .scrim-soft, .downloads";
 const MODIFIERS = new Set<PointerModifier>(["shift", "control", "alt", "meta", "leftbuttondown", "middlebuttondown", "rightbuttondown"]);
 const KINDS = new Set<PagePointer["kind"]>(["down", "up", "move", "wheel"]);
 const CURSORS = new Set([

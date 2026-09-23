@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inElectron } from "../bridge";
 import { requestStageReport } from "../stage-obstruction";
-import { errToast, tabCommand, toast, useStore } from "../store";
-import { canSplitPage, hostOf, isPinned, tabsInSpace } from "../workspace";
+import { call, errToast, tabCommand, toast, useStore } from "../store";
+import { canSplitPage, groupedTabs, hostOf, isPinned, tabsInSpace } from "../workspace";
 import { moveMenuFocus } from "../keyboard-list";
 import { useMenuDismiss } from "../use-menu-dismiss";
 import { positionContextMenu } from "../position-context-menu";
@@ -37,7 +37,8 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   }, []);
   const previous = useRef(document.activeElement as HTMLElement | null);
   const spaceId = layout.tabSpace[page.pageId] ?? layout.activeSpaceId;
-  const spaceTabs = tabsInSpace(layout, pages, spaceId);
+  const rawTabs = tabsInSpace(layout, pages, spaceId);
+  const spaceTabs = horizontal ? groupedTabs(layout, rawTabs) : rawTabs;
   const pageIndex = spaceTabs.findIndex(item => item.pageId === page.pageId);
   const folders = layout.folders.filter(folder => folder.spaceId === spaceId);
   const currentFolder = layout.tabFolder[page.pageId];
@@ -77,7 +78,8 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   async function closeRelated(following: boolean) {
     const state = useStore.getState();
     const currentSpace = state.layout.tabSpace[page.pageId] ?? state.layout.activeSpaceId;
-    const tabs = tabsInSpace(state.layout, state.pages, currentSpace);
+    const raw = tabsInSpace(state.layout, state.pages, currentSpace);
+    const tabs = horizontal ? groupedTabs(state.layout, raw) : raw;
     const index = tabs.findIndex(item => item.pageId === page.pageId);
     if (index < 0) return;
     const targets = following ? tabs.slice(index + 1) : tabs.filter(item => item.pageId !== page.pageId);
@@ -129,23 +131,25 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
 
     {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
     {!bulk && <>
-    <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}><span className="t">Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
+    <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}>{I.reloadSm}<span className="t">Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
     <TabAudioButton pageId={page.pageId} title={page.title || "New Tab"} menu onDone={onClose} />
     {web && <>
-      <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>Duplicate tab</button>
-      <button className="menu-item" role="menuitem" onClick={() => action(async () => { await navigator.clipboard.writeText(page.url); toast("URL copied"); })}>Copy URL</button>
-      <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{pinned ? "Unpin" : "Pin to space"}</button>
+      <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>{I.copy}<span className="t">Duplicate tab</span></button>
+      <button className="menu-item" role="menuitem" onClick={() => action(async () => { await navigator.clipboard.writeText(page.url); toast("URL copied"); })}>{I.copy}<span className="t">Copy URL</span></button>
+      <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{I.pin}<span className="t">{pinned ? "Unpin" : "Pin to space"}</span></button>
     </>}
-    {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(pages.find(item => item.pageId === activePageId)))) && <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().setSplitPage(splitPageId === page.pageId ? null : page.pageId))}>{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</button>}
+    {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(pages.find(item => item.pageId === activePageId)))) && <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().setSplitPage(splitPageId === page.pageId ? null : page.pageId))}>{I.split}<span className="t">{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</span></button>}
     </>}
-    {canMove && <button ref={moveButton} className="menu-item" role="menuitem" aria-haspopup="menu" onClick={() => setMoving(true)} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); setMoving(true); } }}><span className="t">{bulk ? "Move selected tabs…" : "Move tab…"}</span>{I.right}</button>}
+    {horizontal && <button className="menu-item" role="menuitem" onClick={() => action(() => { useStore.getState().moveTabs(selectedIds, spaceId, { name: "New group" }); onSelectionDone?.(); })}>{I.folderClosed}<span className="t">New tab group</span></button>}
+    {canMove && <button ref={moveButton} className="menu-item" role="menuitem" aria-haspopup="menu" onClick={() => setMoving(true)} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); setMoving(true); } }}>{I.folder}<span className="t">{bulk ? "Move selected tabs…" : "Move tab…"}</span>{I.right}</button>}
+    <button className="menu-item" role="menuitem" onClick={() => action(() => call("settings.set", { tabLayout: horizontal ? "vertical" : "horizontal" }))}>{I.sidebarSm}<span className="t">{horizontal ? "Show Tabs Vertically" : "Show Tabs Horizontally"}</span></button>
     <div className="menu-sep" />
     {bulk ? <button className="menu-item" role="menuitem" onClick={() => action(async () => {
       if (await useStore.getState().closeTabs(selectedIds)) onSelectionDone?.();
-    })}>Close selected tabs</button> : <>
-    <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().closeTab(page.pageId))}><span className="t">Close tab</span>{key("close-tab") && <kbd>{key("close-tab")}</kbd>}</button>
-    <button className="menu-item" role="menuitem" disabled={closing || spaceTabs.length < 2} onClick={() => action(() => closeRelated(false))}>Close other tabs</button>
-    {horizontal && pageIndex >= 0 && pageIndex < spaceTabs.length - 1 && <button className="menu-item" role="menuitem" disabled={closing} onClick={() => action(() => closeRelated(true))}>Close tabs to the right</button>}
+    })}>{I.close}<span className="t">Close selected tabs</span></button> : <>
+    <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().closeTab(page.pageId))}>{I.close}<span className="t">Close tab</span>{key("close-tab") && <kbd>{key("close-tab")}</kbd>}</button>
+    <button className="menu-item" role="menuitem" disabled={closing || spaceTabs.length < 2} onClick={() => action(() => closeRelated(false))}>{I.close}<span className="t">Close other tabs</span></button>
+    {horizontal && pageIndex >= 0 && pageIndex < spaceTabs.length - 1 && <button className="menu-item" role="menuitem" disabled={closing} onClick={() => action(() => closeRelated(true))}>{I.close}<span className="t">Close tabs to the right</span></button>}
     </>}
     </>}
   </div>;

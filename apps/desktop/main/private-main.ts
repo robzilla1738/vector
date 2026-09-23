@@ -1,3 +1,5 @@
+import { dragWindow } from "./window-drag.js";
+import { sidebarGlassBounds, syncSidebarGlass } from "./sidebar-glass.js";
 import { saveWorkbookSnapshot } from "./save-workbook.js";
 import { trafficLights } from "./traffic-lights.js";
 import { showNavigationMenu } from "./navigation-menu.js";
@@ -17,7 +19,7 @@ import { wirePageFullscreen, exitPageFullscreen } from "./page-fullscreen.js";
 import { pageShortcut, setPageShortcuts } from "./page-shortcuts.js";
 import { installNavGesture } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
-import { recolorToolbarGlass, syncToolbarGlass } from "./toolbar-glass.js";
+import { recolorToolbarGlass, syncToolbarGlass, toolbarTone, revealToolbarGlass } from "./toolbar-glass.js";
 import { cssCursor } from "./page-pointer.js";
 import { appearance, applyAppearance, glassActive, parseTheme, setRequestedAppearance, watchAppearance, windowFill } from "./windows/appearance.js";
 import { fillWindow, forwardPagePointer, placeChrome, stageFullscreen, type ChromeHost } from "./windows/surface.js";
@@ -454,7 +456,7 @@ function registerIpc() {
     }
     switch(method){
       case "workspace.get":return {pages:[...pages.values()].map(snapshot),sets:[],members:[],runs:[],sessions:[],activePageId,lastSeq:seq,restoringTabs:false};
-      case "settings.get":return {theme:"system",tabLayout:"vertical",sidebarAppearance:"solid",sidebarBlur:0,sidebarOpacity:90,searchEngine:DEFAULT_SEARCH_ENGINE,modelConfigured:false,privateBrowsing:true};
+      case "settings.get":return {theme:"system",tabLayout:"horizontal",sidebarAppearance:"solid",sidebarBlur:0,sidebarOpacity:90,searchEngine:DEFAULT_SEARCH_ENGINE,modelConfigured:false,privateBrowsing:true};
       case "downloads.list":return [...downloads];
       case "downloads.remove": {
         const {ids}=MethodSchemas["downloads.remove"].parse(params);
@@ -519,6 +521,9 @@ function registerIpc() {
   });
   ipcMain.handle("ui.setStage",(event,pageId:string|null,bounds:{x:number;y:number;width:number;height:number},split?:string|null,radius?:number,ratio?:number)=>{requireShell(event);stagePageId=pageId&&pages.has(pageId)?pageId:null;splitPageId=split&&pages.has(split)?split:null;stageBounds=bounds;splitRatio=normalizeSplitRatio(ratio);if(Number.isFinite(radius))stageRadius=Math.max(0,Math.min(24,Math.round(radius!)));applyStage();return true;});
   ipcMain.handle("ui.overlay",(event,open:boolean)=>{requireShell(event);overlayOpen=open;applyStage();return true;});
+  ipcMain.handle("ui.sidebarGlass",(event,bounds:unknown)=>{requireShell(event);syncSidebarGlass("private",pages.get(stagePageId??"")?.view.webContents,sidebarGlassBounds(bounds,stageBounds??{x:0,y:0}));return true;});
+  ipcMain.handle("ui.toolbarGlass",(event,visible:unknown)=>{requireShell(event);revealToolbarGlass("private",visible===true);return true;});
+  ipcMain.handle("ui.toolbarTone",event=>{requireShell(event);return toolbarTone(pages.get(stagePageId??"")?.view.webContents);});
   ipcMain.handle("ui.toolbarOverlay",(event,open:unknown,ticket:unknown)=>{
     requireShell(event);
     const seq=typeof ticket==="number"&&Number.isFinite(ticket)?ticket:0;
@@ -526,8 +531,9 @@ function registerIpc() {
     toolbarOverlaySeq=seq;toolbarOverlay=open===true;applyStage();return true;
   });
   ipcMain.handle("ui.trafficLights",(event,visible:unknown)=>{requireShell(event);if(process.platform==="darwin"&&win)win.setWindowButtonVisibility(visible!==false);return true;});
+  ipcMain.on("ui.windowDrag", (event, phase: unknown, point: unknown) => { try { requireShell(event as Electron.IpcMainInvokeEvent); } catch { return; } if (win) dragWindow(win, phase, point); });
   ipcMain.on("ui.pagePointer",(event,value:unknown)=>{
-    if(!toolbarOverlay||overlayOpen||!win||win.isDestroyed())return;
+    if(overlayOpen||!win||win.isDestroyed())return;
     try{requireShell(event as Electron.IpcMainInvokeEvent);}catch{return;}
     forwardPagePointer(value,visibleStageViews([splitPageId,stagePageId]));
   });

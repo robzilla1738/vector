@@ -748,3 +748,13 @@ page** returns to the same live page, preserving its draft and scroll. Links ope
 in new tabs. Reader extraction stays local and transient; it does not start an
 agent or save an observation. Images/media are not included in this first version,
 and pages without readable articles display an unavailable state.
+
+## September 23 shell checkpoint
+
+See [current shell behavior](ui/design-update-2026-09-23.md) and
+[focused native tests](local-testing.md#focused-shell-design-regressions).
+Review horizontal and vertical modes, persistent versus preview sidebars, chat
+folder actions, and URL reveal followed by page scrolling and window dragging.
+Rebuild/relaunch native main and preload code for the input fixes; refreshing a
+mock browser is insufficient. Local packages remain unsigned previews; signing,
+notarization and the founder pilot are separate handoff gates.

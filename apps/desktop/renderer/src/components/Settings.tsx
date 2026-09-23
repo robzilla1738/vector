@@ -82,6 +82,16 @@ function Field({ label, hint, children }: { label: string; hint?: React.ReactNod
   );
 }
 
+const categoryDescriptions: Record<string, string> = {
+  General: "Search, profiles, shortcuts, and your browsing data.",
+  Appearance: "Make Aux feel at home, from tabs to text size.",
+  Memory: "Manage the context Aux remembers for your work.",
+  Connections: "Manage your models, services, and connected tools.",
+  "Site permissions": "Choose what websites can access.",
+  "Agent permissions": "Control what Aux can do on your behalf.",
+  Extensions: "Manage the extensions available in your browser.",
+};
+
 type ConnectionTab = "Models" | "Services" | "Agents" | "Vault" | "Plugins";
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
@@ -302,22 +312,22 @@ export function Settings() {
 
   return (
     <div className="settings-page" role="region" aria-label="Settings" ref={dialogRef}>
-      <nav className="settings-nav" aria-label="Settings categories" onKeyDown={event => moveListFocus(event, "button")}>
-        <input aria-label="Search settings" placeholder="Search settings…" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={event => {
+      <nav className="settings-nav" aria-label="Settings categories" onKeyDown={event => moveListFocus(event, "button[data-category]")}>
+        <div className="settings-search-box">{I.search}<input aria-label="Search settings" placeholder="Search settings…" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={event => {
           if (event.nativeEvent.isComposing || !searching) return;
           if (event.key === "ArrowDown" || event.key === "Enter") {
             event.preventDefault(); event.stopPropagation();
             dialogRef.current?.querySelector<HTMLButtonElement>(".settings-search-result")?.focus();
           }
-        }}/>
+        }}/>{query && <button className="icon-btn" aria-label="Clear settings search" onClick={() => { setQuery(""); dialogRef.current?.querySelector<HTMLInputElement>('[aria-label="Search settings"]')?.focus(); }}>{I.close}</button>}</div>
         <span>Preferences</span>
-        {["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions"].map(name => <button key={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}
+        <div className="settings-category-list">{["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions"].map(name => <button key={name} data-category={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}</div>
       </nav>
       <div className="settings-content">
         <div className="drawer-head">
-          <h3>{searching ? "Search settings" : category}</h3>
+          <div className="settings-heading"><h3>{searching ? "Search settings" : category}</h3><p>{searching ? "Find a preference across all categories." : categoryDescriptions[category]}</p></div>
           <span className="sp" />
-          {saved && <span className="saved">{I.check} Saved</span>}
+          {saved && <output className="saved">{I.check} Saved</output>}
           <button className="icon-btn" title="Close (Esc)" aria-label="Close settings" onClick={() => setOverlay(null)}>{I.close}</button>
         </div>
 
@@ -326,7 +336,7 @@ export function Settings() {
         </div>}
         <div className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
         {searching && <div className="settings-search-results">
-          <p className="hint" role="status">{results.length ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}` : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}</p>
+          <output className="hint" data-block>{results.length ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}` : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}</output>
           <div onKeyDown={event => moveListFocus(event, "button")}>
             {results.map(result => <button key={`${result.category}:${result.label}`} className="settings-search-result" onClick={() => { openCategory(result.category); setQuery(""); setDestination(result); }}>
               <span className="settings-search-category">{connectionCategories.includes(result.category) ? `Connections · ${result.category === "Connections" ? "Services" : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}` : result.category}</span><strong>{result.label}</strong><span>{result.description}</span>
@@ -337,7 +347,7 @@ export function Settings() {
         {visible("Memory") && <section tabIndex={-1}><MemorySettings /></section>}
         <section tabIndex={-1} hidden={!visible("Site permissions")}><SitePermissions query="" /></section>
         <section id="connection-panel-Models" role="tabpanel" aria-labelledby="connection-tab-Models" hidden={!visible("Models")}><div className="drawer-section">AI model</div>
-        <p role="status" className="field">{probe?.ok ? `${providerNames[provider]} is ready.` : localCompatible ? "Local model endpoint configured. Save a model and test the connection before your first run." : hasKey ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.` : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}</p>
+        <output className="field" data-block>{probe?.ok ? `${providerNames[provider]} is ready.` : localCompatible ? "Local model endpoint configured. Save a model and test the connection before your first run." : hasKey ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.` : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}</output>
         <Field label="Model provider" hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider.">
           <select aria-label="Model provider" value={provider} disabled={savingKey || probing || switchingProvider} onChange={event => {
             setSwitchingProvider(true);
@@ -383,9 +393,9 @@ export function Settings() {
             <button className="btn sm" disabled={probing || savingKey || switchingProvider || !modelDraft.trim() || modelDraft.trim() === plannerModel} onClick={() => void set({ plannerModel: modelDraft.trim() })}>Save model</button>
             <button className="btn sm" disabled={probing || savingKey || switchingProvider || !modelDraft.trim() || !connectionReady || !!key.trim() || modelDraft.trim() !== plannerModel} onClick={() => void runProbe()}>{probing ? "Testing…" : "Test connection"}</button>
           </div>
-          {probe && <span role="status" className={`hint model-probe-status ${probe.ok ? "ok" : "err"}`}>
+          {probe && <output className={`hint model-probe-status ${probe.ok ? "ok" : "err"}`}>
             {probe.ok ? `Connection tested${probe.latencyMs == null ? "" : ` · ${probe.latencyMs} ms`}${probe.vision === true ? " · vision" : probe.vision === false ? " · no vision" : ""}` : `Failed — ${probe.error}`}{probe.checkedAt ? ` · ${new Date(probe.checkedAt).toLocaleString()}` : ""}
-          </span>}
+          </output>}
         </Field>
 
         <p className="field hint">Test connection sends small synthetic model requests and may incur provider charges. It does not send your open pages. Save key and model changes before testing.</p>
@@ -414,7 +424,7 @@ export function Settings() {
 
         </section><section id="connection-panel-Services" role="tabpanel" aria-labelledby="connection-tab-Services" hidden={!visible("Connections")}><div className="drawer-section">GitHub</div>
         <p className="field hint">Connect an explicitly supplied token for account and repository checks. Aux does not inspect GitHub CLI, Keychain, browser cookies, or other credential stores. Remote writes remain disabled.</p>
-        {!!settings.githubProbe&&<div className="field" role="status"><strong>{String((settings.githubProbe as GithubProbe).name??(settings.githubProbe as GithubProbe).login)}</strong><span className="hint">@{String((settings.githubProbe as GithubProbe).login)} · checked {new Date((settings.githubProbe as GithubProbe).checkedAt).toLocaleString()}</span><span className="hint">{(settings.githubProbe as GithubProbe).scopes.length?`Reported scopes: ${(settings.githubProbe as GithubProbe).scopes.join(', ')}`:'GitHub did not report classic OAuth scopes. Repository access still follows the token’s configured grants.'}</span></div>}
+        {!!settings.githubProbe&&<output className="field" data-block><strong>{String((settings.githubProbe as GithubProbe).name??(settings.githubProbe as GithubProbe).login)}</strong><span className="hint">@{String((settings.githubProbe as GithubProbe).login)} · checked {new Date((settings.githubProbe as GithubProbe).checkedAt).toLocaleString()}</span><span className="hint">{(settings.githubProbe as GithubProbe).scopes.length?`Reported scopes: ${(settings.githubProbe as GithubProbe).scopes.join(', ')}`:'GitHub did not report classic OAuth scopes. Repository access still follows the token’s configured grants.'}</span></output>}
         <Field label="GitHub token" hint={String(settings.githubCredentialError??(settings.githubCredential===KEY_MASK?'Saved with OS encryption. The token is never returned to this page.':'Use a fine-grained token limited to the repositories Aux should inspect.'))}>
           <div className="row"><input className="grow" type="password" aria-label="GitHub token" autoComplete="off" value={githubToken} placeholder={settings.githubCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a fine-grained GitHub token'} onChange={event=>{setGithubToken(event.target.value);setGithubError('');}} />
           <button className="btn sm" disabled={githubBusy||!githubToken.trim()} onClick={()=>{setGithubBusy(true);setGithubError('');void set({githubCredential:githubToken.trim()}).then(ok=>{if(ok)setGithubToken('');}).finally(()=>setGithubBusy(false));}}>Save token</button>
@@ -424,14 +434,14 @@ export function Settings() {
 
         <div className="drawer-section">Vercel</div>
         <p className="field hint">Read deployment health from an explicitly supplied Vercel token. Aux cannot deploy, promote, roll back, or change a project through this connection.</p>
-        {!!settings.vercelProbe&&<div className="field" role="status"><strong>{String((settings.vercelProbe as VercelProbe).user.name)}</strong><span className="hint">{String((settings.vercelProbe as VercelProbe).user.email)} · checked {new Date((settings.vercelProbe as VercelProbe).checkedAt).toLocaleString()}</span></div>}
+        {!!settings.vercelProbe&&<output className="field" data-block><strong>{String((settings.vercelProbe as VercelProbe).user.name)}</strong><span className="hint">{String((settings.vercelProbe as VercelProbe).user.email)} · checked {new Date((settings.vercelProbe as VercelProbe).checkedAt).toLocaleString()}</span></output>}
         <Field label="Vercel token" hint={String(settings.vercelCredentialError??(settings.vercelCredential===KEY_MASK?'Saved with OS encryption.':'Use a read-only token for the account Aux should inspect.'))}><div className="row"><input className="grow" type="password" aria-label="Vercel token" autoComplete="off" value={vercelToken} placeholder={settings.vercelCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Vercel token'} onChange={event=>{setVercelToken(event.target.value);setVercelError('');}}/><button className="btn sm" disabled={vercelBusy||!vercelToken.trim()} onClick={()=>{setVercelBusy(true);void set({vercelCredential:vercelToken.trim()}).then(ok=>{if(ok)setVercelToken('');}).finally(()=>setVercelBusy(false));}}>Save token</button>{settings.vercelCredential===KEY_MASK&&<button className="btn sm" disabled={vercelBusy} onClick={()=>{setVercelBusy(true);void set({vercelCredential:''}).then(ok=>{if(ok){setVercelProjects([]);toast('Vercel disconnected');}}).finally(()=>setVercelBusy(false));}}>Disconnect</button>}</div></Field>
         <div className="field"><button className="btn sm" disabled={vercelBusy||settings.vercelCredential!==KEY_MASK||!!vercelToken.trim()} onClick={()=>{setVercelBusy(true);setVercelError('');void call('vercel.probe',{}).then(async()=>{await refresh();await loadVercelProjects();}).catch(error=>setVercelError(error instanceof Error?error.message:String(error))).finally(()=>setVercelBusy(false));}}>{vercelBusy?'Checking…':'Check connection'}</button>{vercelError&&<span className="hint err" role="alert">{vercelError}</span>}</div>
         {settings.vercelCredential===KEY_MASK&&!!settings.vercelProbe&&<><Field label="Vercel scope" hint="Choose the personal account or team that owns the project."><select aria-label="Vercel scope" value={String(settings.vercelTeamId??'')} onChange={event=>{const value=event.target.value;void set({vercelTeamId:value,vercelProjectId:''}).then(ok=>{if(ok)void loadVercelProjects(value);});}}><option value="">Personal account</option>{(settings.vercelProbe as VercelProbe).teams.map(team=><option key={team.id} value={team.id}>{team.name}</option>)}</select></Field><Field label="Vercel project" hint="The selected project is used for task-scoped deployment health."><div className="row"><select className="grow" aria-label="Vercel project" value={String(settings.vercelProjectId??'')} onFocus={()=>{if(!visibleVercelProjects.length&&!vercelBusy)void loadVercelProjects();}} onChange={event=>void set({vercelProjectId:event.target.value})}><option value="">Select project</option>{visibleVercelProjects.map(project=><option key={project.id} value={project.id}>{project.name}{project.framework?` · ${project.framework}`:''}</option>)}</select><button className="btn sm" disabled={vercelBusy} onClick={()=>void loadVercelProjects()}>Refresh</button></div></Field></>}
 
         <div className="drawer-section">Sentry</div>
         <p className="field hint">Read unresolved issue health from an explicitly supplied Sentry token. Aux cannot resolve, assign, delete, or change issues through this connection.</p>
-        {!!settings.sentryProbe&&<div className="field" role="status"><strong>{(settings.sentryProbe as SentryProbe).organizations.length} organization{(settings.sentryProbe as SentryProbe).organizations.length===1?'':'s'} available</strong><span className="hint">Checked {new Date((settings.sentryProbe as SentryProbe).checkedAt).toLocaleString()}</span></div>}
+        {!!settings.sentryProbe&&<output className="field" data-block><strong>{(settings.sentryProbe as SentryProbe).organizations.length} organization{(settings.sentryProbe as SentryProbe).organizations.length===1?'':'s'} available</strong><span className="hint">Checked {new Date((settings.sentryProbe as SentryProbe).checkedAt).toLocaleString()}</span></output>}
         <Field label="Sentry token" hint={String(settings.sentryCredentialError??(settings.sentryCredential===KEY_MASK?'Saved with OS encryption.':'Use a token with organization, project, and event read access.'))}><div className="row"><input className="grow" type="password" aria-label="Sentry token" autoComplete="off" value={sentryToken} placeholder={settings.sentryCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Sentry token'} onChange={event=>{setSentryToken(event.target.value);setSentryError('');}}/><button className="btn sm" disabled={sentryBusy||!sentryToken.trim()} onClick={()=>{setSentryBusy(true);void set({sentryCredential:sentryToken.trim()}).then(ok=>{if(ok)setSentryToken('');}).finally(()=>setSentryBusy(false));}}>Save token</button>{settings.sentryCredential===KEY_MASK&&<button className="btn sm" disabled={sentryBusy} onClick={()=>{setSentryBusy(true);void set({sentryCredential:''}).then(ok=>{if(ok){setSentryProjects([]);toast('Sentry disconnected');}}).finally(()=>setSentryBusy(false));}}>Disconnect</button>}</div></Field>
         <div className="field"><button className="btn sm" disabled={sentryBusy||settings.sentryCredential!==KEY_MASK||!!sentryToken.trim()} onClick={()=>{setSentryBusy(true);setSentryError('');void call('sentry.probe',{}).then(refresh).catch(error=>setSentryError(error instanceof Error?error.message:String(error))).finally(()=>setSentryBusy(false));}}>{sentryBusy?'Checking…':'Check connection'}</button>{sentryError&&<span className="hint err" role="alert">{sentryError}</span>}</div>
         {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
@@ -462,7 +472,7 @@ export function Settings() {
         <Field label="Sidebar tint" hint="Adds theme-colored opacity over the native blur without fading text or weakening the blur."><select aria-label="Sidebar tint" disabled={settings.sidebarAppearance === "solid"} value={Number(settings.sidebarTint ?? 0)} onChange={e => void set({ sidebarTint: Number(e.target.value) })}>{[0, 10, 20, 30, 40, 50, 60].map(value => <option key={value} value={value}>{value}%</option>)}</select></Field>
         <Field label="Content opacity" hint="Keeps chats and the new-tab surface separate from the glass sidebar. Websites remain opaque."><select aria-label="Content opacity" disabled={settings.sidebarAppearance === "solid"} value={Number(settings.contentOpacity ?? 95)} onChange={e => void set({ contentOpacity: Number(e.target.value) })}>{[80, 85, 90, 95, 100].map(value => <option key={value} value={value}>{value}%</option>)}</select></Field>
         <Field label="Glass defaults" hint="Restore the native glass material, clear sidebar tint and 95% content opacity."><button className="btn sm" onClick={() => void set({ sidebarAppearance: "translucent", sidebarMaterial: "liquid-glass", sidebarTint: 0, contentOpacity: 95 })}>Reset glass appearance</button></Field>
-        <Field label="Tab layout" hint="Both layouts use the same tabs, folders, and current selection."><select aria-label="Tab layout" value={String(settings.tabLayout ?? "vertical")} onChange={e => void set({ tabLayout: e.target.value })}><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></Field>
+        <Field label="Tab layout" hint="Both layouts use the same tabs, folders, and current selection."><select aria-label="Tab layout" value={String(settings.tabLayout ?? "horizontal")} onChange={e => void set({ tabLayout: e.target.value })}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></Field>
         <Field label="Website sizes"><WebsiteSizes /></Field>
         </section><section hidden={!visible("Agent permissions")}><div className="drawer-section">Agent permissions</div>
         <Field
@@ -558,7 +568,7 @@ export function Settings() {
           <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>{setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.');return call("installation.listBackups", {});}).then(value=>{if(Array.isArray(value))setBackups(value as typeof backups);}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
           <label>Keep complete backups<select aria-label="Backup retention" value={backupKeep} disabled={backupBusy} onChange={event=>{const keep=Number(event.target.value) as 3|5|10|20;setBackupBusy(true);void call("installation.setBackupRetention",{keep}).then(value=>setBackupKeep(value.keep as 3|5|10|20)).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{([3,5,10,20] as const).map(keep=><option key={keep} value={keep}>Keep {keep}</option>)}</select></label>
           {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button></div>)}</details>}
-          {restoreStatus.pending&&<span className="hint" role="status">A restore is staged for the next launch. Changes made before quitting will be replaced.</span>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<span className="hint" role="status">{backupMessage}</span>}
+          {restoreStatus.pending&&<output className="hint">A restore is staged for the next launch. Changes made before quitting will be replaced.</output>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<output className="hint">{backupMessage}</output>}
         </Field>
 
 
@@ -578,7 +588,7 @@ export function Settings() {
         </Field>
 
         <Field label="Support report" hint="Exports build and runtime versions, feature counts, aggregate browser health, nonsecret modes, and known compatibility limits. It excludes credentials, URLs, browsing history, task text, account identity, local paths, and content.">
-          <div className="row"><button className="btn sm" disabled={diagnosticsBusy} onClick={()=>{setDiagnosticsBusy(true);setDiagnosticsMessage('');void bridge.exportDiagnostics().then(path=>setDiagnosticsMessage(path?'Support report saved.':'Export cancelled.')).catch(error=>setDiagnosticsMessage(error instanceof Error?error.message:String(error))).finally(()=>setDiagnosticsBusy(false));}}>{diagnosticsBusy?'Preparing…':'Export support report…'}</button>{diagnosticsMessage&&<span className="hint" role="status">{diagnosticsMessage}</span>}</div>
+          <div className="row"><button className="btn sm" disabled={diagnosticsBusy} onClick={()=>{setDiagnosticsBusy(true);setDiagnosticsMessage('');void bridge.exportDiagnostics().then(path=>setDiagnosticsMessage(path?'Support report saved.':'Export cancelled.')).catch(error=>setDiagnosticsMessage(error instanceof Error?error.message:String(error))).finally(()=>setDiagnosticsBusy(false));}}>{diagnosticsBusy?'Preparing…':'Export support report…'}</button>{diagnosticsMessage&&<output className="hint">{diagnosticsMessage}</output>}</div>
         </Field>
 
         </details>
@@ -590,5 +600,3 @@ export function Settings() {
     </div>
   );
 }
-
-

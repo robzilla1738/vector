@@ -185,3 +185,23 @@ run in parallel (plan A8). Runtime input into a working page — focused or
 offscreen — is not a takeover; a human click after the program still is.
 Pure observation programs (navigate, extract, waitFor, screenshot) don't
 need the view laid out.
+
+## Shell material, native input and local chat organization
+
+See [the shell checkpoint](ui/design-update-2026-09-23.md) for the current layout
+and full component map in [ui/shell.md](ui/shell.md). Horizontal is the fallback
+`tabLayout`; persisted explicit settings override it.
+
+Native chrome is a shell WebContentsView above/below page WebContentsViews.
+`windows/surface.ts` refreshes native hit order when raising/lowering chrome.
+`page-pointer.ts` validates shell-origin page-region input and excludes controls;
+forwarding remains active after reveal dismissal while a native page is present.
+Wheel input transfers focus to the page. `window-drag.ts` handles validated,
+rounded pointer deltas for blank chrome through shell-only IPC in regular/private
+windows. Page-side toolbar/sidebar blur is distinct from native window glass.
+
+Chat folder definitions/memberships live in versioned profile-local localStorage,
+with cross-window storage events. Conversation archive/deletion remains in the
+runtime APIs. Removing a chat folder does not delete its conversations. There is
+no new database migration, cloud sync, repository Project binding or account
+isolation in this organizational feature.

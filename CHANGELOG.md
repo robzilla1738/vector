@@ -2,6 +2,23 @@
 
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
+## Aside-inspired shell and native input fixes (2026-09-23)
+
+- Compact glass horizontal tabs now default for new profiles, with selected-tab
+  corner joins, live pinned favicons, tab-group chips and stable capture previews.
+- Preserved the expanded vertical sidebar; collapsed edge hover reveals an inset
+  glass panel without moving the page. Horizontal chat navigation is click-operated.
+- Added profile-local chat project folders and hover/focus move, archive, restore
+  and confirmed-delete actions shared by both sidebar modes.
+- Refined new chat, recent work, task/routine filters and schedule summaries,
+  searchable Settings, control sizing, contrast and reduced-motion behavior.
+- Removed harsh separators, nested disclosure bubbles and the jump-to-latest bar.
+- Fixed URL reveal intercepting page clicks/scrolling after dismissal; added
+  captured dragging for blank toolbar/sidebar areas with native bounds regression.
+- See [implementation and limits](docs/ui/design-update-2026-09-23.md) and the
+  [chronological QA log](design-qa.md). This remains an unsigned local preview.
+
+
 
 ## aux-excellence (2026-09-23)
 

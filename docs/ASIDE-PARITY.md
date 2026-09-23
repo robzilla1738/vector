@@ -1,8 +1,27 @@
-# Aside parity audit — 2026-09-21
+# Aside parity audit — updated 2026-09-23
 
 Status: implementation in progress, **not verified full UI parity**. Central Icons
 are integrated. Native material comparison and the complete interaction matrix
 remain release gates, not intentional exceptions.
+## September 23 implementation update
+
+The [current checkpoint](ui/design-update-2026-09-23.md) supersedes older layout
+statements in this audit. It covers compact horizontal tabs/pins/groups, real
+preview capture, stable native page bounds, click-only horizontal chat navigation,
+persistent expanded vertical sidebar plus collapsed-only glass preview, session
+folders and disclosures, new chat, work controls, contrast and native input.
+
+The [chronological QA log](../design-qa.md) records fixture checks and corrections.
+In particular, transparent chrome originally swallowed wheel events after reveal
+closed; native hit order and continuous page-region forwarding were corrected.
+Sidebar dragging is covered by an actual native-window position assertion.
+
+**Still not claimed:** exact visual parity across wallpapers/activation states,
+complete VoiceOver acceptance, full reference rich-text editor behavior, Aside's
+private APIs, tab memory telemetry, signing/notarization or B1–B7 completion.
+The 2026-09-21 counts below are historical checks, not the current test total.
+
+
 
 Latest source validation (2026-09-21): `pnpm test:unit` passed **161 files / 782
 tests**; `pnpm typecheck` passed. Unsigned native previews have been built and
@@ -20,8 +39,8 @@ Pause, Stop, approval requests and errors remain available. AI SDK is already
 Browser checks cover opening and cancelling the optional form, and revealing
 the toolbar from focus. On a loaded page the toolbar is out of the layout
 until the pointer reaches the top or the field is focused, and the frost
-ends at the bottom of that row. Edge hover grows the same glass column
-beside the page. A chat covers a parked page instead of showing it through
+ends at the bottom of that row. Collapsed vertical edge hover reveals an inset panel over the page; expanded
+mode stays a persistent column. A chat covers a parked page instead of showing it through
 the transcript. Full Aside chat fidelity remains unverified.
 
 ### Branding and final chat cleanup
@@ -115,7 +134,7 @@ original Chromium content view.
 | Geist Variable, 4px rhythm, 0.5px hairlines | Packaged font; spacing and hairline tokens | Full typography/line-height matrix |
 | Dark background 20.5%, popover 26.9%, foreground 98.5% OKLCH | Semantic dark palette | Native rendered color comparison |
 | Light white background, 14.5% foreground | Semantic light palette | All native screens |
-| Text alpha 85/55/25%; dark surfaces 8/6/4% | Ink and surface tokens | Disabled/selection/focus states per component |
+| Reference text alpha 85/55/25%; Aux secondary ink strengthened to 72% | Ink and surface tokens | Disabled/selection/focus states per component |
 | Radius factor 1.4; xs 2px; md/lg/xl/2xl 6/8/12/16px before scaling | Radius tokens and supported CSS corner shaping | True shape equivalence across runtime versions |
 | Page material 80%; menu popover 80% with 8px blur | Menus mapped; content now defaults to 95% with user-requested 80–100% control | Native background/activation matrix |
 | 150ms cubic-bezier(.4,0,.2,1); ease-out (0,0,.2,1) | Transition tokens | Event-by-event timing |
@@ -179,7 +198,7 @@ The dark/light/saturated background matrix remains outstanding.
   glyph family at the user's explicit request, preserving supplied SVG geometry.
 - The user requested an auto-hiding URL field and its surrounding toolbar icons.
   On a loaded page they leave the layout, so the page sits flush, and they
-  float back in together on a 180ms reveal when the pointer reaches the top
+  float back in together using coordinated reveal/slide timing when the pointer reaches the top
   or the field is focused. Keyboard focus still opens the row. Aside keeps
   its toolbar on screen.
 - Geist Mono is packaged; the reference names Berkeley Mono first, but no usable

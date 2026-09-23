@@ -1,3 +1,6 @@
+import { useWindowDrag } from "../use-window-drag";
+import { ChatSessions } from "./ChatSessions";
+import { TabPreview, useSidebarTabPreview } from "./TabPreview";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
@@ -12,7 +15,6 @@ import { detailsMenuKey, moveMenuFocus, moveListFocus } from "../keyboard-list";
 import { ResizeHandle } from "./ResizeHandle";
 import { SidebarSection } from "./SidebarSection";
 import { FavIcon, SiteTile } from "./SiteTile";
-import { recentConversations } from "../conversations";
 import { useTabSelection } from "../use-tab-selection";
 import { useMenuDismiss } from "../use-menu-dismiss";
 import { positionContextMenu } from "../position-context-menu";
@@ -104,6 +106,7 @@ interface TabRowProps {
 
 const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
   const key = useShortcutLabels();
+  const preview = useSidebarTabPreview();
   const row = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (active && !row.current?.closest('[inert]')) row.current?.scrollIntoView({ block: "nearest" });
@@ -112,15 +115,17 @@ const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, 
   const sleeping = !crashed && (p.lifecycle === "frozen" || p.lifecycle === "discarded" || p.lifecycle === "placeholder");
   const title = p.title || (p.url && p.url !== "about:blank" ? hostOf(p.url) : "New Tab");
   return (
+    <>
     <div
       ref={row}
+      onMouseEnter={event => preview.show(event.currentTarget)} onMouseLeave={preview.hide}
+      onFocus={event => preview.show(event.currentTarget)} onBlur={preview.hide} onPointerDown={preview.hide}
       className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${sleeping ? "sleeping" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
       role="tab"
       aria-selected={selecting ? selected : active}
       tabIndex={active ? 0 : -1}
       data-index={index}
       draggable
-      title={crashed ? `Crashed — ${p.url}` : p.url === "about:blank" && !p.showBlankDocument ? "New Tab" : `${p.title}\n${p.url}`}
       onClick={event => { if (!onSelect(p.pageId, event)) onActivate(p.pageId); }}
       onAuxClick={(e) => {
         if (e.button === 1) {
@@ -177,6 +182,8 @@ const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, 
         {I.close}
       </button>
     </div>
+    {preview.position && !dragging && <TabPreview page={p} {...preview.position} />}
+    </>
   );
 });
 
@@ -315,8 +322,10 @@ function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: 
   );
 }
 
-function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onContext, onDragOver, onDrop, onDragEnd }: {
+function FolderRow({ folder, count, open, dropOn, renaming, onToggle, onRename, onStartRename, onContext, onDragOver, onDrop, onDragEnd }: {
   folder: Folder;
+  count: number;
+  onStartRename: () => void;
   open: boolean;
   dropOn: boolean;
   renaming: boolean;
@@ -329,15 +338,26 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
 }) {
   const [name, setName] = useState(folder.name);
   useEffect(() => setName(folder.name), [folder.name, renaming]);
-  const commit = () => onRename(name);
+  const cancelled = useRef(false);
+  const commit = () => { onRename(cancelled.current ? folder.name : name); cancelled.current = false; };
   return (
     <div
       className={`folder-row ${open ? "open" : ""} ${dropOn ? "drop-on" : ""}`}
       role="button"
       tabIndex={0}
       aria-expanded={open}
+      aria-label={`${folder.name} tab group, ${count} ${count === 1 ? "tab" : "tabs"}`}
       onClick={() => !renaming && onToggle()}
-      onKeyDown={(e) => { if (!renaming && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onToggle(); } }}
+      onDoubleClick={() => { if (!renaming) onStartRename(); }}
+      onKeyDown={(e) => {
+        if (renaming) return;
+        if (e.key === "F2") { e.preventDefault(); e.stopPropagation(); onStartRename(); }
+        else if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) { e.preventDefault(); e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); onContext(rect.left, rect.bottom); }
+        else if (["Enter", " ", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+          e.preventDefault(); e.stopPropagation();
+          if (e.key === "Enter" || e.key === " " || (e.key === "ArrowLeft" && open) || (e.key === "ArrowRight" && !open)) onToggle();
+        }
+      }}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContext(e.clientX, e.clientY); }}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -356,12 +376,14 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
-            if (e.key === "Escape") { setName(folder.name); (e.target as HTMLInputElement).blur(); }
+            if (e.key === "Escape") { cancelled.current = true; setName(folder.name); (e.target as HTMLInputElement).blur(); }
           }}
         />
       ) : (
         <span className="tab-title">{folder.name}</span>
       )}
+      <span className="folder-count" aria-hidden="true">{count}</span>
+      <span className="folder-chevron" aria-hidden="true">{I.down}</span>
     </div>
   );
 }
@@ -404,17 +426,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: {
 });
 
 const SidebarChats = memo(function SidebarChats() {
-  const runs = useStore(s => s.runs);
-  const conversationId = useStore(s => s.conversationId);
-  const conversationMode = useStore(s => s.mode === "conversation");
-  const conversations = useMemo(() => recentConversations(runs).slice(0, 3), [runs]);
-  return <div className="sb-chats">
-    <button className={`sb-link ${conversationMode && !conversationId ? "active" : ""}`} aria-current={conversationMode && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>
-    {conversations.map(run => <button className={`sb-link ${conversationId === (run.config?.chatId ?? run.runId) ? "active" : ""}`} key={run.runId} onClick={() => useStore.getState().openConversation(run.runId)}>
-      <span>{run.goal}</span>
-    </button>)}
-    <button className="sb-link sb-show-all" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Show all</button>
-  </div>;
+  return <div className="sb-chats"><button className="sb-link" onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button><ChatSessions /></div>;
 });
 
 /* ------------------------------------------------------------------ */
@@ -422,12 +434,14 @@ const SidebarChats = memo(function SidebarChats() {
 /* ------------------------------------------------------------------ */
 
 export const Sidebar = memo(function Sidebar() {
+  const windowDrag = useWindowDrag();
   const key = useShortcutLabels();
   const sidebarPref = useStore((s) => s.sidebar);
   const sections = useStore(s => s.sidebarSections);
   const toggleSection = useStore(s => s.toggleSidebarSection);
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
   const sidebar = sidebarPref;
+  const peek = useStore(s => s.sidebarPeek);
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
@@ -436,31 +450,30 @@ export const Sidebar = memo(function Sidebar() {
   const saved = useStore((s) => { const url = s.pages.find(p => p.pageId === s.activePageId)?.url; const b = url ? s.bookmarks.find(item => item.url === url) : undefined; return b ? b.readingList ? 2 : 1 : 0; });
   const activePageId = useStore((s) => s.activePageId);
   const mode = useStore((s) => s.mode);
-  const sidebarPeek = useStore(s => s.sidebarPeek);
-  const setSidebarPeek = useStore(s => s.setSidebarPeek);
-  const peekClose = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sidebarVisible = sidebar === "expanded" || sidebarPeek;
-  const keepPeek = () => {
-    if (peekClose.current) clearTimeout(peekClose.current);
-    if (sidebar !== "expanded") setSidebarPeek(true);
-  };
-  const dismissPeek = () => {
-    if (peekClose.current) clearTimeout(peekClose.current);
-    peekClose.current = setTimeout(() => {
-      const editing = document.activeElement?.matches(".sidebar input, .sidebar textarea, .sidebar [contenteditable=true]");
-      if (!editing && !document.querySelector(".sidebar:hover")) setSidebarPeek(false);
-    }, 180);
-  };
-  useEffect(() => () => { if (peekClose.current) clearTimeout(peekClose.current); }, []);
-  useEffect(() => bridge.onSidebarEdge(near => {
+  const sidebarVisible = sidebar === "expanded" || peek;
+  useEffect(() => {
     if (sidebar === "expanded") return;
-    if (near) keepPeek();
-    else dismissPeek();
-  }), [sidebar]);
-  useDismissable(sidebarPeek, () => {
-    setSidebarPeek(false);
-    document.querySelector<HTMLButtonElement>('.toolbar [aria-label="Show sidebar"]')?.focus();
-  });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const clear = () => { if (timer) clearTimeout(timer); };
+    const open = () => { clear(); useStore.getState().setSidebarPeek(true); };
+    const close = () => {
+      clear();
+      timer = setTimeout(() => {
+        const panel = document.querySelector(".sidebar");
+        if (panel?.matches(":hover, :focus-within") || document.querySelector(".menu, .sheet, .palette") || useStore.getState().overlay) return;
+        useStore.getState().setSidebarPeek(false);
+      }, 280);
+    };
+    const move = (event: PointerEvent) => {
+      if (event.clientX <= 8 && event.clientY >= 48) open();
+      else if (event.target instanceof Element && event.target.closest(".sidebar, .menu, .sheet, .palette")) clear();
+      else close();
+    };
+    const unsubscribe = bridge.onSidebarEdge(near => near ? open() : close());
+    window.addEventListener("pointermove", move);
+    window.addEventListener("blur", close);
+    return () => { clear(); unsubscribe(); window.removeEventListener("pointermove", move); window.removeEventListener("blur", close); };
+  }, [sidebar]);
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);
   const newTab = useStore((s) => s.newTab);
@@ -658,7 +671,7 @@ export const Sidebar = memo(function Sidebar() {
 
   const full = (
     <>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}><button className="icon-btn" aria-label={sidebarPeek ? "Pin sidebar" : "Collapse sidebar"} title={sidebarPeek ? "Keep sidebar open" : withShortcut("Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{sidebarPeek ? I.pin : I.sidebarClose}</button></div>
+      <div className={`sb-head ${inElectron ? "electron" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
           {visiblePins.map((b) => {
@@ -704,6 +717,8 @@ export const Sidebar = memo(function Sidebar() {
               <div key={f.id} className={f.collapsed ? "folder-block" : "folder-block open"} role="group" aria-label={f.name}>
                 <FolderRow
                   folder={f}
+                  count={kids.length}
+                  onStartRename={() => setRenameId(f.id)}
                   open={!f.collapsed}
                   dropOn={!!drag.pageId && drag.over === f.id && drag.folderId !== f.id}
                   renaming={renameId === f.id}
@@ -797,12 +812,10 @@ export const Sidebar = memo(function Sidebar() {
   return (
     <>
       <aside
-        className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"} ${sidebarPeek && sidebar !== "expanded" ? "peek" : ""}`}
+        {...windowDrag}
+        className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"}${peek ? " peek" : ""}`}
         inert={!sidebarVisible ? true : undefined}
         aria-hidden={!sidebarVisible}
-        onPointerEnter={keepPeek}
-        onPointerLeave={dismissPeek}
-        onBlur={dismissPeek}
         data-space={space.color}
         style={{ "--sb-w": `${sidebarWidth}px` } as React.CSSProperties}
         aria-label="Sidebar"
@@ -810,7 +823,6 @@ export const Sidebar = memo(function Sidebar() {
         <div className="sidebar-content" inert={!sidebarVisible ? true : undefined} aria-hidden={!sidebarVisible}>{full}</div>
         {sidebar === "expanded" && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
       </aside>
-      {sidebar !== "expanded" && <button className="sidebar-reveal" tabIndex={-1} aria-label="Preview sidebar" onPointerEnter={keepPeek} onPointerLeave={dismissPeek} onClick={keepPeek} />}
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
           onSave={(name, color) => (editing === "new" ? addSpace(name, color) : editSpace(editing.id, name, color))} />
@@ -847,8 +859,8 @@ function NewTabButton({ onClick, dropOn, onDragOver, onDrop, onDragEnd }: {
   );
 }
 
-function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDelete }: {
-  folder: Folder; x: number; y: number; onClose: () => void; onRename: () => void; onDelete: () => void;
+export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDelete, group = false }: {
+  folder: Folder; x: number; y: number; onClose: () => void; onRename: () => void; onDelete: () => void; group?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const onClose = useMenuDismiss(ref, finishClose);
@@ -872,7 +884,7 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
   useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
   const updateFolder = useStore((s) => s.updateFolder);
   return (
-    <div ref={ref} className="menu ctx-menu" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
+    <div ref={ref} className="menu ctx-menu" role="menu" aria-label={group ? "Tab group actions" : "Folder actions"} onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
       <div className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
           <button key={color} aria-pressed={folder.color === color} aria-label={color} data-space={color}
@@ -894,7 +906,7 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
         <span className="t">Rename</span>
       </button>
       <button className="menu-item" role="menuitem" onClick={() => { onDelete(); onClose(); }}>
-        <span className="t">Delete “{folder.name}”</span>
+        <span className="t">{group ? "Ungroup tabs" : `Delete “${folder.name}”`}</span>
       </button>
     </div>
   );
