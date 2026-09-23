@@ -307,7 +307,7 @@ export class PageService {
     background: boolean,
     windowId?: string,
     ownedByRuntime=false,
-  ): Promise<{ targetId: string; nativeCreated: boolean }> {
+  ): Promise<{ targetId: string; nativeCreated: boolean; cdpTargetId?: string }> {
     if (backend === "aux") {
       const marker = `atab-${pageId}`;
       if (this.deps.native.available()) {
@@ -319,7 +319,7 @@ export class PageService {
           command: { kind: "open", pageId, url: initialUrl, background, activate: !background, runtimeOwned: ownedByRuntime },
         });
         if (ack.status === "rejected") throw new AuxError((ack.error?.code ?? "unavailable") as AuxErrorCode, ack.error?.message ?? "The tab could not be opened.");
-        return { targetId: marker, nativeCreated: true };
+        return { targetId: marker, nativeCreated: true, cdpTargetId: ack.targetId };
       }
       if (driver.createTarget) {
         // standalone mode: the driver owns the surface (headless chrome page)
@@ -354,20 +354,21 @@ export class PageService {
     const pageId = restored?.pageId ?? newPageId();
     let targetId: string;
     let nativeCreated = false;
+    let cdpTargetId: string | undefined;
     // Open on about:blank, then navigate AFTER response listeners are wired —
     // otherwise the page's own first load escapes passive capture.
     const initialUrl = opts.targetId ? opts.url : "about:blank";
     if (opts.targetId && backend === "chrome") {
       targetId = opts.targetId;
     } else {
-      ({ targetId, nativeCreated } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
+      ({ targetId, nativeCreated, cdpTargetId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
     }
 
     let dp: DriverPage;
     try {
       dp = restored && driver.recoverPage
         ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
-        : await driver.attach(targetId, pageId);
+        : await driver.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
     } catch (e) {
       // the shell view already exists — destroy it rather than leaking a
       // driverless zombie tab in the strip
