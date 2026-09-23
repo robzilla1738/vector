@@ -29,7 +29,7 @@ function PageRecovery({ page }: { page: PageTarget }) {
     if (pending.current) return;
     pending.current = true;
     setBusy(action); setActionError("");
-    try { await tabCommand({ kind: action === "reload" ? "reload" : "back", pageId: page.pageId }); }
+    try { await call(action === "reload" ? "pages.reload" : "pages.back", { pageId: page.pageId }); }
     catch (reason) {
       const detail = reason instanceof Error ? reason.message : String(reason);
       setActionError(`${action === "reload" ? "Couldn’t reload this tab" : "Couldn’t go back"}. ${detail}`);

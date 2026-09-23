@@ -31,6 +31,13 @@ const REJECT = (commandId: string, catalogVersion: number, code: string, message
 
 const DEDUP_LIMIT = 512;
 
+/** Order entry at `index` when given, else append — closed-tab reopen restores position. */
+const insertAt = (order: string[], pageId: string, index?: number) => {
+  const next = order.filter(id => id !== pageId);
+  next.splice(index == null ? next.length : Math.min(index, next.length), 0, pageId);
+  return next;
+};
+
 /**
  * Typed human tab commands (§7.2). Validates the sender's window scope,
  * deduplicates repeated commandIds, checks the caller's catalog version
@@ -119,7 +126,7 @@ export class TabController {
           await ports.open({ pageId, windowId: env.windowId, url: command.url ?? existing.url, background: command.background === true, activate });
           const owner = catalog.window(existing.windowId);
           const ops: TabPatchOp[] = [{ op: "upsert", tab: live ? { ...existing, lastActiveAt: activate ? Date.now() : existing.lastActiveAt } : { ...existing, generation: catalog.nextGeneration(pageId) } }];
-          if (activate) ops.push({ op: "window", window: { windowId: existing.windowId, order: owner?.order ?? [pageId], activePageId: pageId } });
+          if (activate) ops.push({ op: "window", window: { windowId: existing.windowId, order: command.index == null ? owner?.order ?? [pageId] : insertAt(owner?.order ?? [], pageId, command.index), activePageId: pageId } });
           return this.applied(env, ops, pageId);
         }
         const url = command.url ?? "about:blank";
@@ -127,9 +134,13 @@ export class TabController {
         const owner = catalog.window(env.windowId);
         const runtimeOwned = trusted && command.runtimeOwned === true;
         const tab = newTabRecord({ pageId, windowId: env.windowId, url, runtimeOwned, generation: catalog.nextGeneration(pageId) });
+        const ownerOrder = owner?.order ?? [];
+        // An id already in the strip keeps its position — window ops may name
+        // a tab whose record has not landed yet (or whose row was lost).
+        const order = command.index == null && ownerOrder.includes(pageId) ? ownerOrder : insertAt(ownerOrder, pageId, command.index);
         return this.applied(env, [
           { op: "upsert", tab, origin: runtimeOwned ? "runtime" : "human" },
-          { op: "window", window: { windowId: env.windowId, order: [...(owner?.order ?? []), pageId], activePageId: activate ? pageId : owner?.activePageId ?? null } },
+          { op: "window", window: { windowId: env.windowId, order, activePageId: activate ? pageId : owner?.activePageId ?? null } },
         ], pageId);
       }
       case "close": {

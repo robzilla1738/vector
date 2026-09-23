@@ -191,8 +191,8 @@ interface Workspace {
   find(text: string, findNext?: boolean, forward?: boolean): Promise<void>;
   zoomLevels: Record<string, number>;
   zoomPage(pageId: string, options?: { level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" }): Promise<void>;
-  newTab(url?: string, reuseId?: string): Promise<PageTarget | null>;
-  openBackgroundTab(url: string, spaceId: string, reuseExisting?: boolean, reuseId?: string): Promise<PageTarget>;
+  newTab(url?: string, reuseId?: string, index?: number): Promise<PageTarget | null>;
+  openBackgroundTab(url: string, spaceId: string, reuseExisting?: boolean, reuseId?: string, index?: number): Promise<PageTarget>;
   closeTab(pageId: string): Promise<void>;
   duplicateTab(pageId: string): Promise<void>;
   closingTabs: boolean;
@@ -320,9 +320,12 @@ const tabPlacementFor = (state: { layout: Workspace["layout"] }, pageId: string)
 /** Strip order after a window op: catalog order wins, uncataloged ids keep their relative tail. */
 const reconcileWindowOrder = (order: string[], catalogOrder: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[]) => {
   const live = new Set(pages.map(page => page.pageId));
-  const fromCatalog = catalogOrder.filter(id => live.has(id));
-  const known = new Set(fromCatalog);
-  return syncOrder([...fromCatalog, ...order.filter(id => !known.has(id))], pages, preservedIds);
+  // Ids the catalog owns but the page list has not caught up with yet keep
+  // their catalog position — otherwise a window op processed before its
+  // sibling upsert would re-append them at the end.
+  const pending = catalogOrder.filter(id => !live.has(id));
+  const known = new Set(catalogOrder);
+  return syncOrder([...catalogOrder, ...order.filter(id => !known.has(id))], pages, [...preservedIds, ...pending]);
 };
 
 /**
@@ -581,7 +584,12 @@ export const useStore = create<Workspace>((set, get) => ({
     storage?.setItem("aux.sidebar", sidebar);
     set({ sidebar, sidebarPeek: false });
     if (moveFocus) requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(sidebarFocusSelector(sidebar))?.focus();
+      const focusTarget = () => document.querySelector<HTMLElement>(sidebarFocusSelector(sidebar));
+      const target = focusTarget();
+      if (target) target.focus();
+      // The reveal control mounts with the same render pass — wait one more
+      // frame if it is not in the tree yet.
+      else requestAnimationFrame(() => focusTarget()?.focus());
     });
   },
   toggleSidebar: () => {
@@ -780,13 +788,13 @@ export const useStore = create<Workspace>((set, get) => ({
     }finally{if(zoomRequests.get(pageId)===token)zoomRequests.delete(pageId);}
   },
 
-  newTab: async (url = "about:blank", reuseId?: string) => {
+  newTab: async (url = "about:blank", reuseId?: string, index?: number) => {
     const observed = new Set(get().pages.map(page => page.pageId));
     const unsubscribe = useStore.subscribe(state => { for (const page of state.pages) observed.add(page.pageId); });
     try {
       get().setOverlay(null);
       set({ mode: "focus" });
-      const ack = await bridge.tabCommand({ kind: "open", url, activate: true, ...(reuseId ? { pageId: reuseId } : {}) }, get().catalogVersion);
+      const ack = await bridge.tabCommand({ kind: "open", url, activate: true, ...(reuseId ? { pageId: reuseId } : {}), ...(index == null ? {} : { index }) }, get().catalogVersion);
       if (ack.status === "rejected" || !ack.pageId) throw new Error(ack.error?.message ?? "The tab could not be opened.");
       const pageId = ack.pageId;
       set((s) => {
@@ -805,14 +813,14 @@ export const useStore = create<Workspace>((set, get) => ({
     } finally { unsubscribe(); }
   },
 
-  openBackgroundTab: async (url, spaceId, reuseExisting = true, reuseId?: string) => {
+  openBackgroundTab: async (url, spaceId, reuseExisting = true, reuseId?: string, index?: number) => {
     if (!get().layout.spaces.some(space => space.id === spaceId)) throw new Error("This Space is no longer available.");
     const existing = get().pages.find(page => page.url === url && isTab(page) && page.viewStatus !== "crashed" && get().layout.tabSpace[page.pageId] === spaceId);
     if (reuseExisting && existing) return existing;
     const observed = new Set(get().pages.map(page => page.pageId));
     const unsubscribe = useStore.subscribe(state => { for (const page of state.pages) observed.add(page.pageId); });
     try {
-      const ack = await bridge.tabCommand({ kind: "open", url, background: true, activate: false, ...(reuseId ? { pageId: reuseId } : {}) }, get().catalogVersion);
+      const ack = await bridge.tabCommand({ kind: "open", url, background: true, activate: false, ...(reuseId ? { pageId: reuseId } : {}), ...(index == null ? {} : { index }) }, get().catalogVersion);
       if (ack.status === "rejected" || !ack.pageId) throw new Error(ack.error?.message ?? "The tab could not be opened.");
       const pageId = ack.pageId;
       const stub = pageFromTab({ pageId, windowId: bridge.windowId, url, title: "", loading: true, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 0, createdAt: Date.now(), lastActiveAt: Date.now() });
@@ -844,8 +852,8 @@ export const useStore = create<Workspace>((set, get) => ({
         }
         const destinationSpace = get().layout.spaces.some(space => space.id === entry.spaceId) ? entry.spaceId : get().layout.activeSpaceId;
         const page = entries.length > 1
-          ? await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId)
-          : await get().newTab(entry.url, entry.pageId);
+          ? await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId, entry.index)
+          : await get().newTab(entry.url, entry.pageId, entry.index);
         if (!page) return; // Keep the entry available if opening failed.
         lastOpened = page.pageId;
         if (entry.wasActive) foreground = page.pageId;
@@ -1360,8 +1368,13 @@ export const useStore = create<Workspace>((set, get) => ({
         const pendingRestoreIds=(ws.pendingRestoreTabs??[]).map(tab=>tab.pageId);
         const layout = ws.restoringTabs ? restored : syncSpaces({ ...restored, order: syncOrder(restored.order, ws.pages,pendingRestoreIds) }, ws.pages,pendingRestoreIds);
         persistLayout(layout);
+        // The catalog snapshot already merged this window's durable active
+        // into layout.activeTabs — prefer it over the first tab in the space
+        // when the runtime has no live focus to report yet (fresh boot).
+        const remembered = layout.activeTabs?.[layout.activeSpaceId];
         const activePageId = ws.pages.some(page => page.pageId === ws.activePageId && layout.tabSpace[page.pageId] === layout.activeSpaceId)
-          ? ws.activePageId : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null;
+          ? ws.activePageId
+          : (remembered && ws.pages.some(page => page.pageId === remembered) ? remembered : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
         return { ...ws, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
       });
       void bridge.setShortcutOverrides(settings.shortcutOverrides ?? {}).catch(() => {});

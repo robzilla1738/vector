@@ -24,7 +24,7 @@ export interface ViewHooks {
   onCrashed(pageId: string): void;
   onUnresponsive?(pageId:string):void;
   onNavigationError(pageId: string, error: { url: string; code: number; message: string } | null): void;
-  onDestroyed(pageId: string): void;
+  onDestroyed(pageId: string, webContents: Electron.WebContents): void;
   onPopup(entry: ViewEntry, activate?: boolean): void;
   onTakeover(pageId: string): void;
   confirmUnload?(entry: ViewEntry): boolean;
@@ -160,7 +160,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
     if (details.reason !== "clean-exit" && details.reason !== "killed") hooks.onCrashed(id);
   });
   wc.on("unresponsive",()=>hooks.onUnresponsive?.(id));
-  wc.on("destroyed", () => hooks.onDestroyed(id));
+  wc.on("destroyed", () => hooks.onDestroyed(id, wc));
   wc.on("cursor-changed", (_event, type) => hooks.onCursor?.(id, type));
   wc.on("input-event", (_e, input) => {
     // a human typing/clicking in an agent-driven page takes control of it

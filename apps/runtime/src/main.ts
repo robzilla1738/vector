@@ -396,7 +396,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           showBlankDocument: pl.showBlankDocument === true,
         }).then(page => pl.activate === true ? pages.activate(page.pageId) : undefined).catch(() => {});
         return;
-      case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!);
+      case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!, true, pl.discarded === true);
       // Main-owned tab catalog patches — presence/focus/placement truth for
       // human tabs; field convergence still rides view.* above (§7.1/§7.2).
       case "tabs.catalog": return pages.syncCatalog(payload as Parameters<typeof pages.syncCatalog>[0]);

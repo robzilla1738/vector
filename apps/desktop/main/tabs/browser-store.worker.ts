@@ -63,6 +63,7 @@ const upsertTab = db.prepare(`
     created_at=excluded.created_at, last_active_at=excluded.last_active_at, changed_version=excluded.changed_version
 `);
 const deleteTab = db.prepare(`DELETE FROM tabs WHERE page_id = ?`);
+const allWindows = db.prepare(`SELECT window_id, ord_json, active_page_id FROM windows`);
 const upsertWindow = db.prepare(`INSERT INTO windows (window_id, ord_json, active_page_id) VALUES (?, ?, ?)
   ON CONFLICT(window_id) DO UPDATE SET ord_json=excluded.ord_json, active_page_id=excluded.active_page_id`);
 const setVersion = db.prepare(`INSERT INTO meta (key, value) VALUES ('catalogVersion', ?)
@@ -80,9 +81,19 @@ function applyOp(op: TabPatchOp, version: number) {
         t.generation, t.createdAt, t.lastActiveAt, version);
       break;
     }
-    case "remove":
+    case "remove": {
       deleteTab.run(op.pageId);
+      // A removed tab also leaves every strip it occupied — mirror the
+      // catalog's remove semantics so a persisted order never names a tab
+      // without a row. (FK ON DELETE SET NULL already covers active_page_id;
+      // passing it here keeps the update explicit.)
+      for (const row of allWindows.all() as { window_id: string; ord_json: string; active_page_id: string | null }[]) {
+        const order = (JSON.parse(row.ord_json) as string[]).filter(id => id !== op.pageId);
+        const active = row.active_page_id === op.pageId ? null : row.active_page_id;
+        if (order.join() !== row.ord_json || active !== row.active_page_id) upsertWindow.run(row.window_id, JSON.stringify(order), active);
+      }
       break;
+    }
     case "window":
       upsertWindow.run(op.window.windowId, JSON.stringify(op.window.order), op.window.activePageId);
       break;
@@ -110,9 +121,12 @@ function loadSnapshot(): TabCatalogSnapshot {
     createdAt: Number(row.created_at),
     lastActiveAt: Number(row.last_active_at),
   } satisfies TabRecord));
+  const known = new Set(tabs.map(tab => tab.pageId));
   const windows = (db.prepare(`SELECT * FROM windows`).all() as Record<string, unknown>[]).map(row => ({
     windowId: String(row.window_id),
-    order: JSON.parse(String(row.ord_json)) as string[],
+    // An id in ord_json whose row is gone is a stale remove artifact, not a
+    // pending upsert — a snapshot has no in-flight ops, so drop it here.
+    order: (JSON.parse(String(row.ord_json)) as string[]).filter(id => known.has(id)),
     activePageId: row.active_page_id == null ? null : String(row.active_page_id),
   } satisfies WindowTabs));
   return { version, tabs, windows };

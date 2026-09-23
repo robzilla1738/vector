@@ -195,7 +195,7 @@ const tabPorts: TabPorts = {
       controllerClosing.delete(pageId);
     }
     if (!closed) return false;
-    registry.remove(pageId);
+    if (registry.get(pageId) === entry) registry.remove(pageId);
     if (state.focusedPageId === pageId) state.focusedPageId = null;
     if (state.splitPageId === pageId) state.splitPageId = null;
     if (state.previewWatch?.pageId === pageId) clearPreviewWatch(state);
@@ -234,8 +234,14 @@ const tabPorts: TabPorts = {
   reload: async (pageId, hard) => {
     const entry = ensureTabView(pageId);
     if (!entry) throw new Error("tab gone");
-    await wakePage(entry);
     const wc = entry.view.webContents;
+    if (wc.isCrashed() && channel) {
+      // A dead renderer has no live driver — the runtime reload path recovers
+      // the view and re-attaches its CDP session, which `wc.reload` cannot do.
+      await channel.call("api.invoke", { method: "pages.reload", params: { pageId, hard }, desktopUser: true });
+      return;
+    }
+    await wakePage(entry);
     if (hard) wc.reloadIgnoringCache(); else wc.reload();
   },
   stop: pageId => {
@@ -247,6 +253,7 @@ const tabPorts: TabPorts = {
   setMuted: (pageId, muted) => {
     const entry = registry.get(pageId);
     entry?.view.webContents.setAudioMuted(muted);
+    if (entry) viewHooks.onAudio(entry.pageId, { muted: entry.view.webContents.isAudioMuted(), audible: entry.view.webContents.isCurrentlyAudible() });
   },
   move: (pageId, windowId, activate) => movePageToWindow(pageId, windowId, activate),
 };
@@ -1218,15 +1225,23 @@ const viewHooks = {
   },
   onCrashed: (pageId: string) => { noteTab(pageId, { crashed: true, loading: false }); browserHealth.notePageCrash(); notifyRuntime("view.crashed", { pageId }); },
   onUnresponsive:()=>browserHealth.notePageUnresponsive(),
-  onDestroyed: (pageId: string) => { const owner=shellForPage(pageId);forgetPageLifecycle(pageId); registry.remove(pageId); pageWindowOwners.delete(pageId);
+  onDestroyed: (pageId: string, wc: Electron.WebContents) => { const owner=shellForPage(pageId);const ownerState=stateForWindowId(pageWindowOwners.get(pageId));
+    // A stale destroy from a superseded instance must not touch the current
+    // view's bookkeeping — the pageId already has a fresh view registered.
+    const registered = registry.get(pageId);
+    if (registered && registered.view.webContents !== wc) return;
+    forgetPageLifecycle(pageId); registry.remove(pageId); pageWindowOwners.delete(pageId);
     for (const [key, pending] of pendingVaultSaves) if (pending.pageId === pageId) { clearTimeout(pending.timer); pendingVaultSaves.delete(key); }
     // view.removed must land before the catalog remove: the catalog path skips
     // the runtime's successor pick by contract, and deleting the live page
     // there first would leave a removed stage page with no restore.
-    notifyRuntime("view.removed", { pageId });
+    notifyRuntime("view.removed", { pageId, discarded: discarding.has(pageId) });
     // A discarded tab keeps its record — it reloads lazily on activation.
+    // Teardown destroys (window close, app quit) are not tab closes either —
+    // the record stays so the session restores the tab on next launch.
+    const teardown = exitApproved || ownerState?.closeApproved === true || closingRegularWindows.has(ownerState?.id ?? "");
     if (discarding.has(pageId) && tabCatalog.tab(pageId)) noteTab(pageId, { lifecycle: "discarded" });
-    else if (!controllerClosing.has(pageId) && tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
+    else if (!teardown && !controllerClosing.has(pageId) && tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
     owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true}); },
   onPopup: (entry: ViewEntry, activate = false) => {
     registry.add(entry);
@@ -1369,9 +1384,13 @@ function registerNativeHandlers(ch: RpcChannel) {
       createPageView({ win: state.win, registry, pageId, windowId: state.id, marker, url, background,ownedByRuntime, hooks: viewHooks });
       pageWindowOwners.set(pageId, state.id);
       applyStage(state);
+      const priorOrder = tabCatalog.window(state.id)?.order ?? [];
+      // A re-materialized tab keeps its strip position — only genuinely new
+      // pages append.
+      const order = priorOrder.includes(pageId) ? priorOrder : [...priorOrder, pageId];
       publishTabPatch(tabCatalog.apply([
         { op: "upsert", tab: newTabRecord({ pageId, windowId: state.id, url, runtimeOwned: ownedByRuntime === true }), origin: "runtime" },
-        ...(!background ? [{ op: "window", window: { windowId: state.id, order: [...(tabCatalog.window(state.id)?.order ?? []), pageId], activePageId: pageId } } satisfies TabPatchOp] : []),
+        ...(!background ? [{ op: "window", window: { windowId: state.id, order, activePageId: pageId } } satisfies TabPatchOp] : []),
       ]));
     }
     const wc = registry.get(pageId)?.view.webContents;
@@ -1412,7 +1431,7 @@ function registerNativeHandlers(ch: RpcChannel) {
     if (entry && state) {
       rememberClosedHistory(entry);
       if (!await destroyPageView(entry, state.win)) return { ok: false };
-      registry.remove(pageId);
+      if (registry.get(pageId) === entry) registry.remove(pageId);
     }
     // a closed page can't stay focused, split, or hold the stage lease —
     // stale pointers would leave every other view hidden
@@ -2928,8 +2947,11 @@ async function boot() {
     // or under bounded idle scheduling below.
     tabs: savedCatalog.tabs.map(tab => ({ ...tab, lifecycle: "placeholder" as const })),
   });
-
   await createRegularWindow(PRIMARY_WINDOW_ID);
+  // Durable secondary windows reopen with the catalog records they own.
+  if (savedCatalog) for (const savedWindow of savedCatalog.windows) {
+    if (savedWindow.windowId !== PRIMARY_WINDOW_ID && savedCatalog.tabs.some(tab => tab.windowId === savedWindow.windowId)) await createRegularWindow(savedWindow.windowId);
+  }
   if(quickAskShortcutEnabled)try{configureQuickAskShortcut(true,false);}catch(error){log(String(error));}
   browserHealth.start();
   // Restored tabs beyond the active one materialize under a bounded idle

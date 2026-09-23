@@ -1397,6 +1397,9 @@ export class PageService {
           title: tab.title,
           backend: "aux",
           active,
+          // A re-materialized tab continues its epoch sequence — a fresh
+          // surface must invalidate observations made against the old one.
+          restored: this.deps.repo.getPage(tab.pageId),
         });
         return;
       }
@@ -1414,19 +1417,19 @@ export class PageService {
    * first, so the restore decision is enqueued on the catalog queue — reading
    * the window-active pointer synchronously would race the queued ops.
    */
-  onNativeRemoved(pageId: string, chooseSuccessor = true) {
+  onNativeRemoved(pageId: string, chooseSuccessor = true, discarded = false) {
     const pending = this.pendingExternal.get(pageId);
     if (pending) pending.removed = true;
     if (!chooseSuccessor) {
       // Called from syncCatalogOp — already serialized on the catalog queue.
-      this.applyNativeRemoved(pageId, false);
+      this.applyNativeRemoved(pageId, false, discarded);
       return;
     }
-    const run = this.catalogQueue.then(() => this.applyNativeRemoved(pageId, true));
+    const run = this.catalogQueue.then(() => this.applyNativeRemoved(pageId, true, discarded));
     this.catalogQueue = run.catch(() => {});
   }
 
-  private applyNativeRemoved(pageId: string, chooseSuccessor: boolean) {
+  private applyNativeRemoved(pageId: string, chooseSuccessor: boolean, discarded = false) {
     const lp = this.live.get(pageId);
     if (lp) {
       if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "detached";
@@ -1462,7 +1465,15 @@ export class PageService {
           .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0] ?? candidates
           .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0];
       }
-      if (lp || next) this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+      // A discard keeps its catalog record — the tab stays on the strip as a
+      // detached page, so renderers must not treat it as a close.
+      if (lp || next) {
+        if (discarded) {
+          if (lp) this.deps.events.emit(EventTypes.PageUpdated, { pageId, viewStatus: "detached" });
+        } else {
+          this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+        }
+      }
       if (next) void this.activate(next.target.pageId).catch(() => {});
     }
   }

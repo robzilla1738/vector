@@ -27,6 +27,14 @@ export class TargetRegistry {
   private byWcId = new Map<number, ViewEntry>();
 
   add(entry: ViewEntry) {
+    const prev = this.byPageId.get(entry.pageId);
+    if (prev && prev !== entry) {
+      this.byMarker.delete(prev.marker);
+      // The replaced view may be mid-destruction — don't touch its webContents.
+      for (const [id, e] of this.byWcId) {
+        if (e === prev) this.byWcId.delete(id);
+      }
+    }
     this.byPageId.set(entry.pageId, entry);
     this.byMarker.set(entry.marker, entry);
     this.byWcId.set(entry.view.webContents.id, entry);

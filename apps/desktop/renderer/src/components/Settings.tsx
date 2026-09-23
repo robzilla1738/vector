@@ -128,6 +128,12 @@ export function Settings() {
     const saved = settings.modelProbe as ProbeResult | undefined;
     return saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null;
   });
+  // settings often arrive after the first render — surface the saved probe
+  // whenever the fetched record changes.
+  useEffect(() => {
+    const saved = settings.modelProbe as ProbeResult | undefined;
+    if (saved) setProbe({ ...saved, error: saved.ok ? undefined : "Last connection test failed" });
+  }, [settings.modelProbe]);
   const [probing, setProbing] = useState(false);
   const [dataDir, setDataDir] = useState("");
   const [diagnosticsBusy,setDiagnosticsBusy]=useState(false);

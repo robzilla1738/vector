@@ -38,6 +38,8 @@ export const TabCommandSchema = z.discriminatedUnion("kind", [
     pageId: id.optional(),
     background: z.boolean().optional(),
     activate: z.boolean().optional(),
+    /** strip position — absent appends at the end */
+    index: z.number().int().nonnegative().optional(),
     /** agent opens mark the tab runtime-owned — only honored for trusted issuers */
     runtimeOwned: z.boolean().optional(),
   }),
