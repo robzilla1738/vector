@@ -2,7 +2,7 @@
   "bundle": {
     "startupEntries": ["index.html"],
     "bootDynamicImports": "^assets/App-",
-    "startupJsKb": 900,
+    "startupJsKb": 490,
     "startupCssKb": 200,
     "totalJsKb": 1800
   },
