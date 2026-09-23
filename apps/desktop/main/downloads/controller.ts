@@ -4,6 +4,7 @@ import { retrySource } from "../download-retry.js";
 import { profileSession } from "../native-views.js";
 import { notifyRuntime } from "../runtime/supervisor.js";
 import { broadcastToShells, regularWindows, stateForEntry } from "../windows/registry.js";
+import { throttleDownloadProgress } from "./progress.js";
 
 // ---------- downloads ----------
 export const liveDownloads = new Map<string, { item: Electron.DownloadItem; snapshot: () => import("@aux/contracts").Download }>();
@@ -46,21 +47,9 @@ export function wireDownloads() {
       const win = stateForEntry(entry)?.win ?? [...regularWindows.values()][0]?.win;
       if (win) void confirmDownload(win, item, filename, sourceUrl, warning);
     }
-    // Byte progress reaches the shells at most 4×/s; a pause or interruption goes at once.
-    let lastSent = 0, lastPhase = "", progressTimer: NodeJS.Timeout | null = null;
-    const sendProgress = () => {
-      progressTimer = null;
-      if (!liveDownloads.has(dl.id)) return;
-      const current = snapshot();
-      lastSent = Date.now(); lastPhase = `${current.state}:${current.paused}`;
-      broadcastToShells("download", current);
-    };
-    item.on("updated", () => {
-      if (`${item.getState()}:${item.isPaused()}` !== lastPhase || Date.now() - lastSent >= 250) { if (progressTimer) clearTimeout(progressTimer); sendProgress(); }
-      else progressTimer ??= setTimeout(sendProgress, 250 - (Date.now() - lastSent));
-    });
+    const stopProgress = throttleDownloadProgress(item, () => { if (liveDownloads.has(dl.id)) broadcastToShells("download", snapshot()); });
     item.once("done", (_e, state) => {
-      if (progressTimer) clearTimeout(progressTimer);
+      stopProgress();
       liveDownloads.delete(dl.id);
       const final = { ...dl, state, size: item.getReceivedBytes(), paused: false, canResume: false, canCancel: false, endedAt: Date.now() };
       notifyRuntime("view.downloadFinished", final);

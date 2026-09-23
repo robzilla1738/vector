@@ -2,14 +2,12 @@ import { splitWidths } from "@aux/contracts/split-layout";
 import { BaseWindow, nativeTheme } from "electron";
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 import { offscreen, profile, registry } from "../app/services.js";
-import { exitPageFullscreen, fullscreenContents } from "../page-fullscreen.js";
-import { boundsContaining, inputEventFor, readPagePointer } from "../page-pointer.js";
 import { scheduleIdleFreeze, wakeIfIdle, wakePage } from "../tabs/lifecycle-controller.js";
 import { ensureTabView } from "../tabs/materialize.js";
 import type { ViewEntry } from "../target-registry.js";
 import { syncToolbarGlass } from "../toolbar-glass.js";
-import { glassActive, windowFill } from "./appearance.js";
 import { type RegularWindowState, stateForWindowId, toolbarEdges } from "./registry.js";
+import { fillWindow, forwardPagePointer, placeChrome, stageFullscreen } from "./surface.js";
 
 export function clearPreviewWatch(state: RegularWindowState) {
   const watch = state.previewWatch;
@@ -58,18 +56,14 @@ export function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
   const { win } = state;
   const bounds = state.stageBounds ?? win.getContentBounds();
   const shown = state.stagePageId;
-  let fullscreen=fullscreenContents(win);
-  if(fullscreen && (state.overlayOpen || registry.get(shown??"")?.view.webContents!==fullscreen)) {
-    exitPageFullscreen(win);fullscreen=undefined;
-  }
+  const fullscreen = stageFullscreen(win, state.overlayOpen, registry.get(shown ?? "")?.view.webContents);
   if(fullscreen) {
-    const size=win.getContentBounds();
     for(const entry of registry.all()) {
       if(entry.popup || (entry.windowId??PRIMARY_WINDOW_ID)!==state.id)continue;
       const shown=entry.view.webContents===fullscreen;
       forgetPlacement(entry);
       entry.view.setVisible(shown);
-      if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);win.contentView.addChildView(entry.view);}
+      if(shown){wakePage(entry);fillWindow(win, entry.view);}
     }
     syncToolbarEdge();
     syncToolbarGlass(state.id, [], false, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
@@ -111,7 +105,7 @@ export function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       if(entry.pageId!==state.focusedPageId&&entry.pageId!==state.splitPageId)scheduleIdleFreeze(entry);
     }
   }
-  placeChrome(state);
+  placeChrome(state, stageViews(state, [state.stagePageId, state.splitPageId]), state.quickAsk);
   syncToolbarEdge();
   syncToolbarGlass(state.id, stageWebContents(state), state.toolbarOverlay, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
 }
@@ -124,41 +118,15 @@ export function stageWebContents(state: RegularWindowState): Electron.WebContent
   });
 }
 
-export function placeChrome(state: RegularWindowState) {
-  const fill = windowFill(state.quickAsk || state.toolbarOverlay || glassActive());
-  if (state.paintedFill !== fill) {
-    state.paintedFill = fill;
-    state.shellView.setBackgroundColor(fill);
-  }
-  if (state.win.isDestroyed()) return;
-  // The address bar lives in the shell. Raise that view while it is open so it paints over the page instead of pushing the page down.
-  if (state.toolbarOverlay) {
-    state.chromeOnTop = true;
-    state.win.contentView.addChildView(state.shellView);
-    return;
-  }
-  if (!state.chromeOnTop) return;
-  state.chromeOnTop = false;
-  for (const pageId of [state.stagePageId, state.splitPageId]) {
+/** The window's own non-popup stage views, in z-order (split companion first). */
+function stageViews(state: RegularWindowState, pageIds: (string | null)[]) {
+  return pageIds.flatMap(pageId => {
     const entry = pageId ? registry.get(pageId) : undefined;
-    if (!entry || entry.popup || (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) continue;
-    state.win.contentView.addChildView(entry.view);
-  }
+    return entry && !entry.popup && (entry.windowId ?? PRIMARY_WINDOW_ID) === state.id ? [entry.view] : [];
+  });
 }
 
 export function deliverPagePointer(state: RegularWindowState, value: unknown) {
   if (!state.toolbarOverlay || state.overlayOpen) return;
-  const message = readPagePointer(value);
-  if (!message) return;
-  const visible = [state.splitPageId, state.stagePageId].flatMap(pageId => {
-    const entry = pageId ? registry.get(pageId) : undefined;
-    if (!entry || entry.popup || (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id || !entry.view.getVisible()) return [];
-    return [{ entry, ...entry.view.getBounds() }];
-  });
-  const hit = boundsContaining(message.x, message.y, visible);
-  if (!hit || hit.entry.view.webContents.isDestroyed()) return;
-  const input = inputEventFor(message, hit.x, hit.y);
-  if (!input) return;
-  if (message.kind === "down") hit.entry.view.webContents.focus();
-  hit.entry.view.webContents.sendInputEvent(input);
+  forwardPagePointer(value, stageViews(state, [state.splitPageId, state.stagePageId]).filter(view => view.getVisible()));
 }

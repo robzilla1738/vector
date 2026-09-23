@@ -7,7 +7,7 @@ import { isWebUrl } from "../app/external-urls.js";
 import { browserHealth, offscreen, registry, siteZoom } from "../app/services.js";
 import { offerExternalLink } from "../external-links.js";
 import { runAutofill } from "../features/autofill.js";
-import { pageTranslations, runPageTranslate, runSelectionTranslate } from "../features/translate.js";
+import { translator } from "../features/translate.js";
 import { noteCredentialOffer, pendingVaultSaves, runVaultFill } from "../features/vault.js";
 import { createPageView, markDocument } from "../native-views.js";
 import { exitPageFullscreen, wirePageFullscreen } from "../page-fullscreen.js";
@@ -20,7 +20,7 @@ import { tabPorts } from "../tabs/ports.js";
 import { controllerClosing, noteTab, publishTabPatch } from "../tabs/publish.js";
 import { tabCatalog } from "../tabs/store.js";
 import type { ViewEntry } from "../target-registry.js";
-import { broadcastToShells, pageWindowOwners, shellForPage, stateForEntry, stateForWindowId } from "../windows/registry.js";
+import { pageWindowOwners, shellForPage, stateForEntry, stateForWindowId } from "../windows/registry.js";
 import { applyStage, forgetPlacement, updateWindowTitle } from "../windows/stage.js";
 
 export function unloadPrompt(entry: ViewEntry): Electron.MessageBoxSyncOptions {
@@ -52,7 +52,7 @@ export const viewHooks = {
     const entry = registry.get(pageId);
     if (entry) siteZoom.apply(entry.view.webContents, url);
     noteTab(pageId, { url, navigationError: undefined, crashed: false });
-    if (pageTranslations.delete(pageId)) broadcastToShells("translation-changed", { pageId, lang: null, count: 0 });
+    translator.forget(pageId);
     notifyRuntime("view.navigated", { pageId, url });
   },
   onTitle: (pageId: string, title: string) => {
@@ -161,10 +161,10 @@ export const viewHooks = {
   onCredentialOffer: (pageId: string, offer: { username: string; origin: string }) => { void noteCredentialOffer(pageId, offer); },
   cosmeticFiltered: (hostname: string) => privacy.trackerBlock && !trackersAllowed(hostname),
   onTranslatePage: (pageId: string) => {
-    void runPageTranslate(pageId).catch(error => broadcastToShells("translation-changed", { pageId, error: error instanceof Error ? error.message : String(error) }));
+    void translator.page(pageId).catch(error => translator.failed(pageId, error));
   },
   onTranslateSelection: (pageId: string, text: string, x: number, y: number) => {
-    void runSelectionTranslate(pageId, text, x, y).catch(error => broadcastToShells("translation-changed", { pageId, error: error instanceof Error ? error.message : String(error) }));
+    void translator.selection(pageId, text, x, y).catch(error => translator.failed(pageId, error));
   },
   onVaultFill: (pageId: string, frame: Electron.WebFrameMain, itemId: string) => { void runVaultFill(pageId, frame, itemId); },
   openAsTab: (url: string, options?: { windowId?: string; background?: boolean; referrer?: Electron.Referrer }) => {

@@ -1,6 +1,6 @@
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 import { registry, siteZoom } from "../app/services.js";
-import { runPageTranslate, runShowOriginal } from "../features/translate.js";
+import { translator } from "../features/translate.js";
 import { showNavigationMenu } from "../navigation-menu.js";
 import { printPage, savePagePdf } from "../page-output.js";
 import { readArticle } from "../read-article.js";
@@ -56,11 +56,11 @@ export function wireTabsIpc() {
 
   handleShell("ui.translatePage", async (state, pageId: unknown) => {
     requireOwnedEntry(state, pageId);
-    return runPageTranslate(String(pageId));
+    return translator.page(String(pageId));
   });
   handleShell("ui.showOriginal", async (state, pageId: unknown) => {
     requireOwnedEntry(state, pageId);
-    return runShowOriginal(String(pageId));
+    return translator.showOriginal(String(pageId));
   });
   handleShell("ui.readArticle", async (state, pageId: unknown) => {
     const entry = typeof pageId === "string" ? requireOwnedEntry(state, pageId) : undefined;

@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import { offscreen } from "../app/services.js";
-import { nextFrame, previewJpeg, startPreviewWatch } from "../preview-watch.js";
+import { nextFrame, previewDataUrl, startPreviewWatch } from "../preview-watch.js";
 import { wakePage } from "../tabs/lifecycle-controller.js";
 import type { ViewEntry } from "../target-registry.js";
 import { handleShell, requireOwnedEntry, requireShellUi } from "../windows/registry.js";
@@ -59,10 +59,7 @@ export function wirePreviewIpc() {
         applyStage(state);
         await nextFrame(entry.view.webContents, 250);
       }
-      const img = await entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true });
-      const size = img.getSize();
-      const jpeg = previewJpeg(img, Math.max(320, Math.min(640, Math.round(size.width * 0.5))));
-      return jpeg ? `data:image/jpeg;base64,${jpeg.toString("base64")}` : null;
+      return previewDataUrl(await entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true }));
     } catch {
       return null;
     } finally {

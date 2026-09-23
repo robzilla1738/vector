@@ -6,6 +6,7 @@ import { popupCommand } from "../popup-commands.js";
 import { createRegularWindow } from "../windows/create.js";
 import { focusedRegularWindow, stateForWindowId } from "../windows/registry.js";
 import { log } from "./bootstrap.js";
+import { appMenuTemplate, shortcutFor } from "./menu-template.js";
 import { openPrivateWindow } from "./private-windows.js";
 import { registry } from "./services.js";
 
@@ -29,20 +30,18 @@ export function installMenu() {
   // menu's accelerator consumes the key before the focused webContents, so the
   // click handler routes popup-owned commands locally and main-shell commands
   // to the renderer. Independent sign-in windows must not mutate the main tab.
-  const send = (id: string) => () =>
-    {
-      const binding = shortcutById(id, menuShortcuts)?.bindings[0];
-      const shortcut = { key: binding?.key ?? "", meta: !!binding?.command, shift: !!binding?.shift, alt: !!binding?.alt, ctrl: !!binding?.ctrl, commandId: id };
-      const focused = BaseWindow.getFocusedWindow();
-      const popup = registry.all().find(entry => entry.popup === focused)?.popup;
-      if (!popup || !popupCommand(popup, shortcut)) focusedRegularWindow()?.shellView.webContents.send("shortcut", shortcut);
-    };
+  const send = (id: string) => () => {
+    const shortcut = shortcutFor(id, menuShortcuts);
+    const focused = BaseWindow.getFocusedWindow();
+    const popup = registry.all().find(entry => entry.popup === focused)?.popup;
+    if (!popup || !popupCommand(popup, shortcut)) focusedRegularWindow()?.shellView.webContents.send("shortcut", shortcut);
+  };
   const accel = (id: string) => { const b = shortcutById(id, menuShortcuts)?.bindings[0]; return b ? acceleratorFor(b) : ""; };
-  const cmd = (id: string, label = shortcutById(id, menuShortcuts)?.label ?? id) =>
-    ({ label, accelerator: accel(id) || undefined, click: send(id) }) satisfies Electron.MenuItemConstructorOptions;
-
-  const template: Electron.MenuItemConstructorOptions[] = [
-    {
+  Menu.setApplicationMenu(Menu.buildFromTemplate(appMenuTemplate({
+    shortcuts: menuShortcuts,
+    send,
+    regular: true,
+    appMenu: {
       label: "Aux",
       submenu: [
         { role: "about", label: "About Aux" },
@@ -54,80 +53,11 @@ export function installMenu() {
         { role: "quit", label: "Quit Aux" },
       ],
     },
-    {
-      label: "File",
-      submenu: [
-        { label: "Quick Ask", accelerator: accel("quick-ask"), click: () => { void openQuickAsk().catch(error => log("Quick Ask could not open", String(error))); } },
-        { id: "new-window", label: "New Window", accelerator: accel("new-window"), click: () => { void createRegularWindow(); } },
-        cmd("new-tab"),
-        { id: "new-private-window", label: "New Private Window", accelerator: accel("new-private-window"), click: openPrivateWindow },
-        cmd("open-file"),
-        cmd("reopen-closed-tab"),
-        { type: "separator" },
-        cmd("close-tab"),
-        { label: "Close Window", accelerator: accel("close-window"), click: () => (BaseWindow.getFocusedWindow() ?? stateForWindowId()?.win)?.close() },
-        { type: "separator" },
-        cmd("print"),
-        cmd("save-pdf"),
-      ],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "pasteAndMatchStyle" },
-        { role: "selectAll" },
-        { type: "separator" },
-        cmd("find"),
-        cmd("find-next"),
-        cmd("find-previous"),
-      ],
-    },
-    {
-      label: "View",
-      submenu: [
-        cmd("reload"),
-        cmd("hard-reload"),
-        { type: "separator" },
-        cmd("actual-size"),
-        cmd("zoom-in"),
-        cmd("zoom-out"),
-        { type: "separator" },
-        cmd("reader"),
-        cmd("sidebar"),
-        cmd("overview"),
-        { type: "separator" },
-        cmd("devtools"),
-        cmd("view-source"),
-        { type: "separator" },
-        { role: "togglefullscreen" },
-      ],
-    },
-    {
-      label: "Navigate",
-      submenu: [
-        cmd("back"),
-        cmd("forward"),
-        { type: "separator" },
-        cmd("tab-next", "Select Next Tab"),
-        cmd("tab-previous", "Select Previous Tab"),
-        { type: "separator" },
-        cmd("history"),
-        cmd("downloads"),
-        { type: "separator" },
-        cmd("bookmark"),
-        cmd("bookmark-all"),
-      ],
-    },
-    {
-      label: "Window",
-      submenu: [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }],
-    },
-  ];
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+    beforeNewTab: [
+      { label: "Quick Ask", accelerator: accel("quick-ask"), click: () => { void openQuickAsk().catch(error => log("Quick Ask could not open", String(error))); } },
+      { id: "new-window", label: "New Window", accelerator: accel("new-window"), click: () => { void createRegularWindow(); } },
+    ],
+    afterNewTab: [{ id: "new-private-window", label: "New Private Window", accelerator: accel("new-private-window"), click: openPrivateWindow }],
+    closeWindow: () => (BaseWindow.getFocusedWindow() ?? stateForWindowId()?.win)?.close(),
+  })));
 }
