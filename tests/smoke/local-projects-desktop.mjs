@@ -310,4 +310,4 @@ try{
  const result=await rejected;assert.equal(result.rejected,true);assert.match(result.message,/revision changed/);
  assert.equal((await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId)).length,savedRuns.length,'Approval must not launch a command after the task changed');
  console.log('PASS: native selection/cancel, reviewed dirty source, isolated checkout, attachment, refresh, restart, detach/re-attach without file loss');
-}catch(error){console.error('Project UI error',await page?.getByRole('alert').allTextContents(),await page?.evaluate(()=>window.aux.listProjects()));throw error;}finally{if(app)await app.close();rmSync(temp,{recursive:true,force:true});}
+}catch(error){console.error('Project UI error',error,await page?.getByRole('alert').allTextContents(),await page?.evaluate(()=>window.aux.listProjects()).catch(()=>[]));throw error;}finally{if(app)await app.close();for(let i=0;;i++){try{rmSync(temp,{recursive:true,force:true});break;}catch(cleanupError){if(i>=9)throw cleanupError;await new Promise(r=>setTimeout(r,300));}}}
