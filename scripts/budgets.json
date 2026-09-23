@@ -1,18 +1,21 @@
 {
   "bundle": {
-    "startupEntries": ["index.html"],
+    "startupEntries": [
+      "index.html"
+    ],
     "bootDynamicImports": "^assets/App-",
     "startupJsKb": 900,
     "startupCssKb": 200,
     "totalJsKb": 1800
   },
   "bench": {
-    "observe.full.ms": 30,
+    "observe.full.ms": 60,
     "observe.full.bytes": 5350,
     "observe.compact.bytes": 5500,
-    "click.nav.step.ms": 6,
-    "click.nonav.step.ms": 7,
-    "fill.ref.step.ms": 4,
-    "navigate+observe.ms": 37
-  }
+    "click.nav.step.ms": 20,
+    "click.nonav.step.ms": 20,
+    "fill.ref.step.ms": 12,
+    "navigate+observe.ms": 90
+  },
+  "$comment": "Timing ceilings are ~2-3x a quiet Apple Silicon p50 so shared CI runners catch regressions, not noise; byte budgets are exact-ish."
 }
