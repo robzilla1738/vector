@@ -1,13 +1,13 @@
 import {
   EventTypes,
   newRunId,
-  VectorError,
+  AuxError,
   type Observation,
   type PlanChunk,
   type Run,
   type Step,
   type StepOutcome,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
@@ -100,7 +100,7 @@ export class RunCoordinator {
 
   get(runId: string): Run {
     const run = this.deps.repo.getRun(runId);
-    if (!run) throw new VectorError("not_found", `no run ${runId}`);
+    if (!run) throw new AuxError("not_found", `no run ${runId}`);
     return run;
   }
 
@@ -123,6 +123,8 @@ export class RunCoordinator {
     contextWorkspaceRevision?: number;
     chatId?: string;
     retryOfRunId?: string;
+    /** routine-declared account boundary stamped on the run */
+    accountLabels?: string[];
   }): Promise<Run> {
     const leaseKey = opts.taskId ? `task:${opts.taskId}` : undefined;
     if (leaseKey) {
@@ -150,6 +152,7 @@ export class RunCoordinator {
         chatId: opts.chatId,
         taskId: opts.taskId,
         taskRevision: opts.taskRevision,
+        accountLabels: opts.accountLabels,
         retryOfRunId: opts.retryOfRunId,
         implementation: opts.modelId ? `agent:${opts.modelId}` : "agent",
       },
@@ -289,7 +292,7 @@ export class RunCoordinator {
     while (c.paused && !c.abort.signal.aborted) {
       await new Promise((r) => setTimeout(r, 120));
     }
-    if (c.abort.signal.aborted) throw new VectorError("cancelled", "run cancelled");
+    if (c.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled");
   }
 
   async waitForAnswer(c: RunControl, runId: string): Promise<string> {
@@ -319,7 +322,7 @@ export class RunCoordinator {
   }
 
   assertTargetAlive(obs: Observation) {
-    if (!obs) throw new VectorError("target_detached", "observation empty");
+    if (!obs) throw new AuxError("target_detached", "observation empty");
   }
 
   /** Apply the machine: start → observe → plan → authorize → dispatch → verify. */

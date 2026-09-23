@@ -123,8 +123,8 @@ async function main() {
 
     case "open": {
       const url = args[0];
-      if (!url) fail("usage: auxctl open <url> [--chrome|--engine] [--background]");
-      out(await rpc("pages.open", { url, backend: flags.chrome ? "chrome" : flags.engine ? "vector-engine" : "vector", background: !!flags.background, activate: flags.activate !== "false" && !flags.background }));
+      if (!url) fail("usage: auxctl open <url> [--chrome] [--background]");
+      out(await rpc("pages.open", { url, backend: flags.chrome ? "chrome" : "aux", background: !!flags.background, activate: flags.activate !== "false" && !flags.background }));
       return;
     }
     case "pages":

@@ -7,7 +7,7 @@ import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {sidebarAction} from './sidebar-action.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-media-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Meeting fixture</title><h1>Synthetic meeting</h1>');});
@@ -17,7 +17,7 @@ const file=join(dir,'data/site-permissions.json');mkdirSync(join(dir,'data'));
 writeFileSync(file,JSON.stringify({[base]:{media:'allow'}}));
 let app,page,fixture;
 async function launch(){
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain','--use-fake-device-for-media-stream'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain','--use-fake-device-for-media-stream'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.app-body').waitFor();
  await app.evaluate(({dialog,BaseWindow})=>{
   BaseWindow.getAllWindows()[0].setSize(1200,944);
@@ -33,7 +33,7 @@ async function launch(){
  });
 }
 async function open(url){
- await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),url);
+ await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),url);
  for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===url);if(fixture)return;await new Promise(r=>setTimeout(r,50));}throw new Error('Fixture missing');
 }
 const capture=(target,constraints)=>target.evaluate(async constraints=>{
@@ -87,7 +87,7 @@ try{
  // A different origin must get its own decision, even with a camera grant above.
  await open(other+'/meeting');await answer(0);assert.equal(await capture(fixture,{audio:true}),'NotAllowedError');
  assert.match((await prompts()).at(-1).message,new RegExp(other.replaceAll('.','\\.')));
- await page.evaluate(origin=>window.vector.clearSitePermission(origin),other);
+ await page.evaluate(origin=>window.aux.clearSitePermission(origin),other);
  // Navigation cancels a pending decision without saving a late approval.
  await answer('hold');const pending=capture(fixture,{video:true}).catch(()=>null);
  for(let i=0;i<100&&!await app.evaluate(()=>!!globalThis.resolvePermission);i++)await new Promise(r=>setTimeout(r,50));

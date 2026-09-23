@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   routineOccurrenceIdentity,
-  VectorError,
+  AuxError,
   type Routine,
   type RoutineAlert,
   type RoutineCompare,
@@ -9,7 +9,8 @@ import {
   type RoutineRun,
   type RoutineShare,
   type RoutineTrigger,
-} from "@vector/contracts";
+  type Run,
+} from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 
@@ -61,7 +62,7 @@ export function nextScheduledTime(trigger: Extract<RoutineTrigger, { kind: "sche
     const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
     if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute) return candidate - (candidate % 60_000);
   }
-  throw new VectorError("invalid_params", "Could not compute the next scheduled occurrence.");
+  throw new AuxError("invalid_params", "Could not compute the next scheduled occurrence.");
 }
 
 export function previousScheduledTime(trigger: Extract<RoutineTrigger, { kind: "schedule" }>, from: number): number {
@@ -71,7 +72,7 @@ export function previousScheduledTime(trigger: Extract<RoutineTrigger, { kind: "
     const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
     if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute) return candidate - (candidate % 60_000);
   }
-  throw new VectorError("invalid_params", "Could not compute the previous scheduled occurrence.");
+  throw new AuxError("invalid_params", "Could not compute the previous scheduled occurrence.");
 }
 
 export class RoutineService {
@@ -118,7 +119,7 @@ export class RoutineService {
 
   fromResult(input: { taskId: string; runId?: string; title?: string; parameters?: Routine["parameters"]; trigger?: RoutineTrigger; reviewRequired?: boolean; cloudCapable?: boolean }): Routine {
     const taskRow = this.repo.db.prepare("SELECT json,workspace_id FROM tasks WHERE task_id=?").get(input.taskId) as { json: string; workspace_id: string } | undefined;
-    if (!taskRow) throw new VectorError("not_found", "Save a task before turning it into a routine.");
+    if (!taskRow) throw new AuxError("not_found", "Save a task before turning it into a routine.");
     const task = JSON.parse(taskRow.json) as { title: string; objective: string; resources?: { kind: string; locator: string }[] };
     const run = input.runId
       ? this.repo.getRun(input.runId)
@@ -148,7 +149,7 @@ export class RoutineService {
 
   update(input: Partial<RoutineDefinition> & { routineId: string; expectedRevision: number }): Routine {
     const current = this.routine(input.routineId);
-    if (current.revision !== input.expectedRevision) throw new VectorError("conflict", "This routine changed. Refresh and try again.");
+    if (current.revision !== input.expectedRevision) throw new AuxError("conflict", "This routine changed. Refresh and try again.");
     const next: Routine = {
       ...current,
       ...input,
@@ -170,7 +171,7 @@ export class RoutineService {
 
   archive(routineId: string, expectedRevision: number, archived: boolean): Routine {
     const current = this.routine(routineId);
-    if (current.revision !== expectedRevision) throw new VectorError("conflict", "This routine changed. Refresh and try again.");
+    if (current.revision !== expectedRevision) throw new AuxError("conflict", "This routine changed. Refresh and try again.");
     const next: Routine = { ...current, revision: current.revision + 1, updatedAt: Date.now(), archivedAt: archived ? Date.now() : undefined };
     this.persist(next);
     this.events.emit("routine.updated", { routine: next });
@@ -224,16 +225,17 @@ export class RoutineService {
   }
 
   async run(input: { routineId: string; expectedRevision: number; parameters?: Record<string, string> }, occurrence?: { occurrenceId: string; identity: string; scheduledFor: number }): Promise<RoutineRun> {
+    this.sync();
     const routine = this.routine(input.routineId);
-    if (routine.revision !== input.expectedRevision) throw new VectorError("conflict", "This routine changed. Refresh and try again.");
-    if (routine.paused) throw new VectorError("conflict", "Resume this routine before running it.");
-    if (routine.archivedAt) throw new VectorError("conflict", "Restore this routine before running it.");
+    if (routine.revision !== input.expectedRevision) throw new AuxError("conflict", "This routine changed. Refresh and try again.");
+    if (routine.paused) throw new AuxError("conflict", "Resume this routine before running it.");
+    if (routine.archivedAt) throw new AuxError("conflict", "Restore this routine before running it.");
     const uncertain = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status='uncertain' LIMIT 1").get(routine.routineId);
-    if (uncertain) throw new VectorError("conflict", "Reconcile the previous uncertain write before running this routine again.");
+    if (uncertain) throw new AuxError("conflict", "Reconcile the previous uncertain write before running this routine again.");
     const active = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status IN ('queued','running','needs_review') LIMIT 1").get(routine.routineId);
-    if (active && !routine.consecutive) throw new VectorError("conflict", "This routine is already in progress. Wait or review the open run.");
+    if (active && !routine.consecutive) throw new AuxError("conflict", "This routine is already in progress. Wait or review the open run.");
     const parameters = { ...Object.fromEntries(routine.parameters.map(item => [item.name, item.value ?? ""])), ...input.parameters };
-    for (const item of routine.parameters) if (parameters[item.name] === undefined || parameters[item.name] === "") throw new VectorError("invalid_params", `Set the ${item.label} parameter.`);
+    for (const item of routine.parameters) if (parameters[item.name] === undefined || parameters[item.name] === "") throw new AuxError("invalid_params", `Set the ${item.label} parameter.`);
     const now = Date.now();
     const record: RoutineRun = {
       routineRunId: randomUUID(),
@@ -253,8 +255,9 @@ export class RoutineService {
   }
 
   async reconcile(routineRunId: string, outcome: "applied" | "not_applied", note: string): Promise<RoutineRun> {
+    this.sync();
     const record = this.runById(routineRunId);
-    if (record.status !== "uncertain" && record.status !== "needs_review") throw new VectorError("conflict", "Only uncertain or waiting runs can be reconciled.");
+    if (record.status !== "uncertain" && record.status !== "needs_review") throw new AuxError("conflict", "Only uncertain or waiting runs can be reconciled.");
     const routine = this.routine(record.routineId);
     if (outcome === "not_applied") {
       const next = { ...record, status: "cancelled" as const, reason: note, endedAt: Date.now() };
@@ -270,10 +273,12 @@ export class RoutineService {
   }
 
   runs(routineId: string, limit = 30): RoutineRun[] {
+    this.sync();
     return (this.repo.db.prepare("SELECT * FROM routine_runs WHERE routine_id=? ORDER BY created_at DESC LIMIT ?").all(routineId, limit) as Record<string, unknown>[]).map(parseRun);
   }
 
   async due(now = Date.now()): Promise<RoutineRun[]> {
+    this.sync();
     const created: RoutineRun[] = [];
     for (const routine of this.list({ includeArchived: false, limit: 200 })) {
       if (routine.paused || routine.trigger.kind === "manual") continue;
@@ -303,9 +308,10 @@ export class RoutineService {
   }
 
   alerts(limit = 30): RoutineAlert[] {
+    this.sync();
     const rows = this.repo.db.prepare(`SELECT r.routine_run_id, r.routine_id, r.status, r.reason, r.created_at, t.json
       FROM routine_runs r JOIN routines t ON t.routine_id=r.routine_id
-      WHERE (r.status IN ('missed','needs_review','uncertain','failed') OR r.reason LIKE 'Coalesced %')
+      WHERE (r.status IN ('missed','needs_review','uncertain','failed','waiting_input') OR r.reason LIKE 'Coalesced %' OR (r.status='completed' AND r.occurrence_id IS NOT NULL AND json_extract(t.json,'$.reviewRequired')=1))
       ORDER BY r.created_at DESC LIMIT ?`).all(limit) as { routine_run_id: string; routine_id: string; status: string; reason: string | null; created_at: number; json: string }[];
     return rows.map(row => {
       const routine = JSON.parse(row.json) as { title: string; trigger?: { kind?: string } };
@@ -322,9 +328,10 @@ export class RoutineService {
   }
 
   compare(leftRunId: string, rightRunId: string): RoutineCompare {
+    this.sync();
     const left = this.runById(leftRunId);
     const right = this.runById(rightRunId);
-    if (left.routineId !== right.routineId) throw new VectorError("conflict", "Compare two runs of the same routine.");
+    if (left.routineId !== right.routineId) throw new AuxError("conflict", "Compare two runs of the same routine.");
     const routine = this.routine(left.routineId);
     const sameOccurrence = !!left.occurrenceIdentity && left.occurrenceIdentity === right.occurrenceIdentity;
     const sameParameters = JSON.stringify(left.parameters) === JSON.stringify(right.parameters);
@@ -345,17 +352,61 @@ export class RoutineService {
       this.events.emit("routine.updated", { routine, run: next });
       return next;
     }
-    try {
-      const started = (await this.startWork?.(routine, record.parameters)) ?? {};
-      const next: RoutineRun = { ...record, status: "running", chatId: started.chatId, runId: started.runId, startedAt: Date.now() };
+    // Read-only monitor checks retry a transient dispatch once before failing.
+    const attempts = routine.trigger.kind === "monitor" ? 2 : 1;
+    let retried = false;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        const started = (await this.startWork?.(routine, record.parameters)) ?? {};
+        const next: RoutineRun = { ...record, status: "running", chatId: started.chatId, runId: started.runId, startedAt: Date.now(), ...(retried ? { reason: "Dispatched after a transient read failure." } : {}) };
+        this.updateRun(next);
+        this.events.emit("routine.updated", { routine, run: next });
+        return next;
+      } catch (error) {
+        if (attempt < attempts && this.transient(error)) {
+          retried = true;
+          await new Promise(resolve => setTimeout(resolve, 2_000));
+          continue;
+        }
+        const reason = `${error instanceof Error ? error.message : String(error)}${retried ? " — retried once" : ""}`;
+        const next = { ...record, status: "failed" as const, reason, endedAt: Date.now() };
+        this.updateRun(next);
+        this.events.emit("routine.updated", { routine, run: next });
+        return next;
+      }
+    }
+    return record;
+  }
+
+  private transient(error: unknown): boolean {
+    if (error instanceof AuxError) return error.code === "backend_unavailable" || error.code === "condition_timeout" || error.code === "model_error" || error.code === "target_detached";
+    return true;
+  }
+
+  /** Syncs each dispatched routine run with the underlying run's current status. */
+  private sync(): void {
+    const open = this.repo.db.prepare("SELECT * FROM routine_runs WHERE run_id IS NOT NULL AND status IN ('queued','running','waiting_input')").all() as Record<string, unknown>[];
+    for (const row of open) {
+      const record = parseRun(row);
+      const run = this.repo.getRun(record.runId!);
+      if (!run) continue;
+      const next = this.mapRunStatus(record, run);
+      if (!next) continue;
       this.updateRun(next);
-      this.events.emit("routine.updated", { routine, run: next });
-      return next;
-    } catch (error) {
-      const next = { ...record, status: "failed" as const, reason: error instanceof Error ? error.message : String(error), endedAt: Date.now() };
-      this.updateRun(next);
-      this.events.emit("routine.updated", { routine, run: next });
-      return next;
+      this.events.emit("routine.updated", { routine: this.routine(record.routineId), run: next });
+    }
+  }
+
+  private mapRunStatus(record: RoutineRun, run: Run): RoutineRun | undefined {
+    const endedAt = run.endedAt ?? Date.now();
+    switch (run.status) {
+      case "completed": return { ...record, status: "completed", reason: record.status === "waiting_input" ? undefined : record.reason, endedAt };
+      case "partially_completed": return { ...record, status: "completed", reason: "The run partially completed — review its results.", endedAt };
+      case "failed": return { ...record, status: "failed", reason: run.statusMessage ?? "The run failed.", endedAt };
+      case "cancelled": return { ...record, status: "cancelled", endedAt };
+      case "interrupted": return { ...record, status: "failed", reason: "The run was interrupted by a restart.", endedAt };
+      case "needs_input": return record.status === "waiting_input" ? undefined : { ...record, status: "waiting_input", reason: "The run is waiting for input." };
+      default: return record.status === "waiting_input" ? { ...record, status: "running", reason: undefined } : undefined;
     }
   }
 
@@ -386,13 +437,13 @@ export class RoutineService {
 
   private routine(routineId: string): Routine {
     const row = this.repo.db.prepare("SELECT * FROM routines WHERE routine_id=?").get(routineId) as Parameters<typeof parseRoutine>[0] | undefined;
-    if (!row) throw new VectorError("not_found", "That routine was not found.");
+    if (!row) throw new AuxError("not_found", "That routine was not found.");
     return parseRoutine(row);
   }
 
   private runById(id: string): RoutineRun {
     const row = this.repo.db.prepare("SELECT * FROM routine_runs WHERE routine_run_id=?").get(id) as Record<string, unknown> | undefined;
-    if (!row) throw new VectorError("not_found", "That routine run was not found.");
+    if (!row) throw new AuxError("not_found", "That routine run was not found.");
     return parseRun(row);
   }
 
@@ -400,15 +451,15 @@ export class RoutineService {
     if (!workspaceName) {
       const first = this.repo.db.prepare("SELECT workspace_id FROM workspaces ORDER BY created_at,workspace_id LIMIT 1").get() as { workspace_id: string } | undefined;
       if (first) return first.workspace_id;
-      throw new VectorError("not_found", "Create a Space before importing routines.");
+      throw new AuxError("not_found", "Create a Space before importing routines.");
     }
     const row = this.repo.db.prepare("SELECT workspace_id FROM workspaces WHERE name=?").get(workspaceName) as { workspace_id: string } | undefined;
     if (row) return row.workspace_id;
-    throw new VectorError("not_found", `No Space named "${workspaceName}" — pass workspaceId to choose where the routines land.`);
+    throw new AuxError("not_found", `No Space named "${workspaceName}" — pass workspaceId to choose where the routines land.`);
   }
 
   private requireWorkspace(workspaceId: string) {
-    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new VectorError("not_found", "Choose a Space for this routine.");
+    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new AuxError("not_found", "Choose a Space for this routine.");
   }
 
   private insert(routine: Routine) {

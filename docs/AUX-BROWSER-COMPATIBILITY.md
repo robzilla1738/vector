@@ -177,6 +177,87 @@ experiment needs a development-test .app and therefore remains deferred under th
 current no-app-bundle instruction. See the experiment README for the exact acceptance
 gate when that prerequisite is later authorized.
 
+## BR-06 refresh — credentials, import and feasibility decisions (2026-09-22)
+
+### Human credential experience — implemented and unit-qualified
+
+The Aux vault now serves the human login path, not only agent grants. Secrets live
+in the OS-encrypted native store under deterministic item names (restart and
+keychain continuity hold), are revealed only inside the main→page boundary for an
+explicit fill, and never enter model context, observations, logs or saved results.
+
+- Trusted fill: right-click "Fill sign-in" and palette "Fill sign-in…" resolve
+  password-kind items for the exact page origin in main, then fill the chosen
+  frame. `vault.fill` validates the frame's normalized http(s) origin against the
+  item's stored origin — subdomains, sibling domains, lookalike hosts, other ports
+  and credential-bearing URLs are denied and recorded. Fill is user-initiated only.
+- Save/update prompts: an isolated-world detector reports the account name (never
+  the password) on submit and submit-ish clicks; main captures the field values in
+  the reporting frame (subframe-aware via `framesInSubtree`), compares an existing
+  item's stored secret without revealing it, and stays silent when nothing
+  changed. The banner offers Save or Update; Update rewrites the secret in place.
+- Locked vault: offers still capture and the banner collects the passphrase for
+  unlock-then-save; a wrong passphrase keeps the offer open with an inline error.
+- Generator: `vault.generate` produces 12–64 char passwords from a CSPRNG over a
+  no-lookalike alphabet; the Settings save form fills it on request.
+- Explicit import/export: Settings → Vault exports all live items to a
+  user-chosen JSON file (mode 600) and imports `aux-vault` exports back with
+  per-entry validation and origin+username+label dedupe.
+- Non-password vault kinds ("secret") are excluded from the sign-in surface.
+- Private browsing never installs the detector, offers, or the banner.
+- Agent surface unchanged: task grants use opaque credential references; external
+  clients can read vault metadata but cannot reveal, import, export, update or
+  fill secrets. `vault.fill`/`export`/`import`/`update`/`secretMatches` run
+  main-process-only via `desktopUser`.
+- Evidence: `tests/unit/human-vault.test.ts` (21 cases) covers exact/wrong/
+  lookalike/subdomain origins, revoked and expired items, credential-bearing
+  URLs, secret-match silence, update, generator bounds, export/import round-trip
+  with dedupe, fill/capture scripts in jsdom (field targeting, disabled/hidden
+  fields, serialization safety) and the detector (username-only reports,
+  submit+click coalescing).
+
+### Browser-data import — implemented and unit-qualified
+
+Settings → Data → Import is preview-first: it lists each installed source with
+per-category availability and blocker text before anything is copied. Chromium-
+family profiles (Chrome, Chrome Beta, Chromium, Edge), Arc and Firefox are read
+from on-disk stores; Safari is offered with a Full Disk Access blocker when macOS
+denies the directory. Attached Chrome contributes its live tabs as an "open tabs"
+category. Runs execute in the runtime (off the UI thread), emit per-category
+progress, are cancellable mid-run, and report per-source partial results — a
+failed or locked source never blocks the rest. SQLite sources are WAL-aware
+snapshots taken read-only; source browser files are never mutated. History
+dedupes on `(url, visited_at)`; bookmarks dedupe by URL with Arc sidebar
+metadata (space/folder/pin/title) folded in where present.
+
+Deliberately not imported: other browsers' encrypted credential stores (Chrome
+"Login Data", Firefox `logins.json`, Safari keychain entries). Importing those
+requires the source browser's own key material and is out of scope; cookies stay
+on the existing count-only CDP/profile path, and the native vault above is the
+scoped credential experience.
+
+### Feasibility decisions — recorded early, per roadmap
+
+- **Extension native messaging.** `runtime.connectNative` and
+  `runtime.sendNativeMessage` are present in Electron 43.6.0 (measured). A real
+  host still needs a registered `NativeMessagingHosts` manifest and the browser
+  identity a signed bundle provides. Decision: API-level support only; host
+  qualification deferred with signing. Extensions that require a native
+  companion (1Password desktop unlock) remain unqualified — the native vault is
+  the scoped credential experience for daily browsing until then.
+- **Passkeys.** Virtual CTAP2 authenticator registration/assertion verified.
+  Platform and synced passkeys require `app.configureWebAuthnOptions` plus the
+  Touch ID entitlement on a signed bundle — deferred with signing. WebAuthn
+  continues to work for security keys at the protocol level.
+- **DRM.** Electron ships no Widevine CDM; licensing and bundling it is a
+  separate component agreement (and hardware attestation for premium tiers).
+  Decision: DRM-protected streaming is out of scope for this build; documented
+  rather than silently failing.
+- **Full Chrome extension parity.** Managed unpacked extensions with permission
+  review, identity-pinned updates, atomic rollback and private-mode exclusion
+  are supported. Chrome Web Store install, auto-update and broad API parity
+  remain out of scope; the measured API subset above is the support baseline.
+
 ## Primary sources
 
 - [Electron extension support](https://www.electronjs.org/docs/latest/api/extensions)

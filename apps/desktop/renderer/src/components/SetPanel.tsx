@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { SetMember } from "@vector/contracts";
-import { useStore, call, errToast } from "../store";
+import type { SetMember } from "@aux/contracts";
+import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { I } from "./icons";
 
@@ -71,7 +71,7 @@ export function SetPanel({ setId }: { setId: string }) {
               aria-label={`${label(m)}: ${m.status}`}
               onClick={() => {
                 if (m.pageId) void activate(m.pageId).catch(errToast);
-                else if (m.url) void call("pages.open", { url: m.url, activate: true }).catch(errToast);
+                else if (m.url) void useStore.getState().newTab(m.url);
               }}
             >
               <span className="member-label">{label(m)}</span>

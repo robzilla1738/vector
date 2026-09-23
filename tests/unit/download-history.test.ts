@@ -1,7 +1,7 @@
 import { interruptedDownloadHistory } from "../../apps/desktop/main/download-recovery.js";
-import type { Download } from "@vector/contracts";
+import type { Download } from "@aux/contracts";
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@vector/runtime";
+import { openDb, Repo } from "@aux/runtime";
 
 it("clears selected inactive records while preserving live progress and their source metadata", () => {
   const db=openDb(":memory:"),repo=new Repo(db);

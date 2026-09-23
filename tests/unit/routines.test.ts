@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from "vitest";
-import { EventBus, openDb, Repo, RoutineService, TaskService, nextScheduledTime } from "@vector/runtime";
+import { EventBus, openDb, Repo, RoutineService, TaskService, nextScheduledTime } from "@aux/runtime";
+import { AuxError } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -193,4 +194,88 @@ it("resolves a workspace by name or falls back, and rejects a named space that d
   expect(byName.imported).toBe(1);
   expect(f.routines.get(byName.routineIds[0]!).routine.workspaceId).toBe(f.workspace.workspaceId);
   expect(() => f.routines.importRoutines([{ ...share, title: "Other", workspaceName: "Nowhere" }])).toThrow(/No Space named/i);
+});
+
+it("syncs a dispatched routine run with the underlying run's terminal status", async () => {
+  const f = fixture(async () => ({ chatId: "c1", runId: "r1" }));
+  const routine = f.routines.create({
+    title: "Monitor feed", objective: "Check the feed",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false,
+    trigger: { kind: "manual" as const }, paused: false,
+  });
+  const record = await f.routines.run({ routineId: routine.routineId, expectedRevision: routine.revision });
+  expect(record.status).toBe("running");
+  f.repo.saveRun({ runId: "r1", goal: "Check", status: "completed", pageIds: [], createdAt: Date.now(), endedAt: Date.now() });
+  const synced = f.routines.runs(routine.routineId)[0]!;
+  expect(synced.status).toBe("completed");
+  expect(synced.endedAt).toBeDefined();
+});
+
+it("surfaces a run waiting for input and resumes when the run continues", async () => {
+  const f = fixture(async () => ({ chatId: "c1", runId: "r1" }));
+  const routine = f.routines.create({
+    title: "Watch", objective: "Watch",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false,
+    trigger: { kind: "manual" as const }, paused: false,
+  });
+  const record = await f.routines.run({ routineId: routine.routineId, expectedRevision: routine.revision });
+  f.repo.saveRun({ runId: "r1", goal: "Watch", status: "needs_input", pageIds: [], createdAt: Date.now() });
+  const alerts = f.routines.alerts();
+  const waiting = alerts.find(a => a.routineRunId === record.routineRunId);
+  expect(waiting?.status).toBe("waiting_input");
+  expect(waiting?.reason).toMatch(/input/i);
+  f.repo.saveRun({ runId: "r1", goal: "Watch", status: "running", pageIds: [], createdAt: Date.now() });
+  expect(f.routines.runs(routine.routineId)[0]!.status).toBe("running");
+  f.repo.saveRun({ runId: "r1", goal: "Watch", status: "failed", statusMessage: "nav timed out", pageIds: [], createdAt: Date.now(), endedAt: Date.now() });
+  const done = f.routines.runs(routine.routineId)[0]!;
+  expect(done.status).toBe("failed");
+  expect(done.reason).toBe("nav timed out");
+});
+
+it("retries a transient monitor dispatch failure once, then records failed", async () => {
+  let calls = 0;
+  const f = fixture(async () => { calls += 1; throw new Error("navigation timed out"); });
+  const routine = f.routines.create({
+    title: "Check feed", objective: "Check the feed",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false,
+    trigger: { kind: "monitor" as const, timezone: "UTC", intervalMinutes: 15 }, paused: false,
+  });
+  const failed = await f.routines.run({ routineId: routine.routineId, expectedRevision: routine.revision });
+  expect(calls).toBe(2);
+  expect(failed.status).toBe("failed");
+  expect(failed.reason).toMatch(/retried once/);
+
+  let calls2 = 0;
+  const f2 = fixture(async () => { calls2 += 1; if (calls2 === 1) throw new Error("navigation timed out"); return { chatId: "c", runId: "r" }; });
+  const routine2 = f2.routines.create({
+    title: "Check feed 2", objective: "Check the feed",
+    workspaceId: f2.workspace.workspaceId, sourceTaskId: f2.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false,
+    trigger: { kind: "monitor" as const, timezone: "UTC", intervalMinutes: 15 }, paused: false,
+  });
+  const ok = await f2.routines.run({ routineId: routine2.routineId, expectedRevision: routine2.revision });
+  expect(calls2).toBe(2);
+  expect(ok.status).toBe("running");
+});
+
+it("does not retry a non-transient monitor dispatch failure", async () => {
+  let calls = 0;
+  const f = fixture(async () => { calls += 1; throw new AuxError("permission_denied", "denied"); });
+  const routine = f.routines.create({
+    title: "Check feed", objective: "Check the feed",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false,
+    trigger: { kind: "monitor" as const, timezone: "UTC", intervalMinutes: 15 }, paused: false,
+  });
+  const failed = await f.routines.run({ routineId: routine.routineId, expectedRevision: routine.revision });
+  expect(failed.status).toBe("failed");
+  expect(calls).toBe(1);
 });

@@ -22,7 +22,7 @@ describe("address rules — URL vs search", () => {
 
   it("sends a search string through the configured engine", () => {
     expect(toUrl("open source browsers")).toBe("https://duckduckgo.com/?q=open%20source%20browsers");
-    expect(toUrl("vector agent runtime", "https://www.google.com/search?q=%s")).toBe("https://www.google.com/search?q=vector%20agent%20runtime");
+    expect(toUrl("aux agent runtime", "https://www.google.com/search?q=%s")).toBe("https://www.google.com/search?q=aux%20agent%20runtime");
   });
 
   it("addressNavigate is the plain navigate/search path — no goal, no run", () => {
@@ -76,10 +76,9 @@ describe("overlay → native-view visibility", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "https://example.com/" })).toBe(page);
   });
 
-  it("does not pin a Chromium view over Chrome tabs or EngineView", () => {
+  it("does not pin a Chromium view over attached Chrome tabs", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "chrome" })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector-engine" })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector" })).toBe(page);
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "aux" })).toBe(page);
   });
 });
 

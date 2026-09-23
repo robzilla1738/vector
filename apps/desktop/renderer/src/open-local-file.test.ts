@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {afterEach,expect,it,vi} from "vitest";
-import type {PageTarget} from "@vector/contracts";
+import type {PageTarget} from "@aux/contracts";
 import {bridge} from "./bridge";
 import {useStore} from "./store";
 import {openLocalFile} from "./open-local-file";

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, WorkerPool } from "@vector/runtime";
-import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@vector/runtime";
-import type { Observation, PageTarget, Program, Run } from "@vector/contracts";
+import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, WorkerPool } from "@aux/runtime";
+import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
+import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
 
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((res) => {
@@ -31,7 +31,7 @@ function fakePages(opts: { execMs: number }) {
   const pages = {
     open: async ({ url }: { url: string }) => {
       const pageId = `p${++n}`;
-      const t = { pageId, url, documentEpoch: 1, ownedByRuntime: true, backend: "vector", targetId: pageId } as unknown as PageTarget;
+      const t = { pageId, url, documentEpoch: 1, ownedByRuntime: true, backend: "aux", targetId: pageId } as unknown as PageTarget;
       targets.set(pageId, t);
       return t;
     },

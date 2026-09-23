@@ -1,15 +1,41 @@
-# ADR: Chromium / Electron removal (D5)
+# ADR: Engine separation — Chromium is the sole web engine (D5)
 
-**Status:** gated, not scheduled.  
-**Date:** 2026-09-18
+**Status:** decided, implemented.
+**Date:** 2026-09-22
 
-Chromium fallback and the Electron hybrid stay in tree until every gate below is measured and recorded here.
+Supersedes the previous version of this ADR, which gated a plan to remove
+Chromium in favor of the custom Rust engine. That direction is reversed:
+Chromium is the sole web rendering engine in the product.
 
-| Gate | Required | Current |
-|---|---|---|
-| `capability_unsupported` on ≥ 500 real pages | < 1% | engine 0/514 opened live HTML bodies (`engineCapabilityUnsupportedRate` 0.0) in `corpus-500-latest.json`; live fetch 514/526 (12 bot-wall/timeout kept); fetch fail is not engine `capability_unsupported`; unsupported-rate gate met; Electron e2e still frozen so not a deletion license |
-| Shared backend contract suite | green on both backends, 0 skips | Electron e2e frozen (D1) |
-| Multi-page + storage-state + screenshot on native service | green | `service::tests::cookies_storage_contexts_and_events_are_real` |
-| `vector-engine` adapter ≥ Chromium on verified success | ≥ 5 live-model trials | `held-out-latest.json` engine 15/15 = competitor 15/15 (`openai/gpt-5.6-luna-fast`); still not a deletion license — Electron e2e frozen (D1) |
+## Decision
 
-Deletion is forbidden until this ADR is rewritten with the numbers.
+- The custom Rust engine (`engine/`, `ve-shell`, `ve-host`,
+  `@vector/engine-native`) is removed from the product path, packaging, and
+  routine TypeScript CI. Its full source and history are preserved on the
+  `engine-track` branch; engine documentation and evidence remain in git
+  history.
+- `Backend` is `"vector" | "chrome"`. Both are Chromium; the value records
+  the connection kind (embedded vs attached), not a rendering engine.
+- The runtime router, `engineMode`/`engineCohorts` settings, mid-program
+  cross-backend fallback, engine paint/input surfaces, and engine-specific
+  environment variables are removed. There is no fallback to preserve: a
+  managed page and an attached page run the same engine.
+
+## Rationale
+
+- Web compatibility is a prerequisite for the product, not a qualification
+  gate the engine can earn. The Aux roadmap (docs/AUX-ROADMAP.md) commits to
+  keeping the Chromium host.
+- A single engine removes the largest source of behavioral divergence
+  (two observe/act/capture paths, two ref schemes, two failure modes) and
+  the routing/fallback machinery that existed to manage it.
+
+## Consequences
+
+- `pages.open` never routes: omit `backend` for embedded Chromium,
+  `backend: "chrome"` adopts an attached tab by `targetId`.
+- The packaged application contains no Rust artifacts; TS CI requires no
+  Rust toolchain.
+- Engine capability claims (semantic refs, native batch execution, software
+  PNG capture) are retired from the product surface; observation, programs,
+  and capture run through the CDP drivers only.

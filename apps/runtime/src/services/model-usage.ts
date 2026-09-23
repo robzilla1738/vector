@@ -1,4 +1,4 @@
-import type { ModelCall, ModelUsageSummary } from "@vector/contracts";
+import type { ModelCall, ModelUsageSummary } from "@aux/contracts";
 
 const strings = (values: (string | undefined)[]) => [...new Set(values.filter((value): value is string => !!value))];
 

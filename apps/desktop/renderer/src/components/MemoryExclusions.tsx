@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import type { WorkspaceMemory } from "@vector/contracts";
-import { memoryOrigin } from "@vector/contracts/memory-context";
+import type { WorkspaceMemory } from "@aux/contracts";
+import { memoryOrigin } from "@aux/contracts/memory-context";
 import { call } from "../store";
 
 export function MemoryExclusions({ memory, disabled, onSaved }: { memory: WorkspaceMemory; disabled: boolean; onSaved(memory: WorkspaceMemory): void }) {

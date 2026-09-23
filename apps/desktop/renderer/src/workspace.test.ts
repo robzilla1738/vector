@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import {
   DEFAULT_SPACE,
   canSplitPage,
@@ -26,11 +26,12 @@ import {
   toggleFolder,
   togglePin,
   unfiledTabs,
+  updateFolder,
 } from "./workspace";
 
 const page = (id: string, extra: Partial<PageTarget> = {}): PageTarget => ({
   pageId: id,
-  backend: "vector",
+  backend: "aux",
   targetId: `t-${id}`,
   url: `https://${id}.example.com/`,
   title: id,
@@ -162,6 +163,22 @@ describe("folders", () => {
     expect(tabsInFolder(layout, pages, folderId).map((p) => p.pageId)).toEqual(["b", "a"]);
     expect(unfiledTabs(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["c", "d"]);
   });
+
+  it("updates folder name and appearance without touching other fields", () => {
+    let layout = syncSpaces({ ...emptyLayout(), order: ["a"] }, [page("a")]);
+    layout = createFolder(layout, DEFAULT_SPACE.id, "Dev");
+    const folderId = layout.folders[0]!.id;
+    layout = assignFolder(layout, "a", folderId);
+    layout = toggleFolder(layout, folderId);
+    layout = updateFolder(layout, folderId, { name: "Builds", color: "green", emoji: "🔨" });
+    const folder = layout.folders[0]!;
+    expect(folder).toMatchObject({ name: "Builds", color: "green", emoji: "🔨", collapsed: true });
+    expect(layout.tabFolder.a).toBe(folderId);
+    layout = updateFolder(layout, folderId, { emoji: null });
+    expect(layout.folders[0]!.emoji).toBeUndefined();
+    expect(layout.folders[0]!.color).toBe("green");
+    expect(updateFolder(layout, "missing", { name: "X" })).toBe(layout);
+  });
 });
 
 describe("persistence", () => {
@@ -213,7 +230,7 @@ it("offers split view only for available browser-owned pages", () => {
   expect(canSplitPage(page("ready"))).toBe(true);
   expect(canSplitPage(undefined)).toBe(false);
   for (const changes of [
-    {backend:"chrome"}, {backend:"vector-engine"}, {ownedByRuntime:true},
+    {backend:"chrome"}, {ownedByRuntime:true},
     {viewStatus:"detached"}, {viewStatus:"crashed"}, {url:"about:blank"},
   ] as Partial<PageTarget>[]) expect(canSplitPage(page("unavailable", changes))).toBe(false);
   expect(canSplitPage(page("blank-document", {url:"about:blank",showBlankDocument:true}))).toBe(true);

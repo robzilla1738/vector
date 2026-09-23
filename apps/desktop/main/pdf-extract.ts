@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getDocumentProxy } from "unpdf";
-import { DOCUMENT_EVIDENCE_MAX_BYTES } from "@vector/contracts";
+import { DOCUMENT_EVIDENCE_MAX_BYTES } from "@aux/contracts";
 
 class LocalPdfData {
   async fetch({ kind, filename }: { kind: string; filename: string }) {

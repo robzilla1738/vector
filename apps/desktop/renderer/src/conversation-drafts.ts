@@ -1,4 +1,4 @@
-import type { PreparedConversation, Run } from "@vector/contracts";
+import type { PreparedConversation, Run } from "@aux/contracts";
 /** Drafts belong to durable chat IDs, including the run ID of legacy chats. */
 export const DRAFTS_KEY = "aux.conversation-drafts.v1";
 export const CONTEXTS_KEY = "aux.conversation-contexts.v1";

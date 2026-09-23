@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dotEnvCandidates, loadDotEnv, parseDotEnv } from "@vector/runtime";
+import { dotEnvCandidates, loadDotEnv, parseDotEnv } from "@aux/runtime";
 
 describe("minimal .env loader", () => {
   it("parses KEY=value with comments, export prefix and quotes", () => {
@@ -10,7 +10,7 @@ describe("minimal .env loader", () => {
       "# comment",
       "",
       "AI_GATEWAY_API_KEY=abc123",
-      "export VECTOR_PLANNER_MODEL=openai/gpt-5",
+      "export AUX_PLANNER_MODEL=openai/gpt-5",
       'QUOTED="line1\\nline2 # not a comment"',
       "SINGLE='keep # this'",
       "TRAILING=value # comment",
@@ -19,7 +19,7 @@ describe("minimal .env loader", () => {
     ].join("\n"));
     expect(parsed).toEqual({
       AI_GATEWAY_API_KEY: "abc123",
-      VECTOR_PLANNER_MODEL: "openai/gpt-5",
+      AUX_PLANNER_MODEL: "openai/gpt-5",
       QUOTED: "line1\nline2 # not a comment",
       SINGLE: "keep # this",
       TRAILING: "value",
@@ -28,7 +28,7 @@ describe("minimal .env loader", () => {
   });
 
   it("dataDir/.env is consulted before cwd/.env and the real environment always wins", () => {
-    const root = mkdtempSync(join(tmpdir(), "vector-dotenv-"));
+    const root = mkdtempSync(join(tmpdir(), "aux-dotenv-"));
     const dataDir = join(root, "data");
     const cwd = join(root, "cwd");
     for (const d of [dataDir, cwd]) writeFileSync(join(d + "-marker"), "");
@@ -42,7 +42,7 @@ describe("minimal .env loader", () => {
       expect(merged.C).toBe("from-cwd");
       expect(merged.D).toBe("real"); // process env wins
       expect(env.A).toBeUndefined(); // input not mutated
-      const files = dotEnvCandidates({ VECTOR_DATA_DIR: dataDir } as NodeJS.ProcessEnv, cwd);
+      const files = dotEnvCandidates({ AUX_DATA_DIR: dataDir } as NodeJS.ProcessEnv, cwd);
       expect(files[0]).toBe(join(dataDir, ".env"));
       expect(files[1]).toBe(join(cwd, ".env"));
       expect(files).toContain(join(cwd, "..", "..", ".env"));

@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { executeProgram } from "@vector/runtime";
-import type { DriverPage } from "@vector/engine-client";
-import type { Condition, Program, ProgramNode } from "@vector/contracts";
+import { executeProgram } from "@aux/runtime";
+import type { DriverPage } from "@aux/chromium-driver";
+import type { Condition, Program, ProgramNode } from "@aux/contracts";
 
 /** Same minimal fake DriverPage as executor.test.ts — duplicated to stay self-contained. */
 function fakePage() {
   const calls: string[] = [];
   const page: DriverPage = {
-    identity: { pageId: "p1", targetId: "t1", backend: "vector" },
+    identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     url: () => "http://x.test/",
     title: async () => "Fake",
     isAttached: () => true,

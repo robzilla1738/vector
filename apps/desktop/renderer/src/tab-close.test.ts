@@ -1,25 +1,27 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget, TabCommandAck } from "@aux/contracts";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 afterEach(() => vi.restoreAllMocks());
 const pages = ["one", "two", "three"].map(pageId => ({pageId, url: "https://example.com"}) as PageTarget);
+const applied = (pageId?: string): TabCommandAck => ({ commandId: "", status: "applied", catalogVersion: 0, pageId });
+const rejected = (code: string): TabCommandAck => ({ commandId: "", status: "rejected", catalogVersion: 0, error: { code, message: code } });
 it("stops grouped closing when beforeunload cancels and releases the operation lock", async () => {
   useStore.setState({pages, closingTabs: false});
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValueOnce({ok: true} as never).mockResolvedValueOnce({ok: false} as never);
+  const tabCommand = vi.spyOn(bridge, "tabCommand").mockResolvedValueOnce(applied("one") as never).mockResolvedValueOnce(rejected("close_vetoed") as never);
   expect(await useStore.getState().closeTabs(["one", "two", "three"])).toBe(false);
-  expect(invoke.mock.calls).toEqual([["pages.close", {pageId: "one"}], ["pages.close", {pageId: "two"}]]);
+  expect(tabCommand.mock.calls).toEqual([[{kind: "close", pageId: "one"}, 0], [{kind: "close", pageId: "two"}, 0]]);
   expect(useStore.getState().closingTabs).toBe(false);
 });
 it("does not overlap close requests while a page waits for a response", async () => {
   useStore.setState({pages, closingTabs: false});
-  let finish!: (result: never) => void;
-  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+  let finish!: (ack: TabCommandAck) => void;
+  const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(() => new Promise(resolve => {finish = resolve;}));
   const pending = useStore.getState().closeTabs(["one"]);
   expect(await useStore.getState().closeTabs(["two"])).toBe(false);
-  expect(invoke).toHaveBeenCalledTimes(1);
-  finish({ok: true} as never);
+  expect(tabCommand).toHaveBeenCalledTimes(1);
+  finish(applied("one"));
   expect(await pending).toBe(true);
   expect(useStore.getState().closingTabs).toBe(false);
 });
@@ -28,13 +30,13 @@ it("restores a closed group in original order and activates its previous foregro
   const layout = emptyLayout(); layout.order = ["one", "two", "three"];
   useStore.setState({pages, layout, closedTabs: [], activePageId: "one", closingTabs: false, reopeningTab: false, pendingRestoreIds: []});
   let eventSeq = useStore.getState().lastSeq + 1;
-  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method, params: any) => {
-    if (method === "pages.close") {
-      useStore.getState().applyEvent({type: "page.removed", seq: eventSeq++, ts: Date.now(), payload: {pageId: params.pageId}});
-      return {ok: true} as never;
+  const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async (command: any) => {
+    if (command.kind === "close") {
+      useStore.getState().applyEvent({type: "page.removed", seq: eventSeq++, ts: Date.now(), payload: {pageId: command.pageId}});
+      return applied(command.pageId) as never;
     }
-    if (method === "pages.open") return {pageId: `restored-${params.url.endsWith('/one') ? 'one' : 'three'}`, url: params.url, title: "Restored", viewStatus: "visible"} as never;
-    return {} as never;
+    if (command.kind === "open") return applied(`restored-${command.url.endsWith('/one') ? 'one' : 'three'}`) as never;
+    return applied(command.pageId) as never;
   });
   useStore.setState({pages: pages.map(page => ({...page, url: `https://example.com/${page.pageId === "two" ? "one" : page.pageId}`, title: page.pageId}))});
   await useStore.getState().closeTabs(["one", "three"]);
@@ -43,5 +45,5 @@ it("restores a closed group in original order and activates its previous foregro
   expect(useStore.getState().layout.order).toEqual(["restored-one", "two", "restored-three"]);
   expect(useStore.getState().closedTabs).toEqual([]);
   expect(useStore.getState().activePageId).toBe("restored-one");
-  expect(invoke.mock.calls.filter(([method]) => method === "pages.open").every(([, params]: any) => params.activate === false)).toBe(true);
+  expect(tabCommand.mock.calls.filter(([command]: any) => command.kind === "open").every(([command]: any) => command.activate === false)).toBe(true);
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { BrowsingMemoryPolicy } from "@vector/contracts";
+import type { BrowsingMemoryPolicy } from "@aux/contracts";
 import { bridge, inElectron } from "./bridge";
 import { call, useStore } from "./store";
 
@@ -16,7 +16,7 @@ export function useBrowsingMemory() {
     if (["workspace.browsingMemory.updated", "workspace.memory.updated"].includes(event.type) && event.payload.workspaceId === workspaceId) refresh(value => value + 1);
   }), [workspaceId]);
   useEffect(() => {
-    if (!inElectron || bridge.privateMode || !workspaceId || spaceId !== layout.activeSpaceId || mode !== "focus" || overlay || !page || page.backend !== "vector" || page.ownedByRuntime || page.loading || page.viewStatus !== "visible") return;
+    if (!inElectron || bridge.privateMode || !workspaceId || spaceId !== layout.activeSpaceId || mode !== "focus" || overlay || !page || page.backend !== "aux" || page.ownedByRuntime || page.loading || page.viewStatus !== "visible") return;
     let cancelled = false, recording = false, recorded = false;
     let interval: number | undefined;
     const record = async () => {

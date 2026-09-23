@@ -1,5 +1,5 @@
 {
-  "name": "@vector/mcp",
+  "name": "@aux/mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,17 +7,16 @@
     "dist"
   ],
   "bin": {
-    "aux-mcp": "./dist/main.js",
-    "vector-mcp": "./dist/main.js"
+    "aux-mcp": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --force"
   },
   "dependencies": {
-    "@aux-browser/sdk": "workspace:*",
+    "@aux/sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "1.30.0",
-    "@vector/contracts": "workspace:*",
+    "@aux/contracts": "workspace:*",
     "zod": "4.5.4"
   },
   "devDependencies": {

@@ -1,11 +1,11 @@
 /**
- * VEC-021 held-out stretch: skill reuse must cut measured model tokens
+ * AUX-021 held-out stretch: skill reuse must cut measured model tokens
  * (not prompt-bytes/4) and p95 vs a planner-every-turn baseline.
  */
 import { describe, it, expect } from "vitest";
-import { openDb, Repo, RunCoordinator, MockModelClient, compileSkill, evaluateHeldOutAdvantage } from "@vector/runtime";
-import { EventBus } from "@vector/runtime";
-import type { Observation, StepOutcome } from "@vector/contracts";
+import { openDb, Repo, RunCoordinator, MockModelClient, compileSkill, evaluateHeldOutAdvantage } from "@aux/runtime";
+import { EventBus } from "@aux/runtime";
+import type { Observation, StepOutcome } from "@aux/contracts";
 
 const obs: Observation = {
   observationId: "o1",
@@ -88,7 +88,7 @@ function modelMs(tokens: { ms: number }[]): number {
   return tokens.reduce((n, t) => n + t.ms, 0);
 }
 
-describe("VEC-021 token-measured stretch", () => {
+describe("AUX-021 token-measured stretch", () => {
   it("skill reuse meets 2x p95 and 50% fewer declared model tokens", async () => {
     const baselineModel = new MockModelClient();
     baselineModel.latencyMs = 80;
@@ -110,17 +110,17 @@ describe("VEC-021 token-measured stretch", () => {
     expect(finalA.status).toBe("completed");
     expect(baseline.tokens.some((t) => t.input === 8000)).toBe(true);
 
-    const engineModel = new MockModelClient();
-    engineModel.latencyMs = 80;
-    engineModel.scripted([
+    const skilledModel = new MockModelClient();
+    skilledModel.latencyMs = 80;
+    skilledModel.scripted([
       () => ({
         object: { status: "done", message: "done", result: { n: 1 } },
         inputTokens: 1500,
         outputTokens: 200,
       }),
     ]);
-    const engine = harness(engineModel);
-    engine.coordinator.seedSkills([
+    const skilled = harness(skilledModel);
+    skilled.coordinator.seedSkills([
       compileSkill({
         id: "inc",
         goalPattern: "increment",
@@ -131,11 +131,11 @@ describe("VEC-021 token-measured stretch", () => {
         evidence: "held-out counter still exposes Increment",
       }),
     ]);
-    const runB = await engine.coordinator.start({ goal: "increment the counter", pageIds: ["p1"] });
-    const finalB = await waitForRun(engine.repo, runB.runId);
+    const runB = await skilled.coordinator.start({ goal: "increment the counter", pageIds: ["p1"] });
+    const finalB = await waitForRun(skilled.repo, runB.runId);
     expect(finalB.status).toBe("completed");
-    expect(engineModel.calls.length).toBeLessThan(baselineModel.calls.length);
-    expect(engine.tokens.reduce((n, t) => n + t.input + t.output, 0)).toBeLessThan(
+    expect(skilledModel.calls.length).toBeLessThan(baselineModel.calls.length);
+    expect(skilled.tokens.reduce((n, t) => n + t.input + t.output, 0)).toBeLessThan(
       baseline.tokens.reduce((n, t) => n + t.input + t.output, 0) / 2,
     );
 
@@ -147,8 +147,8 @@ describe("VEC-021 token-measured stretch", () => {
       },
       {
         success: 1,
-        p95Ms: Math.max(modelMs(engine.tokens), 1),
-        tokensPerSuccess: tokensPerSuccess(engine.tokens, true),
+        p95Ms: Math.max(modelMs(skilled.tokens), 1),
+        tokensPerSuccess: tokensPerSuccess(skilled.tokens, true),
       },
     );
     expect(gate.tokensMeasured).toBe(true);

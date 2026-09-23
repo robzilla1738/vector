@@ -1,4 +1,4 @@
-import type {Task} from '@vector/contracts';
+import type {Task} from '@aux/contracts';
 import {call, useStore} from './store';
 import {rememberTask} from './task-drafts';
 

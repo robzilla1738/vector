@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { Download } from "@vector/contracts";
+import type { Download } from "@aux/contracts";
 import { canDismissDownload, mergeDownloadSnapshot } from "./downloads";
 
 const transfer: Download = { id: "transfer", filename: "report.csv", path: "/tmp/report.csv", state: "progressing", size: 10, startedAt: 1, canCancel: true };

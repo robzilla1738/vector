@@ -1,12 +1,12 @@
 import {
   EventTypes,
   newResultId,
-  VectorError,
+  AuxError,
   type Program,
   type ResultRecord,
   type SetMember,
   type Step,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
@@ -272,7 +272,7 @@ export class SetRunner {
     if (!pageId || !this.deps.pages.isAttached(pageId)) {
       const page = await this.deps.pages.open({
         url,
-        backend: "vector",
+        backend: "aux",
         background: true,
         ownedByRuntime: true,
       });
@@ -307,7 +307,7 @@ export class SetRunner {
       if ("res" in replay) return { result: this.resultOf(m, pageId, replay.res) };
       return { result: this.resultOf(m, pageId, { status: "failed", error: replay.blocked }) };
     }
-    throw new VectorError("invalid_params", "sets.map needs program, programId, or goal");
+    throw new AuxError("invalid_params", "sets.map needs program, programId, or goal");
   }
 
   /**

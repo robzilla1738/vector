@@ -2,7 +2,7 @@ import { open } from "node:fs/promises";
 import { constants } from "node:fs";
 import { Worker } from "node:worker_threads";
 import { basename, extname } from "node:path";
-import { DOCUMENT_EVIDENCE_MAX_BYTES } from "@vector/contracts";
+import { DOCUMENT_EVIDENCE_MAX_BYTES } from "@aux/contracts";
 
 const BINARY_DOCUMENT_MAX_BYTES = 16 * 1024 * 1024;
 

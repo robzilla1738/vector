@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
-import { workspaceMemoryText } from "@vector/contracts/memory-context";
-import type { WorkspaceMemory } from "@vector/contracts";
+import { workspaceMemoryText } from "@aux/contracts/memory-context";
+import type { WorkspaceMemory } from "@aux/contracts";
 
 it("includes only active unexpired notes without letting one long note crowd out the rest", () => {
   const memory: WorkspaceMemory = { workspaceId: "w", revision: 1, content: "X".repeat(5000), items: [

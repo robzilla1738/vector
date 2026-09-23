@@ -1,6 +1,6 @@
 /**
  * E2E: launch the real Electron app (built output), wait for the runtime
- * descriptor, drive the loopback API against vector-engine + EngineView.
+ * descriptor, drive the loopback API against the embedded Chromium backend.
  * Does not prove a human Mac .app / IME / VoiceOver / GPU session.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -45,7 +45,7 @@ beforeAll(async () => {
   fixtures = await startFixturesIfNeeded();
   await waitForFixtures();
 
-  dataDir = mkdtempSync(join(tmpdir(), "vector-e2e-"));
+  dataDir = mkdtempSync(join(tmpdir(), "aux-e2e-"));
   writeFileSync(
     join(dataDir, "settings.json"),
     JSON.stringify({ effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"] }),
@@ -55,9 +55,7 @@ beforeAll(async () => {
     cwd: desktopDir,
     env: {
       ...parentEnv,
-      VECTOR_DATA_DIR: dataDir,
-      VECTOR_ENGINE_MODE: parentEnv.VECTOR_ENGINE_MODE || "always",
-      VECTOR_ENGINE_PROFILE: parentEnv.VECTOR_ENGINE_PROFILE || "production",
+      AUX_DATA_DIR: dataDir,
       ELECTRON_ENABLE_LOGGING: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -77,10 +75,10 @@ beforeAll(async () => {
   const start = Date.now();
   for (;;) {
     const ws = await rpc<{ sessions: { backend: string; status: string; detail?: string }[] }>("workspace.get").catch(() => null);
-    const engine = ws?.sessions.find((s) => s.backend === "vector-engine");
-    if (engine?.status === "connected") break;
+    const embedded = ws?.sessions.find((s) => s.backend === "aux");
+    if (embedded?.status === "connected") break;
     if (Date.now() - start > 45_000) {
-      throw new Error(`vector-engine never connected: ${JSON.stringify(ws?.sessions)}`);
+      throw new Error(`embedded Chromium never connected: ${JSON.stringify(ws?.sessions)}`);
     }
     await new Promise((r) => setTimeout(r, 500));
   }
@@ -93,13 +91,13 @@ afterAll(async () => {
 });
 
 describe("desktop e2e", () => {
-  it("drives a Vector Engine page through the loopback API", async () => {
+  it("drives an embedded Chromium page through the loopback API", async () => {
     const page = await rpc<{ pageId: string; targetId: string; url: string; backend: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
     });
-    expect(page.backend).toBe("vector-engine");
+    expect(page.backend).toBe("aux");
     expect(page.pageId).toBeTruthy();
-    expect(page.targetId).toMatch(/^ve-\d+-\d+$/);
+    expect(page.targetId).toBeTruthy();
 
     const ws = await rpc<{ activePageId: string | null }>("workspace.get");
     expect(ws.activePageId).toBe(page.pageId);
@@ -108,7 +106,7 @@ describe("desktop e2e", () => {
       url: "http://127.0.0.1:4810/records",
       background: true,
     });
-    expect(bg.backend).toBe("vector-engine");
+    expect(bg.backend).toBe("aux");
     const ws2 = await rpc<{ activePageId: string | null }>("workspace.get");
     expect(ws2.activePageId).toBe(page.pageId);
     expect(ws2.activePageId).not.toBe(bg.pageId);
@@ -130,17 +128,15 @@ describe("desktop e2e", () => {
     const url = "http://127.0.0.1:4810/records";
     const a = await rpc<{ pageId: string; targetId: string; backend: string }>("pages.open", { url });
     const b = await rpc<{ pageId: string; targetId: string; backend: string }>("pages.open", { url });
-    expect(a.backend).toBe("vector-engine");
-    expect(b.backend).toBe("vector-engine");
+    expect(a.backend).toBe("aux");
+    expect(b.backend).toBe("aux");
     expect(a.pageId).not.toBe(b.pageId);
     expect(a.targetId).not.toBe(b.targetId);
-    expect(a.targetId).toMatch(/^ve-\d+-\d+$/);
-    expect(b.targetId).toMatch(/^ve-\d+-\d+$/);
   }, 60_000);
 
-  it("interactive programs run in parallel on background engine pages without flipping the focused tab", async () => {
+  it("interactive programs run in parallel on background pages without flipping the focused tab", async () => {
     const front = await rpc<{ pageId: string; backend: string }>("pages.open", { url: "http://127.0.0.1:4810/records" });
-    expect(front.backend).toBe("vector-engine");
+    expect(front.backend).toBe("aux");
     const bgA = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", background: true });
     const bgB = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", background: true });
     const program = (pageId: string, value: string) => ({
@@ -171,11 +167,11 @@ describe("desktop e2e", () => {
     for (const p of [bgA, bgB]) await rpc("pages.close", { pageId: p.pageId });
   }, 90_000);
 
-  it("takeover blocks dispatch on the live engine page", async () => {
+  it("takeover blocks dispatch on the live page", async () => {
     const page = await rpc<{ pageId: string; backend: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
     });
-    expect(page.backend).toBe("vector-engine");
+    expect(page.backend).toBe("aux");
     const obs = await rpc<{ content: { url: string; elements: unknown[] } }>("pages.observe", { pageId: page.pageId });
     expect(obs.content.elements.length).toBeGreaterThan(0);
     const taken = await rpc<{ controller?: string }>("pages.takeover", { pageId: page.pageId });

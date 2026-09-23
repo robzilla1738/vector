@@ -45,6 +45,24 @@ export const RoutineShareEnvelopeSchema = z.object({
   format: z.literal("aux-routine@1"),
   routines: z.array(RoutineShareSchema).min(1).max(500),
 });
+/** Thin plugin: a named bundle of existing capabilities (portable routines). */
+export const AuxPluginManifestSchema = z.object({
+  format: z.literal("aux-plugin@1"),
+  name: text.max(200),
+  version: z.string().min(1).max(60).optional(),
+  description: z.string().max(2000).optional(),
+  routines: z.array(RoutineShareSchema).min(1).max(500),
+});
+export const PluginSchema = z.object({
+  pluginId: text,
+  name: text.max(200),
+  version: z.string().max(60).optional(),
+  description: z.string().max(2000).optional(),
+  workspaceId: text,
+  routineIds: z.array(text).max(500),
+  installedAt: z.number(),
+  uninstalledAt: z.number().optional(),
+});
 export const RoutineSchema = RoutineDefinitionSchema.extend({
   routineId: text,
   revision: z.number().int().positive(),
@@ -66,7 +84,7 @@ export const RoutineRunSchema = z.object({
   revision: z.number().int().positive(),
   occurrenceId: text.optional(),
   occurrenceIdentity: text.optional(),
-  status: z.enum(["queued", "running", "completed", "failed", "cancelled", "missed", "needs_review", "uncertain"]),
+  status: z.enum(["queued", "running", "waiting_input", "completed", "failed", "cancelled", "missed", "needs_review", "uncertain"]),
   reason: z.string().max(1000).optional(),
   chatId: z.string().optional(),
   runId: z.string().optional(),
@@ -116,6 +134,8 @@ export const RoutineCompareSchema = z.object({
 export type RoutineAlert = z.infer<typeof RoutineAlertSchema>;
 export type RoutineCompare = z.infer<typeof RoutineCompareSchema>;
 
+export type AuxPluginManifest = z.infer<typeof AuxPluginManifestSchema>;
+export type Plugin = z.infer<typeof PluginSchema>;
 export type RoutineShare = z.infer<typeof RoutineShareSchema>;
 export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;

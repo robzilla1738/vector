@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it } from "vitest";
-import { extractElements } from "../../packages/engine-client/src/extract-script";
+import { extractElements } from "../../packages/chromium-driver/src/extract-script";
 
 afterEach(() => document.body.replaceChildren());
 it("masks protected attributes and text without changing the page", () => {

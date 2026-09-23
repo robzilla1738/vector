@@ -1,16 +1,16 @@
-import type { VectorEvent } from "@vector/contracts";
+import type { AuxEvent } from "@aux/contracts";
 import type { Repo } from "./store/repo.js";
 
-type Listener = (e: VectorEvent) => void;
+type Listener = (e: AuxEvent) => void;
 
 /** Persists every event with a sequence number and fans out to subscribers. */
 export class EventBus {
   private listeners = new Set<Listener>();
   constructor(private repo: Repo) {}
 
-  emit(type: string, payload: Record<string, unknown>, runId?: string): VectorEvent {
+  emit(type: string, payload: Record<string, unknown>, runId?: string): AuxEvent {
     const seq = this.repo.appendEvent({ runId, type, payload, ts: Date.now() });
-    const ev: VectorEvent = { seq, runId, type, payload, ts: Date.now() };
+    const ev: AuxEvent = { seq, runId, type, payload, ts: Date.now() };
     for (const l of this.listeners) {
       try {
         l(ev);

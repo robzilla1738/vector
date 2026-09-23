@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { errToast, useStore } from "../store";
 import { tabsInSpace } from "../workspace";
 import { moveListFocus } from "../keyboard-list";

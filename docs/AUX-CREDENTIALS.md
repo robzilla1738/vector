@@ -34,6 +34,28 @@ still contain historical plaintext. Deleting an active setting is not a claim of
 secure erasure. No backups or personal credential stores were modified by this
 implementation work. Recovery and retention policy remain roadmap requirements.
 
+## Site credential vault
+
+The Aux vault holds website sign-ins for human fill and agent grants on the same
+native store: Electron OS encryption, versioned envelope, atomic writes, no
+plaintext fallback. Item secrets live under deterministic names derived from the
+item id, so restarts and app updates preserve keychain continuity. The vault
+locks on an explicit passphrase or unlock TTL; nothing reveals a secret while
+locked.
+
+Human fill is main-process only. A page's chosen credential is revealed inside
+main after an exact normalized-origin match (subdomain, lookalike host, other
+port or a credential-bearing URL is denied and recorded), then filled into the
+validated frame. The renderer sees item metadata and fill results, never secret
+values. Save offers capture submitted fields inside the page at submit time and
+hold them briefly in main memory; the banner confirms save or update, and an
+unchanged secret suppresses the offer entirely. Explicit JSON export writes a
+user-chosen file with restrictive permissions; import validates and dedupes.
+
+Models and external clients receive opaque credential references only. Grant
+fills, human fills, denials, expirations and exports land in vault access
+history with details, never secret material.
+
 ## Qualification boundary
 
 Tests use an injected authenticated-encryption implementation and synthetic keys

@@ -2,7 +2,7 @@ import { afterEach, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DurableWriteLedger, EventBus, openDb, Repo, TaskService } from "@vector/runtime";
+import { DurableWriteLedger, EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });

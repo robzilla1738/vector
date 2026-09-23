@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import { once } from "node:events";
-import { EventBus, openDb, OperationService, Repo } from "@vector/runtime";
+import { EventBus, openDb, OperationService, Repo } from "@aux/runtime";
 
 const databases: ReturnType<typeof openDb>[] = [];
 const servers: Server[] = [];

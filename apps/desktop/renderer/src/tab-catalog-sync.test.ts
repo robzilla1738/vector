@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from "vitest";
+import type { PageTarget, TabCatalogSnapshot, TabPatch, TabRecord } from "@aux/contracts";
+import { bridge } from "./bridge";
+import { useStore } from "./store";
+import { emptyLayout } from "./workspace";
+
+afterEach(() => vi.restoreAllMocks());
+const record = (pageId: string, over: Partial<TabRecord> = {}): TabRecord => ({
+  pageId, windowId: "main", url: `https://a.test/${pageId}`, title: pageId, loading: false,
+  muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false,
+  crashed: false, runtimeOwned: false, generation: 0, createdAt: 1, lastActiveAt: 1, ...over,
+});
+const patch = (version: number, baseVersion: number, ops: TabPatch["ops"]): TabPatch => ({ version, baseVersion, ops, ts: version });
+const snapshot = (version: number, tabs: TabRecord[], order: string[], activePageId: string | null): TabCatalogSnapshot =>
+  ({ version, tabs, windows: [{ windowId: "main", order, activePageId }] });
+
+function setup(catalogVersion = 3) {
+  const layout = { ...emptyLayout(), order: ["one", "two"] };
+  const pages = ["one", "two"].map(pageId => ({ pageId, title: pageId, url: `https://a.test/${pageId}`, viewStatus: "visible" } as PageTarget));
+  useStore.setState({ pages, layout, activePageId: "two", catalogVersion, closedTabs: [] });
+}
+
+it("applies contiguous catalog patches into the page model", () => {
+  setup();
+  useStore.getState().applyTabsPatch(patch(4, 3, [
+    { op: "upsert", tab: record("three") },
+    { op: "window", window: { windowId: "main", order: ["one", "two", "three"], activePageId: "three" } },
+  ]));
+  const state = useStore.getState();
+  expect(state.pages.map(page => page.pageId)).toEqual(["one", "two", "three"]);
+  expect(state.layout.order).toEqual(["one", "two", "three"]);
+  expect(state.activePageId).toBe("three");
+  expect(state.catalogVersion).toBe(4);
+});
+
+it("merges catalog fields onto live pages without clobbering runtime fields", () => {
+  setup();
+  useStore.setState(state => ({ pages: state.pages.map(page => page.pageId === "one" ? { ...page, controller: "agent" as const, documentEpoch: 7 } : page) }));
+  useStore.getState().applyTabsPatch(patch(4, 3, [{ op: "upsert", tab: record("one", { title: "renamed", loading: true }) }]));
+  const page = useStore.getState().pages.find(page => page.pageId === "one")!;
+  expect(page).toMatchObject({ title: "renamed", loading: true, controller: "agent", documentEpoch: 7 });
+});
+
+it("requests a resync on a base-version gap instead of applying out of order", async () => {
+  setup();
+  const tabsSince = vi.spyOn(bridge, "tabsSince").mockResolvedValue({ kind: "snapshot", snapshot: snapshot(9, [record("one"), record("four")], ["one", "four"], "four") });
+  useStore.getState().applyTabsPatch(patch(10, 8, [{ op: "remove", pageId: "one" }]));
+  // The stale patch is dropped; resync converges on main's snapshot.
+  await vi.waitFor(() => expect(tabsSince).toHaveBeenCalledWith(3));
+  await vi.waitFor(() => expect(useStore.getState().catalogVersion).toBe(9));
+  const state = useStore.getState();
+  expect(state.pages.map(page => page.pageId).sort()).toEqual(["four", "one"]);
+  expect(state.activePageId).toBe("four");
+});
+
+it("replays retained patches when the gap is recoverable", async () => {
+  setup();
+  const tabsSince = vi.spyOn(bridge, "tabsSince").mockResolvedValue({ kind: "patches", patches: [
+    patch(4, 3, [{ op: "upsert", tab: record("three") }]),
+    patch(5, 4, [{ op: "window", window: { windowId: "main", order: ["one", "three", "two"], activePageId: "one" } }]),
+  ] });
+  useStore.getState().applyTabsPatch(patch(9, 7, [{ op: "remove", pageId: "one" }]));
+  await vi.waitFor(() => expect(tabsSince).toHaveBeenCalledWith(3));
+  await vi.waitFor(() => expect(useStore.getState().catalogVersion).toBe(5));
+  expect(useStore.getState().layout.order).toEqual(["one", "three", "two"]);
+  expect(useStore.getState().activePageId).toBe("one");
+});
+
+it("a remove op records closed-tab history while a cross-window move does not", () => {
+  setup();
+  useStore.getState().applyTabsPatch(patch(4, 3, [{ op: "remove", pageId: "one" }]));
+  expect(useStore.getState().closedTabs.map(tab => tab.pageId)).toEqual(["one"]);
+  useStore.getState().applyTabsPatch(patch(5, 4, [{ op: "upsert", tab: record("two", { windowId: "other" }) }]));
+  const state = useStore.getState();
+  expect(state.pages.map(page => page.pageId)).toEqual([]);
+  expect(state.closedTabs.map(tab => tab.pageId)).toEqual(["one"]);
+});
+
+it("a snapshot never rewinds the catalog version", () => {
+  setup();
+  useStore.getState().syncTabsSnapshot(snapshot(1, [record("ghost")], ["ghost"], "ghost"));
+  expect(useStore.getState().catalogVersion).toBe(3);
+  expect(useStore.getState().pages.map(page => page.pageId)).toEqual(["one", "two"]);
+});

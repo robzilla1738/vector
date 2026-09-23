@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
+import { AuxError, type Predicate, type Program, type ProgramResult, type Step } from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
@@ -68,7 +68,7 @@ const PRE_DISPATCH_CODES = new Set([
   "permission_denied",
 ]);
 function isPreDispatchError(e: unknown): boolean {
-  return e instanceof VectorError && PRE_DISPATCH_CODES.has(e.code);
+  return e instanceof AuxError && PRE_DISPATCH_CODES.has(e.code);
 }
 
 /**
@@ -155,12 +155,12 @@ export class OperationService {
     guards?: Record<string, unknown>;
     validated?: boolean;
   }) {
-    let destination:URL;try{destination=new URL(opts.url);}catch{throw new VectorError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
-    if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new VectorError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
-    if(destination.host!==opts.siteKey)throw new VectorError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
+    let destination:URL;try{destination=new URL(opts.url);}catch{throw new AuxError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
+    if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new AuxError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
+    if(destination.host!==opts.siteKey)throw new AuxError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
     for(const [name,value] of Object.entries(opts.headers??{})){
-      if(SECRET_HEADER.test(name))throw new VectorError('permission_denied',`Do not save ${name} in an operation. Session credentials stay inside the browser.`);
-      if(/[\r\n]/.test(name)||/[\r\n]/.test(value))throw new VectorError('invalid_params','Session request headers cannot contain line breaks.');
+      if(SECRET_HEADER.test(name))throw new AuxError('permission_denied',`Do not save ${name} in an operation. Session credentials stay inside the browser.`);
+      if(/[\r\n]/.test(name)||/[\r\n]/.test(value))throw new AuxError('invalid_params','Session request headers cannot contain line breaks.');
     }
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
@@ -194,14 +194,14 @@ export class OperationService {
    */
   compileFromRun(opts: { runId: string; siteKey?: string; name?: string }) {
     const steps = this.deps.repo.listSteps(opts.runId).filter((s) => s.outcome?.status === "ok");
-    if (!steps.length) throw new VectorError("not_found", `run ${opts.runId} has no successful steps to compile`);
+    if (!steps.length) throw new AuxError("not_found", `run ${opts.runId} has no successful steps to compile`);
     const pageIds = [...new Set(steps.map((s) => s.pageId).filter(Boolean))] as string[];
     if (pageIds.length !== 1) {
-      throw new VectorError("invalid_params", `run ${opts.runId} touched ${pageIds.length} pages — only single-page runs compile`);
+      throw new AuxError("invalid_params", `run ${opts.runId} touched ${pageIds.length} pages — only single-page runs compile`);
     }
     const pageId = pageIds[0]!;
     const siteKey = opts.siteKey ?? this.siteKeyOf(pageId);
-    if (!siteKey) throw new VectorError("invalid_params", "cannot determine siteKey — pass one explicitly");
+    if (!siteKey) throw new AuxError("invalid_params", "cannot determine siteKey — pass one explicitly");
     const raw: Step[] = steps.map((s, i) => ({ id: `s${i + 1}`, op: s.op, ...s.inputs }) as Step);
     const translated = this.deps.translateSteps ? this.deps.translateSteps(pageId, raw) : raw;
     const name = opts.name ?? `trace:${opts.runId.slice(0, 12)}`;
@@ -234,7 +234,7 @@ export class OperationService {
 
   get(siteKey: string, name: string) {
     const op = this.deps.repo.getOperation(siteKey, name);
-    if (!op) throw new VectorError("not_found", `no operation ${siteKey}/${name}`);
+    if (!op) throw new AuxError("not_found", `no operation ${siteKey}/${name}`);
     return { ...op, implementations: this.deps.repo.listImplementations(op.operationId) };
   }
 
@@ -340,7 +340,7 @@ export class OperationService {
 
   async explain(siteKey: string, name: string, ctx: { pageId?: string }): Promise<RouteDecision> {
     const op = this.deps.repo.getOperation(siteKey, name);
-    if (!op) throw new VectorError("not_found", `no operation ${siteKey}/${name}`);
+    if (!op) throw new AuxError("not_found", `no operation ${siteKey}/${name}`);
     const impls = this.deps.repo.listImplementations(op.operationId) as ImplRow[];
     return this.selectRoute(op, impls, ctx);
   }
@@ -376,7 +376,7 @@ export class OperationService {
     requestKey?: string; // §16.4 idempotency key
   }): Promise<{ invocationId: string; status: string; route: RouteDecision; result?: ProgramResult | unknown; error?: string; deduplicated?: boolean }> {
     const op = this.deps.repo.getOperation(opts.siteKey, opts.name);
-    if (!op) throw new VectorError("not_found", `no operation ${opts.siteKey}/${opts.name}`);
+    if (!op) throw new AuxError("not_found", `no operation ${opts.siteKey}/${opts.name}`);
 
     // §16.4 — a repeated requestKey returns the existing invocation, it
     // does NOT create a second dispatch (retries after timeout rely on this)
@@ -397,7 +397,7 @@ export class OperationService {
     let route: RouteDecision;
     if (opts.implId) {
       const impl = impls.find((i) => i.implId === opts.implId);
-      if (!impl) throw new VectorError("not_found", `no impl ${opts.implId} on ${opts.name}`);
+      if (!impl) throw new AuxError("not_found", `no impl ${opts.implId} on ${opts.name}`);
       route = { implId: impl.implId, kind: impl.kind, reason: "explicit impl override", candidates: [], ranked: [{ implId: impl.implId, kind: impl.kind, state: impl.state }] };
     } else {
       route = await this.selectRoute(op, impls, { pageId: opts.pageId });
@@ -559,7 +559,7 @@ export class OperationService {
     guards:Record<string,unknown>,
   ): Promise<unknown> {
     if (impl.kind === "browser-program") {
-      if (!opts.pageId) throw new VectorError("invalid_params", "browser-program impl requires pageId");
+      if (!opts.pageId) throw new AuxError("invalid_params", "browser-program impl requires pageId");
       const saved = JSON.parse(impl.executable) as Omit<Program, "pageId">;
       const obs = await this.deps.pages.observe(opts.pageId, {});
       const live = this.deps.pages.get(opts.pageId);
@@ -572,8 +572,8 @@ export class OperationService {
         url: live.url ?? obs.content.url,
         grants: this.deps.grants ?? DEFAULT_GRANTS,
       });
-      if ("rejected" in prepared) throw new VectorError("conflict", prepared.rejected);
-      if ("denied" in prepared) throw new VectorError("permission_denied", prepared.denied);
+      if ("rejected" in prepared) throw new AuxError("conflict", prepared.rejected);
+      if ("denied" in prepared) throw new AuxError("permission_denied", prepared.denied);
       const program: Program = {
         ...prepared.program,
         nodes: saved.nodes,
@@ -585,7 +585,7 @@ export class OperationService {
       const req = JSON.parse(impl.executable) as { method: string; url: string; body?: unknown; headers?: Record<string, string> };
       return this.runSessionRequest(req, opts.inputs ?? {}, opts.pageId, opts.runId, guards['session']==='required', opts.journaled);
     }
-    throw new VectorError("backend_unavailable", `unknown impl kind ${impl.kind}`);
+    throw new AuxError("backend_unavailable", `unknown impl kind ${impl.kind}`);
   }
 
   /**
@@ -607,12 +607,12 @@ export class OperationService {
     const body = req.body === undefined ? undefined : JSON.parse(sub(JSON.stringify(req.body)));
 
     const destination = new URL(url);
-    if (!["http:", "https:"].includes(destination.protocol)) throw new VectorError("permission_denied", "request protocol denied");
+    if (!["http:", "https:"].includes(destination.protocol)) throw new AuxError("permission_denied", "request protocol denied");
     const grants = resolveGrants(this.deps.grants).map(parseGrant).filter(g => g !== null);
     const effect = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase()) ? "read" : req.method.toUpperCase() === "DELETE" ? "destructive" : "write";
     for (const needed of [effect, "egress"] as const) {
       if (!grants.some(g => grantAllows(g, needed, destination.origin, Date.now()))) {
-        throw new VectorError("permission_denied", `agent ${needed} denied for ${url}`);
+        throw new AuxError("permission_denied", `agent ${needed} denied for ${url}`);
       }
     }
     let pageOrigin: string | undefined;
@@ -640,14 +640,14 @@ export class OperationService {
         { runId, allowEval: true, journaled },
       );
       const r = (result as ProgramResult).extracted?.response as { status: number; ok: boolean; body: string;truncated?:boolean } | undefined;
-      if (!r) throw new VectorError("step_failed", `in-page request ${req.method} ${url} returned no result`);
+      if (!r) throw new AuxError("step_failed", `in-page request ${req.method} ${url} returned no result`);
       let json: unknown;
       try { json = JSON.parse(r.body); } catch { json = r.body; }
-      if (!r.ok) throw new VectorError("step_failed", `${req.method} ${url} → ${r.status}`, json);
+      if (!r.ok) throw new AuxError("step_failed", `${req.method} ${url} → ${r.status}`, json);
       return r.truncated?{value:json,truncated:true}:json;
     }
 
-    if(requireSession)throw new VectorError('permission_denied','This operation requires a live page on the exact destination origin. Aux did not export or replay browser credentials.');
+    if(requireSession)throw new AuxError('permission_denied','This operation requires a live page on the exact destination origin. Aux did not export or replay browser credentials.');
 
     let pageHost: string | undefined;
     if (pageId) {
@@ -660,7 +660,7 @@ export class OperationService {
     const allow = this.deps.egressAllowlist?.() ?? [];
     const hosts = allow.length > 0 ? allow : pageHost ? [pageHost] : [];
     if (!agentMayEgress(url, hosts)) {
-      throw new VectorError("permission_denied", `agent egress denied for ${url}`);
+      throw new AuxError("permission_denied", `agent egress denied for ${url}`);
     }
 
     const res = await fetch(url, {
@@ -676,7 +676,7 @@ export class OperationService {
     } catch {
       json = text;
     }
-    if (!res.ok) throw new VectorError("step_failed", `${req.method} ${url} → ${res.status}`, json);
+    if (!res.ok) throw new AuxError("step_failed", `${req.method} ${url} → ${res.status}`, json);
     return truncated?{value:json,truncated:true}:json;
   }
 }

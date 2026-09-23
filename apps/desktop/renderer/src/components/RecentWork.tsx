@@ -1,6 +1,6 @@
 import { bridge } from "../bridge";
 import { useEffect, useState } from "react";
-import type { ConversationSummary, Routine } from "@vector/contracts";
+import type { ConversationSummary, Routine } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
 import { ConversationDrafts } from "./ConversationDrafts";
 import { mergeHistory } from "./ConversationHistory";

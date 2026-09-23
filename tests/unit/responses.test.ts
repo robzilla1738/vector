@@ -2,15 +2,15 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDb, Repo, EventBus, ArtifactStore, ResponseStore } from "@vector/runtime";
-import type { VectorEvent } from "@vector/contracts";
+import { openDb, Repo, EventBus, ArtifactStore, ResponseStore } from "@aux/runtime";
+import type { AuxEvent } from "@aux/contracts";
 
 function setup() {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
-  const seen: VectorEvent[] = [];
+  const seen: AuxEvent[] = [];
   events.subscribe((e) => seen.push(e));
-  const artifacts = new ArtifactStore(mkdtempSync(join(tmpdir(), "vector-resp-")), repo, events);
+  const artifacts = new ArtifactStore(mkdtempSync(join(tmpdir(), "aux-resp-")), repo, events);
   const store = new ResponseStore({ repo, events, artifacts, flushDelayMs: 20 });
   return { repo, events, seen, artifacts, store };
 }

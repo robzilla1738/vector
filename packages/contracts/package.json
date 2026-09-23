@@ -1,5 +1,5 @@
 {
-  "name": "@vector/contracts",
+  "name": "@aux/contracts",
   "version": "0.1.0",
   "private": true,
   "type": "module",

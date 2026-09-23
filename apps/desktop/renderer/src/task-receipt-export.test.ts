@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {TaskReceiptSchema} from '@vector/contracts';
+import {TaskReceiptSchema} from '@aux/contracts';
 import {taskReceiptMarkdown} from './task-receipt-export';
 it('preserves uncertainty, provenance and stale evidence without embedding active content',()=>{
  const receipt=TaskReceiptSchema.parse({taskId:'task-1',taskRevision:2,objective:'Compare ![tracker](https://example.test/image) <script>bad()</script>',generatedAt:0,status:'uncertain',

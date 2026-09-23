@@ -24,7 +24,7 @@ process.on("exit", () => { for (const child of children) child.kill("SIGTERM"); 
 const fail = (msg) => { throw new Error(msg); };
 const ok = (msg) => console.log(`✓ ${msg}`);
 
-// Locate the desktop runtime; a standalone engine binary cannot satisfy this smoke.
+// Locate the desktop runtime; a standalone browser binary cannot satisfy this smoke.
 let entry;
 for (const dir of ["mac-arm64", "mac", "linux-unpacked", "win-unpacked"]) {
   const p = join(release, dir, "Aux Browser.app", "Contents", "Resources", "runtime", "dist", "main.js");
@@ -74,8 +74,7 @@ function boot() {
       AUX_API_PORT: String(port),
       AUX_API_TOKEN: TOKEN,
       AUX_RUNTIME_AUTOSTART: "1",
-      AUX_ENGINE: "0",
-      AUX_ENGINE_ALLOWLIST: `127.0.0.1:${fixturePort}`,
+      AUX_EGRESS_ALLOWLIST: `127.0.0.1:${fixturePort}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

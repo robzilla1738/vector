@@ -1,21 +1,9 @@
-import { VectorError } from "./errors.js";
+import { AuxError } from "./errors.js";
 
-/** Session partitions retained from the Vector rename. Do not retarget silently. */
-export const RETAINED_SESSION_PARTITIONS = {
-  browsing: "persist:vector-default",
-  enginePaint: "persist:vector-engine-paint",
+/** Session partitions used by the Aux browser profile. Do not retarget silently. */
+export const SESSION_PARTITIONS = {
+  browsing: "persist:aux-default",
 } as const;
-
-export const LEGACY_MCP_TOOL_PREFIX = "vector_";
-export const CANONICAL_MCP_TOOL_PREFIX = "aux_";
-export const LEGACY_MCP_RESOURCE_SCHEME = "vector://";
-export const CANONICAL_MCP_RESOURCE_SCHEME = "aux://";
-
-/** Wire IDs that remain compatibility surfaces until an explicit M1 rename. */
-export const RETAINED_WIRE_IDS = ["vector", "chrome", "vector-engine"] as const;
-
-/** npm/workspace package scope stays `@vector` until an explicit M1 rename. */
-export const RETAINED_PACKAGE_SCOPE = "@vector";
 
 /**
  * Chromium profile basenames that may hold cookies, passwords or other secrets.
@@ -56,22 +44,18 @@ export function assertProfileBackupAllowed(relativePath: string): void {
  * identity adapters. Callers must fail closed instead of moving secrets.
  */
 export function refuseSilentCredentialMove(detail: string): never {
-  throw new VectorError(
+  throw new AuxError(
     "permission_denied",
     `${detail} Encrypted credentials, cookies and password stores stay in place. Re-enter keys in Connections.`,
   );
 }
 
-/** Canonical Aux MCP names require a generated scoped token; broad configs fail closed. */
-export function mcpNamesAreCanonical(prefix = process.env.AUX_MCP_TOOL_PREFIX): boolean {
-  return prefix === "aux";
-}
-
+/** Aux MCP exposes only scoped `aux_*` names and always requires a generated token. */
 export function requireScopedAuxMcpCatalog(env: NodeJS.ProcessEnv = process.env): void {
-  if (mcpNamesAreCanonical(env.AUX_MCP_TOOL_PREFIX) && !env.AUX_MCP_TOKEN) {
-    throw new VectorError(
+  if (!env.AUX_MCP_TOKEN) {
+    throw new AuxError(
       "permission_denied",
-      "AUX_MCP_TOOL_PREFIX=aux requires a generated scoped AUX_MCP_TOKEN. Broad vector_* clients stay on the legacy names.",
+      "Aux MCP requires a generated scoped AUX_MCP_TOKEN. Create the connection in Aux Settings.",
     );
   }
 }

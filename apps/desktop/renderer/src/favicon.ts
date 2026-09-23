@@ -1,20 +1,11 @@
-/** Candidate URLs for a site icon, tried in order until one loads. */
-
-export function faviconCandidates(url: string, provided?: string): string[] {
-  const out: string[] = [];
+/**
+ * Candidate URLs for a site icon, tried in order until one loads. Icons come
+ * from the page session itself — never a third-party favicon service, which
+ * would leak the user's hosts off-device.
+ */
+export function faviconCandidates(_url: string, provided?: string): string[] {
   const src = provided?.trim();
-  if (src && !src.startsWith("atom:")) out.push(src);
-  try {
-    const u = new URL(url);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return out;
-    const host = u.hostname.replace(/^www\./, "");
-    if (!host) return out;
-    out.push(`https://icons.duckduckgo.com/ip3/${host}.ico`);
-    out.push(`https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`);
-  } catch {
-    /* ignore invalid urls */
-  }
-  return [...new Set(out)];
+  return src && !src.startsWith("atom:") ? [src] : [];
 }
 
 export function hostLetter(url: string): string | null {

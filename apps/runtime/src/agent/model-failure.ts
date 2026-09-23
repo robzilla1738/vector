@@ -1,5 +1,5 @@
 import { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } from "ai";
-import { VectorError, type RunFailure } from "@vector/contracts";
+import { AuxError, type RunFailure } from "@aux/contracts";
 
 export type ClassifiedModelFailure = RunFailure & { automaticRetry: boolean };
 
@@ -13,7 +13,7 @@ const failure = (
 
 /** Convert provider errors into stable, nonsecret UI state. Never return a provider response body. */
 export function classifyModelFailure(error: unknown): ClassifiedModelFailure {
-  if (error instanceof VectorError) {
+  if (error instanceof AuxError) {
     if (error.code === "capability_unsupported") {
       return failure("capability", "This model doesn’t support what this task needs. Choose another model in Settings.", false, "model_settings");
     }

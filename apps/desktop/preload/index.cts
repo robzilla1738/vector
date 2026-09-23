@@ -1,6 +1,6 @@
-import type { LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult } from "@vector/contracts";
+import type { LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult } from "@aux/contracts";
 /**
- * Preload for the Vector shell renderer. Compiled to index.cjs (CommonJS)
+ * Preload for the Aux shell renderer. Compiled to index.cjs (CommonJS)
  * so Electron loads it as a classic preload regardless of package type.
  */
 import { contextBridge, ipcRenderer } from "electron";
@@ -8,23 +8,36 @@ import { contextBridge, ipcRenderer } from "electron";
 const windowArg = process.argv.find(value => value.startsWith("--aux-window-id="));
 const windowId = windowArg ? decodeURIComponent(windowArg.slice("--aux-window-id=".length)) : "main";
 
-const vector = {
+const aux = {
   quickAskShortcut: (enabled?:boolean) => ipcRenderer.invoke("ui.quickAskShortcut",enabled),
   quickAskMode: process.argv.includes("--aux-quick-ask"),
   quickAsk: (action: "open"|"expand"|"dismiss"|"status") => ipcRenderer.invoke("ui.quickAsk", action),
   onQuickAskState: (cb: (compact:boolean)=>void) => { const listener=(_event:unknown,compact:boolean)=>cb(compact);ipcRenderer.on("quick-ask.state",listener);return()=>ipcRenderer.removeListener("quick-ask.state",listener); },
   browserProfiles:()=>ipcRenderer.invoke("ui.browserProfiles"),
+  defaultBrowser:()=>ipcRenderer.invoke("ui.defaultBrowser"),
+  autofill:(pageId:string)=>ipcRenderer.invoke("ui.autofill",pageId),
+  vaultFill:(pageId:string,itemId:string)=>ipcRenderer.invoke("ui.vaultFill",pageId,itemId),
+  vaultSave:(pageId:string,origin:string)=>ipcRenderer.invoke("ui.vaultSave",pageId,origin),
+  vaultDismiss:(pageId:string,origin:string)=>ipcRenderer.invoke("ui.vaultDismiss",pageId,origin),
+  vaultExport:()=>ipcRenderer.invoke("ui.vaultExport"),
+  vaultImport:()=>ipcRenderer.invoke("ui.vaultImport"),
+  onVaultOffer:(cb:(offer:{pageId:string;username:string;origin:string;kind:"save"|"update";itemId?:string;locked?:boolean})=>void)=>{const listener=(_event:unknown,offer:{pageId:string;username:string;origin:string;kind:"save"|"update";itemId?:string;locked?:boolean})=>cb(offer);ipcRenderer.on("vault.saveOffer",listener);return()=>ipcRenderer.removeListener("vault.saveOffer",listener);},
+  setDefaultBrowser:()=>ipcRenderer.invoke("ui.setDefaultBrowser"),
   createBrowserProfile:(name:string)=>ipcRenderer.invoke("ui.createBrowserProfile",name),
   renameBrowserProfile:(id:string,name:string)=>ipcRenderer.invoke("ui.renameBrowserProfile",id,name),
   archiveBrowserProfile:(id:string,archived:boolean)=>ipcRenderer.invoke("ui.archiveBrowserProfile",id,archived),
+  deleteBrowserProfile:(id:string)=>ipcRenderer.invoke("ui.deleteBrowserProfile",id),
   openBrowserProfile:(id:string)=>ipcRenderer.invoke("ui.openBrowserProfile",id),
-  onPageAction: (cb: (action: import("@vector/contracts").PageQuickAction) => void) => {
-    const listener = (_event: unknown, action: import("@vector/contracts").PageQuickAction) => cb(action);
+  onPageAction: (cb: (action: import("@aux/contracts").PageQuickAction) => void) => {
+    const listener = (_event: unknown, action: import("@aux/contracts").PageQuickAction) => cb(action);
     ipcRenderer.on("page.quickAction", listener);
     return () => ipcRenderer.removeListener("page.quickAction", listener);
   },
   privateMode: process.argv.includes("--aux-private") || process.argv.includes("--aux-private-renderer"),
   windowId,
+  platform: process.platform,
+  /** saved binding overrides — main applies them to menus and page interception */
+  setShortcutOverrides: (overrides: unknown) => ipcRenderer.invoke("ui.shortcutOverrides", overrides),
   /** call a versioned runtime method */
   invoke: (method: string, params?: unknown) =>
     ipcRenderer.invoke("api.invoke", method, params ?? {}) as Promise<unknown>,
@@ -41,8 +54,8 @@ const vector = {
     return () => ipcRenderer.removeListener("runtime-status", listener);
   },
   /** app shortcuts forwarded from focused native page views */
-  onShortcut: (cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => void) => {
-    const l = (_e: unknown, s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => cb(s);
+  onShortcut: (cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string }) => void) => {
+    const l = (_e: unknown, s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string }) => cb(s);
     ipcRenderer.on("shortcut", l);
     return () => ipcRenderer.removeListener("shortcut", l);
   },
@@ -64,6 +77,12 @@ const vector = {
   retryDownload: (id:string) => ipcRenderer.invoke("ui.retryDownload",id) as Promise<void>,
   tabAudio:()=>ipcRenderer.invoke('ui.tabAudio') as Promise<Record<string,{muted:boolean;audible:boolean}>>,
   setTabMuted:(pageId:string,muted:boolean)=>ipcRenderer.invoke('ui.setTabMuted',pageId,muted) as Promise<void>,
+  /** typed human tab commands (§7.2) — main-owned, deduplicated, ack'd */
+  tabCommand:(command:import("@aux/contracts").TabCommand,catalogVersion?:number)=>ipcRenderer.invoke("ui.tabCommand",{commandId:`cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,windowId,...(catalogVersion!==undefined?{catalogVersion}:{}) ,command}) as Promise<import("@aux/contracts").TabCommandAck>,
+  tabsSnapshot:()=>ipcRenderer.invoke("ui.tabsSnapshot") as Promise<import("@aux/contracts").TabCatalogSnapshot>,
+  tabsSince:(version:number)=>ipcRenderer.invoke("ui.tabsSince",version) as Promise<{kind:"patches";patches:import("@aux/contracts").TabPatch[]}|{kind:"snapshot";snapshot:import("@aux/contracts").TabCatalogSnapshot}>,
+  onTabsPatch:(cb:(patch:import("@aux/contracts").TabPatch)=>void)=>{const listener=(_event:unknown,patch:import("@aux/contracts").TabPatch)=>cb(patch);ipcRenderer.on("tabs.patch",listener);return()=>ipcRenderer.removeListener("tabs.patch",listener);},
+  onTabsPlacement:(cb:(payload:{pageId:string;windowId:string;placement:import("@aux/contracts").TabPlacement})=>void)=>{const listener=(_event:unknown,payload:{pageId:string;windowId:string;placement:import("@aux/contracts").TabPlacement})=>cb(payload);ipcRenderer.on("tabs.placement",listener);return()=>ipcRenderer.removeListener("tabs.placement",listener);},
   onAudio:(cb:(state:{pageId:string;muted:boolean;audible:boolean;removed?:boolean})=>void)=>{const handler=(_event:Electron.IpcRendererEvent,state:{pageId:string;muted:boolean;audible:boolean;removed?:boolean})=>cb(state);ipcRenderer.on('view.audio',handler);return()=>{ipcRenderer.removeListener('view.audio',handler);};},
   downloadFolder: () => ipcRenderer.invoke("ui.downloadFolder") as Promise<{path:string;custom:boolean;error?:string}>,
   chooseDownloadFolder: (reset=false) => ipcRenderer.invoke("ui.chooseDownloadFolder",reset) as Promise<{path:string;custom:boolean;error?:string}>,
@@ -180,11 +199,22 @@ const vector = {
   onSiteZoomChanged: (cb: () => void) => { const listener = () => cb(); ipcRenderer.on("site-zoom-changed", listener); return () => ipcRenderer.removeListener("site-zoom-changed", listener); },
   sitePermissions: () => ipcRenderer.invoke("app.sitePermissions") as Promise<Record<string, Record<string, "allow" | "deny">>>,
   clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
-  privacy: () => ipcRenderer.invoke("app.privacy") as Promise<{ trackerBlock: boolean; blocked: number }>,
+  privacy: () => ipcRenderer.invoke("app.privacy") as Promise<{ trackerBlock: boolean; blocked: number; allowedHosts?: string[] }>,
   setTrackerBlock: (enabled: boolean) => ipcRenderer.invoke("app.setTrackerBlock", enabled) as Promise<{ trackerBlock: boolean; blocked: number }>,
+  setHttpsUpgrade: (enabled: boolean) => ipcRenderer.invoke("app.setHttpsUpgrade", enabled) as Promise<boolean>,
+  setSiteTrackers: (pageId: string, allowed: boolean) => ipcRenderer.invoke("app.setSiteTrackers", pageId, allowed) as Promise<{ hostname: string; allowed: boolean }>,
+  removeAllowedHost: (hostname: string) => ipcRenderer.invoke("app.removeAllowedHost", hostname) as Promise<string[]>,
+  filterLists: () => ipcRenderer.invoke("app.filterLists"),
+  updateFilters: () => ipcRenderer.invoke("app.updateFilters"),
+  addFilterSource: (name: string, url: string) => ipcRenderer.invoke("app.addFilterSource", name, url),
+  removeFilterSource: (id: string) => ipcRenderer.invoke("app.removeFilterSource", id),
   proceedInsecure: (url: string) => ipcRenderer.invoke("app.proceedInsecure", url) as Promise<boolean>,
+  useHttp: (pageId: string, url: string) => ipcRenderer.invoke("app.useHttp", pageId, url) as Promise<boolean>,
+  translatePage: (pageId: string) => ipcRenderer.invoke("ui.translatePage", pageId),
+  showOriginal: (pageId: string) => ipcRenderer.invoke("ui.showOriginal", pageId) as Promise<number>,
+  onTranslationChanged: (cb:(payload:{pageId:string;lang?:string|null;count?:number;truncated?:boolean;pending?:boolean;error?:string})=>void) => { const listener=(_e:unknown,p:{pageId:string;lang?:string|null;count?:number;truncated?:boolean;pending?:boolean;error?:string})=>cb(p); ipcRenderer.on("translation-changed",listener); return ()=>ipcRenderer.removeListener("translation-changed",listener); },
   setAppearance: (theme: "system" | "dark" | "light", translucent = false, windowControls = true, material = "liquid-glass") => ipcRenderer.invoke("ui.setAppearance", theme, translucent, windowControls, material),
 };
 
-export type VectorBridge = typeof vector;
-contextBridge.exposeInMainWorld("vector", vector);
+export type AuxBridge = typeof aux;
+contextBridge.exposeInMainWorld("aux", aux);

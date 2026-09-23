@@ -1,5 +1,5 @@
 import type { BaseWindow } from "electron";
-import type { SidebarMaterial } from "@vector/contracts";
+import type { SidebarMaterial } from "@aux/contracts";
 import { createRequire } from "node:module";
 
 const liquidGlass: { setEnabled(handle: Buffer, enabled: boolean): boolean } | null = process.platform === "darwin"

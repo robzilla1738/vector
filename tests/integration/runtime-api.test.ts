@@ -6,8 +6,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import type { ObservationContent, PageTarget, ProgramResult } from "@vector/contracts";
+import { startRuntime, type RuntimeHandle } from "@aux/runtime";
+import type { ObservationContent, PageTarget, ProgramResult } from "@aux/contracts";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import type { ChildProcess } from "node:child_process";
 
@@ -27,17 +27,16 @@ async function fixtureState(): Promise<{ edits: { fields: Record<string, string>
 beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
-  dataDir = mkdtempSync(join(tmpdir(), "vector-it-"));
+  dataDir = mkdtempSync(join(tmpdir(), "aux-it-"));
   writeFileSync(
     join(dataDir, "settings.json"),
     JSON.stringify({ effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"] }),
   );
   rt = await startRuntime({
     ...process.env,
-    VECTOR_DATA_DIR: dataDir,
-    VECTOR_ELECTRON_CDP: "",
-    VECTOR_API_TOKEN: "test-token",
-    VECTOR_ENGINE_MODE: "off",
+    AUX_DATA_DIR: dataDir,
+    AUX_ELECTRON_CDP: "",
+    AUX_API_TOKEN: "test-token",
   });
 }, 60_000);
 
@@ -50,7 +49,7 @@ describe("pages", () => {
   it("opens, observes, and executes against the records fixture", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
     expect(page.pageId).toBeTruthy();
-    expect(page.backend).toBe("vector");
+    expect(page.backend).toBe("aux");
 
     const obs = await invoke<{ content: ObservationContent; revision: number; documentEpoch: number }>("pages.observe", { pageId: page.pageId });
     expect(obs.content.url).toContain("/records");
@@ -94,7 +93,7 @@ describe("pages", () => {
         pageId: page.pageId,
         steps: [
           { id: "s1", op: "click", target: "css:#edit-record" },
-          { id: "s2", op: "fill", target: "css:#f-title", value: "Edited by Vector" },
+          { id: "s2", op: "fill", target: "css:#f-title", value: "Edited by Aux" },
           { id: "s3", op: "click", target: "css:#save-record" },
           { id: "s4", op: "waitFor", condition: { kind: "urlMatches", pattern: "saved=1" } },
         ],
@@ -102,9 +101,9 @@ describe("pages", () => {
     });
     expect(res.status, JSON.stringify(res.steps.at(-1))).toBe("completed");
     const after = await fixtureState();
-    const edit = after.edits.find((e) => e.fields.title === "Edited by Vector");
+    const edit = after.edits.find((e) => e.fields.title === "Edited by Aux");
     expect(edit, "server saw the save").toBeTruthy();
-    expect(after.records.find((r) => r.id === "rec-03")?.title).toBe("Edited by Vector");
+    expect(after.records.find((r) => r.id === "rec-03")?.title).toBe("Edited by Aux");
     expect(before.edits.length).toBeLessThan(after.edits.length);
   }, 60_000);
 

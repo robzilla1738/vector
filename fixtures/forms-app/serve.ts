@@ -3,14 +3,14 @@
  * validation, file upload — with a server-side record of what was received.
  *
  * Gate D: `GET|POST /api/writes` is a durable write counter. Persist path
- * `VECTOR_WRITE_COUNTER_PATH` so a restart still reports the same count.
+ * `AUX_WRITE_COUNTER_PATH` so a restart still reports the same count.
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { html, json, notFound, page, serve } from "../shared/http.ts";
 
-const counterPath = process.env.VECTOR_WRITE_COUNTER_PATH;
+const counterPath = process.env.AUX_WRITE_COUNTER_PATH;
 
 const state = {
   submissions: [] as Record<string, unknown>[],
@@ -34,8 +34,6 @@ function saveWrites(n: number) {
   mkdirSync(dirname(counterPath), { recursive: true });
   writeFileSync(counterPath, JSON.stringify({ writes: n }));
 }
-
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const FORM_PAGE = page(
   "Intake form — fixture",

@@ -1,6 +1,6 @@
 /**
  * Locate a headless Chromium for the standalone runtime when no system Chrome
- * is installed: honours VECTOR_BROWSER_PATH, then falls back to a Playwright
+ * is installed: honours AUX_BROWSER_PATH, then falls back to a Playwright
  * `chromium_headless_shell-*` download (`pnpm exec playwright install
  * chromium-headless-shell`). Used by the bench harness and the engine
  * integration tests so they can report "Chromium unavailable" precisely.
@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export function findChromium(env = process.env) {
-  if (env.VECTOR_BROWSER_PATH && existsSync(env.VECTOR_BROWSER_PATH)) return env.VECTOR_BROWSER_PATH;
+  if (env.AUX_BROWSER_PATH && existsSync(env.AUX_BROWSER_PATH)) return env.AUX_BROWSER_PATH;
   const roots = [env.PLAYWRIGHT_BROWSERS_PATH, join(homedir(), ".cache", "ms-playwright")].filter(Boolean);
   for (const root of roots) {
     let entries = [];
@@ -35,5 +35,5 @@ export function findChromium(env = process.env) {
 /** Environment for `startRuntime` with the discovered Chromium (when any). */
 export function withChromium(env = process.env) {
   const path = findChromium(env);
-  return path ? { ...env, VECTOR_BROWSER_PATH: path } : { ...env };
+  return path ? { ...env, AUX_BROWSER_PATH: path } : { ...env };
 }

@@ -15,11 +15,13 @@ export * from "./routines.js";
 export * from "./identity.js";
 export * from "./mcp-catalog.js";
 export * from "./events.js";
+export * from "./tabs.js";
 export * from "./api.js";
 export * from "./bridge.js";
 export * from "./ipc-channel.js";
 
 export * from "./model-providers.js";
+export * from "./model-registry.js";
 
 export * from "./local-projects.js";
 
@@ -30,5 +32,6 @@ export * from "./workbook-snapshot.js";
 export * from "./page-zoom.js";
 
 export * from "./split-layout.js";
+export * from "./shortcuts.js";
 
 export * from "./csv.js";

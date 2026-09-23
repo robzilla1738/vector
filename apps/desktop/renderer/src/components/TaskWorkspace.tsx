@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { LocalProject, ProjectInspection, Task } from "@vector/contracts";
+import type { LocalProject, ProjectInspection, Task } from "@aux/contracts";
 import { ProjectFileEditor } from "./ProjectFileEditor";
 import { ProjectCommandPanel } from "./ProjectCommandPanel";
 import { UntrackedFileReview } from "./UntrackedFileReview";

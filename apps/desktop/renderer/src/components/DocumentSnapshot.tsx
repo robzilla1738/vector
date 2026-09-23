@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ConversationAttachment } from "@vector/contracts";
+import type { ConversationAttachment } from "@aux/contracts";
 import { call } from "../store";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { I } from "./icons";

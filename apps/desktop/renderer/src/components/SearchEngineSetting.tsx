@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "@vector/contracts/search-engine";
+import { DEFAULT_SEARCH_ENGINE, isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "@aux/contracts/search-engine";
 
 const ENGINES = [
-  { name: "DuckDuckGo", url: "https://duckduckgo.com/?q=%s" },
+  { name: "DuckDuckGo", url: DEFAULT_SEARCH_ENGINE },
   { name: "Google", url: "https://www.google.com/search?q=%s" },
   { name: "Bing", url: "https://www.bing.com/search?q=%s" },
 ];

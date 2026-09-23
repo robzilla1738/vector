@@ -1,23 +1,27 @@
 import { describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
-import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@vector/runtime";
-import type { ModelClient } from "@vector/runtime";
-import type { DriverPage, } from "@vector/engine-client";
-import type { Observation } from "@vector/contracts";
+import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@aux/runtime";
+import type { ModelClient } from "@aux/runtime";
+import type { DriverPage, } from "@aux/chromium-driver";
+import type { Observation } from "@aux/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));
-const tab = (pageId: string, ordinal: number) => ({ pageId, ordinal, url: `http://x.test/${pageId}`, title: pageId, backend: "vector", active: ordinal === 0 });
+const tab = (pageId: string, ordinal: number) => ({ pageId, ordinal, url: `http://x.test/${pageId}`, title: pageId, backend: "aux", active: ordinal === 0 });
+const seedPage = (r: Repo, pageId: string) =>
+  r.db.prepare("INSERT OR IGNORE INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES(?,?,?,?,?,?)")
+    .run(pageId, "aux", `t-${pageId}`, `http://x.test/${pageId}`, 1, 1);
 
 describe("Repo.transaction (P1-9)", () => {
   it("commits multi-statement writes atomically and rolls back on failure", () => {
     const r = memRepo();
+    for (const pageId of ["a", "b", "c", "z"]) seedPage(r, pageId);
     r.saveTabs([tab("a", 0), tab("b", 1)]);
     expect(r.loadTabs().map((t) => t.page_id)).toEqual(["a", "b"]);
     // a failure mid-way must leave the previous snapshot intact
     expect(() =>
       r.transaction(() => {
         r.db.prepare("DELETE FROM tabs").run();
-        r.db.prepare("INSERT INTO tabs(page_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?)").run("c", 0, "u", "t", "vector", 1);
+        r.db.prepare("INSERT INTO tabs(page_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?)").run("c", 0, "u", "t", "aux", 1);
         throw new Error("crash between delete and inserts");
       }),
     ).toThrow(/crash/);
@@ -45,15 +49,15 @@ describe("Repo.transaction (P1-9)", () => {
     expect(got.description).toBe("d");
   });
 
-  it("migrations swallow only duplicate-column errors", () => {
+  it("migrations apply atomically and roll back on any error", () => {
     const db = new DatabaseSync(":memory:");
-    db.exec("CREATE TABLE t(a INTEGER)");
-    // idempotent re-run: duplicate column is fine
-    applyMigrations(db, ["ALTER TABLE t ADD COLUMN b INTEGER", "ALTER TABLE t ADD COLUMN b INTEGER"]);
-    expect(db.prepare("SELECT b FROM t").all()).toEqual([]);
-    // a real failure propagates
-    expect(() => applyMigrations(db, ["ALTER TABLE nope ADD COLUMN c INTEGER"])).toThrow(/no such table/);
-    expect(() => applyMigrations(db, ["THIS IS NOT SQL"])).toThrow();
+    db.exec("CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1)");
+    applyMigrations(db, ["ALTER TABLE t ADD COLUMN b INTEGER"]);
+    expect(db.prepare("SELECT b FROM t").all()).toEqual([{ b: null }]);
+    // a failure mid-batch rolls back every statement in it
+    expect(() => applyMigrations(db, ["ALTER TABLE t ADD COLUMN c INTEGER", "THIS IS NOT SQL"])).toThrow();
+    expect(() => db.prepare("SELECT c FROM t")).toThrow(/no such column/);
+    expect(() => applyMigrations(db, ["ALTER TABLE nope ADD COLUMN d INTEGER"])).toThrow(/no such table/);
   });
 });
 
@@ -61,7 +65,7 @@ describe("pages.execute allowEval spread order", () => {
   it("explicit allowEval: undefined stays disabled", async () => {
     const evals: string[] = [];
     const page = {
-      identity: { pageId: "p1", targetId: "t", backend: "vector" },
+      identity: { pageId: "p1", targetId: "t", backend: "aux" },
       isAttached: () => true,
       evaluate: async (e: string) => { evals.push(e); return 1; },
       setEvents: () => {},

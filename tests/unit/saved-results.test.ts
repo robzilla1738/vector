@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@vector/runtime";
+import { openDb, Repo } from "@aux/runtime";
 import { SavedResults } from "../../apps/runtime/src/services/saved-results.js";
 
 it("finds saved text outputs by filename or conversation and excludes archived/internal/binary results", () => {

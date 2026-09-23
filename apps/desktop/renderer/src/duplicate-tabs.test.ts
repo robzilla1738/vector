@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { duplicateTabs } from "./duplicate-tabs";
 import { emptyLayout } from "./workspace";
 

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { Task, PageTarget } from "@vector/contracts";
+import type { Task, PageTarget } from "@aux/contracts";
 import { call, useStore } from "../store";
 
 export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, onSaved }: {

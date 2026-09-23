@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb, Repo } from '@vector/runtime';
+import { openDb, Repo } from '@aux/runtime';
 
 it('finds old prompts across all saved history, groups complete chats and paginates tied timestamps', () => {
   const dir = mkdtempSync(join(tmpdir(), 'aux-history-'));

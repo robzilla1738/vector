@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const { _electron } = createRequire(join(root, "packages/engine-client/package.json"))("playwright-core");
+const { _electron } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
 const electron = createRequire(join(root, "apps/desktop/package.json"))("electron");
 const { openDb, Repo } = await import(join(root, "apps/runtime/dist/index.js"));
 const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist/installation.js"));
@@ -24,7 +24,7 @@ const fixture = createServer((request, response) => {
 });
 await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
 const base = `http://127.0.0.1:${fixture.address().port}`;
-const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0", AUX_ENGINE: "0", AUX_ENGINE_MODE: "off" };
+const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" };
 let app;
 const launch = () => _electron.launch({ executablePath: electron, args: [join(root, "apps/desktop"), "--use-mock-keychain"], env });
 async function shell() {
@@ -47,7 +47,7 @@ async function openRepo() {
 }
 async function waitActiveUrl(page, url) {
   for (let attempt = 0; attempt < 100; attempt++) {
-    const workspace = await page.evaluate(() => window.vector.invoke("workspace.get", {}));
+    const workspace = await page.evaluate(() => window.aux.invoke("workspace.get", {}));
     if (workspace.pages.find(item => item.pageId === workspace.activePageId)?.url === url) return workspace;
     await new Promise(resolveWait => setTimeout(resolveWait, 50));
   }
@@ -63,9 +63,9 @@ function observation({ id, pageId, url, title, observedAt, revision }) {
 try {
   app = await launch();
   let page = await shell();
-  const alpha = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), `${base}/alpha`);
-  const beta = await page.evaluate(url => window.vector.invoke("pages.open", { url, activate: true }), `${base}/beta`);
-  await page.waitForFunction(ids => window.vector.invoke("pages.list", {}).then(pages => ids.every(id => pages.some(item => item.pageId === id && !item.loading))), [alpha.pageId, beta.pageId]);
+  const alpha = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/alpha`);
+  const beta = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/beta`);
+  await page.waitForFunction(ids => window.aux.invoke("pages.list", {}).then(pages => ids.every(id => pages.some(item => item.pageId === id && !item.loading))), [alpha.pageId, beta.pageId]);
   await app.close(); app = undefined;
 
   const repo = await openRepo();
@@ -97,7 +97,7 @@ try {
   await sourceList.getByRole("button", { name: /Research Alpha/ }).waitFor();
   await sourceList.getByRole("button", { name: /Research Beta/ }).waitFor();
   assert.equal(await page.locator(".conversation-sources button").count(), 2, "same-turn URL revisions should collapse to the latest source");
-  const sources = await page.evaluate(() => window.vector.invoke("conversations.sources.get", { chatId: "source-chat" }));
+  const sources = await page.evaluate(() => window.aux.invoke("conversations.sources.get", { chatId: "source-chat" }));
   assert.deepEqual(sources.sources.map(source => source.sourceId), ["source-beta", "source-alpha-latest"]);
   assert.equal(JSON.stringify(sources).includes(temporary), false, "source API must not expose artifact paths");
   assert.equal(JSON.stringify(sources).includes("PRIVATE_PAGE_BODY"), false, "source API must not expose captured page text");
@@ -105,7 +105,7 @@ try {
 
   await sourceList.getByRole("button", { name: /Research Alpha/ }).click();
   assert.equal((await waitActiveUrl(page, `${base}/alpha`)).activePageId, alpha.pageId, "live source should open its original tab");
-  await page.evaluate(pageId => window.vector.invoke("pages.close", { pageId }), beta.pageId);
+  await page.evaluate(pageId => window.aux.invoke("pages.close", { pageId }), beta.pageId);
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
   await page.locator(".conversation-sources summary").click();

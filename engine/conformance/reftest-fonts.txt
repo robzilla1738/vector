@@ -1,3 +1,0 @@
-# Capability run for wpt-runner --use-reftest-fonts.
-# Empty on purpose: Parley + Ahem is not the m1 merge gate.
-# MetricShaper remains the scorer in conformance/m1.txt.

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
-import { bridge } from "../bridge";
+import { bridge, type FilterListStatus } from "../bridge";
 
 type Decisions = Record<string, Record<string, "allow" | "deny">>;
 const labels: Record<string, string> = {
@@ -12,11 +12,13 @@ const labels: Record<string, string> = {
 export function SitePermissions({ query = "" }: { query?: string }) {
   const pages = useStore(state => state.pages);
   const [selectedPage, setSelectedPage] = useState("");
-  const openSites = pages.filter(page => page.backend === "vector" && /^https?:/.test(page.url) && URL.canParse(page.url))
+  const openSites = pages.filter(page => page.backend === "aux" && /^https?:/.test(page.url) && URL.canParse(page.url))
     .filter((page, index, all) => all.findIndex(other => new URL(other.url).origin === new URL(page.url).origin) === index);
   const chosenPage = openSites.find(page => page.pageId === selectedPage) ?? openSites[0];
   const [decisions, setDecisions] = useState<Decisions>({});
-  const [privacy, setPrivacy] = useState<{ trackerBlock: boolean; blocked: number } | null>(null);
+  const [privacy, setPrivacy] = useState<{ trackerBlock: boolean; blocked: number; allowedHosts?: string[]; httpsUpgrade?: boolean } | null>(null);
+  const [filters, setFilters] = useState<FilterListStatus | null>(null);
+  const [newSource, setNewSource] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -29,7 +31,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   async function load() {
     const version=++request.current;
     setLoading(true);setLoadError("");
-    try { const [result, privacyState]=await Promise.all([bridge.sitePermissions(),bridge.privacy()]);if(version===request.current){setDecisions(result);setPrivacy(privacyState);} }
+    try { const [result, privacyState, filterState]=await Promise.all([bridge.sitePermissions(),bridge.privacy(),bridge.filterLists()]);if(version===request.current){setDecisions(result);setPrivacy(privacyState);setFilters(filterState);} }
     catch (error) { if(version===request.current)setLoadError(error instanceof Error ? error.message : String(error)); }
     finally { if(version===request.current)setLoading(false); }
   }
@@ -76,14 +78,56 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     `${origin} ${Object.keys(permissions).map(key => labels[key] ?? key).join(" ")}`.toLowerCase().includes(terms));
   const toggleTracking=()=>action("tracker-block",async()=>{
     const next=await bridge.setTrackerBlock(!(privacy?.trackerBlock ?? true));
-    setPrivacy(next);
+    setPrivacy(current=>({...current,...next}));
     setNotice(next.trackerBlock?"Tracker and ad blocking is on. Reload open tabs to apply it everywhere.":"Tracker and ad blocking is off for all websites.");
+  });
+  const toggleHttps=()=>action("https-upgrade",async()=>{
+    const enabled=await bridge.setHttpsUpgrade(!(privacy?.httpsUpgrade ?? true));
+    setPrivacy(current=>current?{...current,httpsUpgrade:enabled}:current);
+    setNotice(enabled?"HTTP addresses will try HTTPS first. Local and development sites still open directly.":"Websites will open over the address you type — HTTP stays HTTP.");
+  });
+  const updateLists=()=>action("filter-update",async()=>{
+    setFilters(await bridge.updateFilters());
+    setNotice("Filter lists updated. Open tabs pick up new rules on their next load.");
+  });
+  const addSource=()=>action("filter-add",async()=>{
+    const url=newSource.trim();
+    if(!url)return;
+    await bridge.addFilterSource(url,url);
+    setNewSource("");
+    setFilters(await bridge.filterLists());
+    setNotice("Filter list added and downloaded.");
+  });
+  const removeSource=(id:string)=>action(`filter-${id}`,async()=>{
+    await bridge.removeFilterSource(id);
+    setFilters(await bridge.filterLists());
+    setNotice("Filter list removed. Reload open tabs to apply.");
+  });
+  const removeAllowed=(host:string)=>action(`allow-${host}`,async()=>{
+    const allowedHosts=await bridge.removeAllowedHost(host);
+    setPrivacy(current=>current?{...current,allowedHosts}:current);
+    setNotice(`${host} will block trackers and ads again. Reload its tabs to apply.`);
   });
   return <div ref={root} className="site-permissions">
     <p className="hint">Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
     <section className="site-data-group" aria-label="Privacy">
       <header><strong>Privacy</strong></header>
       <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.trackerBlock ?? true} disabled={!!busy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{privacy?.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy && privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
+      <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.httpsUpgrade ?? true} disabled={!!busy} onChange={() => void toggleHttps()}/><span>Always try secure connections first<small>{privacy?.httpsUpgrade === false ? "Off. Websites open over whatever protocol is requested." : "HTTP addresses try HTTPS first; localhost and development sites still open directly."}</small></span></label>
+      {privacy?.allowedHosts?.length ? <div className="filter-exceptions"><strong className="hint">Sites where blocking is paused</strong>
+        {privacy.allowedHosts.map(host => <div className="site-permission-row" key={host}><span>{host}</span><span className="hint">Blocking paused</span><button className="btn sm" aria-label={`Resume blocking on ${host}`} disabled={!!busy} onClick={() => void removeAllowed(host)}>{busy === `allow-${host}` ? "Resuming…" : "Resume blocking"}</button></div>)}
+      </div> : null}
+      {filters && <div className="filter-sources"><strong className="hint">{`Filter lists — ${(filters.builtinHosts + filters.hosts).toLocaleString()} blocked domains`}</strong>
+        {filters.sources.map(source => <div className="site-permission-row" key={source.id}>
+          <span>{source.name}<span className="hint"> · {source.meta?.hosts?.toLocaleString() ?? 0} domains{source.meta?.fetchedAt ? ` · updated ${new Date(source.meta.fetchedAt).toLocaleDateString()}` : " · not downloaded yet"}{source.meta?.error ? ` · ${source.meta.error}` : ""}</span></span>
+          <button className="btn sm" aria-label={`Remove ${source.name}`} disabled={!!busy} onClick={() => void removeSource(source.id)}>{busy === `filter-${source.id}` ? "Removing…" : "Remove"}</button>
+        </div>)}
+        <div className="site-permission-row">
+          <input aria-label="Filter list URL" placeholder="Add a hosts-format filter list URL (https)" value={newSource} onChange={event => setNewSource(event.target.value)} />
+          <button className="btn sm" disabled={!!busy || !newSource.trim()} onClick={() => void addSource()}>{busy === "filter-add" ? "Adding…" : "Add list"}</button>
+          <button className="btn sm" disabled={!!busy} onClick={() => void updateLists()}>{busy === "filter-update" ? "Updating…" : "Update lists"}</button>
+        </div>
+      </div>}
     </section>
     <section className="site-data-group" aria-label="Website data">
       <header><strong>Website data</strong></header>

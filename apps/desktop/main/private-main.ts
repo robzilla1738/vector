@@ -1,11 +1,20 @@
 import { saveWorkbookSnapshot } from "./save-workbook.js";
 import { showNavigationMenu } from "./navigation-menu.js";
-import { splitRatio as normalizeSplitRatio, splitWidths } from "@vector/contracts/split-layout";
+import { splitRatio as normalizeSplitRatio, splitWidths } from "@aux/contracts/split-layout";
+import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SiteZoomPreferences } from "./site-zoom.js";
 import { installSitePermissions } from "./site-permissions.js";
+import { installRequestPolicy } from "./request-policy.js";
+import { TRACKER_HOSTS } from "./tracker-hosts.js";
+import { FilterLists } from "./filter-lists.js";
+import { applyCosmetic, installCosmeticFilter } from "./cosmetic-filter.js";
+import { HttpsFirst } from "./https-first.js";
+import { createInsecureBypass } from "./insecure-bypass.js";
+import { confirmDownload, downloadWarning } from "./download-guard.js";
 import { offerExternalLink } from "./external-links.js";
 import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
 import { pageShortcut } from "./page-shortcuts.js";
+import { installNavGesture } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
 import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
 /**
@@ -22,7 +31,7 @@ import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Download, HistoryEntry, PageTarget, VectorEvent } from "@vector/contracts";
+import type { Download, HistoryEntry, PageTarget, AuxEvent } from "@aux/contracts";
 import { showPageMenu } from "./page-menu.js";
 import { installHttpAuth } from "./http-auth.js";
 import { printPage, savePagePdf } from "./page-output.js";
@@ -33,10 +42,14 @@ import { retrySource } from "./download-retry.js";
 import { PageFinder } from "./page-find.js";
 import { readArticle } from "./read-article.js";
 import { PrivateBookmarks } from "./private-bookmarks.js";
+import { applyTranslationsScript, extractTextsScript, restoreOriginalScript, translateBubbleScript } from "./page-translate.js";
 import { setPageZoom } from "./page-zoom.js";
 import { startPreviewWatch } from "./preview-watch.js";
+import { TabCatalog } from "./tabs/catalog.js";
+import { TabController, type TabPorts } from "./tabs/controller.js";
 const siteZoom = new SiteZoomPreferences();
-import { MethodSchemas } from "@vector/contracts";
+import { MethodSchemas } from "@aux/contracts";
+import type { TabPatch, TabRecord } from "@aux/contracts";
 
 const scratch = mkdtempSync(join(tmpdir(), "aux-private-process-"));
 const userData = join(scratch, "user-data");
@@ -68,6 +81,45 @@ const bootReady = new Promise<void>(resolve => { bootReadyResolve = resolve; });
 
 type PrivatePage = { target: PageTarget; view: WebContentsView };
 const pages = new Map<string, PrivatePage>();
+
+// ---------- tab catalog: the shared controller inside this process (§7.2) ----------
+// Private mode reuses the same implementation as regular windows but keeps it
+// fully in memory — no persistence worker, no history cache for closed tabs.
+const PRIVATE_WINDOW_ID = "main"; // the private shell's single window id
+const tabCatalog = new TabCatalog();
+function broadcastTabPatch(patch: TabPatch) {
+  if (!shellView || shellView.webContents.isDestroyed()) return;
+  shellView.webContents.send("tabs.patch", patch);
+}
+function privateTabRecord(page: PrivatePage, generation = 0, createdAt = page.target.createdAt): TabRecord {
+  const wc = page.view.webContents;
+  const t = page.target;
+  return {
+    pageId: t.pageId, windowId: PRIVATE_WINDOW_ID,
+    url: t.url, title: t.title, favicon: t.favicon,
+    loading: t.loading === true,
+    muted: !wc.isDestroyed() && wc.isAudioMuted(), audible: !wc.isDestroyed() && wc.isCurrentlyAudible(),
+    canGoBack: !wc.isDestroyed() && wc.navigationHistory.canGoBack(), canGoForward: !wc.isDestroyed() && wc.navigationHistory.canGoForward(),
+    popup: false, crashed: t.viewStatus === "crashed",
+    ...(t.navigationError ? { navigationError: t.navigationError } : {}),
+    runtimeOwned: false, generation, createdAt, lastActiveAt: t.lastActiveAt,
+  };
+}
+function notePrivateTab(page: PrivatePage) {
+  const current = tabCatalog.tab(page.target.pageId);
+  if (!current) return;
+  broadcastTabPatch(tabCatalog.apply([{ op: "upsert", tab: privateTabRecord(page, current.generation, current.createdAt) }]));
+}
+/** Opens that did not come through a typed command publish their own catalog op. */
+function announcePrivateOpen(page: PrivatePage, activate: boolean) {
+  broadcastTabPatch(tabCatalog.apply([
+    { op: "upsert", tab: privateTabRecord(page, tabCatalog.nextGeneration(page.target.pageId)) },
+    { op: "window", window: { windowId: PRIVATE_WINDOW_ID, order: [...pages.keys()], activePageId: activate ? page.target.pageId : activePageId } },
+  ]));
+}
+/** Controller-driven closes — forgetPage must not race a second remove patch. */
+const controllerClosing = new Set<string>();
+
 const history: HistoryEntry[] = [];
 const bookmarks = new PrivateBookmarks();
 const downloads: Download[] = [];
@@ -75,6 +127,40 @@ const pageFinder = new PageFinder();
 const liveDownloads = new Map<string, { item: Electron.DownloadItem; update(): void }>();
 let permissionDecisions: Record<string,Record<string,"allow"|"deny">> = {};
 const testUnloadResponses = (process.env.AUX_PRIVATE_TEST_UNLOAD_RESPONSES ?? "").split(",").map(Number).filter(value=>value===0||value===1);
+// Blocking config arrives read-only from the regular process. Exceptions
+// chosen inside private mode live only in this process's memory and die with
+// it — they never reach privacy.json.
+const privateDataDir = process.env.AUX_PRIVATE_DATA_DIR ?? "";
+const privateFilterLists = privateDataDir ? new FilterLists(privateDataDir) : null;
+let privateTrackerBlock = process.env.AUX_PRIVATE_TRACKER_BLOCK !== "0";
+let privateBlockedCount = 0;
+const privateAllowed = new Set((process.env.AUX_PRIVATE_ALLOWED ?? "").split(",").map(host => host.trim().toLowerCase()).filter(Boolean));
+let privateBlockedHosts = new Set<string>(TRACKER_HOSTS);
+const privateHttpsFirst = new HttpsFirst();
+privateHttpsFirst.enabled = process.env.AUX_PRIVATE_HTTPS_UPGRADE !== "0";
+const privateInsecureBypass = createInsecureBypass();
+function refreshPrivateBlockedHosts() {
+  privateBlockedHosts = new Set(TRACKER_HOSTS);
+  try { for (const host of privateFilterLists?.loadHosts() ?? []) privateBlockedHosts.add(host); }
+  catch { /* the built-in seed still applies */ }
+}
+refreshPrivateBlockedHosts();
+function privateTrackersAllowed(hostname: string): boolean {
+  let host = hostname.toLowerCase();
+  while (host) {
+    if (privateAllowed.has(host)) return true;
+    const dot = host.indexOf(".");
+    if (dot < 0) break;
+    host = host.slice(dot + 1);
+  }
+  return false;
+}
+function privateApplyCosmeticAll() {
+  for (const page of pages.values()) {
+    try { applyCosmetic(page.view.webContents, privateTrackerBlock && !privateTrackersAllowed(new URL(page.view.webContents.getURL()).hostname)); }
+    catch { /* page mid-navigation */ }
+  }
+}
 const testReportPath=process.env.AUX_PRIVATE_TEST_REPORT;
 const testControlEvents:string[]=[];
 function writeTestReport(){if(testReportPath){const temporary=`${testReportPath}.tmp`;writeFileSync(temporary,JSON.stringify({pid:process.pid,userData,remoteDebugging:app.commandLine.hasSwitch("remote-debugging-port"),pageSessionPersistent:session.fromPartition(`aux-private-pages-${process.pid}`).isPersistent(),controlEvents:testControlEvents}),{mode:0o600});renameSync(temporary,testReportPath);}}
@@ -93,7 +179,7 @@ function pageUrl(value: unknown): value is string {
 function requireShell(event: Electron.IpcMainInvokeEvent) {
   if (!shellView || shellView.webContents.isDestroyed() || event.sender.id !== shellView.webContents.id) throw new Error("Untrusted private-shell request");
 }
-function send(type: VectorEvent["type"], payload: Record<string,unknown>) {
+function send(type: AuxEvent["type"], payload: Record<string,unknown>) {
   if (!shellView || shellView.webContents.isDestroyed()) return;
   shellView.webContents.send("event", { seq: ++seq, ts: Date.now(), type, payload });
 }
@@ -106,6 +192,7 @@ function snapshot(page: PrivatePage): PageTarget {
 }
 function sendPage(page: PrivatePage, active = false) {
   send("page.updated", { page: snapshot(page), ...(active ? {activePageId: page.target.pageId} : {}) });
+  notePrivateTab(page);
 }
 function applyStage(focus = false) {
   if (!win || win.isDestroyed()) return;
@@ -159,13 +246,14 @@ function applyStage(focus = false) {
   toolbarEdge?.sync();
 }
 
-function activate(pageId: string) {
+function activate(pageId: string, viaController = false) {
   const page = pages.get(pageId);
   if (!page) throw new Error("Private tab not found");
   activePageId = pageId;
   stagePageId = pageId;
   page.target = {...page.target,lastActiveAt:Date.now()};
   applyStage(true);
+  if (!viaController) broadcastTabPatch(tabCatalog.apply([{ op: "window", window: { windowId: PRIVATE_WINDOW_ID, order: [...pages.keys()], activePageId: pageId } }]));
   sendPage(page, true);
   return snapshot(page);
 }
@@ -176,6 +264,8 @@ function wirePage(page: PrivatePage) {
   wc.on("context-menu",(_event,params)=>showPageMenu(wc,params,{
     openAsTab:(url,referrer)=>{void openPage(url,true,referrer).catch(()=>{});},
     onAudio:()=>shellView?.webContents.send("view.audio",{pageId:page.target.pageId,muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()}),
+    translatePage:()=>{void runPrivatePageTranslate(page.target.pageId).catch(error=>shellView?.webContents.send("translation-changed",{pageId:page.target.pageId,error:error instanceof Error?error.message:String(error)}));},
+    translateSelection:(text,x,y)=>{void runPrivateSelectionTranslate(page,text,x,y).catch(error=>shellView?.webContents.send("translation-changed",{pageId:page.target.pageId,error:error instanceof Error?error.message:String(error)}));},
   }));
   wc.on("cursor-changed",(_event,type)=>{if(toolbarOverlay)shellView?.webContents.send("page-cursor",cssCursor(type));});
   wc.on("before-input-event",(event,input)=>{
@@ -186,6 +276,8 @@ function wirePage(page: PrivatePage) {
     shellView?.webContents.send("shortcut",shortcut);
   });
   wc.once("destroyed",()=>forgetPage(page));
+  installNavGesture(wc,dir=>{(dir==="back"?tabPorts.back:tabPorts.forward)(page.target.pageId);});
+  installCosmeticFilter(wc,{filtered:host=>privateTrackerBlock&&!privateTrackersAllowed(host)});
   wc.setWindowOpenHandler(({url,disposition,referrer}) => {
     if(offerExternalLink(wc,stagePageId===page.target.pageId?win??undefined:undefined,url))return {action:"deny"};
     if (url !== "about:blank" && !webUrl(url)) return {action:"deny"};
@@ -197,12 +289,14 @@ function wirePage(page: PrivatePage) {
     return {action:"allow",createWindow:options=>{
       const childContents=(options as typeof options & {webContents?:Electron.WebContents}).webContents;
       const view=new WebContentsView({webContents:childContents,webPreferences:{...options.webPreferences,session:session.fromPartition(`aux-private-pages-${process.pid}`,{cache:false}),sandbox:true,contextIsolation:true,nodeIntegration:false}});
+      void view.webContents.setVisualZoomLevelLimits(1,3).catch(()=>{});
       const child=createPage(view,url,true);
       // Adopt Chromium's child unchanged so opener, POST data and blank redirects survive.
       setImmediate(()=>{
         if(view.webContents.isDestroyed())return;
         if(!win||win.isDestroyed()){view.webContents.close({waitForBeforeUnload:false});return;}
         win.contentView.addChildView(view);
+        announcePrivateOpen(child, true);
         send("page.added",{page:snapshot(child),activePageId:child.target.pageId});
         activate(child.target.pageId);
       });
@@ -215,32 +309,34 @@ function wirePage(page: PrivatePage) {
     if (response === 1) event.preventDefault();
   });
   wc.on("did-start-navigation",(_event,_url,_inPlace,isMainFrame)=>{if(isMainFrame){page.target={...page.target,loading:true,navigationError:null,error:undefined,viewStatus:"hidden"};applyStage();sendPage(page);}});
-  wc.on("did-fail-load",(_event,code,message,url,isMainFrame)=>{if(isMainFrame&&code!==-3){page.target={...page.target,url,title:"Page couldn’t load",loading:false,navigationError:{url,code,message}};sendPage(page);}});
-  wc.on("did-navigate",(_event,url)=>{siteZoom.apply(wc,url);page.target={...page.target,url,title:wc.getTitle()||url,documentEpoch:page.target.documentEpoch+1,loading:false,navigationError:null};if(url!=="about:blank")history.unshift({url,title:page.target.title,pageId:page.target.pageId,visitedAt:Date.now()});sendPage(page);});
+  wc.on("did-fail-load",(_event,code,message,url,isMainFrame)=>{if(isMainFrame&&code!==-3){page.target={...page.target,url,title:"Page couldn’t load",loading:false,navigationError:{url,code,message,upgradedFrom:privateHttpsFirst.httpFallback(url,code)}};sendPage(page);}});
+  wc.on("did-navigate",(_event,url)=>{siteZoom.apply(wc,url);page.target={...page.target,url,title:wc.getTitle()||url,documentEpoch:page.target.documentEpoch+1,loading:false,navigationError:null};if(privatePageTranslations.delete(page.target.pageId))shellView?.webContents.send("translation-changed",{pageId:page.target.pageId,lang:null,count:0});if(url!=="about:blank")history.unshift({url,title:page.target.title,pageId:page.target.pageId,visitedAt:Date.now()});sendPage(page);});
   wc.on("did-navigate-in-page",(_event,url)=>{page.target={...page.target,url,documentEpoch:page.target.documentEpoch+1};sendPage(page);});
   wc.on("page-title-updated",(_event,title)=>{page.target={...page.target,title};sendPage(page);});
   wc.on("page-favicon-updated",(_event,icons)=>{page.target={...page.target,favicon:icons[0]};sendPage(page);});
   wc.on("did-start-loading",()=>{page.target={...page.target,loading:true};shellView?.webContents.send("view.loading",{pageId:page.target.pageId,loading:true});sendPage(page);});
   wc.on("did-stop-loading",()=>{page.target={...page.target,loading:false};shellView?.webContents.send("view.loading",{pageId:page.target.pageId,loading:false});sendPage(page);});
-  wc.on("render-process-gone",()=>{page.target={...page.target,viewStatus:"crashed",loading:false,error:"The renderer process crashed."};send("page.crashed",{pageId:page.target.pageId});});
-  const audio=()=>shellView?.webContents.send("view.audio",{pageId:page.target.pageId,muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()});
+  wc.on("render-process-gone",()=>{page.target={...page.target,viewStatus:"crashed",loading:false,error:"The renderer process crashed."};notePrivateTab(page);send("page.crashed",{pageId:page.target.pageId});});
+  const audio=()=>{shellView?.webContents.send("view.audio",{pageId:page.target.pageId,muted:wc.isAudioMuted(),audible:wc.isCurrentlyAudible()});notePrivateTab(page);};
   wc.on("audio-state-changed",audio);wc.on("dom-ready",audio);
 }
-function createPage(view: WebContentsView, url: string, showBlankDocument = false): PrivatePage {
-  const pageId=`private-${randomUUID()}`, now=Date.now();
-  const page:PrivatePage={view,target:{pageId,backend:"vector",targetId:pageId,url,showBlankDocument,title:url==="about:blank"?"New Tab":url,documentEpoch:0,lastRevision:0,viewStatus:"hidden",controller:"none",controllerEpoch:0,ownedByRuntime:false,createdAt:now,lastActiveAt:now,loading:url!=="about:blank",canGoBack:false,canGoForward:false,routeReason:"private-process"}};
+function createPage(view: WebContentsView, url: string, showBlankDocument = false, pageId = `private-${randomUUID()}`): PrivatePage {
+  const now=Date.now();
+  const page:PrivatePage={view,target:{pageId,backend:"aux",targetId:pageId,url,showBlankDocument,title:url==="about:blank"?"New Tab":url,documentEpoch:0,lastRevision:0,viewStatus:"hidden",controller:"none",controllerEpoch:0,ownedByRuntime:false,createdAt:now,lastActiveAt:now,loading:url!=="about:blank",canGoBack:false,canGoForward:false,routeReason:"private-process"}};
   pages.set(pageId,page);
   wirePage(page);
   return page;
 }
-async function openPage(url = "about:blank", activateNow = true, referrer?: Electron.Referrer) {
+async function openPage(url = "about:blank", activateNow = true, referrer?: Electron.Referrer, opts?: { pageId?: string; viaController?: boolean }) {
   if (!pageUrl(url)) throw new Error("Private browsing supports web pages and explicitly opened local files.");
   if (!win) throw new Error("Private window unavailable");
   const view=new WebContentsView({webPreferences:{session:session.fromPartition(`aux-private-pages-${process.pid}`,{cache:false}),contextIsolation:true,sandbox:true,nodeIntegration:false,spellcheck:true}});
-  const page=createPage(view,url), pageId=page.target.pageId;
+  void view.webContents.setVisualZoomLevelLimits(1,3).catch(()=>{});
+  const page=createPage(view,url,false,opts?.pageId), pageId=page.target.pageId;
   win.contentView.addChildView(view);applyStage();
+  if (!opts?.viaController) announcePrivateOpen(page, activateNow);
   send("page.added",{page:snapshot(page),...(activateNow?{activePageId:pageId}:{})});
-  if(activateNow)activate(pageId);
+  if(activateNow)activate(pageId, opts?.viaController === true);
   if(url!=="about:blank")await view.webContents.loadURL(url,referrer?{httpReferrer:referrer}:{}).catch(()=>{});
   return snapshot(page);
 }
@@ -251,19 +347,48 @@ function forgetPage(page: PrivatePage) {
   if(stagePageId===pageId)stagePageId=null;
   if(splitPageId===pageId)splitPageId=null;
   if(win&&!win.isDestroyed())try{win.contentView.removeChildView(page.view);}catch{/* already removed */}
+  if (!controllerClosing.has(pageId)) broadcastTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
   send("page.removed",{pageId});
   if(activePageId===pageId){
     const next=[...pages.values()].at(-1);activePageId=next?.target.pageId??null;
     if(win&&!win.isDestroyed()&&!exitApproved){if(next)activate(next.target.pageId);else applyStage();}
   }
 }
-async function closePage(pageId:string) {
+async function closePage(pageId:string, viaController = false) {
   const page=pages.get(pageId);if(!page)return false;
   if(!await approveWindowUnload([page.view.webContents]))return false;
-  if(!page.view.webContents.isDestroyed())page.view.webContents.close({waitForBeforeUnload:false});
-  forgetPage(page);
+  if(viaController)controllerClosing.add(pageId);
+  try {
+    if(!page.view.webContents.isDestroyed())page.view.webContents.close({waitForBeforeUnload:false});
+    forgetPage(page);
+  } finally {
+    controllerClosing.delete(pageId);
+  }
   return true;
 }
+
+const tabPorts: TabPorts = {
+  mintPageId: () => `private-${randomUUID()}`,
+  windowOf: pageId => pages.has(pageId) ? PRIVATE_WINDOW_ID : undefined,
+  open: async ({ pageId, url, activate }) => {
+    await openPage(url, activate, undefined, { pageId, viaController: true });
+  },
+  close: pageId => closePage(pageId, true),
+  focus: pageId => { activate(pageId, true); },
+  navigate: (pageId, url) => {
+    const page = pages.get(pageId);
+    if (!page) throw new Error("Private tab not found");
+    if (!pageUrl(url)) throw new Error("Unsupported private-page address");
+    void page.view.webContents.loadURL(url).catch(() => {});
+  },
+  back: pageId => { const wc = pages.get(pageId)?.view.webContents; if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); },
+  forward: pageId => { const wc = pages.get(pageId)?.view.webContents; if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); },
+  reload: (pageId, hard) => { const wc = pages.get(pageId)?.view.webContents; if (hard) wc?.reloadIgnoringCache(); else wc?.reload(); },
+  stop: pageId => pages.get(pageId)?.view.webContents.stop(),
+  setMuted: (pageId, muted) => { const wc = pages.get(pageId)?.view.webContents; wc?.setAudioMuted(muted); },
+  move: () => { throw new Error("Private windows cannot move tabs to another window."); },
+};
+const tabController = new TabController({ catalog: tabCatalog, ports: tabPorts, publish: broadcastTabPatch });
 
 installHttpAuth({
   owner: contents => [...pages.values()].some(page=>page.view.webContents.id===contents.id) ? "private" : null,
@@ -279,11 +404,27 @@ function configurePermissions() {
     save: value => { permissionDecisions = value; },
     privateMode: true,
   });
+  installRequestPolicy(ses, {
+    httpsUpgrade: details => privateHttpsFirst.upgrade(details.url),
+    blockingEnabled: () => privateTrackerBlock,
+    blockedHosts: () => privateBlockedHosts,
+    hostAllowed: privateTrackersAllowed,
+    onBlocked: () => { privateBlockedCount += 1; },
+  });
+  // Same per-host, session-only certificate bypass as regular browsing —
+  // decisions stay in this process's memory and die with the window.
+  ses.setCertificateVerifyProc((request, callback) =>
+    callback(privateInsecureBypass.has(request.hostname) ? 0 : -3));
   ses.on("will-download",(_event,item,contents)=>{
     if(!win){item.cancel();return;}
-    const path=dialog.showSaveDialogSync(win,{title:"Save private download",defaultPath:join(app.getPath("downloads"),item.getFilename())});
+    const filename=item.getFilename(),sourceUrl=retrySource(item.getURLChain()[0] ?? item.getURL());
+    const path=dialog.showSaveDialogSync(win,{title:"Save private download",message:"This file will be saved to disk and stays after private browsing ends.",defaultPath:join(app.getPath("downloads"),filename)});
     if(!path){item.cancel();return;}item.setSavePath(path);
-    const record:Download={id:randomUUID(),sourceUrl:retrySource(item.getURLChain()[0] ?? item.getURL()),pageId:[...pages.values()].find(page=>page.view.webContents.id===contents?.id)?.target.pageId,filename:item.getFilename(),path,size:0,totalBytes:item.getTotalBytes()||undefined,state:"started",startedAt:Date.now(),paused:false,canResume:false,canCancel:true};downloads.unshift(record);shellView?.webContents.send("download",record);
+    const record:Download={id:randomUUID(),sourceUrl,pageId:[...pages.values()].find(page=>page.view.webContents.id===contents?.id)?.target.pageId,filename,path,size:0,totalBytes:item.getTotalBytes()||undefined,state:"started",startedAt:Date.now(),paused:false,canResume:false,canCancel:true};downloads.unshift(record);shellView?.webContents.send("download",record);
+    const warning=downloadWarning(filename,sourceUrl);
+    // Same local protection as regular downloads; the choice lives only in
+    // this window's memory — nothing is persisted or reported.
+    if(warning){record.warning=warning;void confirmDownload(win,item,filename,sourceUrl,warning);}
     const update = () => {
       record.size=item.getReceivedBytes();record.totalBytes=item.getTotalBytes()||undefined;
       record.state=item.getState();record.paused=item.isPaused();record.canResume=item.canResume();
@@ -306,7 +447,7 @@ function registerIpc() {
     }
     switch(method){
       case "workspace.get":return {pages:[...pages.values()].map(snapshot),sets:[],members:[],runs:[],sessions:[],activePageId,lastSeq:seq,restoringTabs:false};
-      case "settings.get":return {theme:"system",tabLayout:"vertical",sidebarAppearance:"solid",sidebarBlur:0,sidebarOpacity:90,searchEngine:"google",modelConfigured:false,privateBrowsing:true};
+      case "settings.get":return {theme:"system",tabLayout:"vertical",sidebarAppearance:"solid",sidebarBlur:0,sidebarOpacity:90,searchEngine:DEFAULT_SEARCH_ENGINE,modelConfigured:false,privateBrowsing:true};
       case "downloads.list":return [...downloads];
       case "downloads.remove": {
         const {ids}=MethodSchemas["downloads.remove"].parse(params);
@@ -417,6 +558,9 @@ function registerIpc() {
   ipcMain.handle("ui.unwatchPreview",(event,pageId:unknown)=>{requireShell(event);if(!previewWatch||typeof pageId!=="string"||previewWatch.pageId===pageId)clearPreviewWatch();return true;});
   ipcMain.handle("ui.preview",async(event,pageId:string)=>{requireShell(event);const page=pages.get(pageId);if(!page)return null;try{return (await page.view.webContents.capturePage()).resize({width:240}).toDataURL();}catch{return null;}});
   ipcMain.handle("ui.tabAudio",event=>{requireShell(event);return Object.fromEntries([...pages].map(([id,page])=>[id,{muted:page.view.webContents.isAudioMuted(),audible:page.view.webContents.isCurrentlyAudible()}]));});
+  ipcMain.handle("ui.tabCommand", (event, envelope: unknown) => { requireShell(event); return tabController.execute(envelope, PRIVATE_WINDOW_ID); });
+  ipcMain.handle("ui.tabsSnapshot", event => { requireShell(event); return tabCatalog.snapshot(); });
+  ipcMain.handle("ui.tabsSince", (event, version: unknown) => { requireShell(event); return tabCatalog.since(typeof version === "number" ? version : -1); });
   ipcMain.handle("ui.setTabMuted",(event,pageId:string,muted:boolean)=>{requireShell(event);const page=pages.get(pageId);if(!page)throw new Error("Private tab not found");page.view.webContents.setAudioMuted(muted);shellView?.webContents.send("view.audio",{pageId,muted,audible:page.view.webContents.isCurrentlyAudible()});});
   ipcMain.handle("ui.navigationMenu",(event,pageId:string,direction:unknown)=>{
     requireShell(event);
@@ -466,6 +610,44 @@ function registerIpc() {
   });
   ipcMain.handle("app.sitePermissions",event=>{requireShell(event);return structuredClone(permissionDecisions);});
   ipcMain.handle("app.clearSitePermission",(event,origin:string,permission?:string)=>{requireShell(event);const next={...permissionDecisions};if(permission){next[origin]={...next[origin]};delete next[origin][permission];if(!Object.keys(next[origin]).length)delete next[origin];}else delete next[origin];permissionDecisions=next;return true;});
+  ipcMain.handle("app.privacy",event=>{requireShell(event);return {trackerBlock:privateTrackerBlock,blocked:privateBlockedCount,allowedHosts:[...privateAllowed],httpsUpgrade:privateHttpsFirst.enabled};});
+  ipcMain.handle("app.setHttpsUpgrade",(event,enabled:unknown)=>{
+    requireShell(event);if(typeof enabled!=="boolean")throw new Error("Choose whether secure connections are required first.");
+    privateHttpsFirst.enabled=enabled;shellView?.webContents.send("privacy-changed",{trackerBlock:privateTrackerBlock,blocked:privateBlockedCount});
+    return privateHttpsFirst.enabled;
+  });
+  ipcMain.handle("app.setTrackerBlock",(event,enabled:unknown)=>{
+    requireShell(event);if(typeof enabled!=="boolean")throw new Error("Choose whether tracker blocking is on or off.");
+    privateTrackerBlock=enabled;privateApplyCosmeticAll();shellView?.webContents.send("privacy-changed",{trackerBlock:privateTrackerBlock,blocked:privateBlockedCount});
+    return {trackerBlock:privateTrackerBlock,blocked:privateBlockedCount};
+  });
+  ipcMain.handle("app.setSiteTrackers",(event,pageId:unknown,allowed:unknown)=>{
+    requireShell(event);const page=typeof pageId==="string"?pages.get(pageId):undefined;if(!page)throw new Error("This browser tab is no longer available.");
+    if(typeof allowed!=="boolean")throw new Error("Choose whether this site allows trackers and ads.");
+    const hostname=new URL(page.view.webContents.getURL()).hostname.toLowerCase();
+    if(allowed)privateAllowed.add(hostname);else privateAllowed.delete(hostname);
+    privateApplyCosmeticAll();shellView?.webContents.send("privacy-changed",{trackerBlock:privateTrackerBlock,blocked:privateBlockedCount});
+    return {hostname,allowed:privateTrackersAllowed(hostname)};
+  });
+  ipcMain.handle("app.removeAllowedHost",(event,hostname:unknown)=>{requireShell(event);if(typeof hostname!=="string"||!hostname)throw new Error("Choose a website exception to remove.");privateAllowed.delete(hostname.toLowerCase());privateApplyCosmeticAll();return [...privateAllowed];});
+  ipcMain.handle("app.useHttp",(event,pageId:unknown,url:unknown)=>{
+    requireShell(event);const page=typeof pageId==="string"?pages.get(pageId):undefined;if(!page)throw new Error("This browser tab is no longer available.");
+    if(typeof url!=="string")throw new Error("An address is required.");
+    let target:URL;try{target=new URL(url);}catch{throw new Error("Invalid address.");}
+    if(target.protocol!=="http:")throw new Error("Only unencrypted addresses can be continued to.");
+    privateHttpsFirst.allowHttp(target.hostname);
+    void page.view.webContents.loadURL(target.href).catch(()=>{});
+    return true;
+  });
+  ipcMain.handle("app.proceedInsecure",(event,url:unknown)=>{
+    requireShell(event);if(typeof url!=="string")throw new Error("An HTTPS address is required.");
+    privateInsecureBypass.proceed(url);
+    return true;
+  });
+  ipcMain.handle("app.filterLists",event=>{requireShell(event);return privateFilterLists?privateFilterLists.status(TRACKER_HOSTS.size):{sources:[],hosts:0,builtinHosts:TRACKER_HOSTS.size};});
+  ipcMain.handle("app.updateFilters",async event=>{requireShell(event);if(!privateFilterLists)throw new Error("Filter lists are unavailable.");const status=await privateRequest<unknown>("aux-private-filters",{action:"update"},"Filter updates are unavailable while the regular browser is offline.");refreshPrivateBlockedHosts();return status;});
+  ipcMain.handle("app.addFilterSource",async(event,name:unknown,url:unknown)=>{requireShell(event);const sources=await privateRequest<unknown>("aux-private-filters",{action:"add",args:{name,url}},"Filter updates are unavailable while the regular browser is offline.");refreshPrivateBlockedHosts();return sources;});
+  ipcMain.handle("app.removeFilterSource",async(event,id:unknown)=>{requireShell(event);const sources=await privateRequest<unknown>("aux-private-filters",{action:"remove",args:{id}},"Filter updates are unavailable while the regular browser is offline.");refreshPrivateBlockedHosts();return sources;});
   ipcMain.handle("app.clearSiteData",async(event,pageId:string)=>{
     requireShell(event);const page=pages.get(pageId);if(!page||!win)return false;
     const wc=page.view.webContents;const url=new URL(wc.getURL());if(!['http:','https:'].includes(url.protocol))throw new Error("Choose an HTTP or HTTPS website.");const origin=url.origin;
@@ -482,7 +664,7 @@ function registerIpc() {
     const cookies=await wc.session.cookies.get({url:url.href});
     if(wc.isDestroyed()||pages.get(pageId)!==page||wc.getURL()!==url.href)throw new Error("The page changed. Open site controls again.");
     const local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
-    return {pageId,url:url.href,origin:url.origin,title:wc.getTitle(),security:url.protocol==='https:'?'secure':local?'local':'insecure',cookieCount:cookies.length,permissions:{...permissionDecisions[url.origin]}};
+    return {pageId,url:url.href,origin:url.origin,title:wc.getTitle(),security:url.protocol==='https:'?'secure':local?'local':'insecure',cookieCount:cookies.length,permissions:{...permissionDecisions[url.origin]},trackersAllowed:privateTrackersAllowed(url.hostname)};
   });
   ipcMain.handle("ui.setAppearance",(event,theme:"system"|"dark"|"light",translucent=false)=>{requireShell(event);nativeTheme.themeSource=theme;const glass=translucent&&!nativeTheme.prefersReducedTransparency&&process.platform==="darwin";win?.setVibrancy(glass?"under-window":null);shellView?.setBackgroundColor(glass?"#00000000":nativeTheme.shouldUseDarkColors?"#1c1c1e":"#e4e4e1");return true;});
 
@@ -491,6 +673,8 @@ function registerIpc() {
     if(!page)throw new Error("Open a webpage to use Reader view.");
     return readArticle(page.view.webContents,()=>pages.get(pageId)===page);
   });
+  ipcMain.handle("ui.translatePage",(event,pageId:unknown)=>{requireShell(event);return runPrivatePageTranslate(String(pageId));});
+  ipcMain.handle("ui.showOriginal",(event,pageId:unknown)=>{requireShell(event);return runPrivateShowOriginal(String(pageId));});
   const downloadedFile=(path:unknown)=>{
     if(typeof path!=="string"||!downloads.some(download=>download.path===path&&download.state==="completed"))throw new Error("Choose a completed download from this private window.");
     return path;
@@ -522,8 +706,75 @@ function abortPreparedExit(){const pending=preparedExit;if(!pending)return;prepa
 function commitPreparedExit(){const pending=preparedExit;if(!pending||pending.invalidated){abortPreparedExit();return false;}preparedExit=null;pending.cleanup();exitApproved=true;app.quit();return true;}
 async function requestExit(){if(!await prepareExit()){abortPreparedExit();return;}commitPreparedExit();}
 
+// Translation and filter-list mutations run in the regular process over the
+// child-IPC channel — translate.* calls so page text is never persisted, and
+// filter ops so the shared cache stays single-writer.
+const pendingParent=new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:NodeJS.Timeout}>();
+let privateRequestSeq=0;
+function privateRequest<T>(type:"aux-private-translate"|"aux-private-filters",payload:Record<string,unknown>,unavailable:string,timeoutMs=120000):Promise<T>{
+  if(!process.send||!process.connected)return Promise.reject(new Error(unavailable));
+  const requestId=`${process.pid}:${++privateRequestSeq}`;
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{pendingParent.delete(requestId);reject(new Error("The request timed out."));},timeoutMs);
+    pendingParent.set(requestId,{resolve:resolve as (value:unknown)=>void,reject,timer});
+    process.send!({type,requestId,...payload},(error:Error|null)=>{
+      if(!error)return;
+      clearTimeout(timer);pendingParent.delete(requestId);
+      reject(new Error(`${unavailable} The regular browser isn't responding.`));
+    });
+  });
+}
+const privateTranslate=<T>(method:"translate.page"|"translate.text",params:Record<string,unknown>)=>
+  privateRequest<T>("aux-private-translate",{method,params},"Translation is unavailable — private browsing has no model connection.");
+
+const privatePageTranslations=new Map<string,{lang:string;count:number;truncated?:boolean}>();
+function privateTranslateTarget():string{
+  const locale=app.getLocale()||"en";
+  try{return new Intl.DisplayNames([locale],{type:"language"}).of(locale.split("-")[0]!)??"English";}
+  catch{return "English";}
+}
+async function runPrivatePageTranslate(pageId:string){
+  const page=pages.get(pageId);
+  if(!page)throw new Error("This private page is no longer available.");
+  const wc=page.view.webContents;
+  const url=wc.getURL();
+  if(!/^https?:/.test(url))throw new Error("Open a web page to translate.");
+  if(/\.pdf($|[?#])/i.test(url))throw new Error("PDF documents can't be translated in place.");
+  shellView?.webContents.send("translation-changed",{pageId,pending:true});
+  const extracted=await wc.executeJavaScript(extractTextsScript(),true) as {texts?:string[];title?:string};
+  if(!extracted?.texts?.length)throw new Error("No readable text was found on this page.");
+  const result=await privateTranslate<{lang:string;translations:string[];truncated:boolean}>("translate.page",{texts:extracted.texts,target:privateTranslateTarget(),context:(extracted.title??"").slice(0,200)});
+  if(wc.isDestroyed()||wc.getURL()!==url)throw new Error("The page changed while translating.");
+  const applied=await wc.executeJavaScript(applyTranslationsScript(result.translations),true) as {applied:number;expired:boolean};
+  if(applied.expired)throw new Error("The page changed while translating.");
+  const state={lang:result.lang,count:applied.applied,truncated:result.truncated};
+  privatePageTranslations.set(pageId,{lang:result.lang,count:applied.applied});
+  shellView?.webContents.send("translation-changed",{pageId,...state});
+  return state;
+}
+async function runPrivateSelectionTranslate(page:PrivatePage,text:string,x:number,y:number){
+  const result=await privateTranslate<{lang:string;translation:string}>("translate.text",{text:text.slice(0,12000),target:privateTranslateTarget(),context:page.view.webContents.getTitle().slice(0,200)});
+  if(page.view.webContents.isDestroyed())return;
+  await page.view.webContents.executeJavaScript(translateBubbleScript(x,y,result.lang,privateTranslateTarget(),result.translation),true).catch(()=>{});
+}
+async function runPrivateShowOriginal(pageId:string){
+  const page=pages.get(pageId);
+  if(!page)return 0;
+  const restored=await page.view.webContents.executeJavaScript(restoreOriginalScript(),true).catch(()=>0) as number;
+  privatePageTranslations.delete(pageId);
+  shellView?.webContents.send("translation-changed",{pageId,lang:null,count:0});
+  return restored;
+}
+
 process.on("message",message=>{
-  const value=message as {type?:string;requestId?:string;action?:string};
+  const value=message as {type?:string;requestId?:string;action?:string;ok?:boolean;result?:unknown;error?:string};
+  if((value?.type==="aux-private-translate-result"||value?.type==="aux-private-filters-result")&&value.requestId){
+    const pending=pendingParent.get(value.requestId);
+    if(!pending)return;
+    pendingParent.delete(value.requestId);clearTimeout(pending.timer);
+    if(value.ok)pending.resolve(value.result);else pending.reject(new Error(value.error??"The request failed."));
+    return;
+  }
   if(value?.type!=="aux-private-control"||!value.requestId)return;
   void (async()=>{
     let ok=false;
@@ -544,8 +795,15 @@ async function boot(){
   shellView.setBackgroundColor("#1c1c1e");win.contentView.addChildView(shellView);
   toolbarEdge=attachToolbarEdgeWatch(win,shellView.webContents,()=>({page:!!stagePageId&&!overlayOpen,stage:stageBounds}));
   const layout=()=>{if(win&&shellView){const {width,height}=win.getContentBounds();shellView.setBounds({x:0,y:0,width,height});applyStage();}};win.on("resize",layout);layout();
+  // Swipe and app-command share the page-level overscroll port so history
+  // navigation behaves the same however the gesture arrives.
+  win.on("swipe",(_event,direction)=>{if(direction==="left"||direction==="right")(direction==="left"?tabPorts.forward:tabPorts.back)(stagePageId??"");});
+  win.on("app-command",(_event,command)=>{if(command==="browser-backward")tabPorts.back(stagePageId??"");else if(command==="browser-forward")tabPorts.forward(stagePageId??"");});
   const devUrl=process.env.VITE_DEV_SERVER_URL;const shellFile=join(import.meta.dirname,"..","renderer","index.html");const allowed=(url:string)=>isShellDocument(url,shellFile,devUrl);
   shellView.webContents.on("will-navigate",(event,url)=>{if(!allowed(url))event.preventDefault();});shellView.webContents.setWindowOpenHandler(()=>({action:"deny"}));
+  // The shell is chrome UI only — a crashed renderer reloads and reconverges
+  // from the private catalog; page WebContents live in their own processes.
+  shellView.webContents.on("render-process-gone",()=>{const shell=shellView;if(shell&&!shell.webContents.isDestroyed())shell.webContents.reload();});
   if(devUrl)await shellView.webContents.loadURL(devUrl);else await shellView.webContents.loadFile(shellFile);
   const initial=(webUrl(process.env.AUX_PRIVATE_TEST_INITIAL_URL)?process.env.AUX_PRIVATE_TEST_INITIAL_URL:process.argv.find(webUrl))??"about:blank";const initialPage=await openPage(initial,true);
   if(process.env.AUX_PRIVATE_TEST_DIRTY==="1")await pages.get(initialPage.pageId)?.view.webContents.executeJavaScript(`const field=document.querySelector('textarea,input,[contenteditable=true]');if(field){if('value' in field)field.value='Synthetic private draft';else field.textContent='Synthetic private draft';field.dispatchEvent(new Event('input',{bubbles:true}));}`,true);

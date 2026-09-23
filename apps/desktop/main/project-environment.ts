@@ -2,7 +2,7 @@ import {execFile} from 'node:child_process';
 import {access,glob,lstat,readFile,realpath} from 'node:fs/promises';
 import {join,relative,sep} from 'node:path';
 import {promisify} from 'node:util';
-import type {ProjectEnvironment,ProjectEnvironmentSuggestion} from '@vector/contracts';
+import type {ProjectEnvironment,ProjectEnvironmentSuggestion} from '@aux/contracts';
 
 const exec=promisify(execFile);
 const manifestLimit=256*1024;

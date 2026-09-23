@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint } from "@vector/runtime";
+import { directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint } from "@aux/runtime";
 
 afterEach(() => vi.unstubAllEnvs());
 const outputs = {

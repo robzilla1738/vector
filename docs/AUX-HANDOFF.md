@@ -39,10 +39,10 @@ that must be extended and assessed against the current roadmap, not assumed comp
 | Memory | Inspectable Space memory, source exclusions, opt-in browsing memory, retention and correction/deletion paths; private boundaries retained. |
 | Real work | Task promotion with editable objective (`tasks.promote` binds the existing chat), background task starts, selected-tab retry when a single original tab is lost, crashed/detached originals treated as missing, missing-input continuation, specific invalid-destination recovery, safe context snapshots and redacted observations. |
 | Files/results | PDF/DOCX/XLSX extraction, image/text/CSV/JSON/Markdown previews, immutable saved results with editable copies and persisted drafts, attachment reuse, CSV/full-snapshot export, values-only XLSX plus optional http(s) source hyperlinks when a cell stores them. |
-| Agent vault | Optional locked vault (passphrase + OS-encrypted blobs). Opaque `cref_` grants scoped to origin and optional task. Fill via `fillCredential` never batches through engine IPC, never writes secrets into steps/observations/results. Revoke, history, expiry, origin/task mismatch fail closed. |
+| Agent vault | Optional locked vault (passphrase + OS-encrypted blobs). Opaque `cref_` grants scoped to origin and optional task. Fill via `fillCredential` never batches through shared IPC, never writes secrets into steps/observations/results. Revoke, history, expiry, origin/task mismatch fail closed. |
 | Routines | Parameterized routines from saved tasks, weekday schedules and hourly monitors, versioned edits, pause, occurrence identity, no-overlap, uncertain-write block, missed consequential schedules vs coalesced monitors, review/skip, desktop-closed cloud-capable miss when `startWork` is absent. |
 | Development workspace | Task workspace Preview / Changes / Files + expandable Console, unified Connections (Models / Services / Vault / Agents), incident snapshot from an authorized page or project preview. GitHub / Vercel / Sentry stay read-only. |
-| Rename / migration | Schema 13 additive coordinator leases and criterion verifications. Explicit Vector→Aux copy: backup-first `VACUUM INTO`, skip secrets/cookies/password stores, strip kv credential keys, fail closed on dual roots or dest-db conflict. Runtime backup list/retention/restore UI. Retained session partitions `persist:vector-*`. |
+| Identity / schema | Consolidated schema v1 (`aux_meta` marker, explicit foreign keys, indexed chat/task columns). Legacy Vector data is preserved and refused fail-closed — no migration, no silent reset. Runtime backup list/retention/restore UI. Session partition `persist:aux-default`. |
 
 Latest product addition: sourced conversation tables can export a values-only workbook
 with an explicit Source column and http(s) hyperlinks. Excel still does **not** restore
@@ -111,11 +111,11 @@ identity, paid cloud, or native-hands-on — not silent completion.
   `workbook-extract.ts`: native file boundaries and bounded workers.
 - `packages/contracts/src/{csv,vault,routines,workbook-snapshot}.ts`: CSV parser, vault
   and routine contracts, optional source hyperlinks on values-only workbooks.
-- `apps/runtime/src/services/{runs,tasks,vault,routines,legacy-migration,conversation-images,
+- `apps/runtime/src/services/{runs,tasks,vault,routines,conversation-images,
   document-context,saved-results,browsing-memory,workspace-memory,spaces}.ts`: runtime
-  authority, credential broker, routines, fail-closed Vector→Aux copy.
-- `apps/runtime/src/store/{repo,db}.ts`: additive migrations (schema 13 coordinator
-  leases and criterion verifications) and stored identity.
+  authority, credential broker, routines.
+- `apps/runtime/src/store/{repo,db}.ts`: consolidated schema v1 (`aux_meta` marker,
+  explicit foreign keys) and stored identity.
 - `apps/runtime/src/services/cloud-environments.ts`, `agent-connections.ts`, plus local
   project modules: reuse for Phase 4. Locate current APIs before introducing new concepts.
 - `apps/desktop/renderer/src/components/{VaultSettings,Routines,TaskWorkspace,
@@ -148,8 +148,8 @@ Continuation 2026-09-21 (branch `cursor/aux-remaining-implementation-4932`):
   Preview/Console split, and remaining software-only Phase 2–5 items above are in this
   tree. Logical journal identities are stable across runs. Profile credential stores
   are refused, not copied.
-- Full `pnpm test:unit` after rebuilding `@vector/contracts` and `@vector/runtime`:
-  **151 files, 746 tests passed**. Node 22.14.0 vs engines `>=22.18.0` is a warning only.
+- Full `pnpm test:unit` after rebuilding `@aux/contracts` and `@aux/runtime`.
+  Node 22.14.0 vs engines `>=22.18.0` is a warning only.
 
 The native XLSX acceptance above used a workbook snapshot; the latest saved-CSV-result
 button reuses that native path and has binary round-trip coverage, but has not had its
@@ -161,10 +161,10 @@ Commands:
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
-pnpm --filter @vector/desktop typecheck
-pnpm --filter @vector/desktop build
+pnpm --filter @aux/desktop typecheck
+pnpm --filter @aux/desktop build
 pnpm test:unit
-AUX_LOAD_DOTENV=0 AUX_ENGINE=0 pnpm dev
+AUX_LOAD_DOTENV=0 pnpm dev
 ```
 
 Desktop typecheck force-emits unbundled main output: **run the desktop build afterward**

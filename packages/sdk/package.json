@@ -1,5 +1,5 @@
 {
-  "name": "@aux-browser/sdk",
+  "name": "@aux/sdk",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "typecheck": "tsc -b --force"
   },
   "dependencies": {
-    "@vector/contracts": "workspace:*"
+    "@aux/contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.3.0",

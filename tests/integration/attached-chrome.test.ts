@@ -1,15 +1,15 @@
 /**
  * Attached-Chrome path: a real Chrome running with --remote-debugging-port
  * is attached, its tabs listed, adopted, and driven — borrowed-tab semantics
- * (Vector never closes the user's tabs).
+ * (Aux never closes the user's tabs).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import type { PageTarget } from "@vector/contracts";
+import { startRuntime, type RuntimeHandle } from "@aux/runtime";
+import type { PageTarget } from "@aux/contracts";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 
 const RECORDS = "http://127.0.0.1:4810";
@@ -27,10 +27,10 @@ const itIfChrome = existsSync(CHROME_BIN) ? it : it.skip;
 beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
-  dataDir = mkdtempSync(join(tmpdir(), "vector-chrome-"));
+  dataDir = mkdtempSync(join(tmpdir(), "aux-chrome-"));
 
   if (existsSync(CHROME_BIN)) {
-    const profile = mkdtempSync(join(tmpdir(), "vector-chrome-profile-"));
+    const profile = mkdtempSync(join(tmpdir(), "aux-chrome-profile-"));
     chrome = spawn(CHROME_BIN, [
       `--remote-debugging-port=${CHROME_CDP}`,
       `--user-data-dir=${profile}`,
@@ -51,7 +51,7 @@ beforeAll(async () => {
     }
   }
 
-  rt = await startRuntime({ ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "", VECTOR_ENGINE_MODE: "off" });
+  rt = await startRuntime({ ...process.env, AUX_DATA_DIR: dataDir, AUX_ELECTRON_CDP: "" });
 }, 60_000);
 
 afterAll(async () => {
@@ -84,7 +84,7 @@ describe("attached chrome", () => {
     expect(obs.content.url).toContain("/records");
     expect(obs.content.elements.length).toBeGreaterThan(3);
 
-    // borrowed-tab semantics: closing the Vector page must NOT close the Chrome tab
+    // borrowed-tab semantics: closing the Aux page must NOT close the Chrome tab
     await invoke("pages.close", { pageId: page.pageId });
     const tabsAfter = await invoke<{ targetId: string }[]>("chrome.tabs");
     expect(tabsAfter.some((t) => t.targetId === recordsTab!.targetId)).toBe(true);

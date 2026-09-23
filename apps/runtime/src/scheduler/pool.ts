@@ -1,4 +1,4 @@
-import { VectorError } from "@vector/contracts";
+import { AuxError } from "@aux/contracts";
 
 /**
  * Bounded worker pool with per-origin limits. Workers are runtime-owned
@@ -61,11 +61,11 @@ export class WorkerPool {
   }
 
   private waitForSlot(origin: string, signal?: AbortSignal): Promise<void> {
-    if (signal?.aborted) return Promise.reject(new VectorError("cancelled", "pool acquire aborted"));
+    if (signal?.aborted) return Promise.reject(new AuxError("cancelled", "pool acquire aborted"));
     return new Promise((resolve, reject) => {
       const onAbort = () => {
         this.waiters = this.waiters.filter((x) => x !== w);
-        reject(new VectorError("cancelled", "pool acquire aborted"));
+        reject(new AuxError("cancelled", "pool acquire aborted"));
       };
       // the listener is removed on resolve — a long-lived run signal must not
       // accumulate one closure per queued member

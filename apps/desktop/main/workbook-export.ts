@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { WorkbookSnapshotSchema, readCsvRows, workbookSourceHyperlink } from "@vector/contracts";
+import { WorkbookSnapshotSchema, readCsvRows, workbookSourceHyperlink } from "@aux/contracts";
 
 /** Build a new values-only workbook. Never evaluate formulas or restore external links. */
 export async function exportWorkbook(content:string,format:"snapshot"|"csv"="snapshot"):Promise<Buffer> {

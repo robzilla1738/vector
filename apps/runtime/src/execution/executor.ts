@@ -1,24 +1,17 @@
 import {
-  VectorError,
+  AuxError,
   type Condition,
   type ObservationContent,
-  type ObservationRequest,
   type Program,
   type ProgramResult,
   type Step,
   type StepOutcome,
-} from "@vector/contracts";
-import type { DriverPage } from "@vector/engine-client";
+} from "@aux/contracts";
+import type { DriverPage } from "@aux/chromium-driver";
 
 export interface ExecContext {
   runId?: string;
   signal?: AbortSignal;
-  /**
-   * Act-and-observe on the zero-IPC path: when the page implements
-   * `executeProgram`, the observation is taken in the same backend call and
-   * returned as `observation` on the result. Ignored by the per-step path.
-   */
-  returnObservation?: Partial<ObservationRequest>;
   onStep?: (outcome: StepOutcome, step: Step) => void;
   /** artifacts captured during execution are reported here */
   onArtifact?: (label: string, buffer: Buffer, mediaType: string) => string | undefined;
@@ -51,7 +44,7 @@ export interface ExecContext {
    */
   journaled?: boolean;
   /** resolve opaque vault grants immediately before fill; never persist the secret */
-  resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string }) => Promise<string>;
+  resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string; accountLabels?: string[] }) => Promise<string>;
   pageOrigin?: string;
 }
 
@@ -75,7 +68,7 @@ function assertEvalAllowed(step: Step, allowEval: boolean) {
     (step.op === "waitFor" && usesExpression(step.condition)) ||
     (step.expect ?? []).some((c) => usesExpression(c as Condition))
   ) {
-    throw new VectorError("invalid_params", `step ${step.id}: page JS (evaluate/expression) is disabled for this program source`);
+    throw new AuxError("invalid_params", `step ${step.id}: page JS (evaluate/expression) is disabled for this program source`);
   }
 }
 
@@ -91,7 +84,7 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
     case "hover": return void (await page.hover(s.target, s.timeoutMs));
     case "fill": return void (await page.fill(s.target, s.value, s.timeoutMs));
     case "fillCredential": {
-      if (!ctx.resolveCredential) throw new VectorError("backend_unavailable", "Trusted fill requires the agent vault.");
+      if (!ctx.resolveCredential) throw new AuxError("backend_unavailable", "Trusted fill requires the agent vault.");
       const secret = await ctx.resolveCredential(s.credentialRef, {
         pageId: page.identity.pageId,
         runId: ctx.runId,
@@ -112,7 +105,7 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
     case "upload": return void (await page.uploadFiles(s.target, s.files, s.timeoutMs));
     case "waitFor": {
       const res = await page.waitFor(s.condition);
-      if (!res.ok) throw new VectorError("condition_timeout", res.detail ?? `condition ${s.condition.kind} failed`);
+      if (!res.ok) throw new AuxError("condition_timeout", res.detail ?? `condition ${s.condition.kind} failed`);
       return { detail: res.detail };
     }
     case "screenshot": {
@@ -169,7 +162,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         for (const cond of step.expect as Condition[]) {
           const res = await page.waitFor(cond);
           if (!res.ok)
-            throw new VectorError("condition_timeout", `expect ${cond.kind} failed: ${res.detail ?? ""}`);
+            throw new AuxError("condition_timeout", `expect ${cond.kind} failed: ${res.detail ?? ""}`);
         }
       }
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
@@ -223,7 +216,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       }
       return outcome;
     } catch (e) {
-      const code = e instanceof VectorError ? e.code : "step_failed";
+      const code = e instanceof AuxError ? e.code : "step_failed";
       return {
         stepId: step.id,
         op: step.op,
@@ -279,7 +272,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         status: "failed",
         startedAt: dlStarted,
         durationMs: Date.now() - dlStarted,
-        error: { code: e instanceof VectorError ? e.code : "step_failed", message: e instanceof Error ? e.message : String(e) },
+        error: { code: e instanceof AuxError ? e.code : "step_failed", message: e instanceof Error ? e.message : String(e) },
       };
     }
     emit(dlOutcome, dlStep);
@@ -301,7 +294,7 @@ export async function executeProgram(
   ctx: ExecContext = {},
 ): Promise<ProgramResult & { observation?: ObservationContent }> {
   if (program.pageId !== page.identity.pageId) {
-    throw new VectorError(
+    throw new AuxError(
       "invalid_params",
       `program targets ${program.pageId} but page is ${page.identity.pageId}`,
     );
@@ -333,35 +326,8 @@ export async function executeProgram(
   const steps = program.steps ?? [];
   const seen = new Set<string>();
   for (const s of steps) {
-    if (seen.has(s.id)) throw new VectorError("invalid_params", `duplicate step id ${s.id}`);
+    if (seen.has(s.id)) throw new AuxError("invalid_params", `duplicate step id ${s.id}`);
     seen.add(s.id);
-  }
-
-  // Zero-IPC path (architecture §11): hand the whole flat step list to the
-  // backend in one call. Trust checks run up front exactly as the per-step
-  // runner would apply them; the expectDownload pair needs the local waiter
-  // fusion, so such programs stay on the per-step path.
-  // fillCredential stays on the per-step path so secrets never enter the
-  // native batch payload or the step ledger.
-  if (page.executeProgram && steps.length && !steps.some((s) => s.op === "expectDownload" || s.op === "fillCredential")) {
-    for (const s of steps) assertEvalAllowed(s, ctx.allowEval ?? false);
-    ctx.checkValid?.();
-    const res = await page.executeProgram(steps, { signal: ctx.signal, returnObservation: ctx.returnObservation });
-    const byId = new Map(steps.map((s) => [s.id, s]));
-    for (const o of res.steps) {
-      const step = byId.get(o.stepId);
-      if (step) emit(o, step);
-      else outcomes.push(o);
-    }
-    const out: ProgramResult & { observation?: ObservationContent } = {
-      status: ctx.signal?.aborted && res.status === "completed" ? "cancelled" : res.status,
-      steps: outcomes,
-      extracted: res.extracted && Object.keys(res.extracted).length ? res.extracted : undefined,
-      error: res.error,
-    };
-    if (res.fallback) out.fallback = res.fallback;
-    if (res.observation) out.observation = res.observation;
-    return out;
   }
 
   for (let i = 0; i < steps.length; i++) {

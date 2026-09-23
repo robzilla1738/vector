@@ -1,12 +1,12 @@
 {
-  "name": "@vector/tests",
+  "name": "@aux/tests",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
-    "@vector/engine-client": "workspace:*",
-    "@vector/contracts": "workspace:*",
-    "@vector/runtime": "workspace:*",
+    "@aux/chromium-driver": "workspace:*",
+    "@aux/contracts": "workspace:*",
+    "@aux/runtime": "workspace:*",
     "zod": "4.5.4"
   },
   "devDependencies": {

@@ -3,7 +3,7 @@
  * compact observation, a set with member progress. Deterministic so
  * screenshots are reproducible.
  */
-import type { CompactObservation, PageSet, PageTarget, Run, SavedProgram, SetMember, StepRecord } from "@vector/contracts";
+import type { CompactObservation, PageSet, PageTarget, Run, SavedProgram, SetMember, StepRecord } from "@aux/contracts";
 
 const T0 = Date.now() - 2_000; // "now" at load, so elapsed timers read sensibly
 
@@ -16,15 +16,15 @@ interface Site {
 
 export const SITES: Site[] = [
   { url: "https://github.com/aux-browser/aux/pull/3", title: "Aux Engine M0 — agent-first browser engine foundation · Pull Request #3", letter: "G", color: "#24292f" },
-  { url: "https://linear.app/vector/issue/VEC-142/unified-command-bar", title: "VEC-142 Unified command bar — Linear", letter: "L", color: "#5e6ad2" },
+  { url: "https://linear.app/aux/issue/AUX-142/unified-command-bar", title: "AUX-142 Unified command bar — Linear", letter: "L", color: "#5e6ad2" },
   { url: "https://stripe.com/docs/api/checkout/sessions/create", title: "Create a Checkout Session | Stripe API Reference", letter: "S", color: "#635bff" },
-  { url: "https://www.notion.so/vector/Shell-redesign-notes", title: "Shell redesign notes", letter: "N", color: "#111111" },
+  { url: "https://www.notion.so/aux/Shell-redesign-notes", title: "Shell redesign notes", letter: "N", color: "#111111" },
   { url: "https://news.ycombinator.com/", title: "Hacker News", letter: "Y", color: "#ff6600" },
   { url: "https://www.figma.com/design/aux-shell/Aux-Shell?node-id=12-4", title: "Aux Shell – Figma", letter: "F", color: "#a259ff" },
   { url: "https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver", title: "ResizeObserver - Web APIs | MDN", letter: "M", color: "#1b1b1b" },
-  { url: "https://www.are.na/vector/browser-references", title: "Browser references — Are.na", letter: "A", color: "#4a4a4a" },
-  { url: "https://vercel.com/vector/vector-web/deployments", title: "Deployments – vector-web – Vercel", letter: "▲", color: "#000000" },
-  { url: "https://mail.google.com/mail/u/0/#inbox", title: "Inbox (12) - hello@vector.dev - Gmail", letter: "M", color: "#d93025" },
+  { url: "https://www.are.na/aux/browser-references", title: "Browser references — Are.na", letter: "A", color: "#4a4a4a" },
+  { url: "https://vercel.com/aux/aux-web/deployments", title: "Deployments – aux-web – Vercel", letter: "▲", color: "#000000" },
+  { url: "https://mail.google.com/mail/u/0/#inbox", title: "Inbox (12) - hello@aux.dev - Gmail", letter: "M", color: "#d93025" },
   { url: "https://calendar.google.com/calendar/u/0/r/week", title: "Google Calendar - Week of Sep 15, 2026", letter: "C", color: "#1a73e8" },
   { url: "https://en.wikipedia.org/wiki/Web_browser_engine", title: "Web browser engine - Wikipedia", letter: "W", color: "#3a3a3a" },
 ];
@@ -34,7 +34,7 @@ export function makePage(i: number, overrides: Partial<PageTarget> = {}, site?: 
   const n = site ? 0 : Math.floor(i / SITES.length);
   return {
     pageId: `page-${i + 1}`,
-    backend: "vector",
+    backend: "aux",
     targetId: `t-${i + 1}`,
     url: n ? `${s.url}${s.url.includes("?") ? "&" : "?"}p=${n}` : s.url,
     title: n ? `${s.title} (${n + 1})` : s.title,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RpcChannel, memoryTransportPair, VectorError } from "@vector/contracts";
+import { RpcChannel, memoryTransportPair, AuxError } from "@aux/contracts";
 
 describe("RpcChannel", () => {
   it("round-trips calls both directions", async () => {
@@ -17,7 +17,7 @@ describe("RpcChannel", () => {
     const a = new RpcChannel(ta, "a");
     const b = new RpcChannel(tb, "b");
     b.onMethod("boom", () => {
-      throw new VectorError("not_found", "thing missing", { id: 7 });
+      throw new AuxError("not_found", "thing missing", { id: 7 });
     });
     await expect(a.call("boom")).rejects.toMatchObject({ code: "not_found", message: "thing missing" });
   });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { VectorError, type DatasetHandle, type StateQuery, type StateQueryResult } from "@vector/contracts";
+import { AuxError, type DatasetHandle, type StateQuery, type StateQueryResult } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "./pages.js";
 import type { OperationService } from "./operations.js";
@@ -104,7 +104,7 @@ export class StateService {
         return { rows, explain: "materialized datasets" };
       }
       default:
-        throw new VectorError("invalid_params", `unknown entity ${(q as { entity: string }).entity}`);
+        throw new AuxError("invalid_params", `unknown entity ${(q as { entity: string }).entity}`);
     }
   }
 
@@ -156,7 +156,7 @@ export class StateService {
   /** Local transforms over a materialized dataset — no inference (§7.6). */
   transform(datasetId: string, op: string, args: Record<string, unknown> = {}): DatasetHandle {
     const d = this.deps.repo.getDataset(datasetId);
-    if (!d) throw new VectorError("not_found", `no dataset ${datasetId}`);
+    if (!d) throw new AuxError("not_found", `no dataset ${datasetId}`);
     let rows = d.rows as Row[];
     switch (op) {
       case "project": {
@@ -198,7 +198,7 @@ export class StateService {
         // inner join against another materialized dataset on key equality
         const rightId = String(args.right ?? "");
         const right = this.deps.repo.getDataset(rightId);
-        if (!right) throw new VectorError("not_found", `no dataset ${rightId} to join against`);
+        if (!right) throw new AuxError("not_found", `no dataset ${rightId} to join against`);
         const lf = String(args.leftField ?? args.field ?? "");
         const rf = String(args.rightField ?? lf);
         const rrows = right.rows as Row[];
@@ -214,7 +214,7 @@ export class StateService {
         // export is just a handle over all rows (API can fetch rows() after)
         break;
       default:
-        throw new VectorError("invalid_params", `unknown transform ${op}`);
+        throw new AuxError("invalid_params", `unknown transform ${op}`);
     }
     return this.saveDataset({
       rows,
@@ -227,7 +227,7 @@ export class StateService {
 
   rows(datasetId: string): Row[] {
     const d = this.deps.repo.getDataset(datasetId);
-    if (!d) throw new VectorError("not_found", `no dataset ${datasetId}`);
+    if (!d) throw new AuxError("not_found", `no dataset ${datasetId}`);
     return d.rows as Row[];
   }
 }

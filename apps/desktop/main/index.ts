@@ -1,14 +1,23 @@
 import { saveWorkbookSnapshot } from "./save-workbook.js";
 import { setWindowMaterial } from "./window-material.js";
 import { showNavigationMenu } from "./navigation-menu.js";
-import { splitRatio, splitWidths } from "@vector/contracts/split-layout";
+import { splitRatio, splitWidths } from "@aux/contracts/split-layout";
 import { dictationStatus, startDictation, stopDictation, cancelDictation } from "./dictation.js";
 import { SiteZoomPreferences } from "./site-zoom.js";
 import { installSitePermissions, permissionOrigin } from "./site-permissions.js";
-import { installTrackerBlock } from "./tracker-block.js";
+import { installRequestPolicy } from "./request-policy.js";
+import { TRACKER_HOSTS } from "./tracker-hosts.js";
+import { FilterLists } from "./filter-lists.js";
+import { applyCosmetic } from "./cosmetic-filter.js";
+import { fetchFilterText } from "./filter-fetch.js";
+import { HttpsFirst } from "./https-first.js";
+import { confirmDownload, downloadWarning } from "./download-guard.js";
+import { applyTranslationsScript, extractTextsScript, restoreOriginalScript, translateBubbleScript } from "./page-translate.js";
 import { createInsecureBypass } from "./insecure-bypass.js";
 import { BrowserProfiles } from "./browser-profiles.js";
 import { offerExternalLink } from "./external-links.js";
+import { autofillScript, hasAutofillData, type AutofillProfile } from "./autofill.js";
+import { captureLoginScript, credentialFillScript } from "./credential-fill.js";
 import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./page-fullscreen.js";
 import { popupCommand } from './popup-commands.js';
 import { approveWindowUnload } from './window-unload.js';
@@ -29,15 +38,16 @@ import { copyFile, cp, rm, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { ChildProcess } from "node:child_process";
-import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, SidebarMaterialSchema, type SidebarMaterial, type Transport } from "@vector/contracts";
-import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@vector/contracts/installation";
+import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, SidebarMaterialSchema, originOfAddress, type SidebarMaterial, type Transport } from "@aux/contracts";
+import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@aux/contracts/installation";
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
-import { createPageView, destroyPageView, downloadsSession, profileSession, setEngineFrame } from "./native-views.js";
+import { createPageView, destroyPageView, downloadsSession, profileSession } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
 import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
 import { interruptedDownloadHistory } from "./download-recovery.js";
 import { controlDownload } from "./download-control.js";
-import { hasPageWork } from "./page-suspension.js";
+import { captureScrollPosition, hasPageWork, restoreScrollPosition } from "./page-suspension.js";
+import { IDLE_FREEZE_MS, FROZEN_DISCARD_MS, IDLE_MATERIALIZE_MS, IDLE_MATERIALIZE_MAX, canFreeze, canDiscard, createPausedAgentTracker } from "./page-lifecycle.js";
 import { setPageZoom } from "./page-zoom.js";
 import { PageFinder } from "./page-find.js";
 import { startPreviewWatch } from "./preview-watch.js";
@@ -48,7 +58,7 @@ import { ProjectFiles } from "./project-files.js";
 import { DownloadLocation } from "./download-location.js";
 import { retrySource } from "./download-retry.js";
 import { ProjectCommands } from "./project-commands.js";
-import { ProjectCommandSchema, ProjectCommandContextSchema, ProjectCommandTaskSchema, ProjectServiceStackRequestSchema, ProjectReviewContextSchema, ProjectCommitRequestSchema, ProjectGithubStatusSchema, DownloadSchema, TaskSchema, EvidenceCommandSelectionParams } from "@vector/contracts";
+import { ProjectCommandSchema, ProjectCommandContextSchema, ProjectCommandTaskSchema, ProjectServiceStackRequestSchema, ProjectReviewContextSchema, ProjectCommitRequestSchema, ProjectGithubStatusSchema, DownloadSchema, TaskSchema, EvidenceCommandSelectionParams } from "@aux/contracts";
 import { LocalProjects } from "./local-projects.js";
 import { readEvidenceImage } from "./image-evidence.js";
 import { readEvidenceDocument } from "./document-evidence.js";
@@ -62,6 +72,12 @@ import {buildDiagnosticReport} from './diagnostics.js';
 import {applyPendingRuntimeRestore,runtimeRestoreStatus} from './runtime-restore.js';
 import {BrowserHealthRecorder} from './browser-health.js';
 import {detectAgentClients} from './agent-clients.js';
+import { TabCatalog, newTabRecord } from "./tabs/catalog.js";
+import { TabController, type TabPorts } from "./tabs/controller.js";
+import { BrowserStore } from "./tabs/browser-store.js";
+import { newPageId, TabCommandEnvelopeSchema, type TabPatch, type TabPatchOp, type TabRecord } from "@aux/contracts";
+import { acceleratorFor, effectiveShortcuts, SHORTCUTS, ShortcutOverridesSchema, shortcutById, type ShortcutCommandDef, type ShortcutOverrides } from "@aux/contracts";
+import { setPageShortcuts } from "./page-shortcuts.js";
 
 const CDP_PORT_FILE = "devtools-port";
 const PRIMARY_WINDOW_ID = "main";
@@ -80,6 +96,8 @@ mkdirSync(DATA_DIR, { recursive: true });
 applyPendingRuntimeRestore(DATA_DIR);
 const browserProfiles=new BrowserProfiles(desktopEnv.AUX_PROFILE_CATALOG_DIR??join(DATA_DIR,"browser-profiles"),desktopEnv.AUX_BROWSER_PROFILE_ID??"default",{dataDir:DATA_DIR,profileDir:PROFILE_DIR});
 let currentProfileName = browserProfiles.read(browserProfiles.currentId).name;
+browserProfiles.markInstance();
+setInterval(()=>browserProfiles.markInstance(),120_000).unref();
 const extensionManager = new ExtensionManager(DATA_DIR);
 const downloadLocation = new DownloadLocation(DATA_DIR);
 const localProjects = new LocalProjects(join(DATA_DIR, "projects"));
@@ -87,6 +105,231 @@ const projectCommands = new ProjectCommands(join(DATA_DIR, "project-commands"),1
 const projectFiles = new ProjectFiles(id => localProjects.files(id),(id,name)=>localProjects.allowFileCreation(id,name));
 const savingProjects = new Set<string>();
 const cloudPreviewTokens = new Map<string,string>();
+
+// ---------- tab catalog: main-owned browser truth (§7.1/§7.2) ----------
+const tabCatalog = new TabCatalog();
+const browserStore = new BrowserStore({
+  dir: join(DATA_DIR, "browser-state"),
+  workerUrl: new URL("./browser-store.cjs", import.meta.url),
+  onError: error => log("browser store degraded:", error.message),
+});
+
+/** One fan-out for every catalog patch: renderers, runtime, persistence worker. */
+function publishTabPatch(patch: TabPatch) {
+  broadcastToShells("tabs.patch", patch);
+  notifyRuntime("tabs.catalog", patch);
+  browserStore.persist(patch).catch(() => {});
+}
+
+/**
+ * Merge fields into a catalog record. Unknown pages are ignored — creation
+ * always flows through a typed command or a native surface that knows the
+ * window the tab belongs to.
+ */
+function noteTab(pageId: string, fields: Partial<TabRecord>, origin?: "runtime" | "external") {
+  const current = tabCatalog.tab(pageId);
+  if (!current) return;
+  publishTabPatch(tabCatalog.apply([{ op: "upsert", tab: { ...current, ...fields }, ...(origin ? { origin } : {}) }]));
+}
+
+/** Pages being closed by the typed controller — onDestroyed must not race
+ *  its own remove patch against the controller's remove+window patch. */
+const controllerClosing = new Set<string>();
+
+/** Navigation history of recently closed tabs (BR-01: reopen restores real
+ *  history, not just the last URL). In-memory only — reopening after a restart
+ *  falls back to the recorded URL, matching every mainstream browser. */
+const CLOSED_HISTORY_LIMIT = 50;
+const closedHistory = new Map<string, { entries: Electron.NavigationEntry[]; index: number }>();
+function rememberClosedHistory(entry: ViewEntry) {
+  const wc = entry.view.webContents;
+  if (wc.isDestroyed() || entry.popup) return;
+  const entries = wc.navigationHistory.getAllEntries();
+  if (!entries.length) return;
+  closedHistory.delete(entry.pageId);
+  closedHistory.set(entry.pageId, { entries, index: wc.navigationHistory.getActiveIndex() });
+  while (closedHistory.size > CLOSED_HISTORY_LIMIT) closedHistory.delete(closedHistory.keys().next().value!);
+}
+
+const tabPorts: TabPorts = {
+  mintPageId: () => newPageId(),
+  windowOf: pageId => pageWindowOwners.get(pageId) ?? registry.get(pageId)?.windowId,
+  open: ({ pageId, windowId, url, background, activate }) => {
+    const state = stateForWindowId(windowId);
+    if (!state || state.win.isDestroyed()) throw new Error("window gone");
+    const history = closedHistory.get(pageId);
+    if (!registry.get(pageId)) {
+      // Skip the initial load when a history stack will be restored — the two
+      // navigations would race and the restore would lose.
+      createPageView({ win: state.win, registry, pageId, windowId: state.id, marker: `atab-${pageId}`, url: history ? "" : url, background, hooks: viewHooks });
+      pageWindowOwners.set(pageId, state.id);
+      if (history) {
+        closedHistory.delete(pageId);
+        void registry.get(pageId)!.view.webContents.navigationHistory.restore({ entries: history.entries, index: history.index })
+          .catch(() => void registry.get(pageId)?.view.webContents.loadURL(url).catch(() => {}));
+      }
+      const scroll = scrollPositions.get(pageId);
+      if (scroll) {
+        scrollPositions.delete(pageId);
+        registry.get(pageId)!.view.webContents.once("did-finish-load", () => void restoreScrollPosition(registry.get(pageId)!.view.webContents, scroll));
+      }
+      // A placeholder record whose view now exists is live again.
+      noteTab(pageId, { lifecycle: "live" });
+    }
+    if (activate) tabPorts.focus(pageId);
+    else applyStage(state);
+  },
+  close: async pageId => {
+    const entry = registry.get(pageId);
+    if (!entry) return true;
+    const state = stateForEntry(entry);
+    if (!state) return false;
+    controllerClosing.add(pageId);
+    rememberClosedHistory(entry);
+    // A hung renderer must not hold ⌘W — scroll capture gets a short budget.
+    rememberScroll(entry,await captureScrollPosition(entry.view.webContents,400));
+    let closed: boolean;
+    try {
+      closed = await destroyPageView(entry, state.win);
+    } finally {
+      controllerClosing.delete(pageId);
+    }
+    if (!closed) return false;
+    if (registry.get(pageId) === entry) registry.remove(pageId);
+    if (state.focusedPageId === pageId) state.focusedPageId = null;
+    if (state.splitPageId === pageId) state.splitPageId = null;
+    if (state.previewWatch?.pageId === pageId) clearPreviewWatch(state);
+    offscreen.forget(pageId);
+    forgetPageLifecycle(pageId);
+    applyStage(state);
+    return true;
+  },
+  focus: pageId => {
+    const entry = ensureTabView(pageId);
+    const state = stateForEntry(entry);
+    if (!entry || !state) return;
+    wakePage(entry);
+    if (entry.popup) { entry.popup.show(); entry.popup.focus(); return; }
+    state.focusedPageId = pageId;
+    state.win.contentView.addChildView(entry.view);
+    applyStage(state);
+    state.win.show();
+    state.win.focus();
+    entry.view.webContents.focus();
+  },
+  navigate: (pageId, url) => {
+    const entry = ensureTabView(pageId);
+    if (!entry) throw new Error("tab gone");
+    void wakePage(entry);
+    void entry.view.webContents.loadURL(url).catch(() => {});
+  },
+  back: pageId => {
+    const entry = registry.get(pageId);
+    if (entry?.view.webContents.navigationHistory.canGoBack()) { void wakePage(entry); entry.view.webContents.navigationHistory.goBack(); }
+  },
+  forward: pageId => {
+    const entry = registry.get(pageId);
+    if (entry?.view.webContents.navigationHistory.canGoForward()) { void wakePage(entry); entry.view.webContents.navigationHistory.goForward(); }
+  },
+  reload: async (pageId, hard) => {
+    const entry = ensureTabView(pageId);
+    if (!entry) throw new Error("tab gone");
+    const wc = entry.view.webContents;
+    if (wc.isCrashed() && channel) {
+      // A dead renderer has no live driver — the runtime reload path recovers
+      // the view and re-attaches its CDP session, which `wc.reload` cannot do.
+      await channel.call("api.invoke", { method: "pages.reload", params: { pageId, hard }, desktopUser: true });
+      return;
+    }
+    await wakePage(entry);
+    if (hard) wc.reloadIgnoringCache(); else wc.reload();
+  },
+  stop: pageId => {
+    const entry = registry.get(pageId);
+    if (!entry) return;
+    void wakePage(entry);
+    entry.view.webContents.stop();
+  },
+  setMuted: (pageId, muted) => {
+    const entry = registry.get(pageId);
+    entry?.view.webContents.setAudioMuted(muted);
+    if (entry) viewHooks.onAudio(entry.pageId, { muted: entry.view.webContents.isAudioMuted(), audible: entry.view.webContents.isCurrentlyAudible() });
+  },
+  move: (pageId, windowId, activate) => movePageToWindow(pageId, windowId, activate),
+};
+
+/**
+ * Reparent a live view between regular windows — the single actuation path
+ * for typed `move` commands and the runtime's `native.movePage`. Catalog ops
+ * are the caller's job so each issuer publishes through its own channel.
+ */
+async function movePageToWindow(pageId: string, windowId: string | undefined, activate: boolean) {
+  // A discarded/placeholder tab materializes in its home window first — the
+  // physical view move below then works like any other live tab.
+  const entry = registry.get(pageId) ?? ensureTabView(pageId);
+  const source = stateForEntry(entry);
+  if (!entry || entry.popup || !source || entry.runtimeOwned) throw new Error("This tab cannot be moved to another window.");
+  const destination = windowId ? regularWindows.get(windowId) : await createRegularWindow();
+  if (!destination || destination.win.isDestroyed() || source.win.isDestroyed() || entry.view.webContents.isDestroyed()) throw new Error("The source or destination window was closed.");
+  if (source.id === destination.id) return { windowId: destination.id, sourceWindowId: source.id, sourceActivePageId: source.focusedPageId, activePageId: source.focusedPageId, moved: false };
+  source.win.contentView.removeChildView(entry.view);
+  try { destination.win.contentView.addChildView(entry.view); }
+  catch (error) { source.win.contentView.addChildView(entry.view); throw error; }
+  entry.windowId = destination.id;
+  pageWindowOwners.set(pageId, destination.id);
+  notifyHttpAuthChanged();
+  if (source.previewWatch?.pageId === pageId) clearPreviewWatch(source);
+  if (source.focusedPageId === pageId) source.focusedPageId = registry.all().find(candidate => !candidate.popup && !candidate.runtimeOwned && (candidate.windowId ?? PRIMARY_WINDOW_ID) === source.id)?.pageId ?? null;
+  if (source.splitPageId === pageId) source.splitPageId = null;
+  if (activate || !destination.focusedPageId) { destination.focusedPageId = pageId; destination.splitPageId = null; }
+  applyStage(source); applyStage(destination);
+  if (activate) { destination.win.show(); destination.win.focus(); }
+  return { windowId: destination.id, sourceWindowId: source.id, sourceActivePageId: source.focusedPageId, activePageId: destination.focusedPageId, moved: true };
+}
+
+/**
+ * Catalog records can outlive their views (restored session, runtime
+ * restart). Materialize on demand — the tab's saved URL loads lazily the
+ * first time the user actually touches it.
+ */
+function ensureTabView(pageId: string): ViewEntry | undefined {
+  const existing = registry.get(pageId);
+  if (existing && !existing.view.webContents.isDestroyed()) return existing;
+  const record = tabCatalog.tab(pageId);
+  if (!record) return undefined;
+  const state = stateForWindowId(record.windowId);
+  if (!state || state.win.isDestroyed()) return undefined;
+  // A discarded tab restores its captured navigation stack; the initial load
+  // is skipped so the two navigations don't race.
+  const history = closedHistory.get(pageId);
+  const entry = createPageView({
+    win: state.win, registry, pageId, windowId: state.id,
+    marker: `atab-${pageId}`, url: history ? "" : record.url, background: true,
+    ownedByRuntime: record.runtimeOwned, hooks: viewHooks,
+  });
+  pageWindowOwners.set(pageId, state.id);
+  if (history) {
+    closedHistory.delete(pageId);
+    void entry.view.webContents.navigationHistory.restore({ entries: history.entries, index: history.index })
+      .catch(() => void entry.view.webContents.loadURL(record.url).catch(() => {}));
+  }
+  const scroll = scrollPositions.get(pageId);
+  if (scroll) {
+    scrollPositions.delete(pageId);
+    entry.view.webContents.once("did-finish-load", () => void restoreScrollPosition(entry.view.webContents, scroll));
+  }
+  // Materializing a fresh WebContents for a known tab bumps its instance
+  // generation — stale commands aimed at the previous instance stay rejected.
+  noteTab(pageId, { generation: tabCatalog.nextGeneration(pageId), lifecycle: "live" });
+  return entry;
+}
+
+const tabController = new TabController({
+  catalog: tabCatalog,
+  ports: tabPorts,
+  publish: publishTabPatch,
+  placement: payload => broadcastToShells("tabs.placement", payload),
+});
 
 const WINDOW_BG = { dark: "#171717", light: "#ffffff" } as const;
 
@@ -145,8 +388,114 @@ let runtimeReady = false;
 let shellReady = false;
 let openingExternalUrls = false;
 
+/**
+ * External links belong to the profile the user last browsed in. When the OS
+ * delivers a link to a different instance, forward it there through the same
+ * spawn path `ui.openBrowserProfile` uses — the target's own argv/second-
+ * instance handling opens it whether that instance is running or not. The
+ * `AUX_EXTERNAL_FORWARD` hop count bounds routing to two hops.
+ */
+function forwardExternalUrl(target: string, url: string) {
+  const hop = Number(desktopEnv.AUX_EXTERNAL_FORWARD ?? "0");
+  try {
+    const env = { ...browserProfiles.environment(target, process.env), AUX_EXTERNAL_FORWARD: String(hop + 1) };
+    const child = spawnProcess(process.execPath, app.isPackaged ? [url] : [app.getAppPath(), url], { env, detached: true, stdio: "ignore" });
+    child.once("error", () => { pendingExternalUrls.push(url); void flushExternalUrls(); });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fill a frame's form with saved personal info — explicit user request only.
+ * Settings stay in the runtime; the profile is pulled at click time so the
+ * menu never works from a stale copy. Returns the filled-field count.
+ */
+async function runAutofill(frame: Electron.WebFrameMain): Promise<number> {
+  try {
+    if (!channel) throw new Error("The browser runtime is not connected yet.");
+    const settings = await channel.call("api.invoke", { method: "settings.get", params: {}, desktopUser: true }) as { autofill?: AutofillProfile };
+    const profile = settings.autofill;
+    if (!hasAutofillData(profile)) {
+      void dialog.showMessageBox({ type: "info", title: "Personal info", message: "No personal info is saved yet.", detail: "Add your details in Settings → Browsing → Personal info, then use Fill personal info on a form.", buttons: ["OK"] });
+      return 0;
+    }
+    const filled = await frame.executeJavaScript(autofillScript(profile), true) as number;
+    if (!filled) void dialog.showMessageBox({ type: "info", title: "Personal info", message: "Aux couldn’t match this form to your personal info.", detail: "Filling only applies to empty contact and address fields and never touches password, payment or account fields.", buttons: ["OK"] });
+    return filled;
+  } catch (error) {
+    void dialog.showMessageBox({ type: "info", title: "Personal info", message: "Autofill couldn’t run on this page.", detail: error instanceof Error ? error.message : String(error), buttons: ["OK"] });
+    return 0;
+  }
+}
+
+// ---------- vault: human credential fill + save/update offers ----------
+
+/** Submitted credentials held briefly so a login that navigates away can still be saved. */
+const pendingVaultSaves = new Map<string, { pageId: string; username: string; password: string; origin: string; itemId?: string; timer: NodeJS.Timeout }>();
+
+async function noteCredentialOffer(pageId: string, offer: { username: string; origin: string }) {
+  const entry = registry.get(pageId);
+  const wc = entry?.view.webContents;
+  if (!entry || !wc || wc.isDestroyed() || !channel) return;
+  const origin = originOfAddress(offer.origin);
+  if (!origin) return;
+  try {
+    const status = await channel.call("api.invoke", { method: "vault.status", params: {}, desktopUser: true }) as { configured?: boolean; locked?: boolean };
+    if (!status.configured) return;
+    const items = await channel.call("api.invoke", { method: "vault.itemsForOrigin", params: { origin }, desktopUser: true }) as { itemId: string; username?: string }[];
+    // Capture now: a submit that navigates immediately would otherwise lose the
+    // fields. The form may live in a subframe (embedded auth widgets) — capture
+    // in the reporting frame when we can find it.
+    const frame = wc.mainFrame.framesInSubtree.find(f => originOfAddress(f.url) === origin) ?? wc.mainFrame;
+    const captured = await frame.executeJavaScript(captureLoginScript(), true) as { username: string; password: string } | null;
+    if (!captured?.password) return;
+    const existing = items.find(item => item.username && item.username === (captured.username || offer.username));
+    // An unchanged credential is a successful sign-in, not an update.
+    if (existing && !status.locked) {
+      const same = await channel.call("api.invoke", { method: "vault.secretMatches", params: { itemId: existing.itemId, secret: captured.password }, desktopUser: true }) as { matches?: boolean };
+      if (same?.matches) return;
+    }
+    const key = `${pageId}:${origin}`;
+    const prior = pendingVaultSaves.get(key);
+    if (prior) clearTimeout(prior.timer);
+    pendingVaultSaves.set(key, {
+      pageId, username: captured.username || offer.username, password: captured.password, origin, itemId: existing?.itemId,
+      timer: setTimeout(() => pendingVaultSaves.delete(key), 5 * 60_000),
+    });
+    const payload = { pageId, username: captured.username || offer.username, origin, kind: existing ? "update" as const : "save" as const, itemId: existing?.itemId, locked: !!status.locked };
+    const shell = shellForPage(pageId);
+    if (shell && !shell.webContents.isDestroyed()) shell.webContents.send("vault.saveOffer", payload);
+    else broadcastToShells("vault.saveOffer", payload);
+  } catch { /* vault unavailable or frame gone — no offer */ }
+}
+
+async function runVaultFill(pageId: string, frame: Electron.WebFrameMain, itemId: string) {
+  try {
+    if (!channel) throw new Error("The browser runtime is not connected yet.");
+    const entry = registry.get(pageId);
+    const url = entry?.view.webContents.isDestroyed() ? "" : entry?.view.webContents.getURL() ?? "";
+    // Validate the frame being filled — the credential lookup keyed on this
+    // frame's origin, and a subframe auth widget may differ from the top page.
+    const origin = originOfAddress(frame.url || url);
+    if (!origin) throw new Error("Credentials can only fill on an http(s) page.");
+    const credential = await channel.call("api.invoke", { method: "vault.fill", params: { itemId, pageId, origin }, desktopUser: true }) as { username?: string; secret: string };
+    const filled = await frame.executeJavaScript(credentialFillScript(credential), true) as number;
+    if (!filled) void dialog.showMessageBox({ type: "info", title: "Sign-in", message: "Aux couldn’t find a sign-in form on this page.", detail: "Fill works on a visible username + password form.", buttons: ["OK"] });
+  } catch (error) {
+    void dialog.showMessageBox({ type: "info", title: "Sign-in", message: "Aux couldn’t fill this credential.", detail: error instanceof Error ? error.message : String(error), buttons: ["OK"] });
+  }
+}
+
 function queueExternalUrl(url: string) {
   if (!isWebUrl(url)) return;
+  const hop = Number(desktopEnv.AUX_EXTERNAL_FORWARD ?? "0");
+  if (hop < 2) {
+    const target = browserProfiles.externalLinkTarget();
+    if (target && forwardExternalUrl(target, url)) return;
+  }
   pendingExternalUrls.push(url);
   void flushExternalUrls();
 }
@@ -183,6 +532,7 @@ app.on("open-url", (event, url) => {
   event.preventDefault();
   queueExternalUrl(url);
 });
+app.on("activate", () => browserProfiles.noteActive(browserProfiles.currentId));
 for (const value of process.argv.slice(1)) queueExternalUrl(value);
 let shellView: WebContentsView | null = null;
 const registry = new TargetRegistry();
@@ -213,6 +563,10 @@ const toolbarEdges = new Map<string, ReturnType<typeof attachToolbarEdgeWatch>>(
 const pageWindowOwners = new Map<string, string>();
 const stateForWindowId = (id?: string) => regularWindows.get(id ?? PRIMARY_WINDOW_ID) ?? regularWindows.get(PRIMARY_WINDOW_ID) ?? regularWindows.values().next().value;
 const stateForEntry = (entry?: ViewEntry) => stateForWindowId(entry?.windowId);
+
+/** Person's saved binding overrides and the effective table they produce — one source feeds menus, page interception and renderer dispatch. */
+let shortcutOverrides: ShortcutOverrides = {};
+let menuShortcuts: readonly ShortcutCommandDef[] = SHORTCUTS;
 const stateForShell = (contentsId: number) => [...regularWindows.values()].find(state => state.shellView.webContents.id === contentsId);
 const focusedRegularWindow = () => {
   const focused = BaseWindow.getFocusedWindow();
@@ -248,12 +602,23 @@ function clearPreviewWatch(state: RegularWindowState) {
   if (offscreen.endPreview(watch.pageId) && !state.win.isDestroyed()) applyStage(state);
 }
 const idleFreezeTimers=new Map<string,NodeJS.Timeout>();
+const idleDiscardTimers=new Map<string,NodeJS.Timeout>();
 const frozenPages=new Set<string>();
 const desiredFrozenPages=new Set<string>();
+/** Views being discarded — onDestroyed keeps the catalog record, the tab
+ *  becomes a discarded placeholder rather than a removal. */
+const discarding=new Set<string>();
+/** Last scroll offsets for discarded/closed tabs — LRU like closedHistory. */
+const scrollPositions=new Map<string,{x:number;y:number}>();
+function rememberScroll(entry:ViewEntry,position:{x:number;y:number}|null){
+  if(!position||entry.popup)return;
+  scrollPositions.delete(entry.pageId);scrollPositions.set(entry.pageId,position);
+  while(scrollPositions.size>CLOSED_HISTORY_LIMIT)scrollPositions.delete(scrollPositions.keys().next().value!);
+}
+const pausedAgent=createPausedAgentTracker();
 const lifecycleOperations=new Map<string,Promise<void>>();
-const IDLE_FREEZE_MS=10*60_000;
 function setPageFrozen(entry:ViewEntry,frozen:boolean){
-  if(entry.popup||entry.kind==='engine'||entry.view.webContents.isDestroyed())return Promise.resolve();
+  if(entry.popup||entry.view.webContents.isDestroyed())return Promise.resolve();
   if(frozen)desiredFrozenPages.add(entry.pageId);else desiredFrozenPages.delete(entry.pageId);
   const previous=lifecycleOperations.get(entry.pageId)??Promise.resolve();
   const operation=previous.catch(()=>{}).then(async()=>{
@@ -264,26 +629,54 @@ function setPageFrozen(entry:ViewEntry,frozen:boolean){
       const wc = entry.view.webContents;
       let mediaAllowed = false;
       try { mediaAllowed = Object.entries(sitePermissions[new URL(wc.getURL()).origin] ?? {}).some(([permission, decision]) => permission.startsWith("media:") && decision === "allow"); } catch { /* no website origin */ }
-      const protectedPage = !state || state.focusedPageId === entry.pageId || state.splitPageId === entry.pageId
-        || entry.runtimeOwned || offscreen.holds(entry.pageId)
-        || [...liveDownloads.values()].some(download => download.snapshot().pageId === entry.pageId);
-      if (busy || protectedPage || mediaAllowed || wc.isDestroyed() || wc.isLoading() || wc.isCurrentlyAudible() || wc.isBeingCaptured() || !desiredFrozenPages.has(entry.pageId)) {
+      if (!canFreeze({
+        popup: !!entry.popup, runtimeOwned: !!entry.runtimeOwned, agentPaused: pausedAgent.isPaused(entry.pageId),
+        focused: state?.focusedPageId === entry.pageId, split: state?.splitPageId === entry.pageId,
+        offscreenHold: offscreen.holds(entry.pageId),
+        downloading: [...liveDownloads.values()].some(download => download.snapshot().pageId === entry.pageId),
+        mediaAllowed, busy, audible: wc.isCurrentlyAudible(), loading: wc.isLoading(), captured: wc.isBeingCaptured(), destroyed: wc.isDestroyed(),
+      }) || !desiredFrozenPages.has(entry.pageId)) {
         desiredFrozenPages.delete(entry.pageId);
         if (state && state.focusedPageId !== entry.pageId && state.splitPageId !== entry.pageId) scheduleIdleFreeze(entry);
         return;
       }
     }
-    try{await entry.view.webContents.debugger.sendCommand('Page.setWebLifecycleState',{state:shouldFreeze?'frozen':'active'});if(shouldFreeze)frozenPages.add(entry.pageId);else frozenPages.delete(entry.pageId);}catch{browserHealth.noteSuspensionFailure();desiredFrozenPages.delete(entry.pageId);frozenPages.delete(entry.pageId);}
+    try{await entry.view.webContents.debugger.sendCommand('Page.setWebLifecycleState',{state:shouldFreeze?'frozen':'active'});if(shouldFreeze){frozenPages.add(entry.pageId);scheduleIdleDiscard(entry);}else frozenPages.delete(entry.pageId);noteTab(entry.pageId,{lifecycle:shouldFreeze?"frozen":"live"});}catch{browserHealth.noteSuspensionFailure();desiredFrozenPages.delete(entry.pageId);frozenPages.delete(entry.pageId);}
   }).finally(()=>{if(lifecycleOperations.get(entry.pageId)===operation)lifecycleOperations.delete(entry.pageId);});
   lifecycleOperations.set(entry.pageId,operation);
   return operation;
 }
-function wakePage(entry?:ViewEntry){if(!entry)return Promise.resolve();const timer=idleFreezeTimers.get(entry.pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(entry.pageId);return setPageFrozen(entry,false);}
+function wakePage(entry?:ViewEntry){if(!entry)return Promise.resolve();const timer=idleFreezeTimers.get(entry.pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(entry.pageId);const discard=idleDiscardTimers.get(entry.pageId);if(discard)clearTimeout(discard);idleDiscardTimers.delete(entry.pageId);return setPageFrozen(entry,false);}
 function scheduleIdleFreeze(entry:ViewEntry){
-  if(entry.popup||entry.kind==='engine'||entry.runtimeOwned||offscreen.holds(entry.pageId)||entry.view.webContents.isDestroyed()||frozenPages.has(entry.pageId)||idleFreezeTimers.has(entry.pageId))return;
-  const timer=setTimeout(()=>{idleFreezeTimers.delete(entry.pageId);const state=stateForEntry(entry),wc=entry.view.webContents;if(!state||wc.isDestroyed()||entry.runtimeOwned)return;if(state.focusedPageId===entry.pageId||state.splitPageId===entry.pageId||offscreen.holds(entry.pageId))return;if(wc.isCurrentlyAudible()||wc.isLoading()){scheduleIdleFreeze(entry);return;}void setPageFrozen(entry,true);},IDLE_FREEZE_MS);timer.unref();idleFreezeTimers.set(entry.pageId,timer);
+  if(entry.popup||offscreen.holds(entry.pageId)||entry.view.webContents.isDestroyed()||frozenPages.has(entry.pageId)||idleFreezeTimers.has(entry.pageId))return;
+  if(entry.runtimeOwned&&!pausedAgent.isPaused(entry.pageId))return;
+  const timer=setTimeout(()=>{idleFreezeTimers.delete(entry.pageId);const state=stateForEntry(entry),wc=entry.view.webContents;if(!state||wc.isDestroyed())return;if(entry.runtimeOwned&&!pausedAgent.isPaused(entry.pageId))return;if(state.focusedPageId===entry.pageId||state.splitPageId===entry.pageId||offscreen.holds(entry.pageId))return;if(wc.isCurrentlyAudible()||wc.isLoading()){scheduleIdleFreeze(entry);return;}void setPageFrozen(entry,true);},IDLE_FREEZE_MS);timer.unref();idleFreezeTimers.set(entry.pageId,timer);
 }
-function forgetPageLifecycle(pageId:string){const timer=idleFreezeTimers.get(pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(pageId);desiredFrozenPages.delete(pageId);frozenPages.delete(pageId);lifecycleOperations.delete(pageId);}
+/** Frozen this long without a wake → destroy the renderer; the catalog record
+ *  stays so the tab reloads lazily on activation (BR-03 memory floor). */
+function scheduleIdleDiscard(entry:ViewEntry){
+  if(entry.popup||entry.runtimeOwned||idleDiscardTimers.has(entry.pageId))return;
+  const timer=setTimeout(()=>{
+    idleDiscardTimers.delete(entry.pageId);
+    // Serialize with any in-flight freeze for the same page.
+    const previous=lifecycleOperations.get(entry.pageId)??Promise.resolve();
+    const operation=previous.catch(()=>{}).then(()=>discardPageView(entry)).finally(()=>{if(lifecycleOperations.get(entry.pageId)===operation)lifecycleOperations.delete(entry.pageId);});
+    lifecycleOperations.set(entry.pageId,operation);
+  },FROZEN_DISCARD_MS);timer.unref();idleDiscardTimers.set(entry.pageId,timer);
+}
+async function discardPageView(entry:ViewEntry){
+  const pageId=entry.pageId;
+  const state=stateForEntry(entry);
+  const wc=entry.view.webContents;
+  if(!frozenPages.has(pageId)||wc.isDestroyed())return;
+  if(!canDiscard({popup:!!entry.popup,runtimeOwned:!!entry.runtimeOwned,agentPaused:pausedAgent.isPaused(pageId),focused:state?.focusedPageId===pageId,split:state?.splitPageId===pageId,offscreenHold:offscreen.holds(pageId),downloading:[...liveDownloads.values()].some(download=>download.snapshot().pageId===pageId),destroyed:wc.isDestroyed()}))return;
+  if(!state)return;
+  rememberScroll(entry,await captureScrollPosition(wc));
+  rememberClosedHistory(entry);
+  discarding.add(pageId);
+  try{await destroyPageView(entry,state.win);}finally{discarding.delete(pageId);}
+}
+function forgetPageLifecycle(pageId:string){const timer=idleFreezeTimers.get(pageId);if(timer)clearTimeout(timer);idleFreezeTimers.delete(pageId);const discard=idleDiscardTimers.get(pageId);if(discard)clearTimeout(discard);idleDiscardTimers.delete(pageId);desiredFrozenPages.delete(pageId);frozenPages.delete(pageId);lifecycleOperations.delete(pageId);pausedAgent.forget(pageId);}
 const pageFinder = new PageFinder();
 
 function log(...args: unknown[]) {
@@ -295,7 +688,13 @@ function reportRuntimeStatus(connected: boolean, detail?: string) {
 }
 
 function sendRuntimeEvent(event: unknown) {
-  const value = event as { type?: string; payload?: { pageId?: string; page?: { pageId?: string; windowId?: string } } };
+  const value = event as { type?: string; payload?: { pageId?: string; page?: { pageId?: string; windowId?: string }; run?: { pageIds?: string[]; status?: string } }; runId?: string };
+  // A paused run releases its pages — they become freezable; a resumed run's
+  // pages wake before the next driver command reaches them.
+  if (value.type === "run.updated" && value.payload?.run) {
+    for (const left of pausedAgent.observe(value.runId, value.payload.run.pageIds, value.payload.run.status)) void wakePage(registry.get(left));
+    if (value.payload.run.status === "paused") for (const id of value.payload.run.pageIds ?? []) { const entry = registry.get(id); if (entry) scheduleIdleFreeze(entry); }
+  }
   const pageId = value.payload?.page?.pageId ?? value.payload?.pageId;
   const windowId = value.payload?.page?.windowId ?? (pageId ? pageWindowOwners.get(pageId) : undefined);
   const owner = windowId ? regularWindows.get(windowId) : undefined;
@@ -366,15 +765,62 @@ let privateControlSequence = 0;
 
 function openPrivateWindow() {
   const args = app.isPackaged ? ["--aux-private"] : [app.getAppPath(), "--aux-private"];
-  const child = spawnProcess(app.getPath("exe"), args, { detached: true, stdio: ["ignore", "ignore", "ignore", "ipc"], env: process.env });
+  const child = spawnProcess(app.getPath("exe"), args, {
+    detached: true, stdio: ["ignore", "ignore", "ignore", "ipc"],
+    env: {
+      ...process.env,
+      // Never inherit debug channels — the private process must stay
+      // undiscoverable through the shared/regular debugging endpoint.
+      NODE_OPTIONS: undefined,
+      ELECTRON_EXTRA_LAUNCH_ARGS: undefined,
+      // Read-only config handoff: the private process never writes these back.
+      AUX_PRIVATE_DATA_DIR: DATA_DIR,
+      AUX_PRIVATE_TRACKER_BLOCK: privacy.trackerBlock ? "1" : "0",
+      AUX_PRIVATE_ALLOWED: privacy.allowedHosts.join(","),
+      AUX_PRIVATE_HTTPS_UPGRADE: privacy.httpsUpgrade ? "1" : "0",
+    },
+  });
   privateChildren.set(child, { ready: false });
   child.on("message", message => {
-    const value = message as { type?: string };
+    const value = message as { type?: string; requestId?: string; method?: string; params?: unknown };
     if (value?.type === "aux-private-ready") {
       const state = privateChildren.get(child);
       if (state) state.ready = true;
     } else if (value?.type === "aux-private-closing") {
       privateChildren.delete(child);
+    } else if (value?.type === "aux-private-translate" && value.requestId) {
+      // Private pages translate through the regular runtime's model provider.
+      // Only translate methods proxy — the private process never gains access
+      // to regular runtime data, and page text stays in memory.
+      void (async () => {
+        let payload: { ok: boolean; result?: unknown; error?: string };
+        try {
+          const method = value.method;
+          if (method !== "translate.page" && method !== "translate.text") throw new Error("Unsupported method.");
+          if (!channel) throw new Error("Translation is unavailable while the runtime is offline.");
+          const params = MethodSchemas[method].parse(value.params ?? {});
+          payload = { ok: true, result: await channel.call("api.invoke", { method, params, desktopUser: true }) };
+        } catch (error) {
+          payload = { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+        try { child.send({ type: "aux-private-translate-result", requestId: value.requestId, ...payload }, () => {}); } catch {}
+      })();
+    } else if (value?.type === "aux-private-filters" && value.requestId) {
+      // Filter-list mutations run here so the shared cache stays single-writer.
+      const action = (value as { action?: string }).action;
+      const payloadArgs = (value as { args?: Record<string, unknown> }).args ?? {};
+      void (async () => {
+        let payload: { ok: boolean; result?: unknown; error?: string };
+        try {
+          if (action === "update") payload = { ok: true, result: await filterOps.update() };
+          else if (action === "add") payload = { ok: true, result: await filterOps.add(payloadArgs.name, payloadArgs.url) };
+          else if (action === "remove") payload = { ok: true, result: filterOps.remove(payloadArgs.id) };
+          else throw new Error("Unsupported filter action.");
+        } catch (error) {
+          payload = { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+        try { child.send({ type: "aux-private-filters-result", requestId: value.requestId, ...payload }, () => {}); } catch {}
+      })();
     }
   });
   const forget = () => privateChildren.delete(child);
@@ -493,17 +939,88 @@ function saveSitePermissions(next: typeof sitePermissions) {
 }
 
 const PRIVACY_FILE = join(DATA_DIR, "privacy.json");
-interface PrivacyState { trackerBlock: boolean }
+interface PrivacyState { trackerBlock: boolean; allowedHosts: string[]; httpsUpgrade: boolean }
 let privacy: PrivacyState = (() => {
   try {
     const parsed = JSON.parse(readFileSync(PRIVACY_FILE, "utf8")) as Partial<PrivacyState>;
-    return { trackerBlock: parsed.trackerBlock !== false };
+    return {
+      trackerBlock: parsed.trackerBlock !== false,
+      allowedHosts: Array.isArray(parsed.allowedHosts) ? parsed.allowedHosts.filter(h => typeof h === "string") : [],
+      httpsUpgrade: parsed.httpsUpgrade !== false,
+    };
   } catch {
-    return { trackerBlock: true };
+    return { trackerBlock: true, allowedHosts: [], httpsUpgrade: true };
   }
 })();
 let blockedRequests = 0;
 const insecureBypass = createInsecureBypass();
+const httpsFirst = new HttpsFirst();
+httpsFirst.enabled = privacy.httpsUpgrade;
+const filterLists = new FilterLists(DATA_DIR);
+// Built-in seed + every enabled, downloaded list. Rebuilt on boot and after
+// each update so the request policy reads the merged set live.
+let blockedHostSet = new Set<string>();
+// Shared by the regular IPC surface and the private-process proxy so list
+// mutations always run in this process — the shared cache stays single-writer.
+const filterOps = {
+  status: () => filterLists.status(TRACKER_HOSTS.size),
+  update: async () => {
+    const status = await filterLists.update(fetchFilterText);
+    refreshBlockedHosts();
+    return status;
+  },
+  add: async (name: unknown, url: unknown) => {
+    if (typeof name !== "string" || typeof url !== "string") throw new Error("Choose a filter list URL.");
+    const sources = filterLists.addSource(name, url);
+    await filterLists.update(fetchFilterText);
+    refreshBlockedHosts();
+    return sources;
+  },
+  remove: (id: unknown) => {
+    if (typeof id !== "string") throw new Error("Choose a filter list to remove.");
+    const sources = filterLists.removeSource(id);
+    refreshBlockedHosts();
+    return sources;
+  },
+};
+
+function refreshBlockedHosts() {
+  blockedHostSet = new Set([...TRACKER_HOSTS, ...filterLists.loadHosts()]);
+}
+refreshBlockedHosts();
+/** Re-apply cosmetic filtering to open pages after toggle/allow changes. */
+function applyCosmeticAll() {
+  for (const entry of registry.all()) {
+    try { applyCosmetic(entry.view.webContents, privacy.trackerBlock && !trackersAllowed(new URL(entry.view.webContents.getURL()).hostname)); }
+    catch { /* page mid-navigation */ }
+  }
+}
+/** Site-level allow — a listed host and everything under it is exempt. */
+function trackersAllowed(hostname: string): boolean {
+  let host = hostname.toLowerCase();
+  while (host) {
+    if (privacy.allowedHosts.includes(host)) return true;
+    const dot = host.indexOf(".");
+    if (dot < 0) break;
+    host = host.slice(dot + 1);
+  }
+  return false;
+}
+
+// First run seeds one maintained list; afterwards lists refresh in the
+// background when the newest copy is over a day old. Startup never waits —
+// the built-in seed plus whatever is already cached always applies.
+const DEFAULT_FILTER_SOURCE = { name: "StevenBlack unified hosts", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts" };
+const FILTER_STALE_MS = 24 * 60 * 60 * 1000;
+function maintainFilterLists() {
+  try {
+    if (!filterLists.sources().length) filterLists.addSource(DEFAULT_FILTER_SOURCE.name, DEFAULT_FILTER_SOURCE.url);
+    const stale = filterLists.status(TRACKER_HOSTS.size).sources
+      .every(source => !source.enabled || !source.meta?.fetchedAt || Date.now() - source.meta.fetchedAt > FILTER_STALE_MS);
+    if (!stale) return;
+    void filterLists.update(fetchFilterText).then(() => refreshBlockedHosts()).catch(() => {});
+  } catch { /* blocking still works from the built-in seed */ }
+}
 
 function savePrivacy(next: PrivacyState) {
   const temporary = `${PRIVACY_FILE}.tmp`;
@@ -538,8 +1055,11 @@ function configurePagePermissions() {
     read: () => sitePermissions,
     save: saveSitePermissions,
   });
-  installTrackerBlock(ses, {
-    enabled: () => privacy.trackerBlock,
+  installRequestPolicy(ses, {
+    httpsUpgrade: details => httpsFirst.upgrade(details.url),
+    blockingEnabled: () => privacy.trackerBlock,
+    blockedHosts: () => blockedHostSet,
+    hostAllowed: trackersAllowed,
     onBlocked: () => { blockedRequests += 1; },
   });
   // Explicit per-host certificate bypass for "proceed anyway" choices this
@@ -582,6 +1102,61 @@ function notifyRuntime(type: string, payload: unknown) {
   channel?.notify(type, payload);
 }
 
+/** Locale-appropriate label for the model prompt, e.g. "English". */
+function translateTargetLabel(): string {
+  const locale = app.getLocale() || "en";
+  try { return new Intl.DisplayNames([locale], { type: "language" }).of(locale.split("-")[0]!) ?? "English"; }
+  catch { return "English"; }
+}
+
+const pageTranslations = new Map<string, { lang: string; count: number }>();
+
+async function runPageTranslate(pageId: string) {
+  const entry = registry.get(pageId);
+  if (!entry) throw new Error("This page is no longer available.");
+  const wc = entry.view.webContents;
+  const url = wc.getURL();
+  if (!/^https?:/.test(url)) throw new Error("Open a web page to translate.");
+  if (/\.pdf($|[?#])/i.test(url)) throw new Error("PDF documents can't be translated in place — open them in Reader or export text first.");
+  if (!channel) throw new Error("Translation is unavailable while the runtime is offline.");
+  broadcastToShells("translation-changed", { pageId, pending: true });
+  const extracted = await wc.executeJavaScript(extractTextsScript(), true) as { texts?: string[]; title?: string; lang?: string };
+  if (!extracted?.texts?.length) throw new Error("No readable text was found on this page.");
+  const result = await channel.call("api.invoke", {
+    method: "translate.page",
+    params: { texts: extracted.texts, target: translateTargetLabel(), context: (extracted.title ?? "").slice(0, 200) },
+    desktopUser: true,
+  }) as { lang: string; translations: string[]; truncated: boolean };
+  if (wc.isDestroyed() || wc.getURL() !== url) throw new Error("The page changed while translating.");
+  const applied = await wc.executeJavaScript(applyTranslationsScript(result.translations), true) as { applied: number; expired: boolean };
+  if (applied.expired) throw new Error("The page changed while translating.");
+  const state = { lang: result.lang, count: applied.applied, truncated: result.truncated };
+  pageTranslations.set(pageId, { lang: result.lang, count: applied.applied });
+  broadcastToShells("translation-changed", { pageId, ...state });
+  return state;
+}
+
+async function runSelectionTranslate(pageId: string, text: string, x: number, y: number) {
+  const entry = registry.get(pageId);
+  if (!entry || !channel) throw new Error("Translation is unavailable right now.");
+  const result = await channel.call("api.invoke", {
+    method: "translate.text",
+    params: { text: text.slice(0, 12000), target: translateTargetLabel(), context: entry.view.webContents.getTitle().slice(0, 200) },
+    desktopUser: true,
+  }) as { lang: string; translation: string };
+  if (entry.view.webContents.isDestroyed()) return;
+  await entry.view.webContents.executeJavaScript(translateBubbleScript(x, y, result.lang, translateTargetLabel(), result.translation), true).catch(() => {});
+}
+
+async function runShowOriginal(pageId: string) {
+  const entry = registry.get(pageId);
+  if (!entry) return 0;
+  const restored = await entry.view.webContents.executeJavaScript(restoreOriginalScript(), true).catch(() => 0) as number;
+  pageTranslations.delete(pageId);
+  broadcastToShells("translation-changed", { pageId, lang: null, count: 0 });
+  return restored;
+}
+
 const viewHooks = {
   onExternalLink: (entry: ViewEntry, url: string) => {
     const state=stateForEntry(entry);
@@ -590,7 +1165,7 @@ const viewHooks = {
     return offerExternalLink(entry.view.webContents,entry.popup??state?.win,url);
   },
   onFullscreenReady: (entry: ViewEntry) => {
-    if(entry.popup || entry.kind === "engine")return;
+    if(entry.popup)return;
     wirePageFullscreen(entry.view.webContents,()=>{
       const state=stateForEntry(entry);
       return state?{window:state.win,canEnter:()=>!state.overlayOpen&&state.stagePageId===entry.pageId&&!entry.runtimeOwned,changed:()=>applyStage(state)}:undefined;
@@ -599,15 +1174,21 @@ const viewHooks = {
   onBrowserShortcut: (entry: ViewEntry) => {const state=stateForEntry(entry);if(state&&!entry.popup)exitPageFullscreen(state.win);},
   onNavigated: (pageId: string, url: string) => {
     const entry = registry.get(pageId);
-    if (entry && entry.kind !== "engine") siteZoom.apply(entry.view.webContents, url);
+    if (entry) siteZoom.apply(entry.view.webContents, url);
+    noteTab(pageId, { url, navigationError: undefined, crashed: false });
+    if (pageTranslations.delete(pageId)) broadcastToShells("translation-changed", { pageId, lang: null, count: 0 });
     notifyRuntime("view.navigated", { pageId, url });
   },
   onTitle: (pageId: string, title: string) => {
+    noteTab(pageId, { title });
     notifyRuntime("view.titleChanged", { pageId, title });
     const state = stateForEntry(registry.get(pageId));
     if (state?.focusedPageId === pageId) updateWindowTitle(state, title);
   },
-  onFavicon: (pageId: string, favicon: string) => notifyRuntime("view.faviconChanged", { pageId, favicon }),
+  onFavicon: (pageId: string, favicon: string) => {
+    noteTab(pageId, { favicon });
+    notifyRuntime("view.faviconChanged", { pageId, favicon });
+  },
   confirmUnload: (entry: ViewEntry) => {
     if (exitApproved || stateForEntry(entry)?.closeApproved) return true;
     const wc = entry.view.webContents;
@@ -621,7 +1202,7 @@ const viewHooks = {
     const owner = stateForEntry(entry)?.win;
     return (entry.popup || owner ? dialog.showMessageBoxSync(entry.popup ?? owner!, options) : 0) === 1;
   },
-  onAudio: (pageId:string,state:{muted:boolean;audible:boolean})=>shellForPage(pageId)?.webContents.send('view.audio',{pageId,...state}),
+  onAudio: (pageId:string,state:{muted:boolean;audible:boolean})=>{noteTab(pageId,{muted:state.muted,audible:state.audible});shellForPage(pageId)?.webContents.send('view.audio',{pageId,...state});},
   onCursor: (pageId: string, cursor: string) => {
     const state = stateForEntry(registry.get(pageId));
     if (!state?.toolbarOverlay || state.shellView.webContents.isDestroyed()) return;
@@ -629,21 +1210,55 @@ const viewHooks = {
   },
   onLoading: (pageId: string, loading: boolean) => {
     const entry=registry.get(pageId);if(loading)void wakePage(entry);else if(entry){const state=stateForEntry(entry);if(state&&state.focusedPageId!==pageId&&state.splitPageId!==pageId&&!offscreen.holds(pageId))scheduleIdleFreeze(entry);}
+    noteTab(pageId, { loading });
     shellForPage(pageId)?.webContents.send("view.loading", { pageId, loading });
     notifyRuntime("view.loading", { pageId, loading });
   },
-  onNavState: (pageId: string, canGoBack: boolean, canGoForward: boolean) =>
-    notifyRuntime("view.navState", { pageId, canGoBack, canGoForward }),
-  onNavigationError: (pageId: string, error: { url: string; code: number; message: string } | null) => notifyRuntime("view.navigationError", { pageId, error }),
-  onCrashed: (pageId: string) => { browserHealth.notePageCrash(); notifyRuntime("view.crashed", { pageId }); },
+  onNavState: (pageId: string, canGoBack: boolean, canGoForward: boolean) => {
+    noteTab(pageId, { canGoBack, canGoForward });
+    notifyRuntime("view.navState", { pageId, canGoBack, canGoForward });
+  },
+  onNavigationError: (pageId: string, error: { url: string; code: number; message: string } | null) => {
+    const record = error ? { ...error, upgradedFrom: httpsFirst.httpFallback(error.url, error.code) } : null;
+    noteTab(pageId, { navigationError: record ?? undefined, ...(error ? { loading: false } : {}) });
+    notifyRuntime("view.navigationError", { pageId, error: record });
+  },
+  onCrashed: (pageId: string) => { noteTab(pageId, { crashed: true, loading: false }); browserHealth.notePageCrash(); notifyRuntime("view.crashed", { pageId }); },
   onUnresponsive:()=>browserHealth.notePageUnresponsive(),
-  onDestroyed: (pageId: string) => { const owner=shellForPage(pageId);forgetPageLifecycle(pageId); registry.remove(pageId); owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true});notifyRuntime("view.removed", { pageId }); },
+  onDestroyed: (pageId: string, wc: Electron.WebContents) => { const owner=shellForPage(pageId);const ownerState=stateForWindowId(pageWindowOwners.get(pageId));
+    // A stale destroy from a superseded instance must not touch the current
+    // view's bookkeeping — the pageId already has a fresh view registered.
+    const registered = registry.get(pageId);
+    // Electron hands out a fresh webContents wrapper per access, so === is
+    // meaningless — compare the stable wc id through byWcId instead. A stale
+    // destroy from a superseded view no longer owns a byWcId slot and must not
+    // touch the fresh entry's bookkeeping.
+    if (registered && registry.byWebContentsId(wc.id) !== registered) return;
+    forgetPageLifecycle(pageId); registry.remove(pageId); pageWindowOwners.delete(pageId);
+    for (const [key, pending] of pendingVaultSaves) if (pending.pageId === pageId) { clearTimeout(pending.timer); pendingVaultSaves.delete(key); }
+    // view.removed must land before the catalog remove: the catalog path skips
+    // the runtime's successor pick by contract, and deleting the live page
+    // there first would leave a removed stage page with no restore.
+    notifyRuntime("view.removed", { pageId, discarded: discarding.has(pageId) });
+    // A discarded tab keeps its record — it reloads lazily on activation.
+    // Teardown destroys (window close, app quit) are not tab closes either —
+    // the record stays so the session restores the tab on next launch.
+    const teardown = exitApproved || ownerState?.closeApproved === true || closingRegularWindows.has(ownerState?.id ?? "");
+    if (discarding.has(pageId) && tabCatalog.tab(pageId)) noteTab(pageId, { lifecycle: "discarded" });
+    else if (!teardown && !controllerClosing.has(pageId) && tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
+    owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true}); },
   onPopup: (entry: ViewEntry, activate = false) => {
     registry.add(entry);
     pageWindowOwners.set(entry.pageId, entry.windowId ?? PRIMARY_WINDOW_ID);
     const state = stateForEntry(entry);
     if (!entry.popup && state) { state.win.contentView.addChildView(entry.view); applyStage(state); }
-    notifyRuntime("view.popup", { showBlankDocument: entry.showBlankDocument, pageId: entry.pageId, windowId: entry.windowId ?? PRIMARY_WINDOW_ID, marker: entry.marker, url: entry.view.webContents.getURL(), title: entry.view.webContents.getTitle(), activate });
+    const windowId = entry.windowId ?? PRIMARY_WINDOW_ID;
+    const url = entry.view.webContents.getURL() || "about:blank";
+    publishTabPatch(tabCatalog.apply([
+      { op: "upsert", tab: newTabRecord({ pageId: entry.pageId, windowId, url, title: entry.view.webContents.getTitle(), popup: !!entry.popup }), origin: "external" },
+      ...(activate ? [{ op: "window", window: { windowId, order: tabCatalog.window(windowId)?.order.filter(id => id !== entry.pageId).concat(entry.pageId) ?? [entry.pageId], activePageId: entry.pageId } } satisfies TabPatchOp] : []),
+    ]));
+    notifyRuntime("view.popup", { showBlankDocument: entry.showBlankDocument, pageId: entry.pageId, windowId, marker: entry.marker, url, title: entry.view.webContents.getTitle(), activate });
   },
   onTakeover: (pageId: string) => {
     // acquireStage is held for the whole program, including when the human is
@@ -652,13 +1267,39 @@ const viewHooks = {
     if (offscreen.holds(pageId)) return;
     notifyRuntime("view.takeover", { pageId });
   },
+  onNavGesture: (pageId: string, direction: "back" | "forward") => {
+    const entry = registry.get(pageId);
+    if (!entry || entry.view.webContents.isDestroyed()) return;
+    // A swipe/overscroll that becomes navigation is a deliberate drive —
+    // it takes the page back from an idle agent the way a real click does.
+    if (entry.runtimeOwned) viewHooks.onTakeover(pageId);
+    if (direction === "back") tabPorts.back(pageId); else tabPorts.forward(pageId);
+  },
+  onAutofill: (frame: Electron.WebFrameMain) => { void runAutofill(frame); },
+  onCredentials: async (frame: Electron.WebFrameMain) => {
+    if (!channel) return [];
+    const origin = originOfAddress(frame.url);
+    if (!origin) return [];
+    try {
+      return await channel.call("api.invoke", { method: "vault.itemsForOrigin", params: { origin }, desktopUser: true }) as { itemId: string; label: string; username?: string }[];
+    } catch { return []; }
+  },
+  onCredentialOffer: (pageId: string, offer: { username: string; origin: string }) => { void noteCredentialOffer(pageId, offer); },
+  cosmeticFiltered: (hostname: string) => privacy.trackerBlock && !trackersAllowed(hostname),
+  onTranslatePage: (pageId: string) => {
+    void runPageTranslate(pageId).catch(error => broadcastToShells("translation-changed", { pageId, error: error instanceof Error ? error.message : String(error) }));
+  },
+  onTranslateSelection: (pageId: string, text: string, x: number, y: number) => {
+    void runSelectionTranslate(pageId, text, x, y).catch(error => broadcastToShells("translation-changed", { pageId, error: error instanceof Error ? error.message : String(error) }));
+  },
+  onVaultFill: (pageId: string, frame: Electron.WebFrameMain, itemId: string) => { void runVaultFill(pageId, frame, itemId); },
   openAsTab: (url: string, options?: { windowId?: string; background?: boolean; referrer?: Electron.Referrer }) => {
     if (!isWebUrl(url)) return;
     setImmediate(() => {
       const state = stateForWindowId(options?.windowId);
       if (!state) return;
       const pageId = `pop_${randomUUID()}`;
-      const marker = `vtab-${pageId}`;
+      const marker = `atab-${pageId}`;
       const entry = createPageView({
         win: state.win,
         registry,
@@ -672,12 +1313,17 @@ const viewHooks = {
       });
       pageWindowOwners.set(pageId, state.id);
       applyStage(state);
+      const activate = options?.background !== true;
+      publishTabPatch(tabCatalog.apply([
+        { op: "upsert", tab: newTabRecord({ pageId, windowId: state.id, url }), origin: "external" },
+        ...(activate ? [{ op: "window", window: { windowId: state.id, order: tabCatalog.window(state.id)?.order.filter(id => id !== pageId).concat(pageId) ?? [pageId], activePageId: pageId } } satisfies TabPatchOp] : []),
+      ]));
       let announced = false;
       const announce = async () => {
         if (announced || entry.view.webContents.isDestroyed()) return;
         for (let attempt = 0; attempt < 20; attempt++) {
           const ready = await entry.view.webContents
-            .executeJavaScript(`globalThis.__vectorTid === ${JSON.stringify(marker)}`, true)
+            .executeJavaScript(`globalThis.__auxTid === ${JSON.stringify(marker)}`, true)
             .catch(() => false);
           if (ready) {
             if (announced) return;
@@ -703,7 +1349,7 @@ const viewHooks = {
   },
   sendShortcut: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }, pageId: string) =>
     shellForPage(pageId)?.webContents.send("shortcut", s),
-  onPageAction: (action: import("@vector/contracts").PageQuickAction) => {
+  onPageAction: (action: import("@aux/contracts").PageQuickAction) => {
     const shell = shellForPage(action.pageId);
     if (!shell || shell.webContents.isDestroyed()) return;
     shell.webContents.send("page.quickAction", action);
@@ -714,7 +1360,7 @@ const viewHooks = {
 function registerNativeHandlers(ch: RpcChannel) {
   ch.onMethod("native.listPages", () => ({
     pages: registry.all()
-      .filter(entry => entry.kind !== "engine" && !entry.view.webContents.isDestroyed())
+      .filter(entry => !entry.view.webContents.isDestroyed())
       .map(entry => ({
         pageId: entry.pageId,
         windowId: entry.windowId ?? PRIMARY_WINDOW_ID,
@@ -726,53 +1372,70 @@ function registerNativeHandlers(ch: RpcChannel) {
       })),
   }));
   ch.onMethod("native.createPage", async (p) => {
-    const { pageId, windowId, marker, url, background,ownedByRuntime, kind } = p as {
+    const { pageId, windowId, marker, url, background,ownedByRuntime } = p as {
       pageId: string;
       windowId?: string;
       marker: string;
       url: string;
       background: boolean;
       ownedByRuntime?:boolean;
-      kind?: "chromium" | "engine";
     };
     const requestedWindowId = windowId ?? PRIMARY_WINDOW_ID;
     const state = regularWindows.get(requestedWindowId) ?? await createRegularWindow(requestedWindowId);
-    createPageView({ win: state.win, registry, pageId, windowId: state.id, marker, url, background,ownedByRuntime, kind, hooks: viewHooks });
-    pageWindowOwners.set(pageId, state.id);
-    applyStage(state);
+    // The runtime may retry createPage after a dropped reply — one pageId must
+    // never produce two live views.
+    if (!registry.get(pageId)) {
+      createPageView({ win: state.win, registry, pageId, windowId: state.id, marker, url, background,ownedByRuntime, hooks: viewHooks });
+      pageWindowOwners.set(pageId, state.id);
+      applyStage(state);
+      const priorOrder = tabCatalog.window(state.id)?.order ?? [];
+      // A re-materialized tab keeps its strip position — only genuinely new
+      // pages append.
+      const order = priorOrder.includes(pageId) ? priorOrder : [...priorOrder, pageId];
+      publishTabPatch(tabCatalog.apply([
+        { op: "upsert", tab: newTabRecord({ pageId, windowId: state.id, url, runtimeOwned: ownedByRuntime === true }), origin: "runtime" },
+        ...(!background ? [{ op: "window", window: { windowId: state.id, order, activePageId: pageId } } satisfies TabPatchOp] : []),
+      ]));
+    }
     const wc = registry.get(pageId)?.view.webContents;
     if (wc) notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
     return { ok: true };
   });
   ch.onMethod("native.movePage", async (raw) => {
     const { pageId, windowId, activate = true } = raw as { pageId: string; windowId?: string; activate?: boolean };
-    const entry = registry.get(pageId);
-    const source = stateForEntry(entry);
-    if (!entry || entry.popup || !source || entry.runtimeOwned) throw new Error("This tab cannot be moved to another window.");
-    const destination = windowId ? regularWindows.get(windowId) : await createRegularWindow();
-    if (!destination || destination.win.isDestroyed() || source.win.isDestroyed() || entry.view.webContents.isDestroyed()) throw new Error("The source or destination window was closed.");
-    if (source.id === destination.id) return { windowId: destination.id, sourceActivePageId: source.focusedPageId };
-    source.win.contentView.removeChildView(entry.view);
-    try { destination.win.contentView.addChildView(entry.view); }
-    catch (error) { source.win.contentView.addChildView(entry.view); throw error; }
-    entry.windowId = destination.id;
-    pageWindowOwners.set(pageId, destination.id);
-    notifyHttpAuthChanged();
-    if (source.previewWatch?.pageId === pageId) clearPreviewWatch(source);
-    if (source.focusedPageId === pageId) source.focusedPageId = registry.all().find(candidate => !candidate.popup && !candidate.runtimeOwned && (candidate.windowId ?? PRIMARY_WINDOW_ID) === source.id)?.pageId ?? null;
-    if (source.splitPageId === pageId) source.splitPageId = null;
-    if (activate || !destination.focusedPageId) { destination.focusedPageId = pageId; destination.splitPageId = null; }
-    applyStage(source); applyStage(destination);
-    if (activate) { destination.win.show(); destination.win.focus(); }
-    return { windowId: destination.id, sourceActivePageId: source.focusedPageId, activePageId: destination.focusedPageId };
+    const moved = await movePageToWindow(pageId, windowId, activate);
+    if (moved.moved) {
+      const source = regularWindows.get(moved.sourceWindowId);
+      const destination = regularWindows.get(moved.windowId);
+      const movedTab = tabCatalog.tab(pageId);
+      publishTabPatch(tabCatalog.apply([
+        ...(movedTab ? [{ op: "upsert", tab: { ...movedTab, windowId: moved.windowId }, origin: "runtime" } satisfies TabPatchOp] : []),
+        { op: "window", window: { windowId: moved.sourceWindowId, order: (source ? tabCatalog.window(source.id)?.order ?? [] : []).filter(id => id !== pageId), activePageId: moved.sourceActivePageId } },
+        { op: "window", window: { windowId: moved.windowId, order: [...(destination ? tabCatalog.window(destination.id)?.order ?? [] : []).filter(id => id !== pageId), pageId], activePageId: moved.activePageId } },
+      ]));
+    }
+    return { windowId: moved.windowId, sourceActivePageId: moved.sourceActivePageId, activePageId: moved.activePageId };
+  });
+  ch.onMethod("native.tabCommand", async raw => {
+    const parsed = TabCommandEnvelopeSchema.safeParse(raw);
+    if (!parsed.success) throw new Error("invalid tab command envelope");
+    const env = parsed.data;
+    // The runtime scopes its command to the window it names; an open into a
+    // window that does not exist yet creates it, matching native.createPage.
+    if (!regularWindows.has(env.windowId)) {
+      if (env.command.kind !== "open") throw new Error("That window is not available.");
+      await createRegularWindow(env.windowId);
+    }
+    return tabController.execute(env, env.windowId, { trusted: true });
   });
   ch.onMethod("native.closePage", async (p) => {
     const { pageId } = p as { pageId: string };
     const entry = registry.get(pageId);
     const state = stateForEntry(entry);
     if (entry && state) {
+      rememberClosedHistory(entry);
       if (!await destroyPageView(entry, state.win)) return { ok: false };
-      registry.remove(pageId);
+      if (registry.get(pageId) === entry) registry.remove(pageId);
     }
     // a closed page can't stay focused, split, or hold the stage lease —
     // stale pointers would leave every other view hidden
@@ -784,6 +1447,9 @@ function registerNativeHandlers(ch: RpcChannel) {
     }
     offscreen.forget(pageId);
     forgetPageLifecycle(pageId);
+    // destroyPageView already ran the catalog remove through onDestroyed —
+    // the remaining case is a record with no live view left to destroy.
+    if (tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
     if (state) applyStage(state);
     return { ok: true };
   });
@@ -834,6 +1500,13 @@ function registerNativeHandlers(ch: RpcChannel) {
     state.win.show();
     state.win.focus();
     entry.view.webContents.focus();
+    const tab = tabCatalog.tab(pageId);
+    if (tab) {
+      publishTabPatch(tabCatalog.apply([
+        { op: "upsert", tab: { ...tab, lastActiveAt: Date.now() }, origin: "runtime" },
+        { op: "window", window: { windowId: state.id, order: tabCatalog.window(state.id)?.order ?? [pageId], activePageId: pageId } },
+      ]));
+    }
     const wc = entry.view.webContents;
     notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
     return { ok: true };
@@ -868,13 +1541,6 @@ function registerNativeHandlers(ch: RpcChannel) {
     const size = img.getSize();
     const resized = scale < 1 ? img.resize({ width: Math.round(size.width * scale) }) : img;
     return { dataUrl: resized.toDataURL(), width: resized.getSize().width, height: resized.getSize().height, scale: 1 };
-  });
-  ch.onMethod("native.setEngineFrame", (p) => {
-    const { pageId, dataUrl } = p as { pageId: string; dataUrl: string };
-    const entry = registry.get(pageId);
-    if (!entry) return { ok: false };
-    setEngineFrame(entry, dataUrl);
-    return { ok: true };
   });
   ch.onMethod("native.openExternal", (p) => {
     const { url } = p as { url: unknown };
@@ -1126,11 +1792,15 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
     syncToolbarEdge();
     return;
   }
+  // The tab the stage wants must exist — restored/discarded records
+  // materialize here so the active tab loads before anything else does.
+  if (shown && !registry.get(shown)) ensureTabView(shown);
   // Deliberate two-page inspection: a split companion shares the stage beside
   // the focused page.
+  if (state.splitPageId && !registry.get(state.splitPageId)) ensureTabView(state.splitPageId);
   const companion = state.splitPageId ? registry.get(state.splitPageId) : undefined;
   const split = shown && !state.overlayOpen && companion && companion.pageId !== shown
-    && !companion.popup && !companion.runtimeOwned && companion.kind !== "engine"
+    && !companion.popup && !companion.runtimeOwned
     && (companion.windowId ?? PRIMARY_WINDOW_ID) === state.id
     && !companion.view.webContents.isDestroyed() && !companion.view.webContents.isCrashed()
     && (companion.showBlankDocument || (!!companion.view.webContents.getURL() && companion.view.webContents.getURL() !== "about:blank"))
@@ -1249,7 +1919,68 @@ function wireRendererIpc() {
     return state.quickAsk;
   });
   ipcMain.handle("ui.browserProfiles",event=>{requireShellUi(event);const profiles=browserProfiles.list();const current=profiles.find(profile=>profile.current);if(current){currentProfileName=current.name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
+  ipcMain.handle("ui.autofill", async (event, pageId: string) => {
+    requireShellUi(event);
+    const wc = registry.get(pageId)?.view.webContents;
+    return wc && !wc.isDestroyed() ? runAutofill(wc.mainFrame) : false;
+  });
+  ipcMain.handle("ui.vaultFill", async (event, pageId: unknown, itemId: unknown) => {
+    const state = requireShellUi(event);
+    const entry = requireOwnedEntry(state, pageId, "This tab is not available for sign-in fill.");
+    if (typeof itemId !== "string" || !itemId) throw new Error("Choose a credential to fill.");
+    await runVaultFill(entry.pageId, entry.view.webContents.mainFrame, itemId);
+    return true;
+  });
+  ipcMain.handle("ui.vaultSave", async (event, pageId: unknown, origin: unknown) => {
+    const state = requireShellUi(event);
+    requireOwnedEntry(state, pageId, "That sign-in offer expired.");
+    if (!channel) throw new Error("The browser runtime is not connected yet.");
+    const key = `${pageId}:${origin}`;
+    const pending = pendingVaultSaves.get(key);
+    if (!pending || !registry.get(pending.pageId)) throw new Error("That sign-in offer expired.");
+    pendingVaultSaves.delete(key);
+    clearTimeout(pending.timer);
+    if (pending.itemId) {
+      await channel.call("api.invoke", { method: "vault.update", params: { itemId: pending.itemId, secret: pending.password }, desktopUser: true });
+    } else {
+      await channel.call("api.invoke", { method: "vault.save", params: { label: pending.username || pending.origin, origin: pending.origin, username: pending.username || undefined, secret: pending.password }, desktopUser: true });
+    }
+    return { ok: true, updated: !!pending.itemId };
+  });
+  ipcMain.handle("ui.vaultDismiss", (event, pageId: unknown, origin: unknown) => {
+    const state = requireShellUi(event);
+    requireOwnedEntry(state, pageId, "That sign-in offer expired.");
+    const pending = pendingVaultSaves.get(`${pageId}:${origin}`);
+    if (pending) { clearTimeout(pending.timer); pendingVaultSaves.delete(`${pageId}:${origin}`); }
+    return true;
+  });
+  ipcMain.handle("ui.vaultExport", async (event) => {
+    const state = requireShellUi(event);
+    if (!channel) throw new Error("The browser runtime is not connected yet.");
+    const result = await dialog.showSaveDialog(state.win, { title: "Export vault credentials", defaultPath: `aux-vault-${new Date().toISOString().slice(0, 10)}.json`, filters: [{ name: "JSON", extensions: ["json"] }] });
+    if (result.canceled || !result.filePath) return null;
+    const data = await channel.call("api.invoke", { method: "vault.export", params: {}, desktopUser: true });
+    writeFileSync(result.filePath, JSON.stringify(data, null, 2), { mode: 0o600 });
+    return { path: result.filePath };
+  });
+  ipcMain.handle("ui.vaultImport", async (event) => {
+    const state = requireShellUi(event);
+    if (!channel) throw new Error("The browser runtime is not connected yet.");
+    const result = await dialog.showOpenDialog(state.win, { title: "Import vault credentials", filters: [{ name: "JSON", extensions: ["json"] }], properties: ["openFile"] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const parsed = JSON.parse(readFileSync(result.filePaths[0], "utf8")) as { items?: unknown };
+    if (!Array.isArray(parsed.items)) throw new Error("That file is not an Aux vault export.");
+    return channel.call("api.invoke", { method: "vault.import", params: { items: parsed.items }, desktopUser: true });
+  });
+  ipcMain.handle("ui.defaultBrowser",event=>{requireShellUi(event);return {isDefault:app.isDefaultProtocolClient("http")&&app.isDefaultProtocolClient("https")};});
+  ipcMain.handle("ui.setDefaultBrowser",event=>{requireShellUi(event);
+    // Report the measured state, not the request — unsigned/dev registrations
+    // may be declined by the OS and the UI should not claim otherwise.
+    app.setAsDefaultProtocolClient("http");app.setAsDefaultProtocolClient("https");
+    return {isDefault:app.isDefaultProtocolClient("http")&&app.isDefaultProtocolClient("https")};
+  });
   ipcMain.handle("ui.archiveBrowserProfile",(event,id:string,archived:boolean)=>{requireShellUi(event);return browserProfiles.archive(id,archived);});
+  ipcMain.handle("ui.deleteBrowserProfile",(event,id:string)=>{requireShellUi(event);return browserProfiles.delete(id);});
   ipcMain.handle("ui.createBrowserProfile",(event,name:unknown)=>{requireShellUi(event);return browserProfiles.create(name);});
   ipcMain.handle("ui.renameBrowserProfile",(event,id:string,name:unknown)=>{requireShellUi(event);const profiles=browserProfiles.rename(id,name);if(id===browserProfiles.currentId){currentProfileName=browserProfiles.read(id).name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
   ipcMain.handle("ui.openBrowserProfile",async(event,id:string)=>{
@@ -1278,12 +2009,6 @@ function wireRendererIpc() {
     }
     await launch;
     return true;
-  });
-  ipcMain.on("engine-input", (event, payload: { type?: string; x?: number; y?: number; button?: number; key?: string }) => {
-    const entry = registry.byWebContentsId(event.sender.id);
-    if (!entry) return;
-    notifyRuntime("view.engineInput", { pageId: entry.pageId, ...payload });
-    viewHooks.onTakeover(entry.pageId);
   });
   ipcMain.handle("api.invoke", async (event, method: string, params: unknown) => {
     const state = requireShellUi(event);
@@ -1341,10 +2066,35 @@ function wireRendererIpc() {
     return [...liveDownloads.values()].map(download => download.snapshot());
   });
   ipcMain.handle("ui.downloadFolder", event=>{requireShellUi(event);return downloadLocation.status();});
-  ipcMain.handle('ui.tabAudio',event=>{const state=requireShellUi(event);return Object.fromEntries(registry.all().filter(entry=>(entry.windowId??PRIMARY_WINDOW_ID)===state.id&&entry.kind!=='engine'&&!entry.view.webContents.isDestroyed()).map(entry=>[entry.pageId,{muted:entry.view.webContents.isAudioMuted(),audible:entry.view.webContents.isCurrentlyAudible()}]));});
+  ipcMain.handle('ui.tabAudio',event=>{const state=requireShellUi(event);return Object.fromEntries(registry.all().filter(entry=>(entry.windowId??PRIMARY_WINDOW_ID)===state.id&&!entry.view.webContents.isDestroyed()).map(entry=>[entry.pageId,{muted:entry.view.webContents.isAudioMuted(),audible:entry.view.webContents.isCurrentlyAudible()}]));});
+  ipcMain.handle("ui.shortcutOverrides", (event, value: unknown) => {
+    requireShellUi(event);
+    if (value === undefined) return shortcutOverrides;
+    const parsed = ShortcutOverridesSchema.safeParse(value);
+    if (!parsed.success) throw new Error("Invalid shortcut overrides.");
+    shortcutOverrides = parsed.data;
+    menuShortcuts = effectiveShortcuts(shortcutOverrides);
+    setPageShortcuts(menuShortcuts);
+    retuneQuickAskShortcut();
+    installMenu();
+    return shortcutOverrides;
+  });
+  // Typed human tab commands (§7.2) — actuated in main; no runtime round trip.
+  ipcMain.handle("ui.tabCommand", (event, envelope: unknown) => {
+    const state = requireShellUi(event);
+    return tabController.execute(envelope, state.id);
+  });
+  ipcMain.handle("ui.tabsSnapshot", event => {
+    requireShellUi(event);
+    return tabCatalog.snapshot();
+  });
+  ipcMain.handle("ui.tabsSince", (event, version: unknown) => {
+    requireShellUi(event);
+    return tabCatalog.since(typeof version === "number" ? version : -1);
+  });
   ipcMain.handle('ui.setTabMuted',(event,pageId:unknown,muted:unknown)=>{
     const state=requireShellUi(event);const entry=requireOwnedEntry(state,pageId,'This tab is not available for audio control.');
-    if(entry.kind==='engine'||typeof muted!=='boolean')throw new Error('This tab is not available for audio control.');
+    if(typeof muted!=='boolean')throw new Error('This tab is not available for audio control.');
     entry.view.webContents.setAudioMuted(muted);
     viewHooks.onAudio(entry.pageId,{muted:entry.view.webContents.isAudioMuted(),audible:entry.view.webContents.isCurrentlyAudible()});
   });
@@ -1809,14 +2559,13 @@ function wireRendererIpc() {
     if (!existsSync(entry)) throw new Error("The MCP bridge is missing. Rebuild the desktop application.");
     const created = await channel.call("api.invoke", { method: "agentConnections.create", params: input, desktopUser: true }) as {connection:{scope:{kind:string;workspaceId:string;taskId?:string}};token:string};
     return { command: process.execPath, args: [entry], connection: created.connection,
-      env: { ELECTRON_RUN_AS_NODE: "1", AUX_DATA_DIR: DATA_DIR, AUX_MCP_TOOL_PREFIX: "aux", AUX_MCP_TOKEN: created.token,
+      env: { ELECTRON_RUN_AS_NODE: "1", AUX_DATA_DIR: DATA_DIR, AUX_MCP_TOKEN: created.token,
         AUX_MCP_SCOPE_KIND: created.connection.scope.kind, AUX_MCP_WORKSPACE_ID: created.connection.scope.workspaceId,
         ...(created.connection.scope.taskId ? { AUX_MCP_TASK_ID: created.connection.scope.taskId } : {}) } };
   });
   ipcMain.handle("app.clearSiteData", async (event, pageId: unknown) => {
     const state=requireShellUi(event);
     const entry = requireOwnedEntry(state, pageId);
-    if (entry.kind === "engine") throw new Error("This browser tab is no longer available.");
     const wc = entry.view.webContents;
     const url = new URL(wc.getURL());
     if (!['http:', 'https:'].includes(url.protocol)) throw new Error("Choose an HTTP or HTTPS website.");
@@ -1835,7 +2584,6 @@ function wireRendererIpc() {
   ipcMain.handle("app.siteInfo", async (event, pageId: unknown) => {
     const state = requireShellUi(event);
     const entry = requireOwnedEntry(state, pageId);
-    if (entry.kind === "engine") throw new Error("Site controls are available for browser tabs.");
     const wc = entry.view.webContents;
     const url = new URL(wc.getURL());
     if (!["http:", "https:"].includes(url.protocol)) throw new Error("Site controls are available for HTTP and HTTPS websites.");
@@ -1847,12 +2595,23 @@ function wireRendererIpc() {
       security: url.protocol === "https:" ? "secure" : local ? "local" : "insecure",
       cookieCount: cookies.length,
       permissions: { ...sitePermissions[url.origin] },
+      trackersAllowed: trackersAllowed(url.hostname),
     };
+  });
+  ipcMain.handle("ui.translatePage", async (event, pageId: unknown) => {
+    const state = requireShellUi(event);
+    requireOwnedEntry(state, pageId);
+    return runPageTranslate(String(pageId));
+  });
+  ipcMain.handle("ui.showOriginal", async (event, pageId: unknown) => {
+    const state = requireShellUi(event);
+    requireOwnedEntry(state, pageId);
+    return runShowOriginal(String(pageId));
   });
   ipcMain.handle("ui.readArticle", async (event, pageId: unknown) => {
     const state = requireShellUi(event);
     const entry = typeof pageId === "string" ? requireOwnedEntry(state, pageId) : undefined;
-    if (!entry || entry.kind === "engine") throw new Error("Open a webpage to use Reader view.");
+    if (!entry) throw new Error("Open a webpage to use Reader view.");
     return readArticle(entry.view.webContents, () => registry.get(entry.pageId) === entry);
   });
   ipcMain.handle("app.siteZoom", (event, origin?: unknown) => {
@@ -1862,7 +2621,7 @@ function wireRendererIpc() {
       siteZoom.reset(origin);
       for (const entry of registry.all()) {
         const contents = entry.view.webContents;
-        if (entry.kind === "engine" || contents.isDestroyed()) continue;
+        if (contents.isDestroyed()) continue;
         try { if (new URL(contents.getURL()).origin === origin) siteZoom.apply(contents, origin); } catch {}
       }
       broadcastToShells("site-zoom-changed", {});
@@ -1870,17 +2629,65 @@ function wireRendererIpc() {
     return siteZoom.list();
   });
   ipcMain.handle("app.sitePermissions", event => { requireShellUi(event); return sitePermissions; });
-  ipcMain.handle("app.privacy", event => { requireShellUi(event); return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests }; });
+  ipcMain.handle("app.privacy", event => { requireShellUi(event); return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests, allowedHosts: privacy.allowedHosts, httpsUpgrade: privacy.httpsUpgrade }; });
+  ipcMain.handle("app.setHttpsUpgrade", (event, enabled: unknown) => {
+    requireShellUi(event);
+    if (typeof enabled !== "boolean") throw new Error("Choose whether secure connections are required first.");
+    savePrivacy({ ...privacy, httpsUpgrade: enabled });
+    httpsFirst.enabled = enabled;
+    broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
+    return privacy.httpsUpgrade;
+  });
   ipcMain.handle("app.setTrackerBlock", (event, enabled: unknown) => {
     requireShellUi(event);
     if (typeof enabled !== "boolean") throw new Error("Choose whether tracker blocking is on or off.");
     savePrivacy({ ...privacy, trackerBlock: enabled });
+    applyCosmeticAll();
+    broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
     return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests };
   });
+  ipcMain.handle("app.setSiteTrackers", (event, pageId: unknown, allowed: unknown) => {
+    const state = requireShellUi(event);
+    const entry = requireOwnedEntry(state, pageId);
+    if (typeof allowed !== "boolean") throw new Error("Choose whether this site allows trackers and ads.");
+    const wc = entry.view.webContents;
+    const hostname = new URL(wc.getURL()).hostname.toLowerCase();
+    if (!hostname) throw new Error("Site controls are available for HTTP and HTTPS websites.");
+    const set = new Set(privacy.allowedHosts.map(h => h.toLowerCase()));
+    if (allowed) set.add(hostname); else set.delete(hostname);
+    savePrivacy({ ...privacy, allowedHosts: [...set] });
+    applyCosmeticAll();
+    broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
+    return { hostname, allowed: trackersAllowed(hostname) };
+  });
+  ipcMain.handle("app.removeAllowedHost", (event, hostname: unknown) => {
+    requireShellUi(event);
+    if (typeof hostname !== "string" || !hostname) throw new Error("Choose a website exception to remove.");
+    savePrivacy({ ...privacy, allowedHosts: privacy.allowedHosts.filter(host => host !== hostname.toLowerCase()) });
+    applyCosmeticAll();
+    broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
+    return privacy.allowedHosts;
+  });
+  ipcMain.handle("app.filterLists", event => { requireShellUi(event); return filterOps.status(); });
+  ipcMain.handle("app.updateFilters", async event => { requireShellUi(event); return filterOps.update(); });
+  ipcMain.handle("app.addFilterSource", async (event, name: unknown, url: unknown) => { requireShellUi(event); return filterOps.add(name, url); });
+  ipcMain.handle("app.removeFilterSource", (event, id: unknown) => { requireShellUi(event); return filterOps.remove(id); });
   ipcMain.handle("app.proceedInsecure", (event, url: unknown) => {
     requireShellUi(event);
     if (typeof url !== "string") throw new Error("An HTTPS address is required.");
     insecureBypass.proceed(url);
+    return true;
+  });
+  ipcMain.handle("app.useHttp", (event, pageId: unknown, url: unknown) => {
+    const state = requireShellUi(event);
+    const entry = requireOwnedEntry(state, pageId);
+    if (typeof url !== "string") throw new Error("An address is required.");
+    let target: URL;
+    try { target = new URL(url); }
+    catch { throw new Error("Invalid address."); }
+    if (target.protocol !== "http:") throw new Error("Only unencrypted addresses can be continued to.");
+    httpsFirst.allowHttp(target.hostname);
+    void entry.view.webContents.loadURL(target.href).catch(() => {});
     return true;
   });
   ipcMain.handle("app.clearSitePermission", (event, origin: unknown, permission?: unknown) => {
@@ -1907,7 +2714,7 @@ function wireRendererIpc() {
 }
 
 // ---------- downloads ----------
-const liveDownloads = new Map<string, { item: Electron.DownloadItem; snapshot: () => import("@vector/contracts").Download }>();
+const liveDownloads = new Map<string, { item: Electron.DownloadItem; snapshot: () => import("@aux/contracts").Download }>();
 
 function wireDownloads() {
   downloadsSession().on("will-download", (event, item, webContents) => {
@@ -1922,7 +2729,7 @@ function wireDownloads() {
       return;
     }
     item.setSavePath(savePath);
-    const dl = {
+    const dl: import("@aux/contracts").Download & { warning?: "executable" | "insecure" } = {
       id: `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       pageId: entry?.pageId,
       filename,
@@ -1931,8 +2738,9 @@ function wireDownloads() {
       size: 0,
       totalBytes: item.getTotalBytes() > 0 ? item.getTotalBytes() : undefined,
       startedAt: Date.now(),
+      state: "started",
     };
-    const snapshot = (): import("@vector/contracts").Download => ({
+    const snapshot = (): import("@aux/contracts").Download => ({
       ...dl, state: item.getState(), size: item.getReceivedBytes(),
       totalBytes: item.getTotalBytes() || undefined, paused: item.isPaused(),
       canResume: item.canResume(), canCancel: true,
@@ -1940,6 +2748,12 @@ function wireDownloads() {
     liveDownloads.set(dl.id, { item, snapshot });
     notifyRuntime("view.downloadStarted", { ...snapshot(), state: "started" });
     broadcastToShells("download", { ...snapshot(), state: "started" });
+    const warning = downloadWarning(filename, sourceUrl);
+    if (warning) {
+      dl.warning = warning;
+      const win = stateForEntry(entry)?.win ?? [...regularWindows.values()][0]?.win;
+      if (win) void confirmDownload(win, item, filename, sourceUrl, warning);
+    }
     item.on("updated", () => broadcastToShells("download", snapshot()));
     item.once("done", (_e, state) => {
       liveDownloads.delete(dl.id);
@@ -1956,24 +2770,50 @@ function wireDownloads() {
 
 const QUICK_ASK_ACCELERATOR = "CommandOrControl+Shift+Space";
 const quickAskPreferences = join(DATA_DIR,"quick-ask.json");
-let quickAskShortcutEnabled = false, quickAskShortcutError = "";
-try { quickAskShortcutEnabled = JSON.parse(readFileSync(quickAskPreferences,"utf8")).enabled === true; } catch {}
-function quickAskShortcutStatus() { return {enabled:quickAskShortcutEnabled,registered:globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR),error:quickAskShortcutError}; }
+let quickAskShortcutEnabled = false, quickAskShortcutError = "", quickAskAccelerator = QUICK_ASK_ACCELERATOR;
+try {
+  const saved = JSON.parse(readFileSync(quickAskPreferences,"utf8")) as { enabled?: unknown; accelerator?: unknown };
+  quickAskShortcutEnabled = saved.enabled === true;
+  if (typeof saved.accelerator === "string" && saved.accelerator) quickAskAccelerator = saved.accelerator;
+} catch {}
+function quickAskShortcutStatus() { return {enabled:quickAskShortcutEnabled,registered:globalShortcut.isRegistered(quickAskAccelerator),error:quickAskShortcutError}; }
+function registerQuickAsk(accelerator:string) { return globalShortcut.register(accelerator,()=>{void openQuickAsk().catch(error=>log("Quick Ask could not open",String(error)));}); }
+function persistQuickAsk() { const temp=`${quickAskPreferences}.tmp`;writeFileSync(temp,JSON.stringify({enabled:quickAskShortcutEnabled,accelerator:quickAskAccelerator}),{mode:0o600});renameSync(temp,quickAskPreferences); }
+/** The registry's current quick-ask binding → the accelerator the global hook uses. */
+function retuneQuickAskShortcut() {
+  const binding = shortcutById("quick-ask", menuShortcuts)?.bindings[0];
+  const next = binding ? acceleratorFor(binding) : QUICK_ASK_ACCELERATOR;
+  if (next === quickAskAccelerator) return;
+  if (quickAskShortcutEnabled) {
+    const previous = quickAskAccelerator;
+    globalShortcut.unregister(previous);
+    quickAskAccelerator = next;
+    if (!registerQuickAsk(next)) {
+      quickAskAccelerator = previous;
+      registerQuickAsk(previous);
+      quickAskShortcutError = "This shortcut is unavailable, possibly because another app is using it.";
+      return;
+    }
+    quickAskShortcutError = "";
+  }
+  else quickAskAccelerator = next;
+  try { persistQuickAsk(); } catch (error) { log("Quick Ask shortcut preference could not be saved", String(error)); }
+}
 function configureQuickAskShortcut(enabled:boolean, persist=true) {
-  const previouslyEnabled=quickAskShortcutEnabled, previouslyRegistered=globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR);
-  if(enabled && !globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR)) {
-    if(!globalShortcut.register(QUICK_ASK_ACCELERATOR,()=>{void openQuickAsk().catch(error=>log("Quick Ask could not open",String(error)));})) {
+  const previouslyEnabled=quickAskShortcutEnabled, previouslyRegistered=globalShortcut.isRegistered(quickAskAccelerator);
+  if(enabled && !previouslyRegistered) {
+    if(!registerQuickAsk(quickAskAccelerator)) {
       quickAskShortcutError="This shortcut is unavailable, possibly because another app is using it.";
       throw new Error(quickAskShortcutError);
     }
   }
-  if(!enabled)globalShortcut.unregister(QUICK_ASK_ACCELERATOR);
+  if(!enabled)globalShortcut.unregister(quickAskAccelerator);
   quickAskShortcutEnabled=enabled;quickAskShortcutError="";
-  if(persist)try{const temp=`${quickAskPreferences}.tmp`;writeFileSync(temp,JSON.stringify({enabled}),{mode:0o600});renameSync(temp,quickAskPreferences);}
+  if(persist)try{persistQuickAsk();}
   catch(error){
     quickAskShortcutEnabled=previouslyEnabled;
-    if(!previouslyRegistered)globalShortcut.unregister(QUICK_ASK_ACCELERATOR);
-    else if(!globalShortcut.isRegistered(QUICK_ASK_ACCELERATOR))globalShortcut.register(QUICK_ASK_ACCELERATOR,()=>{void openQuickAsk().catch(reason=>log(String(reason)));});
+    if(!previouslyRegistered)globalShortcut.unregister(quickAskAccelerator);
+    else if(!globalShortcut.isRegistered(quickAskAccelerator))registerQuickAsk(quickAskAccelerator);
     quickAskShortcutError="The shortcut preference could not be saved.";throw new Error(quickAskShortcutError,{cause:error});
   }
   return quickAskShortcutStatus();
@@ -2022,11 +2862,18 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
   })));
   regularWindows.set(id, state);
   if (id === PRIMARY_WINDOW_ID || !win || !shellView) { win = regularWindow; shellView = regularShell; }
+  browserProfiles.noteActive(browserProfiles.currentId);
 
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   const isShellUrl = (url: string) => isShellDocument(url, join(import.meta.dirname, "..", "renderer", "index.html"), devUrl);
   regularShell.webContents.on("will-navigate", (event, url) => {
     if (!isShellUrl(url)) { event.preventDefault(); log("blocked shell navigation to", url); }
+  });
+  // The shell is chrome UI only — page WebContents live in their own processes,
+  // so reloading a crashed shell never discards the user's tabs.
+  regularShell.webContents.on("render-process-gone", (_event, details) => {
+    log(`shell renderer gone (${details.reason}); reloading`);
+    if (!regularShell.webContents.isDestroyed()) regularShell.webContents.reload();
   });
   regularShell.webContents.setWindowOpenHandler(({ url }) => {
     if (isWebUrl(url)) viewHooks.openAsTab(url, { windowId: id });
@@ -2047,6 +2894,16 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
   if (desktopEnv.AUX_DEVTOOLS === "1") regularShell.webContents.openDevTools({ mode: "detach" });
   regularWindow.on("focus", () => {
     if (state.focusedPageId) notifyRuntime("view.windowFocused", {pageId: state.focusedPageId, windowId: state.id});
+  });
+  // Gesture navigation lands on the focused page: 3-finger swipes (macOS)
+  // and the Win/Linux app-command keys/mouse buttons share the tab port so
+  // history guards, wake and takeover stay identical to menu/shortcut nav.
+  // Edge-overscroll wheel runs reach the same port through onNavGesture.
+  regularWindow.on("swipe", (_event, direction) => {
+    if (direction === "left" || direction === "right") viewHooks.onNavGesture?.(state.stagePageId ?? "", direction === "left" ? "forward" : "back");
+  });
+  regularWindow.on("app-command", (_event, command) => {
+    if (command === "browser-backward" || command === "browser-forward") viewHooks.onNavGesture?.(state.stagePageId ?? "", command === "browser-backward" ? "back" : "forward");
   });
   regularWindow.on("close", event => {
     if (exitApproved || state.closeApproved) return;
@@ -2084,14 +2941,43 @@ async function boot() {
 
   await loadProfileExtensions();
 
+  // The worker-owned catalog is the durable browser truth — restore it before
+  // the first shell paints so the strip reflects the saved session even while
+  // the runtime is still starting or unavailable.
+  const savedCatalog = await browserStore.load();
+  if (savedCatalog) tabCatalog.restore({
+    ...savedCatalog,
+    // Restored records carry no view yet — they materialize on stage demand
+    // or under bounded idle scheduling below.
+    tabs: savedCatalog.tabs.map(tab => ({ ...tab, lifecycle: "placeholder" as const })),
+  });
   await createRegularWindow(PRIMARY_WINDOW_ID);
+  // Durable secondary windows reopen with the catalog records they own.
+  if (savedCatalog) for (const savedWindow of savedCatalog.windows) {
+    if (savedWindow.windowId !== PRIMARY_WINDOW_ID && savedCatalog.tabs.some(tab => tab.windowId === savedWindow.windowId)) await createRegularWindow(savedWindow.windowId);
+  }
   if(quickAskShortcutEnabled)try{configureQuickAskShortcut(true,false);}catch(error){log(String(error));}
   browserHealth.start();
+  // Restored tabs beyond the active one materialize under a bounded idle
+  // cadence — warm tabs without a startup stampede. Agent-owned records wait
+  // for the runtime to re-attach its own drivers.
+  const materializeQueue = tabCatalog.snapshot().tabs.filter(tab => tab.lifecycle === "placeholder" && !tab.runtimeOwned).map(tab => tab.pageId);
+  let materialized = 0;
+  const materializeNext = () => {
+    const pageId = materializeQueue.shift();
+    if (!pageId || materialized >= IDLE_MATERIALIZE_MAX) return;
+    if (!registry.get(pageId) && tabCatalog.tab(pageId)) { ensureTabView(pageId); materialized++; }
+    if (materializeQueue.length && materialized < IDLE_MATERIALIZE_MAX) {
+      const again = setTimeout(materializeNext, IDLE_MATERIALIZE_MS); again.unref();
+    }
+  };
+  if (materializeQueue.length) { const kickoff = setTimeout(materializeNext, IDLE_MATERIALIZE_MS); kickoff.unref(); }
   // The runtime is supervised independently from native page views. Start it
   // only after the primary owner exists so restored native pages have a host.
   startRuntimeProcess();
   configurePagePermissions();
   configureCloudPreviewHeaders();
+  maintainFilterLists();
 
   wireRendererIpc();
   wireDownloads();
@@ -2119,15 +3005,17 @@ function installMenu() {
   // menu's accelerator consumes the key before the focused webContents, so the
   // click handler routes popup-owned commands locally and main-shell commands
   // to the renderer. Independent sign-in windows must not mutate the main tab.
-  const send = (key: string, opt: { shift?: boolean; alt?: boolean; ctrl?: boolean } = {}) => () =>
+  const send = (id: string) => () =>
     {
-      const shortcut = { key, meta: !opt.ctrl, shift: !!opt.shift, alt: !!opt.alt, ctrl: !!opt.ctrl };
+      const binding = shortcutById(id, menuShortcuts)?.bindings[0];
+      const shortcut = { key: binding?.key ?? "", meta: !!binding?.command, shift: !!binding?.shift, alt: !!binding?.alt, ctrl: !!binding?.ctrl, commandId: id };
       const focused = BaseWindow.getFocusedWindow();
       const popup = registry.all().find(entry => entry.popup === focused)?.popup;
       if (!popup || !popupCommand(popup, shortcut)) focusedRegularWindow()?.shellView.webContents.send("shortcut", shortcut);
     };
-  const cmd = (label: string, key: string, accelerator: string, opt: { shift?: boolean; alt?: boolean; ctrl?: boolean } = {}) =>
-    ({ label, accelerator, click: send(key, opt) }) satisfies Electron.MenuItemConstructorOptions;
+  const accel = (id: string) => { const b = shortcutById(id, menuShortcuts)?.bindings[0]; return b ? acceleratorFor(b) : ""; };
+  const cmd = (id: string, label = shortcutById(id, menuShortcuts)?.label ?? id) =>
+    ({ label, accelerator: accel(id) || undefined, click: send(id) }) satisfies Electron.MenuItemConstructorOptions;
 
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -2145,18 +3033,18 @@ function installMenu() {
     {
       label: "File",
       submenu: [
-        { label: "Quick Ask", accelerator: "CmdOrCtrl+Shift+Space", click: () => { void openQuickAsk().catch(error => log("Quick Ask could not open", String(error))); } },
-        { id: "new-window", label: "New Window", accelerator: "CmdOrCtrl+N", click: () => { void createRegularWindow(); } },
-        cmd("New Tab", "t", "CmdOrCtrl+T"),
-        { id: "new-private-window", label: "New Private Window", accelerator: "CmdOrCtrl+Shift+N", click: openPrivateWindow },
-        cmd("Open File…", "o", "CmdOrCtrl+O"),
-        cmd("Reopen Closed Tab", "t", "CmdOrCtrl+Shift+T", { shift: true }),
+        { label: "Quick Ask", accelerator: accel("quick-ask"), click: () => { void openQuickAsk().catch(error => log("Quick Ask could not open", String(error))); } },
+        { id: "new-window", label: "New Window", accelerator: accel("new-window"), click: () => { void createRegularWindow(); } },
+        cmd("new-tab"),
+        { id: "new-private-window", label: "New Private Window", accelerator: accel("new-private-window"), click: openPrivateWindow },
+        cmd("open-file"),
+        cmd("reopen-closed-tab"),
         { type: "separator" },
-        cmd("Close Tab", "w", "CmdOrCtrl+W"),
-        { label: "Close Window", accelerator: "CmdOrCtrl+Shift+W", click: () => (BaseWindow.getFocusedWindow() ?? win)?.close() },
+        cmd("close-tab"),
+        { label: "Close Window", accelerator: accel("close-window"), click: () => (BaseWindow.getFocusedWindow() ?? win)?.close() },
         { type: "separator" },
-        cmd("Print…", "p", "CmdOrCtrl+P"),
-        cmd("Save Page as PDF…", "p", "CmdOrCtrl+Shift+P", { shift: true }),
+        cmd("print"),
+        cmd("save-pdf"),
       ],
     },
     {
@@ -2171,27 +3059,27 @@ function installMenu() {
         { role: "pasteAndMatchStyle" },
         { role: "selectAll" },
         { type: "separator" },
-        cmd("Find…", "f", "CmdOrCtrl+F"),
-        cmd("Find Next", "g", "CmdOrCtrl+G"),
-        cmd("Find Previous", "g", "CmdOrCtrl+Shift+G", { shift: true }),
+        cmd("find"),
+        cmd("find-next"),
+        cmd("find-previous"),
       ],
     },
     {
       label: "View",
       submenu: [
-        cmd("Reload", "r", "CmdOrCtrl+R"),
-        cmd("Hard Reload", "r", "CmdOrCtrl+Shift+R", { shift: true }),
+        cmd("reload"),
+        cmd("hard-reload"),
         { type: "separator" },
-        cmd("Actual Size", "0", "CmdOrCtrl+0"),
-        cmd("Zoom In", "=", "CmdOrCtrl+="),
-        cmd("Zoom Out", "-", "CmdOrCtrl+-"),
+        cmd("actual-size"),
+        cmd("zoom-in"),
+        cmd("zoom-out"),
         { type: "separator" },
-        cmd("Reader View", "r", "CmdOrCtrl+Alt+R", { alt: true }),
-        cmd("Toggle Sidebar", "s", "CmdOrCtrl+S"),
-        cmd("Tab Overview", "o", "CmdOrCtrl+Shift+O", { shift: true }),
+        cmd("reader"),
+        cmd("sidebar"),
+        cmd("overview"),
         { type: "separator" },
-        cmd("Developer Tools", "i", "CmdOrCtrl+Alt+I", { alt: true }),
-        cmd("View Source", "u", "CmdOrCtrl+Alt+U", { alt: true }),
+        cmd("devtools"),
+        cmd("view-source"),
         { type: "separator" },
         { role: "togglefullscreen" },
       ],
@@ -2199,17 +3087,17 @@ function installMenu() {
     {
       label: "Navigate",
       submenu: [
-        cmd("Back", "[", "CmdOrCtrl+["),
-        cmd("Forward", "]", "CmdOrCtrl+]"),
+        cmd("back"),
+        cmd("forward"),
         { type: "separator" },
-        cmd("Select Next Tab", "right", "CmdOrCtrl+Alt+Right", { alt: true }),
-        cmd("Select Previous Tab", "left", "CmdOrCtrl+Alt+Left", { alt: true }),
+        cmd("tab-next", "Select Next Tab"),
+        cmd("tab-previous", "Select Previous Tab"),
         { type: "separator" },
-        cmd("History", "y", "CmdOrCtrl+Y"),
-        cmd("Downloads", "j", "CmdOrCtrl+Shift+J", { shift: true }),
+        cmd("history"),
+        cmd("downloads"),
         { type: "separator" },
-        cmd("Bookmark This Page", "d", "CmdOrCtrl+D"),
-        cmd("Bookmark All Tabs", "d", "CmdOrCtrl+Shift+D", { shift: true }),
+        cmd("bookmark"),
+        cmd("bookmark-all"),
       ],
     },
     {

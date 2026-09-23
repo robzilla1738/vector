@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } from "ai";
-import { EventBus, openDb, Repo, RunCoordinator } from "@vector/runtime";
-import type { ModelClient } from "@vector/runtime";
-import type { Observation } from "@vector/contracts";
+import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
+import type { ModelClient } from "@aux/runtime";
+import type { Observation } from "@aux/contracts";
 import { isStructuredOutputError, withCallTimeout, DEFAULT_MODEL_CALL_TIMEOUT_MS } from "../../apps/runtime/src/agent/gateway-client.js";
 
 const apiErr = (statusCode: number, message = "boom") =>

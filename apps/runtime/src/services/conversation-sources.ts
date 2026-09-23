@@ -1,4 +1,4 @@
-import { ObservationSchema, type Artifact, type ConversationSource } from "@vector/contracts";
+import { ObservationSchema, type Artifact, type ConversationSource } from "@aux/contracts";
 
 export function isObservationArtifactContent(content: string): boolean {
   try { return ObservationSchema.safeParse(JSON.parse(content)).success; }

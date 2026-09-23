@@ -1,18 +1,32 @@
 #!/usr/bin/env node
 /**
  * Bundle the Electron main + preload into self-contained files so the
- * packaged app needs no node_modules (workspace deps like @vector/contracts
+ * packaged app needs no node_modules (workspace deps like @aux/contracts
  * are inlined). Build from source so incremental tsc cannot leave an old
  * in-place bundle as the next build’s input. electron is external — provided by the runtime.
  */
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, statSync } from "node:fs";
+import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { buildSync } from "esbuild";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// tsc and esbuild never delete emit for removed sources — clear stale output
+// before bundling. Keep only the mtime-cached native binaries in dist/main.
+for (const dir of ["dist/preload", "dist/mcp"]) {
+  rmSync(join(here, dir), { recursive: true, force: true });
+}
+const mainOut = join(here, "dist/main");
+if (existsSync(mainOut)) {
+  const natives = new Set(["liquid-glass.node", "aux-dictation"]);
+  for (const entry of readdirSync(mainOut)) {
+    if (natives.has(entry)) continue;
+    rmSync(join(mainOut, entry), { recursive: true, force: true });
+  }
+}
 
 buildSync({
   entryPoints: [join(here, "main/launcher.ts")],
@@ -28,17 +42,6 @@ buildSync({
 buildSync({
   entryPoints: [join(here, "preload/index.cts")],
   outfile: join(here, "dist/preload/index.cjs"),
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  external: ["electron"],
-  allowOverwrite: true,
-  sourcemap: false,
-});
-
-buildSync({
-  entryPoints: [join(here, "preload/engine-paint.cts")],
-  outfile: join(here, "dist/preload/engine-paint.cjs"),
   bundle: true,
   platform: "node",
   format: "cjs",
@@ -76,6 +79,8 @@ buildSync({
 });
 
 buildSync({entryPoints:[join(here,"main/workbook-export-worker.ts")],outfile:join(here,"dist/main/workbook-export.cjs"),bundle:true,platform:"node",format:"cjs",sourcemap:false});
+
+buildSync({entryPoints:[join(here,"main/tabs/browser-store.worker.ts")],outfile:join(here,"dist/main/browser-store.cjs"),bundle:true,platform:"node",format:"cjs",sourcemap:false});
 
 const pdfAssets = dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json"));
 for (const directory of ["cmaps", "standard_fonts"]) {

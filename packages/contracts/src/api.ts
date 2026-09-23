@@ -30,20 +30,17 @@ import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, Work
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import {
-  VaultAccessRecordSchema, VaultGrantParams, VaultGrantSchema, VaultItemSchema, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultStatusSchema, VaultUnlockParams,
+  VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
+import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema} from "./local-projects.js";
 
 const id = z.string().min(1);
-
-/** How `pages.open` chooses between the Vector Engine and Chromium (architecture §11). */
-export const EngineModeSchema = z.enum(["off", "auto", "always"]);
-export type EngineMode = z.infer<typeof EngineModeSchema>;
 
 /** pages.* */
 export const PagesListParams = z.object({
@@ -54,10 +51,7 @@ export const PagesOpenParams = z.object({
   url: z.string().min(1),
   /** Desktop shell owner. Ordinary API clients omit this. */
   windowId: z.string().min(1).optional(),
-  /**
-   * Omit for routing. `vector` explicitly selects embedded Chromium.
-   * `vector-engine` forces the engine (no fallback); `chrome` needs an attached Chrome.
-   */
+  /** `aux` selects embedded Chromium (default); `chrome` needs an attached Chrome. */
   backend: BackendSchema.optional(),
   /** hidden/background pages never steal focus; used for worker pages. */
   background: z.boolean().default(false),
@@ -130,35 +124,6 @@ export const PagesCaptureParams = z.object({
   /** data url for transport; file for artifact storage */
   format: z.enum(["dataUrl", "artifact"]).default("dataUrl"),
 });
-/** Human pointer/key on the engine view. Not pages.execute — takeover must still type. */
-export const PagesEngineInputParams = z.object({
-  pageId: id,
-  type: z.enum([
-    "click",
-    "pointerdown",
-    "scroll",
-    "key",
-    "ime",
-    "imePreedit",
-    "select",
-    "resize",
-    "accessKitAction",
-  ]),
-  x: z.number().optional(),
-  y: z.number().optional(),
-  button: z.number().optional(),
-  key: z.string().optional(),
-  text: z.string().optional(),
-  direction: z.enum(["up", "down", "top", "bottom"]).optional(),
-  amount: z.number().optional(),
-  start: z.number().optional(),
-  end: z.number().optional(),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  name: z.string().optional(),
-});
-/** Display-list scene for native presentation. Not PNG. */
-export const PagesSceneParams = z.object({ pageId: id });
 export const PagesFindParams = z.object({
   pageId: id,
   text: z.string(),
@@ -168,6 +133,20 @@ export const PagesFindParams = z.object({
 export const PagesStopFindParams = z.object({ pageId: id, action: z.enum(["clear", "keep"]).default("clear") });
 export const PagesZoomParams = z.object({ pageId: id, level: z.number().optional(), delta: z.number().optional(), reset: z.boolean().optional(), direction: z.enum(["in", "out"]).optional() });
 export const PagesTakeoverParams = z.object({ pageId: id });
+export const PagesPickElementParams = z.object({ pageId: id, timeoutMs: z.number().int().min(1_000).max(120_000).optional() });
+export const ElementPickSchema = z.object({
+  tag: z.string().max(100),
+  id: z.string().max(500).optional(),
+  classes: z.array(z.string().max(200)).max(8),
+  text: z.string().max(160).optional(),
+  role: z.string().max(200).optional(),
+  ariaLabel: z.string().max(500).optional(),
+  href: z.string().max(4000).optional(),
+  selector: z.string().max(2000),
+  rect: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }),
+});
+export type ElementPick = z.infer<typeof ElementPickSchema>;
+export const PagesPickElementResult = z.object({ picked: z.boolean(), element: ElementPickSchema.optional() });
 export const PagesResumeParams = z.object({ pageId: id });
 export const PagesOpenLiveParams = z.object({ pageId: id }).describe("focus a borrowed Chrome tab in real Chrome");
 
@@ -357,6 +336,19 @@ export const ChromeOpenLiveParams = z.object({ pageId: id });
 export const ModelsProbeParams = z.object({ modelId: id.optional() });
 export const SidebarMaterialSchema = z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]);
 export type SidebarMaterial = z.infer<typeof SidebarMaterialSchema>;
+export const AutofillProfileSchema = z.object({
+  name: z.string().max(200).optional(),
+  email: z.string().max(320).optional(),
+  phone: z.string().max(60).optional(),
+  organization: z.string().max(200).optional(),
+  street: z.string().max(300).optional(),
+  city: z.string().max(120).optional(),
+  region: z.string().max(120).optional(),
+  postal: z.string().max(20).optional(),
+  country: z.string().max(120).optional(),
+});
+export type AutofillProfile = z.infer<typeof AutofillProfileSchema>;
+
 export const SettingsSetParams = z.object({
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
@@ -373,6 +365,16 @@ export const SettingsSetParams = z.object({
   recoveryModel: z.string().optional(),
   visionModel: z.string().optional(),
   searchEngine: SearchEngineTemplateSchema.optional(),
+  /** `kw query` engines — user entries merge over the built-in list. */
+  searchEngines: z.array(z.object({
+    keyword: z.string().trim().min(1).max(16),
+    name: z.string().trim().min(1).max(60),
+    template: SearchEngineTemplateSchema,
+  })).max(32).optional(),
+  /** Remote search suggestions — off by default; never queried in private mode or for probable-private addresses. */
+  searchSuggestions: z.boolean().optional(),
+  /** Personal info offered to page forms on explicit request. Credentials and payment are never stored here. */
+  autofill: AutofillProfileSchema.optional(),
   maxWorkers: z.number().int().min(1).max(16).optional(),
   perOrigin: z.number().int().min(1).max(8).optional(),
   /** `0` = no per-run cap. */
@@ -385,11 +387,9 @@ export const SettingsSetParams = z.object({
   sidebarBlur: z.number().min(0).max(40).optional(),
   sidebarOpacity: z.number().min(40).max(100).optional(),
   tabLayout: z.enum(["vertical", "horizontal"]).optional(),
+  /** commandId → replacement bindings; null disables the command's shortcuts. */
+  shortcutOverrides: ShortcutOverridesSchema.optional(),
   zoomFactor: z.number().optional(),
-  /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
-  engineMode: EngineModeSchema.optional(),
-  /** Origins/hosts qualified for automatic Vector Engine routing. */
-  engineCohorts: z.array(z.string().min(1)).max(256).optional(),
   /** Privilege-independent effect grants. Model text cannot expand these. */
   effectGrants: z
     .array(
@@ -418,7 +418,13 @@ const WebBookmarkSchema = z.object({
   url: z.string().url().max(8192).refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
   title: z.string().max(1000), folderPath: BookmarkFolderPathSchema.optional(),
 });
-export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string(), folderPath: BookmarkFolderPathSchema.optional() });
+export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string(), folderPath: BookmarkFolderPathSchema.optional(), readingList: z.boolean().optional() });
+/** Toggle the reading-list flag on a bookmark; creates the bookmark when absent (title then required). */
+export const BookmarkReadingListParams = z.object({ url: z.string().url().max(8192), readingList: z.boolean(), title: z.string().max(1000).optional() });
+export const BookmarkMarkReadParams = z.object({ url: z.string().url().max(8192), read: z.boolean() });
+/** Serialized reader-extract article; stored opaque and capped so list copies stay small. */
+export const BookmarkOfflineSetParams = z.object({ url: z.string().url().max(8192), article: z.string().min(2).max(512 * 1024) });
+export const BookmarkOfflineGetParams = z.object({ url: z.string().url().max(8192) });
 export const BookmarkUpdateParams = BookmarkAddParams.extend({
   originalUrl: z.string().url(),
   url: z.string().max(8192).url().refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
@@ -441,6 +447,17 @@ export const EventsSinceParams = RunsEventsParams;
 
 /** workspace snapshot for renderer sync */
 export const WorkspaceGetParams = z.object({});
+
+/** browser-data import */
+export const ImportCategorySchema = z.enum(["bookmarks", "history", "tabs"]);
+export type ImportCategory = z.infer<typeof ImportCategorySchema>;
+const ImportCategoryPreviewSchema = z.object({ category: ImportCategorySchema, available: z.boolean(), count: z.number().int().optional(), bytes: z.number().optional(), blocker: z.string().optional() });
+const ImportSourcePreviewSchema = z.object({ id: z.string(), label: z.string(), profiles: z.array(z.string()), categories: z.array(ImportCategoryPreviewSchema) });
+const ImportCategoryResultSchema = z.object({ source: z.string(), label: z.string(), category: ImportCategorySchema, state: z.enum(["running", "done", "skipped", "error"]), imported: z.number().int(), skipped: z.number().int(), detail: z.string().optional() });
+const ImportReportSchema = z.object({ jobId: z.string(), cancelled: z.boolean(), results: z.array(ImportCategoryResultSchema) });
+export type ImportSourcePreview = z.infer<typeof ImportSourcePreviewSchema>;
+export type ImportCategoryResult = z.infer<typeof ImportCategoryResultSchema>;
+export type ImportReport = z.infer<typeof ImportReportSchema>;
 
 export const MethodSchemas = {
   "tasks.recordEvidence": EvidenceNoteParams,
@@ -525,8 +542,6 @@ export const MethodSchemas = {
   "installation.setBackupRetention": z.object({keep:z.union([z.literal(3),z.literal(5),z.literal(10),z.literal(20)])}).strict(),
   "installation.stageRestore": z.object({path:z.string().min(1).max(4096)}).strict(),
   "installation.cancelRestore": z.object({}).strict(),
-  "installation.legacyStatus": z.object({}).strict(),
-  "installation.migrateLegacy": z.object({confirm:z.literal(true),destination:z.string().min(1).max(4096).optional()}).strict(),
   "vault.status": z.object({}),
   "vault.list": z.object({includeRevoked:z.boolean().default(false)}),
   "vault.save": VaultSaveParams,
@@ -538,6 +553,13 @@ export const MethodSchemas = {
   "vault.revoke": z.object({itemId:id.optional(),grantId:id.optional()}).strict().refine(value=>!!value.itemId||!!value.grantId, "Choose a vault item or grant to revoke"),
   "vault.history": z.object({itemId:id.optional(),limit:z.number().int().min(1).max(200).default(50)}),
   "vault.grants": z.object({taskId:id.optional(),origin:z.string().url().optional()}),
+  "vault.generate": VaultGenerateParams,
+  "vault.itemsForOrigin": VaultItemsForOriginParams,
+  "vault.fill": VaultHumanFillParams,
+  "vault.export": z.object({}),
+  "vault.import": VaultImportParams,
+  "vault.update": VaultUpdateParams,
+  "vault.secretMatches": VaultSecretMatchParams,
   "routines.list": z.object({workspaceId:id.optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
   "routines.get": z.object({routineId:id}),
   "routines.create": RoutineCreateParams,
@@ -557,6 +579,11 @@ export const MethodSchemas = {
     path: z.string().trim().min(1).max(4096).optional(),
     workspaceId: id.optional(),
   }).strict().refine(value => (value.routines === undefined) !== (value.path === undefined), { message: "Pass routines or a file path, not both" }),
+
+  "plugins.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
+  "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
+  "plugins.list": z.object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) }).strict(),
+  "plugins.uninstall": z.object({ pluginId: id }).strict(),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -578,12 +605,12 @@ export const MethodSchemas = {
   "pages.dialog": PagesDialogParams,
   "pages.network": PagesNetworkParams,
   "pages.capture": PagesCaptureParams,
-  "pages.scene": PagesSceneParams,
-  "pages.engineInput": PagesEngineInputParams,
+
   "pages.find": PagesFindParams,
   "pages.stopFind": PagesStopFindParams,
   "pages.zoom": PagesZoomParams,
   "pages.takeover": PagesTakeoverParams,
+  "pages.pickElement": PagesPickElementParams,
   "pages.resume": PagesResumeParams,
   "pages.openLive": PagesOpenLiveParams,
   "sets.create": SetsCreateParams,
@@ -643,9 +670,19 @@ export const MethodSchemas = {
   "chrome.importBookmarks": z.object({
     profile: z.string().trim().min(1).max(64).optional(),
   }),
+  "import.preview": z.object({}),
+  "import.run": z.object({
+    sources: z.array(z.string().min(1).max(32)).max(12).optional(),
+    categories: z.array(ImportCategorySchema).min(1).max(3).optional(),
+    profile: z.string().trim().min(1).max(64).optional(),
+  }),
+  "import.status": z.object({ jobId: z.string().min(1).max(64) }),
+  "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
   "models.list": z.object({}),
   "models.probe": ModelsProbeParams,
+  "translate.page": z.object({ texts: z.array(z.string().max(4000)).min(1).max(400), target: z.string().min(2).max(40).optional(), context: z.string().max(200).optional() }).strict(),
+  "translate.text": z.object({ text: z.string().min(1).max(12000), context: z.string().max(200).optional(), target: z.string().min(2).max(40).optional() }).strict(),
   "github.probe": z.object({}),
   "vercel.probe": z.object({}),
   "vercel.projects": z.object({teamId:z.string().max(200).optional()}).strict(),
@@ -667,6 +704,10 @@ export const MethodSchemas = {
   "bookmarks.folders.rename": z.object({ path: BookmarkFolderPathSchema.min(1), name: z.string().trim().min(1).max(200) }),
   "bookmarks.folders.remove": z.object({ path: BookmarkFolderPathSchema.min(1) }),
   "bookmarks.add": BookmarkAddParams,
+  "bookmarks.readingList": BookmarkReadingListParams,
+  "bookmarks.markRead": BookmarkMarkReadParams,
+  "bookmarks.offline.set": BookmarkOfflineSetParams,
+  "bookmarks.offline.get": BookmarkOfflineGetParams,
   "bookmarks.update": BookmarkUpdateParams,
   "bookmarks.move": z.object({
     bookmarks: z.array(z.object({ url: z.string().min(1).max(8192), folderPath: BookmarkFolderPathSchema })).min(1).max(10000),
@@ -844,23 +885,6 @@ export const ResultSchemas = {
   "installation.setBackupRetention": z.object({keep:z.number().int().positive()}),
   "installation.stageRestore": z.object({staged:z.literal(true),schemaVersion:z.number().int().positive(),bytes:z.number().int().nonnegative(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
   "installation.cancelRestore": z.object({cancelled:z.literal(true)}),
-  "installation.legacyStatus": z.object({
-    source: z.string().nullable(),
-    destination: z.string(),
-    dualRoots: z.boolean(),
-    skippedCredentials: z.boolean(),
-    migrated: z.boolean(),
-    blockedReason: z.string().optional(),
-  }),
-  "installation.migrateLegacy": z.object({
-    source: z.string(),
-    destination: z.string(),
-    backup: z.string(),
-    copiedDatabase: z.boolean(),
-    artifactFiles: z.number().int().nonnegative(),
-    skippedCredentials: z.boolean(),
-    skipped: z.array(z.string()),
-  }),
   "vault.status": VaultStatusSchema,
   "vault.list": z.array(VaultItemSchema),
   "vault.save": VaultItemSchema,
@@ -872,6 +896,13 @@ export const ResultSchemas = {
   "vault.revoke": z.object({ok:z.literal(true)}),
   "vault.history": z.array(VaultAccessRecordSchema),
   "vault.grants": z.array(VaultGrantSchema),
+  "vault.generate": z.object({ password: z.string() }),
+  "vault.itemsForOrigin": z.array(VaultItemSchema),
+  "vault.fill": z.object({ username: z.string().optional(), secret: z.string() }),
+  "vault.export": VaultExportSchema,
+  "vault.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
+  "vault.update": VaultItemSchema,
+  "vault.secretMatches": z.object({ matches: z.boolean() }),
   "routines.list": z.array(RoutineSchema),
   "routines.get": z.object({routine:RoutineSchema,runs:z.array(RoutineRunSchema)}),
   "routines.create": RoutineSchema,
@@ -891,6 +922,23 @@ export const ResultSchemas = {
     imported: z.number().int().nonnegative(),
     skipped: z.number().int().nonnegative(),
     routineIds: z.array(id),
+  }),
+  "plugins.inspect": z.object({
+    name: z.string(),
+    version: z.string().optional(),
+    description: z.string().optional(),
+    routineCount: z.number().int().nonnegative(),
+    routineTitles: z.array(z.string()),
+  }),
+  "plugins.install": z.object({
+    plugin: PluginSchema,
+    imported: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+  }),
+  "plugins.list": z.array(PluginSchema),
+  "plugins.uninstall": z.object({
+    plugin: PluginSchema,
+    archivedRoutines: z.number().int().nonnegative(),
   }),
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
@@ -932,18 +980,6 @@ export const ResultSchemas = {
     pending: z.object({ type: z.string(), message: z.string() }).nullable().optional(),
   }),
   "pages.network": z.array(ResponseRecordSchema),
-  "pages.engineInput": z.object({ ok: z.boolean() }),
-  "pages.scene": z.object({
-    kind: z.literal("displayList"),
-    transport: z.literal("scene"),
-    png: z.literal(false),
-    width: z.number(),
-    height: z.number(),
-    itemCount: z.number(),
-    items: z.array(z.record(z.string(), z.unknown())),
-    page: z.union([z.string(), z.number()]).optional(),
-    scale: z.number().optional(),
-  }),
   "pages.capture": z.object({
     dataUrl: z.string().optional(),
     artifactId: z.string().optional(),
@@ -955,6 +991,7 @@ export const ResultSchemas = {
   "pages.stopFind": z.object({ ok: z.boolean() }),
   "pages.zoom": z.object({ level: z.number() }),
   "pages.takeover": PageTargetSchema,
+  "pages.pickElement": PagesPickElementResult,
   "pages.resume": PageTargetSchema,
   "pages.openLive": z.object({ ok: z.boolean() }),
   "sets.create": PageSetSchema,
@@ -1023,11 +1060,17 @@ export const ResultSchemas = {
     profiles: z.array(z.string()),
     detail: z.string(),
   }),
+  "import.preview": z.object({ sources: z.array(ImportSourcePreviewSchema) }),
+  "import.run": z.object({ jobId: z.string() }),
+  "import.status": z.object({ jobId: z.string(), done: z.boolean(), cancelled: z.boolean(), progress: z.array(ImportCategoryResultSchema), report: ImportReportSchema.optional() }),
+  "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
   "models.list": z.object({
     models: z.array(z.object({ id: z.string(), name: z.string().optional() })),
     source: z.enum(["gateway", "static", "configured"]),
   }),
+  "translate.page": z.object({ lang: z.string(), translations: z.array(z.string()), truncated: z.boolean() }),
+  "translate.text": z.object({ lang: z.string(), translation: z.string() }),
   "models.probe": z.object({
     ok: z.boolean(),
     modelId: z.string(),
@@ -1058,6 +1101,10 @@ export const ResultSchemas = {
   "bookmarks.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
   "bookmarks.saveFolder": z.object({ added: z.number().int(), skipped: z.number().int() }),
   "bookmarks.remove": z.object({ ok: z.boolean() }),
+  "bookmarks.readingList": z.object({ ok: z.boolean() }),
+  "bookmarks.markRead": z.object({ ok: z.boolean() }),
+  "bookmarks.offline.set": z.object({ ok: z.boolean() }),
+  "bookmarks.offline.get": z.object({ article: z.string().nullable(), savedAt: z.number().nullable() }),
   "downloads.list": z.array(DownloadSchema),
   "downloads.remove": z.object({ removed: z.array(z.string()) }),
   "workspace.get": z.object({

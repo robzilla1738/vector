@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
-import { openDb, Repo, EventBus, TaskService } from "@vector/runtime";
+import { openDb, Repo, EventBus, TaskService } from "@aux/runtime";
 import { BrowsingMemory } from "../../apps/runtime/src/services/browsing-memory.js";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 
-const page = (patch: Partial<PageTarget> = {}): PageTarget => ({ pageId: "p", backend: "vector", targetId: "t", url: "https://example.com/article?session=private#section", title: "Public article", documentEpoch: 1, lastRevision: 0, viewStatus: "visible", controller: "human", controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: 1, ...patch });
+const page = (patch: Partial<PageTarget> = {}): PageTarget => ({ pageId: "p", backend: "aux", targetId: "t", url: "https://example.com/article?session=private#section", title: "Public article", documentEpoch: 1, lastRevision: 0, viewStatus: "visible", controller: "human", controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: 1, ...patch });
 function fixture() {
   const db = openDb(":memory:"), repo = new Repo(db), tasks = new TaskService(repo, new EventBus(repo));
   const space = tasks.createWorkspace("One"), other = tasks.createWorkspace("Two");

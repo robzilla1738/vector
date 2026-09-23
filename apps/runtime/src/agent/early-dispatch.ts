@@ -1,4 +1,4 @@
-import { PlanStepSchema, type Observation, type PlanStep, type ProgramResult } from "@vector/contracts";
+import { PlanStepSchema, type Observation, type PlanStep, type ProgramResult } from "@aux/contracts";
 
 export interface DispatchBatchOpts {
   /** the batch carries the observation's documentEpoch (first batch of the plan) */
@@ -16,7 +16,7 @@ export type DispatchResult = ProgramResult & { observation?: Observation };
  * dispatcher validates each against the planner vocabulary and runs
  * everything queued so far as one program the moment the previous batch
  * finishes — so when the model is faster than the browser the batches grow
- * (engine act-and-observe stays batched), and when the browser is faster
+ * (act-and-observe stays batched), and when the browser is faster
  * each step runs the instant it is written.
  *
  * Ordering is preserved: a step that fails validation stops early
@@ -32,7 +32,6 @@ export class EarlyDispatcher {
   private first = true;
   private readonly outcomes: ProgramResult["steps"] = [];
   private extracted: Record<string, unknown> | undefined;
-  private fallback: ProgramResult["fallback"] | undefined;
   private status: ProgramResult["status"] = "completed";
   private error: string | undefined;
   /** Wall-clock when the first step started executing (undefined if none did). */
@@ -92,7 +91,6 @@ export class EarlyDispatcher {
       steps: this.outcomes,
       ...(this.extracted ? { extracted: this.extracted } : {}),
       ...(this.error ? { error: this.error } : {}),
-      ...(this.fallback ? { fallback: this.fallback } : {}),
     };
   }
 
@@ -109,7 +107,6 @@ export class EarlyDispatcher {
         this.outcomes.push(...r.steps);
         if (r.observation) this.observation = r.observation;
         if (r.extracted) this.extracted = { ...this.extracted, ...r.extracted };
-        if (r.fallback) this.fallback = r.fallback;
         if (r.status !== "completed") {
           this.status = r.status;
           this.error = r.error;

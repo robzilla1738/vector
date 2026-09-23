@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { WorkerPool } from "@vector/runtime";
+import { WorkerPool } from "@aux/runtime";
 
 describe("WorkerPool", () => {
   it("bounds total and per-origin concurrency", async () => {

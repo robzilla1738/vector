@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { EventBus, openDb, Repo, TaskService } from "@vector/runtime";
+import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 
 function fixture() {
   const db = openDb(":memory:");

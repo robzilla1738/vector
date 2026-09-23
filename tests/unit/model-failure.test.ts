@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APICallError, JSONParseError } from "ai";
-import { VectorError } from "@vector/contracts";
+import { AuxError } from "@aux/contracts";
 import { classifyModelFailure } from "../../apps/runtime/src/agent/model-failure.js";
 
 const apiError = (statusCode: number, message: string) =>
@@ -22,6 +22,6 @@ describe("model failure classification", () => {
   it("reserves bounded automatic repair for malformed model output", () => {
     const parsed = classifyModelFailure(new JSONParseError({ text: "{", cause: new Error("bad") }));
     expect(parsed).toMatchObject({ category: "model_output", retryable: true, action: "retry", automaticRetry: true });
-    expect(classifyModelFailure(new VectorError("capability_unsupported", "raw provider detail"))).toMatchObject({ category: "capability", retryable: false, action: "model_settings", automaticRetry: false });
+    expect(classifyModelFailure(new AuxError("capability_unsupported", "raw provider detail"))).toMatchObject({ category: "capability", retryable: false, action: "model_settings", automaticRetry: false });
   });
 });

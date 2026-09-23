@@ -1,4 +1,4 @@
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 
 export function conversationPage(pages: PageTarget[], selection: string, activePageId: string | null, linkedPageId?: string) {
   const id = selection === "active" ? activePageId : selection === "linked" ? linkedPageId : selection === "none" ? null : selection;

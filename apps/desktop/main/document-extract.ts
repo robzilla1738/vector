@@ -1,6 +1,6 @@
 import { parentPort, workerData } from "node:worker_threads";
 import mammoth from "mammoth";
-import { DOCUMENT_EVIDENCE_MAX_BYTES } from "@vector/contracts";
+import { DOCUMENT_EVIDENCE_MAX_BYTES } from "@aux/contracts";
 import { extractPdf } from "./pdf-extract.js";
 import { extractWorkbook } from "./workbook-extract.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PlaywrightDriverPage, RefRegistry } from "@vector/engine-client";
+import { PlaywrightDriverPage, RefRegistry } from "@aux/chromium-driver";
 
 function driver(page: object) {
   return new PlaywrightDriverPage({
@@ -9,7 +9,7 @@ function driver(page: object) {
       ...page,
     } as never,
     context: {} as never,
-    identity: { pageId: "p1", targetId: "t1", backend: "vector" },
+    identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     refs: new RefRegistry(),
   });
 }

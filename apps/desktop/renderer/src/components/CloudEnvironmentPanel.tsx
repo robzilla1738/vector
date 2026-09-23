@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import type {CloudCommandRecord,CloudCommandResult,CloudEnvironment,CloudFile,CloudFileEntry,CloudPreviewSession,CloudProviderInventory,CloudReconnectStatus,CloudTaskResult,CloudWorkspaceExport,CloudResultArtifactExport,Task,TaskEvidence} from '@vector/contracts';
+import type {CloudCommandRecord,CloudCommandResult,CloudEnvironment,CloudFile,CloudFileEntry,CloudPreviewSession,CloudProviderInventory,CloudReconnectStatus,CloudTaskResult,CloudWorkspaceExport,CloudResultArtifactExport,Task,TaskEvidence} from '@aux/contracts';
 import {bridge} from '../bridge';
 import {useStore} from '../store';
 import {CloudTerminal} from './CloudTerminal';

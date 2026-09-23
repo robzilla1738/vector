@@ -1,4 +1,4 @@
-import type { Download } from "@vector/contracts";
+import type { Download } from "@aux/contracts";
 
 /** Only the native owner can establish that a previous-process transfer is gone. */
 export function interruptedDownloadHistory(records: Download[], liveIds: ReadonlySet<string>, processStartedAt: number, now = Date.now()): Download[] {

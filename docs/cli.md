@@ -2,8 +2,8 @@
 
 A thin client over the loopback API. It finds the runtime via
 `<dataDir>/runtime.json` (see [api.md](api.md)); set `AUX_DATA_DIR` to
-point at a non-default data dir. A legacy `vector` command alias remains available during migration.
-The CLI and Aux MCP server use the private `@aux-browser/sdk` package, which validates
+point at a non-default data dir. A legacy `aux` command alias remains available during migration.
+The CLI and Aux MCP server use the private `@aux/sdk` package, which validates
 requests and responses against the same versioned contracts as the runtime and never
 retries a failed RPC. It does not expose credentials or bypass desktop approval.
 

@@ -1,5 +1,73 @@
 # Aux implementation progress
 
+## 2026-09-22 — Workspace-handoff audit + grouped smoke CI gate
+
+- Audited the 2026-09-22 workspace handoff (now committed at
+  `docs/AUX-ROADMAP-2026-09-22.md`) package-by-package against the branch:
+  BR-01–07, CH-01–04, AI-01–07, WS-01–06, ME-01–02, SK-01–02 verified in
+  code/tests; TR-01 (prompt fences + planner schemas + narrow preload +
+  sandbox/contextIsolation everywhere), TR-02 (private process rejects every
+  agent/runtime IPC surface; model-side secret redaction in `agent/policy.ts`),
+  TR-03 (opaque `cref_` grants, wrong-origin/account tests) verified; PL-01/02
+  done (no `vector_*`/`@vector/*` product leftovers — only assertions checking
+  their absence); PL-03 consolidated contracts in place.
+- PL-04 gap closed: `tests/smoke/run-suite.mjs` groups the smoke files into
+  named serial suites with per-file timeouts and stray-process cleanup;
+  `pnpm smoke:release` runs the release suite named in handoff §18.1
+  (runtime-recovery, tab-recovery, unsaved-work ×2, conversation-lifecycle/
+  context, private-boundary, authentication-navigation, scoped-agent-connection,
+  local-projects, packaged); `pnpm smoke:all` runs the full inventory. A
+  `desktop smoke (release suite)` CI job now runs it on macOS per PR after
+  `pnpm package:local`.
+- AI-04 gap closed: `packages/contracts/src/model-registry.ts` is the one
+  typed registry (ID, route/provider family, context/output limits,
+  modalities, structured-output, streaming, reasoning, prompt caching,
+  pricing, `source` provenance, verified/unverified status) shared by the
+  runtime (`settings.listModels` merges snapshot + live catalog + configured),
+  the desktop picker, the mock bridge and `FALLBACK_MODELS`. Catalog-only IDs
+  pass through — no blacklist; offline defaults stay covered.
+- PL-06 gap closed: the handoff doc is committed and `docs/AUX-ROADMAP.md`
+  declares it the release authority; `docs/local-testing.md` documents the
+  suite runner.
+- Recorded as externally blocked (no code claim): J7/J9 real-account and
+  signed-build qualification, PL-05 signing/notarization/update lanes, TR-04
+  release-ownership/advisory SLAs, §6 budgets on signed builds (this-host
+  measurements in `docs/perf/`), the frozen ≥15-task R1 corpus with paid
+  inference, and §18.5 human pilot observations.
+- 2026-09-23 follow-up — `desktop smoke (release suite)` green on the GitHub
+  macos-26-arm64 runner, 11/11 (job 107169759287). Three CI-host flakes fixed
+  without weakening assertions: `tab-recovery` got a 40 s layout-persist poll
+  plus last-state dump; `authentication-navigation` polls `app.windows()` for
+  the consent popup page (Playwright page attachment lags the BrowserWindow);
+  `local-projects` gates the in-app preview check on real loopback
+  reachability — CPython's `http.server` resolves `getfqdn` between `bind()`
+  and `listen()`, and the runner's reverse-DNS stall left the port
+  bound-but-not-listening long after `DJANGO_SERVER_READY` printed. Failure
+  diagnostics now dump command states, open tab URLs and HTTP probes.
+- Lint: `npx oxlint tests/smoke/run-suite.mjs` clean.
+
+## 2026-09-22 — Desktop smoke suite green (full sweep)
+
+- Ran the entire `tests/smoke/*.mjs` desktop suite serially on macOS (real
+  Electron, mock keychain): 54 suites, all verified green standalone. Three
+  flakes under back-to-back launch load (Playwright `electron.launch`
+  handshake timeout, an actionability race on the animating toolbar button,
+  and a 13-minute hang) each passed cleanly on isolated re-run — no product
+  regressions behind them.
+- Smoke triage fixes (test-side only, no product changes): stale locators
+  after the shell redesign (`.sb-more-menu` `menuitem` role, `select[aria-label]`
+  Field scoping, permanent `.toolbar` chrome, `BaseWindow.getMediaSourceId()`
+  for captures, visible buttons instead of intercepted Meta chords, catalog
+  restore via `browser.recovery.retry` after restart), updated private-mode
+  cookie copy (`N cookie(s) stored for this address`), and hardened cleanup:
+  `app.close()` in `private-desktop`'s finally now races a force-kill of the
+  report-file pid so a Stay-prompt can never mask a real failure, and the
+  animated `cb-site-trigger`/`Show sidebar` buttons are activated via
+  `evaluate(click)` where actionability is provably unstable.
+- Gates: `npm run typecheck` clean; `npx vitest run` 984/984; `npx oxlint`
+  clean on touched files (one pre-existing `no-unused-vars` in
+  `task-drafts-desktop.mjs` predates this work).
+
 ## 2026-09-22 — Roadmap phases 0–2 execution batch
 
 - Dependencies: the roadmap review, the renderer method gate contract, the
@@ -5845,3 +5913,693 @@ being treated as blockers to the first visual/interaction review.
 - Both CLI and MCP builds pass, and the running Aux runtime returned live workspace and
   task listings through the new commands. Mutation and native confirmation behavior
   remains owned by the same runtime handlers and exact method schemas.
+
+## 2026-09-22 — Engine separation and the Aux identity reset
+
+- The Rust/custom engine left the product path: `engine/` and `docs/engine/`
+  live on the `engine-track` branch; the workspace, CI, packaging and runtime
+  no longer build, route, or fall back to it. Managed Chromium (`aux`) and
+  explicitly attached Chrome (`chrome`) are the only connection kinds.
+- The rename completed in staged codemods: packages are `@aux/*`
+  (`@aux/chromium-driver` is the browser driver), configuration is `AUX_*`
+  only, errors are `AuxError`, events `AuxEvent`, the renderer bridge is
+  `window.aux`, MCP tools are `aux_*`, partitions are `persist:aux-*`, the
+  bundle identity is `dev.aux.browser`, and page-injected markers are
+  `__aux*`/`__auxTid`.
+- Legacy compatibility was removed rather than carried: `VECTOR_*` keys are
+  ignored, the Vector→Aux migration UI/importers and the old JSON journal
+  conversion are gone, and retained dual-name constants were deleted.
+- The runtime database is a consolidated schema v1: `aux_meta` marks Aux
+  databases, foreign keys are explicit, chat/task columns are indexed, and
+  rows are typed. Pre-versioning and legacy versioned databases are refused
+  unchanged with a recoverable message — nothing is silently reset. Future
+  `user_version` transitions back up before migrating and require tests
+  proving data survives.
+- Verification: `tsc -b` clean, oxlint clean under the warning cap, unit +
+  integration + e2e green, benchmark fixtures validate, the packaged app
+  contains no engine artifacts, and `bundle.mjs` cleans `dist` so stale emit
+  cannot ship.
+
+## 2026-09-23 — Main-owned tab control (BR-01 foundation)
+
+- Typed tab commands (`open/close/activate/navigate/back/forward/reload/stop/
+  setMuted/reorder`) now actuate in the desktop main process through a
+  `TabController` over a monotonic `TabCatalog` — no runtime round trip for
+  human browsing (J1 works with the runtime child killed).
+- Commands are idempotent (`commandId` dedupe), window-scoped (wrong-window
+  and cross-window actuation rejected), and stale-checked against per-tab
+  structural revisions; content churn does not invalidate pending commands.
+- Browser state persists in a `node:sqlite` worker thread
+  (`browser-store.cjs`) with durable-write acks and backpressure — never on
+  the main UI thread. Catalog versions are monotonic across restarts.
+- Renderer converges on ordered `tabs.patch` ops (upsert/remove/window) with
+  gap detection falling back to `tabsSnapshot`/`tabsSince` snapshots; the
+  runtime subscribes to `tabs.catalog` and lazily attaches drivers by marker.
+- Popups, external opens and agent-created pages are ingested once into the
+  same catalog; double-remove races between `onDestroyed` and controller
+  closes are suppressed.
+- Verification: `tsc -b` clean, oxlint 0 errors, 805 unit/renderer tests and
+  21 integration tests green, packaged app smoke-tested (boot, auth, browse,
+  persistence across restart).
+
+## 2026-09-23 — BR-01 completion: moves, reopen history, agent commands, private parity
+
+- Cross-window moves are main-process direct (`move` command + shared
+  `movePageToWindow` actuation): the human path no longer round-trips the
+  runtime, destination Space/folder placement rides `tabs.placement`, and
+  both windows' orders/activation publish through catalog ops.
+- Close/reopen restores real navigation history: `navigationHistory` stacks
+  are captured before destruction (LRU 50, in-memory like every browser's
+  session restore) and restored on reopen via the preserved logical `pageId`;
+  generation bumps keep stale commands aimed at prior instances rejected.
+- Agent `pages.open`/`pages.close` for aux tabs route through the same
+  controller via `native.tabCommand` — trusted issuers get `runtimeOwned`
+  records and idempotent opens (a persisted record materializes, a live tab
+  focuses); renderer issuers cannot claim runtime ownership.
+- Private windows reuse the shared `TabCatalog`/`TabController` in their own
+  process (`ui.tabCommand`, `tabsSnapshot`, `tabsSince`, `tabs.patch`) — fully
+  in-memory, no persistence worker, no closed-history cache. This fixed the
+  Slice-5 regression where private tab actions failed on a missing handler.
+- Verification: `tsc -b` clean, oxlint 0 new errors (one pre-existing fixture
+  issue), 805 unit/renderer tests green including new controller move/trust/
+  generation and renderer placement/reopen-id coverage.
+
+## 2026-09-23 — BR-02: responsive stores, layout and startup
+
+- Whole-array `s.pages` subscriptions narrowed to what each surface renders:
+  App (active page + split companion only), Toolbar, AgentRail, Inspector,
+  CommandBar (tab digest), RunPanel (run-scoped pages) and Conversation
+  (digest-gated: loading/favicon churn no longer re-renders the transcript).
+- `TabRow` memoization made effective: `useTabSelection` returns stable
+  callbacks via a ref-backed api, and all Sidebar drag/drop/context handlers
+  are `useCallback`d reading current state imperatively — a title or loading
+  update now re-renders only the affected row.
+- `RunRow` memoized with `setRailView` routed internally — a ticking run only
+  re-renders its own row in the rail.
+- Stage effect deps narrowed to active/companion structural fields — tab
+  churn no longer re-subscribes the ResizeObserver + `setStage` report loop.
+- Private shell gains `render-process-gone` recovery (reload + catalog
+  reconvergence), matching regular windows — page WebContents survive since
+  they live in their own processes.
+- Verified pre-existing requirements: `RootBoundary`, lazy surfaces
+  (Settings/Library/Inspector/Tasks/Reader), deduplicated `persistLayout`,
+  structural-only `applyStage` triggers, catalog-restore-before-first-paint,
+  `font-display: swap` + unicode-range subset loading, refresh backoff.
+- Verification: `tsc -b` clean, oxlint 0 errors, 784 unit/renderer tests
+  green.
+
+## 2026-09-23 — BR-03: lifecycle, restoration, and resource management
+
+- Explicit `lifecycle` state on `TabRecord`/`PageTarget`: `placeholder`
+  (restored record, no view) → `live` → `frozen` → `discarded`; crashes stay
+  on the existing flag. Sleeping rows dim in the strip.
+- Restore order: the stage's shown/split page materializes inside
+  `applyStage` (active-first); other saved tabs materialize under a bounded
+  idle queue (1 per 1.5s, cap 20) — no startup stampede. Agent-owned records
+  wait for the runtime's own re-attach.
+- Freeze → discard ladder: 10min idle freeze via
+  `Page.setWebLifecycleState`, then 30min frozen → view destroyed. The
+  catalog record survives (`lifecycle:"discarded"`), so activation lazily
+  rebuilds with real `navigationHistory` + captured scroll offset —
+  measurable memory return without losing the tab.
+- Safety guards unified in `page-lifecycle.ts` (pure, unit-tested):
+  focused/split, popup, offscreen stage/preview holds, live downloads, media
+  permission, audible/loading/captured, dirty documents, agent-held pages.
+  Cross-window `move` materializes a discarded tab first.
+- Dirty-state hints: an isolated-world collector flags input/change/paste/
+  drop gestures; routine decisions run a cheap probe and only walk the DOM
+  when hints or editable surfaces exist — no full-DOM walk per check.
+- Unload vetoes respected: discard closes with `waitForBeforeUnload`; a veto
+  (or a mid-discard activation) aborts and leaves the tab frozen.
+- Paused runs release resources: `run.updated` events feed a paused-page
+  tracker — paused agent pages become freezable (never discarded — the
+  driver keeps its target), and resume wakes them before the next command.
+- Verification: `tsc -b` clean, oxlint 0 errors, 795 unit/renderer tests
+  green including the new `page-lifecycle` matrix and dirty-hint coverage.
+
+## 2026-09-23 — BR-04: omnibox, commands, and fast retrieval
+
+- Unified ranked providers in `CommandBar`: open tabs, bookmarks,
+  recently-closed tabs (reopen action), runtime history, saved programs and
+  recent conversations, all scored by `suggest.ts` match tiers
+  (exact → host/title prefix → word boundary → substring) + recency decay,
+  deduped by URL in provider order.
+- Bounded hot index + FTS fallback: browsing history is now indexed by a
+  SQLite FTS5 external-content table (`history_fts`, schema v1→v2 with
+  triggers + `rebuild` backfill migration). `Repo.listHistory` runs
+  token-prefix FTS then fills with a LIKE scan so mid-token substrings
+  still match — migration and backup validator updated accordingly.
+- Ranking stability: selection is identity-stable (`selId` survives
+  re-ordering); an explicit search row always exists; `?` forces search,
+  `>` agent, `/` commands — now seeded into the shared palette registry.
+- Stale-response safety: history + remote suggestion effects carry
+  cancellation (equivalent to sequence IDs) so slow providers can't
+  overwrite newer input.
+- Inline URL completion: ghost tail for a bare hostname prefix only
+  (open tabs + bookmarks + history); → / End / ↵ accept like Chrome;
+  disabled for multi-word or path input and during IME composition.
+- Keyword engines (`engines.ts`): built-ins (ddg, g, gh, mdn, npm, yt,
+  wiki, so, maps) merge with user engines from Settings by keyword;
+  `gh aux browser` resolves to an engine-aware search intent with the
+  engine name on the chip.
+- Remote suggestions are an opt-in preference (`searchSuggestions`,
+  off by default), never fire in Private mode, never for probable
+  private/intranet addresses (`isPrivateAddress`: localhost, private
+  ranges, single-label names, .local/.internal/.lan/.corp, credential
+  URLs, IPv6), and only for engines with known suggest endpoints.
+- `chrome.ts` classification widened: unicode domains (`münchen.de`,
+  `例え.jp`), bracketed/bare IPv6 (normalized to `http://[::1]`), ports,
+  `node.js`-style single-word domains; TLD must lead with a letter so
+  `version 1.2` and `a,b` stay searches.
+- Settings UI: keyword-engine editor + suggestions toggle under Browsing.
+- Verification: `tsc -b` clean, oxlint 0 errors, 206 renderer tests + new
+  `suggest`/`engines`/`history-fts`/`command-bar` suites green; the FTS
+  dedupe path caught and fixed a real `Set.add` truthiness bug.
+
+## 2026-09-23 — BR-05a: folder color/emoji + placement round-trip
+
+- `Folder` gains optional `color`/`emoji`; `updateFolder` is the single
+  partial-update path (name/color/emoji, null clears, missing id no-ops
+  with the same layout reference).
+- Folder context menu now offers the Space swatch language plus a preset
+  emoji row; the folder glyph tints via the existing `data-space` →
+  `--space-color` mechanism and shows the chosen emoji.
+- `TabPlacement` schema carries folder color/emoji so a folder survives
+  cross-window moves visually intact; `tabPlacementFor` emits them and
+  `applyTabsPlacement` applies them on arrival.
+- Agent-created-tab grouping verified already working (runtime-owned tabs
+  file under their run with takeover/keep paths) — preserved, not rebuilt.
+- Verification: `tsc -b --force` clean, workspace 19 + tab-transfer 5 +
+  full renderer suite green, oxlint 0 errors.
+
+## 2026-09-23 — BR-05b: navigation gestures + pinch zoom
+
+- New `page-nav-gesture.ts`: a pure one-shot overscroll tracker (240px
+  horizontal accumulation, 350ms gesture gap, direction-flip reset,
+  page-consumption reset) plus a shadow-DOM-aware `consumesHorizontalWheel`
+  walker with RTL scrollLeft handling. Both serialize into an
+  isolated-world wheel listener (`auxNavGesture` world) that reports over a
+  `Runtime.addBinding` channel — pages cannot observe or forge it.
+- Wheel edge-overscroll (the default two-finger trackpad config), 3-finger
+  `swipe` events, and Win/Linux `app-command` mouse buttons all converge on
+  `onNavGesture` → the same `tabPorts.back/forward` actuation as menu and
+  keyboard nav — identical wake/history/takeover guards. A deliberate
+  gesture-nav on an idle agent page takes control exactly like a click;
+  held pages stay protected via the existing offscreen-hold check.
+- Private windows get identical coverage: shared `installNavGesture`
+  self-attaches the debugger (regular views reuse the target-marker
+  session), plus swipe/app-command on the private window.
+- `did-create-window` popup windows get their own swipe/app-command
+  handlers; hook-path popups are covered by the per-webContents wheel path.
+- Trackpad pinch zoom enabled per view (`setVisualZoomLevelLimits(1,3)`)
+  for regular and private pages; pinch stays ephemeral per document and
+  pinch wheel events (ctrlKey) can never trigger navigation.
+- Media keys: deliberately not wired via globalShortcut — hijacking
+  hardware media keys system-wide is worse than the gap. Electron lacks a
+  HardwareKeyMediaController; noted as an open item, not hacked around.
+- Verification: `tsc -b` clean, oxlint 0 errors (2 pre-existing warnings),
+  858 unit/renderer/integration tests green including 9 new
+  page-nav-gesture tests exercising the real serialized script (edge runs,
+  carousel consumption, RTL, pinch suppression).
+
+## 2026-09-23 — BR-05c: unified shortcut registry + customizable bindings
+
+- New `packages/contracts/src/shortcuts.ts`: one `SHORTCUTS` registry
+  (command id → label, bindings, intercept flag) consumed by application
+  menus, page-level `before-input-event` interception, renderer dispatch,
+  Quick Ask global registration and the Settings editor. `command` is the
+  platform-primary modifier (Cmd on darwin, Ctrl elsewhere); `ctrl` is the
+  macOS Control key only, so Ctrl+Tab maps correctly on every platform.
+- `matchShortcut` is exact-chord (extra modifiers no longer match — the
+  old tables silently swallowed ⌘⌥T/⌘⌥W into new-tab/close-tab); shifted
+  variants for `=`/`+`/`-`/`_`/`[`/`]`/`{`/`}` cover keys whose symbol
+  requires Shift. `platforms` scopes Alt+←/→ interception to win/linux.
+- Interception now tags the resolved `commandId` — menu clicks and page
+  chords dispatch the command directly instead of re-matching, so a
+  conflicted or custom chord can never fire the wrong command.
+- Menu click paths synthesize `bindings[0]` only as a fallback chord;
+  popupCommand honors `commandId` so popup-local nav/reload/zoom/close
+  works under custom bindings.
+- `shortcutOverrides` flows settings.set → settings.changed →
+  `ui.shortcutOverrides` (schema-validated) → effective defs → menus,
+  interception and Quick Ask retune in one step; renderer reads the same
+  store field for shell keydowns.
+- Quick Ask accelerator is rebindable: retune unregisters/restores on
+  failure, persists `{enabled, accelerator}` so a custom global chord
+  survives restarts.
+- `ShortcutsSetting` records the next chord (capture-phase, suppresses
+  the command it would fire), rejects modifier-less keys, explains
+  collisions ("⌘⇧P is used by 'Save Page as PDF'") with an explicit
+  steal that rewrites the rival's remaining bindings, plus per-row
+  Reset and a global conflict banner for injected collisions.
+- Tests: 21 new registry/interception/popup cases (normalization,
+  platform modifiers, exact-modifier matching, overrides, conflict
+  reporting, schema rejection, menu/page/renderer same-source).
+  history-fts update test made deterministic — same-ms revisit rows are
+  a distinct legitimate row, not a trigger bug.
+- Verification: `tsc -b` clean, oxlint 0 errors on touched files,
+  879 unit/renderer/integration tests green.
+
+## 2026-09-23 — BR-05d: reading list as a bookmark subtype
+
+- Reading list lives on the bookmark row (`reading_list`, `read_at`
+  columns; schema v3 with a chained v2→v3 migration) — one ownership
+  path, so folders, import/export, edit and move all keep working on
+  reading-list entries. `bookmark_articles` holds one offline copy per
+  bookmark (plain table — passes the backup validator's executable-
+  schema check).
+- New API surface: `bookmarks.readingList` (toggle; creates the
+  bookmark when absent, title required), `bookmarks.markRead`,
+  `bookmarks.offline.set` (requires the item to be on the list),
+  `bookmarks.offline.get`. `bookmarks.add` accepts `readingList`.
+  Leaving the list clears `read_at` and drops the offline copy;
+  removing the bookmark cascades the copy; a URL edit moves it.
+- Renderer: Sidebar page menu and Palette gain Add/Remove reading-list
+  actions (regular windows only). Library gains a "Reading list" view
+  grouped Unread/Read with mark read/unread, remove, and save/refresh
+  offline copy (extracted from the live tab when it is open). A
+  foreground open marks the item read; background opens stay unread.
+- ReaderView falls back to the saved offline copy when live extraction
+  fails (labeled "Offline copy · saved …"), and marks the item read
+  when an article renders — either path.
+- Private mode persists nothing: `toggleReadingList` no-ops, the
+  reading view is hidden in the private Library (tab list and arrow
+  nav share one filtered list), and offline.get is never consulted.
+- Renderer method gate (`RENDERER_METHODS`) admits the four new
+  methods; `bookmarks.changed` remains the authoritative list source.
+- Tests: 5 repo cases (flag/toggle, read state lifecycle, re-bookmark
+  keeps membership, single offline copy + cascades, article follows
+  URL edit) + migration fixture updated to v3 with a v1-shaped DB
+  carrying a real bookmarks table.
+- Verification: `tsc -b` clean, oxlint 0 errors on touched files,
+  884 unit/integration + 190 renderer tests green.
+
+## 2026-09-23 — BR-05e: persistent profiles — deletion + external-link routing
+
+- Profiles were already separate instances per identity (own
+  `AUX_DATA_DIR` runtime + `AUX_PROFILE_DIR` Chromium session → cookies,
+  permissions, extensions, history, chats, memory and agent grants are
+  isolated structurally; each instance holds its own single-instance
+  lock via per-profile `userData`).
+- Deletion is now a distinct action from archiving: `browserProfiles.delete`
+  removes the record and every managed byte under `<catalog>/<id>/`.
+  It refuses the original profile (data lives outside the catalog), the
+  running instance, and any profile whose `instance.json` heartbeat
+  (2 min interval, 10 min staleness + `kill(pid,0)`) still looks alive —
+  the safe failure direction on pid reuse is refusal.
+- Settings UI gains a two-step Delete…/Delete permanently confirm on
+  live and archived rows, with a plain-English data-loss warning.
+- External links route by account context: a shared `active.json`
+  marker (written on instance activation, window creation and URL
+  opens) names the last-browsed profile. `queueExternalUrl` forwards
+  to that instance through the same env-spawn path profile switching
+  uses — the target's argv/second-instance handling opens the link
+  whether it is running or not. `AUX_EXTERNAL_FORWARD` bounds routing
+  to two hops; archived/deleted/stale markers fall back to local open.
+- Tests: delete guards (original/missing/live-instance refused, dead
+  pid proceeds, data+record removed) and routing rules (no marker →
+  local, own profile → local, archived → local, valid → target) — 5
+  profile cases green; `tsc -b` clean, oxlint 0 errors.
+
+## 2026-09-23 — BR-05f: default-browser registration + site controls audit
+
+- Default browser registration: Settings → General gains a Default
+  browser row backed by `aux:default-browser` IPC — reads
+  `app.isDefaultProtocolClient("http"/"https")`, registers via
+  `app.setAsDefaultProtocolClient`, and for a manual fallback opens
+  `shell.openExternal` on the OS default-browser panel
+  (`ms-settings:defaultapps` / macOS System Settings). Live state shown
+  as a badge; registration failure surfaces the manual path.
+- Site controls and permissions were already complete and were audited:
+  `SiteControls` panel exposes per-permission revoke + reset-all for
+  every site, permission persistence rides the runtime settings store,
+  and `PageRecovery` renders nav-error surfaces with reload / go back /
+  edit-address / proceed-through-cert paths.
+- Tests: `default-browser.test.tsx` covers badge state, register call
+  and failure fallback.
+
+## 2026-09-23 — BR-05g: form autofill + media keys feasibility
+
+- Form autofill shipped as a non-secret personal-info filler aligned
+  with BR-06 (which owns credentials/passkeys — passwords are never
+  handled here):
+  - `apps/desktop/main/autofill.ts` — serializable page-side classifier
+    + filler. Autocomplete tokens map to a fixed key set; heuristic
+    name/id/label/placeholder patterns cover forms without
+    autocomplete. Read-only/disabled/password/number/range/date/checkbox
+    /radio/button fields are skipped; selects resolve by value then
+    label then substring.
+  - Context-menu "Fill personal info" (regular pages only — never
+    private windows) plus a palette command routed over `ui.autofill`.
+    The menu passes the actual context-clicked frame; the IPC path
+    resolves the page's main frame from the tab registry behind
+    `requireShellUi`. `runAutofill` pulls the runtime `autofill`
+    settings object at click time — nothing is cached in main — and
+    fills in the main world via `executeJavaScript` with
+    `userGesture`.
+  - Settings → General "Personal info" editor stores name/email/phone/
+    company/address under `autofill`; the settings-search index covers
+    both new rows.
+- Media keys: feasibility answer is *already supported*. Chromium's
+  `HardwareMediaKeyHandling` flag is enabled by default in Electron, so
+  hardware media keys route to the focused window's active media
+  session (and the Media Session API) with no per-app work — the same
+  behavior Chrome ships. A `globalShortcut` on media keys would hijack
+  them system-wide and was rejected.
+- Tests: `autofill.test.ts` evals the real serialized script in jsdom
+  — autocomplete fields, heuristic fields, select matching, private/
+  unsupported field skipping and empty-profile no-op — 6 cases green.
+  Full suite: 681 unit + 21 integration + 192 renderer, `tsc -b`
+  clean, oxlint 0 errors.
+
+## 2026-09-23 — BR-06: import, credentials, passkeys, extension compatibility
+
+- **Unified browser-data import** (Settings → Data → Import, replacing the
+  Chrome-bookmarks-only row):
+  - `apps/runtime/src/services/import-sources.ts` — read-only discovery for
+    Chromium-family profiles (Chrome/Chrome Beta/Chromium/Edge), Arc and
+    Firefox; Safari with an explicit Full-Disk-Access blocker. SQLite sources
+    (Chromium History, Safari History.db, Firefox places.sqlite) are opened
+    through WAL-aware read-only snapshots — source browser files are never
+    mutated. Arc sidebar metadata (space/folder/pin/title) folds into the
+    bookmark stream; attached Chrome contributes live open tabs.
+  - `apps/runtime/src/services/browser-import.ts` — preview → run lifecycle.
+    Preview lists per-source, per-category availability/counts/blockers
+    before anything is read. Runs emit `import.progress` events, yield
+    between batches so cancel interleaves mid-import, dedupe history on
+    `(url, visited_at)` and bookmarks by URL, bound job history, and report
+    a per-source partial-result table — a failed or locked source never
+    blocks the rest.
+  - `ImportDataSetting.tsx` — checkbox preview, run/cancel, live progress
+    rows and the finished partial report; the settings-search index covers
+    the row. `import.preview|run|status|cancel` are renderer-allowlisted.
+  - Deliberately not imported: other browsers' encrypted credential stores
+    (Chrome Login Data, Firefox logins.json, Safari keychain) — the native
+    vault is the scoped credential experience instead.
+- **Human credential experience on the vault** — a real login path, not just
+  agent grants:
+  - Trusted fill: context-menu "Fill sign-in" (editable right-click resolves
+    matching items async) and palette "Fill sign-in…" (item picker). Main
+    validates the *filled frame's* normalized http(s) origin against the
+    item's stored origin via `vault.fill` — subdomains, lookalikes, other
+    ports and credential-bearing URLs are denied and recorded. Fill is
+    user-initiated only and lands via `credentialFillScript` in the target
+    frame; secrets travel main→page, never into renderer/model context.
+  - Save/update prompts: `credential-detect.ts` isolated-world watcher
+    reports the account name (never the password) on submits and
+    submit-ish clicks, coalesced to one report per 800 ms. Main captures
+    the field values in the reporting frame (subframe-aware via
+    `framesInSubtree`), suppresses the offer when `vault.secretMatches`
+    says nothing changed, holds the pending save for 5 min keyed by
+    page+origin (cleared on page close), and broadcasts to the owning
+    shell. The banner offers Save / Update — update rewrites the secret
+    in place via `vault.update`.
+  - Locked vault: offers still capture; the banner collects the passphrase
+    inline and unlocks-then-saves, keeping the offer open on a mismatch.
+  - Generator: `vault.generate` (12–64 chars, CSPRNG, no-lookalike
+    alphabet) wired into the Settings save form.
+  - Explicit import/export: Settings → Vault exports live items to a
+    user-chosen JSON file (mode 600) and imports `aux-vault` exports with
+    validation + origin/username/label dedupe.
+  - Boundary: `kind:"secret"` items never surface as sign-in fills;
+    private windows get no watcher/offers/banner; `vault.fill|export|
+    import|update|secretMatches` are main-process-only (`desktopUser`),
+    external clients get metadata reads at most; agents keep opaque
+    credential references. Ownership enforced via `requireOwnedEntry` on
+    every credential IPC.
+- **Feasibility decisions recorded** in `docs/AUX-BROWSER-COMPATIBILITY.md`
+  (BR-06 refresh section): native messaging is API-present but host
+  qualification needs a signed bundle — deferred with signing, which keeps
+  1Password-style desktop unlock unqualified (native vault is the scoped
+  answer); platform/synced passkeys need the Touch ID entitlement — also
+  deferred (virtual CTAP2 path already verified); Widevine DRM is out of
+  scope for this build; full Chrome Web Store parity stays out of scope
+  with the managed-unpacked subset as the documented baseline.
+  `docs/AUX-CREDENTIALS.md` gained the vault section (deterministic secret
+  names for keychain continuity, origin-exact reveal, opaque model refs).
+- Tests: `human-vault.test.ts` (21) — exact/wrong/lookalike/subdomain
+  origins, revoked+expired denials, credential-URL rejection, secret-match
+  silence, update, generator bounds, export/import round-trip+dedupe,
+  jsdom fill/capture/detector scripts (field targeting, disabled/hidden
+  skipping, serialization safety, username-only reports, click+submit
+  coalescing). `browser-import.test.ts` (8) — Arc sidebar folders, Chromium
+  + Firefox history readers, WAL snapshotting, dedupe, cancel mid-run,
+  preview blockers, job lifecycle.
+- Verification: `tsc -b` clean; 710 unit + 21 integration + 192 renderer
+  green; oxlint 0 errors.
+
+## 2026-09-23 — BR-07: private mode, content blocking, and site behavior
+
+- **One request-policy router** (`apps/desktop/main/request-policy.ts`) owns
+  `webRequest.onBeforeRequest` per session — it folds the HTTPS-first upgrade,
+  global toggle, per-site allow and maintained host lists into a single
+  `decideRequest`; main-frame navigations always pass, malformed URLs are
+  ignored, domain+subdomain matching rejects sibling-suffix false positives,
+  and a per-session block counter feeds the privacy UI. Installed identically
+  in regular and private processes.
+- **Maintained filter lists** (`filter-lists.ts`, `filter-fetch.ts`): built-in
+  seed + user sources over https only, cached on disk so startup works
+  offline, atomic temp-file+rename writes for lists and `sources.json`,
+  etag/conditional refresh off the boot path (stale lists update in the
+  background), enable/disable/add/remove with a merged host set rebuilt
+  live. Settings → Privacy exposes status, refresh, add/remove and the
+  per-site exception list; Site Controls carries a per-site
+  "Block trackers and ads" switch.
+- **Cosmetic filtering** (`cosmetic-filter.ts`): bounded selector rules
+  serialized into an isolated-world script — removes/hides matching elements
+  via CDP, no preload, reapplied live on toggle and per-site allow.
+- **Private parity without persistence**: the private child receives
+  read-only blocking config via env (`AUX_PRIVATE_*`), reads the shared
+  cached lists but never writes — filter mutations proxy to the parent over
+  child IPC (`aux-private-filters`) so the cache stays single-writer.
+  Tracker-block toggle, per-site allow, blocked counts, cosmetic filter and
+  site controls all work in private; every exception dies with the process.
+- **HTTPS-first** (`https-first.ts`): eligible http navigations upgrade to
+  https (Settings → Privacy toggle, Chrome-parity "Always try secure
+  connections first"); localhost/127/::1/.local/.test/.internal/.lan/
+  .localhost/.home.arpa/192.168/10/172.16-31 and non-standard ports are
+  never rewritten. Aux-originated upgrades are tracked session-scoped —
+  only those earn the "Continue over HTTP" recovery action, enriched onto
+  `navigationError.upgradedFrom` (contract field on `PageTarget` + tabs
+  schema). Explicit user http URLs and existing cert-error/proceed-insecure
+  handling are untouched. Wired in both processes.
+- **Download protection** (`download-guard.ts`): dangerous extensions and
+  http-sourced files get a confirm dialog before bytes land (`Download.warning`
+  on the contract, shown in the Downloads shelf); private downloads always
+  prompt `showSaveDialogSync` with "saved outside private browsing" copy and
+  are fail-closed when the window is gone. Regular download recovery
+  (retry/resume/folder-unavailable paths) preserved.
+- **Translation through the configured provider**:
+  - `apps/runtime/src/services/translate.ts` — `translate.page` batches page
+    text through `settings.model()` (cap 400 segments, `truncated` flag),
+    bisects misaligned batches so text can't be misapplied, `translate.text`
+    for selections; no configured model → clean `backend_unavailable`.
+  - `apps/desktop/main/page-translate.ts` — isolated-world scripts extract
+    visible text (skips code/forms/hidden/noscript/contenteditable),
+    extract selection, apply in place behind a document token (stale pages
+    refuse re-application), and restore originals exactly.
+  - Surfaces: page context menu ("Translate page…", "Translate selection…"
+    with an in-page result bubble), palette commands, `TranslationBar`
+    under the stage with progress → detected-language → "Show original",
+    errors as toasts. Private windows get the same flow — page text transits
+    the parent's runtime over `aux-private-translate` child IPC (translate
+    methods only; never persisted).
+- **Private isolation audit**: separate process has no
+  `--remote-debugging-port`, `NODE_OPTIONS`/`ELECTRON_EXTRA_LAUNCH_ARGS`
+  are scrubbed at spawn, page `webContents` are sandboxed; private history,
+  tabs, thumbnails, favicons, permissions, tracker exceptions, memory,
+  extension state and agent context live only in the child's memory and its
+  scratch `userData` is removed on exit. Extension/agent/data-export IPCs
+  throw "unavailable in private browsing". Private search runs locally off
+  the default engine without touching the runtime.
+- **Verification tooling fix**: the renderer was never covered by `tsc -b` —
+  a missing `Shield` icon export (used by Site Controls) and a stale
+  `StoreState` name survived unnoticed. `tsconfig.renderer.json` is now part
+  of `npm run typecheck`; the latent `CommandBar`/`Inspector`/
+  `SearchEnginesSetting`/mock-bridge errors it exposed are all fixed.
+- Tests: `request-policy` (8), `filter-lists` (6), `cosmetic-filter` (3),
+  `https-first` (6), `download-guard` (4), `translate` (8 — batching,
+  bisect-on-misalign, truncation, no-model, selection, jsdom
+  extract/apply/restore round-trip).
+- Verification: `npm run typecheck` clean (all projects + renderer);
+  739 unit + 21 integration + 192 renderer green; oxlint 0 errors on
+  touched files.
+
+## 2026-09-22 — CH-01–CH-04: conversation continuity, page-help actions, context chips, reading/search
+
+- **CH-01 (one conversation across presentations)** — verified already landed:
+  the Quick Ask popup, side rail and full-page conversation share one
+  `conversationId` and one composer draft. Drafts and page context persist in
+  `localStorage` (`conversation-drafts.ts`) and sync live across windows via
+  `storage` events with per-entry tombstones, so the mini popup, rail and full
+  page never fork text. Expand keeps the chat instead of starting a new one.
+- **CH-02 (page-help actions)** — selected-text actions (Ask/Explain/
+  Summarize/Remember) and keyboard + drag region capture already landed.
+  New: **right-click image → "Ask Aux about image…"** opens a conversation
+  seeded with the instruction and the image attached.
+  - `packages/contracts` — `PageQuickAction` gains `image` +
+    `image: { dataUrl?, srcURL?, altText?, captureError? }`.
+  - `apps/desktop/main/image-capture.ts` — `imageCaptureScript(x,y)` finds the
+    `<img>` under the click (nested overlays included) and renders it to a
+    bounded PNG (≤1600px, ≤3.8MB); tainted cross-origin canvases fall back to
+    `session.fetch` + `nativeImage` re-encode with one downscale pass.
+    Failures return honest `captureError`s, never silent blanks.
+  - `page-menu.ts` shows the item only for real `mediaType === "image"` with a
+    `srcURL`, same process gate as other quick actions; `native-views.ts`
+    wires capture through the page's own frame — runtime-owned/private pages
+    stay out of the shared quick-action path.
+  - `App.tsx` attaches via `conversations.images.add` on a fresh chatId, seeds
+    the draft with instruction + source/alt provenance, and toasts an honest
+    note when capture fails (the conversation still opens with its source).
+- **CH-03 (context chips)** — pages/documents/images/workspace memory already
+  attach; new: **generated results are context chips**. The context panel now
+  lists `conversations.artifacts.get` entries with include toggles wired to
+  `conversations.artifacts.toggle` (runtime `conversationArtifacts:` selection
+  already enforced `included` in `inheritedContext`) plus a Preview button
+  that opens `SavedResultPreview`. Mock bridge learned `artifacts.toggle`.
+- **CH-04 (typography / continuation / search)** — verified already landed:
+  `AnswerMarkdown` (headings/tables/code), conversation sources and result
+  previews, the Home "recent work" continuation list, and Palette ⌘K search
+  across chats/tasks/history/memory/results with `all|tabs|work|pages`
+  type filters.
+- Tests: `image-capture` (13 — script happy path, nested overlay, no image,
+  unloaded, tainted→fetch fallback, oversize refusal, fetch shrink +
+  failure propagation, protected-source refusal).
+- Verification: `npm run typecheck` clean (all projects + renderer);
+  13 new unit tests + 59 existing conversation/contracts/renderer tests
+  green; oxlint 0 errors on touched files.
+
+## 2026-09-22 — AI workstream: labeled account boundary + sources surface
+
+- **AI-05 (labeled account/profile selection)** — `routine.accountLabels`
+  (schema field existed, never populated) now forms a declared account
+  boundary. `handlers.ts` stamps `run.config.accountLabels` at routine
+  dispatch; `runs.start`/`coordinator.start` carry it into the run config;
+  `coordinator-turn` passes it to `vault.grants({taskId, origin,
+  accountLabels})` so the planner only sees matching labeled grants
+  (unlabeled grants never enter a scoped run). `revealForFill` re-checks
+  the boundary at fill time — a stale skill or hand-authored
+  `credentialRef` outside the labels is `permission_denied` and journaled
+  as `denied`. Empty/absent labels keep the run unrestricted, unchanged
+  behavior. `Routines.tsx` gained an Accounts editor fed by distinct
+  `vault.list` account labels (checkbox chips → `routines.update`),
+  surviving label renames via the union of known + saved labels.
+- **AI-06/07 (sourced results, prepared-form loop)** — the context panel
+  now renders `conversations.sources.get` as a read-only "Pages read"
+  list (title + host + observed time) beside generated-results chips, so
+  a research run's provenance is inspectable in-place, not only in the
+  export. The "prepare → human edit → resume" loop already exists via
+  `SavedResultPreview` (edited copy attaches as a new source); the
+  `needs_input` ask/answer loop covers missing-information questions.
+- **AI-03/04 audit (bounded observations/batching/cached context/
+  parallel reads)** — verified present, no gap: scoped+bounded observe
+  (`maxElements`/`maxTextChars`, forms/links/tables/subtree), revision
+  diffs via `sinceRevision`, `carriedObs` reuse across turns, the
+  observation cache keyed on scope+limits, `EarlyDispatcher` safe
+  batching of streamed steps, and pilots-first bounded `Promise.all`
+  member jobs in `set-runner`. No speculative perf work added.
+- Tests: `agent-vault` +2 (grant scoping by declared labels, fill-time
+  refusal of out-of-boundary references). `image-capture` test fixture
+  typing fixed for `resize` mocks.
+- Verification: `npm run typecheck` clean; `agent-vault` 6/6, `routines`
+  7/7, `human-vault` 21/21, `image-capture` 13/13 green; oxlint 0 errors
+  on touched files (pre-existing warnings only).
+
+## 2026-09-22 — WS workstream: select-element edit requests + thin plugins
+
+- **Select visible region to request edit.** `pages.pickElement`
+  (runtime method, renderer-gated, external-blocked) injects a
+  self-cleaning picker overlay through the page's attached driver and
+  resolves a `PickedElement` summary — tag, id, classes, text, role,
+  aria-label, href, ancestor selector, bounding rect. The picked click
+  is captured and prevented so no navigation fires; Escape or the
+  timeout resolves without a pick; agent-controlled pages refuse.
+  In `ProjectCommandPanel` preview diagnostics, "Request edit…" runs
+  the pick on the linked preview tab, collects the requested change,
+  and starts the task with the pick + instruction as run context —
+  the task binding and revision receipt stay intact.
+- **Thin plugins.** `aux-plugin@1` manifests bundle portable routines
+  (`RoutineShare`). New `plugins` table (schema v4) records each
+  install plus the routine ids it created; same-name active installs
+  in a space conflict. `plugins.inspect` previews a bundle;
+  `plugins.install` recreates its routines through the existing
+  deduplicating import path; `plugins.uninstall` archives exactly the
+  routines that install added. Connections → Plugins tab carries the
+  space picker, bundle preview, install/list/uninstall. External
+  clients are blocked — plugins are managed inside Aux.
+- **Renderer gate fix.** `conversations.artifacts.toggle` was invoked
+  by the context panel but absent from `RENDERER_METHODS` — the
+  runtime handler existed, so toggling failed with
+  method_not_allowed. Gate added; caught by the renderer-methods
+  contract test.
+- **Already present (verified, no gap):** dirty-checkout preservation
+  via isolated persisted checkouts, local-request waits
+  (`needs_input` → `localRequest` alert + "Checkpoint & continue
+  locally"), cloud continuation with task/source-tree/lease identity,
+  durable results, reconnect/export/cleanup. Exact remote-browser
+  takeover remains documented unavailable.
+- Runtime `tsconfig` now compiles with DOM lib for serialized in-page
+  functions (`pickElementInPage` is injected via `fn.toString()`).
+- Tests: `element-picker` +6 (click pick, Escape cancel, timeout,
+  click-prevention, shadow DOM, describe), `plugins` +5 (inspect,
+  format rejection, install+list, same-name conflict,
+  uninstall+reinstall dedupe), `database-migration` updated for v4.
+- Verification: `pnpm build` + `npm run typecheck` clean; full
+  `npx vitest run` green; oxlint 0 errors on touched files.
+
+## 2026-09-22 — ME workstream: inspectable memory audit
+
+- **Verified complete (no code change needed).** Browsing memory is
+  opt-in per Space with retention policy, startup + read-time sweeps,
+  excluded sources (`memorySourceExcluded`), forget single entry or
+  the whole Space. It never records bodies or credentials and strips
+  query strings and fragments from stored URLs. Workspace memory
+  items carry content, source URL (https only, credentials rejected),
+  optional expiry and an enabled switch; editing merges against the
+  latest revision with a visible conflict UI instead of overwriting.
+- Retrieval entries are derived at read time — deleting a memory item
+  removes it from every future answer/context with no derived copies
+  left behind. Deletion, corrections, exclusions and retention are
+  all inspectable in Settings.
+
+## 2026-09-22 — SK workstream: run-status sync, transient retry, notifications
+
+- **Routine-run ↔ run sync (new).** `RoutineService.sync()` reconciles
+  every open dispatched run (`queued`/`running`/`waiting_input` with a
+  `runId`) against the underlying run's current status before each
+  `due()`, `run()`, `runs()`, `alerts()`, `reconcile()` and
+  `compare()` call, emitting `routine.updated` on change. Terminal
+  mapping: `completed`/`partially_completed` → completed (partial
+  flagged "review its results"), `failed`/`interrupted` → failed with
+  the run's status message, `cancelled` → cancelled. Previously a
+  dispatched routine run stayed `running` forever after its run
+  settled, so failure/completion/input never surfaced.
+- **New `waiting_input` status.** A run that goes `needs_input` maps
+  to `waiting_input` on its routine run (surfaced in the alerts feed
+  with "waiting for input") — distinct from `needs_review`, so the
+  reconcile path cannot mistakenly re-dispatch a live run. When the
+  run resumes, sync moves it back to `running`; when it settles,
+  stale reasons are cleared.
+- **Transient-read retry for monitors.** Monitor dispatches retry a
+  transient start failure once (2s backoff) before recording
+  `failed`; `AuxError` codes `backend_unavailable`, `condition_timeout`,
+  `model_error` and `target_detached` count as transient — a
+  `permission_denied`/validation failure does not retry. Failure
+  reasons record "retried once".
+- **Notifications.** The alerts feed now also includes completed
+  scheduled/monitored occurrences of review-required routines
+  (completion notifications). Failure, input (`waiting_input`),
+  missed and coalesced-missed entries were already covered.
+- **Already present (verified):** every run rechecks access (revision,
+  paused, archived, uncertain, active overlap at `run()`; task,
+  project and resolved-context gates at `prepareRun`), occurrence
+  identity + no-overlap, timezone-aware schedules, coalesced missed
+  read-only checks, missed consequential work requiring review,
+  uncertain-write reconciliation with evidence, vault expiry →
+  `permission_denied` with explicit re-grant and no silent retry.
+  Meaningful-change evidence stays the monitor run's own report,
+  linked from the routine run via `chatId`/`runId`.
+- Tests: `routines` +4 (terminal sync, waiting_input round-trip,
+  transient retry succeed/fail, non-transient no-retry).
+- Verification: `pnpm build` + `npm run typecheck` clean; full
+  `npx vitest run` 982 tests green; oxlint clean on touched files.

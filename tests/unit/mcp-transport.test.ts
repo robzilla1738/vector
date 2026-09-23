@@ -31,6 +31,7 @@ it("does not repeat a mutation after a lost response and discovers the restarted
   directories.push(dir);
   const path = join(dir, "runtime.json");
   vi.stubEnv("AUX_RUNTIME_FILE", path);
+  vi.stubEnv("AUX_MCP_TOKEN", "scoped-token");
   resetDescriptorCache();
   let writes = 0;
   const port = await listen(createServer((request) => {
@@ -47,7 +48,7 @@ it("does not repeat a mutation after a lost response and discovers the restarted
 
   let reads = 0;
   const restartedPort = await listen(createServer((request, response) => {
-    expect(request.headers.authorization).toBe("Bearer restarted");
+    expect(request.headers.authorization).toBe("Bearer scoped-token");
     reads++;
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify({ result: [] }));
@@ -58,14 +59,13 @@ it("does not repeat a mutation after a lost response and discovers the restarted
   expect(writes).toBe(1);
 });
 
-it("fails closed for legacy Aux configs that have no scoped bearer token", async () => {
+it("fails closed for Aux MCP configs that have no scoped bearer token", async () => {
   const dir = mkdtempSync(join(tmpdir(), "aux-mcp-legacy-"));
   directories.push(dir);
   const path = join(dir, "runtime.json");
   vi.stubEnv("AUX_RUNTIME_FILE", path);
-  vi.stubEnv("AUX_MCP_TOOL_PREFIX", "aux");
   vi.stubEnv("AUX_MCP_TOKEN", "");
   writeFileSync(path, JSON.stringify({ port: 1, token: "broad-runtime-token", pid: process.pid }));
   resetDescriptorCache();
-  await expect(rpc("pages.list")).rejects.toThrow(/predates scoped connections/i);
+  await expect(rpc("pages.list")).rejects.toThrow(/scoped AUX_MCP_TOKEN/i);
 });

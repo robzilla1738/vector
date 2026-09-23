@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from "vitest";
-import { DurableWriteLedger, EventBus, makeInvoker, openDb, Repo, TaskEvidenceService, TaskService, type PageService, type Services } from "@vector/runtime";
-import { TaskReceiptSchema } from "@vector/contracts";
+import { DurableWriteLedger, EventBus, makeInvoker, openDb, Repo, TaskEvidenceService, TaskService, type PageService, type Services } from "@aux/runtime";
+import { TaskReceiptSchema } from "@aux/contracts";
 import { isShellDocument } from "../../apps/desktop/main/shell-origin.js";
 
 const cleanup: (() => void)[] = [];
@@ -144,7 +144,7 @@ it("imports exact local document snapshots only through desktop authority and re
   const params = { ...f.base, filename: "order.md", content: "# Order\n123\n" };
   await expect(f.invoke("tasks.importDocumentEvidence", params)).rejects.toMatchObject({ code: "permission_denied" });
   await expect(f.invoke("tasks.importDocumentEvidence", { ...params, filename: "../order.md" }, { external: false })).rejects.toThrow();
-  const record = await f.invoke("tasks.importDocumentEvidence", params, { external: false }) as import("@vector/contracts").TaskEvidence;
+  const record = await f.invoke("tasks.importDocumentEvidence", params, { external: false }) as import("@aux/contracts").TaskEvidence;
   expect(record).toMatchObject({ kind: "document_snapshot", actor: "desktop_user", source: { filename: "order.md", byteLength: 12 }, snapshot: { text: params.content } });
   expect(record.source.sha256).toMatch(/^[a-f0-9]{64}$/);
   f.review(record.evidenceId);

@@ -4,7 +4,7 @@ import { readerOutline, readerSectionId } from "../reader-outline";
 import { FindBar } from "./FindBar";
 import { createElement, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { bridge, type ReaderArticle, type ReaderNode } from '../bridge';
-import { useStore, errToast } from '../store';
+import { useStore, call, errToast } from '../store';
 
 const tags = new Set(['div','span','p','h1','h2','h3','h4','h5','h6','blockquote','pre','code','ul','ol','li','strong','em','b','i','a','br','hr','table','thead','tbody','tr','th','td','figcaption']);
 function renderNode(node: ReaderNode, key = 'article'): ReactNode {
@@ -31,8 +31,9 @@ export function ReaderView() {
   const pageId = page?.pageId;
   const key = `${pageId}:${page?.documentEpoch}:${page?.url}`;
   const setOverlay = useStore(state => state.setOverlay);
-  const [loaded, setLoaded] = useState<{key:string;article:ReaderArticle} | null>(null);
+  const [loaded, setLoaded] = useState<{key:string;article:ReaderArticle;offlineSavedAt?:number} | null>(null);
   const article = loaded?.key === key ? loaded.article : null;
+  const offlineSavedAt = loaded?.key === key ? loaded.offlineSavedAt : undefined;
   const [error, setError] = useState('');
   const [contentsOpen, setContentsOpen] = useState(false);
   const contentsMenu = useRef<HTMLElement>(null);
@@ -54,9 +55,23 @@ export function ReaderView() {
     setLoaded(null); setError(''); setContentsOpen(false);
     if (!pageId) { setError('Open an article to use Reader view.'); return; }
     if (page.loading) return;
-    void bridge.readArticle(pageId).then(article => {if(current)setLoaded({key,article});}).catch(error => {if(current)setError(error instanceof Error ? error.message : String(error));});
+    const markRead = (url: string | undefined) => {
+      const item = url && useStore.getState().bookmarks.find(bookmark => bookmark.url === url && bookmark.readingList);
+      if (item && !item.readAt) void call("bookmarks.markRead", { url, read: true }).catch(() => {});
+    };
+    void bridge.readArticle(pageId).then(article => {if(current){setLoaded({key,article});markRead(page?.url);}}).catch(async error => {
+      // Reading-list offline copies are the fallback when live extraction fails.
+      const url = page?.url;
+      if (!current || !url || bridge.privateMode) { if (current) setError(error instanceof Error ? error.message : String(error)); return; }
+      try {
+        const saved = await call<{article:string|null;savedAt:number|null}>("bookmarks.offline.get", {url});
+        if (!current) return;
+        if (saved.article) { setLoaded({key, article: JSON.parse(saved.article) as ReaderArticle, offlineSavedAt: saved.savedAt ?? undefined}); markRead(url); return; }
+      } catch { /* fall through to the live error */ }
+      if (current) setError(error instanceof Error ? error.message : String(error));
+    });
     return () => {current=false;};
-  }, [pageId, key, page?.loading, refresh]);
+  }, [pageId, key, page?.loading, page?.url, refresh]);
   useLayoutEffect(() => {
     const node = scroll.current;
     if (!node || !article) return;
@@ -125,7 +140,7 @@ export function ReaderView() {
       void openBrowserLink(link.href, backgroundLink(event)).catch(errToast);
     }}>
       {error ? <div className="reader-empty" role="status"><h2>Reader view isn’t available</h2><p>{error}</p><button className="btn sm" onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <p className="reader-empty" role="status">Preparing article…</p> : <article className="reader-article" data-find-surface="reader">
-        <div className="reader-meta">{article.site} · {article.minutes} min read</div>
+        <div className="reader-meta">{offlineSavedAt ? `Offline copy · saved ${new Date(offlineSavedAt).toLocaleString()} · ` : ""}{article.site} · {article.minutes} min read</div>
         <h1>{article.title}</h1>
         {article.byline && <p className="reader-byline">{article.byline}</p>}
         <div className={`reader-content${preferences.font==='sans'?' reader-sans':''}`}>{renderNode(article.content)}</div>

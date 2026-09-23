@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { conversationSourceFromArtifact, dedupeConversationSources, isObservationArtifactContent } from "@vector/runtime";
+import { conversationSourceFromArtifact, dedupeConversationSources, isObservationArtifactContent } from "@aux/runtime";
 
 const artifact = { artifactId: "artifact-observation", runId: "run-1", pageId: "page-1", path: "/not/exposed.json", mediaType: "application/json", size: 100, status: "complete" as const, createdAt: 1 };
 const observation = (overrides: Record<string, unknown> = {}) => JSON.stringify({

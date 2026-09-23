@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { Artifact } from "@vector/contracts";
+import type { Artifact } from "@aux/contracts";
 import { isObservationArtifactContent } from "./conversation-sources.js";
 
 export const TEXT_RESULT_TYPES = ["text/plain", "text/markdown", "text/csv", "application/json"] as const;

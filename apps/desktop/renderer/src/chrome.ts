@@ -2,10 +2,22 @@
  * Address-field, overlay→native-view, and activity-count rules used by the
  * desktop shell. Pure functions so tests import the same module the UI uses.
  */
+import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
+
+// Domain labels allow unicode letters/digits — `münchen.de` and `例え.jp`
+// navigate; `a.b,c` and other non-host punctuation does not.
+const DOMAIN_LIKE = /^[\p{L}\p{N}_-]+(?:\.[\p{L}\p{N}_-]+)*\.([\p{L}\p{N}_-]+)(:\d+)?(\/\S*)?$/iu;
+// The last label must read as a TLD — a leading letter (or xn--) — so
+// `version.1.2` stays a query while `node.js` navigates.
+const TLD_LIKE = /^[\p{L}][\p{L}\p{N}-]*$|^xn--/iu;
+const IPV6_LIKE = /^\[[0-9a-f:]+\](:\d+)?(\/\S*)?$|^[0-9a-f:]*::[0-9a-f:]*(:\d+)?(\/\S*)?$/i;
 
 export function isUrlLike(v: string): boolean {
   if (/^(https?:\/\/|about:|chrome:\/\/|file:\/\/|view-source:|data:)/i.test(v)) return true;
-  return /^(localhost|\d{1,3}(\.\d{1,3}){3}|[\w-]+(\.[\w-]+)+)(:\d+)?(\/\S*)?$/i.test(v);
+  if (IPV6_LIKE.test(v)) return true;
+  if (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/\S*)?$/i.test(v)) return true;
+  const match = DOMAIN_LIKE.exec(v);
+  return !!match?.[1] && TLD_LIKE.test(match[1]);
 }
 
 /** URL-like input becomes an http(s) navigate URL; anything else uses the search engine. Never starts an agent. */
@@ -13,10 +25,11 @@ export function toUrl(v: string, searchEngine?: string): string {
   const s = v.trim();
   if (/^(https?:\/\/|about:|chrome:\/\/|file:\/\/|view-source:|data:)/i.test(s)) return s;
   if (isUrlLike(s) && !s.includes(" ")) {
-    const local = /^(localhost|127\.|0\.0\.0\.0|::1|\[::1\]|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|.*\.local\b)/i.test(s);
-    return `${local ? "http" : "https"}://${s}`;
+    const local = /^(localhost|127\.|0\.0\.0\.0|::|\[::|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|.*\.local\b)/i.test(s);
+    const host = /^[0-9a-f:]*::[0-9a-f:]*$/i.test(s) ? `[${s}]` : s;
+    return `${local ? "http" : "https"}://${host}`;
   }
-  const tpl = searchEngine || "https://duckduckgo.com/?q=%s";
+  const tpl = searchEngine || DEFAULT_SEARCH_ENGINE;
   return tpl.includes("%s") ? tpl.replace("%s", encodeURIComponent(s)) : tpl + encodeURIComponent(s);
 }
 
@@ -49,9 +62,6 @@ export function nativePageId(input: {
   const url = input.url?.trim() ?? "";
   if ((!url || url === "about:blank") && !input.showBlankDocument) return null;
   if (input.backend === "chrome") return null;
-  // EngineView paints the Aux document. A Chromium WebContentsView must
-  // not sit on top of that surface.
-  if (input.backend === "vector-engine") return null;
   return input.activePageId;
 }
 

@@ -2,17 +2,26 @@ import { WebsiteSizes } from "./WebsiteSizes";
 import { QuickAskSetting } from "./QuickAskSetting";
 import { BrowserProfiles } from "./BrowserProfiles";
 import { SearchEngineSetting } from "./SearchEngineSetting";
+import { SearchEnginesSetting, type EngineRow } from "./SearchEnginesSetting";
+import { DefaultBrowserSetting } from "./DefaultBrowserSetting";
+import { AutofillSetting } from "./AutofillSetting";
+import { ImportDataSetting } from "./ImportDataSetting";
+import { ShortcutsSetting } from "./ShortcutsSetting";
+import type { AutofillProfile, ShortcutOverrides } from "@aux/contracts";
+import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
+import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
 import { ClearHistory } from "./ClearHistory";
 import { MemorySettings } from "./MemorySettings";
-import type { ModelProvider } from "@vector/contracts";
+import type { ModelProvider } from "@aux/contracts";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, toast, errToast } from "../store";
 import { bridge, emptyBrowserHealthSummary, type BrowserHealthSummary } from "../bridge";
-import { engineModeLabel, readEngineMode, type EngineMode } from "../engine";
+
 import { I } from "./icons";
 import { UI_FONT_SIZES, readUiFontSize, writeUiFontSize, type UiFontSize } from "../ui-font-size";
 import { SitePermissions } from "./SitePermissions";
 import { ExternalAgents } from "./ExternalAgents";
+import { PluginsPanel } from "./PluginsPanel";
 import { Extensions } from "./Extensions";
 import { VaultSettings } from "./VaultSettings";
 import { searchSettings, type SettingsDestination } from "../settings-search";
@@ -23,10 +32,7 @@ const KEY_MASK = "••••••••";
 
 interface ModelEntry { id: string; name?: string }
 
-const KNOWN_PLANNER_MODELS: ModelEntry[] = [
-  { id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" },
-  { id: "openai/gpt-5.6-luna-fast", name: "GPT 5.6 Luna Fast" },
-];
+const KNOWN_PLANNER_MODELS: ModelEntry[] = modelPickerEntries(MODEL_REGISTRY);
 
 const TURN_OPTIONS = [8, 16, 32, 64, 128, 0];
 
@@ -76,7 +82,7 @@ function Field({ label, hint, children }: { label: string; hint?: React.ReactNod
   );
 }
 
-type ConnectionTab = "Models" | "Services" | "Agents" | "Vault";
+type ConnectionTab = "Models" | "Services" | "Agents" | "Vault" | "Plugins";
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
   const initialCategory = useRef(useStore.getState().settingsCategory).current;
@@ -120,6 +126,12 @@ export function Settings() {
     const saved = settings.modelProbe as ProbeResult | undefined;
     return saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null;
   });
+  // settings often arrive after the first render — surface the saved probe
+  // whenever the fetched record changes.
+  useEffect(() => {
+    const saved = settings.modelProbe as ProbeResult | undefined;
+    if (saved) setProbe({ ...saved, error: saved.ok ? undefined : "Last connection test failed" });
+  }, [settings.modelProbe]);
   const [probing, setProbing] = useState(false);
   const [dataDir, setDataDir] = useState("");
   const [diagnosticsBusy,setDiagnosticsBusy]=useState(false);
@@ -132,7 +144,7 @@ export function Settings() {
   const [health,setHealth]=useState<BrowserHealthSummary>(()=>emptyBrowserHealthSummary());
   const [healthBusy,setHealthBusy]=useState(false);
   const [cookieImport, setCookieImport] = useState<{ busy: boolean; result?: CookieImportResult; error?: string }>({ busy: false });
-  const [bookmarkImport, setBookmarkImport] = useState<{ busy: boolean; result?: { ok: boolean; imported: number; skipped: number; profiles: string[]; detail: string }; error?: string }>({ busy: false });
+
   const [githubToken,setGithubToken]=useState('');
   const [githubBusy,setGithubBusy]=useState(false);
   const [githubError,setGithubError]=useState('');
@@ -287,7 +299,6 @@ export function Settings() {
     catch { return false; }
   })();
   const connectionReady = hasKey || localCompatible;
-  const engineMode = readEngineMode(settings);
 
   return (
     <div className="settings-page" role="region" aria-label="Settings" ref={dialogRef}>
@@ -300,7 +311,7 @@ export function Settings() {
           }
         }}/>
         <span>Preferences</span>
-        {["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions", "Engine"].map(name => <button key={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension, Engine: I.cpu } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}
+        {["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions"].map(name => <button key={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}
       </nav>
       <div className="settings-content">
         <div className="drawer-head">
@@ -311,7 +322,7 @@ export function Settings() {
         </div>
 
         {!searching && category === "Connections" && <div className="settings-connection-tabs" role="tablist" aria-label="Connection types" onKeyDown={event => moveListFocus(event, '[role="tab"]', false)}>
-          {(["Models", "Services", "Vault", "Agents"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
+          {(["Models", "Services", "Vault", "Agents", "Plugins"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
         </div>}
         <div className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
         {searching && <div className="settings-search-results">
@@ -426,6 +437,7 @@ export function Settings() {
         {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
         </section><section tabIndex={-1} id="connection-panel-Vault" role="tabpanel" aria-labelledby="connection-tab-Vault" hidden={!visible("Vault")}><VaultSettings /></section>
         <section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
+        <section tabIndex={-1} id="connection-panel-Plugins" role="tabpanel" aria-labelledby="connection-tab-Plugins" hidden={!(category === "Connections" && connectionTab === "Plugins")}><PluginsPanel /></section>
         <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>
 
         <section className="appearance-preferences" hidden={!visible("Appearance")}><div className="drawer-section">Appearance</div>
@@ -452,28 +464,6 @@ export function Settings() {
         <Field label="Glass defaults" hint="Restore the native glass material, clear sidebar tint and 95% content opacity."><button className="btn sm" onClick={() => void set({ sidebarAppearance: "translucent", sidebarMaterial: "liquid-glass", sidebarTint: 0, contentOpacity: 95 })}>Reset glass appearance</button></Field>
         <Field label="Tab layout" hint="Both layouts use the same tabs, folders, and current selection."><select aria-label="Tab layout" value={String(settings.tabLayout ?? "vertical")} onChange={e => void set({ tabLayout: e.target.value })}><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></Field>
         <Field label="Website sizes"><WebsiteSizes /></Field>
-        </section><section hidden={!visible("Engine")}><div className="drawer-section">Engine</div>
-        <Field label="Aux Engine" hint={engineModeLabel(engineMode)}>
-          <div className="seg" role="radiogroup" aria-label="Engine mode" onKeyDown={activateRadioOnArrow}>
-            {(["off", "auto", "always"] as EngineMode[]).map((m) => (
-              <button key={m} role="radio" aria-checked={engineMode === m} tabIndex={engineMode === m ? 0 : -1} className={engineMode === m ? "on" : ""} onClick={() => void set({ engineMode: m })}>
-                {m === "off" ? "Off" : m === "auto" ? "Auto" : "Always"}
-              </button>
-            ))}
-          </div>
-        </Field>
-        <Field label="Qualified engine sites" hint="Comma-separated origins, hosts, or wildcards such as docs.example.com and *.internal.example. Other sites use Chromium in Auto mode.">
-          <input
-            aria-label="Qualified engine sites"
-            type="text"
-            defaultValue={Array.isArray(settings.engineCohorts) ? settings.engineCohorts.join(", ") : ""}
-            placeholder="docs.example.com, *.internal.example"
-            onBlur={(event) => void set({
-              engineCohorts: event.currentTarget.value.split(",").map((value) => value.trim()).filter(Boolean),
-            })}
-          />
-        </Field>
-
         </section><section hidden={!visible("Agent permissions")}><div className="drawer-section">Agent permissions</div>
         <Field
           label="What the agent may do"
@@ -514,8 +504,24 @@ export function Settings() {
         </Field>
 
         </section><section hidden={!visible("General")}><div className="drawer-section">Browsing</div>
+        <Field label="Default browser">
+          <DefaultBrowserSetting />
+        </Field>
+
+        <Field label="Personal info" hint="Fill contact and address fields on a form with the context menu or command palette. Passwords and payment details are never stored here.">
+          <AutofillSetting value={settings.autofill as AutofillProfile | undefined} onSave={autofill => set({ autofill })} />
+        </Field>
+
         <Field label="Search engine">
-          <SearchEngineSetting value={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"} onSave={searchEngine => set({ searchEngine })} />
+          <SearchEngineSetting value={(settings.searchEngine as string) ?? DEFAULT_SEARCH_ENGINE} onSave={searchEngine => set({ searchEngine })} />
+        </Field>
+
+        <Field label="Search suggestions" hint="Show suggestions from your search engine as you type. Typed text is only sent when it doesn’t look like a private or local address, and never in Private mode.">
+          <label className="row"><input type="checkbox" checked={Boolean(settings.searchSuggestions)} onChange={event => void set({ searchSuggestions: event.target.checked })}/><span className="hint">Show search suggestions in the address bar</span></label>
+        </Field>
+
+        <Field label="Keyword engines" hint="Search a site directly by typing its keyword first.">
+          <SearchEnginesSetting value={(settings.searchEngines as EngineRow[]) ?? []} onSave={searchEngines => set({ searchEngines })} />
         </Field>
 
         <Field label="Import Chrome sign-ins" hint={cookieImport.result?.detail ?? "Import available sign-in cookies from Chrome. macOS may ask for keychain access; some sites may require you to sign in again."}>
@@ -537,23 +543,12 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Import Chrome bookmarks" hint={bookmarkImport.result?.detail ? `Bookmarks imported · ${bookmarkImport.result.detail}` : "Import bookmarks and folders from Chrome, Chromium or Edge. Existing Aux bookmarks are kept; duplicates are skipped."}>
-          <div className="row">
-            <button
-              className="btn sm"
-              disabled={bookmarkImport.busy}
-              onClick={() => {
-                setBookmarkImport({ busy: true });
-                void call<{ ok: boolean; imported: number; skipped: number; profiles: string[]; detail: string }>("chrome.importBookmarks", {})
-                  .then((r) => setBookmarkImport({ busy: false, result: r }))
-                  .catch((e) => setBookmarkImport({ busy: false, error: e instanceof Error ? e.message : String(e) }));
-              }}
-            >
-              {bookmarkImport.busy ? "Importing…" : "Import bookmarks"}
-            </button>
-            {bookmarkImport.result && <span className="hint ok">{bookmarkImport.result.imported} imported{bookmarkImport.result.skipped ? ` · ${bookmarkImport.result.skipped} duplicates skipped` : ""}</span>}
-            {bookmarkImport.error && <span className="hint err">{bookmarkImport.error}</span>}
-          </div>
+        <Field label="Import browser data" hint="Preview what each installed browser can share — bookmarks and folders, history, and live tabs from an attached Chrome — then import what you choose. Source profiles are only ever read, never changed.">
+          <ImportDataSetting />
+        </Field>
+
+        <Field label="Keyboard shortcuts" hint="Change any browser or app shortcut. Menus, web pages and the shell share one set — a chord that collides is explained before it is assigned.">
+          <ShortcutsSetting value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}} onSave={shortcutOverrides => set({ shortcutOverrides })} />
         </Field>
 
         <Field label="Quick Ask"><QuickAskSetting /></Field>
@@ -565,7 +560,7 @@ export function Settings() {
           {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button></div>)}</details>}
           {restoreStatus.pending&&<span className="hint" role="status">A restore is staged for the next launch. Changes made before quitting will be replaced.</span>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<span className="hint" role="status">{backupMessage}</span>}
         </Field>
-        <LegacyMigration />
+
 
         <details className="settings-advanced">
           <summary>Diagnostics & storage</summary>
@@ -596,22 +591,4 @@ export function Settings() {
   );
 }
 
-function LegacyMigration() {
-  const [status, setStatus] = useState<{ source: string | null; destination: string; dualRoots: boolean; skippedCredentials: boolean; migrated: boolean; blockedReason?: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  useEffect(() => { void call<NonNullable<typeof status>>("installation.legacyStatus", {}).then(setStatus).catch(() => undefined); }, []);
-  if (!status?.source && !status?.dualRoots && !status?.migrated) return null;
-  return <Field label="Vector data" hint="Explicit Vector→Aux copy. Encrypted credentials, cookies and password stores are never moved. Confirm before copying task data.">
-    <p className="hint">{status.blockedReason ?? (status.migrated ? "A Vector→Aux migration already completed for this destination." : status.source ? `Legacy data found at ${status.source}.` : "No legacy Vector directory found.")}</p>
-    {status.skippedCredentials && <p className="hint">Credential files will be skipped. Re-enter keys in Connections after migration.</p>}
-    {status.source && !status.migrated && <button className="btn sm" disabled={busy} onClick={() => {
-      setBusy(true); setMessage("");
-      void call("installation.migrateLegacy", { confirm: true }).then(() => {
-        setMessage("Copied task data. Credentials were not moved. Restart Aux with the Aux data directory.");
-        setStatus(current => current ? { ...current, migrated: true } : current);
-      }).catch(error => setMessage(error instanceof Error ? error.message : String(error))).finally(() => setBusy(false));
-    }}>{busy ? "Copying…" : "Copy Vector data into Aux…"}</button>}
-    {message && <span className="hint" role="status">{message}</span>}
-  </Field>;
-}
+

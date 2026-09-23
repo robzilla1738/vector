@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { CriterionReviewParams, CriterionReviewSchema, CriterionVerificationSchema, EvidenceCaptureParams, EvidenceCommandParams, EvidenceDocumentParams, EvidenceNoteParams, PreservedCloudResultSchema, TaskEvidenceSchema, TaskReconcileParams, TaskReconcileOperationParams, TaskVerifyCriterionParams, VectorError,
-  type Task, type TaskEvidence, type CriterionReview, type CriterionVerification, type TaskReceipt, type CloudTaskResult, type PreservedCloudResult } from "@vector/contracts";
+import { CriterionReviewParams, CriterionReviewSchema, CriterionVerificationSchema, EvidenceCaptureParams, EvidenceCommandParams, EvidenceDocumentParams, EvidenceNoteParams, PreservedCloudResultSchema, TaskEvidenceSchema, TaskReconcileParams, TaskReconcileOperationParams, TaskVerifyCriterionParams, AuxError,
+  type Task, type TaskEvidence, type CriterionReview, type CriterionVerification, type TaskReceipt, type CloudTaskResult, type PreservedCloudResult } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import { summarizeModelUsage } from "./model-usage.js";
 import type { EventBus } from "../events.js";
@@ -51,9 +51,9 @@ export class TaskEvidenceService {
   }
 
   preserveCloudResult(taskId:string,revision:number,environmentId:string,result:CloudTaskResult,artifacts:{artifactId:string;label:string;sha256:string;bytes:number}[]):{result:PreservedCloudResult;preserved:boolean}{
-    const task=this.current(taskId,revision,undefined,true);if(task.state==='archived')throw new VectorError('conflict','Restore this task before preserving a cloud result');
-    if(result.taskId!==taskId||result.taskRevision!==revision)throw new VectorError('conflict','The cloud result does not match this task revision');
-    const criteria=new Set(task.criteria.map(item=>item.criterionId));if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new VectorError('conflict','The cloud task result references a criterion outside this task revision');
+    const task=this.current(taskId,revision,undefined,true);if(task.state==='archived')throw new AuxError('conflict','Restore this task before preserving a cloud result');
+    if(result.taskId!==taskId||result.taskRevision!==revision)throw new AuxError('conflict','The cloud result does not match this task revision');
+    const criteria=new Set(task.criteria.map(item=>item.criterionId));if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new AuxError('conflict','The cloud task result references a criterion outside this task revision');
     const records=this.cloudResults();const existing=records.find(item=>item.taskId===taskId&&item.taskRevision===revision&&item.environmentId===environmentId&&item.resultUpdatedAt===result.updatedAt);
     if(existing&&(!artifacts.length||existing.artifacts.length))return{result:existing,preserved:false};
     const record=PreservedCloudResultSchema.parse({resultId:existing?.resultId??randomUUID(),taskId,taskRevision:revision,environmentId,sourceTree:result.sourceTree,status:result.status,summary:result.summary,localRequest:result.localRequest,resultUpdatedAt:result.updatedAt,preservedAt:existing?.preservedAt??Date.now(),claims:result.criteria,artifacts:artifacts.length?artifacts:existing?.artifacts??[]});
@@ -62,11 +62,11 @@ export class TaskEvidenceService {
 
   prepareCloudResult(taskId:string,revision:number,result:CloudTaskResult):void{
     const task=this.current(taskId,revision,undefined,true);
-    if(task.state==='archived')throw new VectorError('conflict','Restore this task before importing cloud evidence');
-    if(result.taskId!==taskId||result.taskRevision!==revision)throw new VectorError('conflict','The cloud result does not match this task revision');
-    if(!result.criteria.length)throw new VectorError('conflict','The cloud result has no criterion claims to import');
+    if(task.state==='archived')throw new AuxError('conflict','Restore this task before importing cloud evidence');
+    if(result.taskId!==taskId||result.taskRevision!==revision)throw new AuxError('conflict','The cloud result does not match this task revision');
+    if(!result.criteria.length)throw new AuxError('conflict','The cloud result has no criterion claims to import');
     const criteria=new Set(task.criteria.map(item=>item.criterionId));
-    if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new VectorError('conflict','The cloud result references a criterion outside this task revision');
+    if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new AuxError('conflict','The cloud result references a criterion outside this task revision');
   }
 
   cloudResultImported(taskId:string,revision:number,environmentId:string,resultUpdatedAt:number):boolean{
@@ -77,7 +77,7 @@ export class TaskEvidenceService {
   importDocument(input: unknown): TaskEvidence {
     const p = EvidenceDocumentParams.parse(input);
     const task = this.current(p.taskId, p.expectedRevision, p.criterionId, true);
-    if (task.state === "archived") throw new VectorError("conflict", "Restore this task before importing evidence");
+    if (task.state === "archived") throw new AuxError("conflict", "Restore this task before importing evidence");
     const now = Date.now();
     return this.saveEvidence({ evidenceId: randomUUID(), taskId: p.taskId, taskRevision: p.expectedRevision, criterionId: p.criterionId,
       kind: "document_snapshot", actor: "desktop_user", summary: `Document: ${p.filename}`,
@@ -89,10 +89,10 @@ export class TaskEvidenceService {
   importCommand(input: unknown): TaskEvidence {
     const p=EvidenceCommandParams.parse(input);
     const task=this.current(p.taskId,p.expectedRevision,p.criterionId,true);
-    if(task.state==='archived')throw new VectorError('conflict','Restore this task before importing evidence');
-    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===p.projectId))throw new VectorError('permission_denied','Attach this project to the current task revision first');
+    if(task.state==='archived')throw new AuxError('conflict','Restore this task before importing evidence');
+    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===p.projectId))throw new AuxError('permission_denied','Attach this project to the current task revision first');
     const command=p.command;
-    if(command.projectId!==p.projectId||command.commandId!==p.commandId||['running','stopping'].includes(command.state)||command.finishedAt===undefined)throw new VectorError('invalid_params','Select a finished command from this project');
+    if(command.projectId!==p.projectId||command.commandId!==p.commandId||['running','stopping'].includes(command.state)||command.finishedAt===undefined)throw new AuxError('invalid_params','Select a finished command from this project');
     const content=`${command.task?`Execution task: ${command.task.title} (${command.task.taskId}) · Revision ${command.task.taskRevision}\n`:"No task binding was recorded at execution.\n"}Command: ${command.command}\nExecution mode: ${command.mode}\nWorking directory: ${command.cwd}\nStarted: ${new Date(command.startedAt).toISOString()}\nFinished: ${new Date(command.finishedAt).toISOString()}\nState: ${command.state}\nExit code: ${command.exitCode??'not recorded'}\nOutput truncated: ${command.truncated}\n\n${command.output}`;
     return this.saveEvidence({evidenceId:randomUUID(),taskId:p.taskId,taskRevision:p.expectedRevision,criterionId:p.criterionId,
       kind:'command_snapshot',actor:'desktop_user',summary:`Local command result: ${command.state}${command.exitCode!=null?` (exit ${command.exitCode})`:''}`,
@@ -107,12 +107,12 @@ export class TaskEvidenceService {
     const task = this.current(p.taskId, p.expectedRevision, p.criterionId);
     const scoped = task.resources.some(resource => resource.kind === "page" && resource.locator === p.pageId)
       || this.tasks.details(p.taskId).runs.some(({ run, currentRevision }) => currentRevision && run.pageIds.includes(p.pageId));
-    if (!scoped) throw new VectorError("permission_denied", "The page is not in this task's current resources or runs");
-    if (!this.pages) throw new VectorError("backend_unavailable", "Browser evidence capture is unavailable");
+    if (!scoped) throw new AuxError("permission_denied", "The page is not in this task's current resources or runs");
+    if (!this.pages) throw new AuxError("backend_unavailable", "Browser evidence capture is unavailable");
     const sequence = this.runSequence(p.taskId);
     const observation = await this.pages.observe(p.pageId, { scope: "full" });
     this.current(p.taskId, p.expectedRevision, p.criterionId);
-    if (sequence !== this.runSequence(p.taskId)) throw new VectorError("conflict", "A task run started during capture; capture fresh evidence");
+    if (sequence !== this.runSequence(p.taskId)) throw new AuxError("conflict", "A task run started during capture; capture fresh evidence");
     return this.saveEvidence({ evidenceId: randomUUID(), taskId: p.taskId, taskRevision: p.expectedRevision, criterionId: p.criterionId,
       kind: "browser_observation", actor: "runtime", summary: `Page observation: ${observation.content.title || observation.content.url}`.slice(0, 4000),
       recordedAt: Date.now(), observedAt: observation.observedAt, runSequence: sequence,
@@ -127,9 +127,9 @@ export class TaskEvidenceService {
       const evidence = this.evidence(p.taskId, p.expectedRevision, p.criterionId);
       for (const id of p.evidenceIds) {
         const record = evidence.find(item => item.record.evidenceId === id)?.record;
-        if (!record) throw new VectorError("invalid_params", "Review evidence must belong to this criterion and task revision");
+        if (!record) throw new AuxError("invalid_params", "Review evidence must belong to this criterion and task revision");
         const reason = this.staleReason(record);
-        if (reason) throw new VectorError("conflict", `Evidence is stale: ${reason}`);
+        if (reason) throw new AuxError("conflict", `Evidence is stale: ${reason}`);
       }
       const record: CriterionReview = { reviewId: randomUUID(), taskId: p.taskId, taskRevision: p.expectedRevision, criterionId: p.criterionId,
         actor: "desktop_user", outcome: p.outcome, evidenceIds: [...new Set(p.evidenceIds)], note: p.note, recordedAt: Date.now(),
@@ -147,11 +147,11 @@ export class TaskEvidenceService {
     this.current(p.taskId, p.expectedRevision, undefined, true);this.tasks.requireLocalAuthority(p.taskId,p.expectedRevision);
     const action = this.repo.db.prepare(`SELECT a.id,a.status FROM action_intents a JOIN runs r ON r.run_id=a.run_id
       WHERE a.id=? AND json_extract(r.config,'$.taskId')=?`).get(p.intentId, p.taskId) as { id: string; status: string } | undefined;
-    if (!action || !["pending", "uncertain"].includes(action.status)) throw new VectorError("conflict", "No unresolved action with this ID belongs to the task");
+    if (!action || !["pending", "uncertain"].includes(action.status)) throw new AuxError("conflict", "No unresolved action with this ID belongs to the task");
     const evidence = this.evidence(p.taskId, p.expectedRevision).find(item => item.record.evidenceId === p.evidenceId)?.record;
-    if (!evidence) throw new VectorError("invalid_params", "Reconciliation needs evidence from the current task revision");
+    if (!evidence) throw new AuxError("invalid_params", "Reconciliation needs evidence from the current task revision");
     const reason = this.staleReason(evidence);
-    if (reason) throw new VectorError("conflict", `Evidence is stale: ${reason}`);
+    if (reason) throw new AuxError("conflict", `Evidence is stale: ${reason}`);
     new DurableWriteLedger(this.repo.db).reconcile(p.intentId, p.outcome, JSON.stringify({ actor: "desktop_user", evidenceId: p.evidenceId, note: p.note, recordedAt: Date.now() }));
     this.events.emit("task.action_reconciled", { taskId: p.taskId, intentId: p.intentId, outcome: p.outcome, evidenceId: p.evidenceId });
     return { ok: true };
@@ -163,14 +163,14 @@ export class TaskEvidenceService {
       FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id JOIN runs r ON r.run_id=i.run_id
       WHERE i.invocation_id=? AND json_extract(r.config,'$.taskId')=? AND o.effect_class!='read'
       AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown')`).get(p.invocationId,p.taskId) as {invocationId:string;runId:string;effectClass:string}|undefined;
-    if(!operation)throw new VectorError('conflict','No unresolved operation with this ID belongs to the task');
+    if(!operation)throw new AuxError('conflict','No unresolved operation with this ID belongs to the task');
     const evidence=this.evidence(p.taskId,p.expectedRevision).find(item=>item.record.evidenceId===p.evidenceId)?.record;
-    if(!evidence)throw new VectorError('invalid_params','Reconciliation needs evidence from the current task revision');
-    const reason=this.staleReason(evidence);if(reason)throw new VectorError('conflict',`Evidence is stale: ${reason}`);
+    if(!evidence)throw new AuxError('invalid_params','Reconciliation needs evidence from the current task revision');
+    const reason=this.staleReason(evidence);if(reason)throw new AuxError('conflict',`Evidence is stale: ${reason}`);
     const recordedAt=Date.now();this.repo.transaction(()=>{
       const updated=this.repo.db.prepare(`UPDATE operation_invocations SET status='reconciled',effect_outcome=?,ended_at=coalesce(ended_at,?)
         WHERE invocation_id=? AND (status IN ('running','interrupted') OR effect_outcome='unknown')`).run(p.outcome==='applied'?'verified':'not-dispatched',recordedAt,p.invocationId);
-      if(updated.changes!==1)throw new VectorError('conflict','The operation was reconciled by another client');
+      if(updated.changes!==1)throw new AuxError('conflict','The operation was reconciled by another client');
       this.repo.db.prepare(`INSERT INTO operation_reconciliations(invocation_id,task_id,task_revision,outcome,evidence_id,note,recorded_at) VALUES(?,?,?,?,?,?,?)`)
         .run(p.invocationId,p.taskId,p.expectedRevision,p.outcome,p.evidenceId,p.note,recordedAt);
     });
@@ -230,7 +230,7 @@ export class TaskEvidenceService {
   receipt(taskId: string, revision?: number, includeChildren = true): TaskReceipt {
     const details = this.tasks.details(taskId);
     const task = revision === undefined ? details.task : details.revisions.find(item => item.revision === revision);
-    if (!task) throw new VectorError("not_found", "This task revision does not exist");
+    if (!task) throw new AuxError("not_found", "This task revision does not exist");
     const runs = details.runs.filter(({ run }) => run.config!.taskRevision! <= task.revision);
     const unresolvedActions = this.repo.db.prepare(`SELECT a.id AS intentId,a.run_id AS runId,a.page_id AS pageId,a.status
       FROM action_intents a JOIN runs r ON r.run_id=a.run_id WHERE json_extract(r.config,'$.taskId')=?
@@ -286,9 +286,9 @@ export class TaskEvidenceService {
 
   private current(taskId: string, revision: number, criterionId?: string, idle = false): Task {
     const task = this.tasks.get(taskId);
-    if (task.revision !== revision) throw new VectorError("conflict", "Task revision changed; reload before recording evidence or a decision");
-    if (criterionId && !task.criteria.some(criterion => criterion.criterionId === criterionId)) throw new VectorError("not_found", "Criterion does not belong to this task revision");
-    if (idle && this.tasks.details(taskId).runs.some(({ run }) => ACTIVE.has(run.status))) throw new VectorError("conflict", "Stop active task runs before recording a decision");
+    if (task.revision !== revision) throw new AuxError("conflict", "Task revision changed; reload before recording evidence or a decision");
+    if (criterionId && !task.criteria.some(criterion => criterion.criterionId === criterionId)) throw new AuxError("not_found", "Criterion does not belong to this task revision");
+    if (idle && this.tasks.details(taskId).runs.some(({ run }) => ACTIVE.has(run.status))) throw new AuxError("conflict", "Stop active task runs before recording a decision");
     return task;
   }
 

@@ -1,13 +1,13 @@
 import { afterEach, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { DurableWriteLedger, openDb, beginConsequentialWrite, stepSignature, Repo, RunCoordinator, EventBus } from "@vector/runtime";
-import type { Step } from "@vector/contracts";
+import { DurableWriteLedger, openDb, beginConsequentialWrite, stepSignature, Repo, RunCoordinator, EventBus } from "@aux/runtime";
+import type { Step } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -19,10 +19,18 @@ function fixture() {
   cleanup.push(() => db.close());
   return { directory, path, db, ledger: new DurableWriteLedger(db) };
 }
+function seedParents(db: ReturnType<typeof openDb>, ...ids: { runId: string; pageId: string }[]) {
+  for (const { runId, pageId } of ids) {
+    db.prepare("INSERT OR IGNORE INTO runs(run_id,goal,status,created_at) VALUES(?,?,?,?)").run(runId, "goal", "running", 1);
+    db.prepare("INSERT OR IGNORE INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES(?,?,?,?,?,?)")
+      .run(pageId, "aux", `target-${pageId}`, "https://example.test", 1, 1);
+  }
+}
 const action = { runId: "run", pageId: "page", documentEpoch: 1, signature: "send", revision: 1 };
 
 it("blocks uncertain effects across changed observations, refs, epochs and repair plans", () => {
   const f = fixture();
+  seedParents(f.db, action);
   const first = f.ledger.begin(action);
   f.ledger.fail(first.intent.id);
   const secondDb = openDb(f.path);
@@ -39,6 +47,7 @@ it("blocks uncertain effects across changed observations, refs, epochs and repai
 
 it("keeps task-level logical writes stable across new runs and aborts undispatched intents", () => {
   const f = fixture();
+  seedParents(f.db, { runId: "run-1", pageId: "page" }, { runId: "run-2", pageId: "other-page" }, { runId: "run-3", pageId: "page" });
   const first = beginConsequentialWrite(f.ledger, { runId: "run-1", pageId: "page", documentEpoch: 1, steps: [{ op: "fill", target: "a", value: "1" }], taskId: "task-1", taskRevision: 1 });
   expect(first.skip).toBe(false);
   f.ledger.confirm(first.intentId!);
@@ -52,6 +61,7 @@ it("keeps task-level logical writes stable across new runs and aborts undispatch
 
 it("keeps explicit logical action identity stable and includes all parameters in signatures", () => {
   const f = fixture();
+  seedParents(f.db, action, { runId: "another", pageId: "new-page" }, { runId: "another", pageId: "page" });
   const first = f.ledger.begin({ ...action, logicalActionId: "invoice-123" });
   f.ledger.confirm(first.intent.id);
   expect(f.ledger.begin({ ...action, pageId: "new-page", documentEpoch: 4, revision: 99, logicalActionId: "invoice-123" }).duplicate).toBe(true);
@@ -63,6 +73,7 @@ it("keeps explicit logical action identity stable and includes all parameters in
 
 it("rolls back intent creation if its transition record cannot be committed", () => {
   const f = fixture();
+  seedParents(f.db, action);
   f.db.exec("CREATE TRIGGER reject_transition BEFORE INSERT ON action_transitions BEGIN SELECT RAISE(ABORT, 'injected storage failure'); END");
   expect(() => f.ledger.begin(action)).toThrow("storage failure");
   expect(f.db.prepare("SELECT count(*) AS n FROM action_intents").get()?.n).toBe(0);
@@ -72,6 +83,7 @@ it("rolls back intent creation if its transition record cannot be committed", ()
 
 it("cannot report completion while the persistent journal contains an unresolved effect", () => {
   const f = fixture();
+  seedParents(f.db, action);
   const repo = new Repo(f.db);
   repo.saveRun({ runId: "run", goal: "submit", status: "running", pageIds: ["page"], createdAt: Date.now() });
   f.ledger.begin(action);
@@ -85,21 +97,6 @@ it("cannot report completion while the persistent journal contains an unresolved
   expect((run.config?.checkpoint as { unresolvedEffects: string[] } | undefined)?.unresolvedEffects).toHaveLength(1);
 });
 
-it("fails closed on corrupt legacy state and imports valid legacy state once without changing the file", () => {
-  const f = fixture();
-  const path = join(f.directory, "durable-writes.json");
-  writeFileSync(path, "{bad");
-  expect(() => new DurableWriteLedger(f.db, path)).toThrow();
-  expect(f.db.prepare("SELECT count(*) AS n FROM journal_imports").get()?.n).toBe(0);
-  const legacy = JSON.stringify({ seq: 1, intents: [{ id: "w1", ...action, idempotencyKey: "legacy-key", status: "failed" }] });
-  writeFileSync(path, legacy);
-  const imported = new DurableWriteLedger(f.db, path);
-  expect(imported.begin(action)).toMatchObject({ duplicate: true, intent: { status: "uncertain" } });
-  new DurableWriteLedger(f.db, path);
-  expect(f.db.prepare("SELECT count(*) AS n FROM action_intents").get()?.n).toBe(1);
-  expect(readFileSync(path, "utf8")).toBe(legacy);
-});
-
 it("retains a committed intent after actual SIGKILL following a remote write", async () => {
   const f = fixture();
   let writes = 0;
@@ -110,7 +107,10 @@ it("retains a committed intent after actual SIGKILL following a remote write", a
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
     const module = pathToFileURL(join(process.cwd(), "apps/runtime/dist/index.js")).href;
     const source = `import {openDb,DurableWriteLedger} from ${JSON.stringify(module)};
-      const ledger=new DurableWriteLedger(openDb(process.argv[1]));
+      const db=openDb(process.argv[1]);
+      db.prepare("INSERT INTO runs(run_id,goal,status,created_at) VALUES('run','goal','running',1)").run();
+      db.prepare("INSERT INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES('page','aux','target','https://example.test',1,1)").run();
+      const ledger=new DurableWriteLedger(db);
       ledger.begin(${JSON.stringify(action)});
       await fetch(process.argv[2], {method:'POST'});
       process.kill(process.pid,'SIGKILL');`;

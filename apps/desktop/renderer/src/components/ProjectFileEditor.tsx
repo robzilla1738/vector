@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import type {ProjectFile,ProjectFileHistory,ProjectFileVersionSnapshot} from '@vector/contracts';
+import type {ProjectFile,ProjectFileHistory,ProjectFileVersionSnapshot} from '@aux/contracts';
 import {bridge} from '../bridge';
 const key=(project:string,name:string)=>`aux.file-draft.v1:${project}:${name}`;
 

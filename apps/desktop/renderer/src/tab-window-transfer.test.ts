@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget, TabCommandAck } from "@aux/contracts";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { emptyLayout } from "./workspace";
@@ -8,38 +8,60 @@ import { emptyLayout } from "./workspace";
 afterEach(() => vi.restoreAllMocks());
 function setup() {
   const layout = emptyLayout();
-  const folder = {id: "folder", name: "Research", spaceId: layout.activeSpaceId, collapsed: false};
+  const folder = {id: "folder", name: "Research", spaceId: layout.activeSpaceId, collapsed: false, color: "green" as const, emoji: "🧪"};
   layout.folders = [folder];
   layout.tabFolder = {one: folder.id, two: folder.id};
   const pages = ["one", "two", "three"].map(pageId => ({pageId, windowId: "main", url: "https://example.com", viewStatus: "visible"}) as PageTarget);
   useStore.setState({layout, pages, activePageId: "one"});
   return {pages, folder};
 }
-it("uses one new destination, preserves placement snapshots after source events, and restores the active tab", async () => {
-  const {pages, folder} = setup();
-  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method, params: any) => {
-    if (method === "pages.moveToWindow") {
-      useStore.setState({pages: useStore.getState().pages.filter(page => page.pageId !== params.pageId)});
-      return {...pages.find(page => page.pageId === params.pageId), windowId: "destination"} as never;
-    }
-    return {} as never;
-  });
+const ack = (windowId: string): TabCommandAck => ({commandId: "", status: "applied", catalogVersion: 0, windowId});
+it("uses one new destination, carries placement to it, and restores the active tab", async () => {
+  const {folder} = setup();
+  const tabCommand = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack("destination"));
   await useStore.getState().moveTabsToWindow(["one", "two", "one"]);
-  expect(invoke.mock.calls).toEqual([
-    ["pages.moveToWindow", {pageId: "one", spaceId: folder.spaceId, folder, windowId: undefined, activate: true}],
-    ["pages.moveToWindow", {pageId: "two", spaceId: folder.spaceId, folder, windowId: "destination", activate: false}],
+  const space = useStore.getState().layout.spaces.find(item => item.id === folder.spaceId)!;
+  expect(tabCommand.mock.calls.map(([command]) => command)).toEqual([
+    {kind: "move", pageId: "one", activate: true, placement: {
+      space: {id: space.id, name: space.name, color: space.color},
+      folder: {id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: false, color: "green", emoji: "🧪"},
+    }},
+    {kind: "move", pageId: "two", activate: false, windowId: "destination", placement: {
+      space: {id: space.id, name: space.name, color: space.color},
+      folder: {id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: false, color: "green", emoji: "🧪"},
+    }},
   ]);
 });
 it("stops after an uncertain transfer without retrying or moving later tabs", async () => {
-  const {pages} = setup();
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValueOnce({...pages[0], windowId: "destination"} as never).mockRejectedValueOnce(new Error("Connection interrupted"));
+  setup();
+  const tabCommand = vi.spyOn(bridge, "tabCommand").mockResolvedValueOnce(ack("destination")).mockRejectedValueOnce(new Error("Connection interrupted"));
   await expect(useStore.getState().moveTabsToWindow(["one", "two", "three"])).rejects.toThrow("confirming 1 of 3 tabs. Check both windows");
-  expect(invoke).toHaveBeenCalledTimes(2);
+  expect(tabCommand).toHaveBeenCalledTimes(2);
 });
 it("checks the entire selection for agent control before any transfer", async () => {
   const {pages} = setup();
   useStore.setState({pages: pages.map(page => page.pageId === "two" ? {...page, controller: "agent"} : page)});
-  const invoke = vi.spyOn(bridge, "invoke");
+  const tabCommand = vi.spyOn(bridge, "tabCommand");
   await expect(useStore.getState().moveTabsToWindow(["one", "two"], "existing")).rejects.toThrow("Take control");
-  expect(invoke).not.toHaveBeenCalled();
+  expect(tabCommand).not.toHaveBeenCalled();
+});
+it("files an arriving tab into the relayed space and folder", () => {
+  const layout = emptyLayout();
+  const pages = [{pageId: "moved", windowId: "main", url: "https://example.com"} as PageTarget];
+  useStore.setState({layout, pages});
+  useStore.getState().applyTabsPlacement({pageId: "moved", windowId: bridge.windowId, placement: {
+    space: {id: "research", name: "Research", color: "violet"},
+    folder: {id: "folder", name: "Papers", spaceId: "research", collapsed: false, color: "teal", emoji: "📌"},
+  }});
+  const state = useStore.getState();
+  expect(state.layout.spaces.some(space => space.id === "research" && space.name === "Research")).toBe(true);
+  expect(state.layout.tabSpace.moved).toBe("research");
+  expect(state.layout.tabFolder.moved).toBe("folder");
+  expect(state.layout.folders.find(item => item.id === "folder")).toMatchObject({color: "teal", emoji: "📌"});
+});
+it("ignores placement relayed for another window", () => {
+  const layout = emptyLayout();
+  useStore.setState({layout, pages: [{pageId: "moved", url: "https://example.com"} as PageTarget]});
+  useStore.getState().applyTabsPlacement({pageId: "moved", windowId: "other", placement: {space: {id: "research", name: "Research", color: "violet"}}});
+  expect(useStore.getState().layout.spaces.some(space => space.id === "research")).toBe(false);
 });

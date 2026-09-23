@@ -1,10 +1,11 @@
-import type { BrowserSpace } from "@vector/contracts";
-import type { PageWindowMove } from "@vector/contracts";
+import type { BrowserSpace, TabPatch, TabPatchOp } from "@aux/contracts";
+import type { PageWindowMove } from "@aux/contracts";
 import {
   EventTypes,
   newObservationId,
   newPageId,
-  VectorError,
+  AuxError,
+  type AuxErrorCode,
   type Backend,
   type Condition,
   type Observation,
@@ -16,25 +17,23 @@ import {
   type ProgramResult,
   type Step,
   type StepRecord,
-} from "@vector/contracts";
-import { newStepId } from "@vector/contracts";
-import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/engine-client";
+} from "@aux/contracts";
+import { newStepId } from "@aux/contracts";
+import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import type { VaultService } from "./vault.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
-import { authorizeProgram, classifyStep, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
+import { pickElementInPage, ELEMENT_PICK_TIMEOUT_MS, type PickedElement } from "../execution/element-picker.js";
+import { authorizeProgram, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
-import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 /** Backends the runtime can hold drivers for. */
 export interface DriverSet {
-  vector: BrowserDriver | null;
+  aux: BrowserDriver | null;
   chrome: BrowserDriver | null;
-  /** the in-process Vector Engine (architecture §11); null when the addon is missing */
-  engine?: BrowserDriver | null;
 }
 
 type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision" | "format">>;
@@ -77,8 +76,6 @@ export interface PageServiceDeps {
   events: EventBus;
   native: NativeBridge;
   drivers: () => DriverSet;
-  /** engine/Chromium router — absent means "engine off" (legacy behaviour) */
-  router?: Router;
   recordStep?: (s: StepRecord) => void;
   artifacts?: { save(o: { runId?: string; pageId?: string; label: string; buffer: Buffer; mediaType: string }): { artifactId: string } };
   /** passive response capture — bound per page in wireDriverEvents */
@@ -97,8 +94,6 @@ export interface PageServiceDeps {
   };
   /** fallback `call` node dispatch when the caller didn't supply one */
   callOperation?: (name: string, args: Record<string, unknown>, pageId: string) => Promise<unknown>;
-  /** Electron hybrid paint for engine pages. Off unless the hybrid desktop opts in. */
-  electronEngineView?: () => boolean;
   /**
    * Privilege-independent effect grants (Gate D / Gate F). Model text and
    * RPC params cannot expand these. A function re-reads after settings.set.
@@ -122,15 +117,20 @@ export interface PageServiceDeps {
  */
 export class PageService {
   private live = new Map<string, LivePage>();
-  private pendingExternal = new Map<string, { removed: boolean }>();
+  private pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
   /** Foreground tabs/popups return to the tab that launched them when closed. */
   private returnTargets = new Map<string, string>();
+  /** Window hint for pages not yet (or never) registered — set by window/upsert ops. */
+  private lastKnownWindow = new Map<string, string>();
   private revCounters = new Map<string, number>();
   private activeId: string | null = null;
   /** Each regular browser window owns an independent selected tab. */
   private activeByWindow = new Map<string, string>();
   /** set on app teardown — view.removed storms must not touch the restore list */
   private closing = false;
+  /** Catalog patches apply strictly in publish order — attach work inside an
+   *  op must not interleave with the next patch. */
+  private catalogQueue: Promise<unknown> = Promise.resolve();
   private restoring = false;
   private pendingRestore = new Map<string, ReturnType<Repo["loadTabs"]>[number]>();
   private restoreErrors = new Map<string, string>();
@@ -153,7 +153,7 @@ export class PageService {
   get isRestoringTabs() { return this.restoring; }
 
   constructor(private deps: PageServiceDeps) {
-    if(deps.native.available())for(const tab of deps.repo.loadTabs().filter(tab=>tab.backend==="vector"))this.pendingRestore.set(tab.page_id,tab);
+    if(deps.native.available())for(const tab of deps.repo.loadTabs().filter(tab=>tab.backend==="aux"))this.pendingRestore.set(tab.page_id,tab);
     this.restoring = this.pendingRestore.size > 0;
     // restore persisted page rows as detached history entries
     for (const p of deps.repo.listPages({ includeDetached: true })) {
@@ -175,16 +175,16 @@ export class PageService {
     const lp = this.live.get(pageId);
     if (lp) return lp.target;
     const row = this.deps.repo.getPage(pageId);
-    if (!row) throw new VectorError("not_found", `no page ${pageId}`);
+    if (!row) throw new AuxError("not_found", `no page ${pageId}`);
     return row;
   }
 
   driverPage(pageId: string): DriverPage {
     const lp = this.live.get(pageId);
     if (!lp?.driver || !lp.driver.isAttached())
-      throw new VectorError("target_detached", `page ${pageId} is not attached`);
+      throw new AuxError("target_detached", `page ${pageId} is not attached`);
     if (lp.target.controller === "human")
-      throw new VectorError("conflict", `page ${pageId} is under human control — resume first`);
+      throw new AuxError("conflict", `page ${pageId} is under human control — resume first`);
     return lp.driver;
   }
 
@@ -235,13 +235,10 @@ export class PageService {
 
   private driverFor(backend: Backend): BrowserDriver | null {
     const drivers = this.deps.drivers();
-    return backend === "vector" ? drivers.vector : backend === "chrome" ? drivers.chrome : (drivers.engine ?? null);
+    return backend === "aux" ? drivers.aux : drivers.chrome;
   }
 
-  /**
-   * Open a page. An omitted backend is routable. `vector` explicitly selects
-   * embedded Chromium; `vector-engine` explicitly selects the own engine.
-   */
+  /** Open a page. An omitted backend selects embedded Chromium (`aux`). */
   async open(opts: {
     url: string;
     windowId?: string;
@@ -251,25 +248,8 @@ export class PageService {
     activate?: boolean;
     targetId?: string; // chrome: attach an existing tab by CDP id
   }): Promise<PageTarget> {
-    const router = this.deps.router;
-    const decision = router
-      ? router.decide(opts.url, opts.backend)
-      : { backend: opts.backend ?? "vector", reason: opts.backend ? `explicit-backend:${opts.backend}` : "engine-mode-off", fallbackAllowed: false };
-    if (decision.backendUnavailable) {
-      throw new VectorError("backend_unavailable", "vector-engine backend is not connected", {
-        reason: decision.reason,
-      });
-    }
-    if (decision.backend !== "vector-engine") return this.openOn(decision.backend, opts, decision.reason);
-    try {
-      return await this.openOn("vector-engine", opts, decision.reason, decision.fallbackAllowed);
-    } catch (e) {
-      if (!decision.fallbackAllowed || !isFallbackError(e)) throw e;
-      const reason = Router.fallbackReason(e);
-      router?.recordNeedsChromium(opts.url, reason);
-      this.deps.tracer?.incr("router.fallback.open");
-      return this.openOn("vector", opts, `fallback:${reason}`);
-    }
+    const backend = opts.backend ?? "aux";
+    return this.openOn(backend, opts, opts.backend ? `explicit-backend:${opts.backend}` : "chromium-default");
   }
 
   /** Create the backend surface for a page and return its target id. */
@@ -282,20 +262,27 @@ export class PageService {
     windowId?: string,
     ownedByRuntime=false,
   ): Promise<{ targetId: string; nativeCreated: boolean }> {
-    if (backend === "vector") {
-      const marker = `vtab-${pageId}`;
+    if (backend === "aux") {
+      const marker = `atab-${pageId}`;
       if (this.deps.native.available()) {
-        await this.deps.native.createPage({ pageId, windowId, marker, url: initialUrl, background,ownedByRuntime });
+        // Scoped tab commands (§7.3): agent opens go through the same main-owned
+        // controller as human opens — deduplicated, ack'd, catalog-published.
+        const ack = await this.deps.native.tabCommand({
+          commandId: `agent-${newPageId()}`,
+          windowId: windowId ?? "main",
+          command: { kind: "open", pageId, url: initialUrl, background, activate: !background, runtimeOwned: ownedByRuntime },
+        });
+        if (ack.status === "rejected") throw new AuxError((ack.error?.code ?? "unavailable") as AuxErrorCode, ack.error?.message ?? "The tab could not be opened.");
         return { targetId: marker, nativeCreated: true };
       }
       if (driver.createTarget) {
         // standalone mode: the driver owns the surface (headless chrome page)
         return { targetId: await driver.createTarget(initialUrl), nativeCreated: false };
       }
-      throw new VectorError("backend_unavailable", "vector backend needs the desktop shell or a standalone driver");
+      throw new AuxError("backend_unavailable", "aux backend needs the desktop shell or a standalone driver");
     }
     if (!driver.createTarget) {
-      throw new VectorError(
+      throw new AuxError(
         "invalid_params",
         backend === "chrome"
           ? "chrome pages.open requires targetId of an existing tab (list them with chrome.tabs)"
@@ -309,7 +296,6 @@ export class PageService {
     backend: Backend,
     opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string },
     routeReason: string,
-    fallbackAllowed = false,
     restored?: PageTarget,
   ): Promise<PageTarget> {
     const driver = this.driverFor(backend);
@@ -317,32 +303,18 @@ export class PageService {
     // open until restart; a backend that is truly gone still fails below
     if (driver && !driver.isConnected() && driver.reconnect) await driver.reconnect().catch(() => {});
     if (!driver?.isConnected())
-      throw new VectorError("backend_unavailable", `${backend} backend is not connected`);
+      throw new AuxError("backend_unavailable", `${backend} backend is not connected`);
 
     const pageId = restored?.pageId ?? newPageId();
     let targetId: string;
     let nativeCreated = false;
-    // Chromium: open on about:blank, then navigate AFTER response listeners
-    // are wired — otherwise the page's own first load escapes passive capture.
-    // The engine parses and classifies on open, so it gets the real URL.
-    const initialUrl = opts.targetId || backend === "vector-engine" ? opts.url : "about:blank";
+    // Open on about:blank, then navigate AFTER response listeners are wired —
+    // otherwise the page's own first load escapes passive capture.
+    const initialUrl = opts.targetId ? opts.url : "about:blank";
     if (opts.targetId && backend === "chrome") {
       targetId = opts.targetId;
     } else {
       ({ targetId, nativeCreated } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
-    }
-
-    // engine post-parse classification → capability_unsupported → the caller
-    // reopens on Chromium (auto mode); explicit/always placements keep the page
-    // and only annotate the route reason
-    if (backend === "vector-engine" && driver.routingOf) {
-      const routing = driver.routingOf(targetId);
-      const classified = this.deps.router?.classify(routing) ?? null;
-      if (classified && fallbackAllowed) {
-        await driver.attach(targetId, pageId).then((p) => p.dispose()).catch(() => {});
-        throw classified;
-      }
-      if (routing?.requiresScript) routeReason = `${routeReason}(classified:${routing.reason ?? routing.kind})`;
     }
 
     let dp: DriverPage;
@@ -353,26 +325,8 @@ export class PageService {
     } catch (e) {
       // the shell view already exists — destroy it rather than leaking a
       // driverless zombie tab in the strip
-      if (nativeCreated) await this.deps.native.closePage(pageId).catch(() => {});
+      if (nativeCreated) await this.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main", command: { kind: "close", pageId } }).catch(() => {});
       throw e;
-    }
-    if (
-      backend === "vector-engine" &&
-      this.deps.native.available() &&
-      !opts.background &&
-      this.deps.electronEngineView?.() === true &&
-      !this.deps.router?.isNativeOnly()
-    ) {
-      await this.deps.native.createPage({
-        pageId,
-        windowId: opts.windowId,
-        marker: `vetab-${pageId}`,
-        url: opts.url,
-        background: false,
-        ownedByRuntime:opts.ownedByRuntime,
-        kind: "engine",
-      });
-      nativeCreated = true;
     }
     const target: PageTarget = {
       pageId,
@@ -407,43 +361,16 @@ export class PageService {
       if (!restored) await navigation;
     }
     void this.refreshMeta(lp);
-    if (nativeCreated && backend === "vector-engine") void this.paintEngine(pageId);
     return target;
   }
 
-  /**
-   * Mid-program fallback (architecture §11 step 4): move a live engine page
-   * onto Chromium at its current URL. Same pageId, new driver page and
-   * target; refs are gone (new document epoch).
-   */
-  private async migrateToChromium(lp: LivePage, reason: string): Promise<DriverPage> {
-    const driver = this.driverFor("vector");
-    if (driver && !driver.isConnected() && driver.reconnect) await driver.reconnect().catch(() => {});
-    if (!driver?.isConnected()) throw new VectorError("backend_unavailable", "vector (Chromium) backend is not connected for fallback");
-    const pageId = lp.target.pageId;
-    const url = lp.driver?.url() ?? lp.target.url;
-    await lp.driver?.dispose().catch(() => {});
-    const { targetId } = await this.createSurface("vector", driver, pageId, "about:blank", true, lp.target.windowId);
-    const dp = await driver.attach(targetId, pageId);
-    lp.driver = dp;
-    lp.target.backend = "vector";
-    lp.target.targetId = targetId;
-    lp.target.viewStatus = "background";
-    lp.target.routeReason = `fallback:${reason}`;
-    lp.target.documentEpoch++;
-    lp.history = [];
-    lp.lastObs = undefined;
-    lp.consoleLines = [];
-    lp.lastDialog = undefined;
-    this.wireDriverEvents(lp);
-    await dp.navigate(url).catch(() => {});
-    this.persist(lp);
-    this.deps.tracer?.incr("router.fallback.midProgram");
-    this.deps.events.emit(EventTypes.PageUpdated, { pageId, backend: "vector", targetId, url, routeReason: lp.target.routeReason });
-    return dp;
-  }
-
   /** Register a page created natively outside the open() path (popups, restored tabs). */
+  /**
+   * Register a natively-created page (popup, catalog-reported human tab).
+   * Idempotent: the catalog upsert and the `view.popup` notification can
+   * arrive in either order — a second call returns the live or in-flight
+   * target instead of attaching a duplicate driver.
+   */
   async registerExternal(opts: {
     pageId?: string;
     windowId?: string;
@@ -455,19 +382,36 @@ export class PageService {
     showBlankDocument?: boolean;
     restored?: PageTarget;
   }): Promise<PageTarget> {
-    const driver = this.driverFor(opts.backend);
     const pageId = opts.pageId ?? newPageId();
-    const pending = { removed: false };
+    const existing = this.live.get(pageId);
+    if (existing) return existing.target;
+    const inFlight = this.pendingExternal.get(pageId);
+    if (inFlight?.done) return inFlight.done;
+    const pending: { removed: boolean; done?: Promise<PageTarget> } = { removed: false };
+    pending.done = this.attachExternal(opts, pageId, pending);
     this.pendingExternal.set(pageId, pending);
-    let dp: DriverPage | null;
     try {
-      dp = driver ? await driver.attach(opts.marker, pageId) : null;
-      if (pending.removed || this.closing) {
-        await dp?.dispose().catch(() => {});
-        throw new VectorError("not_found", "Page closed while it was being attached");
-      }
+      return await pending.done;
     } finally {
       this.pendingExternal.delete(pageId);
+    }
+  }
+
+  private async attachExternal(opts: {
+    windowId?: string;
+    marker: string;
+    url: string;
+    backend: Backend;
+    title?: string;
+    active?: boolean;
+    showBlankDocument?: boolean;
+    restored?: PageTarget;
+  }, pageId: string, pending: { removed: boolean }): Promise<PageTarget> {
+    const driver = this.driverFor(opts.backend);
+    const dp = driver ? await driver.attach(opts.marker, pageId) : null;
+    if (pending.removed || this.closing) {
+      await dp?.dispose().catch(() => {});
+      throw new AuxError("not_found", "Page closed while it was being attached");
     }
     const target: PageTarget = {
       pageId,
@@ -556,7 +500,7 @@ export class PageService {
   private saveTabsSnapshot() {
     if (this.closing || this.restoring) return;
     const tabs = [...this.live.values()]
-      .filter((x) => !x.target.ownedByRuntime && x.target.backend === "vector" && x.target.viewStatus !== "detached")
+      .filter((x) => !x.target.ownedByRuntime && x.target.backend === "aux" && x.target.viewStatus !== "detached")
       .map((x, i) => ({
         pageId: x.target.pageId,
         windowId: x.target.windowId ?? "main",
@@ -591,7 +535,7 @@ export class PageService {
         for (const page of existing.pages) {
           const previous = this.deps.repo.getPage(page.pageId);
           try {
-            await this.registerExternal({ ...page, backend: "vector", restored: previous });
+            await this.registerExternal({ ...page, backend: "aux", restored: previous });
             this.pendingRestore.delete(page.pageId);
           } catch {
             /* one stale native target must not block the other live tabs */
@@ -611,7 +555,7 @@ export class PageService {
       }
       return;
     }
-    const tabs = this.deps.repo.loadTabs().filter((t) => t.backend === "vector");
+    const tabs = this.deps.repo.loadTabs().filter((t) => t.backend === "aux");
     if (!tabs.length) return;
     const activateIds = new Map<string, string>();
     this.restoring = true;
@@ -639,7 +583,7 @@ export class PageService {
   }
 
   async retryRestore(pageId:string) {
-    if(this.restoring||this.retryingRestore.has(pageId))throw new VectorError("conflict","This session is already being restored.");
+    if(this.restoring||this.retryingRestore.has(pageId))throw new AuxError("conflict","This session is already being restored.");
     this.retryingRestore.add(pageId);
     try {
       const page=await this.restoreSavedTab(pageId);
@@ -656,12 +600,12 @@ export class PageService {
 
   private async restoreSavedTab(pageId:string):Promise<PageTarget> {
     const saved=this.pendingRestore.get(pageId);
-    if(!saved)throw new VectorError("not_found","This tab has already been restored.");
+    if(!saved)throw new AuxError("not_found","This tab has already been restored.");
     const existing=this.live.get(pageId);
     if(existing){this.pendingRestore.delete(pageId);this.restoreErrors.delete(pageId);return existing.target;}
     const previous=this.deps.repo.getPage(pageId);
-    if(!previous||!this.driverFor("vector")?.recoverPage)throw new VectorError("backend_unavailable","The browser cannot restore this tab yet. Its saved address has been kept.");
-    const page=await this.openOn("vector",{url:saved.url||"about:blank",windowId:saved.window_id||"main",background:false,ownedByRuntime:false,activate:false},"session-restore",false,previous);
+    if(!previous||!this.driverFor("aux")?.recoverPage)throw new AuxError("backend_unavailable","The browser cannot restore this tab yet. Its saved address has been kept.");
+    const page=await this.openOn("aux",{url:saved.url||"about:blank",windowId:saved.window_id||"main",background:false,ownedByRuntime:false,activate:false},"session-restore",previous);
     this.deps.repo.markDatasetsStale(page.pageId);
     this.pendingRestore.delete(pageId);this.restoreErrors.delete(pageId);
     return page;
@@ -685,9 +629,11 @@ export class PageService {
 
   async close(pageId: string) {
     const lp = this.live.get(pageId);
-    if ((lp?.target.backend === "vector" || lp?.target.backend === "vector-engine") && this.deps.native.available()) {
-      const result = await this.deps.native.closePage(pageId);
-      if (!result.ok) return { ok: false };
+    if (lp?.target.backend === "aux" && this.deps.native.available()) {
+      const ack = await this.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: lp.target.windowId ?? "main", command: { kind: "close", pageId } });
+      // not_found/wrong_window mean the tab is already gone in main — converge
+      // locally rather than keeping a driver attached to a dead view.
+      if (ack.status === "rejected" && ack.error?.code !== "not_found" && ack.error?.code !== "wrong_window") return { ok: false };
       if (this.live.get(pageId) !== lp) return { ok: true };
     }
     if (lp && this.live.get(pageId) === lp) {
@@ -704,7 +650,7 @@ export class PageService {
       // surface the next open page, if any
       const next = [...this.live.values()].find((x) =>
         (x.target.windowId ?? "main") === windowId &&
-        (x.target.viewStatus === "visible" || x.target.backend === "vector"));
+        (x.target.viewStatus === "visible" || x.target.backend === "aux"));
       if (next) void this.activate(next.target.pageId).catch(() => {});
       else this.deps.events.emit(EventTypes.PageUpdated, { pageId, activePageId: null });
     } else if (wasWindowActive) {
@@ -718,11 +664,11 @@ export class PageService {
   async moveToWindow(input: PageWindowMove, space: BrowserSpace): Promise<PageTarget> {
     return this.enqueue(input.pageId, async () => {
       const page = this.live.get(input.pageId);
-      if (!page) throw new VectorError("not_found", "This tab no longer exists.");
+      if (!page) throw new AuxError("not_found", "This tab no longer exists.");
       if (page.target.ownedByRuntime || page.target.controller === "agent" || page.target.controller === "external") {
-        throw new VectorError("conflict", "Take control of this tab before moving it to another window.");
+        throw new AuxError("conflict", "Take control of this tab before moving it to another window.");
       }
-      if (!this.deps.native.movePage) throw new VectorError("backend_unavailable", "Moving live tabs requires the Aux desktop browser.");
+      if (!this.deps.native.movePage) throw new AuxError("backend_unavailable", "Moving live tabs requires the Aux desktop browser.");
       const fromWindowId = page.target.windowId ?? "main";
       if (input.windowId === fromWindowId) return page.target;
       const moved = await this.deps.native.movePage(input.pageId, input.windowId, input.activate);
@@ -754,8 +700,8 @@ export class PageService {
 
   async activate(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
-    if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
-    if ((lp.target.backend === "vector" || lp.target.backend === "vector-engine") && this.deps.native.available()) {
+    if (!lp) throw new AuxError("not_found", `no page ${pageId}`);
+    if (lp.target.backend === "aux" && this.deps.native.available()) {
       await this.deps.native.focusPage(pageId);
       if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "visible";
     }
@@ -772,10 +718,9 @@ export class PageService {
       const dp = this.driverPageLenient(pageId);
       await dp.navigate(url);
       const lp = this.live.get(pageId);
-      if (!lp) throw new VectorError("target_detached", `page ${pageId} detached during navigation`);
+      if (!lp) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
       lp.target.url = url;
       this.persist(lp);
-      if (lp.target.backend === "vector-engine") void this.paintEngine(pageId);
       return lp.target;
     });
   }
@@ -784,7 +729,7 @@ export class PageService {
   private driverPageLenient(pageId: string): DriverPage {
     const lp = this.live.get(pageId);
     if (!lp?.driver || !lp.driver.isAttached())
-      throw new VectorError("target_detached", `page ${pageId} is not attached`);
+      throw new AuxError("target_detached", `page ${pageId} is not attached`);
     return lp.driver;
   }
 
@@ -803,11 +748,11 @@ export class PageService {
   async reload(pageId: string) {
     return this.enqueue(pageId, async () => {
       const lp = this.live.get(pageId);
-      if (lp?.target.viewStatus === "crashed" && lp.target.backend === "vector" && this.deps.native.recoverPage) {
+      if (lp?.target.viewStatus === "crashed" && lp.target.backend === "aux" && this.deps.native.recoverPage) {
         const recovered = await this.deps.native.recoverPage(pageId, lp.target.url);
-        if (!recovered.ok) throw new VectorError("target_detached", "The native tab is no longer available");
-        const driver = this.driverFor("vector");
-        if (!driver) throw new VectorError("backend_unavailable", "Browser connection is unavailable");
+        if (!recovered.ok) throw new AuxError("target_detached", "The native tab is no longer available");
+        const driver = this.driverFor("aux");
+        if (!driver) throw new AuxError("backend_unavailable", "Browser connection is unavailable");
         await lp.driver?.dispose();
         try {
           lp.driver = await (driver.recoverPage ? driver.recoverPage(lp.target.targetId, pageId, lp.target.documentEpoch) : driver.attach(lp.target.targetId, pageId));
@@ -833,12 +778,38 @@ export class PageService {
     return this.enqueue(pageId, async () => {
       // webContents.stop() halts the load without the renderer's event loop —
       // the only reliable stop when a page never finishes loading
-      if (this.live.get(pageId)?.target.backend === "vector" && this.deps.native.available()) {
+      if (this.live.get(pageId)?.target.backend === "aux" && this.deps.native.available()) {
         await this.deps.native.stopPage(pageId).catch(() => {});
       }
       await this.driverPageLenient(pageId).stop();
       return this.get(pageId);
     });
+  }
+
+  private pickInFlight = new Set<string>();
+
+  /**
+   * Interactive element pick ("request edit") — the tab stays under human
+   * control; a small overlay resolves on click, Escape, or timeout. The pick
+   * is deliberately not enqueued: it must run while the user keeps clicking.
+   */
+  async pickElement(pageId: string, opts: { timeoutMs?: number } = {}): Promise<{ picked: boolean; element?: PickedElement }> {
+    const lp = this.live.get(pageId);
+    if (!lp?.driver || !lp.driver.isAttached()) throw new AuxError("target_detached", `page ${pageId} is not attached`);
+    if (lp.target.controller === "agent") throw new AuxError("conflict", "The agent is driving this page. Take it over before picking an element.");
+    if (this.pickInFlight.has(pageId)) throw new AuxError("conflict", "An element pick is already waiting on this page.");
+    const timeoutMs = Math.min(Math.max(opts.timeoutMs ?? ELEMENT_PICK_TIMEOUT_MS, 1_000), 120_000);
+    this.pickInFlight.add(pageId);
+    try {
+      const expression = `(${pickElementInPage.toString()})(${timeoutMs})`;
+      const result = await Promise.race([
+        lp.driver.evaluate(expression) as Promise<PickedElement | null>,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs + 5_000)),
+      ]).catch(() => null);
+      return result ? { picked: true, element: result } : { picked: false };
+    } finally {
+      this.pickInFlight.delete(pageId);
+    }
   }
 
   // ---------- observation ----------
@@ -878,19 +849,12 @@ export class PageService {
   }
 
   /**
-   * Stamp an `ObservationContent` (from `observe` or from an engine
-   * act-and-observe call) with ids/revision/epoch, diff it against the
-   * previous one, persist and announce it.
+   * Stamp an `ObservationContent` with ids/revision/epoch, diff it against
+   * the previous one, persist and announce it.
    */
   private recordObservation(pageId: string, content: ObservationContent, req: ObserveReq, fingerprint?: string): Observation {
     const lp = this.live.get(pageId);
-    if (!lp) throw new VectorError("target_detached", `page ${pageId} detached during observation`);
-    // the engine reports its own document revision/generation with the content
-    const engineMeta = (content as ObservationContent & { engine?: { revision?: number; generation?: number; changed?: string[] } }).engine;
-    if (engineMeta) {
-      delete (content as { engine?: unknown }).engine;
-      if (typeof engineMeta.generation === "number" && lp.target.backend === "vector-engine") lp.target.documentEpoch = engineMeta.generation;
-    }
+    if (!lp) throw new AuxError("target_detached", `page ${pageId} detached during observation`);
     const revision = (this.revCounters.get(pageId) ?? lp.target.lastRevision) + 1;
     this.revCounters.set(pageId, revision);
     lp.target.lastRevision = revision;
@@ -901,7 +865,6 @@ export class PageService {
     const base =
       req.sinceRevision !== undefined ? (lp.history.find((h) => h.revision === req.sinceRevision) ?? lp.history.at(-1)) : lp.history.at(-1);
     const changesSince = this.diffObservations(base, content);
-    if (engineMeta?.changed?.length) changesSince.push(`refs changed: ${engineMeta.changed.slice(0, 20).join(" ")}`);
     const deltaFrom = lp.lastObservationId;
     const fields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
     lp.history.push({ revision, text: content.text, fields });
@@ -1055,19 +1018,16 @@ export class PageService {
 
   /**
    * Run a program. `opts.returnObservation` observes the page after the
-   * program in the same round trip; on the engine backend that is a single
-   * native call (act-and-observe), elsewhere a follow-up observe on the
-   * same lane. A mid-program `capability_unsupported` on an engine page
-   * moves the page to Chromium and replays what it can (§11 step 4).
+   * program in a follow-up observe on the same lane.
    */
   async execute(program: Program, ctx: ExecContext = {}, opts: { returnObservation?: ObserveReq } = {}): Promise<ExecuteResult> {
     const pageId = program.pageId;
     return this.withKeys(program.conflicts, () =>
       this.enqueue(pageId, async () => {
       const lp = this.live.get(pageId);
-      if (!lp?.driver?.isAttached()) throw new VectorError("target_detached", `page ${pageId} is not attached`);
+      if (!lp?.driver?.isAttached()) throw new AuxError("target_detached", `page ${pageId} is not attached`);
       if (lp.target.controller === "human")
-        throw new VectorError("conflict", `page ${pageId} is under human control`);
+        throw new AuxError("conflict", `page ${pageId} is under human control`);
       const allSteps = collectSteps(program);
       const grants = ctx.runId
         ? (this.deps.grantsForRun ?? this.deps.grants ?? DEFAULT_GRANTS)
@@ -1079,7 +1039,7 @@ export class PageService {
         origin = "";
       }
       const auth = authorizeProgram(allSteps, grants, origin);
-      if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
+      if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
       const run = ctx.runId ? this.deps.repo.getRun(ctx.runId) : undefined;
       const journal = ctx.journaled ? { skip: false as const, intentId: undefined as string | undefined } : beginConsequentialWrite(this.deps.durableWrites, {
         runId: ctx.runId ?? `direct:${pageId}`,
@@ -1090,7 +1050,7 @@ export class PageService {
         taskId: ctx.taskId ?? run?.config?.taskId,
         taskRevision: run?.config?.taskRevision,
       });
-      if (journal.skip) throw new VectorError("conflict", journal.reason!);
+      if (journal.skip) throw new AuxError("conflict", journal.reason!);
       ctx = { ...ctx, journaled: true };
       this.programInflight.add(pageId);
       try {
@@ -1100,7 +1060,7 @@ export class PageService {
       // mark the page working (rendered offscreen unless focused) while a
       // program with interactive steps runs; no global lease (plan A8)
       const needsStage =
-        lp.target.backend === "vector" &&
+        lp.target.backend === "aux" &&
         this.deps.native.available() &&
         allSteps.some((s) => INTERACTIVE_OPS.has(s.op));
       if (needsStage) await this.deps.native.acquireStage(pageId).catch(() => ({ ok: false }));
@@ -1112,7 +1072,6 @@ export class PageService {
         pageId,
         attrs: { steps: allSteps.length, nodes: program.nodes?.length, backend: lp.target.backend },
       });
-      const engineActAndObserve = lp.target.backend === "vector-engine" && !!lp.driver.executeProgram && !program.nodes?.length;
       // §6.2 — proposed vs dispatched vs completed vs verified
       this.deps.tracer?.incr("actions.proposed", allSteps.length);
       // step rows are collected here and written in ONE transaction when the
@@ -1140,14 +1099,16 @@ export class PageService {
           pageOrigin: origin,
           taskId: ctx.taskId ?? (ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
           resolveCredential: ctx.resolveCredential ?? (this.deps.vault
-            ? (ref, info) => this.deps.vault!.revealForFill(ref, {
-                ...info,
-                origin: info.origin || origin,
-                taskId: info.taskId ?? ctx.taskId ?? (ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
-              })
+            ? (ref, info) => {
+                const runConfig = ctx.runId ? this.deps.repo.getRun(ctx.runId)?.config : undefined;
+                return this.deps.vault!.revealForFill(ref, {
+                  ...info,
+                  origin: info.origin || origin,
+                  taskId: info.taskId ?? ctx.taskId ?? runConfig?.taskId,
+                  accountLabels: runConfig?.accountLabels,
+                });
+              }
             : undefined),
-          // engine path: the observation rides back in the same native call
-          returnObservation: engineActAndObserve ? opts.returnObservation : undefined,
           observe: (req) => this.observe(pageId, req).then((o) => o.content),
           onEmit: (label, value) =>
             this.deps.events.emit("page.emitted", { pageId, runId: ctx.runId, label, value }),
@@ -1155,7 +1116,7 @@ export class PageService {
             (this.deps.callOperation ? (n, a) => this.deps.callOperation!(n, a, pageId) : undefined),
           checkValid: () => {
             if (lp.target.controllerEpoch !== expectedEpoch)
-              throw new VectorError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
+              throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
           },
           checkpoint: ctx.checkpoint ?? ((name, env) => this.deps.repo.saveCheckpoint(pageId, name, env)),
           loadCheckpoint: ctx.loadCheckpoint ?? ((name) => this.deps.repo.loadCheckpoint(pageId, name)),
@@ -1195,18 +1156,12 @@ export class PageService {
             }
           }
         }
-        // §11 step 4 — the engine hit a capability gap mid-program
-        const fallbackAt = lp.target.backend === "vector-engine" ? Router.fallbackIndex(result.steps) : -1;
-        if (fallbackAt >= 0 && this.deps.router && this.deps.router.mode() === "auto") {
-          result = await this.fallbackMidProgram(lp, program, result, fallbackAt, execCtx);
-        }
         if (result.observation) {
           observation = this.recordObservation(pageId, result.observation, opts.returnObservation ?? {});
           delete result.observation;
         } else if (opts.returnObservation) {
-          // Chromium (or a fallen-back engine page): a follow-up observe on the
-          // same lane. A page that detached mid-program still returns the
-          // program result — the observation is best-effort.
+          // A page that detached mid-program still returns the program
+          // result — the observation is best-effort.
           observation = await this.observe(pageId, opts.returnObservation).catch(() => undefined);
         }
       } catch (e) {
@@ -1232,7 +1187,6 @@ export class PageService {
       span?.end(result.status === "completed" ? "ok" : result.status === "cancelled" ? "cancelled" : "failed", {
         status: result.status,
         steps: result.steps.length,
-        fallback: result.fallback?.reason,
       });
       const { observation: _inline, ...programResult } = result;
       return observation ? { ...programResult, observation } : programResult;
@@ -1243,87 +1197,10 @@ export class PageService {
     );
   }
 
-  /**
-   * Replay the rest of a flat program on Chromium after an engine
-   * `capability_unsupported`. Refs do not carry across backends: when any
-   * remaining step targets a ref the result stays failed with a REPAIR
-   * request for the planner; otherwise the remaining steps run on the new
-   * driver after a fresh observation and the outcomes are merged.
-   */
-  private async fallbackMidProgram(
-    lp: LivePage,
-    program: Program,
-    result: ProgramResult,
-    failedAt: number,
-    execCtx: ExecContext,
-  ): Promise<ProgramResult & { observation?: ObservationContent }> {
-    const router = this.deps.router!;
-    const pageId = lp.target.pageId;
-    const failedStep = result.steps[failedAt];
-    const reason = `mid-program:${failedStep?.op ?? "step"}:${failedStep?.error?.message ?? "capability_unsupported"}`;
-    router.recordNeedsChromium(lp.target.url, reason);
-    const plan = router.planReplay(program.steps ?? [], failedAt);
-    const steps = program.steps ?? [];
-    const completedWrite = steps
-      .slice(0, failedAt)
-      .some((step, index) => result.steps[index]?.status === "ok" && classifyStep(step.op) !== "read");
-    const unsafeReplay = plan.remaining.filter((step) => classifyStep(step.op) !== "read");
-    if (completedWrite || unsafeReplay.length) {
-      const unsafeIds = unsafeReplay.map((step) => step.id);
-      return {
-        ...result,
-        status: "failed",
-        error: completedWrite
-          ? "REPAIR: backend changed after a write; re-observe and replan before continuing"
-          : `REPAIR: side-effecting step(s) (${unsafeIds.join(", ")}) require re-observation before Chromium execution`,
-        fallback: {
-          from: "vector-engine",
-          to: "vector",
-          reason,
-          replayedFrom: failedAt,
-          repair: true,
-          refSteps: [...new Set([...plan.refSteps, ...unsafeIds])],
-        },
-      };
-    }
-    let dp: DriverPage;
-    try {
-      dp = await this.migrateToChromium(lp, reason);
-    } catch (e) {
-      // no Chromium to fall back to — the engine result stands, annotated
-      return {
-        ...result,
-        error: `${result.error ?? "capability_unsupported"} (fallback unavailable: ${e instanceof Error ? e.message : String(e)})`,
-        fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: true, refSteps: plan.refSteps },
-      };
-    }
-    // fresh observation so the caller (and any replayed selector steps) see the Chromium document
-    const fresh = await dp.observe({}).catch(() => undefined);
-    if (fresh) this.recordObservation(pageId, fresh, {});
-    if (plan.repair || !plan.remaining.length) {
-      return {
-        ...result,
-        status: "failed",
-        error: plan.repair
-          ? `REPAIR: ${plan.refSteps.length} ref-targeted step(s) (${plan.refSteps.join(", ")}) cannot replay on Chromium — re-observe and replan`
-          : result.error,
-        fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: plan.repair, refSteps: plan.refSteps },
-      };
-    }
-    const replay = await executeProgram(dp, { ...program, steps: plan.remaining, nodes: undefined }, { ...execCtx, returnObservation: undefined });
-    return {
-      status: replay.status,
-      steps: [...result.steps.slice(0, failedAt), ...replay.steps],
-      extracted: { ...result.extracted, ...replay.extracted },
-      error: replay.error,
-      fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: false },
-    };
-  }
-
   // ---------- find / zoom / capture ----------
 
   async find(pageId: string, text: string, forward: boolean, findNext: boolean) {
-    if (!this.deps.native.available()) throw new VectorError("backend_unavailable", "find requires the desktop shell");
+    if (!this.deps.native.available()) throw new AuxError("backend_unavailable", "find requires the desktop shell");
     return this.deps.native.findInPage(pageId, text, forward, findNext);
   }
   async stopFind(pageId: string, action: "clear" | "keep") {
@@ -1331,29 +1208,17 @@ export class PageService {
     return this.deps.native.stopFind(pageId, action);
   }
   async zoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out") {
-    if (!this.deps.native.available()) throw new VectorError("backend_unavailable", "zoom requires the desktop shell");
+    if (!this.deps.native.available()) throw new AuxError("backend_unavailable", "zoom requires the desktop shell");
     return this.deps.native.setZoom(pageId, level, delta, reset, direction);
   }
-  /** Display-list scene for the live engine page. Not a PNG. */
-  async scene(pageId: string) {
-    const lp = this.live.get(pageId);
-    if (!lp?.driver || lp.target.backend !== "vector-engine") {
-      throw new VectorError("capability_unsupported", "pages.scene requires vector-engine");
-    }
-    if (lp.driver.scene) return lp.driver.scene();
-    const shot = await lp.driver.screenshot();
-    if (shot.scene) return shot.scene;
-    throw new VectorError("capability_unsupported", "engine did not export a display list");
-  }
-
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact"; expectedDocumentEpoch?: number }) {
     const dp = this.driverPageLenient(pageId);
     const before = this.get(pageId);
     const epoch = before.documentEpoch;
     const url = dp.url();
     if (opts?.expectedDocumentEpoch !== undefined && opts.expectedDocumentEpoch !== epoch)
-      throw new VectorError("conflict", "The page changed before capture. Capture it again.");
-    const shot = before.backend === "vector" && this.deps.native.available() && !opts?.fullPage
+      throw new AuxError("conflict", "The page changed before capture. Capture it again.");
+    const shot = before.backend === "aux" && this.deps.native.available() && !opts?.fullPage
       ? await this.deps.native.capturePage(pageId, 1).then(image => ({
         buffer: Buffer.from(image.dataUrl.split(",")[1] ?? "", "base64"),
         width: image.width, height: image.height, scale: image.scale,
@@ -1361,9 +1226,9 @@ export class PageService {
       : await dp.screenshot({ fullPage: opts?.fullPage });
     const after = this.get(pageId);
     if (after.documentEpoch !== epoch || dp.url() !== url || !dp.isAttached())
-      throw new VectorError("conflict", "The page changed during capture. Capture it again.");
+      throw new AuxError("conflict", "The page changed during capture. Capture it again.");
     if (!shot.buffer.length || shot.width <= 0 || shot.height <= 0)
-      throw new VectorError("backend_unavailable", "The page has no image available yet. Open the tab and try again.");
+      throw new AuxError("backend_unavailable", "The page has no image available yet. Open the tab and try again.");
     if (opts?.format === "artifact") {
       const a = this.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });
       return { artifactId: a?.artifactId, width: shot.width, height: shot.height, scale: shot.scale };
@@ -1376,131 +1241,23 @@ export class PageService {
     };
   }
 
-  /** Present the engine framebuffer in the desktop stage (VEC-014). */
-  private async paintEngine(pageId: string) {
-    const lp = this.live.get(pageId);
-    if (!lp?.driver || lp.target.backend !== "vector-engine" || !this.deps.native.available()) return;
-    try {
-      const shot = await lp.driver.screenshot();
-      if (!shot.buffer?.length) return;
-      await this.deps.native.setEngineFrame(pageId, `data:image/png;base64,${shot.buffer.toString("base64")}`);
-    } catch {
-      /* paint is best-effort; the engine page still runs */
-    }
-  }
-
-  /** Human pointer/key on the engine paint view — same document the agent uses. */
-  async onEngineInput(
-    pageId: string,
-    input: {
-      type: string;
-      x?: number;
-      y?: number;
-      button?: number;
-      key?: string;
-      text?: string;
-      direction?: "up" | "down" | "top" | "bottom";
-      amount?: number;
-      start?: number;
-      end?: number;
-      width?: number;
-      height?: number;
-      name?: string;
-    },
-  ) {
-    const lp = this.live.get(pageId);
-    if (!lp?.driver || lp.target.backend !== "vector-engine") return;
-    this.onNativeTakeover(pageId);
-    try {
-      if (lp.driver.humanEvent) {
-        if (input.type === "pointerdown" || input.type === "click") {
-          await lp.driver.humanEvent({
-            type: "pointerDown",
-            x: input.x ?? 0,
-            y: input.y ?? 0,
-            button: input.button ?? 0,
-          });
-        } else if (input.type === "imePreedit") {
-          await lp.driver.humanEvent({ type: "imePreedit", text: input.text ?? input.key ?? "" });
-        } else if (input.type === "ime") {
-          await lp.driver.humanEvent({ type: "ime", text: input.text ?? input.key ?? "" });
-        } else if (input.type === "key" && input.key) {
-          await lp.driver.humanEvent({ type: "key", key: input.key });
-        } else if (input.type === "scroll") {
-          const dy = input.direction === "up" ? -(input.amount ?? 40) : (input.amount ?? 40);
-          await lp.driver.humanEvent({ type: "wheel", dx: 0, dy });
-        } else if (input.type === "select") {
-          await lp.driver.humanEvent({ type: "select", start: input.start ?? 0, end: input.end ?? 0 });
-        } else if (input.type === "resize") {
-          await lp.driver.humanEvent({
-            type: "resize",
-            width: input.width ?? input.x ?? 0,
-            height: input.height ?? input.y ?? 0,
-          });
-        } else if (input.type === "accessKitAction" && (input.name || input.key)) {
-          await lp.driver.humanEvent({ type: "accessKitAction", name: input.name ?? input.key });
-        }
-      } else if (input.type === "pointerdown" || input.type === "click") {
-        await lp.driver.clickPoint(input.x ?? 0, input.y ?? 0);
-      } else if (input.type === "key" && input.key) {
-        await lp.driver.press(input.key);
-      } else if (input.type === "scroll") {
-        const direction = input.direction ?? ((input.amount ?? 0) >= 0 ? "down" : "up");
-        await lp.driver.scroll({ direction, amount: Math.abs(input.amount ?? 40) });
-      }
-    } catch {
-      /* input is best-effort */
-    }
-    void this.paintEngine(pageId);
-  }
-
   // ---------- takeover ----------
 
-  /**
-   * Human takeover. Local controller flips before the first await so
-   * in-process execute is blocked immediately. vector-engine pages also
-   * call BrowserService so a second client cannot dispatch (Finding 1).
-   */
+  /** Human takeover — flips the local controller so in-process execute is blocked. */
   async takeover(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
-    if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
+    if (!lp) throw new AuxError("not_found", `no page ${pageId}`);
     lp.target.controller = "human";
     lp.target.controllerEpoch++;
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "human", controllerEpoch: lp.target.controllerEpoch });
-    const engine = this.driverFor(lp.target.backend);
-    if (lp.target.backend === "vector-engine" && engine?.takeover) {
-      const remote = await engine.takeover(pageId);
-      if (remote.controllerEpoch > 0) lp.target.controllerEpoch = remote.controllerEpoch;
-      this.persist(lp);
-    }
     return lp.target;
   }
 
-  /**
-   * Release human takeover. vector-engine pages resume on BrowserService
-   * first and refuse if the page is gone or still human-controlled.
-   */
+  /** Release human takeover. */
   async resume(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
-    if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
-    const engine = this.driverFor(lp.target.backend);
-    if (lp.target.backend === "vector-engine") {
-      if (!lp.driver?.isAttached()) {
-        throw new VectorError("target_detached", `page ${pageId} is not attached — resume requires a live page`);
-      }
-      if (engine?.resume) {
-        const remote = await engine.resume(pageId);
-        if (remote.controller === "human") {
-          throw new VectorError("conflict", `page ${pageId} resume did not release human control`);
-        }
-        lp.target.controller = "none";
-        lp.target.controllerEpoch = remote.controllerEpoch > 0 ? remote.controllerEpoch : lp.target.controllerEpoch + 1;
-        this.persist(lp);
-        this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "none" });
-        return lp.target;
-      }
-    }
+    if (!lp) throw new AuxError("not_found", `no page ${pageId}`);
     lp.target.controller = "none";
     lp.target.controllerEpoch++;
     this.persist(lp);
@@ -1562,26 +1319,142 @@ export class PageService {
     this.deps.events.emit(EventTypes.PageCrashed, { pageId });
   }
 
-  /** main -> runtime: a native webContents was destroyed out-of-band (popup close). */
-  onNativeRemoved(pageId: string) {
+  /**
+   * Catalog patches pushed by the main process (§7.1/§7.2): the runtime
+   * subscribes to human tab truth — presence, window placement, focus —
+   * instead of owning it. Field-level convergence still rides the view.*
+   * notifications; window ops run first so a patch's activation decision is
+   * known before its upserts/removes apply.
+   */
+  syncCatalog(patch: TabPatch): Promise<void> {
+    const run = this.catalogQueue.then(() => this.applyCatalogPatch(patch));
+    this.catalogQueue = run.catch(() => {});
+    return run;
+  }
+
+  private async applyCatalogPatch(patch: TabPatch) {
+    for (const op of patch.ops) {
+      if (op.op !== "window" || !op.window) continue;
+      const w = op.window;
+      if (this.activeByWindow.get(w.windowId) === w.activePageId) continue;
+      if (w.activePageId) {
+        const displaced = this.activeByWindow.get(w.windowId);
+        // The window op is activation truth — record the displaced tab as the
+        // close-return target even for a page that dies before registering.
+        if (displaced && displaced !== w.activePageId) this.returnTargets.set(w.activePageId, displaced);
+        this.activeByWindow.set(w.windowId, w.activePageId);
+        this.lastKnownWindow.set(w.activePageId, w.windowId);
+      }
+      else this.activeByWindow.delete(w.windowId);
+      const lp = w.activePageId ? this.live.get(w.activePageId) : undefined;
+      if (lp) {
+        // The window op is the truth for activation — the global pointer
+        // follows the most recently activated tab main reports.
+        this.activeId = lp.target.pageId;
+        lp.target.lastActiveAt = Date.now();
+        this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, activePageId: lp.target.pageId, lastActiveAt: lp.target.lastActiveAt });
+      } else if (!w.activePageId) {
+        const active = this.activeId ? this.live.get(this.activeId) : undefined;
+        if (active && (active.target.windowId ?? "main") === w.windowId) this.activeId = null;
+      }
+    }
+    for (const op of patch.ops) {
+      try {
+        await this.syncCatalogOp(op);
+      } catch {
+        /* one malformed op must not drop the rest of the batch */
+      }
+    }
+  }
+
+  private async syncCatalogOp(op: TabPatchOp) {
+    switch (op.op) {
+      case "upsert": {
+        const tab = op.tab;
+        if (!tab) return;
+        this.lastKnownWindow.set(tab.pageId, tab.windowId);
+        const lp = this.live.get(tab.pageId);
+        if (lp) {
+          // The catalog owns window placement; the driver and view.* events
+          // own the per-page fields the runtime reports.
+          if ((lp.target.windowId ?? "main") !== tab.windowId) {
+            lp.target.windowId = tab.windowId;
+            this.persist(lp);
+            this.deps.events.emit(EventTypes.PageUpdated, { pageId: tab.pageId, windowId: tab.windowId });
+          }
+          return;
+        }
+        // Pages the runtime itself created echo back through the catalog —
+        // skip them. Human/external surfaces register so agent ops can
+        // attach on the stable marker.
+        if (op.origin === "runtime" || this.pendingExternal.has(tab.pageId) || this.closing) return;
+        const active = this.activeByWindow.get(tab.windowId) === tab.pageId;
+        await this.registerExternal({
+          pageId: tab.pageId,
+          windowId: tab.windowId,
+          marker: `atab-${tab.pageId}`,
+          url: tab.url,
+          title: tab.title,
+          backend: "aux",
+          active,
+          // A re-materialized tab continues its epoch sequence — a fresh
+          // surface must invalidate observations made against the old one.
+          restored: this.deps.repo.getPage(tab.pageId),
+        });
+        return;
+      }
+      case "remove": {
+        if (!op.pageId) return;
+        this.applyNativeRemoved(op.pageId, false);
+        return;
+      }
+    }
+  }
+
+  /**
+   * main -> runtime: a native webContents was destroyed out-of-band (popup
+   * close). The catalog patch announcing the page's activation was emitted
+   * first, so the restore decision is enqueued on the catalog queue — reading
+   * the window-active pointer synchronously would race the queued ops.
+   */
+  onNativeRemoved(pageId: string, chooseSuccessor = true, discarded = false) {
     const pending = this.pendingExternal.get(pageId);
     if (pending) pending.removed = true;
+    if (!chooseSuccessor) {
+      // Called from syncCatalogOp — already serialized on the catalog queue.
+      this.applyNativeRemoved(pageId, false, discarded);
+      return;
+    }
+    const run = this.catalogQueue.then(() => this.applyNativeRemoved(pageId, true, discarded));
+    this.catalogQueue = run.catch(() => {});
+  }
+
+  private applyNativeRemoved(pageId: string, chooseSuccessor: boolean, discarded = false) {
     const lp = this.live.get(pageId);
-    if (!lp) return;
-    if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "detached";
-    lp.target.controller = "none";
-    this.persist(lp);
-    this.live.delete(pageId);
+    if (lp) {
+      if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "detached";
+      lp.target.controller = "none";
+      this.persist(lp);
+      this.live.delete(pageId);
+      void lp.driver?.dispose().catch(() => {});
+    }
     const returnTarget = this.returnTargets.get(pageId);
     this.returnTargets.delete(pageId);
     for (const [child, parent] of this.returnTargets) if (parent === pageId) this.returnTargets.delete(child);
-    void lp.driver?.dispose().catch(() => {});
+    // A popup that dies before its attach completes never lands in `live`,
+    // but a window op may still have made it the window's active tab —
+    // the stale pointer must be cleared and a successor chosen either way.
+    const windowId = lp?.target.windowId ?? this.lastKnownWindow.get(pageId) ?? "main";
+    this.lastKnownWindow.delete(pageId);
     if (!this.closing) {
       let next: LivePage | undefined;
-      const windowId = lp.target.windowId ?? "main";
       const wasWindowActive = this.activeByWindow.get(windowId) === pageId;
       if (wasWindowActive) this.activeByWindow.delete(windowId);
-      if (this.activeId === pageId || wasWindowActive) {
+      const wasActive = this.activeId === pageId;
+      if (wasActive) this.activeId = null;
+      // Catalog-originated removes arrive alongside a window op carrying
+      // main's chosen successor — picking our own would double-focus.
+      if (chooseSuccessor && (wasActive || wasWindowActive)) {
         this.activeId = null;
         const returned = returnTarget ? this.live.get(returnTarget) : undefined;
         const preferred = returned && (returned.target.windowId ?? "main") === windowId ? returned : undefined;
@@ -1592,7 +1465,15 @@ export class PageService {
           .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0] ?? candidates
           .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0];
       }
-      this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+      // A discard keeps its catalog record — the tab stays on the strip as a
+      // detached page, so renderers must not treat it as a close.
+      if (lp || next) {
+        if (discarded) {
+          if (lp) this.deps.events.emit(EventTypes.PageUpdated, { pageId, viewStatus: "detached" });
+        } else {
+          this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+        }
+      }
       if (next) void this.activate(next.target.pageId).catch(() => {});
     }
   }

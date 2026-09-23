@@ -1,5 +1,5 @@
 {
-  "name": "@vector/desktop",
+  "name": "@aux/desktop",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@mozilla/readability": "0.6.0",
-    "@vector/contracts": "workspace:*",
+    "@aux/contracts": "workspace:*",
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
     "exceljs": "^4.4.0",

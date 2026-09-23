@@ -9,7 +9,7 @@ import {createHash,createPublicKey,verify} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-compatibility-'));const extension=join(dir,'extension');mkdirSync(extension);
 writeFileSync(join(extension,'manifest.json'),JSON.stringify({manifest_version:3,name:'Aux synthetic capability probe',version:'1.0',permissions:['storage','tabs','nativeMessaging','scripting','contextMenus','downloads','cookies']}));
@@ -18,11 +18,11 @@ const server=createServer((_req,res)=>{res.setHeader('Content-Type','text/html')
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`;
 let app;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();
  const capabilities=await app.evaluate(async({session,WebContentsView},path)=>{
-  const profile=session.fromPartition('persist:vector-default');
+  const profile=session.fromPartition('persist:aux-default');
   const ext=await profile.extensions.loadExtension(path,{allowFileAccess:false});
   const view=new WebContentsView({webPreferences:{session:profile,sandbox:true,contextIsolation:true,nodeIntegration:false}});
   try{
@@ -30,8 +30,8 @@ try{
    return await view.webContents.executeJavaScript(`Object.fromEntries(['runtime.connectNative','runtime.sendNativeMessage','tabs.create','tabs.query','storage.local.get','storage.sync.get','scripting.executeScript','contextMenus.create','downloads.download','cookies.get'].map(path=>[path,typeof path.split('.').reduce((o,k)=>o?.[k],chrome)]))`);
   }finally{view.webContents.close();profile.extensions.removeExtension(ext.id);}
  },extension);
- const tab=await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base);
- await poll(page,async id=>(await window.vector.invoke('pages.list',{})).some(t=>t.pageId===id&&!t.loading),tab.pageId);
+ const tab=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
+ await poll(page,async id=>(await window.aux.invoke('pages.list',{})).some(t=>t.pageId===id&&!t.loading),tab.pageId);
  const result=await app.evaluate(async({webContents},base)=>{
   const wc=webContents.getAllWebContents().find(w=>w.getURL()===base+'/');
   const command=(name,params={})=>wc.debugger.sendCommand(name,params);

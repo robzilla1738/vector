@@ -1,13 +1,15 @@
-import { VectorError, type RpcChannel, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport } from "@vector/contracts";
+import { AuxError, type RpcChannel, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck } from "@aux/contracts";
 
 /**
  * Calls into the Electron main process, which owns all native surfaces.
  * In standalone mode (tests, external-only use) the bridge is absent and
- * vector page creation returns an explicit error.
+ * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
   listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>;
-  createPage(opts: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean; kind?: "chromium" | "engine" }): Promise<{ ok: true }>;
+  /** Scoped agent tab commands (§7.3) — same controller humans use, deduplicated + ack'd. */
+  tabCommand(envelope: TabCommandEnvelope): Promise<TabCommandAck>;
+  createPage(opts: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean }): Promise<{ ok: true }>;
   closePage(pageId: string): Promise<{ ok: boolean }>;
   showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<{ ok: boolean }>;
   hidePage(pageId: string): Promise<{ ok: boolean }>;
@@ -20,7 +22,6 @@ export interface NativeBridge {
   acquireStage(pageId: string): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
   capturePage(pageId: string, scale: number): Promise<{ dataUrl: string; width: number; height: number; scale: number }>;
-  setEngineFrame(pageId: string, dataUrl: string): Promise<{ ok: boolean }>;
   openExternal(url: string): Promise<{ ok: boolean }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
   stopFind(pageId: string, action: "clear" | "keep"): Promise<{ ok: boolean }>;
@@ -61,7 +62,10 @@ export class ChannelNativeBridge implements NativeBridge {
   listPages() {
     return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>("native.listPages", {});
   }
-  createPage(o: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean; kind?: "chromium" | "engine" }) {
+  tabCommand(envelope: TabCommandEnvelope) {
+    return this.channel.call<TabCommandAck>("native.tabCommand", envelope, 55_000);
+  }
+  createPage(o: { pageId: string; windowId?: string; marker: string; url: string; background: boolean; ownedByRuntime?:boolean }) {
     return this.channel.call<{ ok: true }>("native.createPage", o);
   }
   movePage(pageId: string, windowId?: string, activate = true) {
@@ -93,9 +97,6 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   capturePage(pageId: string, scale: number) {
     return this.channel.call<{ dataUrl: string; width: number; height: number; scale: number }>("native.capturePage", { pageId, scale });
-  }
-  setEngineFrame(pageId: string, dataUrl: string) {
-    return this.channel.call<{ ok: boolean }>("native.setEngineFrame", { pageId, dataUrl });
   }
   openExternal(url: string) {
     return this.channel.call<{ ok: boolean }>("native.openExternal", { url });
@@ -144,12 +145,13 @@ export class NullNativeBridge implements NativeBridge {
     return false;
   }
   private fail(): never {
-    throw new VectorError(
+    throw new AuxError(
       "backend_unavailable",
-      "No native surface: the runtime is not attached to a Vector desktop shell",
+      "No native surface: the runtime is not attached to a Aux desktop shell",
     );
   }
   listPages(): never { this.fail(); }
+  tabCommand(): never { this.fail(); }
   createPage(): never { this.fail(); }
   closePage(): never { this.fail(); }
   showPage(): never { this.fail(); }
@@ -159,7 +161,6 @@ export class NullNativeBridge implements NativeBridge {
   acquireStage(): never { this.fail(); }
   releaseStage(): never { this.fail(); }
   capturePage(): never { this.fail(); }
-  setEngineFrame(): never { this.fail(); }
   openExternal(): never { this.fail(); }
   findInPage(): never { this.fail(); }
   stopFind(): never { this.fail(); }

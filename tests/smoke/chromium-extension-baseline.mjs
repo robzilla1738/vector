@@ -7,7 +7,7 @@ import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const root=resolve(import.meta.dirname,'../..');
-const {chromium}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {chromium}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const dir=mkdtempSync(join(tmpdir(),'aux-chromium-baseline-'));const extension=join(dir,'extension');mkdirSync(extension);
 writeFileSync(join(extension,'manifest.json'),JSON.stringify({manifest_version:3,name:'Aux synthetic capability baseline',version:'1.0',permissions:['storage','tabs','nativeMessaging','scripting','contextMenus','downloads','cookies'],host_permissions:['http://localhost/*'],background:{service_worker:'worker.js'}}));
 writeFileSync(join(extension,'worker.js'),'chrome.runtime.onInstalled.addListener(()=>{});');

@@ -2,7 +2,7 @@ import {constants} from 'node:fs';
 import {open,realpath,lstat,readdir,mkdir,rename,unlink,writeFile,link} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
-import type {ProjectFile,ProjectFileHistory,ProjectFileVersionSnapshot} from '@vector/contracts';
+import type {ProjectFile,ProjectFileHistory,ProjectFileVersionSnapshot} from '@aux/contracts';
 const LIMIT=256*1024;
 const hash=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 

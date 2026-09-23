@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, type ReactNode } from "react";
-import type { ActionReceipt, StepRecord } from "@vector/contracts";
+import type { ActionReceipt, StepRecord } from "@aux/contracts";
 import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
 import { bridge } from "../bridge";
 import { errToast } from "../store";
@@ -64,7 +64,7 @@ export function opLabel(op: string): string {
   return map[op] ?? op;
 }
 
-/** VEC-016 / Gate F — inspectable effect state. Takeover wins over confirmed. */
+/** AUX-016 / Gate F — inspectable effect state. Takeover wins over confirmed. */
 export function receiptKind(receipt: ActionReceipt | undefined): "takeover" | "confirmed" | "uncertain" | "" {
   if (!receipt) return "";
   if (receipt.dispatchedBeforeTakeover) return "takeover";

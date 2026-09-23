@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { useStore, call } from "../store";
+import { useStore } from "../store";
 import { bridge, inElectron } from "../bridge";
 import { hostOf } from "../workspace";
-import type { ResultRecord } from "@vector/contracts";
+import type { ResultRecord } from "@aux/contracts";
 import { I } from "./icons";
 
 function toCsv(results: ResultRecord[], keys: string[]): string {
@@ -78,7 +78,7 @@ export function ResultsTable() {
   const openSource = (r: ResultRecord) => {
     const existing = useStore.getState().pages.find((p) => p.url === r.sourceUrl);
     if (existing) void useStore.getState().activate(existing.pageId);
-    else void call("pages.open", { url: r.sourceUrl, activate: true });
+    else void useStore.getState().newTab(r.sourceUrl);
   };
 
   const copyRow = async (r: ResultRecord) => {

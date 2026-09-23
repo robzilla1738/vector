@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CompactObservation, Run } from "@vector/contracts";
+import { useShallow } from "zustand/react/shallow";
+import type { CompactObservation, Run } from "@aux/contracts";
 import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { ObservationPanel } from "./ObservationPanel";
@@ -81,7 +82,7 @@ function Answer({ run, conversation = false }: { run: Run; conversation?: boolea
       )}
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
-      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && !(conversation && showSummary) && (
+      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && (
         conversation
           ? <ResultFields result={run.result} labeled={false} />
           : <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={run.result} labeled /></details>
@@ -104,7 +105,8 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   const stats = useStore((s) => s.modelStats[runId]);
   const obs = useStore((s) => s.observations[runId]);
   const prompt = useStore((s) => s.prompt);
-  const pages = useStore((s) => s.pages);
+  // Only the pages this run can act on — unrelated tab churn does not re-render the panel.
+  const runPages = useStore(useShallow((s) => s.pages.filter((p) => (run?.pageIds ?? []).includes(p.pageId) || p.pageId === retryPageId)));
   const activePageId = useStore((s) => s.activePageId);
   const loadRun = useStore((s) => s.loadRun);
   const answerRun = useStore((s) => s.answerRun);
@@ -142,13 +144,13 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
   const live = isLive(run);
-  const originalPages = run.pageIds.map(id => pages.find(p => p.pageId === id));
-  const usable = (item?: typeof pages[number]) => !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
+  const originalPages = run.pageIds.map(id => runPages.find(p => p.pageId === id));
+  const usable = (item?: typeof runPages[number]) => !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
   const page = usable(originalPages[0]) ? originalPages[0] : undefined;
   const missingOriginals = run.pageIds.filter((id, index) => !usable(originalPages[index]) || originalPages[index]?.pageId !== id);
   const multiTabBlocked = run.pageIds.length > 1 && missingOriginals.length > 0;
-  const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? pages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
-  const humanPages = pages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
+  const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
+  const humanPages = runPages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
   const humanPage = humanPages[0];
   const humanHolds = humanPages.length > 0;
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";
@@ -285,7 +287,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
 
       <Answer run={run} conversation={conversation} />
 
-      {!conversation && stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
+      {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
         <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
         <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
       </details>}

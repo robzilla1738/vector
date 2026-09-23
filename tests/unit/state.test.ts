@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { openDb, Repo, StateService } from "@vector/runtime";
+import { openDb, Repo, StateService } from "@aux/runtime";
 
 const repo = () => new Repo(openDb(":memory:"));
 

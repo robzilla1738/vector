@@ -8,7 +8,7 @@ import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-auth-navigation-'));
 let rpBase='';let idpBase='';let consentCookie='';
@@ -39,10 +39,10 @@ await new Promise(r=>idp.listen(0,'127.0.0.1',r));idpBase=`http://127.0.0.1:${id
 let app;
 try{
  const mark=step=>console.log(`auth-navigation: ${step}`);
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let shell;for(let i=0;i<100;i++){shell=app.windows().find(p=>p.url().includes('renderer/index.html'));if(shell)break;await new Promise(r=>setTimeout(r,100));}assert.ok(shell);shell.setDefaultTimeout(15000);await shell.locator('.aux-home').waitFor();
- const opener=await shell.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),rpBase+'/');
- await poll(shell,async id=>(await window.vector.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),opener.pageId);
+ const opener=await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),rpBase+'/');
+ await poll(shell,async id=>(await window.aux.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),opener.pageId);
  mark('relying party ready');
  const execute=(url,code)=>app.evaluate(({webContents},{url,code})=>webContents.getAllWebContents().find(contents=>contents.getURL()===url)?.executeJavaScript(code),{url,code});
 
@@ -75,12 +75,13 @@ try{
  await execute(rpBase+'/',`window.sso=window.open(${JSON.stringify(authorize)},'sso','popup,width=520,height=640');void 0`);
  await poll(app,({BrowserWindow},prefix)=>BrowserWindow.getAllWindows().some(window=>window.webContents.getURL().startsWith(prefix)),idpBase+'/consent');
  assert.match(consentCookie,/idp_session=synthetic/,'IdP redirect receives its SameSite cookie');
- const consent=app.windows().find(page=>page.url().startsWith(idpBase+'/consent'));assert.ok(consent);assert.equal(await consent.locator('body').getAttribute('data-referrer'),rpBase+'/');
+ let consent;for(let i=0;i<80;i++){consent=app.windows().find(page=>page.url().startsWith(idpBase+'/consent'));if(consent)break;await new Promise(r=>setTimeout(r,250));}
+ assert.ok(consent,'consent popup must be attached as a Playwright page');assert.equal(await consent.locator('body').getAttribute('data-referrer'),rpBase+'/');
  await consent.getByRole('button',{name:'Continue'}).click();
  await poll(app,async({webContents},url)=>{const contents=webContents.getAllWebContents().find(item=>item.getURL()===url);return contents?await contents.executeJavaScript('document.querySelector("output").textContent')==='sso-complete':false;},rpBase+'/');
  await poll(app,({BrowserWindow})=>BrowserWindow.getAllWindows().length===0);
  assert.match(await execute(rpBase+'/','document.cookie'),/rp_session=synthetic/,'callback cookie is shared with the relying-party tab');
- const cookies=await app.evaluate(({session},url)=>session.fromPartition('persist:vector-default').cookies.get({url}),idpBase);
+ const cookies=await app.evaluate(({session},url)=>session.fromPartition('persist:aux-default').cookies.get({url}),idpBase);
  assert.ok(cookies.some(cookie=>cookie.name==='idp_session'&&cookie.value==='synthetic'));
  assert.match(await shell.locator('.tab-row.active').textContent(),/Relying party/,'SSO popup does not replace the selected relying-party tab');
  mark('SSO ready');

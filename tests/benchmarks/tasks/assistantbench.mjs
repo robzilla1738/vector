@@ -7,7 +7,7 @@
  * dataset gives them (string, number, list, or JSON object); the scorer
  * applies the strict rule described in run.mjs.
  *
- *   node tests/benchmarks/tasks/run.mjs --suite assistantbench --adapter vector
+ *   node tests/benchmarks/tasks/run.mjs --suite assistantbench --adapter aux
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

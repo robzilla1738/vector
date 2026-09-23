@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { BrowserSpaceSchema, VectorError, type BrowserSpace, type SpaceInput, type Workspace } from "@vector/contracts";
+import { BrowserSpaceSchema, AuxError, type BrowserSpace, type SpaceInput, type Workspace } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 
@@ -48,9 +48,9 @@ export class SpaceService {
     const spaces = this.repo.transaction(() => {
       const spaces = this.list();
       const current = spaces.find(space => space.id === id);
-      if (!current) throw new VectorError("not_found", "This space no longer exists.");
+      if (!current) throw new AuxError("not_found", "This space no longer exists.");
       if (patch.archived && !current.archived && spaces.filter(space => !space.archived).length === 1) {
-        throw new VectorError("conflict", "Keep at least one active space.");
+        throw new AuxError("conflict", "Keep at least one active space.");
       }
       Object.assign(current, patch);
       if (patch.name) this.repo.db.prepare("UPDATE workspaces SET name=? WHERE workspace_id=?").run(patch.name, current.workspaceId);

@@ -1,4 +1,4 @@
-import type { Run } from "@vector/contracts";
+import type { Run } from "@aux/contracts";
 
 export const STATUS_LABEL: Record<Run["status"], string> = {
   queued: "Queued",

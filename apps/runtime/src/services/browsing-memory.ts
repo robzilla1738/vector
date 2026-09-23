@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { BrowsingMemoryPolicySchema, BrowsingMemoryPageSchema, VectorError, type BrowsingMemoryPage, type BrowsingMemoryPolicy, type PageTarget, type WorkspaceMemory } from "@vector/contracts";
-import { memorySourceExcluded } from "@vector/contracts/memory-context";
+import { BrowsingMemoryPolicySchema, BrowsingMemoryPageSchema, AuxError, type BrowsingMemoryPage, type BrowsingMemoryPolicy, type PageTarget, type WorkspaceMemory } from "@aux/contracts";
+import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import type { Repo } from "../store/repo.js";
 
 const policyKey = (id: string) => `browsingMemoryPolicy:${id}`;
@@ -12,7 +12,7 @@ const LIMIT = 200;
 export class BrowsingMemory {
   constructor(private repo: Repo, private now: () => number = Date.now) {}
   private requireSpace(workspaceId: string) {
-    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new VectorError("not_found", "This Space no longer exists.");
+    if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new AuxError("not_found", "This Space no longer exists.");
   }
   policy(workspaceId: string): BrowsingMemoryPolicy {
     this.requireSpace(workspaceId);
@@ -42,7 +42,7 @@ export class BrowsingMemory {
   record(workspaceId: string, page: PageTarget, expectedDocumentEpoch: number) {
     const state = this.get(workspaceId);
     const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`);
-    if (!state.policy.enabled || memory?.enabled === false || page.backend !== "vector" || page.ownedByRuntime || page.viewStatus !== "visible" || page.loading || page.navigationError || !["none", "human"].includes(page.controller)) return { recorded: false };
+    if (!state.policy.enabled || memory?.enabled === false || page.backend !== "aux" || page.ownedByRuntime || page.viewStatus !== "visible" || page.loading || page.navigationError || !["none", "human"].includes(page.controller)) return { recorded: false };
     if (page.documentEpoch !== expectedDocumentEpoch) return { recorded: false };
     const spaces = this.repo.getSetting<{workspaceId: string; archived?: boolean}[]>("browserSpaces") ?? [];
     if (spaces.some(space => space.workspaceId === workspaceId && space.archived)) return { recorded: false };

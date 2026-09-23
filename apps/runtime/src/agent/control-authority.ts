@@ -1,4 +1,4 @@
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 
 /** A paused multi-page run may resume only after every other scoped page has left human control. */
 export function canResumeAfterPageRelease(runPageIds: string[], releasedPageId: string, pages: Iterable<Pick<PageTarget, "pageId" | "controller">>): boolean {

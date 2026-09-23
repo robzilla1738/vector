@@ -6,16 +6,16 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import assert from 'node:assert/strict';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-bookmarks-ui-'));
 let app;
 try {
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
- await page.evaluate(()=>window.vector.invoke('bookmarks.add',{url:'https://example.test/',title:'My existing title'}));
+ await page.evaluate(()=>window.aux.invoke('bookmarks.add',{url:'https://example.test/',title:'My existing title'}));
  await sidebarAction(page, "Library");
  const file={name:'bookmarks.html',mimeType:'text/html',buffer:Buffer.from('<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><DT><H3>Research</H3><DL><DT><A HREF="https://example.test/">Replacement title</A><DT><A HREF="https://research.test/?a=1&amp;b=2">Research &amp; notes</A><DT><A HREF="javascript:alert(1)">Unsafe link</A></DL></DL>')};
  await page.getByLabel('Import bookmark file').setInputFiles(file);
@@ -26,7 +26,7 @@ try {
  await page.getByRole('button',{name:'Import bookmarks',exact:true}).click();
  await page.getByText('Imported 1 bookmarks. 1 already saved.',{exact:true}).waitFor();
  await page.getByRole('button',{name:'My existing title https://example.test/'}).waitFor();
- const saved=await page.evaluate(()=>window.vector.invoke('bookmarks.list',{}));
+ const saved=await page.evaluate(()=>window.aux.invoke('bookmarks.list',{}));
  assert.equal(saved.length,2);
  assert.equal(saved.find(item=>item.url==='https://example.test/').title,'My existing title');
  const destination=join(dir,'aux-bookmarks.html');

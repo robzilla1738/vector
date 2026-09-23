@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@vector/runtime";
+import { openDb, Repo } from "@aux/runtime";
 import { PrivateBookmarks } from "../../apps/desktop/main/private-bookmarks.js";
 
 for (const kind of ["regular", "private"] as const) {

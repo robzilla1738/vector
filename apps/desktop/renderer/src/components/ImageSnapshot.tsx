@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ConversationImage } from "@vector/contracts";
+import type { ConversationImage } from "@aux/contracts";
 import { call } from "../store";
 import { I } from "./icons";
 

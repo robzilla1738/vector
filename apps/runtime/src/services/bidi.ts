@@ -1,5 +1,5 @@
 /**
- * WebDriver BiDi adapter (VEC-020).
+ * WebDriver BiDi adapter (AUX-020).
  *
  * Tool schemas, descriptions, and outputs are untrusted. Page-declared tools
  * cannot bypass user authorization. Draft WebMCP stays behind a flag.
@@ -68,7 +68,7 @@ export function dispatch(cmd: BidiCommand, authorize: (c: BidiCommand) => boolea
     return { ok: true, untrusted: true, value: session };
   }
   if (cmd.method === "session.status") {
-    return { ok: true, untrusted: true, value: { ready: true, message: "Vector BiDi" } };
+    return { ok: true, untrusted: true, value: { ready: true, message: "Aux BiDi" } };
   }
   if (cmd.method === "browsingContext.create") {
     const id = `ctx-${Date.now().toString(36)}`;

@@ -1,4 +1,4 @@
-import { steppedZoomLevel, type PageZoomDirection } from "@vector/contracts";
+import { steppedZoomLevel, type PageZoomDirection } from "@aux/contracts";
 import type { WebContents } from "electron";
 
 const MIN_LEVEL = Math.log(0.25) / Math.log(1.2);

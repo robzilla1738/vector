@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import type {Terminal as XTerminal} from '@xterm/xterm';
 import type {FitAddon as XFitAddon} from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
-import type {CloudTerminalSession,Task} from '@vector/contracts';
+import type {CloudTerminalSession,Task} from '@aux/contracts';
 import {bridge} from '../bridge';
 
 export function CloudTerminal({task,environmentId,onClose,onEnvironmentChanged}:{task:Task;environmentId:string;onClose:()=>void;onEnvironmentChanged:()=>void}){

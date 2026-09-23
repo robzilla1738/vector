@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { collectObservation } from "../../packages/engine-client/src/observe-script";
+import { collectObservation } from "../../packages/chromium-driver/src/observe-script";
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it("removes credential values before a raw observation leaves the page", () => {

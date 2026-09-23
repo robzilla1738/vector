@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { locatorAttempts, selectUniqueLocator, type FrameLike, type LocatorLike } from "@vector/engine-client";
-import { VectorError } from "@vector/contracts";
+import { locatorAttempts, selectUniqueLocator, type FrameLike, type LocatorLike } from "@aux/chromium-driver";
+import { AuxError } from "@aux/contracts";
 
 /** Fake locator: a fixed match count plus a visible-filtered count; records count() calls. */
 // oxlint-disable-next-line oxc/only-used-in-recursion — visibleCount is threaded to the fake's recursive filter()
@@ -47,7 +47,7 @@ describe("locatorAttempts", () => {
   });
   it("rejects an empty strategy", () => {
     const { frame } = fakeFrame({});
-    expect(() => locatorAttempts(frame, {})).toThrow(VectorError);
+    expect(() => locatorAttempts(frame, {})).toThrow(AuxError);
   });
 });
 

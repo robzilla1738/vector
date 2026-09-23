@@ -2,7 +2,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
 import {chmodSync,closeSync,copyFileSync,existsSync,lstatSync,mkdirSync,openSync,readFileSync,readSync,renameSync,rmSync,writeFileSync} from 'node:fs';
 import {dirname,isAbsolute,join} from 'node:path';
-import {resolveDatabasePath} from '@vector/contracts/installation';
+import {resolveDatabasePath} from '@aux/contracts/installation';
 
 const markerName='pending-runtime-restore.json',pendingName='pending-runtime-restore.sqlite',pendingArtifactsName='pending-runtime-restore-artifacts',lastName='last-runtime-restore.json';
 const digest=(path:string)=>{const hash=createHash('sha256'),fd=openSync(path,'r'),buffer=Buffer.allocUnsafe(1024*1024);try{for(;;){const bytes=readSync(fd,buffer,0,buffer.length,null);if(!bytes)break;hash.update(buffer.subarray(0,bytes));}}finally{closeSync(fd);}return hash.digest('hex');};

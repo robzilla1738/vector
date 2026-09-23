@@ -1,4 +1,4 @@
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { hostOf } from "../workspace";
 
 /**

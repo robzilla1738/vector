@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { bodyCapturePolicy, defaultResponseCaptureOptions, DEFAULT_BODY_CAP } from "@vector/engine-client";
+import { bodyCapturePolicy, defaultResponseCaptureOptions, DEFAULT_BODY_CAP } from "@aux/chromium-driver";
 
 const opts = defaultResponseCaptureOptions({});
 
@@ -30,7 +30,7 @@ describe("bodyCapturePolicy", () => {
   });
 
   it("a driver option (env) can opt documents/scripts in", () => {
-    const wide = defaultResponseCaptureOptions({ VECTOR_CAPTURE_BODY_TYPES: "xhr, fetch, document" });
+    const wide = defaultResponseCaptureOptions({ AUX_CAPTURE_BODY_TYPES: "xhr, fetch, document" });
     expect(bodyCapturePolicy({ resourceType: "document", contentType: "text/html" }, wide)).toBe("capture");
     expect(bodyCapturePolicy({ resourceType: "script", contentType: "text/javascript" }, wide)).toBe("skip");
     expect(bodyCapturePolicy({ resourceType: "fetch", contentType: "application/json" }, wide)).toBe("capture");

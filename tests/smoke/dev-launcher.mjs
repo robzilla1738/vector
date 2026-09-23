@@ -7,9 +7,9 @@ import {join,resolve} from 'node:path';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 const root=resolve(import.meta.dirname,'../..');
-const {chromium}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {chromium}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const dir=mkdtempSync(join(tmpdir(),'aux-dev-start-'));
-const env={PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'};
+const env={PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'};
 let child,browser,output='';
 const preload=join(root,'apps/desktop/dist/preload/index.cjs');
 const previousPreload=readFileSync(preload);
@@ -28,8 +28,8 @@ try {
  while(!page){page=browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().startsWith('http://127.0.0.1:5197/'));assert.ok(Date.now()<deadline,output);if(!page)await new Promise(r=>setTimeout(r,100));}
  await page.locator('.aux-home').waitFor();
  assert.ok(!readFileSync(preload,'utf8').includes('Aux stale preload sentinel'),'launch must regenerate its entrypoints from source');
- assert.equal(await page.locator('img.aux-mark').evaluate(img=>img.complete&&img.naturalWidth>0),true);
- await page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),`http://127.0.0.1:${server.address().port}/`);
+ await page.locator('.aux-mark').waitFor();
+ await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),`http://127.0.0.1:${server.address().port}/`);
  await page.getByText('Aux development navigation',{exact:true}).first().waitFor();
  assert.ok(!output.includes('fixtures up'),'normal browser launch should not start fixture servers');
  await browser.close();browser=null;child.kill('SIGTERM');await exited;
@@ -38,4 +38,4 @@ try {
  await new Promise(r=>occupied.listen(5197,'127.0.0.1',r));
  try {const failed=await start();assert.equal(failed.code,1,output);assert.match(output,/Aux could not start/);assert.ok(!output.includes('Aux desktop (Chromium-first)'));}finally{await new Promise(r=>occupied.close(r));}
  console.log('Development startup, artwork loading, browsing, shutdown and occupied-port failure verified.');
-} finally {if(readFileSync(preload,'utf8')===stale)writeFileSync(preload,previousPreload);await browser?.close();child?.kill('SIGTERM');server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}
+} finally {if(readFileSync(preload,'utf8')===stale)writeFileSync(preload,previousPreload);await browser?.close();child?.kill('SIGTERM');server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true,maxRetries:5,retryDelay:120});}

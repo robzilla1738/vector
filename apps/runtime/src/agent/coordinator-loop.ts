@@ -1,4 +1,4 @@
-import { VectorError, type Observation } from "@vector/contracts";
+import { AuxError, type Observation } from "@aux/contracts";
 import { recoverAfterCrash } from "./recovery.js";
 import { initialMachine, reduce } from "./machine.js";
 import { emptyRepairState } from "./repair.js";
@@ -103,9 +103,9 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   try {
     while (true) {
       await self.waitIfPaused(c, runId);
-      if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) throw new VectorError("step_failed", "model call budget exhausted");
-      if (s.stepsRun >= maxSteps) throw new VectorError("step_failed", "step budget exhausted");
-      if (!s.activePageId) throw new VectorError("invalid_params", "run has no target page");
+      if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) throw new AuxError("step_failed", "model call budget exhausted");
+      if (s.stepsRun >= maxSteps) throw new AuxError("step_failed", "step budget exhausted");
+      if (!s.activePageId) throw new AuxError("invalid_params", "run has no target page");
 
       const obs = await observeActivePage(s);
       const obsArtifactId = self.deps.saveObservation?.(runId, obs);
@@ -117,7 +117,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
           resetGuards(s);
           continue;
         }
-        throw new VectorError("step_failed", "no progress — same page state repeatedly");
+        throw new AuxError("step_failed", "no progress — same page state repeatedly");
       }
 
       self.setStatus(runId, "planning", "Thinking…");
@@ -137,7 +137,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
       if (next === "return") return;
     }
   } catch (e) {
-    if (e instanceof VectorError && e.code === "cancelled") return;
+    if (e instanceof AuxError && e.code === "cancelled") return;
     if (c.abort.signal.aborted) return;
     if (e instanceof ModelFailureError) giveUpRepair(s, e.failure.message, e.failure);
     else giveUpRepair(s, e instanceof Error ? e.message : String(e));
@@ -194,7 +194,7 @@ async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): 
         resetGuards(s);
         return "continue";
       }
-      throw new VectorError("model_output_invalid", "continue without steps or observation request");
+      throw new AuxError("model_output_invalid", "continue without steps or observation request");
     }
     if (s.modelErrorCount === 2 && !s.visionUsed) s.visionPending = true;
     s.lastError = `you returned continue with no steps — provide steps, an observationRequest, or a pageId from PAGES to switch to`;

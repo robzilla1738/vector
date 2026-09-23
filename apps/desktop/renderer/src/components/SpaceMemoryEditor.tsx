@@ -1,7 +1,7 @@
 import { BrowsingMemory } from "./BrowsingMemory";
 import { MemoryItems } from "./MemoryItems";
 import { useRef, useState } from "react";
-import type { WorkspaceMemory } from "@vector/contracts";
+import type { WorkspaceMemory } from "@aux/contracts";
 import { call } from "../store";
 import { useMemoryDrafts } from "../memory-drafts";
 

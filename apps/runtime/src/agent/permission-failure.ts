@@ -1,4 +1,4 @@
-import type { RunFailure } from "@vector/contracts";
+import type { RunFailure } from "@aux/contracts";
 
 /** Only classify errors emitted by Aux’s permission boundary, never arbitrary page text. */
 export function permissionFailure(error: string | undefined): RunFailure | undefined {

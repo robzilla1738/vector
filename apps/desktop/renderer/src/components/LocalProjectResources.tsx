@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import type {LocalProject, RepositorySelection, ProjectInspection, ProjectReviewSummary, ProjectCommitResult, Task} from '@vector/contracts';
+import type {LocalProject, RepositorySelection, ProjectInspection, ProjectReviewSummary, ProjectCommitResult, Task} from '@aux/contracts';
 import {bridge} from '../bridge';
 import {UntrackedFileReview} from './UntrackedFileReview';
 import {CloudEnvironmentPanel} from './CloudEnvironmentPanel';

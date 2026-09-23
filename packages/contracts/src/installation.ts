@@ -3,9 +3,9 @@ import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { normalizeAuxEnvironment, type AuxEnvironment } from "./environment.js";
 
-export const LEGACY_CREDENTIAL_NAMES = ["secrets", "gateway.key", "model.key"] as const;
+export const AUX_DATABASE_NAME = "aux-state.sqlite";
+export const LEGACY_DATABASE_NAME = "vector.sqlite";
 
-/** Existing profiles stay in place until the explicit, backed-up migration runs. */
 export function resolveDataDirectory(
   source: AuxEnvironment = process.env,
   userHome = homedir(),
@@ -18,42 +18,24 @@ export function resolveDataDirectory(
   if (platform === "darwin") root = join(userHome, "Library", "Application Support");
   if (platform === "linux" && env.XDG_DATA_HOME) root = env.XDG_DATA_HOME;
   if (platform === "win32") root = env.LOCALAPPDATA || join(userHome, "AppData", "Local");
-  const current = join(root, "Aux Browser");
-  const legacy = join(userHome, "Library", "Application Support", "Vector");
-  if (existsSync(current) && existsSync(legacy)) {
-    throw new Error("Both Aux and legacy Vector data exist. Set AUX_DATA_DIR to the intended installation; profiles cannot be merged automatically.");
-  }
-  return existsSync(legacy) ? legacy : current;
-}
-
-export function resolveDatabasePath(dataDir: string): string {
-  const current = join(dataDir, "aux-state.sqlite");
-  const legacy = join(dataDir, "vector.sqlite");
-  if (existsSync(current) && existsSync(legacy)) {
-    throw new Error("Both Aux and legacy Vector databases exist in the selected directory. Resolve the migration before starting the runtime.");
-  }
-  return existsSync(legacy) ? legacy : current;
-}
-
-export function defaultAuxDataDirectory(
-  userHome = homedir(),
-  platform: NodeJS.Platform = process.platform,
-  source: AuxEnvironment = {},
-): string {
-  const env = normalizeAuxEnvironment(source);
-  let root = join(userHome, ".local", "share");
-  if (platform === "darwin") root = join(userHome, "Library", "Application Support");
-  if (platform === "linux" && env.XDG_DATA_HOME) root = env.XDG_DATA_HOME;
-  if (platform === "win32") root = env.LOCALAPPDATA || join(userHome, "AppData", "Local");
   return join(root, "Aux Browser");
 }
 
-export function defaultLegacyVectorDataDirectory(userHome = homedir()): string {
-  return join(userHome, "Library", "Application Support", "Vector");
-}
-
-export function hasLegacyCredentialFiles(root: string): boolean {
-  return LEGACY_CREDENTIAL_NAMES.some(name => existsSync(join(root, name)));
+/**
+ * Resolve the runtime database inside the selected data directory. A legacy
+ * `vector.sqlite` found here is incompatible data: it is preserved untouched
+ * and reported rather than opened or overwritten.
+ */
+export function resolveDatabasePath(dataDir: string): string {
+  const current = join(dataDir, AUX_DATABASE_NAME);
+  const legacy = join(dataDir, LEGACY_DATABASE_NAME);
+  if (existsSync(legacy)) {
+    throw new Error(
+      `The selected data directory contains a legacy Vector database (${LEGACY_DATABASE_NAME}). ` +
+      `It was preserved unchanged — remove or archive it, or point AUX_DATA_DIR elsewhere.`,
+    );
+  }
+  return current;
 }
 
 export function resolveRuntimeDescriptor(source: AuxEnvironment = process.env): string {
@@ -74,18 +56,5 @@ export function resolveBrowserProfileDirectory(
   }
   // Keep Chromium storage separate from runtime roots: creating a profile must
   // not accidentally create a second runtime installation during discovery.
-  const current = join(appData, packaged ? "Aux Browser Profile" : "Aux Browser Development Profile");
-  // Historical package.json names Electron's app @vector/desktop in packaged
-  // builds too. A Vector directory may hold runtime data only; count it as a
-  // browser profile only when Chromium profile markers exist.
-  const legacyPackage = join(appData, "@vector/desktop");
-  const legacyProduct = join(appData, "Vector");
-  const candidates = [current, legacyPackage].filter(existsSync);
-  if (["Partitions", "Local State", "Preferences"].some(name => existsSync(join(legacyProduct, name)))) {
-    candidates.push(legacyProduct);
-  }
-  if (candidates.length > 1) {
-    throw new Error("Both Aux and legacy browser profiles exist. Set AUX_PROFILE_DIR to the intended profile; profiles cannot be merged automatically.");
-  }
-  return candidates[0] ?? current;
+  return join(appData, packaged ? "Aux Browser Profile" : "Aux Browser Development Profile");
 }

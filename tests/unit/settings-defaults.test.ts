@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MethodSchemas, SearchEngineTemplateSchema } from "@vector/contracts";
-import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@vector/runtime";
+import { MethodSchemas, SearchEngineTemplateSchema } from "@aux/contracts";
+import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@aux/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
-  const dir = mkdtempSync(join(tmpdir(), "vector-settings-"));
+  const dir = mkdtempSync(join(tmpdir(), "aux-settings-"));
   const settingsPath = join(dir, "settings.json");
   writeFileSync(settingsPath, JSON.stringify(file));
   const repo = new Repo(openDb(":memory:"));
@@ -40,8 +40,8 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("falls back to VECTOR_PLANNER_MODEL then the Qwen default", () => {
-    const { dir, settings } = harness({ VECTOR_PLANNER_MODEL: "alibaba/qwen3.8-27b-custom" });
+  it("falls back to AUX_PLANNER_MODEL then the Qwen default", () => {
+    const { dir, settings } = harness({ AUX_PLANNER_MODEL: "alibaba/qwen3.8-27b-custom" });
     try {
       expect(settings.plannerModel()).toBe("alibaba/qwen3.8-27b-custom");
     } finally {
@@ -58,11 +58,10 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults search to DuckDuckGo, engine auto, and 8 model calls", () => {
+  it("defaults search to DuckDuckGo and 8 model calls", () => {
     const { dir, settings } = harness();
     try {
       expect(settings.searchEngine()).toBe("https://duckduckgo.com/?q=%s");
-      expect(settings.engineMode()).toBe("auto");
       expect(settings.maxModelCalls()).toBe(8);
       expect(settings.plannerModel()).toBe(DEFAULT_PLANNER_MODEL);
     } finally {

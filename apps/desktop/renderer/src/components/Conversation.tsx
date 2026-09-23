@@ -7,15 +7,17 @@ import { ConversationImages } from "./ConversationImages";
 import { DocumentSnapshot } from "./DocumentSnapshot";
 import { AuxMark } from "./AuxMark";
 import { ConversationTask } from "./ConversationTask";
+import { BrowserContextPicker } from "./BrowserContextPicker";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { useEffect, useRef, useState } from "react";
-import type { ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@vector/contracts";
+import { useShallow } from "zustand/react/shallow";
+import type { CompactObservation, ConversationContext, ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
 import { previewSplit } from "../workspace";
-import { useStore, call, errToast, isLive, toast } from "../store";
+import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { answerUrl } from "./AnswerMarkdown";
 import { RunPanel } from "./RunPanel";
@@ -59,6 +61,16 @@ function LivePage({ pageId }: { pageId: string }) {
   </>;
 }
 
+function RunSources({ sources, onOpen }: { sources: ConversationSource[]; onOpen: (source: ConversationSource) => void }) {
+  if (!sources.length) return null;
+  return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
+    {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
+      <span><b>{source.title}</b><small>{new URL(source.url).hostname} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
+    </button>)}
+    <p>Observed browser pages provide provenance, not independent proof of an external outcome.</p>
+  </div></details>;
+}
+
 export function Conversation({ chatId, embedded = false, onChatCreated }: { chatId?: string | null; embedded?: boolean; onChatCreated?: (chatId: string) => void } = {}) {
   const fullPageId = useStore(s => s.conversationId);
   const id = chatId === undefined ? fullPageId : chatId;
@@ -69,7 +81,9 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     if (pending) useStore.setState({ conversationId: pending });
   }, [id, embedded]);
   const runs = useStore(s => s.runs);
-  const pages = useStore(s => s.pages);
+  // Digest re-renders on structure/navigation change only — loading/favicon churn doesn't.
+  useStore(useShallow(s => s.pages.map(p => `${p.pageId}${p.url}${p.title}${p.ownedByRuntime ? 1 : 0}${p.viewStatus}${p.backend}${p.navigationError ? 1 : 0}${p.showBlankDocument ? 1 : 0}`)));
+  const pages = useStore.getState().pages;
   const activePageId = useStore(s => s.activePageId);
   const layout = useStore(s => s.layout);
   const connected = useStore(s => s.connected);
@@ -101,8 +115,14 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [exporting, setExporting] = useState(false);
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
+  const [generatedResults, setGeneratedResults] = useState<ConversationArtifact[]>([]);
+  const [contextState, setContextState] = useState<ConversationContext | null>(null);
+  const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
-  const [workspaceSaving] = useState(false);
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaceMemoryDraft, setWorkspaceMemoryDraft] = useState("");
+  useEffect(() => { void call<Workspace[]>("workspaces.list", {}).then(setWorkspaces).catch(() => setWorkspaces([])); }, []);
   const [contextOpen, setContextOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
   const [previewMenu, setPreviewMenu] = useState(false);
@@ -118,7 +138,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const loadedContextChat = useRef<string | null>(null);
   const [contextError, setContextError] = useState("");
   const [contextRefresh, setContextRefresh] = useState(0);
-  const [contextSaving] = useState(false);
+  const [contextSaving, setContextSaving] = useState(false);
   const [documentSaving, setAttachmentSaving] = useState(false);
   const [imageOperations, setImageOperations] = useState(0);
   const [incomingImage, setIncomingImage] = useState<File | null>(null);
@@ -130,7 +150,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   activeChat.current = id;
   const documentBusy = useRef(false);
   const conversationRoot = useRef<HTMLElement>(null);
-  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
+  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setGeneratedResults([]); setContextState(null); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); setWorkspaceMemoryDraft(""); }, [id]);
   const [taskTitle, setTaskTitle] = useState("");
   const [archived, setArchived] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -173,12 +193,38 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     else if(id)useStore.getState().setConversationDraft(id,value);
     else useStore.getState().setAgentDraft(value);
   };
+  const openSource = async (source: ConversationSource) => {
+    try {
+      const existing = pages.find(page => (page.pageId === source.pageId || page.url === source.url) && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? ""));
+      if (existing) await useStore.getState().activate(existing.pageId);
+      else await useStore.getState().newTab(source.url);
+    } catch (error) { errToast(error); }
+  };
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const missingContext = !["active", "linked", "none"].includes(contextPage) && !selectedContext;
   const observations = useStore(s => s.observations);
   const lastObservation = [...turns].reverse().map(run => observations[run.runId]).find(observation => observation && answerUrl(observation.url));
   const recoverUrl = lastObservation ? answerUrl(lastObservation.url) : "";
+  // Reopening a closed page needs the run's last observation, which only lands
+  // in the store via live events — hydrate it from the run's step ledger when
+  // the conversation is revisited in a later session.
+  useEffect(() => {
+    const runId = last?.runId;
+    if (!runId || observations[runId]) return;
+    let live = true;
+    void (async () => {
+      const d = await call<{ steps: StepRecord[] }>("runs.get", { runId });
+      const artifactId = [...(d.steps ?? [])].reverse().map(step => (step.inputs as { obsArtifactId?: string } | undefined)?.obsArtifactId).find(Boolean);
+      if (!artifactId) return;
+      const res = await call<{ dataBase64: string }>("artifacts.read", { artifactId });
+      const observation = decodeBase64Json<CompactObservation>(res.dataBase64);
+      if (live && observation && typeof observation.url === "string") {
+        useStore.setState(s => s.observations[runId] ? {} : { observations: { ...s.observations, [runId]: observation } });
+      }
+    })().catch(() => {});
+    return () => { live = false; };
+  }, [last?.runId, observations]);
   useEffect(() => {
     if (!previewMenu) return;
     const close = (event: PointerEvent) => {
@@ -207,12 +253,15 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     let cancelled = false;
     if (!connected || attachmentSaving || contextSaving || workspaceSaving) { setContextLoading(false); return; }
     setContextError(""); setContextLoading(!!id);
-    if (!id) { setImages([]); setAttachments([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
+    if (!id) { setImages([]); setAttachments([]); setGeneratedResults([]); setContextState(null); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
     void Promise.all([
       call<{ images: ConversationImage[] }>("conversations.images.get", { chatId: id }),
       call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
+      call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
       call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
-    ]).then(([imageReferences, documents, workspace]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); } })
+      call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
+      call<ConversationContext>("runs.context.get", { chatId: id }),
+    ]).then(([imageReferences, documents, generated, workspace, sourceList, turnContext]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setGeneratedResults(generated.artifacts); setWorkspaceContext(workspace); setWorkspaceMemoryDraft(workspace.memory?.content ?? ""); setConversationSources(sourceList.sources); setContextState(turnContext); } })
       .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setContextLoading(false); });
     return () => { cancelled = true; };
@@ -292,6 +341,43 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       if (activeChat.current === chatId) { setImages(result.images); setImagePreview(null); setContextRefresh(value => value + 1); }
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setImageOperations(count => Math.max(0,count - 1)); }
+  };
+  const selectWorkspace = async (workspaceId: string) => {
+    if (workspaceSaving) return;
+    setWorkspaceSaving(true);
+    try {
+      const chatId = workspaceId ? ensureChatId() : id;
+      if (!chatId) return;
+      const value = await call<ConversationSpaceContext>("conversations.workspace.set", { chatId, workspaceId: workspaceId || null });
+      if (activeChat.current === chatId) { setWorkspaceContext(value); setWorkspaceMemoryDraft(value.memory?.content ?? ""); }
+    } catch (error) { errToast(error); }
+    finally { setWorkspaceSaving(false); }
+  };
+  const saveWorkspaceMemory = async () => {
+    if (!workspaceContext.workspace || !workspaceContext.memory || workspaceSaving) return;
+    setWorkspaceSaving(true);
+    try {
+      const memory = await call<WorkspaceMemory>("workspaces.memory.set", { workspaceId: workspaceContext.workspace.workspaceId, expectedRevision: workspaceContext.memory.revision, content: workspaceMemoryDraft });
+      setWorkspaceContext(current => ({ ...current, memory }));
+    } catch (error) { errToast(error); }
+    finally { setWorkspaceSaving(false); }
+  };
+  const updateContext = async (change: { historyEnabled?: boolean; runId?: string; included?: boolean }) => {
+    if (!id || contextSaving) return;
+    setContextSaving(true);
+    try { if (activeChat.current === id) setContextState(await call<ConversationContext>("runs.context.set", { chatId: id, ...change })); }
+    catch (error) { errToast(error); }
+    finally { setContextSaving(false); }
+  };
+  const toggleResult = async (artifactId: string, included: boolean) => {
+    if (!id || documentBusy.current) return;
+    documentBusy.current = true;
+    setAttachmentSaving(true);
+    try {
+      const value = await call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.toggle", { chatId: id, artifactId, included });
+      if (activeChat.current === id) setGeneratedResults(value.artifacts);
+    } catch (error) { errToast(error); }
+    finally { documentBusy.current = false; setAttachmentSaving(false); }
   };
   const changeDocument = async (attachmentId: string, included?: boolean) => {
     if (!id || documentBusy.current) return;
@@ -374,15 +460,34 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       event.preventDefault(); receiveImage(files);
     },
   };
-  const attachmentPanel = contextOpen && (!contextLoading || loadedContextChat.current === id) && !contextError ? <div className="context-body" aria-label="Add to this reply"><div className="context-attach"><button className="btn sm" disabled={attachmentSaving || contextLocked || attachments.length >= 5} onClick={() => void addDocument()}>{attachmentSaving ? "Adding…" : "Document"}</button>
+  const contextCount = (contextState?.entries.filter(entry => entry.included).length ?? 0) + attachments.filter(item => item.included).length + generatedResults.filter(item => item.included).length + (workspaceContext.memory?.content ? 1 : 0);
+  const attachmentPanel = contextOpen && (!contextLoading || loadedContextChat.current === id) && !contextError ? <section className="context-body" aria-label="Conversation context">
+    {!taskBound && <div className="conversation-context-page"><b>Browser context</b><small>Choose the tab this reply or task runs against.</small><BrowserContextPicker value={contextPage} linkedPageId={linked?.pageId} onChange={setContextPage} disabled={contextLocked}/></div>}
+    {contextState && id && <div className="conversation-turns">
+      <label className="conversation-memory-master" aria-label="Use previous turns"><input type="checkbox" checked={contextState.historyEnabled} disabled={contextSaving || contextLocked} onChange={event => void updateContext({ historyEnabled: event.target.checked })}/><span><b>Use previous turns</b><small>{contextState.historyEnabled ? "Included turns are sent with the next reply or task revision." : "History stays visible but is not sent."}</small></span></label>
+      {contextState.entries.length > 0 && <div className="conversation-memory-list">{contextState.entries.map(entry => <label key={entry.runId} aria-label={entry.goal}>
+        <input type="checkbox" checked={entry.included} disabled={contextSaving || contextLocked || !contextState.historyEnabled} onChange={event => void updateContext({ runId: entry.runId, included: event.target.checked })}/>
+        <span><b>{entry.goal}</b><small>{new Date(entry.createdAt).toLocaleString()} · {entry.summary}</small></span>
+      </label>)}</div>}
+    </div>}
+    <div className="conversation-workspace-memory"><div className="conversation-documents-head"><div><b>Workspace memory</b><small>{taskBound ? "Task workspace · shared user-authored context" : "Shared user-authored context · never expands permissions"}</small></div><select aria-label="Conversation workspace" disabled={workspaceSaving || contextLocked || taskBound} value={workspaceContext.workspace?.workspaceId ?? ""} onChange={event => void selectWorkspace(event.target.value)}><option value="">No workspace</option>{workspaces.map(item => <option key={item.workspaceId} value={item.workspaceId}>{item.name}</option>)}</select></div>
+      {workspaceContext.memory ? <><textarea aria-label="Workspace memory" disabled={workspaceSaving || contextLocked} maxLength={16_000} placeholder="Stable notes, conventions and preferences for this workspace" value={workspaceMemoryDraft} onChange={event => setWorkspaceMemoryDraft(event.target.value)}/><div className="conversation-workspace-memory-actions"><small>Revision {workspaceContext.memory.revision}{workspaceContext.memory.updatedAt ? ` · ${new Date(workspaceContext.memory.updatedAt).toLocaleString()}` : ""}</small><button className="btn sm" disabled={workspaceSaving || contextLocked || workspaceMemoryDraft === workspaceContext.memory.content} onClick={() => void saveWorkspaceMemory()}>{workspaceSaving ? "Saving…" : "Save memory"}</button></div></> : <p className="hint">Choose a workspace to share deliberate context across its conversations and saved tasks.</p>}</div>
+    <div className="context-attach"><button className="btn sm" disabled={attachmentSaving || contextLocked || attachments.length >= 5} onClick={() => void addDocument()}>{attachmentSaving ? "Adding…" : "Attach document"}</button>
     <AttachPage key={id ?? "new"} pages={pages} disabled={attachmentSaving || contextLocked || attachments.length >= 5} remaining={Math.max(0, 5 - attachments.length)} onAttach={attachPages}/></div>
     <ConversationImages incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />
     {attachments.length > 0 ? <div className="conversation-document-list">{attachments.map(item => <div className="conversation-document" key={item.attachmentId}>
       <label><input type="checkbox" checked={item.included} disabled={attachmentSaving || contextLocked} onChange={event => void changeDocument(item.attachmentId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.sourceUrl ? `${new URL(item.sourceUrl).hostname} · ${item.sourceTruncated ? "Partial page" : "Page snapshot"}` : `${Math.max(1, Math.ceil(item.byteLength / 1024))} KB · ${item.excerpt || "Empty document"}`}</small></span></label>
       <button className="btn sm ghost" onClick={() => { setContextOpen(false); setImagePreview(null); setDocumentPreview(item.attachmentId); }}>Preview</button>
       <button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button>
-    </div>)}</div> : !images.length ? <p className="hint">Nothing attached. Add a document, a page, or an image.</p> : null}
-  </div> : null;
+    </div>)}</div> : !images.length && !generatedResults.length && !conversationSources.length ? <p className="hint">Nothing attached. Add a document, a page, or an image.</p> : null}
+    {generatedResults.length > 0 && <div className="conversation-document-list" aria-label="Results generated in this conversation">{generatedResults.map(item => <div className="conversation-document" key={item.artifactId}>
+      <label title={`Include “${item.filename}” as context for new replies`} aria-label={item.filename}><input type="checkbox" checked={item.included} disabled={attachmentSaving || contextLocked} onChange={event => void toggleResult(item.artifactId, event.target.checked)}/><span><b>{item.filename}</b><small>{`Result · ${Math.max(1, Math.ceil(item.byteLength / 1024))} KB · ${item.turnGoal ? `${item.turnGoal} · ` : ""}${item.excerpt || "Empty artifact"}`}</small></span></label>
+      <button className="btn sm ghost" onClick={() => { setContextOpen(false); setImagePreview(null); useStore.setState({ resultPreview: item.artifactId }); }}>Preview</button>
+    </div>)}</div>}
+    {conversationSources.length > 0 && <div className="conversation-document-list" aria-label="Pages read in this conversation">{conversationSources.map(source => <div className="conversation-document" key={source.sourceId}>
+      <span className="conversation-source"><b>{source.title || source.url}</b><small>{`${new URL(source.url).hostname} · read ${new Date(source.observedAt).toLocaleString()}`}</small></span>
+    </div>)}</div>}
+  </section> : null;
   if (id === "history") return <ConversationHistory/>;
   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending || (live && last?.status !== "needs_input")} onInsert={words => {
         const state = useStore.getState();
@@ -427,7 +532,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
     </div></div>
     <div className="conversation-compose"><div className="conversation-compose-content">
       {scrolling.awayFromLatest && <div className="conversation-jump"><button className="btn sm" onClick={scrolling.jumpToLatest}>{I.down} Jump to latest</button></div>}
@@ -442,16 +547,17 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
       {taskBound ? <>
       <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || contextSaving || workspaceSaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
+      {last?.status !== "needs_input" && <div className="conversation-input"><button type="button" className="context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(value => !value)}>{I.plus}<span>Context · {contextCount}</span></button></div>}
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {attachmentPanel}
-      {last?.status === "needs_input" && <div className="conversation-input"><button type="button" className="icon-btn context-toggle" aria-label={contextOpen ? "Close attachments" : "Add to this reply"} aria-pressed={contextOpen} onClick={() => setContextOpen(value => !value)}>{I.plus}</button><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder="Answer Aux’s question…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/><button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim()} onClick={() => void send()}>{I.send}</button></div>}
+      {last?.status === "needs_input" && <div className="conversation-input"><button type="button" className="context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(value => !value)}>{I.plus}<span>Context · {contextCount}</span></button><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder="Answer Aux’s question…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/><button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim()} onClick={() => void send()}>{I.send}</button></div>}
       </> : <>
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {attachmentPanel}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      <div className="conversation-input"><button type="button" className="icon-btn context-toggle" aria-label={contextOpen ? "Close attachments" : "Add to this reply"} aria-pressed={contextOpen} onClick={() => setContextOpen(value => !value)}>{I.plus}</button><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/>{dictation}<button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim() || (!answering && (attachmentSaving || contextSaving || workspaceSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onClick={() => void send()}>{I.send}</button></div>
+      <div className="conversation-input"><button type="button" className="context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(value => !value)}>{I.plus}<span>Context · {contextCount}</span></button><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/>{dictation}<button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim() || (!answering && (attachmentSaving || contextSaving || workspaceSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onClick={() => void send()}>{I.send}</button></div>
       </>}
     </div></div>
     </div>{browserPreview}</div>

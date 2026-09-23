@@ -6,14 +6,14 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import assert from 'node:assert/strict';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-site-permissions-'));
 const file=join(dir,'data/site-permissions.json');mkdirSync(join(dir,'data'));
 writeFileSync(file,JSON.stringify({'https://meet.example.test':{media:'allow',notifications:'deny'},'https://maps.example.test':{geolocation:'allow'}}));
 let app;
 try {
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  await sidebarAction(page, "Settings");
@@ -28,7 +28,7 @@ try {
  mkdirSync(file+'.tmp');
  await page.getByRole('button',{name:'Reset Camera and microphone for https://meet.example.test'}).click();
  await page.locator('.site-permissions [role=alert]').waitFor();
- assert.equal((await page.evaluate(()=>window.vector.sitePermissions()))['https://meet.example.test'].media,'allow');
+ assert.equal((await page.evaluate(()=>window.aux.sitePermissions()))['https://meet.example.test'].media,'allow');
  assert.equal(JSON.parse(readFileSync(file,'utf8'))['https://meet.example.test'].media,'allow');
  rmSync(file+'.tmp',{recursive:true});
  await page.getByRole('button',{name:'Reset Camera and microphone for https://meet.example.test'}).click();

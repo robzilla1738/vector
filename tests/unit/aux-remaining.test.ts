@@ -6,15 +6,12 @@ import {
   assertProfileBackupAllowed,
   mcpCatalogForScope,
   mcpCatalogGrouped,
-  mcpNamesAreCanonical,
   profileBackupAction,
   refuseSilentCredentialMove,
   requireScopedAuxMcpCatalog,
-  RETAINED_PACKAGE_SCOPE,
-  RETAINED_SESSION_PARTITIONS,
-  RETAINED_WIRE_IDS,
+  SESSION_PARTITIONS,
   TaskResourceSchema,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import {
   beginConsequentialWrite,
   CoordinatorLease,
@@ -27,15 +24,13 @@ import {
   Repo,
   SpaceService,
   TaskService,
-} from "@vector/runtime";
+} from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
 
-it("keeps Vector session and MCP identities fail-closed", () => {
-  expect(RETAINED_SESSION_PARTITIONS).toEqual({ browsing: "persist:vector-default", enginePaint: "persist:vector-engine-paint" });
-  expect(RETAINED_WIRE_IDS).toContain("vector");
-  expect(RETAINED_PACKAGE_SCOPE).toBe("@vector");
+it("keeps Aux session and MCP identities fail-closed", () => {
+  expect(SESSION_PARTITIONS).toEqual({ browsing: "persist:aux-default" });
   expect(mcpCatalogGrouped("task").map(group => group.group)).toEqual(["browser", "task", "workspace"]);
   expect(mcpCatalogForScope("task", { query: "verify", group: "task" }).map(tool => tool.name)).toEqual(["aux_task_verify_criterion"]);
   expect(profileBackupAction("Default/Bookmarks")).toBe("copy");
@@ -44,12 +39,9 @@ it("keeps Vector session and MCP identities fail-closed", () => {
   expect(profileBackupAction("Default/Web Data")).toBe("refuse");
   expect(profileBackupAction("Default/Local Storage/leveldb/000003.log")).toBe("refuse");
   expect(() => assertProfileBackupAllowed("Default/Cookies")).toThrow(/stay in place/i);
-  expect(mcpNamesAreCanonical("aux")).toBe(true);
-  expect(mcpNamesAreCanonical("vector")).toBe(false);
   expect(() => refuseSilentCredentialMove("Adapter")).toThrow(/stay in place/i);
-  expect(() => requireScopedAuxMcpCatalog({ AUX_MCP_TOOL_PREFIX: "aux" })).toThrow(/AUX_MCP_TOKEN/);
-  requireScopedAuxMcpCatalog({ AUX_MCP_TOOL_PREFIX: "aux", AUX_MCP_TOKEN: "scoped" });
-  requireScopedAuxMcpCatalog({});
+  expect(() => requireScopedAuxMcpCatalog({})).toThrow(/AUX_MCP_TOKEN/);
+  requireScopedAuxMcpCatalog({ AUX_MCP_TOKEN: "scoped" });
   expect(mcpCatalogForScope("task").some(tool => tool.name === "aux_task_verify_criterion")).toBe(true);
   expect(mcpCatalogForScope("task").some(tool => tool.name === "aux_task_replace_agent")).toBe(true);
 });
@@ -117,7 +109,7 @@ it("keeps conversation CSS breakpoints for 1024, 1280 and 1512 widths", () => {
 
 it("does not share the retained profile partition with the private process", () => {
   const privateMain = readFileSync(join(process.cwd(), "apps/desktop/main/private-main.ts"), "utf8");
-  expect(privateMain).not.toContain(RETAINED_SESSION_PARTITIONS.browsing);
+  expect(privateMain).not.toContain(SESSION_PARTITIONS.browsing);
   expect(privateMain).toMatch(/no runtime child[\s\S]*extension loader/);
 });
 

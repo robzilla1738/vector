@@ -7,7 +7,7 @@ import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/engine-client/package.json'))('playwright-core');
+const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-http-auth-'));
 const password='synthetic-password-aux-74931';
@@ -19,11 +19,11 @@ const server=createServer((req,res)=>{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`,other=`http://127.0.0.1:${server.address().port}`;
 let app;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0',AUX_ENGINE:'0',AUX_ENGINE_MODE:'off'}});
+ app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  // Opening may remain pending until the HTTP authentication callback completes.
- const opening=page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),base+'/protected').catch(()=>null);
+ const opening=page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/protected').catch(()=>null);
  let dialog=page.getByRole('dialog',{name:'Sign in to website',exact:true});await dialog.waitFor();
  assert.equal(await dialog.locator('.http-auth-origin').innerText(),base);
  await dialog.getByLabel('Username',{exact:true}).fill('fixture');await dialog.getByLabel('Password',{exact:true}).fill('wrong');
@@ -33,18 +33,18 @@ try{
  await page.reload();await dialog.waitFor();assert.equal(await dialog.getByLabel('Password',{exact:true}).inputValue(),'','shell reload keeps request but discards typed credentials');
  await dialog.getByLabel('Username',{exact:true}).fill('fixture');await dialog.getByLabel('Password',{exact:true}).fill(password);
  await dialog.getByRole('button',{name:'Sign in',exact:true}).click();await dialog.waitFor({state:'hidden'});await opening;
- await poll(page,async base=>(await window.vector.invoke('pages.list',{})).some(p=>p.url===base+'/protected'&&!p.loading),base);
+ await poll(page,async base=>(await window.aux.invoke('pages.list',{})).some(p=>p.url===base+'/protected'&&!p.loading),base);
  assert.equal(await app.evaluate(async({webContents},base)=>webContents.getAllWebContents().find(w=>w.getURL()===base+'/protected').executeJavaScript('document.querySelector("h1").textContent'),base),'Welcome fixture');
- const cancelled=page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),other+'/protected').catch(()=>null);
- await dialog.waitFor();const request=(await page.evaluate(()=>window.vector.httpAuthRequests()))[0];
+ const cancelled=page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),other+'/protected').catch(()=>null);
+ await dialog.waitFor();const request=(await page.evaluate(()=>window.aux.httpAuthRequests()))[0];
  mkdirSync(join(root,'release/test-artifacts'),{recursive:true});await page.screenshot({path:join(root,'release/test-artifacts/aux-http-auth.png')});
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await dialog.waitFor({state:'hidden'});await cancelled;
- await assert.rejects(page.evaluate(id=>window.vector.respondHttpAuth(id,{username:'fixture',password:'late'}),request.id),/ended/);
+ await assert.rejects(page.evaluate(id=>window.aux.respondHttpAuth(id,{username:'fixture',password:'late'}),request.id),/ended/);
  const previousContents=await app.evaluate(({webContents})=>webContents.getAllWebContents().map(w=>w.id));
- const leaving=page.evaluate(url=>window.vector.invoke('pages.open',{url,activate:true}),other+'/protected?again').catch(()=>null);
+ const leaving=page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),other+'/protected?again').catch(()=>null);
  await dialog.waitFor();
  await app.evaluate(async({webContents},{other,previousContents})=>{const wc=webContents.getAllWebContents().find(w=>!previousContents.includes(w.id));if(!wc)throw new Error('Missing new protected page');await wc.loadURL(other+'/public')},{other,previousContents});
- await dialog.waitFor({state:'hidden'});await leaving;assert.deepEqual(await page.evaluate(()=>window.vector.httpAuthRequests()),[]);
+ await dialog.waitFor({state:'hidden'});await leaving;assert.deepEqual(await page.evaluate(()=>window.aux.httpAuthRequests()),[]);
  await app.close();app=null;
  function check(path){for(const entry of readdirSync(path,{withFileTypes:true})){const child=join(path,entry.name);if(entry.isDirectory())check(child);else if(entry.isFile()){const data=readFileSync(child);assert.equal(data.includes(Buffer.from(password)),false,`credential leaked into ${entry.name}`);assert.equal(data.includes(Buffer.from(expected)),false,`auth header leaked into ${entry.name}`)}}}
  check(join(dir,'data'));

@@ -1,8 +1,8 @@
 import { afterEach, expect, it } from "vitest";
-import { VaultService, executeProgram, openDb, Repo } from "@vector/runtime";
+import { VaultService, executeProgram, openDb, Repo } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native";
-import type { DriverPage } from "@vector/engine-client";
-import { VectorError } from "@vector/contracts";
+import type { DriverPage } from "@aux/chromium-driver";
+import { AuxError } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -22,7 +22,7 @@ function memoryVault() {
 function fakePage() {
   const calls: string[] = [];
   const page: DriverPage = {
-    identity: { pageId: "p1", targetId: "t1", backend: "vector" },
+    identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     url: () => "https://example.com/login",
     title: async () => "Login",
     isAttached: () => true,
@@ -78,7 +78,7 @@ it("fails closed on lock, expiry and revoke without retrying the write", async (
   const { vault, db } = memoryVault();
   await expect(vault.save({ label: "Example", origin: "https://example.com", secret: "x" })).rejects.toMatchObject({ code: "conflict" });
   vault.lock("passphrase-ok");
-  expect(() => vault.unlock("nope-nope")).toThrow(VectorError);
+  expect(() => vault.unlock("nope-nope")).toThrow(AuxError);
   vault.unlock("passphrase-ok");
   const item = await vault.save({ label: "Example", origin: "https://example.com", secret: "x" });
   const grant = vault.grant({ itemId: item.itemId, origin: "https://example.com", ttlMs: 60_000 });
@@ -90,9 +90,14 @@ it("fails closed on lock, expiry and revoke without retrying the write", async (
 });
 
 it("keeps task-scoped grants from filling other tasks and never batches secrets", async () => {
-  const { vault } = memoryVault();
+  const { vault, db } = memoryVault();
   vault.lock("passphrase-ok");
   vault.unlock("passphrase-ok");
+  db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('ws','W',1)").run();
+  for (const taskId of ["task-a", "task-b"]) {
+    db.prepare("INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES(?,?,?,?,?,?)")
+      .run(taskId, "ws", 1, "open", 1, "{}");
+  }
   const item = await vault.save({ label: "Example", origin: "https://example.com", secret: "s3cret-value" });
   const grant = vault.grant({ itemId: item.itemId, origin: "https://example.com", taskId: "task-a" });
   await expect(vault.revealForFill(grant.credentialRef, { pageId: "p1", origin: "https://example.com", target: "r1" })).rejects.toMatchObject({ code: "conflict" });
@@ -100,11 +105,6 @@ it("keeps task-scoped grants from filling other tasks and never batches secrets"
   expect(await vault.revealForFill(grant.credentialRef, { pageId: "p1", origin: "https://example.com", target: "r1", taskId: "task-a" })).toBe("s3cret-value");
 
   const { page, calls } = fakePage();
-  let batched = 0;
-  page.executeProgram = async () => {
-    batched++;
-    return { status: "completed", steps: [] };
-  };
   const result = await executeProgram(page, {
     pageId: "p1",
     steps: [
@@ -116,7 +116,6 @@ it("keeps task-scoped grants from filling other tasks and never batches secrets"
     pageOrigin: "https://example.com",
     resolveCredential: (ref, info) => vault.revealForFill(ref, info),
   });
-  expect(batched).toBe(0);
   expect(result.status).toBe("completed");
   expect(JSON.stringify(result)).not.toContain("s3cret-value");
   expect(calls).toContain("fill:r1=s3cret-value");
@@ -138,4 +137,47 @@ it("renews an expired grant without duplicating the secret", async () => {
   expect(vault.expiredGrants()).toEqual([]);
   expect([...secrets.values()].filter(value => value === "s3cret-value")).toHaveLength(1);
   expect(vault.history(item.itemId).some(row => row.detail?.includes("renewed without duplicating"))).toBe(true);
+});
+
+it("scopes the visible grants to a run's declared account labels", async () => {
+  const { vault } = memoryVault();
+  vault.lock("passphrase-ok");
+  vault.unlock("passphrase-ok");
+  const work = await vault.save({ label: "Work login", origin: "https://example.com", secret: "work-secret", accountLabel: "Work" });
+  const personal = await vault.save({ label: "Personal login", origin: "https://example.com", secret: "personal-secret", accountLabel: "Personal" });
+  const unlabeled = await vault.save({ label: "Old login", origin: "https://example.com", secret: "old-secret" });
+  const grants = {
+    work: vault.grant({ itemId: work.itemId, origin: "https://example.com" }),
+    personal: vault.grant({ itemId: personal.itemId, origin: "https://example.com" }),
+    unlabeled: vault.grant({ itemId: unlabeled.itemId, origin: "https://example.com" }),
+  };
+
+  // No declared boundary — every grant for the origin is visible (unchanged behavior).
+  expect(vault.grants({ origin: "https://example.com" }).map(grant => grant.grantId).sort())
+    .toEqual([grants.work.grantId, grants.personal.grantId, grants.unlabeled.grantId].sort());
+  expect(vault.grants({ origin: "https://example.com", accountLabels: [] })).toHaveLength(3);
+
+  // A declared boundary shows only its labeled accounts; unlabeled grants are never in scope.
+  expect(vault.grants({ origin: "https://example.com", accountLabels: ["Work"] }).map(grant => grant.grantId))
+    .toEqual([grants.work.grantId]);
+  expect(vault.grants({ origin: "https://example.com", accountLabels: ["Work", "Personal"] }).map(grant => grant.grantId).sort())
+    .toEqual([grants.work.grantId, grants.personal.grantId].sort());
+  expect(vault.grants({ origin: "https://example.com", accountLabels: ["NotSaved"] })).toEqual([]);
+});
+
+it("refuses a fill whose grant is outside the run's declared account labels", async () => {
+  const { vault } = memoryVault();
+  vault.lock("passphrase-ok");
+  vault.unlock("passphrase-ok");
+  const work = await vault.save({ label: "Work login", origin: "https://example.com", secret: "work-secret", accountLabel: "Work" });
+  const unlabeled = await vault.save({ label: "Old login", origin: "https://example.com", secret: "old-secret" });
+  const workGrant = vault.grant({ itemId: work.itemId, origin: "https://example.com" });
+  const oldGrant = vault.grant({ itemId: unlabeled.itemId, origin: "https://example.com" });
+  const fill = { pageId: "p1", origin: "https://example.com", target: "r1" };
+
+  await expect(vault.revealForFill(oldGrant.credentialRef, { ...fill, accountLabels: ["Work"] }))
+    .rejects.toMatchObject({ code: "permission_denied" });
+  await expect(vault.revealForFill(workGrant.credentialRef, { ...fill, accountLabels: ["Work"] }))
+    .resolves.toBe("work-secret");
+  await expect(vault.revealForFill(oldGrant.credentialRef, fill)).resolves.toBe("old-secret");
 });

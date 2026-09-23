@@ -1,12 +1,12 @@
 import { expect, it } from "vitest";
-import { executeProgram } from "@vector/runtime";
-import type { DriverPage } from "@vector/engine-client";
-import { sourcedWorkbookSnapshot, workbookSourceHyperlink } from "@vector/contracts";
+import { executeProgram } from "@aux/runtime";
+import type { DriverPage } from "@aux/chromium-driver";
+import { sourcedWorkbookSnapshot, workbookSourceHyperlink } from "@aux/contracts";
 
 function fakePage() {
   const calls: string[] = [];
   const page: DriverPage = {
-    identity: { pageId: "p1", targetId: "t1", backend: "vector" },
+    identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     url: () => "https://app.test/compose",
     title: async () => "Compose",
     isAttached: () => true,
@@ -45,11 +45,6 @@ function fakePage() {
 
 it("runs representative form, popup, upload, download and rich-text steps without embedding secrets", async () => {
   const { page, calls } = fakePage();
-  let batched = false;
-  page.executeProgram = async () => {
-    batched = true;
-    return { status: "completed", steps: [] };
-  };
   const result = await executeProgram(page, {
     pageId: "p1",
     steps: [
@@ -67,7 +62,6 @@ it("runs representative form, popup, upload, download and rich-text steps withou
     pageOrigin: "https://app.test",
     resolveCredential: async () => "s3cret-value",
   });
-  expect(batched).toBe(false);
   expect(result.status).toBe("completed");
   expect(JSON.stringify(result)).not.toContain("s3cret-value");
   expect(calls).toEqual(expect.arrayContaining([

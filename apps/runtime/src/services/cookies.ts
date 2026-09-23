@@ -5,8 +5,8 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
-import { VectorError } from "@vector/contracts";
-import type { BrowserCookie, BrowserDriver } from "@vector/engine-client";
+import { AuxError } from "@aux/contracts";
+import type { BrowserCookie, BrowserDriver } from "@aux/chromium-driver";
 import type { NativeBridge } from "../native.js";
 
 const execFileP = promisify(execFile);
@@ -16,7 +16,7 @@ const execFileP = promisify(execFile);
  *
  * - "attached": the user's running Chrome, reached over its remote-debugging
  *   port. `Storage.getCookies` returns already-decrypted values — no keychain
- *   access, and it covers cookies Vector could never decrypt itself (Chrome
+ *   access, and it covers cookies Aux could never decrypt itself (Chrome
  *   v130+ "app-bound" v20 entries).
  * - "profile": Chrome's on-disk `Cookies` SQLite DB. Values are AES-128-CBC
  *   encrypted with a key derived from the "Chrome Safe Storage" keychain
@@ -24,9 +24,9 @@ const execFileP = promisify(execFile);
  *   user-mediated consent boundary. v20/app-bound rows are skipped and
  *   counted — importing those needs the attached path.
  *
- * In both cases cookies are injected into Vector's shared profile partition
+ * In both cases cookies are injected into Aux's shared profile partition
  * through the native bridge (or the standalone driver's CDP session). Cookie
- * values are never logged, returned, or persisted by Vector itself.
+ * values are never logged, returned, or persisted by Aux itself.
  */
 
 export interface CookieImportResult {
@@ -83,7 +83,7 @@ async function safeStoragePassword(service: string): Promise<string> {
     });
     return stdout.trim();
   } catch {
-    throw new VectorError(
+    throw new AuxError(
       "backend_unavailable",
       `Could not read "${service}" from the keychain — unlock it when macOS prompts, or attach Chrome (⌘⇧P → Attach Chrome) and import from the running browser instead.`,
     );
@@ -113,14 +113,14 @@ export function decryptValue(encrypted: Buffer, key: Buffer, metaVersion: number
 export class CookieService {
   constructor(
     private deps: {
-      drivers: () => { vector: BrowserDriver | null; chrome: BrowserDriver | null; engine?: BrowserDriver | null };
+      drivers: () => { aux: BrowserDriver | null; chrome: BrowserDriver | null; engine?: BrowserDriver | null };
       native: NativeBridge;
     },
   ) {}
 
   private async inject(cookies: BrowserCookie[]): Promise<number> {
     const { native } = this.deps;
-    // the Vector Engine keeps its own jar — mirror imports there so engine-routed
+    // the Aux Engine keeps its own jar — mirror imports there so engine-routed
     // pages see the same sessions (best-effort; the Chromium count is authoritative)
     const engine = this.deps.drivers().engine;
     if (engine?.isConnected() && engine.setCookies) await engine.setCookies(cookies).catch(() => 0);
@@ -128,11 +128,11 @@ export class CookieService {
       const res = await native.setCookies(cookies);
       return res.count;
     }
-    const vector = this.deps.drivers().vector;
-    if (!vector?.setCookies) {
-      throw new VectorError("backend_unavailable", "no Vector browser session to receive cookies");
+    const aux = this.deps.drivers().aux;
+    if (!aux?.setCookies) {
+      throw new AuxError("backend_unavailable", "no Aux browser session to receive cookies");
     }
-    return vector.setCookies(cookies);
+    return aux.setCookies(cookies);
   }
 
   async importCookies(opts: { source?: "auto" | "attached" | "profile" }): Promise<CookieImportResult> {
@@ -153,13 +153,13 @@ export class CookieService {
       };
     }
     if (source === "attached") {
-      throw new VectorError("backend_unavailable", "no Chrome attached — run Attach Chrome first");
+      throw new AuxError("backend_unavailable", "no Chrome attached — run Attach Chrome first");
     }
 
     // ---- profile path ----
     const dir = CHROME_DIRS.find((d) => existsSync(d));
     if (!dir) {
-      throw new VectorError("not_found", "no Chrome profile found on this machine");
+      throw new AuxError("not_found", "no Chrome profile found on this machine");
     }
     let profiles: string[];
     try {
@@ -168,14 +168,14 @@ export class CookieService {
       );
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code === "EPERM") {
-        throw new VectorError(
+        throw new AuxError(
           "backend_unavailable",
-          "macOS is blocking reads of Chrome's profile directory. Either grant Vector Full Disk Access (System Settings → Privacy & Security → Full Disk Access), or attach Chrome (launch it with --remote-debugging-port=9222) and re-import — the attached path needs no extra permissions.",
+          "macOS is blocking reads of Chrome's profile directory. Either grant Aux Full Disk Access (System Settings → Privacy & Security → Full Disk Access), or attach Chrome (launch it with --remote-debugging-port=9222) and re-import — the attached path needs no extra permissions.",
         );
       }
       throw e;
     }
-    if (!profiles.length) throw new VectorError("not_found", "Chrome profile has no Cookies store");
+    if (!profiles.length) throw new AuxError("not_found", "Chrome profile has no Cookies store");
 
     const serviceKey = Object.keys(SAFE_STORAGE_SERVICE).find((k) => dir.includes(k))!;
     const password = await safeStoragePassword(SAFE_STORAGE_SERVICE[serviceKey]!);
@@ -186,7 +186,7 @@ export class CookieService {
     let appBound = 0;
     // The copies hold encrypted_value blobs and any plaintext `value` rows —
     // they must not outlive the import (P1-11), hence the finally below.
-    const tmp = mkdtempSync(join(tmpdir(), "vector-cookies-"));
+    const tmp = mkdtempSync(join(tmpdir(), "aux-cookies-"));
     try {
     for (const profile of profiles) {
       const src = join(dir, profile, "Cookies");

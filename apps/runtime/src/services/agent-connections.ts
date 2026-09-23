@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { AgentConnectionCreateParams, AgentConnectionSchema, VectorError, type AgentConnection, type AgentConnectionScope } from "@vector/contracts";
+import { AgentConnectionCreateParams, AgentConnectionSchema, AuxError, type AgentConnection, type AgentConnectionScope } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 
 type Row = {
@@ -26,10 +26,10 @@ export class AgentConnectionService {
   create(input: unknown): { connection: AgentConnection; token: string } {
     const value = AgentConnectionCreateParams.parse(input);
     const workspace = this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(value.scope.workspaceId);
-    if (!workspace) throw new VectorError("not_found", "Workspace does not exist");
+    if (!workspace) throw new AuxError("not_found", "Workspace does not exist");
     if (value.scope.kind === "task") {
       const task = this.repo.db.prepare("SELECT workspace_id FROM tasks WHERE task_id=?").get(value.scope.taskId) as { workspace_id: string } | undefined;
-      if (!task || task.workspace_id !== value.scope.workspaceId) throw new VectorError("not_found", "Task does not belong to this workspace");
+      if (!task || task.workspace_id !== value.scope.workspaceId) throw new AuxError("not_found", "Task does not belong to this workspace");
     }
     const token = `auxc_${randomBytes(32).toString("base64url")}`;
     const now = Date.now();
@@ -43,7 +43,7 @@ export class AgentConnectionService {
   revoke(connectionId: string): AgentConnection {
     const now = Date.now();
     const result = this.repo.db.prepare("UPDATE agent_connections SET revoked_at=? WHERE connection_id=? AND revoked_at IS NULL").run(now, connectionId);
-    if (result.changes !== 1) throw new VectorError("not_found", "Active connection does not exist");
+    if (result.changes !== 1) throw new AuxError("not_found", "Active connection does not exist");
     return this.get(connectionId);
   }
 
@@ -59,7 +59,7 @@ export class AgentConnectionService {
   private get(connectionId: string): AgentConnection {
     const row = this.repo.db.prepare(`SELECT connection_id,name,client,scope_kind,workspace_id,task_id,created_at,last_used_at,revoked_at
       FROM agent_connections WHERE connection_id=?`).get(connectionId) as Row | undefined;
-    if (!row) throw new VectorError("not_found", "Connection does not exist");
+    if (!row) throw new AuxError("not_found", "Connection does not exist");
     return this.record(row);
   }
 

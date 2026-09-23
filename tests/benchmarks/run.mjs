@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Vector browser-layer benchmark (`pnpm bench`).
+ * Aux browser-layer benchmark (`pnpm bench`).
  *
  * Starts the fixture servers if they are not already serving, launches the
- * standalone runtime (headless Chromium — set VECTOR_BROWSER_PATH when no
+ * standalone runtime (headless Chromium — set AUX_BROWSER_PATH when no
  * system Chrome is installed; a Playwright `chromium_headless_shell` download
  * is picked up automatically), and times N repeats of the hot path against
  * the records fixture:
@@ -18,16 +18,9 @@
  *   navigate / +observe  pages.navigate then observe
  *   act+observe          pages.execute with returnObservation (one round trip)
  *
- * `--backend chrome|vector-engine|both` (default both) runs the same
- * iterations on the Chromium backend (engineMode off) and on the Vector
- * Engine (engineMode always, architecture §11) in separate runtimes and
- * prints them side by side. A backend that cannot start is reported, not
- * faked.
- *
  * Prints a table and writes tests/benchmarks/reports/<timestamp>.json.
  *
  *   node tests/benchmarks/run.mjs [--repeats 10] [--warmup 1] [--label name]
- *        [--backend chrome|vector-engine|both]
  *        [--runtime path/to/apps/runtime/dist/index.js] [--out dir]
  *
  * `--runtime` lets the same harness measure another checkout (e.g. a base
@@ -55,15 +48,6 @@ const warmup = Number(opt("warmup", 1));
 const runtimeEntry = resolve(opt("runtime", join(root, "apps/runtime/dist/index.js")));
 const outDir = resolve(opt("out", join(root, "tests/benchmarks/reports")));
 const label = opt("label", "");
-const backendArg = opt("backend", "both");
-const requireIdentity = argv.includes("--require-identity") || process.env.VECTOR_REQUIRE_IDENTITY === "1";
-const BACKENDS = backendArg === "both" ? ["chrome", "vector-engine"] : [backendArg];
-for (const b of BACKENDS) {
-  if (!["chrome", "vector-engine"].includes(b)) {
-    console.error(`--backend must be chrome, vector-engine or both (got ${backendArg})`);
-    process.exit(2);
-  }
-}
 
 const sha = (dir) => {
   try {
@@ -73,43 +57,11 @@ const sha = (dir) => {
   }
 };
 
-async function measureHeldOutAdvantage(results) {
-  const chrome = results.chrome;
-  const engine = results["vector-engine"];
-  if (!chrome || chrome.skipped || !engine || engine.skipped) {
-    return { measured: false, reason: "need both chrome and vector-engine" };
-  }
-  const metric = chrome.metrics["act+observe.ms"] && engine.metrics["act+observe.ms"] ? "act+observe.ms" : "observe.full.ms";
-  const p95 = (r) => r.metrics[metric]?.p95 ?? 0;
-  const tokens = (r) => {
-    const m = r.metrics["model.tokensPerSuccess"]?.p50;
-    if (typeof m === "number" && Number.isFinite(m)) return m;
-    if (typeof r.tokensPerSuccess === "number" && Number.isFinite(r.tokensPerSuccess)) return r.tokensPerSuccess;
-    return null;
-  };
-  const baseline = {
-    success: chrome.failures?.length ? 0 : 1,
-    p95Ms: p95(chrome),
-    tokensPerSuccess: tokens(chrome),
-  };
-  const candidate = {
-    success: engine.failures?.length ? 0 : 1,
-    p95Ms: p95(engine),
-    tokensPerSuccess: tokens(engine),
-  };
-  try {
-    const mod = await import(pathToFileURL(join(root, "apps/runtime/dist/index.js")).href);
-    const gate = mod.evaluateHeldOutAdvantage(baseline, candidate);
-    return { measured: true, metric, baseline, candidate, ...gate };
-  } catch (e) {
-    return { measured: false, reason: String(e?.message ?? e), metric, baseline, candidate };
-  }
-}
 const runtimeRoot = resolve(dirname(runtimeEntry), "../../..");
 
 // the standalone driver reads the real process env for the browser path
 const chromiumPath = findChromium();
-if (chromiumPath && !process.env.VECTOR_BROWSER_PATH) process.env.VECTOR_BROWSER_PATH = chromiumPath;
+if (chromiumPath && !process.env.AUX_BROWSER_PATH) process.env.AUX_BROWSER_PATH = chromiumPath;
 
 // ---- metrics ----
 const stats = (xs) => {
@@ -127,8 +79,8 @@ const stats = (xs) => {
 const now = () => performance.now();
 const J = (v) => JSON.stringify(v).length;
 
-/** One benchmark run: a fresh runtime routed to `backend`, N iterations. */
-async function runBackend(backend) {
+/** One benchmark run: a fresh runtime, N iterations on embedded Chromium. */
+async function runBench() {
   const samples = new Map();
   const failures = [];
   const unsupported = new Set();
@@ -137,46 +89,26 @@ async function runBackend(backend) {
     if (!samples.has(name)) samples.set(name, []);
     samples.get(name).push(name.endsWith(".ms") ? +value.toFixed(1) : value);
   };
-  // pages.open results carry the router's reason; the engine hit rate is the
-  // share of opens that landed on the engine
-  const routes = new Map();
 
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
-  const engine = backend === "vector-engine";
   const rt = await startRuntime({
     ...process.env,
-    VECTOR_DATA_DIR: mkdtempSync(join(tmpdir(), `vector-bench-${backend}-`)),
-    VECTOR_ELECTRON_CDP: "",
-    VECTOR_API_TOKEN: "bench",
-    // older runtimes ignore these and stay on Chromium — reported as a routing failure below
-    VECTOR_ENGINE_MODE: engine ? "always" : "off",
-    VECTOR_ENGINE: engine ? "1" : "0",
+    AUX_DATA_DIR: mkdtempSync(join(tmpdir(), "aux-bench-")),
+    AUX_ELECTRON_CDP: "",
+    AUX_API_TOKEN: "bench",
   });
   const rpc = (m, p = {}) => rt.invoke(m, p);
-  const info = { backend, runtimeSha: sha(runtimeRoot) };
+  const info = { backend: "aux", runtimeSha: sha(runtimeRoot) };
   try {
     // The benchmark deliberately exercises click, fill, and navigation without
     // a user-started run. Grant those effects in this isolated temp profile;
     // the product default remains read-only.
     await rpc("settings.set", { effectGrants: ["effect:read", "effect:write", "effect:egress"] });
-    const describe = await rpc("runtime.describe").catch(() => ({}));
-    info.engine = describe.engine ?? null;
     const sessions = await rpc("sessions.list").catch(() => []);
     info.sessions = Array.isArray(sessions) ? sessions.map((s) => ({ backend: s.backend, status: s.status, detail: s.detail })) : [];
-    const wanted = engine ? "vector-engine" : "vector";
-    const session = info.sessions.find((s) => s.backend === wanted);
-    if (engine && !(describe.engine?.available && describe.engine?.connected)) {
-      const skipped = `vector-engine unavailable: ${describe.engine?.error ?? "runtime has no engine support"}`;
-      if (requireIdentity) failures.push(skipped);
-      return { ...info, skipped, metrics: {}, failures, unsupported: [] };
-    }
-    if (engine && describe.engine?.routingMode && describe.engine.routingMode !== "native-only") {
-      failures.push(`routingMode ${describe.engine.routingMode} != native-only`);
-    }
-    if (!engine && session && session.status !== "connected") {
-      const skipped = `Chromium backend not connected: ${session.detail ?? session.status}`;
-      if (requireIdentity) failures.push(skipped);
-      return { ...info, skipped, metrics: {}, failures, unsupported: [] };
+    const session = info.sessions.find((s) => s.backend === "aux");
+    if (session && session.status !== "connected") {
+      return { ...info, skipped: `Chromium backend not connected: ${session.detail ?? session.status}`, metrics: {}, failures, unsupported: [] };
     }
 
     async function iteration(measure) {
@@ -184,8 +116,7 @@ async function runBackend(backend) {
       let t = now();
       const page = await rpc("pages.open", { url: `${RECORDS}/records`, background: true });
       R("open.ms", now() - t);
-      routes.set(page.routeReason ?? "(none)", (routes.get(page.routeReason ?? "(none)") ?? 0) + 1);
-      if (page.backend !== wanted) failures.push(`routed to ${page.backend} (${page.routeReason ?? "no reason"}) instead of ${wanted}`);
+      if (page.backend !== "aux") failures.push(`routed to ${page.backend} instead of aux`);
       const pageId = page.pageId;
       try {
         // observe — full
@@ -279,26 +210,21 @@ async function runBackend(backend) {
   const metrics = {};
   for (const name of order) if (samples.has(name)) metrics[name] = { ...stats(samples.get(name)), samples: samples.get(name) };
   for (const [name, xs] of samples) if (!metrics[name]) metrics[name] = { ...stats(xs), samples: xs };
-  return { ...info, metrics, failures, unsupported: [...unsupported], routes: Object.fromEntries(routes) };
+  return { ...info, metrics, failures, unsupported: [...unsupported] };
 }
 
 // ---- boot ----
 const procs = await startFixturesIfNeeded();
 await waitForFixtures();
-const results = {};
+let result;
 try {
-  for (const b of BACKENDS) {
-    console.log(`\n[bench] ${b} …`);
-    results[b] = await runBackend(b);
-    if (results[b].skipped) console.log(`[bench] ${b}: skipped — ${results[b].skipped}`);
-  }
+  result = await runBench();
 } finally {
   procs.forEach((p) => p.kill());
 }
+if (result.skipped) console.log(`[bench] skipped — ${result.skipped}`);
 
 // ---- report ----
-const first = results[BACKENDS[0]];
-const heldOut = await measureHeldOutAdvantage(results);
 const report = {
   at: new Date().toISOString(),
   label: label || undefined,
@@ -310,15 +236,11 @@ const report = {
   node: process.version,
   os: `${process.platform} ${process.arch}`,
   hardware: { arch: process.arch, memoryMb: Math.round(totalmem() / 1048576) },
-  securityMode: process.env.VECTOR_ENGINE_PROFILE ?? "developer",
-  requireIdentity,
-  chromium: process.env.VECTOR_BROWSER_PATH ?? "(system Chrome via playwright channels)",
-  backends: results,
-  heldOut,
-  // single-backend compatibility with earlier reports
-  metrics: first?.metrics ?? {},
-  unsupported: first?.unsupported ?? [],
-  failures: first?.failures ?? [],
+  chromium: process.env.AUX_BROWSER_PATH ?? "(system Chrome via playwright channels)",
+  backend: result,
+  metrics: result.metrics ?? {},
+  unsupported: result.unsupported ?? [],
+  failures: result.failures ?? [],
 };
 mkdirSync(outDir, { recursive: true });
 const reportPath = join(outDir, `${report.at.replace(/[:.]/g, "-")}${label ? `-${label}` : ""}.json`);
@@ -331,45 +253,11 @@ const table = (cols, rows) => {
   console.log(width.map((w) => "-".repeat(w)).join("  "));
   for (const r of rows) console.log(line(r, width));
 };
-const fmt = (v) => (v === undefined ? "—" : String(v));
 
-console.log(`\nvector bench — ${label || "runtime"} @ ${report.runtime.sha} — ${repeats} repeats (${warmup} warmup) on ${report.fixture}`);
-const ran = BACKENDS.filter((b) => !results[b].skipped);
-if (ran.length === 2) {
-  const [a, b] = ran;
-  const names = [...new Set([...Object.keys(results[a].metrics), ...Object.keys(results[b].metrics)])];
-  const rows = names.map((n) => {
-    const ma = results[a].metrics[n];
-    const mb = results[b].metrics[n];
-    const ratio = ma && mb && mb.p50 ? `${(ma.p50 / mb.p50).toFixed(1)}x` : "—";
-    return [n, fmt(ma?.p50), fmt(mb?.p50), fmt(ma?.mean), fmt(mb?.mean), fmt(ma?.p95), fmt(mb?.p95), ratio].map(String);
-  });
-  table(["metric", `${a} p50`, `${b} p50`, `${a} mean`, `${b} mean`, `${a} p95`, `${b} p95`, `${a}/${b}`], rows);
-} else {
-  for (const bk of ran) {
-    console.log(`\n[${bk}]`);
-    const rows = Object.entries(results[bk].metrics).map(([name, m]) => [name, m.n, m.mean, m.p50, m.p95, m.min, m.max].map(String));
-    table(["metric", "n", "mean", "p50", "p95", "min", "max"], rows);
-  }
-}
-for (const bk of BACKENDS) {
-  const r = results[bk];
-  if (r.skipped) console.log(`\n${bk}: not run — ${r.skipped}`);
-  if (r.routes && Object.keys(r.routes).length) console.log(`\n${bk} routes: ${Object.entries(r.routes).map(([k, v]) => `${k}=${v}`).join(", ")}`);
-  if (r.unsupported?.length) console.log(`${bk} unsupported: ${r.unsupported.join(", ")}`);
-  if (r.failures?.length) console.log(`${bk} failures (${r.failures.length}): ${[...new Set(r.failures)].slice(0, 5).join(" | ")}`);
-}
+console.log(`\naux bench — ${label || "runtime"} @ ${report.runtime.sha} — ${repeats} repeats (${warmup} warmup) on ${report.fixture}`);
+const rows = Object.entries(result.metrics).map(([name, m]) => [name, m.n, m.mean, m.p50, m.p95, m.min, m.max].map(String));
+table(["metric", "n", "mean", "p50", "p95", "min", "max"], rows);
+if (result.unsupported?.length) console.log(`unsupported: ${result.unsupported.join(", ")}`);
+if (result.failures?.length) console.log(`failures (${result.failures.length}): ${[...new Set(result.failures)].slice(0, 5).join(" | ")}`);
 console.log(`\nreport: ${reportPath}`);
-if (heldOut?.measured) {
-  writeFileSync(join(outDir, "held-out-latest.json"), JSON.stringify(heldOut, null, 2));
-  console.log(
-    `held-out ${heldOut.metric}: chromium p95 ${heldOut.baseline.p95Ms} ms, engine p95 ${heldOut.candidate.p95Ms} ms, p95Ratio ${heldOut.p95Ratio?.toFixed?.(2) ?? heldOut.p95Ratio}, meetsStretch ${heldOut.meetsStretch}`,
-  );
-} else if (heldOut?.reason) {
-  console.log(`held-out: not measured — ${heldOut.reason}`);
-}
-const identityFail = BACKENDS.some((bk) => {
-  const r = results[bk];
-  return (r.failures?.length ?? 0) > 0 || (requireIdentity && r.skipped);
-});
-process.exit(identityFail ? 1 : 0);
+process.exit((result.failures?.length ?? 0) > 0 ? 1 : 0);

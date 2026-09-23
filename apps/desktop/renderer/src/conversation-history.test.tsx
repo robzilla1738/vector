@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import type { VectorEvent } from "@vector/contracts";
+import type { AuxEvent } from "@aux/contracts";
 import { expect, it, vi } from "vitest";
 import { ConversationHistory } from "./components/ConversationHistory";
 import { bridge } from "./bridge";
@@ -12,7 +12,7 @@ it("refreshes the loaded history range instead of dropping older pages",async()=
   vi.useFakeTimers();
   const initial=useStore.getState();
   const rows=Array.from({length:90},(_,index)=>({chatId:`chat-${index}`,title:`Chat ${index}`,archived:false,createdAt:1000-index,updatedAt:1000-index,turnCount:1,latestRun:makeRun({runId:`run-${index}`,config:{chatId:`chat-${index}`}})}));
-  let receive!:(event:VectorEvent)=>void;
+  let receive!:(event:AuxEvent)=>void;
   vi.spyOn(bridge,"onEvent").mockImplementation(callback=>{receive=callback;return()=>{};});
   const invoke=vi.spyOn(bridge,"invoke").mockImplementation(async(method,input)=>{
     if(method!=="conversations.list")return [];

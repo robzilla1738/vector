@@ -25,7 +25,7 @@ export async function runBench(opts: {
   dir: string;
 }): Promise<{ reportPath: string; summary: Record<string, unknown> }> {
   const { pages, url, repeats, dir } = opts;
-  const page = await pages.open({ url, backend: "vector", background: true, ownedByRuntime: true });
+  const page = await pages.open({ url, backend: "aux", background: true, ownedByRuntime: true });
   const obsTimes: number[] = [];
   const execTimes: number[] = [];
   let chromiumVersion: string | undefined;
@@ -73,7 +73,7 @@ export async function runBench(opts: {
       node: process.version,
       os: `${platform()} ${release()} ${arch()}`,
       memoryMb: Math.round(totalmem() / 1048576),
-      electron: process.env.VECTOR_ELECTRON_VERSION ?? "unknown",
+      electron: process.env.AUX_ELECTRON_VERSION ?? "unknown",
       playwright: pkgVersion("playwright-core"),
       aiSdk: pkgVersion("ai"),
       chromium: chromiumVersion ?? "unknown",

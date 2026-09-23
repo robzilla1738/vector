@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { executeProgram } from "@vector/runtime";
-import { READINESS_INIT_SCRIPT, READINESS_GLOBAL } from "@vector/engine-client";
-import type { DriverPage } from "@vector/engine-client";
-import type { Condition } from "@vector/contracts";
+import { executeProgram } from "@aux/runtime";
+import { READINESS_INIT_SCRIPT, READINESS_GLOBAL } from "@aux/chromium-driver";
+import type { DriverPage } from "@aux/chromium-driver";
+import type { Condition } from "@aux/contracts";
 
 describe("readiness init script", () => {
   it("is self-contained, idempotent, and wraps fetch/XHR into an in-flight counter", async () => {
@@ -61,7 +61,7 @@ describe("executor: waitFor settled", () => {
   const fake = (settles: boolean) => {
     const seen: Condition[] = [];
     const page = {
-      identity: { pageId: "p1", targetId: "t", backend: "vector" },
+      identity: { pageId: "p1", targetId: "t", backend: "aux" },
       waitFor: async (c: Condition) => {
         seen.push(c);
         return settles ? { ok: true, timedOut: false } : { ok: false, timedOut: true, detail: "page did not settle" };

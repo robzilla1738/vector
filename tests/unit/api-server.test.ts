@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ApiServer, EventBus, MAX_BODY_BYTES, openDb, Repo, loadConfig, startRuntime } from "@vector/runtime";
-import { VectorError } from "@vector/contracts";
+import { ApiServer, EventBus, MAX_BODY_BYTES, openDb, Repo, loadConfig, startRuntime } from "@aux/runtime";
+import { AuxError } from "@aux/contracts";
 
 const TOKEN = "t0ken-secret";
 let server: ApiServer;
@@ -17,7 +17,7 @@ beforeAll(async () => {
     events: new EventBus(repo),
     invoke: async (method, params) => {
       seen.push({ method, params });
-      if (method === "runs.get") throw new VectorError("not_found", "no run");
+      if (method === "runs.get") throw new AuxError("not_found", "no run");
       return { echo: method, params };
     },
     authorizeScopedToken: token => token === "scoped" ? { external: true, connectionId: "connection", scope: { kind: "workspace", workspaceId: "workspace" } } : null,
@@ -53,11 +53,11 @@ describe("ApiServer over HTTP", () => {
   });
 
   it("dispatches with a bearer token", async () => {
-    const r = await rpc({ method: "pages.list", params: { backend: "vector" } }, bearer);
+    const r = await rpc({ method: "pages.list", params: { backend: "aux" } }, bearer);
     expect(r.status).toBe(200);
     const body = (await r.json()) as { result: { echo: string; params: unknown } };
     expect(body.result.echo).toBe("pages.list");
-    expect(body.result.params).toEqual({ backend: "vector" });
+    expect(body.result.params).toEqual({ backend: "aux" });
   });
 
   it("accepts a valid scoped token for HTTP and rejects revoked or unknown tokens", async () => {
@@ -128,9 +128,9 @@ describe("ApiServer over WebSocket", () => {
 
 describe("token file permissions", () => {
   it("creates the data dir 0700 and runtime.json 0600", async () => {
-    const parent = mkdtempSync(join(tmpdir(), "vector-perm-"));
+    const parent = mkdtempSync(join(tmpdir(), "aux-perm-"));
     const dataDir = join(parent, "data");
-    const env = { ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_STANDALONE: "0", VECTOR_IPC: "0", VECTOR_ENGINE_MODE: "off" } as NodeJS.ProcessEnv;
+    const env = { ...process.env, AUX_DATA_DIR: dataDir, AUX_STANDALONE: "0", AUX_IPC: "0" } as NodeJS.ProcessEnv;
     loadConfig(env);
     expect(statSync(dataDir).mode & 0o777).toBe(0o700);
     const rt = await startRuntime(env);

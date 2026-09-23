@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task } from "@vector/contracts";
+import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task, VaultItem } from "@aux/contracts";
 import { call } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
@@ -97,6 +97,10 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, trigger });
         await refresh(selected.routine.routineId);
       })} />
+      <RoutineAccounts key={`${selected.routine.routineId}-accounts:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={accountLabels => void action(async () => {
+        await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, accountLabels });
+        await refresh(selected.routine.routineId);
+      })} />
       {comparison && comparison.routineId === selected.routine.routineId && <p className="hint" role="status">{comparison.summary}</p>}
       <h4>Run history</h4>
       {!selected.runs.length && <p className="hint">This routine has not run yet.</p>}
@@ -109,4 +113,29 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       </div>)}
     </div>}
   </section>;
+}
+
+/** Choose which labeled vault accounts this routine may use — an empty selection stays unrestricted. */
+function RoutineAccounts({ routine, disabled, onSave }: { routine: Routine; disabled: boolean; onSave: (accountLabels: string[]) => void }) {
+  const [items, setItems] = useState<VaultItem[] | null>(null);
+  const [picked, setPicked] = useState<string[]>(routine.accountLabels);
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    let live = true;
+    void call<VaultItem[]>("vault.list", { includeRevoked: false })
+      .then(list => { if (live) setItems(list); })
+      .catch(reason => { if (live) setLoadError(reason instanceof Error ? reason.message : String(reason)); });
+    return () => { live = false; };
+  }, []);
+  const known = [...new Set((items ?? []).map(item => item.accountLabel).filter((label): label is string => !!label))].sort();
+  const choices = [...new Set([...known, ...picked])];
+  const dirty = picked.length !== routine.accountLabels.length || picked.some(label => !routine.accountLabels.includes(label));
+  const toggle = (label: string, on: boolean) => setPicked(current => on ? [...new Set([...current, label])] : current.filter(item => item !== label));
+  return <details className="routine-accounts"><summary>Accounts{picked.length ? ` — ${picked.length} labeled` : " — any"}</summary>
+    <p className="hint">Pick the labeled accounts this routine may fill. Runs only see grants for the labels you choose; an empty list means any account. Label vault items in Vault settings.</p>
+    {loadError && <p className="field-error" role="alert">Vault labels could not be loaded. {loadError}</p>}
+    {items !== null && !choices.length && <p className="hint">No labeled vault items yet — every vault item without an account label stays unrestricted.</p>}
+    {choices.map(label => <label className="routine-account" key={label}><input type="checkbox" checked={picked.includes(label)} disabled={disabled} onChange={event => toggle(label, event.target.checked)} /><span>{label}{!known.includes(label) && <small> · not in vault</small>}</span></label>)}
+    {(items !== null || picked.length > 0) && <button className="btn sm" disabled={disabled || !dirty} onClick={() => onSave(picked)}>Save accounts</button>}
+  </details>;
 }

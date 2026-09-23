@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { PageTarget } from "@vector/contracts";
+import type { PageTarget } from "@aux/contracts";
 import { bridge, inElectron } from "../bridge";
 import { requestStageReport } from "../stage-obstruction";
-import { call, errToast, toast, useStore } from "../store";
+import { errToast, tabCommand, toast, useStore } from "../store";
 import { canSplitPage, hostOf, isPinned, tabsInSpace } from "../workspace";
 import { moveMenuFocus } from "../keyboard-list";
 import { useMenuDismiss } from "../use-menu-dismiss";
@@ -128,7 +128,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
 
     {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
     {!bulk && <>
-    <button className="menu-item" role="menuitem" onClick={() => action(() => call("pages.reload", { pageId: page.pageId }))}><span className="t">Reload</span><kbd>⌘R</kbd></button>
+    <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}><span className="t">Reload</span><kbd>⌘R</kbd></button>
     <TabAudioButton pageId={page.pageId} title={page.title || "New Tab"} menu onDone={onClose} />
     {web && <>
       <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>Duplicate tab</button>

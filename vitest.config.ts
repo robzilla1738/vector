@@ -5,8 +5,8 @@ export default defineConfig({
   resolve: {
     // renderer tests import contract types from source so they run without a build
     alias: [
-      { find: /^@vector\/contracts\/(.+)$/, replacement: join(import.meta.dirname, "packages/contracts/src/$1.ts") },
-      { find: /^@vector\/contracts$/, replacement: join(import.meta.dirname, "packages/contracts/src/index.ts") },
+      { find: /^@aux\/contracts\/(.+)$/, replacement: join(import.meta.dirname, "packages/contracts/src/$1.ts") },
+      { find: /^@aux\/contracts$/, replacement: join(import.meta.dirname, "packages/contracts/src/index.ts") },
     ],
   },
   esbuild: { jsx: "automatic" },

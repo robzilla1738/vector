@@ -2,7 +2,7 @@
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
-import {TaskReceiptSchema} from '@vector/contracts';
+import {TaskReceiptSchema} from '@aux/contracts';
 import {bridge} from './bridge';
 import {TaskReceiptView} from './components/TaskReceiptView';
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;

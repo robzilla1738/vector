@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { openDb, Repo, RunCoordinator } from "@vector/runtime";
-import { EventBus } from "@vector/runtime";
-import type { ModelClient } from "@vector/runtime";
-import type { Observation, StepOutcome } from "@vector/contracts";
+import { openDb, Repo, RunCoordinator } from "@aux/runtime";
+import { EventBus } from "@aux/runtime";
+import type { ModelClient } from "@aux/runtime";
+import type { Observation, StepOutcome } from "@aux/contracts";
 
 const obs = (over: { elements?: number; text?: string } = {}): Observation => ({
   observationId: "o1",

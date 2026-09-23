@@ -5,7 +5,7 @@ import {
   type SetMember,
   type Step,
   type StepOutcome,
-} from "@vector/contracts";
+} from "@aux/contracts";
 import type { PageService } from "../services/pages.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";

@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDb, Repo, SettingsService } from "@vector/runtime";
+import { openDb, Repo, SettingsService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native";
 import { SecretStore } from "../../apps/desktop/main/secret-store";
 
@@ -219,7 +219,11 @@ it("discovers bounded OpenAI-compatible model IDs from a configured local endpoi
     return new Response(JSON.stringify({ data: [{ id: "local-model" }, { id: "local-model" }, { id: "second-model" }, { nope: true }] }), { status: 200 });
   }));
   await expect(f.settings.listModels()).resolves.toEqual({
-    models: [{ id: "local-model" }, { id: "second-model" }, { id: "configured-model" }],
+    models: [
+      { id: "local-model", source: "configured" },
+      { id: "second-model", source: "configured" },
+      { id: "configured-model", source: "configured" },
+    ],
     source: "configured",
   });
   expect(requests).toEqual([{ url: "http://127.0.0.1:11434/v1/models", authorization: null }]);
