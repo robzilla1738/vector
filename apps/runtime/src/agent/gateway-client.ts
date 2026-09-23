@@ -13,7 +13,9 @@ import {
 import { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { AuxError } from "@aux/contracts";
-import type { ModelClient, StructuredCallResult, TextCallResult } from "./model-client.js";
+import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
+import { extractJson } from "./json-text.js";
+import { usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
 export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
@@ -67,10 +69,7 @@ export function schemaNeedsJsonFallback(schema: z.ZodType): boolean {
   }
 }
 
-/** Qwen and other reasoners wrap the answer in <think>…</think>. */
-export function stripReasoning(text: string): string {
-  return text.replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "").replace(/<think\b[^>]*>[\s\S]*$/gi, "");
-}
+export { extractJson, stripReasoning } from "./json-text.js";
 
 /** Models often omit step ids; the schema requires them. */
 export function assignMissingStepIds(value: unknown): unknown {
@@ -95,6 +94,8 @@ export function normalizePlannerObject(value: unknown): unknown {
   } else if (rec.message.length > 280) {
     rec.message = rec.message.slice(0, 280);
   }
+  if (typeof rec.notes === "string" && rec.notes.length > 600) rec.notes = rec.notes.slice(0, 600);
+  else if (rec.notes != null && typeof rec.notes !== "string") delete rec.notes;
   return rec;
 }
 
@@ -114,30 +115,8 @@ continue: "steps" — 1-8 ops. Each step needs "id" (s1, s2, …) and "op".
   dragTo{target,to} dialog{action} upload{target,files} expectDownload
   waitFor kinds: textVisible{text} selector{selector} refReady{ref} urlMatches{pattern}
     navigationSettled settled downloadCompleted response{urlIncludes}
-done: "result" object, no steps. needs_input: "question".`;
-
-/** Pull the first balanced JSON value out of a text completion (fences or prose allowed around it). */
-export function extractJson(text: string): unknown {
-  const body = stripReasoning(text);
-  const start = body.search(/[{[]/);
-  if (start < 0) throw new AuxError("model_output_invalid", "model returned no JSON value");
-  const stack: string[] = [];
-  let inStr = false;
-  let esc = false;
-  for (let i = start; i < body.length; i++) {
-    const c = body[i]!;
-    if (esc) { esc = false; continue; }
-    if (c === "\\") { if (inStr) esc = true; continue; }
-    if (c === '"') { inStr = !inStr; continue; }
-    if (inStr) continue;
-    if (c === "{" || c === "[") stack.push(c);
-    else if (c === "}" || c === "]") {
-      if (stack.pop() !== (c === "}" ? "{" : "[")) break;
-      if (stack.length === 0) return JSON.parse(body.slice(start, i + 1));
-    }
-  }
-  throw new AuxError("model_output_invalid", "model returned truncated or unbalanced JSON");
-}
+done: "result" object; optional read-only steps (extract/collectScroll/waitFor) whose values fill result via "{{name}}".
+needs_input: "question". Optional "notes" (≤600 chars): your running scratchpad, echoed back next turn.`;
 
 /**
  * Vercel AI Gateway client. One explicit retry owner: the app sets
@@ -172,9 +151,11 @@ export function gatewayOnlyForModel(modelId: string, only?: string[]): string[] 
   return allowed ? only : undefined;
 }
 
-export function gatewayProviderOptions(only?: string[], modelId?: string) {
+/** OpenAI reasoning effort goes only to registry models that reason; others reject or ignore it. */
+export function gatewayProviderOptions(only?: string[], modelId?: string, models: readonly ModelCapability[] = MODEL_REGISTRY) {
   const effective = modelId ? gatewayOnlyForModel(modelId, only) : only;
-  const luna = Boolean(modelId?.includes("luna"));
+  const cap = modelId ? modelCapabilities(modelId, models) : undefined;
+  const reasons = cap?.provider === "openai" && (cap.reasoning === "supported" || cap.reasoning === "required");
   return {
     gateway: {
       sort: "ttft" as const,
@@ -182,9 +163,20 @@ export function gatewayProviderOptions(only?: string[], modelId?: string) {
       ...(effective?.length ? { only: effective } : {}),
       ...(modelId?.endsWith("-fast") ? { speed: "fast" as const } : {}),
     },
-    ...(luna ? {} : { openai: { reasoningEffort: "minimal" as const } }),
+    ...(reasons ? { openai: { reasoningEffort: "minimal" as const } } : {}),
   };
 }
+
+type CallOpts = {
+  modelId: string;
+  system: string;
+  prompt: string;
+  imageDataUrls?: string[];
+  signal?: AbortSignal;
+  maxOutputTokens?: number;
+};
+
+const RETRY_SYSTEM = "\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.";
 
 export class GatewayModelClient implements ModelClient {
   private gateway: ReturnType<typeof createGateway> | undefined;
@@ -200,50 +192,45 @@ export class GatewayModelClient implements ModelClient {
     this.only = this.gateway && opts.only?.length ? opts.only : undefined;
   }
 
-  private requireVision(modelId:string, images?:string[]) {
-    if (images?.length && gatewayOnlyForModel(modelId, this.only)?.includes("cerebras"))
-      throw new AuxError("capability_unsupported", "Choose an image-capable model to use these image references. The Cerebras planner accepts text only.");
+  private requireVision(modelId: string, images?: string[]) {
+    if (images?.length && !modelAcceptsImages(modelId))
+      throw new AuxError("capability_unsupported", "Choose an image-capable model to use these image references. This model accepts text only.");
   }
 
-  async generateStructured<T>(opts: {
-    modelId: string;
-    system: string;
-    prompt: string;
-    imageDataUrls?: string[];
-    schema: z.ZodType<T>;
-    signal?: AbortSignal;
-    maxOutputTokens?: number;
-  }): Promise<StructuredCallResult<T>> {
+  private sdkOptions(opts: CallOpts, maxOutputTokens: number) {
+    return {
+      model: this.resolveModel(opts.modelId),
+      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
+      maxRetries: 0,
+      maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens),
+      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
+    };
+  }
+
+  async generateStructured<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
+    const retries: ModelAttempt[] = [];
     // Skip generateObject when the schema would send oneOf — Cerebras/Qwen
     // reject it before any tokens. Simple schemas (probe, final decision)
     // still use structured output.
     if (!schemaNeedsJsonFallback(opts.schema)) {
       try {
         const res = await generateObject({
-          model: this.resolveModel(opts.modelId),
+          ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
           schema: opts.schema,
           system: opts.system,
           messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
-          abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
-          maxRetries: 0,
-          maxOutputTokens: opts.maxOutputTokens ?? 2000,
-          providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
         });
-        return {
-          object: res.object,
-          durationMs: Date.now() - started,
-          inputTokens: res.usage?.inputTokens,
-          outputTokens: res.usage?.outputTokens,
-          providerMetadata: (res.providerMetadata ?? undefined) as Record<string, unknown> | undefined,
-        };
+        return { object: res.object, ...attempt(started, res) };
       } catch (e) {
         if (opts.signal?.aborted) throw e;
         if (!isStructuredOutputError(e)) throw e;
+        const usage = (e as { usage?: unknown }).usage;
+        if (usage) retries.push({ ...attempt(started, { usage }), error: "structured output unusable" });
       }
     }
-    return this.structuredFromText(opts, started);
+    return this.structuredFromText(opts, retries);
   }
 
   /**
@@ -251,34 +238,17 @@ export class GatewayModelClient implements ModelClient {
    * requested with `streamText`; every text delta is forwarded to `onText`
    * so the coordinator can parse and dispatch steps as they complete. The
    * finished text is validated exactly like the non-streaming path. On a
-   * parse failure it falls back to one non-streamed retry — by then the
-   * caller has already executed whatever steps streamed in cleanly, and
-   * the retry's object is reconciled against those.
+   * parse failure it falls back to one non-streamed retry, reported in
+   * `retries` — the caller must not mix the retry's steps with any it
+   * already dispatched from the stream.
    */
-  async streamStructured<T>(opts: {
-    modelId: string;
-    system: string;
-    prompt: string;
-    imageDataUrls?: string[];
-    schema: z.ZodType<T>;
-    signal?: AbortSignal;
-    maxOutputTokens?: number;
-    onText: (delta: string) => void;
-  }): Promise<StructuredCallResult<T>> {
+  async streamStructured<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
-    const schemaHint = schemaNeedsJsonFallback(opts.schema)
-      ? `\n\n${PLAN_JSON_HINT}`
-      : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(opts.schema))}`;
-    const parse = (text: string): T => opts.schema.parse(normalizePlannerObject(extractJson(text)));
     const stream = streamText({
-      model: this.resolveModel(opts.modelId),
-      system: `${opts.system}${schemaHint}`,
+      ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
+      system: `${opts.system}${schemaHint(opts.schema)}`,
       messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
-      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
-      maxRetries: 0,
-      maxOutputTokens: opts.maxOutputTokens ?? 2000,
-      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
     });
     let text = "";
     for await (const delta of stream.textStream) {
@@ -286,79 +256,42 @@ export class GatewayModelClient implements ModelClient {
       opts.onText(delta);
     }
     const usage = await Promise.resolve(stream.usage).catch(() => undefined);
-    try {
-      return {
-        object: parse(text),
-        durationMs: Date.now() - started,
-        inputTokens: usage?.inputTokens,
-        outputTokens: usage?.outputTokens,
-      };
-    } catch (e) {
-      if (opts.signal?.aborted) throw e;
-      const retry = await this.generateText({
-        modelId: opts.modelId,
-        system: `${opts.system}\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.`,
-        prompt: opts.prompt,
-        imageDataUrls: opts.imageDataUrls,
-        signal: opts.signal,
-        maxOutputTokens: (opts.maxOutputTokens ?? 2000) * 2,
-      });
-      return {
-        object: parse(retry.text),
-        durationMs: Date.now() - started,
-        inputTokens: retry.inputTokens,
-        outputTokens: retry.outputTokens,
-      };
-    }
+    const providerMetadata = await Promise.resolve(stream.providerMetadata).catch(() => undefined);
+    const first = attempt(started, { usage, providerMetadata });
+    return this.parseOrRetry(opts, text, first, []);
   }
 
-  private async structuredFromText<T>(
-    opts: {
-      modelId: string;
-      system: string;
-      prompt: string;
-    imageDataUrls?: string[];
-      schema: z.ZodType<T>;
-      signal?: AbortSignal;
-      maxOutputTokens?: number;
-    },
-    started: number,
-  ): Promise<StructuredCallResult<T>> {
-    const schemaHint = schemaNeedsJsonFallback(opts.schema)
-      ? `\n\n${PLAN_JSON_HINT}`
-      : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(opts.schema))}`;
-    const parse = (text: string): T => opts.schema.parse(normalizePlannerObject(extractJson(text)));
+  private async structuredFromText<T>(opts: CallOpts & { schema: z.ZodType<T> }, retries: ModelAttempt[]): Promise<StructuredCallResult<T>> {
     const res = await this.generateText({
-      modelId: opts.modelId,
-      system: `${opts.system}${schemaHint}`,
-      prompt: opts.prompt,
-      imageDataUrls: opts.imageDataUrls,
-      signal: opts.signal,
-      maxOutputTokens: opts.maxOutputTokens,
-    });
+      ...opts,
+      system: `${opts.system}${schemaHint(opts.schema)}`,
+    }).catch((e: unknown) => { throw withAttempts(e, retries); });
+    return this.parseOrRetry(opts, res.text, res, retries);
+  }
+
+  /** One corrective retry on unparseable output; every billed attempt is reported. */
+  private async parseOrRetry<T>(
+    opts: CallOpts & { schema: z.ZodType<T> },
+    text: string,
+    first: ModelAttempt,
+    retries: ModelAttempt[],
+  ): Promise<StructuredCallResult<T>> {
+    const parse = (t: string): T => opts.schema.parse(normalizePlannerObject(extractJson(t)));
     try {
-      return {
-        object: parse(res.text),
-        durationMs: Date.now() - started,
-        inputTokens: res.inputTokens,
-        outputTokens: res.outputTokens,
-      };
+      return { object: parse(text), ...stripText(first), ...(retries.length ? { retries } : {}) };
     } catch (e) {
-      if (opts.signal?.aborted) throw e;
+      if (opts.signal?.aborted) throw withAttempts(e, [...retries, first]);
+      const failed = [...retries, { ...stripText(first), error: `unparseable output: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}` }];
       const retry = await this.generateText({
-        modelId: opts.modelId,
-        system: `${opts.system}\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.`,
-        prompt: opts.prompt,
-        imageDataUrls: opts.imageDataUrls,
-        signal: opts.signal,
+        ...opts,
+        system: `${opts.system}${RETRY_SYSTEM}`,
         maxOutputTokens: (opts.maxOutputTokens ?? 2000) * 2,
-      });
-      return {
-        object: parse(retry.text),
-        durationMs: Date.now() - started,
-        inputTokens: retry.inputTokens,
-        outputTokens: retry.outputTokens,
-      };
+      }).catch((err: unknown) => { throw withAttempts(err, failed); });
+      try {
+        return { object: parse(retry.text), ...stripText(retry), retries: failed };
+      } catch (err) {
+        throw withAttempts(err, [...failed, { ...stripText(retry), error: "unparseable output after retry" }]);
+      }
     }
   }
 
@@ -375,20 +308,11 @@ export class GatewayModelClient implements ModelClient {
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
     const res = await generateText({
-      model: this.resolveModel(opts.modelId),
+      ...this.sdkOptions({ ...opts, system: opts.system ?? "" }, opts.maxOutputTokens ?? 1200),
       system: opts.system,
       messages: imageReferenceMessage(opts.prompt, images),
-      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
-      maxRetries: 0,
-      maxOutputTokens: opts.maxOutputTokens ?? 1200,
-      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
     });
-    return {
-      text: res.text,
-      durationMs: Date.now() - started,
-      inputTokens: res.usage?.inputTokens,
-      outputTokens: res.usage?.outputTokens,
-    };
+    return { text: res.text, ...attempt(started, res) };
   }
 
   async listModels(): Promise<{ id: string; name?: string }[]> {
@@ -396,4 +320,23 @@ export class GatewayModelClient implements ModelClient {
     const catalog = await this.gateway.getAvailableModels();
     return catalog.models.map((m) => ({ id: m.id, name: m.name }));
   }
+}
+
+function attempt(started: number, res: { usage?: unknown; providerMetadata?: unknown }): ModelAttempt {
+  return {
+    durationMs: Date.now() - started,
+    ...usageFields(res.usage),
+    ...(res.providerMetadata ? { providerMetadata: res.providerMetadata as Record<string, unknown> } : {}),
+  };
+}
+
+function stripText(a: ModelAttempt & { text?: string }): ModelAttempt {
+  const { text: _text, ...rest } = a;
+  return rest;
+}
+
+function schemaHint(schema: z.ZodType): string {
+  return schemaNeedsJsonFallback(schema)
+    ? `\n\n${PLAN_JSON_HINT}`
+    : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(schema))}`;
 }

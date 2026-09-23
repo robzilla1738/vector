@@ -12,7 +12,6 @@ import {
   schemaNeedsJsonFallback,
   stripReasoning,
 } from "../../apps/runtime/src/agent/gateway-client.js";
-import { extractJson as extractJsonPlanner } from "../../apps/runtime/src/agent/planner.js";
 
 describe("extractJson", () => {
   it("parses a bare object", () => {
@@ -38,12 +37,6 @@ describe("extractJson", () => {
   });
   it("throws on unbalanced JSON", () => {
     expect(() => extractJson('{"a": [1, 2')).toThrow("truncated or unbalanced");
-  });
-});
-
-describe("planner extractJson", () => {
-  it("skips braces inside think tags", () => {
-    expect(extractJsonPlanner('<think>consider {not json}</think>\n{"status":"done"}')).toEqual({ status: "done" });
   });
 });
 
@@ -91,7 +84,9 @@ describe("stripReasoning / oneOf errors", () => {
     });
     expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway.only).toBeUndefined();
     expect(gatewayProviderOptions(undefined, "openai/gpt-5.6-luna-fast").openai).toBeUndefined();
-    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4").openai).toEqual({ reasoningEffort: "minimal" });
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4").openai).toBeUndefined();
+    const reasoner = [{ id: "openai/gpt-5.4", provider: "openai", reasoning: "supported" as const, source: "configured" as const }];
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner).openai).toEqual({ reasoningEffort: "minimal" });
   });
   it("rejects image parts before the Gateway call when pinned to Cerebras", async () => {
     const client = new GatewayModelClient("vg_test", { only: ["cerebras"] });

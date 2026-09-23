@@ -10,6 +10,8 @@ export const PlanChunkSchema = z.object({
   status: z.enum(["continue", "done", "needs_input"]),
   /** Short factual status for humans, e.g. "Opened record 17, editing status". */
   message: z.string().max(280),
+  /** Planner's own running scratchpad (tallies, collected values, what remains), echoed back next turn. */
+  notes: z.string().max(600).optional(),
   /** Page this chunk targets — defaults to the run's current page. */
   pageId: z.string().optional(),
   /** 1..8 meaningful operations to run locally before returning to the model.
@@ -27,7 +29,7 @@ export const PlanChunkSchema = z.object({
   result: z.record(z.string(), z.unknown()).optional(),
   /** Question for the human when status === "needs_input". */
   question: z.string().optional(),
-  /** Program to save for reuse when the run demonstrates a repeatable task. */
+  /** Program to save for reuse when the run demonstrates a repeatable task. Not read by the runtime yet. */
   saveProgram: z
     .object({
       name: z.string(),
