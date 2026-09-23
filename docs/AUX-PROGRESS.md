@@ -34,6 +34,16 @@
   release-ownership/advisory SLAs, §6 budgets on signed builds (this-host
   measurements in `docs/perf/`), the frozen ≥15-task R1 corpus with paid
   inference, and §18.5 human pilot observations.
+- 2026-09-23 follow-up — `desktop smoke (release suite)` green on the GitHub
+  macos-26-arm64 runner, 11/11 (job 107169759287). Three CI-host flakes fixed
+  without weakening assertions: `tab-recovery` got a 40 s layout-persist poll
+  plus last-state dump; `authentication-navigation` polls `app.windows()` for
+  the consent popup page (Playwright page attachment lags the BrowserWindow);
+  `local-projects` gates the in-app preview check on real loopback
+  reachability — CPython's `http.server` resolves `getfqdn` between `bind()`
+  and `listen()`, and the runner's reverse-DNS stall left the port
+  bound-but-not-listening long after `DJANGO_SERVER_READY` printed. Failure
+  diagnostics now dump command states, open tab URLs and HTTP probes.
 - Lint: `npx oxlint tests/smoke/run-suite.mjs` clean.
 
 ## 2026-09-22 — Desktop smoke suite green (full sweep)
