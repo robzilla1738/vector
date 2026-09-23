@@ -112,6 +112,8 @@ try{
  await tasks.getByRole('tab',{name:'Console',exact:true}).click();await commands.getByRole('button',{name:'Start Django server',exact:true}).click();assert.equal(await commands.getByRole('checkbox',{name:'Keep running as a local service',exact:true}).isChecked(),true);await commands.getByLabel('Local command',{exact:true}).fill(`.venv/bin/python manage.py runserver 127.0.0.1:${port}`);
  await commands.getByRole('button',{name:'Review and run',exact:true}).click();
  await until(async()=>{const runs=await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId);return runs.some(r=>r.state==='running'&&r.output.includes('DJANGO_SERVER_READY'));});
+ // READY precedes bind+listen on hosts where the server's reverse-DNS lookup stalls; gate on real reachability so the in-app check sees a live server like a user would.
+ await until(async()=>await httpProbe(`http://127.0.0.1:${port}/`)==='HTTP 200',60000);
  await tasks.getByRole('tab',{name:'Preview',exact:true}).click();await previews.getByLabel('Local preview URL',{exact:true}).fill(`http://127.0.0.1:${port}/`);
  await previews.getByRole('button',{name:'Check & open preview',exact:true}).click();
  await until(async()=>app.evaluate(async({webContents},url)=>{const view=webContents.getAllWebContents().find(w=>w.getURL()===url);return view?await view.executeJavaScript('document.body.innerText.includes("Django project preview")'):false;},`http://127.0.0.1:${port}/`));
