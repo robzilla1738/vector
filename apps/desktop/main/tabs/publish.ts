@@ -1,4 +1,5 @@
 import type { TabPatch, TabPatchOp, TabRecord } from "@aux/contracts";
+import { browserHealth } from "../app/services.js";
 import { notifyRuntime } from "../runtime/supervisor.js";
 import { regularWindows } from "../windows/registry.js";
 import { browserStore, tabCatalog } from "./store.js";
@@ -52,7 +53,8 @@ export function flushTabPatches() {
   }
   for (const state of regularWindows.values()) state.shellView.webContents.send("tabs.patch", { ...merged, ops: opsFor.get(state.id) ?? [] });
   if (runtimeOps.length) notifyRuntime("tabs.catalog", { ...merged, ops: runtimeOps });
-  browserStore.persist(merged).catch(() => {});
+  // A failed write already rewrites storage from the live catalog; keep it visible in health.
+  browserStore.persist(merged).catch(() => browserHealth.noteSwallowed("tabs.persist"));
 }
 
 export const sameTabValue = (a: unknown, b: unknown) => a === b || (!!a && !!b && typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));

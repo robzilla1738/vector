@@ -1,4 +1,5 @@
 import type { WebContents } from "electron";
+import { noteSwallowed } from "./swallowed.js";
 
 /**
  * One in-process debugger session per page, shared by every document-start
@@ -21,14 +22,14 @@ function session(wc: WebContents): PageSession | undefined {
   const existing = sessions.get(wc);
   if (existing) return existing;
   if (wc.isDestroyed()) return undefined;
-  try { if (!wc.debugger.isAttached()) wc.debugger.attach("1.3"); } catch { return undefined; }
+  try { if (!wc.debugger.isAttached()) wc.debugger.attach("1.3"); } catch { noteSwallowed("cdp.attach"); return undefined; }
   const bindings = new Map<string, BindingHandler>();
   wc.debugger.on("message", (_event, method, params?: { name?: string; payload?: string; executionContextId?: number }) => {
     if (method !== "Runtime.bindingCalled" || !params?.name) return;
     bindings.get(params.name)?.(params.payload ?? "", params.executionContextId);
   });
   const enabled = Promise.all([wc.debugger.sendCommand("Page.enable"), wc.debugger.sendCommand("Runtime.enable")]).then(() => {});
-  enabled.catch(() => {});
+  enabled.catch(() => noteSwallowed("cdp.enable"));
   const created = { bindings, enabled };
   sessions.set(wc, created);
   return created;
@@ -40,7 +41,7 @@ export function addDocumentScript(wc: WebContents, source: string, worldName?: s
   if (!page) return Promise.resolve(false);
   return page.enabled
     .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", { source, ...(worldName ? { worldName } : {}) }))
-    .then(() => true, () => false);
+    .then(() => true, () => { noteSwallowed("cdp.documentScript"); return false; });
 }
 
 /** Register `name` as a CDP binding routed to `handler`, then install its document-start script. */
@@ -52,5 +53,5 @@ export function addDocumentBinding(wc: WebContents, name: string, handler: Bindi
     // Scoped to the helper's isolated world: page scripts cannot see or forge the binding.
     .then(() => wc.debugger.sendCommand("Runtime.addBinding", { name, executionContextName: script.worldName }))
     .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", { source: script.source, worldName: script.worldName }))
-    .then(() => true, () => false);
+    .then(() => true, () => { noteSwallowed("cdp.binding"); return false; });
 }

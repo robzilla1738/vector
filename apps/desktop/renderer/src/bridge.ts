@@ -29,7 +29,7 @@ export interface FilterSourceStatus { id:string;name:string;url:string;enabled:b
 export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;builtinHosts:number }
 export interface BrowserHealthSummary {
   recordingSince?:number;latestAt?:number;samples:number;sessions:number;observedMinutes:number;spanDays:number;sevenDaySpan:boolean;startupMs?:number;
-  cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
+  cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;swallowed?:Record<string,number>;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
 }
 export const emptyBrowserHealthSummary=():BrowserHealthSummary=>({samples:0,sessions:0,observedMinutes:0,spanDays:0,sevenDaySpan:false,cpuPercent:{p50:0,p95:0,max:0},memoryMb:{p50:0,p95:0,max:0},eventLoopLagMs:{p50:0,p95:0,max:0},maxWindows:0,maxPages:0,maxSuspendedPages:0,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0});
 

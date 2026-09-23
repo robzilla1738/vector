@@ -133,6 +133,7 @@ export class PageRegistry {
         this.deps.repo.saveTabs(tabs);
       } catch (e) {
         if (this.savedTabs === key) this.savedTabs = "";
+        this.deps.tracer?.incr("swallowed.saveTabsSnapshot");
         throw e;
       }
     }, true);
@@ -151,7 +152,8 @@ export class PageRegistry {
       // browsing history is the human's: agent/worker pages do not write it
       if (!lp.target.ownedByRuntime && lp.target.url.startsWith("http")) this.deps.repo.recordVisit(lp.target.url, lp.target.title, lp.target.pageId);
     } catch {
-      /* target racing a navigation — next event fixes it */
+      // target racing a navigation — next event fixes it
+      this.deps.tracer?.incr("swallowed.refreshMeta");
     }
   }
 

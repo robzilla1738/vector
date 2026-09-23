@@ -16,11 +16,13 @@ import { installHttpAuth } from "./http-auth.js";
 import { boot } from "./app/boot.js";
 import { installExitHandlers } from "./app/exit.js";
 import { installExternalUrlHandlers } from "./app/external-urls.js";
-import { browserProfiles, registry } from "./app/services.js";
+import { browserHealth, browserProfiles, registry } from "./app/services.js";
+import { setSwallowedSink } from "./swallowed.js";
 import { PRIMARY_WINDOW_ID } from "./app/bootstrap.js";
 import { notifyHttpAuthChanged, regularWindows, requireShellUi } from "./windows/registry.js";
 import { watchAppearance } from "./windows/appearance.js";
 
+setSwallowedSink(site => browserHealth.noteSwallowed(site));
 browserProfiles.markInstance();
 setInterval(() => browserProfiles.markInstance(), 120_000).unref();
 installExternalUrlHandlers();

@@ -110,7 +110,12 @@ export class ProgramExecutor {
         if (!stepRecords.length || !this.pages.deps.recordStep) return;
         const rows = stepRecords.splice(0);
         this.pages.deps.repo.defer(`steps:${rows[0]!.stepId}`, () => {
-          for (const r of rows) this.pages.deps.recordStep!(r);
+          try {
+            for (const r of rows) this.pages.deps.recordStep!(r);
+          } catch (e) {
+            this.pages.deps.tracer?.incr("swallowed.flushSteps");
+            throw e;
+          }
         });
       };
       let result: ProgramResult & { observation?: ObservationContent };
