@@ -9,9 +9,8 @@ import { ConversationDrafts } from "./ConversationDrafts";
 import { draftKey } from "../conversation-drafts";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 
-export function mergeHistory(history: Run[]) {
-  useStore.setState(state => ({ runs: [...state.runs, ...history.filter(run => !state.runs.some(old => old.runId === run.runId))] }));
-}
+import { mergeHistory } from "../run-history";
+export { mergeHistory };
 export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
 export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
 const PAGE_SIZE = 40;

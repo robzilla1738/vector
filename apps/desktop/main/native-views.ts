@@ -4,6 +4,7 @@ import { showPageMenu } from "./page-menu.js";
 import { captureImageAt } from "./image-capture.js";
 import { installCredentialWatch } from "./credential-detect.js";
 import { installCosmeticFilter } from "./cosmetic-filter.js";
+import { addDocumentBinding, addDocumentScript } from "./page-debugger.js";
 import { popupCommand } from './popup-commands.js';
 import { session, WebContentsView, type BaseWindow, type WebContents } from "electron";
 import { randomUUID } from "node:crypto";
@@ -54,27 +55,36 @@ export interface ViewHooks {
 // Persisted profile identity; changing this before migration would hide existing logins.
 const PROFILE_PARTITION = SESSION_PARTITIONS.browsing;
 
-/** Inject the Aux target marker into a webContents — every document. */
-export function installMarker(view: Pick<WebContentsView, "webContents">, marker: string) {
+/**
+ * Inject the Aux target marker into a webContents — every document. The
+ * runtime finds tabs by reading `globalThis.__auxTid` in the main world, so
+ * the value is fixed for the document: a page cannot rename or remove it.
+ * Resolves once the current document carries the marker.
+ */
+const markerSource = (marker: string) => `Object.defineProperty(globalThis, "__auxTid", {value: ${JSON.stringify(marker)}, configurable: false, writable: false});`;
+
+/** Mark the current document now; resolves true once it carries `marker`. */
+export function markDocument(wc: WebContents, marker: string): Promise<boolean> {
+  if (wc.isDestroyed()) return Promise.resolve(false);
+  return wc.executeJavaScript(`${markerSource(marker)} globalThis.__auxTid === ${JSON.stringify(marker)}`, true)
+    .then(ok => ok === true, () => wc.isDestroyed() ? false : wc.executeJavaScript(`globalThis.__auxTid === ${JSON.stringify(marker)}`, true).then(ok => ok === true, () => false));
+}
+
+export function installMarker(view: Pick<WebContentsView, "webContents">, marker: string): Promise<boolean> {
   const wc = view.webContents;
-  const src = `Object.defineProperty(globalThis, "__auxTid", {value: ${JSON.stringify(marker)}, configurable: true, writable: true});`;
-  const injectNow = () => wc.executeJavaScript(src, true).catch(() => {});
-  injectNow();
-  // dom-ready covers the initial document — a first-shot executeJavaScript can
-  // race the frame being ready, and a view that never navigates (about:blank
-  // tabs) gets no did-navigate to retry on
-  wc.on("dom-ready", injectNow);
-  wc.on("did-navigate", injectNow);
-  wc.on("did-navigate-in-page", injectNow);
-  try {
-    if (!wc.debugger.isAttached()) wc.debugger.attach("1.3");
-    void wc.debugger
-      .sendCommand("Page.enable")
-      .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", { source: src }))
-      .catch(() => {});
-  } catch {
-    /* marker re-injection on navigate still covers identity */
-  }
+  const src = markerSource(marker);
+  const injectNow = () => markDocument(wc, marker);
+  // The initial document may predate the new-document script — dom-ready
+  // marks it once (about:blank tabs never navigate). Later documents get the
+  // marker from the new-document script before any page script runs.
+  wc.once("dom-ready", () => void injectNow());
+  void addDocumentScript(wc, src).then(registered => {
+    if (registered || wc.isDestroyed()) return;
+    // No debugger session: fall back to marking each committed document.
+    wc.on("did-navigate", () => void injectNow());
+    wc.on("dom-ready", () => void injectNow());
+  });
+  return injectNow();
 }
 
 export function createPageView(opts: {
@@ -118,9 +128,17 @@ export function createPageView(opts: {
   opts.win.contentView.addChildView(view);
   if (!opts.background) view.webContents.focus();
   if (opts.url) {
-    view.webContents.loadURL(opts.url, opts.referrer ? { httpReferrer: opts.referrer } : undefined).catch(() => {});
+    const load = () => { if (!view.webContents.isDestroyed()) view.webContents.loadURL(opts.url, opts.referrer ? { httpReferrer: opts.referrer } : undefined).catch(() => {}); };
+    if (pageLoadGate) void pageLoadGate.then(load); else load();
   }
   return entry;
+}
+
+let pageLoadGate: Promise<unknown> | null = null;
+/** Hold page-view loads until `ready` settles (profile extensions loading at startup). */
+export function gatePageLoads(ready: Promise<unknown>) {
+  const gate = ready.catch(() => {}).then(() => { if (pageLoadGate === gate) pageLoadGate = null; });
+  pageLoadGate = gate;
 }
 
 function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
@@ -291,22 +309,12 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
  * is reused when the target marker already attached it.
  */
 export function installNavGesture(wc: WebContents, onGesture: (direction: "back" | "forward") => void) {
-  if (wc.isDestroyed()) return;
-  try { if (!wc.debugger.isAttached()) wc.debugger.attach("1.3"); } catch { return; }
-  wc.debugger.on("message", (_e, method, params?: { name?: string; payload?: string }) => {
-    if (method !== "Runtime.bindingCalled" || params?.name !== NAV_GESTURE_BINDING) return;
+  void addDocumentBinding(wc, NAV_GESTURE_BINDING, raw => {
     try {
-      const raw = params.payload ?? "";
       const dir = raw === "back" || raw === "forward" ? raw : JSON.parse(raw);
       if (dir === "back" || dir === "forward") onGesture(dir);
     } catch { /* not our payload */ }
-  });
-  void wc.debugger.sendCommand("Runtime.enable")
-    .then(() => wc.debugger.sendCommand("Runtime.addBinding", { name: NAV_GESTURE_BINDING }))
-    .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
-      source: navGestureScript(NAV_GESTURE_BINDING), worldName: NAV_GESTURE_WORLD,
-    }))
-    .catch(() => {});
+  }, { source: navGestureScript(NAV_GESTURE_BINDING), worldName: NAV_GESTURE_WORLD });
 }
 
 

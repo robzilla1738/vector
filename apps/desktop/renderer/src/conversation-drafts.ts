@@ -42,10 +42,39 @@ function overlayEntries(storage:EntryStorage|null, prefix:string, legacy:Record<
   }
   return values;
 }
-export function writeConversationEntry(storage:Pick<Storage,"setItem">|null, kind:"draft"|"context", key:string, value:string) {
+export function writeConversationEntry(storage:Pick<Storage,"setItem">&Partial<Pick<Storage,"getItem"|"removeItem">>|null, kind:"draft"|"context", key:string, value:string) {
   if(!validKey(key))throw new Error("Invalid conversation draft key.");
+  const name=`${kind==="draft"?DRAFT_ENTRY_PREFIX:CONTEXT_ENTRY_PREFIX}${key}`;
   // Empty entries are tombstones: old map data must not reappear after deletion.
-  storage?.setItem(`${kind==="draft"?DRAFT_ENTRY_PREFIX:CONTEXT_ENTRY_PREFIX}${key}`,value);
+  // Without a legacy value to shadow, the entry is simply removed.
+  if(!value&&storage?.getItem&&storage.removeItem){
+    const legacy=readLegacyMap(storage as Pick<Storage,"getItem">,kind==="draft"?DRAFTS_KEY:CONTEXTS_KEY);
+    if(!legacy||typeof legacy!=="object"||!Object.prototype.hasOwnProperty.call(legacy,key)){storage.removeItem(name);return;}
+  }
+  storage?.setItem(name,value);
+}
+
+/**
+ * Coalesces keystroke-rate draft writes: each key stores its latest value once
+ * the typing pauses (and before the window unloads), so other windows see one
+ * storage event per pause rather than one per character.
+ */
+export function createEntryWriter(storage:Parameters<typeof writeConversationEntry>[0], onError:(error:unknown)=>void, delayMs=300) {
+  const pending=new Map<string,{kind:"draft"|"context";key:string;value:string}>();
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const flush=()=>{
+    clearTimeout(timer);timer=undefined;
+    const entries=[...pending.values()];pending.clear();
+    for(const entry of entries){try{writeConversationEntry(storage,entry.kind,entry.key,entry.value);}catch(error){onError(error);}}
+  };
+  return {
+    write(kind:"draft"|"context",key:string,value:string){
+      if(!validKey(key))throw new Error("Invalid conversation draft key.");
+      pending.set(`${kind}:${key}`,{kind,key,value});
+      timer??=setTimeout(flush,delayMs);
+    },
+    flush,
+  };
 }
 export function conversationEntryChange(name:string|null,value:string|null): {kind:"draft"|"context";key:string;value:string}|null {
   const kind: "draft"|"context"|null = name?.startsWith(DRAFT_ENTRY_PREFIX)?"draft":name?.startsWith(CONTEXT_ENTRY_PREFIX)?"context":null;

@@ -7,7 +7,7 @@ import {
   type ShortcutBinding,
   type ShortcutCommandDef,
   type ShortcutOverrides,
-} from "@aux/contracts";
+} from "@aux/contracts/shortcut-defs";
 import { bridge } from "../bridge";
 
 const MODIFIER_KEYS = new Set(["meta", "control", "shift", "alt"]);

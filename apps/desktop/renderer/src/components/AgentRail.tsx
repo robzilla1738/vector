@@ -1,11 +1,11 @@
 import { STATUS_LABEL } from "../run-status";
 import { recentConversations } from "../conversations";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Run } from "@aux/contracts";
 import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { ResizeHandle } from "./ResizeHandle";
-import { Conversation } from "./Conversation";
+import { Conversation } from "./surfaces";
 import { SetPanel } from "./SetPanel";
 import { VirtualList } from "./VirtualList";
 import { I } from "./icons";
@@ -19,6 +19,20 @@ const ago = (ts: number) => {
   return `${Math.floor(h / 24)}d`;
 };
 
+const minuteListeners = new Set<() => void>();
+let minuteTimer: number | undefined;
+/** One shared minute clock, running only while some row shows a relative time. */
+const subscribeMinute = (listener: () => void) => {
+  minuteListeners.add(listener);
+  minuteTimer ??= window.setInterval(() => { for (const notify of minuteListeners) notify(); }, 60_000);
+  return () => { minuteListeners.delete(listener); if (!minuteListeners.size) { window.clearInterval(minuteTimer); minuteTimer = undefined; } };
+};
+const currentMinute = () => Math.floor(Date.now() / 60_000);
+function Ago({ ts }: { ts: number }) {
+  useSyncExternalStore(subscribeMinute, currentMinute);
+  return <span className="nums">{ago(ts)}</span>;
+}
+
 /** Memoized so a ticking run only re-renders its own row. */
 const RunRow = memo(function RunRow({ r, selected }: { r: Run; selected: boolean }) {
   const page = useStore((s) => s.pages.find((p) => p.pageId === r.pageIds[0]));
@@ -31,7 +45,7 @@ const RunRow = memo(function RunRow({ r, selected }: { r: Run; selected: boolean
         <span className="run-row-sub">
           <span className={`st mini ${r.status}`}>{STATUS_LABEL[r.status]}</span>
           {page && <span className="h">{hostOf(page.url)}</span>}
-          <span className="nums">{ago(r.createdAt)}</span>
+          <Ago ts={r.createdAt} />
         </span>
       </span>
     </button>
@@ -105,7 +119,7 @@ function RailHome() {
   );
 }
 
-export function AgentRail() {
+export const AgentRail = memo(function AgentRail() {
   const railOpen = useStore(s => s.railOpen);
   const view = useStore(s => s.railView);
   const setRailView = useStore(s => s.setRailView);
@@ -149,4 +163,4 @@ export function AgentRail() {
       <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={360} onResize={setRailWidth} />
     </aside>
   );
-}
+});

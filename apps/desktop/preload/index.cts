@@ -113,8 +113,8 @@ const aux = {
   preview: (pageId: string) => ipcRenderer.invoke("ui.preview", pageId) as Promise<string | null>,
   watchPreview: (pageId: string) => ipcRenderer.invoke("ui.watchPreview", pageId) as Promise<boolean>,
   unwatchPreview: (pageId: string) => ipcRenderer.invoke("ui.unwatchPreview", pageId) as Promise<boolean>,
-  onPreviewFrame: (cb: (frame: { pageId: string; image: string }) => void) => {
-    const listener = (_event: unknown, frame: { pageId: string; image: string }) => cb(frame);
+  onPreviewFrame: (cb: (frame: { pageId: string; image: Uint8Array }) => void) => {
+    const listener = (_event: unknown, frame: { pageId: string; image: Uint8Array }) => cb(frame);
     ipcRenderer.on("preview-frame", listener);
     return () => ipcRenderer.removeListener("preview-frame", listener);
   },

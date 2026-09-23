@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { Worker } from "node:worker_threads";
 
 /**
  * Maintained ad/tracker filter lists. Sources are fetched over HTTP, cached to
@@ -24,9 +25,10 @@ export interface FilterListStatus {
 
 const MAX_BYTES = 16 * 1024 * 1024;
 const MAX_HOSTS = 400_000;
-const HOST_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?)+$/;
 
-export function parseHostsList(text: string): Set<string> {
+/** Self-contained (no module references): the off-thread loader runs its source text in a worker. */
+export function parseHostsList(text: string, maxHosts = 400_000): Set<string> {
+  const HOST_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?)+$/;
   const hosts = new Set<string>();
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.split("#")[0]!.trim().toLowerCase();
@@ -37,7 +39,7 @@ export function parseHostsList(text: string): Set<string> {
       : parts[0]!;
     if (!host || host === "localhost" || host.endsWith(".localhost") || host === "local" || host === "broadcasthost") continue;
     if (HOST_RE.test(host)) hosts.add(host);
-    if (hosts.size >= MAX_HOSTS) break;
+    if (hosts.size >= maxHosts) break;
   }
   return hosts;
 }
@@ -92,6 +94,31 @@ export class FilterLists {
   meta(id: string): SourceMeta | undefined {
     try { return JSON.parse(readFileSync(this.metaPath(id), "utf8")) as SourceMeta; }
     catch { return undefined; }
+  }
+
+  /**
+   * `loadHosts` on a worker thread: multi-megabyte lists parse without
+   * blocking the main process. Resolves to the merged hosts, newline-joined.
+   */
+  loadHostsOffThread(): Promise<string[]> {
+    const paths = this.sources().filter(source => source.enabled).map(source => this.listPath(source.id));
+    if (!paths.length) return Promise.resolve([]);
+    const source = `const { parentPort, workerData } = require("node:worker_threads");
+const { readFileSync } = require("node:fs");
+const parse = (${parseHostsList.toString()});
+const hosts = new Set();
+for (const path of workerData.paths) {
+  let text; try { text = readFileSync(path, "utf8"); } catch { continue; }
+  for (const host of parse(text, workerData.max)) { hosts.add(host); if (hosts.size >= workerData.max) break; }
+  if (hosts.size >= workerData.max) break;
+}
+parentPort.postMessage([...hosts].join("\\n"));`;
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(source, { eval: true, workerData: { paths, max: MAX_HOSTS } });
+      worker.once("message", (joined: string) => { resolve(joined ? joined.split("\n") : []); void worker.terminate(); });
+      worker.once("error", reject);
+      worker.once("exit", code => { if (code !== 0) reject(new Error(`filter list worker exited with ${code}`)); });
+    });
   }
 
   /** Merged hosts from every enabled, downloaded list — safe at startup. */

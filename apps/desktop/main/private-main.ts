@@ -141,10 +141,16 @@ let privateBlockedHosts = new Set<string>(TRACKER_HOSTS);
 const privateHttpsFirst = new HttpsFirst();
 privateHttpsFirst.enabled = process.env.AUX_PRIVATE_HTTPS_UPGRADE !== "0";
 const privateInsecureBypass = createInsecureBypass();
+/** Lists parse off-thread; the built-in seed applies until they swap in. */
+let privateHostsGeneration = 0;
 function refreshPrivateBlockedHosts() {
-  privateBlockedHosts = new Set(TRACKER_HOSTS);
-  try { for (const host of privateFilterLists?.loadHosts() ?? []) privateBlockedHosts.add(host); }
-  catch { /* the built-in seed still applies */ }
+  const generation = ++privateHostsGeneration;
+  void privateFilterLists?.loadHostsOffThread().then(hosts => {
+    if (generation !== privateHostsGeneration) return;
+    const next = new Set(TRACKER_HOSTS);
+    for (const host of hosts) next.add(host);
+    privateBlockedHosts = next;
+  }).catch(() => { /* the built-in seed still applies */ });
 }
 refreshPrivateBlockedHosts();
 function privateTrackersAllowed(hostname: string): boolean {
@@ -555,6 +561,7 @@ function registerIpc() {
     const sender=event.sender;
     const stop=startPreviewWatch({
       pageId,
+      contents:page.view.webContents,
       capture:()=>page.view.webContents.capturePage(),
       send:frame=>{if(!sender.isDestroyed())sender.send("preview-frame",frame);},
       stopped:()=>sender.isDestroyed()||page.view.webContents.isDestroyed(),

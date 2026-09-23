@@ -17,22 +17,36 @@ export function ResizeHandle({ side, value, min, max, reset, onResize }: {
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.currentTarget.focus();
+    const handle = e.currentTarget;
+    // Mid-drag the panel's width variable is written directly, once per frame;
+    // the store (and its persisted width) takes the final value on release.
+    const panel = handle.parentElement;
+    const cssVar = side === "left" ? "--sb-w" : "--rail-w";
     const startX = e.clientX;
     const startW = value;
+    let width = value, frame = 0;
     document.body.classList.add("resizing");
     try {
-      e.currentTarget.setPointerCapture(e.pointerId);
+      handle.setPointerCapture(e.pointerId);
     } catch { /* synthetic events have no active pointer */ }
     const done = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", done);
       window.removeEventListener("pointercancel", done);
+      cancelAnimationFrame(frame);
       document.body.classList.remove("resizing");
+      if (width !== value) onResize(width);
     };
     const move = (ev: PointerEvent) => {
       if (!(ev.buttons & 1)) return done(); // released outside the window
       const d = side === "left" ? ev.clientX - startX : startX - ev.clientX;
-      onResize(Math.min(max, Math.max(min, startW + d)));
+      width = Math.min(max, Math.max(min, startW + d));
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        panel?.style.setProperty(cssVar, `${width}px`);
+        handle.setAttribute("aria-valuenow", String(width));
+      });
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", done);

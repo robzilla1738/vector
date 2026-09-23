@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { WorkbookSnapshotSchema } from "@aux/contracts";
+import { WorkbookSnapshotSchema } from "@aux/contracts/workbook-snapshot";
 
 import { workbookColumnLabel, workbookSheetCsv } from "../workbook-sheet";
 import { bridge } from "../bridge";

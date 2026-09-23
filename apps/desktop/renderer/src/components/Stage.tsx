@@ -3,14 +3,13 @@ import { PaneBoundary } from "./PaneBoundary";
 import { isScrimOverlay, nativePageId } from "../chrome";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
-import { forwardRef, useRef, useState } from "react";
+import { forwardRef, memo, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inElectron, inMock } from "../bridge";
 import { useStore, call, errToast, tabCommand } from "../store";
 
-import { MockPage } from "./MockPage";
 import { TranslationBar } from "./TranslationBar";
-import { Conversation } from "./Conversation";
+import { Conversation, MockPage } from "./surfaces";
 import { StartPage } from "./StartPage";
 import { I } from "./icons";
 
@@ -68,7 +67,8 @@ function PageRecovery({ page }: { page: PageTarget }) {
 }
 
 /** Shared viewport for native pages and browser-owned surfaces. */
-export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }>(function Stage({ page }, ref) {
+export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref) {
+  const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const mode = useStore((s) => s.mode);
   const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
   const overlay = useStore(s => s.overlay);
@@ -122,4 +122,4 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
       </div>
     </div>
   );
-});
+}));

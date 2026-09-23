@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { PageTarget, Run, Task, VaultItem } from "@aux/contracts";
-import { originOfAddress } from "@aux/contracts";
+import { originOfAddress } from "@aux/contracts/vault";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { openSavedTask } from "../task-navigation";

@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import type { ConversationSummary, Routine } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
 import { ConversationDrafts } from "./ConversationDrafts";
-import { mergeHistory } from "./ConversationHistory";
+import { mergeHistory } from "../run-history";
 import { draftKey } from "../conversation-drafts";
-import { AnswerMarkdown } from "./AnswerMarkdown";
+import { AnswerPreview } from "./surfaces";
 import { openSavedTask } from "../task-navigation";
 import { STATUS_LABEL } from "../run-status";
 import { I } from "./icons";
@@ -56,7 +56,7 @@ export function RecentWork() {
       {tab === "chats" ? items.map(item => <article className="home-card" key={item.chatId}>
         <div className="home-card-meta"><time dateTime={new Date(item.updatedAt).toISOString()}>{new Date(item.updatedAt).toLocaleDateString(undefined, {month: "short", day: "numeric"})}</time><span>{drafts[draftKey(item.chatId)]?.trim() ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span></div>
         <h3><button className="home-card-open" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}>{item.title}</button></h3>
-        <div className="home-excerpt" inert><AnswerMarkdown text={typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal}/></div>
+        <div className="home-excerpt" inert><AnswerPreview text={typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal}/></div>
       </article>) : routines.map(item => <article className="home-card" key={item.routineId}>
         <div className="home-card-meta"><span>{item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}</span></div>
         <h3><button className="home-card-open" onClick={() => item.sourceTaskId ? void openSavedTask(item.sourceTaskId).catch(errToast) : useStore.getState().setOverlay("tasks")}>{item.title}</button></h3>

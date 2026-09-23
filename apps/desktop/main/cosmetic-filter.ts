@@ -1,4 +1,5 @@
 import type { WebContents } from "electron";
+import { addDocumentBinding } from "./page-debugger.js";
 
 /**
  * Cosmetic filtering: hides known ad containers through a stylesheet injected
@@ -78,24 +79,15 @@ export function installCosmeticFilter(wc: WebContents, hooks: {
   /** Should this page host stay filtered? (blocking enabled && host not allowed) */
   filtered(hostname: string): boolean;
 }) {
-  if (wc.isDestroyed()) return;
-  try { if (!wc.debugger.isAttached()) wc.debugger.attach("1.3"); } catch { return; }
-  wc.debugger.on("message", (_e, method, params?: { name?: string; payload?: string; executionContextId?: number }) => {
-    if (method !== "Runtime.bindingCalled" || params?.name !== COSMETIC_BINDING) return;
-    const host = (params.payload ?? "").replace(/^"|"$/g, "");
-    if (!host || hooks.filtered(host)) return;
-    if (typeof params.executionContextId === "number") {
-      void wc.debugger.sendCommand("Runtime.evaluate", {
-        expression: `document.getElementById(${JSON.stringify(STYLE_ID)})?.remove()`,
-        contextId: params.executionContextId,
-      }).catch(() => {});
-    }
+  void addDocumentBinding(wc, COSMETIC_BINDING, (payload, contextId) => {
+    const host = payload.replace(/^"|"$/g, "");
+    if (!host || hooks.filtered(host) || typeof contextId !== "number") return;
+    void wc.debugger.sendCommand("Runtime.evaluate", {
+      expression: `document.getElementById(${JSON.stringify(STYLE_ID)})?.remove()`,
+      contextId,
+    }).catch(() => {});
+  }, {
+    source: `(${injectorBody.toString()})(${JSON.stringify(COSMETIC_BINDING)},${JSON.stringify(STYLE_ID)},${JSON.stringify(styleSheet())})`,
+    worldName: COSMETIC_WORLD,
   });
-  void wc.debugger.sendCommand("Runtime.enable")
-    .then(() => wc.debugger.sendCommand("Runtime.addBinding", { name: COSMETIC_BINDING }))
-    .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
-      source: `(${injectorBody.toString()})(${JSON.stringify(COSMETIC_BINDING)},${JSON.stringify(STYLE_ID)},${JSON.stringify(styleSheet())})`,
-      worldName: COSMETIC_WORLD,
-    }))
-    .catch(() => {});
 }

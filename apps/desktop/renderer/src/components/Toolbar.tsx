@@ -1,10 +1,11 @@
+import { memo } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inElectron } from "../bridge";
 import { useStore, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
 
-export function Toolbar() {
+export const Toolbar = memo(function Toolbar() {
   const sidebar = useStore(s => s.sidebar);
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const mode = useStore((s) => s.mode);
@@ -59,4 +60,5 @@ export function Toolbar() {
       </div>
     </header>
   );
-}
+});
+

@@ -33,17 +33,17 @@ import { installHttpAuth } from "./http-auth.js";
  * stream to the renderer.
  */
 import { app, BaseWindow, dialog, globalShortcut, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, shell, webContents as electronWebContents, WebContentsView } from "electron";
-import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync, renameSync, lstatSync, realpathSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync, renameSync, lstatSync, realpathSync, rmSync } from "node:fs";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { openablePath } from "./open-path-policy.js";
-import { copyFile, cp, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { ChildProcess } from "node:child_process";
 import { normalizeAuxEnvironment, MethodSchemas, RpcChannel, SidebarMaterialSchema, originOfAddress, type SidebarMaterial, type Transport } from "@aux/contracts";
 import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@aux/contracts/installation";
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
-import { createPageView, destroyPageView, downloadsSession, profileSession } from "./native-views.js";
+import { createPageView, destroyPageView, downloadsSession, gatePageLoads, markDocument, profileSession } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
 import { recolorToolbarGlass, syncToolbarGlass } from "./toolbar-glass.js";
 import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
@@ -53,7 +53,7 @@ import { captureScrollPosition, hasPageWork, restoreScrollPosition } from "./pag
 import { IDLE_FREEZE_MS, FROZEN_DISCARD_MS, IDLE_MATERIALIZE_MS, IDLE_MATERIALIZE_MAX, canFreeze, canDiscard, createPausedAgentTracker } from "./page-lifecycle.js";
 import { setPageZoom } from "./page-zoom.js";
 import { PageFinder } from "./page-find.js";
-import { startPreviewWatch } from "./preview-watch.js";
+import { nextFrame, previewJpeg, startPreviewWatch } from "./preview-watch.js";
 import { printPage, savePagePdf } from "./page-output.js";
 import { createOffscreenHolds } from "./offscreen-holds.js";
 import { readArticle } from "./read-article.js";
@@ -99,6 +99,10 @@ if (!app.requestSingleInstanceLock()) {
   app.exit(0);
   await new Promise<never>(() => {});
 }
+// Chromium rewrites this once remote debugging binds; a leftover from the
+// last run would hand the runtime a dead port.
+const DEVTOOLS_PORT_FILE = join(PROFILE_DIR, "DevToolsActivePort");
+rmSync(DEVTOOLS_PORT_FILE, { force: true });
 const DATA_DIR = resolveDataDirectory(desktopEnv);
 mkdirSync(DATA_DIR, { recursive: true });
 applyPendingRuntimeRestore(DATA_DIR);
@@ -120,23 +124,74 @@ const browserStore = new BrowserStore({
   dir: join(DATA_DIR, "browser-state"),
   workerUrl: new URL("./browser-store.cjs", import.meta.url),
   onError: error => log("browser store degraded:", error.message),
+  snapshot: () => tabCatalog.snapshot(),
 });
+// The worker reads the catalog while the app is still becoming ready.
+const savedCatalogLoad = browserStore.load();
 
-/** One fan-out for every catalog patch: renderers, runtime, persistence worker. */
+let pendingTabPatches: TabPatch[] = [];
+let tabPatchFlush: NodeJS.Immediate | null = null;
+/** Last window each shell was told owns a tab — moves and removes reach the source shell too. */
+const shellTabWindow = new Map<string, string>();
+/** Tabs the runtime has registered — for those it reads only placement from upserts. */
+const runtimeLiveTabs = new Set<string>();
+const runtimeTabWindow = new Map<string, string>();
+
+/**
+ * One fan-out for every catalog patch: renderers, runtime, persistence worker.
+ * Patches from one turn of the event loop leave as one merged patch; tab
+ * commands flush before acknowledging so a shell sees the patch first.
+ */
 function publishTabPatch(patch: TabPatch) {
-  broadcastToShells("tabs.patch", patch);
-  notifyRuntime("tabs.catalog", patch);
-  browserStore.persist(patch).catch(() => {});
+  pendingTabPatches.push(patch);
+  tabPatchFlush ??= setImmediate(flushTabPatches);
 }
+
+function flushTabPatches() {
+  if (tabPatchFlush) { clearImmediate(tabPatchFlush); tabPatchFlush = null; }
+  const batch = pendingTabPatches;
+  if (!batch.length) return;
+  pendingTabPatches = [];
+  const last = batch.at(-1)!;
+  const merged: TabPatch = batch.length === 1 ? last : { version: last.version, baseVersion: batch[0]!.baseVersion, ops: batch.flatMap(item => item.ops), ts: last.ts };
+  // Every shell gets every version (gap detection), carrying only its own ops.
+  const opsFor = new Map([...regularWindows.keys()].map(id => [id, [] as TabPatchOp[]]));
+  const runtimeOps: TabPatchOp[] = [];
+  for (const op of merged.ops) {
+    const targets = new Set<string>();
+    if (op.op === "window") targets.add(op.window.windowId);
+    else if (op.op === "upsert") {
+      const previous = shellTabWindow.get(op.tab.pageId);
+      targets.add(op.tab.windowId);
+      if (previous) targets.add(previous);
+      shellTabWindow.set(op.tab.pageId, op.tab.windowId);
+    } else {
+      const previous = shellTabWindow.get(op.pageId);
+      if (previous) targets.add(previous); else for (const id of opsFor.keys()) targets.add(id);
+      shellTabWindow.delete(op.pageId);
+    }
+    for (const id of targets) opsFor.get(id)?.push(op);
+    if (op.op === "upsert" && runtimeLiveTabs.has(op.tab.pageId) && runtimeTabWindow.get(op.tab.pageId) === op.tab.windowId) continue;
+    if (op.op === "upsert") runtimeTabWindow.set(op.tab.pageId, op.tab.windowId);
+    else if (op.op === "remove") runtimeTabWindow.delete(op.pageId);
+    runtimeOps.push(op);
+  }
+  for (const state of regularWindows.values()) state.shellView.webContents.send("tabs.patch", { ...merged, ops: opsFor.get(state.id) ?? [] });
+  if (runtimeOps.length) notifyRuntime("tabs.catalog", { ...merged, ops: runtimeOps });
+  browserStore.persist(merged).catch(() => {});
+}
+
+const sameTabValue = (a: unknown, b: unknown) => a === b || (!!a && !!b && typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));
 
 /**
  * Merge fields into a catalog record. Unknown pages are ignored — creation
  * always flows through a typed command or a native surface that knows the
- * window the tab belongs to.
+ * window the tab belongs to. Fields that already hold the value publish nothing.
  */
 function noteTab(pageId: string, fields: Partial<TabRecord>, origin?: "runtime" | "external") {
   const current = tabCatalog.tab(pageId);
   if (!current) return;
+  if (Object.entries(fields).every(([key, value]) => sameTabValue(current[key as keyof TabRecord], value))) return;
   publishTabPatch(tabCatalog.apply([{ op: "upsert", tab: { ...current, ...fields }, ...(origin ? { origin } : {}) }]));
 }
 
@@ -220,6 +275,7 @@ const tabPorts: TabPorts = {
     if (entry.popup) { entry.popup.show(); entry.popup.focus(); return; }
     state.focusedPageId = pageId;
     state.win.contentView.addChildView(entry.view);
+    forgetPlacement(entry);
     applyStage(state);
     state.win.show();
     state.win.focus();
@@ -281,6 +337,7 @@ async function movePageToWindow(pageId: string, windowId: string | undefined, ac
   if (!destination || destination.win.isDestroyed() || source.win.isDestroyed() || entry.view.webContents.isDestroyed()) throw new Error("The source or destination window was closed.");
   if (source.id === destination.id) return { windowId: destination.id, sourceWindowId: source.id, sourceActivePageId: source.focusedPageId, activePageId: source.focusedPageId, moved: false };
   source.win.contentView.removeChildView(entry.view);
+  forgetPlacement(entry);
   try { destination.win.contentView.addChildView(entry.view); }
   catch (error) { source.win.contentView.addChildView(entry.view); throw error; }
   entry.windowId = destination.id;
@@ -554,7 +611,6 @@ interface RegularWindowState {
   win: BaseWindow;
   shellView: WebContentsView;
   overlayOpen: boolean;
-  sidebarPeek: boolean;
   toolbarOverlay: boolean;
   toolbarOverlaySeq: number;
   paintedFill: string;
@@ -709,7 +765,8 @@ function sendRuntimeEvent(event: unknown) {
   const owner = windowId ? regularWindows.get(windowId) : undefined;
   if (owner && value.type !== "page.moved") owner.shellView.webContents.send("event", event);
   else for (const state of regularWindows.values()) state.shellView.webContents.send("event", event);
-  if (value.type === "page.removed" && pageId) pageWindowOwners.delete(pageId);
+  if (value.type === "page.removed" && pageId) { pageWindowOwners.delete(pageId); runtimeLiveTabs.delete(pageId); }
+  else if (value.type === "page.added" && pageId) runtimeLiveTabs.add(pageId);
 }
 
 function scheduleRuntimeRestart(delayMs?: number) {
@@ -722,7 +779,9 @@ function scheduleRuntimeRestart(delayMs?: number) {
 }
 
 function startRuntimeProcess() {
-  if (exitApproved || runtimeProcess) return;
+  if (exitApproved || runtimeProcess || !runtimeCdpPort) return;
+  runtimeLiveTabs.clear();
+  runtimeTabWindow.clear();
   const generation = ++runtimeGeneration;
   runtimeReady = false;
   reportRuntimeStatus(false, runtimeRestartAttempt ? "Reconnecting to the Aux runtime…" : undefined);
@@ -967,36 +1026,45 @@ const httpsFirst = new HttpsFirst();
 httpsFirst.enabled = privacy.httpsUpgrade;
 const filterLists = new FilterLists(DATA_DIR);
 // Built-in seed + every enabled, downloaded list. Rebuilt on boot and after
-// each update so the request policy reads the merged set live.
-let blockedHostSet = new Set<string>();
+// each update so the request policy reads the merged set live. Lists parse
+// off-thread; the seed applies until the merged set swaps in.
+let blockedHostSet = new Set<string>(TRACKER_HOSTS);
 // Shared by the regular IPC surface and the private-process proxy so list
 // mutations always run in this process — the shared cache stays single-writer.
 const filterOps = {
   status: () => filterLists.status(TRACKER_HOSTS.size),
   update: async () => {
     const status = await filterLists.update(fetchFilterText);
-    refreshBlockedHosts();
+    await refreshBlockedHosts();
     return status;
   },
   add: async (name: unknown, url: unknown) => {
     if (typeof name !== "string" || typeof url !== "string") throw new Error("Choose a filter list URL.");
     const sources = filterLists.addSource(name, url);
     await filterLists.update(fetchFilterText);
-    refreshBlockedHosts();
+    await refreshBlockedHosts();
     return sources;
   },
   remove: (id: unknown) => {
     if (typeof id !== "string") throw new Error("Choose a filter list to remove.");
     const sources = filterLists.removeSource(id);
-    refreshBlockedHosts();
+    void refreshBlockedHosts();
     return sources;
   },
 };
 
-function refreshBlockedHosts() {
-  blockedHostSet = new Set([...TRACKER_HOSTS, ...filterLists.loadHosts()]);
+let blockedHostsGeneration = 0;
+async function refreshBlockedHosts() {
+  const generation = ++blockedHostsGeneration;
+  try {
+    const hosts = await filterLists.loadHostsOffThread();
+    if (generation !== blockedHostsGeneration) return;
+    const next = new Set(TRACKER_HOSTS);
+    for (const host of hosts) next.add(host);
+    blockedHostSet = next;
+  } catch (error) { log("filter lists unavailable:", String(error)); }
 }
-refreshBlockedHosts();
+void refreshBlockedHosts();
 /** Re-apply cosmetic filtering to open pages after toggle/allow changes. */
 function applyCosmeticAll() {
   for (const entry of registry.all()) {
@@ -1093,24 +1161,18 @@ function configureCloudPreviewHeaders(){
   });
 }
 
-function readCdpPort(): number {
-  const f = join(app.getPath("userData"), "DevToolsActivePort");
-  for (let i = 0; i < 50; i++) {
-    if (existsSync(f)) {
-      const [port] = readFileSync(f, "utf8").split("\n");
-      const n = Number(port);
-      if (n > 0) {
-        try {
-          chmodSync(f, 0o600);
-        } catch {
-          /* non-POSIX fs */
-        }
-        return n;
-      }
+/** Chromium's DevTools port, read without blocking the main thread (polls until the file lands). */
+async function waitForCdpPort(timeoutMs = 10_000): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const port = Number((await readFile(DEVTOOLS_PORT_FILE, "utf8").catch(() => "")).split("\n")[0]);
+    if (port > 0) {
+      await chmod(DEVTOOLS_PORT_FILE, 0o600).catch(() => { /* non-POSIX fs */ });
+      return port;
     }
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+    if (Date.now() > deadline) throw new Error("DevToolsActivePort never appeared");
+    await new Promise(resolve => setTimeout(resolve, 15));
   }
-  throw new Error("DevToolsActivePort never appeared");
 }
 
 // ---------- native.* surface (called by the runtime) ----------
@@ -1276,7 +1338,7 @@ const viewHooks = {
     registry.add(entry);
     pageWindowOwners.set(entry.pageId, entry.windowId ?? PRIMARY_WINDOW_ID);
     const state = stateForEntry(entry);
-    if (!entry.popup && state) { state.win.contentView.addChildView(entry.view); applyStage(state); }
+    if (!entry.popup && state) { state.win.contentView.addChildView(entry.view); forgetPlacement(entry); applyStage(state); }
     const windowId = entry.windowId ?? PRIMARY_WINDOW_ID;
     const url = entry.view.webContents.getURL() || "about:blank";
     publishTabPatch(tabCatalog.apply([
@@ -1343,32 +1405,25 @@ const viewHooks = {
         { op: "upsert", tab: newTabRecord({ pageId, windowId: state.id, url }), origin: "external" },
         ...(activate ? [{ op: "window", window: { windowId: state.id, order: tabCatalog.window(state.id)?.order.filter(id => id !== pageId).concat(pageId) ?? [pageId], activePageId: pageId } } satisfies TabPatchOp] : []),
       ]));
+      // The marker is installed with the view; announce once a document carries it.
       let announced = false;
-      const announce = async () => {
-        if (announced || entry.view.webContents.isDestroyed()) return;
-        for (let attempt = 0; attempt < 20; attempt++) {
-          const ready = await entry.view.webContents
-            .executeJavaScript(`globalThis.__auxTid === ${JSON.stringify(marker)}`, true)
-            .catch(() => false);
-          if (ready) {
-            if (announced) return;
-            announced = true;
-            notifyRuntime("view.popup", {
-              pageId,
-              windowId: entry.windowId,
-              marker,
-              url: entry.view.webContents.getURL() || url,
-              title: entry.view.webContents.getTitle(),
-              activate: options?.background !== true,
-            });
-            return;
-          }
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        log("tab marker unavailable", new URL(url).origin);
+      const announce = (ready: boolean) => {
+        if (!ready || announced || entry.view.webContents.isDestroyed()) return;
+        announced = true;
+        notifyRuntime("view.popup", {
+          pageId,
+          windowId: entry.windowId,
+          marker,
+          url: entry.view.webContents.getURL() || url,
+          title: entry.view.webContents.getTitle(),
+          activate: options?.background !== true,
+        });
       };
-      entry.view.webContents.on("dom-ready", () => void announce());
-      void announce();
+      void markDocument(entry.view.webContents, marker).then(announce);
+      entry.view.webContents.once("dom-ready", () => void markDocument(entry.view.webContents, marker).then(ready => {
+        if (!ready && !announced) log("tab marker unavailable", new URL(url).origin);
+        announce(ready);
+      }));
       if (options?.background !== true) entry.view.webContents.focus();
     });
   },
@@ -1452,6 +1507,7 @@ function registerNativeHandlers(ch: RpcChannel) {
       await createRegularWindow(env.windowId);
     }
     const ack = await tabController.execute(env, env.windowId, { trusted: true });
+    flushTabPatches();
     const wc = env.command.kind === "open" && ack.status === "applied" && ack.pageId ? registry.get(ack.pageId)?.view.webContents : undefined;
     const info = await wc?.debugger.sendCommand("Target.getTargetInfo").catch(() => undefined) as { targetInfo?: { targetId?: string } } | undefined;
     return info?.targetInfo?.targetId ? { ...ack, targetId: info.targetInfo.targetId } : ack;
@@ -1498,7 +1554,7 @@ function registerNativeHandlers(ch: RpcChannel) {
   ch.onMethod("native.hidePage", (p) => {
     const { pageId } = p as { pageId: string };
     const entry = registry.get(pageId);
-    if (entry && !entry.popup && !offscreen.holds(pageId)){entry.view.setVisible(false);scheduleIdleFreeze(entry);}
+    if (entry && !entry.popup && !offscreen.holds(pageId)){entry.view.setVisible(false);forgetPlacement(entry);scheduleIdleFreeze(entry);}
     return { ok: true };
   });
   ch.onMethod("native.recoverPage", async (p) => {
@@ -1524,6 +1580,7 @@ function registerNativeHandlers(ch: RpcChannel) {
     if (entry.popup) { entry.popup.show(); entry.popup.focus(); return { ok: true }; }
     state.focusedPageId = pageId;
     state.win.contentView.addChildView(entry.view); // re-add → top of z-order
+    forgetPlacement(entry);
     applyStage(state);
     state.win.show();
     state.win.focus();
@@ -1798,6 +1855,24 @@ function updateWindowTitle(state: RegularWindowState, pageTitle?: string) {
   if (state.win.getTitle() !== title) state.win.setTitle(title);
 }
 
+/** What applyStage last applied to each view — native setters run only on change. */
+interface Placement { x: number; y: number; width: number; height: number; visible: boolean; radius: number; beneath: boolean }
+const placements = new WeakMap<ViewEntry, Placement>();
+/** Something outside applyStage moved, raised or hid the view. */
+const forgetPlacement = (entry?: ViewEntry) => { if (entry) placements.delete(entry); };
+function place(win: BaseWindow, entry: Extract<ViewEntry, { popup?: undefined }>, radius: number, bounds: Electron.Rectangle | null, beneath = false) {
+  const prior = placements.get(entry);
+  if (prior?.radius !== radius) entry.view.setBorderRadius(radius);
+  if (beneath && !prior?.beneath) win.contentView.addChildView(entry.view, 0);
+  if (bounds && (!prior || prior.x !== bounds.x || prior.y !== bounds.y || prior.width !== bounds.width || prior.height !== bounds.height)) entry.view.setBounds(bounds);
+  if (prior?.visible !== !!bounds) entry.view.setVisible(!!bounds);
+  placements.set(entry, { ...(bounds ?? { x: prior?.x ?? 0, y: prior?.y ?? 0, width: prior?.width ?? 0, height: prior?.height ?? 0 }), visible: !!bounds, radius, beneath: beneath || (!!prior?.beneath && !bounds) });
+}
+/** Wake only a page that is frozen or on its way to freezing. */
+const wakeIfIdle = (entry: ViewEntry) => {
+  if (frozenPages.has(entry.pageId) || desiredFrozenPages.has(entry.pageId) || idleFreezeTimers.has(entry.pageId) || idleDiscardTimers.has(entry.pageId)) void wakePage(entry);
+};
+
 function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
   if (!state) return;
   const syncToolbarEdge = () => toolbarEdges.get(state.id)?.sync();
@@ -1814,6 +1889,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
     for(const entry of registry.all()) {
       if(entry.popup || (entry.windowId??PRIMARY_WINDOW_ID)!==state.id)continue;
       const shown=entry.view.webContents===fullscreen;
+      forgetPlacement(entry);
       entry.view.setVisible(shown);
       if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);win.contentView.addChildView(entry.view);}
     }
@@ -1841,36 +1917,19 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
   for (const entry of registry.all()) {
     if (entry.popup) continue; // Independent windows never participate in the tab stage.
     if ((entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) continue;
-    // WebContentsView.setBorderRadius exists in current Electron.
-    const rounded = entry.view as { setBorderRadius?: (r: number) => void };
-    if (typeof rounded.setBorderRadius === "function") {
-      try {
-        rounded.setBorderRadius(state.stageRadius);
-      } catch {
-        /* unsupported on this platform */
-      }
-    }
+    const radius = state.stageRadius;
     if (entry.pageId === shown && !state.overlayOpen) {
-      wakePage(entry);
-      if (split) {
-        const w = splitWidths(bounds.width, state.splitRatio).left;
-        entry.view.setBounds({ x: bounds.x, y: bounds.y, width: w, height: bounds.height });
-      } else {
-        entry.view.setBounds(bounds);
-      }
-      entry.view.setVisible(true);
+      wakeIfIdle(entry);
+      place(win, entry, radius, split ? { ...bounds, width: splitWidths(bounds.width, state.splitRatio).left } : bounds);
     } else if (split && entry.pageId === split) {
-      wakePage(entry);
+      wakeIfIdle(entry);
       const w = splitWidths(bounds.width, state.splitRatio).right;
-      entry.view.setBounds({ x: bounds.x + bounds.width - w, y: bounds.y, width: w, height: bounds.height });
-      entry.view.setVisible(true);
+      place(win, entry, radius, { x: bounds.x + bounds.width - w, y: bounds.y, width: w, height: bounds.height });
     } else if (offscreen.holds(entry.pageId)) {
-      wakePage(entry);
-      win.contentView.addChildView(entry.view, 0);
-      entry.view.setBounds(bounds);
-      entry.view.setVisible(true);
+      wakeIfIdle(entry);
+      place(win, entry, radius, bounds, true);
     } else {
-      entry.view.setVisible(false);
+      place(win, entry, radius, null);
       if(entry.pageId!==state.focusedPageId&&entry.pageId!==state.splitPageId)scheduleIdleFreeze(entry);
     }
   }
@@ -2118,16 +2177,20 @@ function wireRendererIpc() {
     return shortcutOverrides;
   });
   // Typed human tab commands (§7.2) — actuated in main; no runtime round trip.
-  ipcMain.handle("ui.tabCommand", (event, envelope: unknown) => {
+  ipcMain.handle("ui.tabCommand", async (event, envelope: unknown) => {
     const state = requireShellUi(event);
-    return tabController.execute(envelope, state.id);
+    const ack = await tabController.execute(envelope, state.id);
+    flushTabPatches();
+    return ack;
   });
   ipcMain.handle("ui.tabsSnapshot", event => {
     requireShellUi(event);
+    flushTabPatches();
     return tabCatalog.snapshot();
   });
   ipcMain.handle("ui.tabsSince", (event, version: unknown) => {
     requireShellUi(event);
+    flushTabPatches();
     return tabCatalog.since(typeof version === "number" ? version : -1);
   });
   ipcMain.handle('ui.setTabMuted',(event,pageId:unknown,muted:unknown)=>{
@@ -2198,13 +2261,8 @@ function wireRendererIpc() {
     if (!state || event.senderFrame !== state.shellView.webContents.mainFrame) return;
     deliverPagePointer(state, value);
   });
-  ipcMain.handle("ui.sidebarPeek", (event, open: unknown) => {
-    const state = requireShellUi(event);
-    // The preview is a real column beside the page, same as the open sidebar.
-    // Raising the shell over the page is what made the old card flicker.
-    state.sidebarPeek = open === true;
-    return true;
-  });
+  // Kept for older shells: the peek is a real column beside the page, so main has nothing to do.
+  ipcMain.handle("ui.sidebarPeek", event => { requireShellUi(event); return true; });
   ipcMain.handle("ui.focusShell", event => { requireShellUi(event).shellView.webContents.focus(); });
   ipcMain.handle("ui.watchPreview", async (event, pageId: unknown) => {
     const state = requireShellUi(event);
@@ -2223,12 +2281,13 @@ function wireRendererIpc() {
       if (stopped) return false;
       if (event.sender.isDestroyed() || entry.view.webContents.isDestroyed()) { clearPreviewWatch(state); return false; }
       applyStage(state);
-      if (!wasVisible) await new Promise(resolve => setTimeout(resolve, 180));
+      if (!wasVisible) await nextFrame(entry.view.webContents, 250);
       if (stopped) return false;
       if (event.sender.isDestroyed() || entry.view.webContents.isDestroyed()) { clearPreviewWatch(state); return false; }
       const sender = event.sender;
       const stopLoop = startPreviewWatch({
         pageId,
+        contents: entry.view.webContents,
         capture: () => entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true }),
         send: frame => { if (!sender.isDestroyed()) sender.send("preview-frame", frame); },
         stopped: () => stopped || sender.isDestroyed() || entry.view.webContents.isDestroyed(),
@@ -2254,14 +2313,15 @@ function wireRendererIpc() {
     if (!entry.popup) offscreen.beginPreview(entry.pageId);
     try {
       await wakePage(entry);
+      // A freshly revealed view paints before it is worth capturing.
       if (reveal) {
         applyStage(state);
-        await new Promise(resolve => setTimeout(resolve, 180));
+        await nextFrame(entry.view.webContents, 250);
       }
       const img = await entry.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true });
-      if (img.isEmpty()) return null;
       const size = img.getSize();
-      return img.resize({ width: Math.max(320, Math.min(640, Math.round(size.width * 0.5))) }).toDataURL();
+      const jpeg = previewJpeg(img, Math.max(320, Math.min(640, Math.round(size.width * 0.5))));
+      return jpeg ? `data:image/jpeg;base64,${jpeg.toString("base64")}` : null;
     } catch {
       return null;
     } finally {
@@ -2796,8 +2856,21 @@ function wireDownloads() {
       const win = stateForEntry(entry)?.win ?? [...regularWindows.values()][0]?.win;
       if (win) void confirmDownload(win, item, filename, sourceUrl, warning);
     }
-    item.on("updated", () => broadcastToShells("download", snapshot()));
+    // Byte progress reaches the shells at most 4×/s; a pause or interruption goes at once.
+    let lastSent = 0, lastPhase = "", progressTimer: NodeJS.Timeout | null = null;
+    const sendProgress = () => {
+      progressTimer = null;
+      if (!liveDownloads.has(dl.id)) return;
+      const current = snapshot();
+      lastSent = Date.now(); lastPhase = `${current.state}:${current.paused}`;
+      broadcastToShells("download", current);
+    };
+    item.on("updated", () => {
+      if (`${item.getState()}:${item.isPaused()}` !== lastPhase || Date.now() - lastSent >= 250) { if (progressTimer) clearTimeout(progressTimer); sendProgress(); }
+      else progressTimer ??= setTimeout(sendProgress, 250 - (Date.now() - lastSent));
+    });
     item.once("done", (_e, state) => {
+      if (progressTimer) clearTimeout(progressTimer);
       liveDownloads.delete(dl.id);
       const final = { ...dl, state, size: item.getReceivedBytes(), paused: false, canResume: false, canCancel: false, endedAt: Date.now() };
       notifyRuntime("view.downloadFinished", final);
@@ -2870,7 +2943,7 @@ async function openQuickAsk() {
   finally { openingQuickAsk = null; }
 }
 
-async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = false): Promise<RegularWindowState> {
+async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = false, onCreated?: () => void): Promise<RegularWindowState> {
   const existing = regularWindows.get(id);
   if (existing) { existing.win.show(); existing.win.focus(); return existing; }
   const { theme, translucent, material } = readStoredAppearance();
@@ -2885,7 +2958,8 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     // CSS and WebContentsView alpha also need a transparent native window.
     transparent: process.platform === "darwin",
     visualEffectState: "active",
-    show: !quickAsk,
+    // Shown once the shell document is up — a transparent window must not appear empty.
+    show: false,
     // A square system shadow sits outside the rounded panel. The panel draws its own.
     hasShadow: quickAsk ? false : undefined,
     title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: quickAsk ? { x: 30, y: 26 } : trafficLights, roundedCorners: true,
@@ -2894,9 +2968,15 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     preload: join(import.meta.dirname, "..", "preload", "index.cjs"),
     additionalArguments: [`--aux-window-id=${encodeURIComponent(id)}`, ...(quickAsk ? ["--aux-quick-ask"] : [])],
     contextIsolation: true, sandbox: true, nodeIntegration: false,
+    // A hidden shell would boot at background priority; throttling returns once it shows.
+    backgroundThrottling: false,
   }});
   regularShell.setBackgroundColor(quickAsk ? "#00000000" : backgroundColor);
-  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false, sidebarPeek: false, toolbarOverlay: false, toolbarOverlaySeq: 0, paintedFill: backgroundColor, chromeOnTop: false,
+  regularShell.webContents.once("dom-ready", () => {
+    if (!quickAsk && !regularWindow.isDestroyed()) regularWindow.show();
+    if (!regularShell.webContents.isDestroyed()) regularShell.webContents.setBackgroundThrottling(true);
+  });
+  const state: RegularWindowState = { id, quickAsk, win: regularWindow, shellView: regularShell, overlayOpen: false, toolbarOverlay: false, toolbarOverlaySeq: 0, paintedFill: backgroundColor, chromeOnTop: false,
     stageBounds: null, stagePageId: null, focusedPageId: null, splitPageId: null, splitRatio: .5, stageRadius: 0, closeApproved: false, previewWatch: null };
   toolbarEdges.set(id, attachToolbarEdgeWatch(regularWindow, regularShell.webContents, () => ({
     page: !!state.stagePageId && !state.overlayOpen,
@@ -2905,6 +2985,7 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
   regularWindows.set(id, state);
   if (id === PRIMARY_WINDOW_ID || !win || !shellView) { win = regularWindow; shellView = regularShell; }
   browserProfiles.noteActive(browserProfiles.currentId);
+  onCreated?.();
 
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   const isShellUrl = (url: string) => isShellDocument(url, join(import.meta.dirname, "..", "renderer", "index.html"), devUrl);
@@ -2930,8 +3011,15 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
   };
   regularWindow.on("resize", layout);
   layout();
-  if (devUrl) await regularShell.webContents.loadURL(devUrl);
-  else await regularShell.webContents.loadFile(join(import.meta.dirname, "..", "renderer", "index.html"));
+  // A shell that fails to load still shows (its crash/reload path takes over).
+  const reveal = setTimeout(() => { if (!quickAsk && !regularWindow.isDestroyed()) regularWindow.show(); }, 4000);
+  try {
+    if (devUrl) await regularShell.webContents.loadURL(devUrl);
+    else await regularShell.webContents.loadFile(join(import.meta.dirname, "..", "renderer", "index.html"));
+  } finally {
+    clearTimeout(reveal);
+    if (!quickAsk && !regularWindow.isDestroyed() && !regularWindow.isVisible()) regularWindow.show();
+  }
   void regularShell.webContents.executeJavaScript(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`);
   if (desktopEnv.AUX_DEVTOOLS === "1") regularShell.webContents.openDevTools({ mode: "detach" });
   regularWindow.on("focus", () => {
@@ -2971,29 +3059,44 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
 }
 
 async function boot() {
-  const cdpPort = readCdpPort();
-  runtimeCdpPort = cdpPort;
-  log("cdp port", cdpPort);
-  try {
-    writeFileSync(join(DATA_DIR, CDP_PORT_FILE), String(cdpPort), { mode: 0o600 });
-    chmodSync(join(DATA_DIR, CDP_PORT_FILE), 0o600);
-  } catch {
-    /* non-POSIX fs */
-  }
-
-  await loadProfileExtensions();
+  // IPC first: React effects can invoke before the shell finishes loading.
+  wireRendererIpc();
+  wireDownloads();
+  configurePagePermissions();
+  configureCloudPreviewHeaders();
+  installMenu();
+  // Extensions load beside window creation; only page loads wait for them.
+  gatePageLoads(loadProfileExtensions().catch(error => log("extensions failed to load", String(error))));
+  // The runtime forks as soon as Chromium publishes its DevTools port and the
+  // primary window (its native-page host) exists — overlapping the shell load.
+  let primaryCreated!: () => void;
+  const primaryWindow = new Promise<void>(resolve => { primaryCreated = resolve; });
+  void Promise.all([waitForCdpPort(), primaryWindow]).then(([cdpPort]) => {
+    runtimeCdpPort = cdpPort;
+    log("cdp port", cdpPort);
+    try {
+      writeFileSync(join(DATA_DIR, CDP_PORT_FILE), String(cdpPort), { mode: 0o600 });
+      chmodSync(join(DATA_DIR, CDP_PORT_FILE), 0o600);
+    } catch {
+      /* non-POSIX fs */
+    }
+    startRuntimeProcess();
+  }).catch(error => log("runtime not started:", String(error)));
 
   // The worker-owned catalog is the durable browser truth — restore it before
   // the first shell paints so the strip reflects the saved session even while
   // the runtime is still starting or unavailable.
-  const savedCatalog = await browserStore.load();
-  if (savedCatalog) tabCatalog.restore({
-    ...savedCatalog,
-    // Restored records carry no view yet — they materialize on stage demand
-    // or under bounded idle scheduling below.
-    tabs: savedCatalog.tabs.map(tab => ({ ...tab, lifecycle: "placeholder" as const })),
-  });
-  await createRegularWindow(PRIMARY_WINDOW_ID);
+  const savedCatalog = await savedCatalogLoad;
+  if (savedCatalog) {
+    tabCatalog.restore({
+      ...savedCatalog,
+      // Restored records carry no view yet — they materialize on stage demand
+      // or under bounded idle scheduling below.
+      tabs: savedCatalog.tabs.map(tab => ({ ...tab, lifecycle: "placeholder" as const })),
+    });
+    for (const tab of savedCatalog.tabs) shellTabWindow.set(tab.pageId, tab.windowId);
+  }
+  await createRegularWindow(PRIMARY_WINDOW_ID, false, primaryCreated);
   // Durable secondary windows reopen with the catalog records they own.
   if (savedCatalog) for (const savedWindow of savedCatalog.windows) {
     if (savedWindow.windowId !== PRIMARY_WINDOW_ID && savedCatalog.tabs.some(tab => tab.windowId === savedWindow.windowId)) await createRegularWindow(savedWindow.windowId);
@@ -3014,16 +3117,7 @@ async function boot() {
     }
   };
   if (materializeQueue.length) { const kickoff = setTimeout(materializeNext, IDLE_MATERIALIZE_MS); kickoff.unref(); }
-  // The runtime is supervised independently from native page views. Start it
-  // only after the primary owner exists so restored native pages have a host.
-  startRuntimeProcess();
-  configurePagePermissions();
-  configureCloudPreviewHeaders();
   maintainFilterLists();
-
-  wireRendererIpc();
-  wireDownloads();
-  installMenu();
   powerMonitor.on("resume", () => {
     if (!runtimeReady || !channel) return scheduleRuntimeRestart(0);
     void channel.call("api.invoke", { method: "workspace.get", params: {}, desktopUser: true }, 10_000).catch(() => {
@@ -3232,6 +3326,8 @@ async function requestExit(includePrivateWindows = false) {
       return;
     }
     exitApproved = true;
+    flushTabPatches();
+    await Promise.race([browserStore.flush().catch(() => {}), new Promise(resolve => setTimeout(resolve, 1500))]);
     for (const child of privatePrepared) signalPrivateControl(child, "commit");
     try { channel?.notify("app.closing"); } catch { /* Runtime already gone. */ }
     app.quit();

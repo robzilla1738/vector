@@ -2,7 +2,7 @@ import { duplicateTabs } from "../duplicate-tabs";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
-import { useStore, call, errToast, tabCommand, toast } from "../store";
+import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../store";
 import { bridge, inElectron } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { hostOf, isPinned } from "../workspace";
@@ -14,7 +14,7 @@ export function Overview() {
   const pages = useStore(useShallow(state => state.pages.filter(page => page.viewStatus !== "detached" && !page.ownedByRuntime)));
   const layout = useStore(state => state.layout);
   const activePageId = useStore(state => state.activePageId);
-  const previews = useStore(state => state.previews);
+  useStore(state => state.previewVersion);
   const audio = useStore(state => state.tabAudio);
   const [windows,setWindows]=useState<Awaited<ReturnType<typeof bridge.windows>>>([]);
   const [query, setQuery] = useState("");
@@ -107,7 +107,7 @@ export function Overview() {
     void (async () => {
       for (const pageId of previewIds.split(",").filter(Boolean)) {
         if (cancelled) break;
-        if (useStore.getState().previews[pageId] || captured.current.has(pageId)) continue;
+        if (pagePreview(pageId) || captured.current.has(pageId)) continue;
         const page = useStore.getState().pages.find(page => page.pageId === pageId);
         if (!page || page.viewStatus !== "visible") continue;
         captured.current.add(pageId);
@@ -267,7 +267,7 @@ export function Overview() {
     {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? I.search : I.grid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
     <div ref={grid} className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
-        const shot = shots[page.pageId] || previews[page.pageId];
+        const shot = shots[page.pageId] || pagePreview(page.pageId);
         const title = page.title || "New Tab";
         const owner = [...layout.spaces, ...(layout.archivedSpaces ?? [])].find(space => space.id === layout.tabSpace[page.pageId]);
         return <article key={page.pageId} className={`ov-card ${page.pageId === activePageId ? "active" : ""} ${selected.has(page.pageId) ? "selected" : ""}`}>

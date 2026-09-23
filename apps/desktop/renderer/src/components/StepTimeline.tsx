@@ -188,7 +188,7 @@ function Chip({ chip }: { chip: StepChip }) {
   return <code className="tl-chip" title={chip.value}>{chip.value}</code>;
 }
 
-function StepCard({
+const StepCard = memo(function StepCard({
   s,
   live,
   current,
@@ -250,7 +250,7 @@ function StepCard({
       )}
     </li>
   );
-}
+});
 
 export const StepTimeline = memo(function StepTimeline({
   steps,

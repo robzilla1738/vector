@@ -16,7 +16,8 @@ export function useTabSelection(tabs: PageTarget[], spaceId: string, activeId: s
   const setState = useSelection.setState;
   useEffect(() => { if (useSelection.getState().space !== spaceId) setState({space: spaceId, ids: [], anchor: null}); }, [spaceId]);
   const eligible = tabs.filter(tab => !tab.ownedByRuntime && tab.viewStatus !== "detached");
-  const ids = state.space === spaceId ? state.ids.filter(id => eligible.some(tab => tab.pageId === id)) : [];
+  const eligibleIds = new Set(eligible.map(tab => tab.pageId));
+  const ids = state.space === spaceId ? state.ids.filter(id => eligibleIds.has(id)) : [];
   const latest = useRef({ state, ids, eligible, activeId, spaceId });
   latest.current = { state, ids, eligible, activeId, spaceId };
   const api = useMemo(() => ({

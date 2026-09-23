@@ -373,6 +373,7 @@ body.resizing .sidebar { transition: none; }
 .sb-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .tab-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 var(--space-3) var(--space-2); display: flex; flex-direction: column; gap: 2px; }
 .tab-list.virtual { display: block; }
+.tab-window { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .tab-list.unfiled { flex: 1; min-height: 80px; padding: 0; }
 .tab-slot { animation: tab-in var(--t-med) var(--ease-out); }
 .folder-block {
@@ -1040,6 +1041,9 @@ table.rt code { font-family: var(--font-mono); font-size: var(--fs-xs); color: v
 .toasts.top { left: 50%; bottom: auto; top: var(--space-2); transform: translateX(-50%); }
 .toast { display: inline-flex; align-items: center; gap: var(--space-2); background: var(--bg-1); border-radius: var(--r-lg); padding: var(--space-2) var(--space-3); font-size: var(--fs-sm); box-shadow: var(--shadow-pop), var(--line-inset); color: var(--ink-0); }
 .toast svg { color: var(--ok); flex: none; }
+.toast { pointer-events: auto; }
+.toast .toast-dismiss { margin-right: calc(-1 * var(--space-1)); }
+.toast .toast-dismiss svg { color: var(--ink-2); }
 .toast.error svg { color: var(--err); }
 .toast.error { box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--err-line); }
 
@@ -1201,6 +1205,8 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .conversation:not(.conversation-embedded) .composer-options { display: none; }
 .conversation-turn { margin: 0 0 40px; user-select: text; }
 .conversation-turn > time { display: none; }
+.conversation-turn.pending .user-message { opacity: .72; }
+.answer-stream { white-space: pre-wrap; }
 .user-message { margin: 0 0 18px auto; max-width: min(78%, 420px); width: fit-content; border-radius: 18px; background: color-mix(in srgb, var(--ink-0) 7%, transparent); padding: 10px 14px; white-space: pre-wrap; font-size: 15px; line-height: 1.5; }
 .conversation .run-goal { display: none; }
 .conversation .run-panel { padding: 0; gap: 0; }

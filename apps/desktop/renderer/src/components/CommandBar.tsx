@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { HistoryEntry, Run, SavedProgram } from "@aux/contracts";
 import { toUrl } from "../chrome";
@@ -231,10 +231,19 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     [page, newTab, startRun, setOverlay, hero, activate],
   );
 
-  const suggestions = useMemo<Suggestion[]>(() => {
+  // The intent row tracks every keystroke; provider ranking follows a deferred
+  // query so typing never waits on it. Candidate lists are built once per source
+  // change so the ranker's folded-text cache survives across keystrokes.
+  const tabCandidates = useMemo(() => useStore.getState().pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime).map(p => ({ ...p, id: p.pageId })), [tabDigest, activePageId]);
+  const bookmarkCandidates = useMemo(() => bookmarks.map(b => ({ ...b, id: `bookmark-${b.url}` })), [bookmarks]);
+  const closedCandidates = useMemo(() => closedTabs.map(tab => ({ ...tab, id: tab.pageId })), [closedTabs]);
+  const historyCandidates = useMemo(() => history.map(entry => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt })), [history]);
+  const programCandidates = useMemo(() => programs.map((pr: SavedProgram) => ({ ...pr, id: pr.programId, title: pr.name })), [programs]);
+  const runCandidates = useMemo(() => runs.map((r: Run) => ({ ...r, id: r.runId, title: r.goal })), [runs]);
+  const recentChats = useMemo(() => recentConversations(runs), [runs]);
+  const intentRows = useMemo<Suggestion[]>(() => {
     if (!typedSomething) return [];
     const out: Suggestion[] = [];
-    const q = raw.toLowerCase();
     if (intent.kind !== "empty") {
       out.push({
         id: "intent",
@@ -253,27 +262,33 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         detail: hasPage ? `Use the current page · ${hostOf(page?.url ?? "")}` : "Start a conversation", hint: "Ask",
         run: () => exec({ kind: "run", goal: raw, scope: hasPage ? "page" : "new" }) });
     }
+    return out;
+  }, [typedSomething, raw, intent, hero, hasPage, page, exec]);
+  const rankQuery = useDeferredValue(typedSomething && intent.kind !== "command" ? raw.toLowerCase() : "");
+  const rankedRows = useMemo<Suggestion[]>(() => {
+    if (!rankQuery) return [];
+    const q = rankQuery;
+    const out: Suggestion[] = [];
     for (const phrase of remote.filter(item => item.toLowerCase() !== q).slice(0, 4)) {
       out.push({ id: `sug-${phrase}`, section: "suggest", icon: I.search, title: phrase, detail: "Web suggestion", run: () => exec({ kind: "search", query: phrase, url: toUrl(phrase, searchEngine) }) });
     }
-    const openPages = useStore.getState().pages;
-    const openUrls = new Set(openPages.map(page => page.url.replace(/\/$/, "")));
-    for (const p of rankCandidates(q, openPages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime).map(p => ({ ...p, id: p.pageId }))).slice(0, 3)) {
+    const openUrls = new Set(useStore.getState().pages.map(page => page.url.replace(/\/$/, "")));
+    for (const p of rankCandidates(q, tabCandidates).slice(0, 3)) {
       out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, title: p.title || hostOf(p.url), detail: hostOf(p.url), hint: "Switch", run: () => activate(p.pageId) });
     }
-    for (const bookmark of rankCandidates(q, bookmarks.map(b => ({ ...b, id: `bookmark-${b.url}` }))).filter(b => !openUrls.has(b.url.replace(/\/$/, ""))).slice(0, 3)) {
+    for (const bookmark of rankCandidates(q, bookmarkCandidates).filter(b => !openUrls.has(b.url.replace(/\/$/, ""))).slice(0, 3)) {
       openUrls.add(bookmark.url.replace(/\/$/, ""));
       out.push({ id: `bookmark-${bookmark.url}`, section: "bookmarks", icon: <FavIcon url={bookmark.url} size="sm" />, title: bookmark.title || hostOf(bookmark.url), detail: bookmark.folderPath?.join(" / ") || hostOf(bookmark.url), run: () => exec({ kind: "navigate", url: bookmark.url, display: bookmark.title }) });
     }
-    for (const closed of rankCandidates(q, closedTabs.filter(tab => !openUrls.has(tab.url.replace(/\/$/, ""))).map(tab => ({ ...tab, id: tab.pageId }))).slice(0, 2)) {
+    for (const closed of rankCandidates(q, closedCandidates.filter(tab => !openUrls.has(tab.url.replace(/\/$/, "")))).slice(0, 2)) {
       openUrls.add(closed.url.replace(/\/$/, ""));
       out.push({ id: `closed-${closed.pageId}`, section: "recent", icon: <FavIcon url={closed.url} size="sm" />, title: closed.title || hostOf(closed.url), detail: `${hostOf(closed.url)} · closed tab`, hint: "Reopen", run: () => useStore.getState().reopenClosedTab(closed.pageId) });
     }
-    for (const h of rankCandidates(q, history.map(entry => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt }))).filter(entry => !openUrls.has(entry.url.replace(/\/$/, ""))).slice(0, 4)) {
+    for (const h of rankCandidates(q, historyCandidates).filter(entry => !openUrls.has(entry.url.replace(/\/$/, ""))).slice(0, 4)) {
       openUrls.add(h.url.replace(/\/$/, ""));
       out.push({ id: `h-${h.url}`, section: "recent", icon: <FavIcon url={h.url} size="sm" />, title: h.title || hostOf(h.url), detail: hostOf(h.url), run: () => exec({ kind: "navigate", url: h.url, display: h.title }) });
     }
-    for (const pr of rankCandidates(q, programs.map((pr: SavedProgram) => ({ ...pr, id: pr.programId, title: pr.name }))).slice(0, 3)) {
+    for (const pr of rankCandidates(q, programCandidates).slice(0, 3)) {
       out.push({
         id: `prog-${pr.programId}`,
         section: "programs",
@@ -288,12 +303,13 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         },
       });
     }
-    const matchingChats = new Set(rankCandidates(q, runs.map((r: Run) => ({ ...r, id: r.runId, title: r.goal }))).map(run => run.config?.chatId ?? run.runId));
-    for (const r of recentConversations(runs).filter(run => matchingChats.has(run.config?.chatId ?? run.runId)).slice(0, 3)) {
+    const matchingChats = new Set(rankCandidates(q, runCandidates).map(run => run.config?.chatId ?? run.runId));
+    for (const r of recentChats.filter(run => matchingChats.has(run.config?.chatId ?? run.runId)).slice(0, 3)) {
       out.push({ id: `run-${r.runId}`, section: "runs", icon: I.chats, title: r.goal, detail: isLive(r) ? "Open active conversation" : "Continue conversation", hint: "Open", run: () => useStore.getState().openConversation(r.runId) });
     }
     return out;
-  }, [typedSomething, raw, intent, hero, hasPage, tabDigest, activePageId, bookmarks, closedTabs, history, remote, programs, runs, page, exec, activate, newTab, startRun, searchEngine]);
+  }, [rankQuery, remote, tabCandidates, bookmarkCandidates, closedCandidates, historyCandidates, programCandidates, runCandidates, recentChats, page, exec, activate, searchEngine]);
+  const suggestions = useMemo(() => typedSomething ? [...intentRows, ...rankedRows] : [], [typedSomething, intentRows, rankedRows]);
 
   // Selection is identity-stable: a re-ordered list keeps the same row
   // highlighted instead of the same index pointing at a different action.

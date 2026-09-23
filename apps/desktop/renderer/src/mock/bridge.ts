@@ -1,4 +1,4 @@
-import { steppedZoomLevel } from "@aux/contracts";
+import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";

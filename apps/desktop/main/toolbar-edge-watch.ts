@@ -21,14 +21,12 @@ export function attachToolbarEdgeWatch(win: BaseWindow, shell: WebContents, read
     atLeft = next;
     if (!shell.isDestroyed()) shell.send("sidebar-edge", next);
   };
+  // Polls only while it can matter: a focused, visible window showing a page.
+  const active = () => !win.isDestroyed() && win.isFocused() && win.isVisible() && !win.isMinimized();
   const tick = () => {
     if (win.isDestroyed()) return stop();
     const { page, stage } = read();
-    if (!page || !stage || !win.isFocused()) {
-      send(false);
-      sendLeft(false);
-      return;
-    }
+    if (!page || !stage || !active()) return stop();
     const cursor = screen.getCursorScreenPoint();
     const content = win.getContentBounds();
     send(toolbarEdgeFromCursor(cursor, content, stage, open));
@@ -42,15 +40,19 @@ export function attachToolbarEdgeWatch(win: BaseWindow, shell: WebContents, read
   };
   const sync = () => {
     if (win.isDestroyed()) return stop();
-    if (read().page) {
-      if (!timer) timer = setInterval(tick, 50);
+    if (read().page && active()) {
+      timer ??= setInterval(tick, 50);
       tick();
       return;
     }
     stop();
   };
-  win.on("focus", tick);
-  win.on("blur", () => { send(false); sendLeft(false); });
+  win.on("focus", sync);
+  win.on("show", sync);
+  win.on("restore", sync);
+  win.on("blur", stop);
+  win.on("hide", stop);
+  win.on("minimize", stop);
   win.on("closed", stop);
   return { sync, stop };
 }

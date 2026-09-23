@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { BrowserStore } from "../../apps/desktop/main/tabs/browser-store.js";
+import { BrowserStore, coalescePatches, durableTabKey } from "../../apps/desktop/main/tabs/browser-store.js";
 import { newTabRecord } from "../../apps/desktop/main/tabs/catalog.js";
 import type { TabPatch } from "@aux/contracts";
 
@@ -41,6 +41,22 @@ const store = (dir: string, onError?: (error: Error) => void) =>
   new BrowserStore({ dir, workerUrl, onError });
 
 const patch = (version: number, ops: TabPatch["ops"]): TabPatch => ({ version, baseVersion: version - 1, ops, ts: version });
+
+describe("coalescePatches", () => {
+  it("merges a burst into one write and skips upserts a restore would discard", () => {
+    const tab = newTabRecord({ pageId: "one", windowId: "main", url: "https://a.test/" });
+    const durable = new Map([["one", durableTabKey(tab)]]);
+    expect(coalescePatches([patch(2, [{ op: "upsert", tab: { ...tab, loading: true } }]), patch(3, [{ op: "upsert", tab: { ...tab, audible: true, crashed: true } }])], durable)).toBeNull();
+    const merged = coalescePatches([
+      patch(4, [{ op: "upsert", tab: { ...tab, loading: true } }]),
+      patch(5, [{ op: "upsert", tab: { ...tab, title: "Title" } }]),
+      patch(6, [{ op: "remove", pageId: "two" }]),
+    ], durable);
+    expect(merged).toMatchObject({ baseVersion: 3, version: 6 });
+    expect(merged?.ops.map(op => op.op)).toEqual(["upsert", "remove"]);
+    expect(coalescePatches([patch(7, [{ op: "upsert", tab: { ...tab, title: "Title", loading: false } }])], durable)).toBeNull();
+  });
+});
 
 describe("BrowserStore durability", () => {
   it("commits patches in order and restores them after a cold start", async () => {
