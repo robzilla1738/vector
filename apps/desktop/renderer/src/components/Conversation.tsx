@@ -7,16 +7,17 @@ import { ConversationImages } from "./ConversationImages";
 import { DocumentSnapshot } from "./DocumentSnapshot";
 import { AuxMark } from "./AuxMark";
 import { ConversationTask } from "./ConversationTask";
+import { BrowserContextPicker } from "./BrowserContextPicker";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { ConversationContext, ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationContext, ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
 import { previewSplit } from "../workspace";
-import { useStore, call, errToast, isLive, toast } from "../store";
+import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { answerUrl } from "./AnswerMarkdown";
 import { RunPanel } from "./RunPanel";
@@ -205,6 +206,25 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const observations = useStore(s => s.observations);
   const lastObservation = [...turns].reverse().map(run => observations[run.runId]).find(observation => observation && answerUrl(observation.url));
   const recoverUrl = lastObservation ? answerUrl(lastObservation.url) : "";
+  // Reopening a closed page needs the run's last observation, which only lands
+  // in the store via live events — hydrate it from the run's step ledger when
+  // the conversation is revisited in a later session.
+  useEffect(() => {
+    const runId = last?.runId;
+    if (!runId || observations[runId]) return;
+    let live = true;
+    void (async () => {
+      const d = await call<{ steps: StepRecord[] }>("runs.get", { runId });
+      const artifactId = [...(d.steps ?? [])].reverse().map(step => (step.inputs as { obsArtifactId?: string } | undefined)?.obsArtifactId).find(Boolean);
+      if (!artifactId) return;
+      const res = await call<{ dataBase64: string }>("artifacts.read", { artifactId });
+      const observation = decodeBase64Json<CompactObservation>(res.dataBase64);
+      if (live && observation && typeof observation.url === "string") {
+        useStore.setState(s => s.observations[runId] ? {} : { observations: { ...s.observations, [runId]: observation } });
+      }
+    })().catch(() => {});
+    return () => { live = false; };
+  }, [last?.runId, observations]);
   useEffect(() => {
     if (!previewMenu) return;
     const close = (event: PointerEvent) => {
@@ -442,6 +462,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   };
   const contextCount = (contextState?.entries.filter(entry => entry.included).length ?? 0) + attachments.filter(item => item.included).length + generatedResults.filter(item => item.included).length + (workspaceContext.memory?.content ? 1 : 0);
   const attachmentPanel = contextOpen && (!contextLoading || loadedContextChat.current === id) && !contextError ? <section className="context-body" aria-label="Conversation context">
+    {!taskBound && <div className="conversation-context-page"><b>Browser context</b><small>Choose the tab this reply or task runs against.</small><BrowserContextPicker value={contextPage} linkedPageId={linked?.pageId} onChange={setContextPage} disabled={contextLocked}/></div>}
     {contextState && id && <div className="conversation-turns">
       <label className="conversation-memory-master"><input type="checkbox" checked={contextState.historyEnabled} disabled={contextSaving || contextLocked} onChange={event => void updateContext({ historyEnabled: event.target.checked })}/><span><b>Use previous turns</b><small>{contextState.historyEnabled ? "Included turns are sent with the next reply or task revision." : "History stays visible but is not sent."}</small></span></label>
       {contextState.entries.length > 0 && <div className="conversation-memory-list">{contextState.entries.map(entry => <label key={entry.runId}>

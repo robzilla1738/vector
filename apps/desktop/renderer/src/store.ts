@@ -254,7 +254,11 @@ async function call<T>(method: string, params?: unknown): Promise<T> {
 
 /** Typed human tab command (§7.2) — main actuates, the patch stream confirms. */
 export async function tabCommand(command: TabCommand): Promise<void> {
-  const ack = await bridge.tabCommand(command, useStore.getState().catalogVersion);
+  // Focus is existence-only: an activate aimed at a tab this renderer just
+  // opened must not bounce off the stale_tab gate while its upsert patch is
+  // still in flight. Mutating commands keep the version guard.
+  const catalogVersion = command.kind === "activate" ? undefined : useStore.getState().catalogVersion;
+  const ack = await bridge.tabCommand(command, catalogVersion);
   if (ack.status === "rejected") throw new Error(ack.error?.message ?? "This tab command was rejected.");
 }
 
@@ -290,7 +294,9 @@ const mergeTabInto = (page: PageTarget, tab: TabRecord): PageTarget => ({
   ...page,
   windowId: tab.windowId,
   url: tab.url,
-  title: tab.title,
+  // The runtime owns the error-page title ("Page couldn't load") — the catalog
+  // only knows Electron's last live title, which is stale once a page errors.
+  title: tab.navigationError ? page.title || tab.title : tab.title,
   favicon: tab.favicon ?? page.favicon,
   loading: tab.loading,
   canGoBack: tab.canGoBack,
@@ -580,7 +586,9 @@ export const useStore = create<Workspace>((set, get) => ({
   setRailView: (railView) => set({ railView }),
   setSidebar: (sidebar) => {
     const focused = typeof document === 'undefined' ? null : document.activeElement;
-    const moveFocus = focused && focused instanceof HTMLElement && !!focused.closest('.sidebar, .sidebar-reveal, .sidebar-rail');
+    // Focus relocates when the element holding it unmounts with the mode
+    // change — sidebar surfaces, plus the toolbar's own reveal button.
+    const moveFocus = focused && focused instanceof HTMLElement && !!focused.closest('.sidebar, .sidebar-reveal, .sidebar-rail, [aria-label="Show sidebar"]');
     storage?.setItem("aux.sidebar", sidebar);
     set({ sidebar, sidebarPeek: false });
     if (moveFocus) requestAnimationFrame(() => {

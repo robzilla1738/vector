@@ -228,6 +228,10 @@ kbd {
 .cb-field input.ghost { color: transparent; caret-color: transparent; }
 .cb-field input::placeholder { color: var(--ink-2); }
 .cb-display { position: absolute; inset: 0; display: flex; align-items: center; gap: var(--space-2); overflow: hidden; white-space: nowrap; pointer-events: auto; }
+/* A hidden (slide-away) toolbar must not intercept page/strip clicks through
+   the display's own pointer-events — it re-enables hit-testing inside the
+   bar's pointer-events:none box, even while translated over the tab strip. */
+.app.electron .main-col:has(.stage-card.has-page):not(.toolbar-revealed) > .toolbar .cb-display { pointer-events: none; }
 /* Inline host completion — typed text transparent, the suggested tail dimmed. */
 .cb-ghost { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; white-space: pre; pointer-events: none; font-size: var(--fs-md); letter-spacing: var(--tracking-snug); color: transparent; }
 .cb-ghost-tail { color: var(--ink-2); opacity: .7; }
@@ -1269,6 +1273,10 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .conversation-workspace-memory textarea:focus-visible { border-color: var(--line-strong); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink-0) 12%, transparent); }
 .conversation-workspace-memory-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
 .conversation-workspace-memory-actions small { flex: 1; color: var(--ink-2); font-size: var(--fs-2xs); }
+.conversation-context-page { flex: 1 0 100%; display: flex; flex-direction: column; gap: var(--space-0); }
+.conversation-context-page b { font-size: var(--fs-xs); font-weight: 500; }
+.conversation-context-page small { color: var(--ink-2); font-size: var(--fs-2xs); }
+.conversation-context-page select { width: min(340px, 100%); min-height: 28px; margin-top: 4px; }
 .conversation-document-list { max-height: 180px; overflow: auto; margin-top: var(--space-2); }
 .conversation-document { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2); border-radius: var(--r-md); }
 .conversation-document:hover { background: var(--bg-hover); }
