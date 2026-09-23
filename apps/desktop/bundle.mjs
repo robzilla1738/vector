@@ -6,11 +6,12 @@
  * in-place bundle as the next build’s input. electron is external — provided by the runtime.
  */
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { buildSync } from "esbuild";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { nodeTarget } from "./node-target.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -28,61 +29,74 @@ if (existsSync(mainOut)) {
   }
 }
 
-buildSync({
+// Composition reports for each bundle (excluded from packaging).
+const metaDir = join(here, "dist", ".bundle-meta");
+mkdirSync(metaDir, { recursive: true });
+const bundle = (name, options) => {
+  const { metafile } = buildSync({
+    bundle: true,
+    platform: "node",
+    target: nodeTarget,
+    minify: true,
+    legalComments: "none",
+    sourcemap: false,
+    metafile: true,
+    ...options,
+  });
+  writeFileSync(join(metaDir, `${name}.json`), JSON.stringify(metafile));
+};
+
+bundle("main", {
   entryPoints: [join(here, "main/launcher.ts")],
   outfile: join(here, "dist/main/index.js"),
-  bundle: true,
-  platform: "node",
   format: "esm",
   external: ["electron"],
-  allowOverwrite: true,
-  sourcemap: false,
 });
 
-buildSync({
+bundle("preload", {
   entryPoints: [join(here, "preload/index.cts")],
   outfile: join(here, "dist/preload/index.cjs"),
-  bundle: true,
-  platform: "node",
   format: "cjs",
   external: ["electron"],
-  allowOverwrite: true,
-  sourcemap: false,
 });
 
-buildSync({
+bundle("mcp", {
   entryPoints: [join(here, "../../packages/mcp/dist/main.js")],
   outfile: join(here, "dist/mcp/aux-mcp.mjs"),
-  bundle: true,
-  platform: "node",
   format: "esm",
-  target: "node22",
   banner: { js: 'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);' },
-  sourcemap: false,
 });
-buildSync({
+
+bundle("reader-extract", {
   entryPoints: [join(here, "reader/extract.mjs")],
   outfile: join(here, "dist/main/reader-extract.js"),
-  bundle: true,
   platform: "browser",
+  target: undefined,
   format: "iife",
   globalName: "AuxReader",
 });
 
-buildSync({
-  entryPoints: [join(here, "main/document-extract.ts")],
-  outfile: join(here, "dist/main/document-extract.cjs"),
-  bundle: true,
-  platform: "node",
+bundle("document-worker", {
+  entryPoints: [join(here, "main/document-worker.ts")],
+  outfile: join(here, "dist/main/document-worker.cjs"),
   format: "cjs",
-  sourcemap: false,
 });
 
-buildSync({entryPoints:[join(here,"main/workbook-export-worker.ts")],outfile:join(here,"dist/main/workbook-export.cjs"),bundle:true,platform:"node",format:"cjs",sourcemap:false});
+bundle("browser-store", {
+  entryPoints: [join(here, "main/tabs/browser-store.worker.ts")],
+  outfile: join(here, "dist/main/browser-store.cjs"),
+  format: "cjs",
+});
 
-buildSync({entryPoints:[join(here,"main/tabs/browser-store.worker.ts")],outfile:join(here,"dist/main/browser-store.cjs"),bundle:true,platform:"node",format:"cjs",sourcemap:false});
-
-const pdfAssets = dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json"));
+// unpdf embeds its own pdf.js build; the cmaps and standard fonts must come
+// from the same pdf.js release or glyph lookups silently degrade.
+const desktopRequire = createRequire(import.meta.url);
+const pdfjsVersion = desktopRequire("pdfjs-dist/package.json").version;
+const unpdfPdfjs = readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")), "utf8").match(/apiVersion:`([^`]+)`/)?.[1];
+if (unpdfPdfjs !== pdfjsVersion) {
+  throw new Error(`unpdf embeds pdf.js ${unpdfPdfjs ?? "(unknown)"} but pdfjs-dist is ${pdfjsVersion}; align them so PDF cmaps match.`);
+}
+const pdfAssets = dirname(desktopRequire.resolve("pdfjs-dist/package.json"));
 for (const directory of ["cmaps", "standard_fonts"]) {
   cpSync(join(pdfAssets, directory), join(here, "dist/main/pdf-assets", directory), { recursive: true });
 }

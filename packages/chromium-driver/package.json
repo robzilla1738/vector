@@ -16,9 +16,9 @@
   "dependencies": {
     "@aux/contracts": "workspace:*",
     "playwright-core": "1.63.0",
-    "zod": "4.5.4"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   }
 }

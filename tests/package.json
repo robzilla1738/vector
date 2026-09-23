@@ -7,14 +7,14 @@
     "@aux/chromium-driver": "workspace:*",
     "@aux/contracts": "workspace:*",
     "@aux/runtime": "workspace:*",
-    "zod": "4.5.4"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@ai-sdk/gateway": "4.0.75",
     "@modelcontextprotocol/sdk": "1.30.0",
-    "@types/node": "^24.10.1",
+    "@types/node": "catalog:",
     "ai": "7.0.93",
-    "typescript": "5.9.3",
-    "vitest": "3.2.4"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

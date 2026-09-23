@@ -32,15 +32,15 @@ async function rpc<T>(method: string, params: unknown = {}): Promise<T> {
 }
 
 beforeAll(async () => {
+  spawnSync(join(root, "node_modules/.bin/tsc"), ["-b", "tsconfig.json"], { cwd: root, stdio: "inherit" });
   if (!existsSync(join(desktopDir, "dist/main/index.js"))) {
-    const b = spawnSync(join(desktopDir, "node_modules/.bin/tsc"), ["-b", "tsconfig.main.json", "tsconfig.preload.json"], { cwd: desktopDir, stdio: "inherit" });
-    if (b.status !== 0) throw new Error("desktop main/preload build failed");
+    const b = spawnSync(process.execPath, [join(desktopDir, "bundle.mjs")], { cwd: desktopDir, stdio: "inherit" });
+    if (b.status !== 0) throw new Error("desktop main/preload bundle failed");
   }
   if (!existsSync(join(desktopDir, "dist/renderer/index.html"))) {
     const b = spawnSync(join(desktopDir, "node_modules/.bin/vite"), ["build"], { cwd: desktopDir, stdio: "inherit" });
     if (b.status !== 0) throw new Error("renderer build failed");
   }
-  spawnSync(join(root, "node_modules/.bin/tsc"), ["-b", "tsconfig.json"], { cwd: root, stdio: "inherit" });
 
   fixtures = await startFixturesIfNeeded();
   await waitForFixtures();

@@ -5,9 +5,10 @@
  * for the current platform (unsigned dir target).
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const run = (cmd, args, opts = {}) => {
@@ -34,80 +35,69 @@ run(process.execPath, [join(desktopDir, "bundle.mjs")]);
 console.log("▸ build renderer");
 run(join(desktopDir, "node_modules", ".bin", "vite"), ["build"], { cwd: desktopDir });
 
-// Stage the runtime deterministically: copy dist + vendor the workspace
-// packages, rewrite workspace deps to file:, and let npm produce a real
-// flat node_modules. (pnpm deploy + shared lockfile is not reliable here.)
-console.log("▸ stage runtime");
+// The runtime ships as one esbuild bundle (workspace packages and registry
+// deps inlined, lazy SDK imports split into chunks) plus playwright-core,
+// which stays external for its dynamic requires and assets. It lives in
+// vendor/ and resolves through package.json "imports" because
+// electron-builder drops node_modules from extraResources.
+console.log("▸ bundle runtime");
 const staging = join(root, "release", ".staging");
 rmSync(staging, { recursive: true, force: true });
 const rtOut = join(staging, "runtime");
 mkdirSync(rtOut, { recursive: true });
 
-const vendor = (pkgDir, destName) => {
-  const src = join(root, pkgDir);
-  const dest = join(rtOut, "vendor", destName);
-  mkdirSync(dest, { recursive: true });
-  run("cp", ["-R", join(src, "dist"), join(src, "package.json"), dest + "/"]);
-};
-
-vendor("packages/contracts", "contracts");
-vendor("packages/chromium-driver", "chromium-driver");
-run("cp", ["-R", join(root, "apps/runtime/dist"), join(root, "apps/runtime/package.json"), rtOut + "/"]);
-
-// rewrite workspace:* deps → file:../vendor/*
-const rewriteFileDeps = (pkgPath, mapping) => {
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-  for (const [k, v] of Object.entries(pkg.dependencies ?? {})) {
-    if (v.startsWith("workspace:") && mapping[k]) pkg.dependencies[k] = mapping[k];
-  }
-  delete pkg.devDependencies;
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-};
-rewriteFileDeps(join(rtOut, "vendor/chromium-driver/package.json"), {
-  "@aux/contracts": "file:../contracts",
+const desktopRequire = createRequire(join(desktopDir, "package.json"));
+const { build, transformSync } = desktopRequire("esbuild");
+const { nodeTarget } = await import(pathToFileURL(join(desktopDir, "node-target.mjs")).href);
+const runtimeBuild = await build({
+  entryPoints: [join(root, "apps/runtime/dist/main.js")],
+  outdir: join(rtOut, "dist"),
+  entryNames: "[name]",
+  chunkNames: "chunks/[name]-[hash]",
+  bundle: true,
+  splitting: true,
+  platform: "node",
+  format: "esm",
+  target: nodeTarget,
+  minify: true,
+  legalComments: "none",
+  sourcemap: false,
+  metafile: true,
+  plugins: [{
+    name: "vendored-playwright",
+    setup(build) {
+      build.onResolve({ filter: /^playwright-core$/ }, () => ({ path: "#playwright-core", external: true }));
+    },
+  }],
+  banner: { js: 'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);' },
 });
-// npm treats file:-directory deps as links and does NOT install their deps —
-// hoist vendor packages' registry deps into the runtime manifest instead.
-const vendorDeps = {};
-for (const name of ["contracts", "chromium-driver"]) {
-  const pkgFile = join(rtOut, "vendor", name, "package.json");
-  if (!existsSync(pkgFile)) continue;
-  const vp = JSON.parse(readFileSync(pkgFile, "utf8"));
-  for (const [k, v] of Object.entries(vp.dependencies ?? {})) {
-    if (!v.startsWith("file:") && !v.startsWith("workspace:")) vendorDeps[k] = v;
-  }
+writeFileSync(join(staging, "runtime-meta.json"), JSON.stringify(runtimeBuild.metafile));
+
+const playwrightDir = dirname(createRequire(join(root, "packages/chromium-driver/package.json")).resolve("playwright-core/package.json"));
+const playwrightVersion = JSON.parse(readFileSync(join(playwrightDir, "package.json"), "utf8")).version;
+const playwrightOut = join(rtOut, "vendor", "playwright-core");
+cpSync(playwrightDir, playwrightOut, { recursive: true, dereference: true });
+// Type declarations, docs, the CLI, and the trace viewer / recorder / report UIs are never loaded by the runtime.
+for (const unused of ["types", "index.d.ts", "README.md", "cli.js", "lib/vite", "lib/tools"]) {
+  rmSync(join(playwrightOut, unused), { recursive: true, force: true });
 }
-{
-  const pkg = JSON.parse(readFileSync(join(rtOut, "package.json"), "utf8"));
-  for (const [k, v] of Object.entries(pkg.dependencies ?? {})) {
-    if (v.startsWith("workspace:")) {
-      const name = k.split("/").pop();
-      pkg.dependencies[k] = `file:./vendor/${name}`;
-    }
-  }
-  Object.assign(pkg.dependencies, vendorDeps);
-  delete pkg.devDependencies;
-  writeFileSync(join(rtOut, "package.json"), JSON.stringify(pkg, null, 2));
+// playwright-core ships its bundles unminified. Strip whitespace only: no renaming
+// or syntax rewrites, so functions it serializes into pages keep their meaning.
+for (const file of readdirSync(join(playwrightOut, "lib"), { recursive: true })) {
+  if (!file.endsWith(".js")) continue;
+  const path = join(playwrightOut, "lib", file);
+  writeFileSync(path, transformSync(readFileSync(path, "utf8"), { loader: "js", minifyWhitespace: true, charset: "utf8" }).code);
 }
 
-const cleanEnv = Object.fromEntries(
-  Object.entries(process.env).filter(([k]) => !/^(npm_|pnpm_|PNPM_|INIT_CWD)/i.test(k)),
-);
-run("npm", ["install", "--omit=dev", "--no-package-lock", "--no-audit", "--no-fund"], {
-  cwd: rtOut,
-  env: cleanEnv,
-});
-
-// npm file: deps install as symlinks into ./vendor — replace with real
-// copies so resolution stays inside runtime/node_modules.
-for (const name of ["contracts", "chromium-driver"]) {
-  const link = join(rtOut, "node_modules", "@aux", name);
-  const real = join(rtOut, "vendor", name);
-  if (!existsSync(real)) continue;
-  rmSync(link, { recursive: true, force: true });
-  mkdirSync(join(rtOut, "node_modules", "@aux"), { recursive: true });
-  run("cp", ["-R", real, link]);
-}
+const runtimePkg = JSON.parse(readFileSync(join(root, "apps/runtime/package.json"), "utf8"));
+writeFileSync(join(rtOut, "package.json"), JSON.stringify({
+  name: runtimePkg.name,
+  version: runtimePkg.version,
+  private: true,
+  type: "module",
+  imports: { "#playwright-core": "./vendor/playwright-core/index.mjs" },
+  dependencies: { "playwright-core": playwrightVersion },
+}, null, 2));
 
 console.log("▸ electron-builder");
 run(join(desktopDir, "node_modules", ".bin", "electron-builder"), ["--config", "electron-builder.yml"], {
@@ -115,25 +105,9 @@ run(join(desktopDir, "node_modules", ".bin", "electron-builder"), ["--config", "
   env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: "false" },
 });
 
-// electron-builder always excludes node_modules from extraResources
-// (app-builder-lib fileMatcher injects "!**/node_modules/**"), so the
-// bundled runtime's deps are copied in after packaging.
-console.log("▸ inject runtime node_modules");
 const platformOutput = process.platform === "darwin"
   ? (process.arch === "x64" ? "mac" : `mac-${process.arch}`)
   : `${process.platform === "win32" ? "win" : "linux"}${process.arch === "x64" ? "" : `-${process.arch}`}-unpacked`;
-const appResources = process.platform === "darwin"
-  ? join(root, "release", platformOutput, "Aux Browser.app", "Contents", "Resources")
-  : join(root, "release", platformOutput, "resources");
-if (!existsSync(appResources)) {
-  throw new Error(`Packaged resources missing at ${appResources}; runtime dependency injection cannot complete.`);
-}
-{
-  rmSync(join(appResources, "runtime", "node_modules"), { recursive: true, force: true });
-  run("cp", ["-R", join(rtOut, "node_modules"), join(appResources, "runtime", "node_modules")]);
-  rmSync(join(appResources, "engine"), { recursive: true, force: true });
-}
-
 const out = join(root, "release");
 console.log(`\n✓ packaged app in ${out}`);
 if (process.platform === "darwin") console.log(`  → ${join(out, platformOutput, "Aux Browser.app")}`);

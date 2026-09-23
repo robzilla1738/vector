@@ -8,8 +8,8 @@ const BINARY_DOCUMENT_MAX_BYTES = 16 * 1024 * 1024;
 
 function extractDocument(bytes: Buffer, format: "docx" | "xlsx" | "pdf"): Promise<string> {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL("./document-extract.cjs", import.meta.url), {
-      workerData: { bytes, format },
+    const worker = new Worker(new URL("./document-worker.cjs", import.meta.url), {
+      workerData: { task: "extract", bytes, format },
       resourceLimits: { maxOldGenerationSizeMb: 128, maxYoungGenerationSizeMb: 16 },
     });
     const timer = setTimeout(() => finish(new Error("This document took too long to read. Try a smaller document or save it as text.")), 15_000);
