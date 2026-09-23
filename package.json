@@ -15,7 +15,7 @@
     "fixtures": "node scripts/fixtures.mjs",
     "typecheck": "tsc -b tsconfig.json && tsc -p apps/desktop/tsconfig.renderer.json",
     "test": "vitest run --project unit",
-    "test:integration": "vitest run --project integration",
+    "test:integration": "vitest run --project integration --no-file-parallelism",
     "test:unit": "vitest run --project unit",
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "smoke:packaged": "node tests/smoke/packaged.mjs",
@@ -28,7 +28,8 @@
     "cli": "node packages/cli/dist/main.js",
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs",
     "preview": "node scripts/preview.mjs",
-    "lint": "oxlint apps packages tests scripts --max-warnings=390"
+    "lint": "oxlint apps packages tests scripts --max-warnings=390",
+    "smoke:design": "node tests/smoke/run-suite.mjs design"
   },
   "devDependencies": {
     "@types/node": "catalog:",

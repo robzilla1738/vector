@@ -158,3 +158,5 @@ scripts/                dev, fixtures, Chromium discovery, packaging
 - [Loopback API](docs/api.md) · [CLI](docs/cli.md) · [MCP](docs/mcp.md)
 - [Packaging](docs/packaging.md) · [Troubleshooting](docs/troubleshooting.md)
 - [Changelog](CHANGELOG.md)
+
+CI gates, artifacts, reruns and workflow maintenance: [CI operations](docs/ci.md).

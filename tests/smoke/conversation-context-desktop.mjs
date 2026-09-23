@@ -55,7 +55,7 @@ try {
 
   app = await launch(); page = await shell();
   await sidebarAction(page, "Chats");
-  await page.getByRole("button", { name: /Compare the options/ }).click();
+  await page.locator('[data-chat-id="context-chat"] .history-conversation').click();
   await page.getByRole("button", { name: "Context · 2", exact: true }).click();
   const older = page.getByRole("checkbox", { name: /Collect the first option/ });
   assert.equal(await older.isChecked(), true);
@@ -71,7 +71,7 @@ try {
 
   app = await launch(); page = await shell();
   await sidebarAction(page, "Chats");
-  await page.getByRole("button", { name: /Compare the options/ }).click();
+  await page.locator('[data-chat-id="context-chat"] .history-conversation').click();
   await page.getByRole("button", { name: "Context · 1", exact: true }).click();
   assert.equal(await page.getByRole("checkbox", { name: /Collect the first option/ }).isChecked(), false, "turn exclusion should survive restart");
   const state = await page.evaluate(() => window.aux.invoke("runs.context.get", { chatId: "context-chat" }));
@@ -81,6 +81,13 @@ try {
   assert.match(run.config.context, /Comparison result/);
   assert.doesNotMatch(run.config.context, /First option details/);
   console.log("Conversation context is inspectable, selectively excluded, restart-durable, and stamped onto the next run.");
+} catch (error) {
+  const page = app ? await shellWindow(app).catch(() => null) : null;
+  if (page) {
+    console.error(await page.locator("body").innerText().catch(() => "Shell unavailable"));
+    await page.screenshot({ path: join(artifacts, "context-failure.png") }).catch(() => {});
+  }
+  throw error;
 } finally {
   await app?.close().catch(() => {});
   fixture.closeAllConnections();

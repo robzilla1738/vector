@@ -130,6 +130,8 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "routines.run",
   "routines.update",
   "runs.answer",
+  "runs.context.get",
+  "runs.context.set",
   "runs.cancel",
   "runs.get",
   "runs.list",
@@ -199,7 +201,6 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
  * RENDERER_METHODS instead.
  */
 export const SMOKE_HARNESS_METHODS: ReadonlySet<string> = new Set([
-  "runs.context.get",
   "pages.activate",
   "pages.close",
   "pages.list",

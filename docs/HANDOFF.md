@@ -317,3 +317,15 @@ can be re-attempted on that identity, and the founder finishes the pilot notes.
   collapsed sidebar still has a reopen control; secrets never appear in step cards.
 - Policy: new GitHub/Vercel/Sentry calls stay GET unless B6 is explicitly authorized;
   Cookies/Login Data remain `refuse`; CEF Alloy is still not the content host.
+
+## CI audit follow-up (2026-09-23)
+
+See [CI operations](ci.md). The pipeline now includes native design regressions,
+SHA-pinned maintained Actions, explicit read-only permissions, manual/merge-group
+triggers, retained benchmark/design artifacts and an aggregate `CI passed` gate.
+Integration serialization is enforced at the CLI. Native release fixtures now
+explicitly select expanded vertical layout where their assertions require it.
+Previous-turn context controls were restored after the release smoke exposed
+their removal; native blank-area dragging now excludes disclosure summaries and
+labels. Hosted verification and repository protection are being qualified on
+this checkpoint; do not infer green CI from local unit results.

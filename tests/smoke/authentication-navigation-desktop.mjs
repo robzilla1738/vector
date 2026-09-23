@@ -1,3 +1,4 @@
+import { expandedSidebar } from "./sidebar-action.mjs";
 // Cross-origin sign-in and link-disposition journey using only isolated local sites.
 import {poll} from './poll.mjs';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -37,6 +38,7 @@ let app;
 try{
  const mark=step=>console.log(`auth-navigation: ${step}`);
  let shell;({ app, page: shell } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));shell.setDefaultTimeout(15000);await shell.locator('.aux-home').waitFor();
+ await expandedSidebar(shell);
  const opener=await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),rpBase+'/');
  await poll(shell,async id=>(await window.aux.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),opener.pageId);
  mark('relying party ready');
@@ -44,7 +46,7 @@ try{
 
  // A native middle-click must create a background tab and preserve the selected tab.
  const point=await execute(rpBase+'/',`(()=>{const r=document.querySelector('#background').getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`);
- await app.evaluate(({webContents},{url,point})=>{const contents=webContents.getAllWebContents().find(item=>item.getURL()===url);contents.sendInputEvent({type:'mouseDown',...point,button:'middle',clickCount:1});contents.sendInputEvent({type:'mouseUp',...point,button:'middle',clickCount:1});},{url:rpBase+'/',point});
+ await app.evaluate(({webContents},{url,point})=>{const contents=webContents.getAllWebContents().find(item=>item.getURL()===url);contents.focus();contents.sendInputEvent({type:'mouseDown',...point,button:'middle',clickCount:1});contents.sendInputEvent({type:'mouseUp',...point,button:'middle',clickCount:1});},{url:rpBase+'/',point});
  mark('middle click sent');
  await poll(app,({webContents},suffix)=>webContents.getAllWebContents().some(contents=>contents.getURL().endsWith(suffix)),'/background');
  mark('background tab attached');

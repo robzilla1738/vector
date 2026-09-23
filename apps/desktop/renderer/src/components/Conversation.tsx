@@ -1,3 +1,4 @@
+import { ConversationContext } from "./ConversationContext";
 import { BrowserContextPicker } from "./BrowserContextPicker";
 import { RunImages } from "./RunImages";
 import { Dictation } from "./Dictation";
@@ -149,6 +150,8 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
 
     createdChat.current = null;
   }, [id]);
+  const [historySaving, setHistorySaving] = useState(false);
+  useEffect(() => { setHistorySaving(false); }, [id]);
   const [contextLoading, setContextLoading] = useState(false);
   const loadedContextChat = useRef<string | null>(null);
   const [contextError, setContextError] = useState("");
@@ -341,7 +344,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const send = async () => {
     const text = readText();
     if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
-    if (!answering && (attachmentSaving || missingContext || historyLoading || historyError || contextLoading || contextError || (live && last?.status !== "needs_input") || (taskBound && last?.status !== "needs_input"))) return;
+    if (!answering && (attachmentSaving || historySaving || missingContext || historyLoading || historyError || contextLoading || contextError || (live && last?.status !== "needs_input") || (taskBound && last?.status !== "needs_input"))) return;
     sendPending.current = true;
     setSending(true); setSendError("");
     try {
@@ -451,6 +454,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {id && documentPreview && <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)} />}
       {attachments.length > 0 && <div className="composer-documents" aria-label="Attached documents">{attachments.map(item => <div key={item.attachmentId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setImagePreview(null); setDocumentPreview(item.attachmentId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button></div>)}</div>}
       {images.length > 0 && <div className="composer-documents" aria-label="Attached images">{images.map(item => <div key={item.imageId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setDocumentPreview(null); setImagePreview(item.imageId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void removeImage(item.imageId)}>{I.close}</button></div>)}</div>}
+      {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
       {imageTray}
       {!connected && <p className="hint" role="status">Connecting to Aux… You can keep writing.</p>}
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
@@ -464,7 +468,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
+      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
       </>}
       {newChat && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add image or capture" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextPicker value={contextPage} onChange={setContextPage} linkedPageId={linked?.pageId} disabled={contextLocked}/></div>}
     </div></div>

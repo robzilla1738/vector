@@ -1,3 +1,4 @@
+import { expandedSidebar } from "./sidebar-action.mjs";
 // Whole-window unsaved-work qualification; isolated profile, synthetic text only.
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -13,7 +14,7 @@ const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`;
 let app;let appEnded=false;
 try{
- let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();await expandedSidebar(page);
  await app.evaluate(({dialog})=>{globalThis.unloadAnswers=[];globalThis.unloadPrompts=[];const respond=(...args)=>{const options=args.at(-1);if(options.title!=='Leave website?')throw new Error('Unexpected dialog');globalThis.unloadPrompts.push({message:options.message,defaultId:options.defaultId});globalThis.changeDuringUnload?.();const response=globalThis.unloadAnswers.shift();if(typeof response!=='number')throw new Error('Missing synthetic response');return response;};dialog.showMessageBoxSync=respond;dialog.showMessageBox=async(...args)=>({response:respond(...args),checkboxChecked:false});});
  await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/draft');
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===base+'/draft');if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);fixture.on('dialog',()=>{});

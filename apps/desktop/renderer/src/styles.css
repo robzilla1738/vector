@@ -2608,3 +2608,9 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
 
 /* Blank sidebar chrome uses the same captured drag as the revealed toolbar. */
 .app.electron .sidebar { -webkit-app-region: no-drag; }
+
+@layer components {
+  .conversation-history-context section { display: grid; gap: var(--space-2); max-height: 180px; overflow: auto; padding: var(--space-2); }
+  .conversation-history-context label { display: flex; align-items: center; gap: var(--space-2); }
+  .conversation-history-context input { flex: none; }
+}

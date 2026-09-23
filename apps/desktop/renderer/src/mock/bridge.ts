@@ -281,9 +281,8 @@ export function installMockBridge(q: URLSearchParams) {
     "conversations.delete": async p => {
       const before=runs.length;runs=runs.filter(run=>(run.config?.chatId??run.runId)!==p.chatId);chatMetadata.delete(String(p.chatId));documents.delete(String(p.chatId));emit("conversation.deleted",{chatId:p.chatId});return {ok:true,deletedRuns:before-runs.length};
     },
-    "runs.context.get": async p => {
-      return {chatId:p.chatId,historyEnabled:true,entries:[]};
-    },
+    "runs.context.get": async p => ({chatId:p.chatId,historyEnabled:true,entries:[]}),
+    "runs.context.set": async p => ({chatId:p.chatId,historyEnabled:p.historyEnabled ?? true,entries:[]}),
     "results.search": async p => {
       return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture] : [];
     },

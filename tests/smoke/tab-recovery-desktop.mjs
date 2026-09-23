@@ -1,3 +1,4 @@
+import { expandedSidebar } from "./sidebar-action.mjs";
 // Real native tabs and menu recovery in an isolated development profile.
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -15,8 +16,11 @@ try {
  app=await launch();
  let page = await shellWindow(app);
  await page.locator('.aux-home').waitFor();
+ await expandedSidebar(page);
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const pages=await page.evaluate(async base=>{const pages=[];for(const title of ['First','Research','Last','Personal'])pages.push(await window.aux.invoke('pages.open',{url:base+'/'+title,activate:true}));return pages;},base);
+ await page.evaluate(id=>window.aux.invoke('pages.activate',{pageId:id}),pages[1].pageId);
+ await page.waitForFunction(()=>document.querySelectorAll('.tab-row').length===4);
  await page.evaluate(pages=>localStorage.setItem(`aux.layout.v1:${window.aux.windowId}`,JSON.stringify({spaces:[{id:'work',name:'Studio',color:'slate'},{id:'personal',name:'Private',color:'slate'}],activeSpaceId:'work',order:pages.map(p=>p.pageId),tabSpace:Object.fromEntries(pages.map((p,i)=>[p.pageId,i===3?'personal':'work'])),pins:{},folders:[{id:'research',name:'Research folder',spaceId:'work',collapsed:false}],tabFolder:{[pages[1].pageId]:'research'}})),pages);
  await page.reload();
  await page.getByRole('group',{name:'Research folder',exact:true}).waitFor();

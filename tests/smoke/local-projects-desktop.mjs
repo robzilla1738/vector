@@ -1,3 +1,4 @@
+import { expandedSidebar } from "./sidebar-action.mjs";
 import {createRequire} from 'node:module';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -44,7 +45,7 @@ const originalIndex=readFileSync(join(source,'.git','index'));let app,page;
 const env={PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0'};
 async function launch(){
  app=await launchApp({args:['--use-mock-keychain'],env,timeout:30000});page=null;
- page = await shellWindow(app);page.setDefaultTimeout(15000);await page.locator('.app').waitFor();
+ page = await shellWindow(app);page.setDefaultTimeout(15000);await page.locator('.app').waitFor();await expandedSidebar(page);
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
 }
 try{

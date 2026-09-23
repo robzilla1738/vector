@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent } from "react";
 import { bridge, inElectron } from "./bridge";
 
-const controls = 'button, input, textarea, select, a, [role="button"], [role="tab"], [draggable="true"], [contenteditable="true"], .resize-handle';
+const controls = 'button, summary, label, input, textarea, select, a, [role="button"], [role="tab"], [draggable="true"], [contenteditable="true"], .resize-handle';
 function finishDrag() {
   bridge.windowDrag("end");
   window.dispatchEvent(new CustomEvent("aux-window-drag", { detail: false }));

@@ -21,6 +21,11 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const dir = dirname(fileURLToPath(import.meta.url));
+const DESIGN_SUITE = [
+  "toolbar-glass-design", "floating-sidebar-design", "tab-preview-layout",
+  "sidebar-sessions", "new-chat-design", "settings-design", "projects-design",
+  "tab-groups", "motion-design", "conversation-jump-design", "text-contrast-design",
+];
 const RELEASE_SUITE = [
   "runtime-recovery-desktop",
   "tab-recovery-desktop",
@@ -45,11 +50,12 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.AUX_SMOKE_TIMEOUT_MS ?? 480_000);
 
 const requested = process.argv.slice(2);
 if (requested.length === 0) {
-  console.error("usage: node tests/smoke/run-suite.mjs <release|all|file ...>");
+  console.error("usage: node tests/smoke/run-suite.mjs <release|design|all|file ...>");
   process.exit(2);
 }
 let names;
 if (requested.length === 1 && requested[0] === "release") names = RELEASE_SUITE;
+else if (requested.length === 1 && requested[0] === "design") names = DESIGN_SUITE;
 else if (requested.length === 1 && requested[0] === "all") {
   names = readdirSync(dir)
     .filter((f) => f.endsWith(".mjs") && f !== "run-suite.mjs" && !f.startsWith("zz-"))

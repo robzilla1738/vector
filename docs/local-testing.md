@@ -65,6 +65,9 @@ The release suite also runs in CI as the `desktop smoke (release suite)` job.
 
 ## Focused shell design regressions
 
+`pnpm smoke:design` runs these eleven cases serially in their own CI job.
+See [CI operations](ci.md) for gates, artifacts and reruns.
+
 Build after typechecking before Electron tests (`pnpm --filter @aux/desktop build`).
 Run files serially using fresh isolated fixture profiles. These tests perform
 mutations only on disposable fixture chats/tasks; do not point them at a personal
