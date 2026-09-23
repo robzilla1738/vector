@@ -5,7 +5,7 @@
     ],
     "bootDynamicImports": "^assets/App-",
     "startupJsKb": 490,
-    "startupCssKb": 200,
+    "startupCssKb": 190,
     "totalJsKb": 1800
   },
   "bench": {
