@@ -541,7 +541,9 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   // Main text — prefer article/main, fall back to the root. A budgeted walk
   // stops once the budget (plus the longest secret, so redaction still sees
   // whole values) is spent and skips hidden subtrees, instead of laying out
-  // the whole region through innerText and cutting it afterwards.
+  // the whole region through innerText and cutting it afterwards. Block
+  // edges emit break markers; like innerText, adjacent edges take the
+  // largest required break (\u0002 = blank line for <p>) rather than summing.
   const budget = args.maxTextChars + (protectedTexts[0]?.length ?? 0) + 1;
   let collected = shadowChunks.length ? `— shadow DOM —\n${shadowChunks.join("\n")}\n\n` : "";
   let spent = collected.length;
@@ -553,8 +555,9 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   const walkText = (n: any, shown: boolean) => {
     for (let c = n.firstChild; c && spent <= budget; c = c.nextSibling) {
       if (c.nodeType === 3) {
+        // whitespace-only nodes still separate inline siblings
         const t = shown ? (c.nodeValue ?? "").replace(/[ \t\n\r\f]+/g, " ") : "";
-        if (t.trim()) push(t);
+        if (t) push(t);
         continue;
       }
       if (c.nodeType !== 1 || SKIP_TEXT.has(c.tagName)) continue;
@@ -567,15 +570,24 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       const display = String(style.display || "");
       const cell = display === "table-cell" || c.tagName === "TD" || c.tagName === "TH";
       const block = !cell && (BLOCK_TAGS.has(c.tagName) || (display !== "" && !display.startsWith("inline") && display !== "contents"));
-      if (block) push("\n");
+      const edge = c.tagName === "P" ? "\u0002" : "\u0001";
+      if (block) push(edge);
       // hidden boxes can hold visible descendants — only those contribute
       walkText(c, style.visibility !== "hidden" && style.visibility !== "collapse");
-      if (block) push("\n");
+      if (block) push(edge);
       else if (cell) push("\t");
     }
   };
   walkText(mainEl ?? root, true);
-  collected += chunks.join("").replace(/[ \t]*\n[ \t]*/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  collected += chunks
+    .join("")
+    .replace(/ {2,}/g, " ")
+    .replace(/ ?\t ?/g, "\t")
+    .replace(/[ \t]*[\u0001\u0002][\u0001\u0002 \t]*/g, (run) => (run.includes("\u0002") ? "\n\n" : "\n"))
+    .replace(/\t+\n/g, "\n")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   let text = redactText(collected.trim());
   if (text.length > args.maxTextChars || spent > budget) {
     text = text.slice(0, args.maxTextChars) + "\n…[text truncated]";
