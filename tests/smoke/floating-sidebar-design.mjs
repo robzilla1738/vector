@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync,mkdirSync,writeFileSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -9,7 +10,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1
 const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.env,AUX_PROFILE_DIR:dir+'/profile',AUX_DATA_DIR:dir+'/data',AUX_LOAD_DOTENV:'0'}});
 page.setDefaultTimeout(15000);
 const bounds=()=>app.evaluate(({BaseWindow},url)=>BaseWindow.getAllWindows()[0].contentView.children.find(v=>v.webContents?.getURL().startsWith(url))?.getBounds(),url);
-const settle=()=>page.locator('.sidebar').evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));
+const settle=()=>page.locator('.sidebar').evaluate(async el=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await Promise.all(el.getAnimations().map(a=>a.finished));});
 try {
  await page.locator('.aux-home').waitFor();
  await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'vertical'}));
@@ -22,7 +23,7 @@ try {
  assert.ok((await page.locator('.aux-home').boundingBox()).width < homeBefore.width,'pinned sidebar occupies its normal column');
  await page.keyboard.press('Escape');assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'),'false','Escape does not dismiss pinned sidebar');
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await settle();
- await page.mouse.move(2,150);await settle();
+ await page.mouse.move(2,150);await page.locator(".sidebar.peek").waitFor();await settle();
  assert.deepEqual(await page.locator('.aux-home').boundingBox(),homeBefore);
  let panel=await page.locator('.sidebar').boundingBox();assert.equal(panel.x,8);assert.equal(panel.y,48);
  await page.mouse.move(120,180);assert.equal(await page.locator('.sidebar.peek').count(),1);
@@ -51,4 +52,4 @@ try {
  await page.getByRole('button',{name:'Show sidebar',exact:true}).click();assert.equal(await page.locator('.sidebar.expanded').count(),1);
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();
  console.log('PASS restored pinned sidebar and collapsed edge-only inset glass sidebar, stationary home and native page, live page blur, Escape/outside/toggle dismissal and reduced motion.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});server.closeAllConnections();await new Promise(r=>server.close(r));}
+} finally {await closeAux(app);server.closeAllConnections();await new Promise(r=>server.close(r));}

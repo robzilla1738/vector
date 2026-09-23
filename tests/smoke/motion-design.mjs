@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -45,4 +46,4 @@ try {
  await page.screenshot({path:root+'/release/test-artifacts/tabs/motion-vertical.png'});
  await page.emulateMedia({reducedMotion:'no-preference'});
  console.log('PASS hover timing, stable targets, compact icon geometry, keyboard focus, disabled states, empty chats, menus and reduced motion in both layouts.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

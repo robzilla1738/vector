@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -25,4 +26,4 @@ try {
  assert.equal(await page.getByRole('textbox',{name:'Reply to conversation'}).inputValue(),'A draft to verify composer sizing');
  await page.screenshot({path:root+'/release/test-artifacts/tabs/new-chat-narrow.png'});
  console.log('PASS centered mark, wider composer, attachment controls, context selection, narrow layout and draft preservation.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

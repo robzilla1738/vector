@@ -327,5 +327,15 @@ Integration serialization is enforced at the CLI. Native release fixtures now
 explicitly select expanded vertical layout where their assertions require it.
 Previous-turn context controls were restored after the release smoke exposed
 their removal; native blank-area dragging now excludes disclosure summaries and
-labels. Hosted verification and repository protection are being qualified on
-this checkpoint; do not infer green CI from local unit results.
+labels. Main now requires the aggregate check from the GitHub Actions app, with strict
+up-to-date checks, resolved review threads and no force push/deletion. Admin
+bypass remains available for explicit owner pushes; no second-person approval
+is required. Actions SHA pinning is enforced and merged branches auto-delete.
+
+Local validation: actionlint, typecheck, lint (388 warnings / cap 390), 1,029
+unit tests, 27 serial integration tests and the repaired native fixtures passed.
+Hosted Linux/macOS unit, integration and Electron e2e checks passed during this
+audit. The release/design runs exposed fixture assumptions, async timing and
+shutdown issues that were repaired. **Check the latest exact SHA's hosted run
+before calling the whole pipeline green**; earlier green jobs do not qualify a
+later commit. No failing check was removed or made optional.

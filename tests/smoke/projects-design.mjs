@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {mkdtempSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {launchAux,root} from './launch.mjs';
@@ -42,4 +43,4 @@ try {
  await page.getByLabel('Title',{exact:true}).waitFor();
  await page.screenshot({path:root+'/release/test-artifacts/tabs/task-editor.png'});
  console.log('PASS: task status filters, routine empty/reset, saved weekday preset, narrow layout and editor.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

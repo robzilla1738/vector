@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux, root} from './launch.mjs';
 import {join} from 'node:path';
 import {mkdtempSync, mkdirSync} from 'node:fs';
@@ -51,4 +52,4 @@ try {
  await page.keyboard.press('Escape');
  await page.getByRole('tooltip').waitFor({state:'hidden'});
  console.log('PASS create/rename/collapse/active visibility/drag membership/persistence/ungroup, delayed previews and real page capture.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -30,4 +31,4 @@ try {
   await page.screenshot({path:root+`/release/test-artifacts/tabs/text-contrast-${theme}.png`});
  }
  console.log('PASS project placeholder, section labels and disabled button text contrast on representative dark/light glass backdrops.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

@@ -1,3 +1,5 @@
+import {poll} from "./poll.mjs";
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync,mkdirSync,writeFileSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -50,11 +52,14 @@ try {
   await bar.evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));
   assert.equal(await page.evaluate(()=>document.documentElement.dataset.toolbarTone),variant==='white'?'light':'dark');
   assert.equal(await bar.locator('.cb-title').evaluate(el=>getComputedStyle(el).color),variant==='white'?'rgb(41, 41, 41)':'rgb(241, 241, 241)');
+  const reducedTransparency=await app.evaluate(({nativeTheme})=>nativeTheme.prefersReducedTransparency);
+  if(!reducedTransparency) await poll(app,async({webContents},url)=>webContents.getAllWebContents().find(w=>w.getURL()===url).executeJavaScript("!!document.getElementById('aux-toolbar-glass')"),base+'/'+variant);
   const frost=await app.evaluate(async({webContents},url)=>{
    const wc=webContents.getAllWebContents().find(w=>w.getURL()===url);
    return wc.executeJavaScript(`(()=>{const el=document.getElementById('aux-toolbar-glass');return el&&{blur:getComputedStyle(el).backdropFilter,height:el.offsetHeight}})()`);
   },base+'/'+variant);
-  assert.match(frost.blur,/blur\(20px\)/);assert.equal(frost.height,52);
+  if(reducedTransparency) assert.equal(frost,null,"reduced transparency suppresses page frost");
+  else {assert.match(frost.blur,/blur\(20px\)/);assert.equal(frost.height,52);}
   await app.evaluate(async({webContents},url)=>webContents.getAllWebContents().find(w=>w.getURL()===url).executeJavaScript('scrollTo(0,0)'),base+'/'+variant);
   const nativeRead=script=>app.evaluate(async({webContents},{url,script})=>webContents.getAllWebContents().find(w=>w.getURL()===url).executeJavaScript(script),{url:base+'/'+variant,script});
   const frames=await nativeRead('window.framesSeen');
@@ -97,4 +102,4 @@ try {
   await page.waitForFunction(()=>!document.querySelector('.toolbar-stacked'));
  }
  console.log('PASS glass across white/dark pages, click-to-edit URL, focus retention, sidebar button, native sidebar dragging, full hide and native captures.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});server.closeAllConnections();await new Promise(r=>server.close(r));}
+} finally {await closeAux(app);server.closeAllConnections();await new Promise(r=>server.close(r));}

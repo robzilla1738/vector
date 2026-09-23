@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {mkdtempSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {launchAux,root} from './launch.mjs';
@@ -44,4 +45,4 @@ try {
  assert.ok(heights.every(h=>h===36),JSON.stringify(heights));
  await page.screenshot({path:root+'/release/test-artifacts/tabs/work-controls.png'});
  console.log('PASS: Settings search keyboard navigation, clearing, connection tabs, narrow layout, borderless work sections and uniform control heights.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

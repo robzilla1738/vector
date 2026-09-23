@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync,mkdirSync,writeFileSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -46,4 +47,4 @@ try {
   await page.mouse.move(1100,700);
  }
  console.log('PASS vertical/horizontal previews: native bounds unchanged, thumbnail height stable, viewport containment and Escape dismissal.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});server.closeAllConnections();await new Promise(r=>server.close(r));}
+} finally {await closeAux(app);server.closeAllConnections();await new Promise(r=>server.close(r));}

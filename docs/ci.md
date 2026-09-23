@@ -39,7 +39,10 @@ itself enable a merge queue.
   rebuild runtime output while integration/native tests import it.
 - Benchmark reports and design screenshots are retained for 14 days. Failed
   e2e/release jobs retain their available test artifacts for the same period.
-  Workflow logs retain command output. Artifact absence can mean failure occurred
+  Workflow logs retain command output. Hosted design screenshots capture the
+renderer; full compositor captures require local Screen Recording permission.
+Native input, window bounds and blur assertions still run in CI. Teardown is
+bounded so an Electron shutdown stall cannot hold a successful fixture open. Artifact absence can mean failure occurred
   before a screenshot/report was written.
 - Timeouts bound every job and each smoke. New commits cancel obsolete runs for
   the same ref/PR. A canceled run is not a successful release gate.
@@ -64,6 +67,18 @@ caches include OS, architecture and lockfile; Playwright caches include OS and
 lockfile. Native desktop qualification currently covers macOS ARM64; Linux
 coverage is runtime/unit, not a claim of Linux desktop or Windows qualification.
 Unsigned package checks do not prove signing, notarization or update delivery.
+
+## Main-branch policy
+
+`main` requires the `CI passed` check from the GitHub Actions app, with the branch
+up to date before merging. Force pushes and branch deletion are disabled, and
+review conversations must be resolved. Administrator enforcement stays off so
+the owner retains the explicit direct-to-main workflow used in this project.
+This is an intentional owner bypass, not a guarantee that every owner push is
+pre-validated. Prefer a branch/PR when you want checks to block integration.
+No second person's approval is required for this solo-development workflow.
+Merged branches are deleted automatically. Repository Actions policy requires
+full SHA pins; the default token stays read-only and cannot approve PRs.
 
 ## Review and rerun via CLI
 
@@ -91,6 +106,5 @@ removing its persistence assertions. Blank-sidebar window dragging must exclude
 `summary` and `label` controls as well as buttons/inputs, or the More menu cannot
 open normally.
 
-Repository protection and the exact hosted verification result are recorded in
-HANDOFF after the revised workflow has run. Do not describe this checkpoint as
-fully green before that verification.
+See [HANDOFF](HANDOFF.md) for the audit checkpoint and verification limits. Always use the
+latest exact commit’s Actions result when deciding whether to merge or ship.

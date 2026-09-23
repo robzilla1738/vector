@@ -27,3 +27,9 @@ export async function launchAux(options = {}) {
   const app = await launchApp(options);
   return { app, page: await shellWindow(app) };
 }
+
+/** Always release a disposable Electron fixture, even if graceful shutdown stalls. */
+export async function closeAux(app) {
+  const timer = setTimeout(() => app.process().kill('SIGKILL'), 5000);
+  try { await app.close(); } finally { clearTimeout(timer); }
+}

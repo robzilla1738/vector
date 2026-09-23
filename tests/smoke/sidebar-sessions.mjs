@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync,mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -82,4 +83,4 @@ try {
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).waitFor();
  assert.equal(await page.locator('.session-folder').count(),0);
  console.log('PASS folder persistence, moving, archive/restore, delete cancellation/confirmation, folder removal retains chats, both modes, tab-group keyboard rename/collapse/cancel.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}

@@ -1,3 +1,4 @@
+import {closeAux} from "./launch.mjs";
 import {launchAux,root} from './launch.mjs';
 import {mkdtempSync,mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -30,4 +31,4 @@ try {
  const after=await page.locator('.conversation-embedded .conversation-input').boundingBox();
  assert.equal(after.y,before.y);
  console.log('PASS icon-only floating jump, zero-height wrapper, stable composer and scroll-to-latest behavior.');
-} finally {await app.evaluate(({app})=>app.exit(0)).catch(()=>{});}
+} finally {await closeAux(app);}
