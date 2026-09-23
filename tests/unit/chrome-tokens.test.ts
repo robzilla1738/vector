@@ -139,25 +139,36 @@ describe("shipped stylesheet — native macOS chrome", () => {
   });
 
   it("keeps a loaded page flush and floats the address bar in from the top edge", () => {
-    expect(styles).toContain(".app.electron .main-col:has(.stage-card.has-page) > .toolbar");
-    expect(styles).toMatch(/\.app\.electron \.main-col:has\(\.stage-card\.has-page\) > \.toolbar\s*\{[^}]*position:\s*absolute/s);
-    expect(styles).toMatch(/\.app\.electron \.main-col:has\(\.stage-card\.has-page\) > \.toolbar\s*\{[^}]*background:\s*transparent/s);
+    expect(styles).toContain(".app.electron .main-col.has-page > .toolbar");
+    expect(styles).toMatch(/\.app\.electron \.main-col\.has-page > \.toolbar\s*\{[^}]*position:\s*absolute/s);
+    expect(styles).toMatch(/\.app\.electron \.main-col\.has-page > \.toolbar\s*\{[^}]*background:\s*transparent/s);
     expect(styles).toContain(".main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right)");
-    expect(styles).toContain(".app.electron .main-col.toolbar-revealed:has(.stage-card.has-page)");
+    expect(styles).toContain(".app.electron .main-col.toolbar-revealed.has-page");
     expect(styles).toContain("translate3d(0, calc(-100% - 10px), 0)");
     expect(tokens).toContain("--ease-emphasized: cubic-bezier(.22, 1, .36, 1)");
     expect(styles).toContain("var(--ease-emphasized)");
     expect(styles).not.toContain("bottom: -64px");
     expect(styles).not.toContain("backdrop-filter: blur(22px) saturate(1.4)");
     expect(styles).toContain("transparent 72%, transparent 100%");
-    expect(styles).toContain(".app.electron .main-col.toolbar-revealed:has(.stage-card.has-page) > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right)");
-    expect(styles).toContain("html:has(:is(.app.toolbar-stacked, .app.sidebar-peek)) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)");
-    expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail) .main-col:has(.stage-card.has-page) .stage-wrap > .findbar { padding-left: var(--traffic-inset); }");
+    expect(styles).toContain(".app.electron .main-col.toolbar-revealed.has-page > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right)");
+    expect(styles).toContain("html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)");
+    expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail) .main-col.has-page .stage-wrap > .findbar { padding-left: var(--traffic-inset); }");
     expect(styles).toContain(".app.electron .sidebar.expanded .sb-head.electron,");
     expect(styles).toContain(".app.electron .sidebar.peek .sb-head.electron { padding-left: var(--traffic-inset); }");
     expect(styles).toContain(".app.electron .sidebar.fully-hidden.peek { width: var(--sb-w, var(--sidebar-w)); pointer-events: auto; }");
     expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail):not(.sidebar-peek) .conversation:not(.conversation-embedded) > .conversation-head { padding-left: var(--traffic-inset); }");
     expect(styles).not.toContain(".sidebar.peek { position: absolute");
+    // shell state comes from classes React already sets, not document-wide :has() matching
+    expect(styles).not.toMatch(/(?:html|:root|\.app|\.main-col|\.stage-wrap):has\(/);
+  });
+
+  it("uses one menu entrance, solid scrims and no white favicon plates", () => {
+    expect(styles.match(/animation:\s*menu-enter/g)).toHaveLength(1);
+    expect(styles).not.toContain("@keyframes dialog-enter");
+    expect(styles).toMatch(/\.scrim-soft\s*\{[^}]*background:\s*var\(--scrim\)/);
+    expect(styles).not.toMatch(/\.scrim-soft\s*\{[^}]*backdrop-filter/);
+    expect(styles).not.toMatch(/\.(tab-fav img|pal-ico img|ov-fav|ov-bigfav)\s*\{[^}]*background:\s*#fff/);
+    expect(tokens).toMatch(/prefers-contrast:\s*more\)\s*\{\s*:root\s*\{[^}]*--hairline:\s*1px[^}]*--focus-ring/);
   });
 
   it("reveals the URL field and both icon groups together without moving page layout", () => {

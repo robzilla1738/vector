@@ -8,7 +8,7 @@ import type { WorkspaceMemory, ShortcutOverrides } from "@aux/contracts";
 import { effectiveShortcuts, matchShortcut } from "@aux/contracts/shortcut-defs";
 import { deferSurface, preloadWhenIdle } from "./components/DeferredSurface";
 import { Conversation, AnswerPreview } from "./components/surfaces";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
@@ -212,6 +212,12 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.space = spaceColor;
   }, [spaceColor]);
+  // The window background clears with the shell layers, so <html> carries the same state before paint.
+  useLayoutEffect(() => {
+    const root = document.documentElement.classList;
+    root.toggle("toolbar-stacked", toolbarHole);
+    root.toggle("sidebar-peek", sidebarPeek);
+  }, [toolbarHole, sidebarPeek]);
 
   // mock mode: honour ?rail=1 / set scenario once the first snapshot lands, so
   // screenshots of the agent rail are deterministic
@@ -311,13 +317,16 @@ export function App() {
     ro.observe(el);
     report();
     const stopStageReport = onStageReport(report);
-    // panels animate with transforms; re-report once they settle
-    const t = window.setTimeout(report, 280);
+    // the sidebar animates its width; report once more when it settles
+    const settled = (event: TransitionEvent) => {
+      if (event.propertyName === "width" && event.target instanceof Element && event.target.classList.contains("sidebar")) report();
+    };
+    document.addEventListener("transitionend", settled);
     return () => {
       ro.disconnect();
       stopStageReport();
       cancelAnimationFrame(raf);
-      window.clearTimeout(t);
+      document.removeEventListener("transitionend", settled);
     };
   }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, splitCompanion?.url, splitCompanion?.backend, splitCompanion?.viewStatus, splitCompanion?.navigationError, splitCompanion?.showBlankDocument, splitPageId, splitRatio, mode, overlay, railOpen, settings.tabLayout]);
 
@@ -447,6 +456,7 @@ export function App() {
   return (
     <div
       className={`app tabs-${settings.tabLayout ?? "vertical"} ${inElectron ? "electron" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+      data-overlay={overlay ?? undefined}
       onContextMenu={(e) => {
         if (!inElectron) return;
         const el = e.target as HTMLElement;
@@ -464,7 +474,7 @@ export function App() {
       )}
       <div className="app-body">
         <Sidebar />
-        <div className={`main-col${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
+        <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
           {settings.tabLayout === "horizontal" && <HorizontalTabs />}
           <Toolbar />
           <div className="main">

@@ -230,7 +230,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
     { label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: "⌘S", separator: true },
   ];
   return (
-    <div className="menu space-menu pop-in" role="menu" aria-label="Spaces and browser controls" ref={ref}
+    <div className="menu space-menu" role="menu" aria-label="Spaces and browser controls" ref={ref}
       onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }}>
       {profileName && <div className="menu-caption space-profile-caption" title={`${profileName} browser profile`}>Profile · {profileName}</div>}
       {bridge.privateMode && <div className="menu-caption">Private window</div>}
@@ -879,7 +879,7 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
   }, []);
   const updateFolder = useStore((s) => s.updateFolder);
   return (
-    <div ref={ref} className="menu ctx-menu pop-in" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
+    <div ref={ref} className="menu ctx-menu" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
       <div className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
           <button key={color} aria-pressed={folder.color === color} aria-label={color} data-space={color}

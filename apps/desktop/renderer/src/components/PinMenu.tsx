@@ -40,7 +40,7 @@ export function PinMenu({ pin, spaceId, x, y, onClose: finishClose }: {
     onClose();
     void Promise.resolve().then(work).catch(errToast);
   }
-  return <div ref={ref} className="menu ctx-menu pop-in" role="menu" aria-label="Pinned site" style={{ left: x, top: y }} onKeyDown={event => {
+  return <div ref={ref} className="menu ctx-menu" role="menu" aria-label="Pinned site" style={{ left: x, top: y }} onKeyDown={event => {
     if (event.key === "Tab") { event.preventDefault(); onClose(); } else moveMenuFocus(event);
   }}>
     <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().newTab(pin.url))}>Open in new tab</button>

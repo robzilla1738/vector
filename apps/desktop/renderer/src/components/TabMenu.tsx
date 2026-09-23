@@ -99,7 +99,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     void Promise.resolve().then(work).catch(errToast);
   }
 
-  return <div ref={ref} className="menu ctx-menu tab-menu pop-in" role="menu" style={{ left: x, top: y }} onKeyDown={event => {
+  return <div ref={ref} className="menu ctx-menu tab-menu" role="menu" style={{ left: x, top: y }} onKeyDown={event => {
     if(event.key==="Tab"){event.preventDefault();onClose();return;}
     if (moving && (event.key === "Escape" || (event.key === "ArrowLeft" && !(event.target instanceof HTMLInputElement)))) { event.preventDefault(); event.stopPropagation(); setMoving(false); setQuery(""); return; }
     moveMenuFocus(event);

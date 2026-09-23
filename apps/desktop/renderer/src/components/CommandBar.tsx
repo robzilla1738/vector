@@ -471,7 +471,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         </button>
       )}
       {suggestions.length > 0 && (
-        <div className="cb-pop pop-in" style={{ maxHeight: popup.height, ...(popup.above ? { top: "auto", bottom: "calc(100% + 6px)" } : {}) }} ref={listRef} role="listbox" id={listId} onMouseDown={(e) => e.preventDefault()}>
+        <div className="cb-pop" style={{ maxHeight: popup.height, ...(popup.above ? { top: "auto", bottom: "calc(100% + 6px)" } : {}) }} ref={listRef} role="listbox" id={listId} onMouseDown={(e) => e.preventDefault()}>
           {suggestions.map((s, i) => {
             const first = i === 0 || suggestions[i - 1]!.section !== s.section;
             return (

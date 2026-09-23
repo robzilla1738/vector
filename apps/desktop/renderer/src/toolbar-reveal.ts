@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { bridge } from "./bridge";
 
-const HIDE_MS = 580;
+const seconds = (list: string) => list.split(",").map(v => (v.trim().endsWith("ms") ? parseFloat(v) / 1000 : parseFloat(v)) || 0);
+
+function longestTransitionMs(el: HTMLElement): number {
+  const style = getComputedStyle(el);
+  const durations = seconds(style.transitionDuration), delays = seconds(style.transitionDelay);
+  return Math.max(0, ...durations.map((d, i) => (d + (delays[i % delays.length] ?? 0)) * 1000));
+}
 
 /** The address bar stays out of the layout until the pointer reaches the top of a loaded page, or the field is focused. */
 export function useToolbarReveal(enabled: boolean): { revealed: boolean; covering: boolean } {
@@ -41,9 +47,16 @@ export function useToolbarReveal(enabled: boolean): { revealed: boolean; coverin
       return;
     }
     // Keep the shell above the page until the bar has finished sliding away.
-    const hold = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : HIDE_MS;
-    const timer = window.setTimeout(() => setCovering(false), hold);
-    return () => window.clearTimeout(timer);
+    const bar = document.querySelector<HTMLElement>(".main-col > .toolbar");
+    const done = () => setCovering(false);
+    const onEnd = (event: TransitionEvent) => { if (event.target === bar && event.propertyName === "transform") done(); };
+    bar?.addEventListener("transitionend", onEnd);
+    // transitionend never fires for a zero-length or interrupted transition
+    const timer = window.setTimeout(done, bar ? longestTransitionMs(bar) + 50 : 0);
+    return () => {
+      bar?.removeEventListener("transitionend", onEnd);
+      window.clearTimeout(timer);
+    };
   }, [enabled, revealed]);
   return { revealed, covering };
 }

@@ -131,6 +131,8 @@
   --bg-active: oklch(98.5% 0 0 / .1);
   --glass: oklch(20.5% 0 0 / .8);
   --glass-strong: oklch(26.9% 0 0 / .95);
+  /* solid: page views are native layers a CSS blur never reaches */
+  --scrim: oklch(0% 0 0 / .32);
   --stage-bg: var(--bg-0);
   --stage-frame: var(--bg-0);
 
@@ -252,6 +254,7 @@
   --bg-active: oklch(14.5% 0 0 / .1);
   --glass: oklch(100% 0 0 / .8);
   --glass-strong: oklch(100% 0 0 / .95);
+  --scrim: oklch(14.5% 0 0 / .18);
   --stage-bg: var(--bg-0);
   --stage-frame: var(--bg-0);
 
