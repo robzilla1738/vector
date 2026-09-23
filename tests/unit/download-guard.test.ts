@@ -14,6 +14,11 @@ describe("downloadWarning", () => {
   it("executable takes precedence over insecure", () => {
     expect(downloadWarning("tool.exe", "http://files.example/tool.exe")).toBe("executable");
   });
+  it("does not flag loopback http (potentially trustworthy origin)", () => {
+    for (const url of ["http://127.0.0.1:8080/file.txt", "http://localhost/file.txt", "http://[::1]:3000/file.txt", "http://app.localhost/file.txt"]) {
+      expect(downloadWarning("photo.zip", url), url).toBeUndefined();
+    }
+  });
   it("passes ordinary https downloads", () => {
     for (const name of ["photo.jpg", "archive.zip", "doc.pdf", "data.csv", "noextension", ".hidden"]) {
       expect(downloadWarning(name, "https://site.example/f")).toBeUndefined();

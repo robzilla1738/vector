@@ -275,7 +275,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         </div>
       </div>}
       {view === "bookmarks" && importPreview && <div className="library-import" role="region" aria-label="Bookmark import preview">
-        <strong>{importPreview.bookmarks.length - importDuplicates} new bookmarks ready</strong>
+        <strong>{importPreview.bookmarks.length} web bookmarks ready</strong>
         <p className="hint">From {importSource} into Bookmarks · {importDuplicates} already saved · {importPreview.folders.length} folders preserved. Existing bookmarks keep their titles and folders. {importPreview.skipped > 0 ? `${importPreview.skipped} duplicate or unsupported links skipped.` : ""}</p>
         <ul>{importPreview.bookmarks.slice(0, 4).map(item => <li key={item.url}>{item.title} <span className="hint">{hostOf(item.url)}</span></li>)}</ul>
         <div className="library-tools"><button className="btn sm" disabled={busy} onClick={() => void action(async () => {

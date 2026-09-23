@@ -290,6 +290,9 @@ function migrate(db: DatabaseSync, path: string, from: number): void {
 export function openDb(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   try {
+    // A relaunch can overlap the previous process's WAL checkpoint;
+    // statements wait briefly instead of failing with database is locked.
+    db.exec("PRAGMA busy_timeout = 5000");
     db.exec("PRAGMA foreign_keys = ON");
     const version = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
     const { count } = db.prepare("SELECT count(*) AS count FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'").get() as { count: number };

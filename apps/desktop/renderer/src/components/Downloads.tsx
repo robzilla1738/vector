@@ -74,6 +74,7 @@ export function Downloads() {
     });
     const unsubscribe = bridge.onDownload(value => {
       if (value && typeof value === "object" && "id" in value && typeof value.id === "string") updated.add(value.id);
+      if (value && typeof value === "object" && "state" in value && value.state === "interrupted") setFolderRefresh(current=>current+1);
     });
     void bridge.downloadsSnapshot().then(downloads => {
       if (!live) return;

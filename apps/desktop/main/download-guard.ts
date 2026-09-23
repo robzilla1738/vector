@@ -28,9 +28,16 @@ export function downloadWarning(filename: string, sourceUrl: string | undefined)
   const ext = /\.([^.\\/]+)$/.exec(filename.trim())?.[1]?.toLowerCase() ?? "";
   if (DANGEROUS_EXTENSIONS.has(ext)) return "executable";
   try {
-    if (sourceUrl && new URL(sourceUrl).protocol === "http:") return "insecure";
+    if (sourceUrl && new URL(sourceUrl).protocol === "http:" && !isLoopbackHost(new URL(sourceUrl).hostname)) return "insecure";
   } catch { /* unknown source — no scheme-based warning */ }
   return undefined;
+}
+
+/** Loopback destinations are potentially trustworthy (W3C Secure Contexts):
+ * packets never leave the machine, so cleartext HTTP carries no transit risk. */
+export function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  return host === "localhost" || host === "::1" || host.endsWith(".localhost") || /^127\.(\d{1,3}\.){2}\d{1,3}$/.test(host);
 }
 
 const WARNING_COPY: Record<DownloadWarning, { title: string; detail: (filename: string, origin: string) => string }> = {
