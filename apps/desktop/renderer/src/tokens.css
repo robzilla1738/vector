@@ -2,6 +2,10 @@
  * Popover glass remains separate from page material and native sidebar vibrancy.
  */
 
+/* tokens.css loads first, so it owns the cascade order for both stylesheets. */
+@layer reset, tokens, base, components, overrides;
+
+@layer tokens {
 :root {
   --squircle-factor: 1.4;
   --hairline: 0.5px;
@@ -324,7 +328,9 @@
 [data-theme="light"][data-space="green"]  { --space-color: #737370; }
 [data-theme="light"][data-space="teal"]   { --space-color: #2a2a28; }
 [data-theme="light"][data-space="slate"]  { --space-color: #848480; }
+} /* @layer tokens */
 
+@layer overrides {
 @media (prefers-contrast: more) {
   :root { --ink-2: #c9c9c9; --line: #777777; --sb-ink-2: #cccccc; --focus-ring: var(--link); }
   [data-theme="light"] { --ink-2: #424242; --line: #777777; --sb-ink-2: #424242; }
@@ -343,3 +349,4 @@
     scroll-behavior: auto !important;
   }
 }
+} /* @layer overrides */

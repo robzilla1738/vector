@@ -219,9 +219,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   });
 
   it("opens attachments as one row and hides conversation options and work history", () => {
-    expect(styles).toContain(".context-body { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }");
-    expect(styles).toContain(".context-attach, .context-body .attach-page, .context-body > .conversation-captures, .context-body .capture-triggers { display:contents; }");
-    expect(styles).toContain(".context-body .conversation-capture-rest");
+    for (const dead of [".context-body", ".context-attach", ".composer-options", ".composer-attach", ".attach-page"]) expect(styles).not.toContain(dead);
     expect(styles).toContain(".capture-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; }");
     expect(styles).not.toMatch(/capture-actions[^{]*\{[^}]*display:\s*contents/);
     expect(conversation).not.toContain("context-toggle");
@@ -231,7 +229,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(images).toContain('className="conversation-capture-rest"');
     expect(images).toContain(">Image</button>");
     expect(images).toContain(">Capture</button>");
-    expect(styles).toContain(".conversation .composer-options, .conversation .composer-attach, .conversation .capture-triggers { display:none; }");
+    expect(styles).toContain(".conversation .capture-triggers { display:none; }");
     expect(styles).toContain(".conversation .run-msg { display: none; }");
     // Run status (Pause/Stop/state badge) and Work history stay visible in chat panels;
     // hiding them regresses the live-run controls — see .conversation .run-msg above.
