@@ -4,21 +4,41 @@
  * Model output cannot expand grants. Sensitive values become handles before
  * export. Denied egress stays denied.
  */
-const HANDLE = /^(sk-|ghp_|github_pat_|xox[baprs]-|eyJ[A-Za-z0-9_-]{20,}\.)/;
-const SECRET_KEYS = /token|secret|password|passwd|authorization|cookie|api[_-]?key/i;
+const TOKEN_PREFIX = /^(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|gh[ousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})$/;
+const JWT = /^eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*$/;
+const BEARER = /^(?:bearer|basic|token)\s+\S{8,}$/i;
+const SECRET_KEY_NAMES = new Set([
+  "password", "passwd", "passphrase", "secret", "clientsecret", "token", "accesstoken", "refreshtoken", "idtoken",
+  "authtoken", "sessiontoken", "apikey", "xapikey", "privatekey", "authorization", "proxyauthorization", "cookie", "setcookie",
+]);
+
+const normKey = (k: string) => k.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** Shannon entropy in bits per character. */
+function entropy(s: string): number {
+  const counts = new Map<string, number>();
+  for (const ch of s) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+  let h = 0;
+  for (const n of counts.values()) h -= (n / s.length) * Math.log2(n / s.length);
+  return h;
+}
+
+/** Credential-shaped values only: prose that mentions "password" or hex digests/UUIDs stay readable. */
+export function looksLikeSecret(value: string): boolean {
+  const v = value.trim();
+  if (TOKEN_PREFIX.test(v) || JWT.test(v) || BEARER.test(v)) return true;
+  if (v.length < 32 || !/^[A-Za-z0-9+/=_.-]+$/.test(v)) return false;
+  const classes = [/[a-z]/, /[A-Z]/, /\d/].filter((re) => re.test(v)).length;
+  return classes === 3 && entropy(v) >= 4;
+}
 
 export function redactForModel(value: unknown): unknown {
-  if (typeof value === "string") {
-    if (HANDLE.test(value) || value.length > 8 && SECRET_KEYS.test(value)) {
-      return `{handle:${hash(value)}}`;
-    }
-    return value;
-  }
+  if (typeof value === "string") return looksLikeSecret(value) ? `{handle:${hash(value)}}` : value;
   if (Array.isArray(value)) return value.map(redactForModel);
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SECRET_KEYS.test(k) ? `{handle:${hash(String(v))}}` : redactForModel(v);
+      out[k] = SECRET_KEY_NAMES.has(normKey(k)) && v != null && v !== "" ? `{handle:${hash(String(v))}}` : redactForModel(v);
     }
     return out;
   }
