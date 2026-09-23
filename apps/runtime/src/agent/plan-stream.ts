@@ -58,6 +58,18 @@ export class PlanStreamParser {
     return this.steps.slice(before);
   }
 
+  /** The `message` string written so far (may be incomplete), or undefined until it starts. */
+  get message(): string | undefined {
+    const body = this.jsonBody();
+    const m = body === null ? null : /"message"\s*:\s*"((?:[^"\\]|\\.)*)(\\?)/.exec(body);
+    if (!m) return undefined;
+    try {
+      return JSON.parse(`"${m[1]}"`) as string;
+    } catch {
+      return m[1]!.replace(/\\u[0-9a-fA-F]{0,3}$/, "");
+    }
+  }
+
   /** True once the steps array has been closed by the model. */
   get complete(): boolean {
     return this.stepsClosed;

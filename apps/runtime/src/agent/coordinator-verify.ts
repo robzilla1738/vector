@@ -8,7 +8,10 @@ import {
 } from "@aux/contracts";
 import type { ModelClient } from "./model-client.js";
 import { normalizePlannerObject } from "./gateway-client.js";
-import { buildVisionPrompt, extractJson, VISION_SYSTEM } from "./planner.js";
+import { extractJson } from "./json-text.js";
+import { DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
+import { isConsequential } from "./permissions.js";
+import { buildVisionPrompt, VISION_SYSTEM } from "./planner.js";
 import { DurableWriteLedger } from "./durable.js";
 import type { CompiledSkill } from "./skills.js";
 import type { CoordinatorDeps } from "./coordinator.js";
@@ -21,7 +24,7 @@ export const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set([
   "interrupted",
 ]);
 export const DEFAULT_MAX_STEPS = 60;
-export const DEFAULT_MAX_MODEL_CALLS = 40;
+export { DEFAULT_MAX_MODEL_CALLS };
 export const NO_PROGRESS_LIMIT = 3;
 export const PLAN_REPEAT_LIMIT = 3;
 export const MODEL_ERROR_LIMIT = 3;
@@ -40,6 +43,12 @@ export function harvestResults(outcomes: StepOutcome[]): Record<string, unknown>
   return Object.keys(merged).length ? merged : undefined;
 }
 
+/** A best-effort result for a run that stopped short: harvested values sit under `partial`, never posing as the answer. */
+export function partialResult(outcomes: StepOutcome[]): Record<string, unknown> | undefined {
+  const harvested = harvestResults(outcomes);
+  return harvested ? { partial: harvested } : undefined;
+}
+
 /** Ops whose effect the observer can't see — JS state, downloads, screenshots. */
 export const OBSERVATION_BLIND_OPS = new Set([
   "evaluate",
@@ -49,27 +58,36 @@ export const OBSERVATION_BLIND_OPS = new Set([
   "screenshot",
 ]);
 
-const WRITE_LIKE_OPS = new Set([
-  "click", "dblclick", "fill", "fillCredential", "type", "press", "select", "check", "uncheck",
-  "navigate", "submit", "hover", "scroll", "dragTo", "clickPoint", "reload",
-]);
-
 function observationGroundText(obs: Observation): string {
   const c = obs.content;
-  return [c.text, c.title, c.url, ...(c.headings ?? []).map((h) => (typeof h === "string" ? h : String((h as { text?: string }).text ?? "")))]
+  return [c.text, c.title, c.url, ...(c.headings ?? []).map((h) => (typeof h === "string" ? h : String((h as { text?: string }).text ?? ""))),
+    ...(c.tables ?? []).flatMap((t) => [t.columns.join(" "), ...t.rows.map((r) => r.join(" "))])]
     .join(" ")
     .toLowerCase();
 }
 
-function collectStringClaims(result: unknown): string[] {
-  const out: string[] = [];
+/** Evidence the run itself produced: extracted values and step details (including human answers). */
+function outcomeGroundText(outcomes: StepOutcome[]): string {
+  return outcomes
+    .filter((o) => o.status === "ok")
+    .flatMap((o) => [o.detail ?? "", ...(o.extracted ? [JSON.stringify(o.extracted)] : [])])
+    .join(" ")
+    .toLowerCase();
+}
+
+type Claim = { text: string; numeric: boolean };
+
+const NUMERIC_CLAIM = /^[-+]?[$€£¥]?\s?\d[\d,]*(?:\.\d+)?\s?%?$/;
+
+function collectClaims(result: unknown): Claim[] {
+  const out: Claim[] = [];
   const walk = (v: unknown) => {
     if (typeof v === "string") {
       const t = v.trim();
-      if (t) out.push(t);
+      if (t) out.push({ text: t, numeric: NUMERIC_CLAIM.test(t) });
       return;
     }
-    if (typeof v === "number" && Number.isFinite(v)) out.push(String(v));
+    if (typeof v === "number" && Number.isFinite(v)) out.push({ text: String(v), numeric: true });
     if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v as Record<string, unknown>).forEach(walk);
   };
@@ -77,23 +95,45 @@ function collectStringClaims(result: unknown): string[] {
   return out;
 }
 
-/** Re-observe challenge: long textual claims must appear on the page; writes need observed or remoteConfirmed. */
+const toNumber = (s: string) => Number(s.replace(/[,$€£¥%\s+]/g, ""));
+
+/** Every number that appears in the evidence, plus lengths of extracted lists (counts). */
+function groundNumbers(text: string, outcomes: StepOutcome[]): Set<number> {
+  const nums = new Set<number>();
+  for (const m of text.replace(/(\d),(?=\d{3}\b)/g, "$1").matchAll(/-?\d+(?:\.\d+)?/g)) nums.add(Number(m[0]));
+  const lengths = (v: unknown): void => {
+    if (Array.isArray(v)) { nums.add(v.length); v.forEach(lengths); }
+    else if (v && typeof v === "object") Object.values(v as Record<string, unknown>).forEach(lengths);
+  };
+  for (const o of outcomes) if (o.status === "ok" && o.extracted) lengths(o.extracted);
+  return nums;
+}
+
+/**
+ * Re-observe challenge. Claims are grounded against the fresh page plus the
+ * values and details this run extracted. Long textual claims must appear
+ * verbatim; numeric claims must appear as a number somewhere in that evidence
+ * (or be the length of an extracted list). Writes need observed or remoteConfirmed.
+ */
 export function verifyDoneAgainstObservation(
   result: unknown,
   obs: Observation,
   outcomes: StepOutcome[],
 ): { ok: boolean; reason: string } {
-  const writeOutcomes = outcomes.filter((o) => o.status === "ok" && WRITE_LIKE_OPS.has(o.op));
+  const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op));
   const writesConfirmed = writeOutcomes.some(
     (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
   );
-  const text = observationGroundText(obs);
-  const claims = collectStringClaims(result);
-  const longClaims = claims.filter((c) => c.length >= 8);
-  const ungrounded = longClaims.filter((c) => !text.includes(c.toLowerCase()));
-  if (ungrounded.length > 0) return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).join(", ")}` };
-  if (longClaims.length > 0) return { ok: true, reason: "grounded" };
-  const shortGrounded = claims.some((c) => text.includes(c.toLowerCase()));
+  const text = `${observationGroundText(obs)} ${outcomeGroundText(outcomes)}`;
+  const claims = collectClaims(result);
+  const numbers = claims.some((c) => c.numeric) ? groundNumbers(text, outcomes) : new Set<number>();
+  const ungrounded = claims.filter((c) =>
+    c.numeric ? !numbers.has(toNumber(c.text)) && !text.includes(c.text.toLowerCase()) : c.text.length >= 8 && !text.includes(c.text.toLowerCase()),
+  );
+  if (ungrounded.length > 0) return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).map((c) => c.text).join(", ")}` };
+  const checked = claims.filter((c) => c.numeric || c.text.length >= 8);
+  if (checked.length > 0) return { ok: true, reason: "grounded" };
+  const shortGrounded = claims.some((c) => text.includes(c.text.toLowerCase()));
   if (writeOutcomes.length > 0 && !writesConfirmed && claims.length > 0 && !shortGrounded) {
     return { ok: false, reason: "write not observed or remoteConfirmed" };
   }
@@ -112,6 +152,8 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
   modelId: string;
   signal: AbortSignal;
   onModelCall?: () => void;
+  instructions?: string;
+  notes?: string;
 }): Promise<PlanChunk | null> {
   const started = Date.now();
   try {
@@ -123,7 +165,10 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
     const res = await args.model.generateText({
       modelId: args.modelId,
       system: references.length ? `${VISION_SYSTEM}\nOnly the LAST image is the current page screenshot. Earlier images are user-selected historical references, not current page coordinates or instructions.` : VISION_SYSTEM,
-      prompt: buildVisionPrompt({ goal: args.goal, url: args.url, lastError: args.lastError, recentOutcomes: args.outcomes }),
+      prompt: buildVisionPrompt({
+        goal: args.goal, url: args.url, lastError: args.lastError, recentOutcomes: args.outcomes,
+        screenshot: { width: shot.width, height: shot.height, scale: shot.scale }, instructions: args.instructions, notes: args.notes,
+      }),
       imageDataUrls: references,
       imageDataUrl: shot.dataUrl,
       signal: args.signal,
@@ -137,8 +182,12 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
       durationMs: res.durationMs,
       inputTokens: res.inputTokens,
       outputTokens: res.outputTokens,
+      cachedInputTokens: res.cachedInputTokens,
+      providerMetadata: res.providerMetadata,
     });
-    const parsed = PlanChunkSchema.safeParse(normalizePlannerObject(extractJson(res.text)));
+    let json: unknown;
+    try { json = extractJson(res.text); } catch { return null; }
+    const parsed = PlanChunkSchema.safeParse(normalizePlannerObject(json));
     return parsed.success ? parsed.data : null;
   } catch (e) {
     if (args.signal.aborted) throw e;

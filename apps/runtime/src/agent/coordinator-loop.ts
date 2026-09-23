@@ -1,16 +1,16 @@
 import { AuxError, type Observation } from "@aux/contracts";
 import { recoverAfterCrash } from "./recovery.js";
-import { initialMachine, reduce } from "./machine.js";
 import { emptyRepairState } from "./repair.js";
 import {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_MAX_STEPS,
-  harvestResults,
   MODEL_ERROR_LIMIT,
+  partialResult,
   TERMINAL_STATUSES,
   type CoordinatorLoopHost,
 } from "./coordinator-verify.js";
 import {
+  awaitHumanAnswer,
   dispatchPlan,
   giveUpRepair,
   handlePlannerFailure,
@@ -25,6 +25,7 @@ import {
   type TurnState,
 } from "./coordinator-turn.js";
 import { ModelFailureError } from "./model-failure.js";
+import { isConsequential } from "./permissions.js";
 
 export {
   DEFAULT_MAX_MODEL_CALLS,
@@ -34,6 +35,16 @@ export {
   verifyDoneAgainstObservation,
 } from "./coordinator-verify.js";
 export type { CoordinatorLoopHost } from "./coordinator-verify.js";
+
+/** Bound on the out-of-time final answer: a quarter of the deadline, 1-15 s. */
+const deadlineFinalMs = (deadlineMs = 0) => Math.min(15_000, Math.max(1_000, deadlineMs / 4));
+
+/** Out of budget: one final answer from the evidence before failing. Never asks a human. */
+async function finalBeforeFailing(s: TurnState, reason: string): Promise<boolean> {
+  if (!s.activePageId) return false;
+  const obs = await observeActivePage(s).catch(() => undefined);
+  return !!obs && (await tryFinalDecision(s, reason, obs, { allowInput: false })) === "done";
+}
 
 export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: string): Promise<void> {
   const run = self.get(runId);
@@ -51,7 +62,6 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     c,
     model,
     modelId: run.config?.modelId ?? self.deps.defaultModel(),
-    machine: reduce(initialMachine(), { type: "start" }),
     outcomes: [],
     modelCalls: 0,
     stepsRun: 0,
@@ -103,8 +113,14 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   try {
     while (true) {
       await self.waitIfPaused(c, runId);
-      if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) throw new AuxError("step_failed", "model call budget exhausted");
-      if (s.stepsRun >= maxSteps) throw new AuxError("step_failed", "step budget exhausted");
+      if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) {
+        if (await finalBeforeFailing(s, "model call budget exhausted")) return;
+        throw new AuxError("step_failed", "model call budget exhausted");
+      }
+      if (s.stepsRun >= maxSteps) {
+        if (await finalBeforeFailing(s, "step budget exhausted")) return;
+        throw new AuxError("step_failed", "step budget exhausted");
+      }
       if (!s.activePageId) throw new AuxError("invalid_params", "run has no target page");
 
       const obs = await observeActivePage(s);
@@ -143,11 +159,18 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     else giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      const partial = s.outcomes.some((o) => o.status === "ok" && (o.extracted !== undefined || o.detail !== undefined));
+      const deadline = new AbortController();
+      const timer = setTimeout(() => deadline.abort(), deadlineFinalMs(run.config?.deadlineMs));
+      s.c = { ...c, abort: deadline, answerWaiter: undefined };
+      await finalBeforeFailing(s, `run deadline exceeded (${run.config?.deadlineMs}ms)`).catch(() => false);
+      clearTimeout(timer);
+    }
+    if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
+      const partial = partialResult(s.outcomes);
       self.finish(
         runId,
         partial ? "partially_completed" : "failed",
-        partial ? harvestResults(s.outcomes) : undefined,
+        partial,
         `run deadline exceeded (${run.config?.deadlineMs}ms)`,
         partial ? "Ran out of time — here's what I found" : "Ran out of time",
       );
@@ -158,22 +181,9 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
 
 async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): Promise<"return" | "continue"> {
   const { plan } = attempt;
-  if (plan.status === "done") return settleDonePlan(s, plan, obs, attempt.visionPlanned);
+  if (plan.status === "done" && !plan.steps?.some((step) => isConsequential(step.op))) return settleDonePlan(s, plan, obs, attempt);
   if (plan.status === "needs_input") {
-    s.machine = reduce(s.machine, { type: "plan", status: "needs_input" });
-    s.self.setStatus(s.runId, "needs_input", plan.question ?? "Needs input");
-    const answer = await s.self.waitForAnswer(s.c, s.runId);
-    if (s.c.abort.signal.aborted) return "return";
-    s.outcomes.push({
-      stepId: `input-${Date.now()}`,
-      op: "human_input",
-      status: "ok",
-      startedAt: Date.now(),
-      durationMs: 0,
-      detail: `human answered: ${answer.slice(0, 120)}`,
-    });
-    s.machine = reduce(s.machine, { type: "answer" });
-    return "continue";
+    return (await awaitHumanAnswer(s, plan.question ?? "Needs input")) ? "continue" : "return";
   }
   const retargeted = !!(plan.pageId && plan.pageId !== s.activePageId && s.run.pageIds.includes(plan.pageId));
   if (retargeted) s.activePageId = plan.pageId!;
@@ -201,5 +211,6 @@ async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): 
     return "continue";
   }
   s.modelErrorCount = 0;
-  return dispatchPlan(s, obs, attempt);
+  // a "done" carrying actions is treated as a continue: run them, then re-plan
+  return dispatchPlan(s, obs, plan.status === "done" ? { ...attempt, plan: { ...plan, status: "continue" } } : attempt);
 }

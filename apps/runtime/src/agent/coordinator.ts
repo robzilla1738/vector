@@ -15,7 +15,6 @@ import type { ModelClient } from "./model-client.js";
 import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
-import { initialMachine, reduce } from "./machine.js";
 import type { CompiledSkill } from "./skills.js";
 import {
   DEFAULT_MAX_MODEL_CALLS,
@@ -51,6 +50,7 @@ export interface CoordinatorDeps {
     durationMs: number;
     inputTokens?: number;
     outputTokens?: number;
+    cachedInputTokens?: number;
     providerMetadata?: Record<string, unknown>;
     error?: string;
   }) => void;
@@ -68,7 +68,7 @@ export interface CoordinatorDeps {
   vault?: import("../services/vault.js").VaultService;
 }
 
-/** Thin machine apply: start/control + `reduce` via `runCoordinatorLoop`. */
+/** Run lifecycle and control; the agent loop itself lives in `runCoordinatorLoop`. */
 export class RunCoordinator {
   controls = new Map<string, RunControl>();
   answers = new Map<string, string>();
@@ -115,6 +115,7 @@ export class RunCoordinator {
     maxModelCalls?: number;
     deadlineMs?: number;
     context?: string;
+    instructions?: string;
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
     contextArtifactIds?: string[];
@@ -143,6 +144,7 @@ export class RunCoordinator {
         maxModelCalls: opts.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS,
         deadlineMs: opts.deadlineMs,
         context: opts.context,
+        instructions: opts.instructions,
         contextRunIds: opts.contextRunIds,
         contextAttachmentIds: opts.contextAttachmentIds,
         contextArtifactIds: opts.contextArtifactIds,
@@ -317,6 +319,8 @@ export class RunCoordinator {
     modelId: string;
     signal: AbortSignal;
     onModelCall?: () => void;
+    instructions?: string;
+    notes?: string;
   }): Promise<PlanChunk | null> {
     return tryVisionPlan(this, args);
   }
@@ -325,9 +329,8 @@ export class RunCoordinator {
     if (!obs) throw new AuxError("target_detached", "observation empty");
   }
 
-  /** Apply the machine: start → observe → plan → authorize → dispatch → verify. */
+  /** observe → plan → authorize → dispatch → verify, until a terminal status. */
   private async loop(runId: string) {
-    reduce(initialMachine(), { type: "start" });
     await runCoordinatorLoop(this, runId);
   }
 

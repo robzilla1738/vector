@@ -4,6 +4,7 @@ import {
   PlanChunkSchema,
   RepairChunkSchema,
   AuxError,
+  originOfAddress,
   type FinalDecision,
   type Observation,
   type PlanChunk,
@@ -13,25 +14,25 @@ import {
   type StepOutcome,
 } from "@aux/contracts";
 import type { z } from "zod";
-import type { ModelClient } from "./model-client.js";
+import { attemptsOf, type ModelAttempt, type ModelClient } from "./model-client.js";
 import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, FINAL_ANSWER_SYSTEM, newFenceToken, PLANNER_SYSTEM } from "./planner.js";
-import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions } from "./skills.js";
-import { originOfAddress } from "@aux/contracts";
+import { compileSkill, markSkillFailed, portableSkillSteps, tryReuseSkill, verifySkillPostconditions } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { compileAndAuthorize } from "./action-compiler.js";
-import { beginConsequentialWrite, settleWrite } from "./durable.js";
+import { guardedExecute, type GuardedDispatchOpts } from "./guarded-dispatch.js";
 import { permissionFailure } from "./permission-failure.js";
 import { classifyModelFailure, ModelFailureError } from "./model-failure.js";
-import { reduce, type Machine } from "./machine.js";
+import { isConsequential } from "./permissions.js";
 import { emptyRepairState, noteRepair, type RepairState } from "./repair.js";
+import { AnswerDeltaEmitter } from "./answer-delta.js";
 import {
-  harvestResults,
   MODEL_ERROR_LIMIT,
   NO_PROGRESS_LIMIT,
   OBSERVATION_BLIND_OPS,
   PLAN_REPEAT_LIMIT,
+  partialResult,
   verifyDoneAgainstObservation,
   type CoordinatorLoopHost,
 } from "./coordinator-verify.js";
@@ -51,7 +52,6 @@ export type TurnState = {
   model: ModelClient;
   imageDataUrls?: string[];
   modelId: string;
-  machine: Machine;
   outcomes: StepOutcome[];
   modelCalls: number;
   stepsRun: number;
@@ -62,6 +62,7 @@ export type TurnState = {
   activePageId: string | undefined;
   lastError?: string;
   lastPlanSig: string;
+  lastPlanObsSig?: string;
   repeatCount: number;
   modelErrorCount: number;
   visionPending: boolean;
@@ -73,7 +74,13 @@ export type TurnState = {
   /** One unguessable fence per run keeps the prompt prefix identical across turns (prompt caching). */
   fenceToken?: string;
   transientRetries?: number;
+  /** The planner's latest scratchpad, echoed back as NOTES SO FAR. */
+  notes?: string;
+  /** Human answers to needs_input questions; rendered as user instructions, not page data. */
+  answers?: { question: string; answer: string }[];
 };
+
+export const HUMAN_ANSWER_MAX_CHARS = 2000;
 
 export function resetGuards(s: TurnState): void {
   s.noProgress = 0;
@@ -81,9 +88,30 @@ export function resetGuards(s: TurnState): void {
   s.modelErrorCount = 0;
   s.repairState = emptyRepairState();
   s.lastPlanSig = "";
+  s.lastPlanObsSig = undefined;
   s.lastError = undefined;
   s.lastActionFailed = false;
   s.doneChallenged = false;
+}
+
+/** Human-authored text for this turn: task criteria, workspace memory, answers to the planner's questions. */
+export function userInstructions(s: TurnState): string | undefined {
+  const parts = [
+    s.run.config?.instructions,
+    ...(s.answers ?? []).map((a) => `Answer to your question "${a.question.slice(0, 300)}": ${a.answer}`),
+  ].filter((p): p is string => !!p?.trim());
+  return parts.length ? parts.join("\n\n") : undefined;
+}
+
+/** Ask the human and record the answer; false when the run was cancelled while waiting. */
+export async function awaitHumanAnswer(s: TurnState, question: string): Promise<boolean> {
+  s.self.setStatus(s.runId, "needs_input", question);
+  const raw = await s.self.waitForAnswer(s.c, s.runId);
+  if (s.c.abort.signal.aborted) return false;
+  const answer = raw.slice(0, HUMAN_ANSWER_MAX_CHARS);
+  (s.answers ??= []).push({ question, answer });
+  s.outcomes.push({ stepId: `input-${Date.now()}`, op: "human_input", status: "ok", startedAt: Date.now(), durationMs: 0, detail: `human answered: ${answer}` });
+  return true;
 }
 
 export function giveUpRepair(s: TurnState, error?: string, failure?: Run["failure"]): void {
@@ -92,13 +120,28 @@ export function giveUpRepair(s: TurnState, error?: string, failure?: Run["failur
   s.self.finish(
     s.runId,
     partial ? "partially_completed" : "failed",
-    partial ? harvestResults(s.outcomes) : undefined,
+    partial ? partialResult(s.outcomes) : undefined,
     error,
     partial ? "Couldn't fully finish — here's what I found" : undefined,
     failure,
   );
 }
 
+function recordAttempt(s: TurnState, role: "planner" | "repair" | "final", modelId: string, a: ModelAttempt, error?: string) {
+  s.self.deps.recordModelCall({
+    runId: s.runId,
+    role,
+    modelId,
+    durationMs: a.durationMs,
+    inputTokens: a.inputTokens,
+    outputTokens: a.outputTokens,
+    cachedInputTokens: a.cachedInputTokens,
+    providerMetadata: a.providerMetadata,
+    ...(a.error ?? error ? { error: a.error ?? error } : {}),
+  });
+}
+
+/** One model call. Hidden client retries are billed attempts: each counts against the budget and is recorded. */
 export async function structuredCall<T>(
   s: TurnState,
   role: "planner" | "repair" | "final",
@@ -117,14 +160,13 @@ export async function structuredCall<T>(
       stream && s.model.streamStructured
         ? await s.model.streamStructured<T>({ ...input, signal: s.c.abort.signal, onText: stream.onText })
         : await s.model.generateStructured<T>({ ...input, signal: s.c.abort.signal });
+    for (const retry of call.retries ?? []) {
+      s.modelCalls++;
+      recordAttempt(s, role, args.modelId, retry);
+    }
     const firstDispatchAt = stream?.firstDispatchAt();
-    s.self.deps.recordModelCall({
-      runId: s.runId,
-      role,
-      modelId: args.modelId,
-      durationMs: call.durationMs,
-      inputTokens: call.inputTokens,
-      outputTokens: call.outputTokens,
+    recordAttempt(s, role, args.modelId, {
+      ...call,
       providerMetadata:
         firstDispatchAt === undefined
           ? call.providerMetadata
@@ -133,57 +175,63 @@ export async function structuredCall<T>(
     return call;
   } catch (e) {
     const safe = classifyModelFailure(e);
-    s.self.deps.recordModelCall({
-      runId: s.runId,
-      role,
-      modelId: args.modelId,
-      durationMs: Date.now() - started,
-      error: `${safe.category}: ${safe.message}`,
-    });
+    const attempts = attemptsOf(e);
+    s.modelCalls += Math.max(0, attempts.length - 1);
+    if (attempts.length) for (const a of attempts) recordAttempt(s, role, args.modelId, a, `${safe.category}: ${safe.message}`);
+    else recordAttempt(s, role, args.modelId, { durationMs: Date.now() - started }, `${safe.category}: ${safe.message}`);
     throw e;
   }
 }
 
-export async function tryFinalDecision(s: TurnState, reason: string, obs: Observation): Promise<"done" | "input" | "gave_up"> {
+/**
+ * The loop stopped under a guard: one last model call to answer or ask.
+ * `allowInput: false` (budget/deadline) turns a question into a give-up.
+ * Auth, quota and capability failures surface as ModelFailureError.
+ */
+export async function tryFinalDecision(
+  s: TurnState,
+  reason: string,
+  obs: Observation,
+  opts: { allowInput?: boolean } = {},
+): Promise<"done" | "input" | "gave_up"> {
   try {
     const call = await structuredCall<FinalDecision>(s, "final", {
       modelId: s.modelId,
       system: FINAL_ANSWER_SYSTEM,
       prompt: buildFinalAnswerPrompt({
-      fenceToken: (s.fenceToken ??= newFenceToken()),
+        fenceToken: (s.fenceToken ??= newFenceToken()),
         goal: s.run.goal,
         observation: obs,
         recentOutcomes: s.outcomes,
         reason,
         context: s.run.config?.context,
+        instructions: userInstructions(s),
+        notes: s.notes,
       }),
       schema: FinalDecisionSchema,
       maxOutputTokens: 4096,
     });
     const d = call.object;
     if (d.status === "needs_input" && d.question) {
-      s.self.setStatus(s.runId, "needs_input", d.question);
-      const answer = await s.self.waitForAnswer(s.c, s.runId);
-      if (s.c.abort.signal.aborted) return "gave_up";
-      s.outcomes.push({
-        stepId: `input-${Date.now()}`,
-        op: "human_input",
-        status: "ok",
-        startedAt: Date.now(),
-        durationMs: 0,
-        detail: `human answered: ${answer.slice(0, 120)}`,
-      });
-      return "input";
+      if (opts.allowInput === false) return "gave_up";
+      return (await awaitHumanAnswer(s, d.question)) ? "input" : "gave_up";
     }
-    if (d.status !== "done") return "gave_up";
-    const result = d.result && Object.keys(d.result).length ? d.result : harvestResults(s.outcomes);
-    if (!s.activePageId) return "gave_up";
+    if (d.status !== "done" || !s.activePageId) return "gave_up";
+    if (!d.result || !Object.keys(d.result).length) {
+      const partial = partialResult(s.outcomes);
+      if (!partial) return "gave_up";
+      s.self.finish(s.runId, "partially_completed", partial, reason, d.message || "Couldn't fully finish — here's what I found");
+      return "done";
+    }
     const verifyObs = await s.self.deps.pages.observe(s.activePageId, { sinceRevision: obs.revision, format: "full" });
-    const verified = verifyDoneAgainstObservation(result, verifyObs, s.outcomes);
+    const verified = verifyDoneAgainstObservation(d.result, verifyObs, s.outcomes);
     if (!verified.ok) return "gave_up";
-    s.self.finish(s.runId, "completed", result, undefined, d.message || "Done");
+    s.self.finish(s.runId, "completed", d.result, undefined, d.message || "Done");
     return "done";
-  } catch {
+  } catch (e) {
+    if (e instanceof ModelFailureError) throw e;
+    const failure = classifyModelFailure(e);
+    if (!failure.retryable && !s.c.abort.signal.aborted) throw new ModelFailureError(failure);
     return "gave_up";
   }
 }
@@ -215,8 +263,12 @@ export async function observeActivePage(s: TurnState): Promise<Observation> {
   }
 }
 
+export function observationSignature(obs: Observation): string {
+  return `${obs.content.url}#${obs.content.elements.length}#${obs.content.text.length}#${obs.content.text.slice(0, 200)}`;
+}
+
 export function noteObservationProgress(s: TurnState, obs: Observation): boolean {
-  const sig = `${obs.content.url}#${obs.content.elements.length}#${obs.content.text.length}#${obs.content.text.slice(0, 200)}`;
+  const sig = observationSignature(obs);
   const yielded = s.outcomes
     .slice(s.outcomeCursor)
     .some((o) => o.status === "ok" && (o.extracted !== undefined || OBSERVATION_BLIND_OPS.has(o.op)));
@@ -229,6 +281,11 @@ export function noteObservationProgress(s: TurnState, obs: Observation): boolean
   return s.noProgress >= NO_PROGRESS_LIMIT;
 }
 
+/** Same page, same steps (op + target + values): the plan identity used by the repeat guard. */
+export function planSignature(url: string, steps: Step[]): string {
+  return `${url}\n${steps.map(({ id: _id, ...rest }) => JSON.stringify(rest)).join("|")}`;
+}
+
 export type PlanAttempt = {
   plan: PlanChunk;
   visionPlanned: boolean;
@@ -237,6 +294,49 @@ export type PlanAttempt = {
   nextObserveReq: () => { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string };
   onStepRecorded: (outcome: StepOutcome, step: Step) => void;
 };
+
+function credentialGrantsFor(s: TurnState, url: string) {
+  const origin = originOfAddress(url);
+  return origin && s.self.deps.vault
+    ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin, accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
+    : undefined;
+}
+
+function plannerPrompt(s: TurnState, obs: Observation): string {
+  return buildPlannerPrompt({
+    fenceToken: (s.fenceToken ??= newFenceToken()),
+    goal: s.run.goal,
+    observations: [obs],
+    recentOutcomes: s.outcomes,
+    pageIds: s.run.pageIds,
+    repairNote: s.lastError,
+    context: s.run.config?.context,
+    instructions: userInstructions(s),
+    notes: s.notes,
+    budget: { tokens: 3000 },
+    credentialGrants: credentialGrantsFor(s, obs.content.url),
+  });
+}
+
+function dispatchDeps(s: TurnState) {
+  return { pages: s.self.deps.pages, durable: s.self.durable, grants: s.self.deps.grants };
+}
+
+function dispatchOpts(s: TurnState, obs: Observation, steps: Step[], extra: Partial<GuardedDispatchOpts> = {}): GuardedDispatchOpts {
+  return {
+    runId: s.runId,
+    pageId: s.activePageId!,
+    steps,
+    observation: obs.content,
+    url: obs.content.url,
+    documentEpoch: obs.documentEpoch,
+    revision: obs.revision,
+    taskId: s.run.config?.taskId,
+    taskRevision: s.run.config?.taskRevision,
+    exec: { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal },
+    ...extra,
+  };
+}
 
 export async function planTurn(
   s: TurnState,
@@ -260,72 +360,42 @@ export async function planTurn(
   };
   const canStream = typeof s.model.streamStructured === "function" && s.run.pageIds.length <= 1;
   const plannerCall = async (): Promise<PlanChunk> => {
-    const origin = originOfAddress(obs.content.url);
-    const credentialGrants = origin && s.self.deps.vault
-      ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin, accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
-      : undefined;
-    const prompt = buildPlannerPrompt({
-      fenceToken: (s.fenceToken ??= newFenceToken()),
-      goal: s.run.goal,
-      observations: [obs],
-      recentOutcomes: s.outcomes,
-      pageIds: s.run.pageIds,
-      repairNote: s.lastError,
-      context: s.run.config?.context,
-      budget: { tokens: 3000 },
-      credentialGrants,
-    });
-    const args = { modelId: s.modelId, system: PLANNER_SYSTEM, prompt, schema: PlanChunkSchema, maxOutputTokens: 8192 };
+    const args = { modelId: s.modelId, system: PLANNER_SYSTEM, prompt: plannerPrompt(s, obs), schema: PlanChunkSchema, maxOutputTokens: 8192 };
     if (!canStream) return (await structuredCall<PlanChunk>(s, "planner", args)).object;
     const parser = new PlanStreamParser();
     const epoch = obs.documentEpoch;
-    const dispatcher = new EarlyDispatcher(
-      (steps, { first, last }) => {
-        const live = s.self.deps.pages.get(s.activePageId!);
-        const prepared = compileAndAuthorize({
-          pageId: s.activePageId!,
-          documentEpoch: live.documentEpoch ?? epoch,
-          observedEpoch: epoch,
-          steps,
-          observation: obs.content,
-          url: live.url ?? obs.content.url,
-          grants: s.self.deps.grants,
-        });
-        if ("rejected" in prepared) return Promise.reject(new AuxError("conflict", prepared.rejected));
-        if ("denied" in prepared) return Promise.reject(new AuxError("permission_denied", prepared.denied));
-        const write = beginConsequentialWrite(s.self.durable, {
-          runId: s.runId,
-          pageId: s.activePageId!,
-          documentEpoch: epoch,
-          revision: obs.revision,
-          steps: prepared.program.steps ?? [],
-          taskId: s.run.config?.taskId,
-          taskRevision: s.run.config?.taskRevision,
-        });
-        if (write.skip) return Promise.reject(new AuxError("conflict", write.reason!));
-        return s.self.deps.pages
-          .execute(
-            { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
-            { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal, onStep: onStepRecorded },
-            last ? { returnObservation: nextObserveReq() } : {},
-          )
-          .then((r) => {
-            settleWrite(s.self.durable, write.intentId, r);
-            return r;
-          });
-      },
-      24,
-    );
+    const dispatcher = new EarlyDispatcher(async (steps, { first, last }) => {
+      const live = s.self.deps.pages.get(s.activePageId!);
+      const g = await guardedExecute(dispatchDeps(s), dispatchOpts(s, obs, steps, {
+        documentEpoch: live.documentEpoch ?? epoch,
+        observedEpoch: epoch,
+        url: live.url ?? obs.content.url,
+        program: first ? { documentEpoch: epoch } : undefined,
+        exec: { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal, onStep: onStepRecorded },
+        returnObservation: last ? nextObserveReq() : undefined,
+      }));
+      if (g.kind === "rejected" || g.kind === "skipped") throw new AuxError("conflict", g.reason);
+      if (g.kind === "denied") throw new AuxError("permission_denied", g.reason);
+      return g.result;
+    }, 24);
     early = dispatcher;
+    const answer = new AnswerDeltaEmitter(s.self.deps.events, s.runId);
     const call = await structuredCall<PlanChunk>(s, "planner", args, {
       onText: (delta) => {
         for (const step of parser.push(delta)) {
           if (parser.status === "continue" && (parser.pageId === undefined || parser.pageId === s.activePageId)) dispatcher.offer(step);
           else dispatcher.halt();
         }
+        answer.push(parser.message);
       },
       firstDispatchAt: () => dispatcher.firstDispatchAt,
-    });
+    }).finally(() => answer.flush());
+    // The stream did not parse and the client re-asked: the retry is a different
+    // plan. Never splice its steps onto ones already dispatched from the stream.
+    if (call.retries?.length && dispatcher.dispatchedCount > 0) {
+      dispatcher.halt();
+      return { status: "continue", message: "Re-planning from a fresh observation", observationRequest: {} };
+    }
     return call.object;
   };
 
@@ -335,7 +405,9 @@ export async function planTurn(
   if (claimedGrants.length) {
     s.run.config = { ...s.run.config, ignoredPageGrants: claimedGrants };
   }
-  const reuse = s.run.config?.contextImageArtifactIds?.length ? {skipped:"Image references require a fresh plan"} : tryReuseSkill(s.self.skills, s.run.goal, obs.content, obs.content.url, obs.documentEpoch);
+  // a run never replays its own skills: the chunk it just ran would repeat without the model
+  const reusable = s.self.skills.filter((k) => !k.id.startsWith(`${s.runId}:`));
+  const reuse = s.run.config?.contextImageArtifactIds?.length ? {skipped:"Image references require a fresh plan"} : tryReuseSkill(reusable, s.run.goal, obs.content, obs.content.url, obs.documentEpoch);
   try {
     let plan: PlanChunk;
     if ("skill" in reuse && !s.lastError && !s.visionPending && !thinObs) {
@@ -361,6 +433,8 @@ export async function planTurn(
           modelId: visionId,
           signal: s.c.abort.signal,
           onModelCall: () => s.modelCalls++,
+          instructions: userInstructions(s),
+          notes: s.notes,
         });
         if (v) {
           plan = v;
@@ -374,6 +448,7 @@ export async function planTurn(
     } else {
       plan = await plannerCall();
     }
+    if (plan.notes !== undefined) s.notes = plan.notes;
     return { plan, visionPlanned, early, reuse, nextObserveReq, onStepRecorded };
   } catch (error) {
     return { error, early };
@@ -447,17 +522,64 @@ export async function handlePlannerFailure(
   return "continue";
 }
 
+function noteUnauthorized(s: TurnState, reason: string): "return" | "continue" {
+  s.lastError = reason;
+  s.lastActionFailed = true;
+  if (!noteRepair(s.repairState, reason).allowed) {
+    giveUpRepair(s, s.lastError);
+    return "return";
+  }
+  return "continue";
+}
+
+/** `"{{name}}"` in a result value is replaced by the extracted field of that name. */
+export function fillResultTemplates(result: unknown, values: Record<string, unknown>): unknown {
+  if (typeof result === "string") {
+    const whole = /^\{\{\s*([\w.-]+)\s*\}\}$/.exec(result);
+    if (whole) return whole[1]! in values ? values[whole[1]!] : result;
+    return result.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (m, k: string) => {
+      const v = values[k];
+      return v === undefined ? m : typeof v === "string" ? v : JSON.stringify(v);
+    });
+  }
+  if (Array.isArray(result)) return result.map((v) => fillResultTemplates(v, values));
+  if (result && typeof result === "object") return Object.fromEntries(Object.entries(result).map(([k, v]) => [k, fillResultTemplates(v, values)]));
+  return result;
+}
+
+/** A done chunk's read-only steps run locally; the finished result is then verified like any done. */
+async function runTerminalSteps(s: TurnState, plan: PlanChunk, obs: Observation, attempt: PlanAttempt): Promise<PlanChunk | "return" | "continue"> {
+  const g = await guardedExecute(dispatchDeps(s), dispatchOpts(s, obs, plan.steps ?? [], {
+    exec: { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal, onStep: attempt.onStepRecorded },
+  }));
+  if (g.kind === "skipped") throw new AuxError("conflict", g.reason);
+  if (g.kind !== "ran") return noteUnauthorized(s, g.reason);
+  s.stepsRun += g.program.steps?.length ?? 0;
+  if (g.result.status === "cancelled") return "return";
+  if (g.result.status === "failed") return recoverFailedChunk(s, g.result.error);
+  const values: Record<string, unknown> = {};
+  for (const o of g.result.steps) if (o.status === "ok" && o.extracted) Object.assign(values, o.extracted);
+  const result = plan.result && Object.keys(plan.result).length
+    ? (fillResultTemplates(plan.result, values) as Record<string, unknown>)
+    : Object.keys(values).length ? values : undefined;
+  return { ...plan, steps: undefined, result };
+}
+
 export async function settleDonePlan(
   s: TurnState,
   plan: PlanChunk,
   obs: Observation,
-  visionPlanned: boolean,
+  attempt: PlanAttempt,
 ): Promise<"return" | "continue"> {
-  s.machine = reduce(s.machine, { type: "plan", status: "done" });
-  if (s.lastActionFailed && !s.doneChallenged && !visionPlanned) {
+  if (s.lastActionFailed && !s.doneChallenged && !attempt.visionPlanned) {
     s.doneChallenged = true;
     s.lastError = `the last action failed (${s.lastError ?? "see outcomes"}) and you returned done without trying an alternative — if another mechanism could reach the goal (press Enter, navigate to a URL you can construct, a different selector), run it now; only return done again if every alternative is exhausted`;
     return "continue";
+  }
+  if (plan.steps?.length) {
+    const finished = await runTerminalSteps(s, plan, obs, attempt);
+    if (typeof finished === "string") return finished;
+    plan = finished;
   }
   let verifyObs = obs;
   try {
@@ -466,7 +588,6 @@ export async function settleDonePlan(
     verifyObs = obs;
   }
   const verified = verifyDoneAgainstObservation(plan.result, verifyObs, s.outcomes);
-  s.machine = reduce(s.machine, { type: "verified", ok: verified.ok });
   if (!verified.ok && !s.doneChallenged) {
     s.doneChallenged = true;
     s.lastError = `done was not verified against a fresh observation (${verified.reason}) — re-observe and only return done with values that appear on the page`;
@@ -486,12 +607,14 @@ export async function dispatchPlan(
   attempt: PlanAttempt,
 ): Promise<"return" | "continue"> {
   const { plan, early, reuse, nextObserveReq, onStepRecorded } = attempt;
+  const steps = plan.steps ?? [];
   let repeatNudge: string | undefined;
-  if (plan.steps!.every((step) => OBSERVATION_BLIND_OPS.has(step.op))) {
+  if (steps.every((step) => OBSERVATION_BLIND_OPS.has(step.op))) {
     s.lastPlanSig = "";
   } else {
-    const planSig = plan.steps!.map((step) => step.op).join("|");
-    if (planSig === s.lastPlanSig) {
+    const planSig = planSignature(obs.content.url, steps);
+    const obsSig = observationSignature(obs);
+    if (planSig === s.lastPlanSig && obsSig === s.lastPlanObsSig) {
       s.repeatCount++;
       if (s.repeatCount >= PLAN_REPEAT_LIMIT) {
         if (early) await early.finish([]);
@@ -510,61 +633,41 @@ export async function dispatchPlan(
     } else {
       s.repeatCount = 0;
       s.lastPlanSig = planSig;
+      s.lastPlanObsSig = obsSig;
     }
   }
 
-  s.machine = reduce(s.machine, { type: "plan", status: "continue" });
-  const compiled = compileAndAuthorize({
-    pageId: s.activePageId!,
-    documentEpoch: obs.documentEpoch,
-    steps: plan.steps ?? [],
-    observation: obs.content,
-    url: obs.content.url,
-    guards: "skill" in reuse ? reuse.skill.preconditions : undefined,
-    grants: s.self.deps.grants,
-  });
-  if ("rejected" in compiled) {
-    s.machine = reduce(s.machine, { type: "authorized", ok: false });
-    if (early) await early.finish([]);
-    s.lastError = compiled.rejected;
-    s.lastActionFailed = true;
-    if (!noteRepair(s.repairState, compiled.rejected).allowed) {
-      giveUpRepair(s, s.lastError);
-      return "return";
-    }
-    return "continue";
-  }
-  if ("denied" in compiled) {
-    s.machine = reduce(s.machine, { type: "authorized", ok: false });
-    if (early) await early.finish([]);
-    s.lastError = compiled.denied;
-    s.lastActionFailed = true;
-    if (!noteRepair(s.repairState, compiled.denied).allowed) {
-      giveUpRepair(s, s.lastError);
-      return "return";
-    }
-    return "continue";
-  }
-  s.machine = reduce(s.machine, { type: "authorized", ok: true });
   const streamed = early && early.dispatchedCount > 0;
-  const write = streamed ? { skip: false, intentId: undefined } : beginConsequentialWrite(s.self.durable, {
-    runId: s.runId,
-    pageId: s.activePageId!,
-    documentEpoch: obs.documentEpoch,
-    revision: obs.revision,
-    steps: compiled.program.steps ?? [],
-    taskId: s.run.config?.taskId,
-    taskRevision: s.run.config?.taskRevision,
-  });
-  if (write.skip) throw new AuxError("conflict", write.reason!);
-  const result = streamed
-      ? await early!.finish(plan.steps ?? [])
-      : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
-  if (early && !streamed) early.halt();
-  settleWrite(s.self.durable, write.intentId, result);
-  const carried = early ? early.observation : (result as { observation?: Observation }).observation;
+  const guards = "skill" in reuse ? reuse.skill.preconditions : undefined;
+  let result;
+  if (streamed) {
+    const compiled = compileAndAuthorize({
+      pageId: s.activePageId!,
+      documentEpoch: obs.documentEpoch,
+      steps,
+      observation: obs.content,
+      url: obs.content.url,
+      grants: s.self.deps.grants,
+    });
+    if ("rejected" in compiled || "denied" in compiled) {
+      await early!.finish([]);
+      return noteUnauthorized(s, "rejected" in compiled ? compiled.rejected : compiled.denied);
+    }
+    result = await early!.finish(steps);
+  } else {
+    early?.halt();
+    const g = await guardedExecute(dispatchDeps(s), dispatchOpts(s, obs, steps, {
+      guards,
+      exec: { runId: s.runId, taskId: s.run.config?.taskId, signal: s.c.abort.signal, onStep: onStepRecorded },
+      returnObservation: nextObserveReq(),
+    }));
+    if (g.kind === "skipped") throw new AuxError("conflict", g.reason);
+    if (g.kind !== "ran") return noteUnauthorized(s, g.reason);
+    result = g.result;
+  }
+  const carried = streamed ? early!.observation : (result as { observation?: Observation }).observation;
   if (carried && carried.pageId === s.activePageId) s.carriedObs = carried;
-  s.stepsRun += plan.steps!.length;
+  s.stepsRun += steps.length;
   s.lastError = repeatNudge;
   s.lastActionFailed = false;
   s.self.unresolvedByRun.set(
@@ -588,23 +691,21 @@ export async function dispatchPlan(
       s.lastActionFailed = true;
     }
   }
-  if (result.status !== "failed" && result.status !== "cancelled" && plan.steps?.length && !("skill" in reuse)) {
+  if (result.status !== "failed" && result.status !== "cancelled" && steps.length && !("skill" in reuse)) {
     try {
       const origin = new URL(obs.content.url).origin;
       const named = obs.content.elements
         .filter((e) => e.role && e.name)
         .slice(0, 2)
         .map((e) => ({ role: e.role, nameIncludes: (e.name ?? "").slice(0, 40) }));
-      const writes = plan.steps.some((step) =>
-        ["click", "fill", "fillCredential", "type", "press", "select", "check", "uncheck", "navigate", "submit"].includes(step.op),
-      );
-      if (s.self.skills.length < 32 && named.length > 0 && !writes) {
+      const portable = portableSkillSteps(steps, obs.content);
+      if (s.self.skills.length < 32 && named.length > 0 && portable && !steps.some((step) => isConsequential(step.op))) {
         s.self.skills.push(
           compileSkill({
             id: `${s.runId}:${s.self.skills.length}`,
             goalPattern: s.run.goal.slice(0, 64),
             pageId: s.activePageId!,
-            steps: plan.steps,
+            steps: portable,
             preconditions: [{ exactOrigin: origin }, ...named],
             postconditions: [{ exactOrigin: origin }],
             evidence: `compiled from a successful read-only chunk on ${origin}`,
@@ -636,51 +737,18 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
     const repair = await structuredCall<RepairChunk>(s, "repair", {
       modelId: recoveryModelId,
       system: `${PLANNER_SYSTEM}\n\nYou are the recovery model. A chunk failed: ${s.lastError}. Produce a corrected bounded chunk.`,
-      prompt: buildPlannerPrompt({
-      fenceToken: (s.fenceToken ??= newFenceToken()),
-        goal: s.run.goal,
-        observations: [fresh],
-        recentOutcomes: s.outcomes,
-        pageIds: s.run.pageIds,
-        repairNote: s.lastError,
-        context: s.run.config?.context,
-        budget: { tokens: 3000 },
-        credentialGrants: originOfAddress(fresh.content.url) && s.self.deps.vault
-          ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin: originOfAddress(fresh.content.url), accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
-          : undefined,
-      }),
+      prompt: plannerPrompt(s, fresh),
       schema: RepairChunkSchema,
       maxOutputTokens: 8192,
     });
     if (repair.object.steps.length) {
-      const compiled = compileAndAuthorize({
-        pageId: s.activePageId!,
-        documentEpoch: fresh.documentEpoch,
-        observedEpoch: fresh.documentEpoch,
-        steps: repair.object.steps,
-        observation: fresh.content,
-        url: fresh.content.url,
-        grants: s.self.deps.grants,
-      });
-      if (!("rejected" in compiled) && !("denied" in compiled)) {
-        const write = beginConsequentialWrite(s.self.durable, {
-          runId: s.runId,
-          pageId: s.activePageId!,
-          documentEpoch: fresh.documentEpoch,
-          revision: fresh.revision,
-          steps: compiled.program.steps ?? [],
-          taskId: s.run.config?.taskId,
-          taskRevision: s.run.config?.taskRevision,
-        });
-        if (write.skip) throw new AuxError("conflict", write.reason!);
-        {
-          const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal });
-          settleWrite(s.self.durable, write.intentId, r2);
-          s.stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
-          if (r2.status === "completed") {
-            s.lastError = undefined;
-            s.repairState = emptyRepairState();
-          }
+      const g = await guardedExecute(dispatchDeps(s), dispatchOpts(s, fresh, repair.object.steps, { observedEpoch: fresh.documentEpoch }));
+      if (g.kind === "skipped") throw new AuxError("conflict", g.reason);
+      if (g.kind === "ran") {
+        s.stepsRun += g.program.steps?.length ?? repair.object.steps.length;
+        if (g.result.status === "completed") {
+          s.lastError = undefined;
+          s.repairState = emptyRepairState();
         }
       }
     }

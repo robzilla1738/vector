@@ -4,7 +4,7 @@ import { ModelProviderSchema, SidebarMaterialSchema, type ModelProvider, type Sh
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY, mergeModelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
-import { DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
+import { DEFAULT_MAX_MODEL_CALLS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { DIRECT_PROVIDERS, PROVIDER_ENV, directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "../agent/direct-providers.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
@@ -429,7 +429,7 @@ export class SettingsService {
     return (this.get("perOrigin") as number) ?? 2;
   }
   maxModelCalls(): number {
-    return modelCallBudget(this.get("maxModelCalls"), 8);
+    return modelCallBudget(this.get("maxModelCalls"), DEFAULT_MAX_MODEL_CALLS);
   }
 
   model(): ModelClient | null {

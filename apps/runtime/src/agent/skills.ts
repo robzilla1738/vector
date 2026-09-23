@@ -8,6 +8,7 @@
  */
 import { createHash } from "node:crypto";
 import type { ObservationContent, Program, Step } from "@aux/contracts";
+import { rebindSteps } from "./action-compiler.js";
 
 export interface SkillGuard {
   /** Role or accessible name that must exist. */
@@ -107,6 +108,25 @@ export function compileSkill(opts: {
   };
 }
 
+/**
+ * Replace observation refs with role/name locators so a replay binds to the
+ * same control on a fresh page. Undefined when any ref has no role+name —
+ * such a step cannot be retargeted safely, so the chunk is not a skill.
+ */
+export function portableSkillSteps(steps: Step[], obs: ObservationContent): Step[] | undefined {
+  const out: Step[] = [];
+  for (const step of steps) {
+    if (!("target" in step) || typeof step.target !== "string" || !/^r\d+$/.test(step.target)) {
+      out.push(step);
+      continue;
+    }
+    const el = obs.elements.find((e) => e.ref === step.target);
+    if (!el?.role || !el.name || /[\]\n]/.test(el.name)) return undefined;
+    out.push({ ...step, target: `role=${el.role}[name=${el.name}]` } as Step);
+  }
+  return out;
+}
+
 export function tryReuseSkill(
   skills: CompiledSkill[],
   goal: string,
@@ -128,6 +148,9 @@ export function tryReuseSkill(
   if (!guardsHold(obs, url, match.preconditions, documentEpoch)) {
     return { skipped: `skill ${match.id} guards failed` };
   }
+  const unbound = rebindSteps(match.program.steps ?? [], obs, match.preconditions)
+    .find((st) => "target" in st && typeof st.target === "string" && /^r\d+$/.test(st.target) && !obs.elements.some((e) => e.ref === st.target));
+  if (unbound) return { skipped: `skill ${match.id} has a ref that cannot be rebound on this page` };
   return { skill: match, reason: match.evidence };
 }
 
@@ -145,40 +168,4 @@ export function verifySkillPostconditions(
 ): boolean {
   if (skill.postconditions.length === 0) return true;
   return guardsHold(obs, url, skill.postconditions, documentEpoch);
-}
-
-/** Measured task metrics for AUX-021 / M3 stretch comparison. */
-export interface HeldOutMetrics {
-  success: number;
-  p95Ms: number;
-  /** `null` = tokens were not collected. `0` = measured, no model tokens used. */
-  tokensPerSuccess: number | null;
-}
-
-/** Stretch gate: ≥2× lower p95 and ≥50% fewer tokens at non-inferior success. */
-export interface HeldOutAdvantage {
-  successNonInferior: boolean;
-  p95Ratio: number;
-  tokenRatio: number;
-  tokensMeasured: boolean;
-  meetsStretch: boolean;
-}
-
-export function evaluateHeldOutAdvantage(baseline: HeldOutMetrics, candidate: HeldOutMetrics): HeldOutAdvantage {
-  const successNonInferior = candidate.success >= baseline.success;
-  const p95Ratio = candidate.p95Ms > 0 ? baseline.p95Ms / candidate.p95Ms : 0;
-  const tokensMeasured = baseline.tokensPerSuccess != null && candidate.tokensPerSuccess != null;
-  const tokenRatio =
-    tokensMeasured && baseline.tokensPerSuccess! > 0
-      ? candidate.tokensPerSuccess === 0
-        ? Number.POSITIVE_INFINITY
-        : baseline.tokensPerSuccess! / candidate.tokensPerSuccess!
-      : 0;
-  return {
-    successNonInferior,
-    p95Ratio,
-    tokenRatio,
-    tokensMeasured,
-    meetsStretch: successNonInferior && p95Ratio >= 2 && tokensMeasured && tokenRatio >= 2,
-  };
 }

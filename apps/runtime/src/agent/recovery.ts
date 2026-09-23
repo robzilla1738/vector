@@ -56,27 +56,3 @@ export function recoverAfterCrash(opts: {
     unresolvedEffects: unresolved,
   };
 }
-
-/** Speculative plans may read archives. They cannot emit external effects. */
-export function speculatePlan(opts: {
-  archivedGetSafe: boolean;
-  wouldWrite: boolean;
-}): { allowed: boolean; requiresLiveRevalidation: true } {
-  return {
-    allowed: opts.archivedGetSafe && !opts.wouldWrite,
-    requiresLiveRevalidation: true,
-  };
-}
-
-export function reconcileFallback(reason: {
-  code: string;
-  expiresAt: number;
-  version: number;
-}): { originWideBan: false; reason: string; expiresAt: number; version: number } {
-  return {
-    originWideBan: false,
-    reason: reason.code,
-    expiresAt: reason.expiresAt,
-    version: reason.version,
-  };
-}

@@ -3,7 +3,7 @@
  * (not prompt-bytes/4) and p95 vs a planner-every-turn baseline.
  */
 import { describe, it, expect } from "vitest";
-import { openDb, Repo, RunCoordinator, MockModelClient, compileSkill, evaluateHeldOutAdvantage } from "@aux/runtime";
+import { openDb, Repo, RunCoordinator, MockModelClient, compileSkill } from "@aux/runtime";
 import { EventBus } from "@aux/runtime";
 import type { Observation, StepOutcome } from "@aux/contracts";
 
@@ -139,22 +139,8 @@ describe("AUX-021 token-measured stretch", () => {
       baseline.tokens.reduce((n, t) => n + t.input + t.output, 0) / 2,
     );
 
-    const gate = evaluateHeldOutAdvantage(
-      {
-        success: 1,
-        p95Ms: Math.max(modelMs(baseline.tokens), 1),
-        tokensPerSuccess: tokensPerSuccess(baseline.tokens, true),
-      },
-      {
-        success: 1,
-        p95Ms: Math.max(modelMs(skilled.tokens), 1),
-        tokensPerSuccess: tokensPerSuccess(skilled.tokens, true),
-      },
-    );
-    expect(gate.tokensMeasured).toBe(true);
-    expect(gate.tokenRatio).toBeGreaterThanOrEqual(2);
-    expect(gate.p95Ratio).toBeGreaterThanOrEqual(2);
-    expect(gate.meetsStretch).toBe(true);
+    expect(tokensPerSuccess(skilled.tokens, true)! * 2).toBeLessThanOrEqual(tokensPerSuccess(baseline.tokens, true)!);
+    expect(Math.max(modelMs(baseline.tokens), 1) / Math.max(modelMs(skilled.tokens), 1)).toBeGreaterThanOrEqual(2);
 
     // Mock usage validates reuse logic; it must never overwrite live evaluation evidence.
 

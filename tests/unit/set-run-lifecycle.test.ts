@@ -158,7 +158,7 @@ describe("conversation turn retry", () => {
     h.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run("space-notes", "Research", 1);
     h.repo.setSetting("workspaceMemory:space-notes", { content: "Prefer primary sources.", revision: 1 });
     const first = await h.runs.start({ goal: "Research", pageIds: ["p1"], chatId: "new-space-chat", defaultWorkspaceId: "space-notes" });
-    expect(first.config?.context).toContain("Prefer primary sources");
+    expect(first.config?.instructions).toContain("Prefer primary sources");
     await untilTerminal(h.repo, first.runId);
     h.runs.setConversationWorkspace({ chatId: "excluded-chat", workspaceId: null });
     const excluded = await h.runs.start({ goal: "Separate", pageIds: ["p1"], chatId: "excluded-chat", defaultWorkspaceId: "space-notes" });
@@ -184,19 +184,20 @@ describe("conversation turn retry", () => {
     expect(h.runs.setConversationWorkspace({ chatId: "workspace-chat", workspaceId: "workspace-one" })).toMatchObject({ workspace: { name: "Travel" }, memory: { revision: 2 } });
     const run = await h.runs.start({ goal: "Apply workspace preferences", pageIds: ["p1"], chatId: "workspace-chat" });
     expect(run.config).toMatchObject({ contextWorkspaceId: "workspace-one", contextWorkspaceRevision: 2 });
-    expect(run.config?.context).toContain("Prefer offline-capable options");
+    expect(run.config?.instructions).toContain("Prefer offline-capable options");
     const inspected = h.runs.conversationWorkspace("workspace-chat");
     expect(inspected.memory?.items).toHaveLength(4);
     expect(inspected.memory?.excludedOrigins).toEqual(["https://excluded.example"]);
-    expect(run.config?.context).toContain(inspected.memoryPreview);
-    expect(run.config?.context).toContain("Prefer trains.");
-    for (const excluded of ["Exclude this note.", "Paused preference.", "Expired preference."]) expect(run.config?.context).not.toContain(excluded);
+    expect(run.config?.instructions).toContain(inspected.memoryPreview);
+    expect(run.config?.instructions).toContain("Prefer trains.");
+    for (const excluded of ["Exclude this note.", "Paused preference.", "Expired preference."]) expect(run.config?.instructions).not.toContain(excluded);
 
     await untilTerminal(h.repo, run.runId);
     h.repo.setSetting("workspaceMemory:workspace-one", { workspaceId: "workspace-one", content: "Changed later", revision: 3, updatedAt: 4 });
     const retry = await h.runs.retry(run.runId);
     expect(retry.config?.contextWorkspaceRevision).toBe(2);
     expect(retry.config?.context).toBe(run.config?.context);
+    expect(retry.config?.instructions).toBe(run.config?.instructions);
   });
 
   it("reuses selected generated text artifacts with bounded exact provenance", async () => {
@@ -224,6 +225,7 @@ describe("conversation turn retry", () => {
     const retry = await h.runs.retry(run.runId);
     expect(retry.config?.contextArtifactIds).toEqual(["report-artifact"]);
     expect(retry.config?.context).toBe(run.config?.context);
+    expect(retry.config?.instructions).toBe(run.config?.instructions);
   });
 
   it("saves page text with its source and rejects stale tab selections", async () => {
@@ -285,6 +287,7 @@ describe("conversation turn retry", () => {
     const retry = await h.runs.retry(run.runId);
     expect(retry.config?.contextAttachmentIds).toEqual(run.config?.contextAttachmentIds);
     expect(retry.config?.context).toBe(run.config?.context);
+    expect(retry.config?.instructions).toBe(run.config?.instructions);
   });
 
   it("checks and removes every turn beyond the history page limit", () => {
@@ -605,10 +608,10 @@ it("excludes paused Space notes from new model context while retaining saved mem
   h.repo.setSetting("conversationWorkspace:paused-memory-chat","memory-space");
   h.repo.setSetting("workspaceMemory:memory-space",{content:"Private project preference fixture",enabled:false,revision:3});
   const paused=await h.runs.start({goal:"Hello",pageIds:["p1"],chatId:"paused-memory-chat"});
-  expect(paused.config?.context??"").not.toContain("Private project preference fixture");
+  expect(paused.config?.instructions??"").not.toContain("Private project preference fixture");
   expect(h.runs.conversationWorkspace("paused-memory-chat").memory).toMatchObject({enabled:false,content:"Private project preference fixture"});
   h.repo.setSetting("workspaceMemory:memory-space",{content:"Private project preference fixture",enabled:true,revision:4});
   h.repo.setSetting("conversationWorkspace:enabled-memory-chat","memory-space");
   const enabled=await h.runs.start({goal:"Hello",pageIds:["p1"],chatId:"enabled-memory-chat"});
-  expect(enabled.config?.context).toContain("Private project preference fixture");
+  expect(enabled.config?.instructions).toContain("Private project preference fixture");
 });
