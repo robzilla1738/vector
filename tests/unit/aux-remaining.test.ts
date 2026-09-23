@@ -93,11 +93,11 @@ it("skips incomplete backups and fails closed when the backup cannot fit", async
   expect(await listRuntimeBackups(directory)).toEqual([]);
 });
 
-it("keeps conversation CSS breakpoints for 1024, 1280 and 1512 widths", () => {
+it("keeps the compact and mid-width conversation breakpoints", () => {
   const css = readFileSync(join(process.cwd(), "apps/desktop/renderer/src/styles.css"), "utf8");
+  // wider layouts are governed by the full-page conversation rule, not a breakpoint
   expect(css).toContain("@media (max-width: 1024px)");
-  expect(css).toContain("@media (min-width: 1280px) and (max-width: 1511px)");
-  expect(css).toContain("@media (min-width: 1512px)");
+  expect(css).toContain("@media (min-width: 1025px) and (max-width: 1279px)");
   const compact = css.slice(css.indexOf("@media (max-width: 1024px)"), css.indexOf("@media (min-width: 1025px)"));
   expect(compact).toContain(".empty-state");
   expect(compact).toContain(".navigation-error");
