@@ -1,21 +1,17 @@
 // A deliberately unfinished response must not delay foreground tab selection.
-import {createRequire} from 'node:module';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
-const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
+import { launchAux } from './launch.mjs';
 const dir=mkdtempSync(join(tmpdir(),'aux-tab-loading-'));let pendingResponse;
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.write('<title>Loading fixture</title><h1>Visible before completion</h1>');if(req.url==='/slow')pendingResponse=res;else res.end();});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
 let app;
 try {
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));
  await page.locator('.aux-home').waitFor();
  const first=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
  await page.evaluate(url=>{window.__opening=window.aux.invoke('pages.open',{url,activate:true});},base+'/slow');

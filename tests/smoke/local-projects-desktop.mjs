@@ -20,9 +20,8 @@ async function describeFailure(){try{
  return JSON.stringify({commands:runs.map(r=>({command:r.command,state:r.state,output:String(r.output??'').slice(-400)})),views:urls,probes},null,1);
 }catch(e){return `describeFailure failed: ${e}`;}}
 import {sidebarAction} from './sidebar-action.mjs';
+import { launchApp, shellWindow } from './launch.mjs';
 const root=join(dirname(fileURLToPath(import.meta.url)),'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const desktopRequire=createRequire(join(root,'apps/desktop/package.json'));
 const viteCli=join(dirname(desktopRequire.resolve('vite/package.json')),'bin/vite.js');
 const tscCli=join(dirname(desktopRequire.resolve('typescript/package.json')),'bin/tsc');
@@ -44,9 +43,8 @@ writeFileSync(join(source,'index.html'),'<h1>Uncommitted original edit</h1>\n');
 const originalIndex=readFileSync(join(source,'.git','index'));let app,page;
 const env={PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0'};
 async function launch(){
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env,timeout:30000});page=null;
- for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}
- assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.app').waitFor();
+ app=await launchApp({args:['--use-mock-keychain'],env,timeout:30000});page=null;
+ page = await shellWindow(app);page.setDefaultTimeout(15000);await page.locator('.app').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
 }
 try{

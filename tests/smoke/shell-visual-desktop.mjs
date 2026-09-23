@@ -1,13 +1,12 @@
 // Isolated populated-shell review; no personal profile or provider credentials.
-import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 import {openDb,Repo} from '../../apps/runtime/dist/index.js';
+import { launchAux } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const dir=mkdtempSync(join(tmpdir(),'aux-shell-')); const out=join(root,'release/test-artifacts');mkdirSync(out,{recursive:true});
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<title>${req.url.includes('notes')?'Project notes':'Design reference'}</title><h1>Aux visual fixture</h1>`);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
@@ -17,8 +16,7 @@ for(const [i,goal,result] of [[1,'Review the design references','Collected the l
 db.close();
 let app;
 try {
- app=await _electron.launch({executablePath:createRequire(join(root,'apps/desktop/package.json'))('electron'),args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));
  await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:1200,height:944}));
  const pages=await page.evaluate(async base=>{const a=await window.aux.invoke('pages.open',{url:base+'/notes',activate:true});const b=await window.aux.invoke('pages.open',{url:base+'/design',activate:true});const c=await window.aux.invoke('pages.open',{url:'about:blank',activate:true});return[a,b,c];},base);

@@ -1,15 +1,13 @@
 // Runtime crash and synthetic wake recovery must preserve live native browsing state.
-import {createRequire} from 'node:module';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+import { launchAux } from './launch.mjs';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-runtime-recovery-'));
 const server=createServer((_req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Runtime recovery</title><h1>Runtime recovery</h1><textarea aria-label="Unsaved draft"></textarea>');});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -26,8 +24,7 @@ function childRuntimePid(parentPid){
 }
 
 try{
-  app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
-  let shell;for(let i=0;i<100;i++){shell=app.windows().find(page=>page.url().includes('renderer/index.html'));if(shell)break;await new Promise(resolve=>setTimeout(resolve,100));}assert.ok(shell);shell.setDefaultTimeout(20000);await shell.locator('.app').waitFor();
+  let shell;({ app, page: shell } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));shell.setDefaultTimeout(20000);await shell.locator('.app').waitFor();
   await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),url);
   let website;for(let i=0;i<100;i++){website=app.windows().find(page=>page.url()===url);if(website)break;await new Promise(resolve=>setTimeout(resolve,50));}assert.ok(website);await website.getByRole('heading',{name:'Runtime recovery'}).waitFor();
   await website.getByLabel('Unsaved draft').fill('Keep this live document through runtime recovery');

@@ -1,5 +1,4 @@
 // Uses only synthetic files, profile and HOME. No provider, dotenv or OS vault.
-import { createRequire } from 'node:module';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -7,9 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { sidebarAction } from './sidebar-action.mjs';
+import { launchAux } from './launch.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
-const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
-const electron = createRequire(join(root, 'apps/desktop/package.json'))('electron');
 const temp = mkdtempSync(join(tmpdir(), 'aux-document-ui-'));
 const source = join(temp, 'receipt.md');
 const content = '# Order receipt\n\nOrder 123 — paid\nQuantity: 1\n\n<script>window.injected = true</script>\n';
@@ -19,12 +17,7 @@ writeFileSync(source, content);
 let app, page, taskId, evidenceId;
 const env = {PATH:process.env.PATH, HOME:temp, TMPDIR:temp, AUX_PROFILE_DIR:join(temp,'profile'), AUX_DATA_DIR:join(temp,'data'), AUX_LOAD_DOTENV:'0'};
 async function launch() {
-  app = await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env,timeout:30000});
-  for(let i=0;i<100;i++) {
-    page=app.windows().find(p=>p.url().includes('renderer/index.html')); if(page) break;
-    await new Promise(r=>setTimeout(r,100));
-  }
-  assert.ok(page); await page.locator('.aux-home').waitFor();
+  ({ app, page } = await launchAux({args:['--use-mock-keychain'],env,timeout:30000})); await page.locator('.aux-home').waitFor();
   await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
 }
 const receipt = () => page.evaluate(id=>window.aux.invoke('tasks.receipt',{taskId:id}),taskId);

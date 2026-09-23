@@ -7,9 +7,9 @@ import {createServer} from 'node:http';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
+import { launchAux } from './launch.mjs';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-external-links-'));
 const server=createServer((req,res)=>{const name=(req.url??'/').slice(1)||'home';res.setHeader('Content-Type','text/html');res.end(`<title>${name}</title><h1>${name}</h1>${name==='startup'?'<textarea aria-label="Live draft"></textarea>':''}`);});
@@ -17,8 +17,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.
 let app;
 try{
  const env={PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'};
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain',base+'/startup'],env});
- let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
+ let page;({ app, page } = await launchAux({args:['--use-mock-keychain',base+'/startup'],env}));page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();
  await poll(page,async url=>(await window.aux.invoke('pages.list',{})).some(p=>p.url===url&&!p.loading),base+'/startup');
  let startup=app.windows().find(p=>p.url()===base+'/startup');assert.ok(startup);await startup.getByRole('heading',{name:'startup',exact:true}).waitFor();await startup.getByLabel('Live draft').fill('Keep external-link work');
 

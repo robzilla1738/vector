@@ -1,20 +1,16 @@
-import {createRequire} from 'node:module';
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
+import { launchAux } from './launch.mjs';
 const root=join(dirname(fileURLToPath(import.meta.url)),'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const temp=mkdtempSync(join(tmpdir(),'aux-find-'));let app, page;
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<!doctype html><title>Reading ${req.url}</title><style>body{font:24px system-ui;padding:48px}p{margin:70px 0}</style><h1>Reading fixture</h1>${Array.from({length:req.url==='/one'?3:1},(_,i)=>`<p>Visible needle ${i+1}</p>`).join('')}<p hidden>needle hidden</p><script>const hiddenNeedle='needle';</script>`);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url=`http://127.0.0.1:${server.address().port}`;
 try{
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0'},timeout:30000});
- for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}
- assert.ok(page);page.setDefaultTimeout(12000);await page.locator('.aux-home').waitFor();
+ ({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:temp,TMPDIR:temp,AUX_PROFILE_DIR:join(temp,'profile'),AUX_DATA_DIR:join(temp,'data'),AUX_LOAD_DOTENV:'0'},timeout:30000}));page.setDefaultTimeout(12000);await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const first=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),url+'/one');
  await page.getByText('Reading /one',{exact:true}).waitFor();

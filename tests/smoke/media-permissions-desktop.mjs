@@ -1,14 +1,12 @@
 // Fake Chromium capture devices only; no system camera, microphone or clipboard access.
-import {createRequire} from 'node:module';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import {sidebarAction} from './sidebar-action.mjs';
+import { launchAux } from './launch.mjs';
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
-const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-media-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<title>Meeting fixture</title><h1>Synthetic meeting</h1>');});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -17,8 +15,7 @@ const file=join(dir,'data/site-permissions.json');mkdirSync(join(dir,'data'));
 writeFileSync(file,JSON.stringify({[base]:{media:'allow'}}));
 let app,page,fixture;
 async function launch(){
- app=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain','--use-fake-device-for-media-stream'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}});
- for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);page.setDefaultTimeout(15000);await page.locator('.app-body').waitFor();
+ ({ app, page } = await launchAux({args:['--use-mock-keychain','--use-fake-device-for-media-stream'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));page.setDefaultTimeout(15000);await page.locator('.app-body').waitFor();
  await app.evaluate(({dialog,BaseWindow})=>{
   BaseWindow.getAllWindows()[0].setSize(1200,944);
   globalThis.authPrompts=[];globalThis.authResponses=[];

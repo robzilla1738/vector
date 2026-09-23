@@ -7,9 +7,9 @@ import {createServer} from 'node:http';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {poll} from './poll.mjs';
+import { launchAux, launchApp, shellWindow } from './launch.mjs';
 
 const root=resolve(import.meta.dirname,'../..');
-const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
 const electron=createRequire(join(root,'apps/desktop/package.json'))('electron');
 const dir=mkdtempSync(join(tmpdir(),'aux-private-product-'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<title>${req.url==='/second'?'Private second':'Private fixture'}</title><h1>${req.url==='/second'?'Private second':'Private fixture'}</h1><textarea id="private-draft" aria-label="Private draft"></textarea><a href="/second">Second page</a>${req.url==='/start'?`<script>addEventListener('beforeunload',event=>{if(document.getElementById('private-draft').value){event.preventDefault();event.returnValue='';}});</script>`:''}`);});
@@ -18,8 +18,7 @@ const env={PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'r
 const playwrightReportPath=join(dir,'playwright-private-report.json');
 let app;
 const launch=async()=>{
- const next=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--aux-private'],env:{...env,AUX_PRIVATE_TEST_REPORT:playwrightReportPath,AUX_PRIVATE_TEST_UNLOAD_RESPONSES:'0,1'}});
- let shell;for(let i=0;i<100;i++){shell=next.windows().find(page=>page.url().includes('renderer/index.html'));if(shell)break;await new Promise(r=>setTimeout(r,100));}assert.ok(shell);shell.setDefaultTimeout(15000);await shell.locator('.app').waitFor();return {next,shell};
+ let { app: next, page: shell } = await launchAux({args:['--aux-private'],env:{...env,AUX_PRIVATE_TEST_REPORT:playwrightReportPath,AUX_PRIVATE_TEST_UNLOAD_RESPONSES:'0,1'}});shell.setDefaultTimeout(15000);await shell.locator('.app').waitFor();return {next,shell};
 };
 try{
  let started=await launch();app=started.next;let shell=started.shell;
@@ -86,10 +85,10 @@ try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{direct.kill();reject(new Error('Direct private process did not exit'));},15000);direct.once('error',reject);direct.once('exit',()=>{clearTimeout(timer);resolve();});});
  const report=JSON.parse(readFileSync(reportPath,'utf8'));assert.equal(report.remoteDebugging,false);assert.equal(report.pageSessionPersistent,false);assert.equal(existsSync(join(report.userData,'DevToolsActivePort')),false);assert.equal(existsSync(report.userData),false);
  const menuReportPath=join(dir,'menu-private-report.json');
- const regular=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env:{...env,AUX_PRIVATE_TEST_REPORT:menuReportPath,AUX_PRIVATE_TEST_EXIT:'1'}});
+ const regular=await launchApp({args:['--use-mock-keychain'],env:{...env,AUX_PRIVATE_TEST_REPORT:menuReportPath,AUX_PRIVATE_TEST_EXIT:'1'}});
  let regularEnded=false;
  try{
-  let regularShell;for(let i=0;i<100;i++){regularShell=regular.windows().find(page=>page.url().includes('renderer/index.html'));if(regularShell)break;await new Promise(r=>setTimeout(r,100));}assert.ok(regularShell);await regularShell.locator('.app').waitFor();
+  let regularShell = await shellWindow(regular);await regularShell.locator('.app').waitFor();
   const launched=await regular.evaluate(({Menu})=>{const item=Menu.getApplicationMenu()?.getMenuItemById('new-private-window');if(!item)return false;item.click();return true;});assert.equal(launched,true,'regular File menu must expose New Private Window');
   for(let i=0;i<150&&!existsSync(menuReportPath);i++)await new Promise(r=>setTimeout(r,100));assert.equal(existsSync(menuReportPath),true,'regular File menu must launch the private process');
   const menuReport=JSON.parse(readFileSync(menuReportPath,'utf8'));assert.equal(menuReport.remoteDebugging,false);assert.equal(menuReport.pageSessionPersistent,false);
