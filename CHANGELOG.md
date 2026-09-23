@@ -3,6 +3,19 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## aux-excellence (2026-09-23)
+
+Speed, size, AI quality, safety and structure pass across the whole stack.
+
+- Safety: scoped agent connections cannot run page script; the ref map lives in an isolated world; stale refs fail instead of retargeting; strict shell CSP; `openPath` limited to Aux folders; async leave-page prompts on close; single-instance halt before touching state.
+- Agent speed: raw-CDP click/fill/type (click 66→9 ms p50), one-pass isolated-world observation with stable refs and real `sinceRevision` deltas, observation 9.6→4.1 KB, target-id tab attach, batched SQLite writes with the action journal kept FULL-synced, cached scoped authorization.
+- AI: planner notes, grounded done-verification, target-aware repeat detection, final decision on budget exhaustion, user instructions outside the untrusted fence, cache-friendly prompt order with one fence per run, bounded transient retries, cost and cached-token recording, registry-driven model capabilities, one-call read tasks, streamed answer deltas; MCP `tools/list` 98.7→20.4 KB with annotations and preserved error codes.
+- Browsing speed: parallel startup, filter lists off the main thread, one debugger session per tab, batched and diffed tab patches, change-only JPEG previews, diffed stage layout, no idle cursor polling; renderer startup JS 883→446 KB, narrowed store subscriptions, memoized conversation, windowed tab list, optimistic tabs and messages.
+- Design: single-layered stylesheet, token scale enforced, distinct Space colours, one Escape stack, shortcut labels from the registry, skeleton loading, visible focus ring.
+- Size: esbuild-bundled runtime, minified main bundles, one exceljs, en-only locales: packaged app 357→252 MB.
+- Structure: `main/index.ts`, runtime `pages.ts` and the renderer store split into modules behind unchanged facades; private windows share the regular modules; typed renderer IPC (`RpcMap`); zod-validated `native.*`; counted swallowed errors; shared smoke launcher.
+- Tooling: parallel unit tests (157→79 s), honest benchmarks with budgets in CI, one roadmap (`docs/ROADMAP.md`) with superseded docs archived.
+
 ## Loaded-page chrome
 
 A loaded page uses the main column's corner. The address row fades out by

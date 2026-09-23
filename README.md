@@ -59,43 +59,39 @@ runtime over [MCP](docs/mcp.md) or the [loopback API](docs/api.md).
 
 ## Benchmark
 
-`pnpm bench`, records fixture (`http://127.0.0.1:4810/records`),
-same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
-darwin arm64 — headless standalone Chromium driver. A chrome-only run after
-navigation returned at DOMContentLoaded is recorded in `docs/BENCHMARKS.md`
-(observe 15.5 ms p50, navigate+observe 13.2 ms p50, n=5).
+`pnpm bench` on the records fixture (`http://127.0.0.1:4810/records`), headless
+standalone Chromium, darwin arm64, 10 repeats after 1 warmup, p50. Before is the
+2026-09-23 baseline on `main` (`2b323d5a`); after is the `aux-excellence` branch.
+Timings were taken on a busy desktop (load ≈ 14), so treat small differences as
+noise; bytes are exact. `pnpm bench --check-budgets` gates CI against
+`scripts/budgets.json`, and `--transport http` measures the loopback API path.
 
-| Metric | Chromium |
-|---|---:|
-| `pages.open` | 103.9 ms |
-| `pages.observe` (full) | 14.3 ms |
-| `pages.observe` (compact) | 2.0 ms |
-| click by ref (`pages.execute`) | 76.0 ms |
-| fill by ref (`pages.execute`) | 25.0 ms |
-| navigate + observe | 60.4 ms |
-| act + observe (`returnObservation`) | 11.9 ms |
-| full observation size | 9,580 bytes |
+| Metric | Before | After |
+|---|---:|---:|
+| click by ref, submits a form (`click.nav`) | 158 ms | 7–17 ms |
+| click by ref, no navigation (`click.nonav`) | 66 ms | 9–15 ms |
+| fill by ref | 8 ms | 5 ms |
+| navigate + observe | 51 ms | 44–60 ms |
+| full observation size | 9,593 bytes | 4,117 bytes |
+| observation as MCP sends it (full) | 16,280 bytes | 6,760 bytes |
+| MCP `tools/list` (default scope) | 98.7 KB | 20.4 KB |
+| renderer startup JS | 883 KB | 446 KB |
+| packaged app | 357 MB | 252 MB |
 
-Published competitor numbers (Sep 2026) plus Aux's own
-`pnpm bench` / `pnpm bench:tasks` (same model `alibaba/qwen3.8-27b`):
+Clicks and fills dispatch straight over CDP from an isolated world the page cannot
+reach; observations keep stable refs across calls and `sinceRevision` returns only
+what changed. See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for every published number.
 
-| System | Navigate+snapshot (warm) | Memory vs Chrome | Task success |
-|---|---|---|---|
-| Aux (embedded Chromium) | 60.4 ms navigate+observe | Electron/headless Chrome | local suite 6/8 (`aux`) |
-| agent-browser (raw CDP) | 8 ms warm navigate+snapshot | one Chrome per daemon | not measured here; adapter `agent-browser` |
-| Lightpanda (Zig+V8) | 9–11× Chrome (their claim) | 16× less memory (their claim) | 69.7% AssistantBench / 83% GAIA-L1 (published) |
-
-Task-success on the in-tree local suite (`tests/benchmarks/tasks/`, same
-model, 2026-09-15):
+Task success on the in-tree suite (`pnpm bench:tasks`, `--trials 3` by default,
+fixture state reset before every task) is recorded per run in
+`tests/benchmarks/reports/`. The last published run (2026-09-15, one trial,
+`alibaba/qwen3.8-27b`) predates the planner-memory, grounding and MCP changes:
 
 | Adapter | Pass | p50 wall | Model calls (mean) | Tokens (mean) |
 |---|---:|---:|---:|---:|
 | `aux` (runtime loop, Chromium) | 6/8 | 1.5 s | 2.8 | 5.7 k |
 | `aux-mcp` | 8/8 | 2.6 s | 5.5 | 32.7 k |
 | `playwright-mcp` | 8/8 | 4.0 s | 5.4 | 36.1 k |
-
-`pnpm bench:tasks --adapter agent-browser,lightpanda-mcp` records those
-rows when the binaries are on PATH.
 
 ## Using the app
 

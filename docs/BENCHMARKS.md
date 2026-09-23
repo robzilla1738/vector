@@ -1,22 +1,50 @@
 # Benchmarks
 
-Every published performance number has a row here. Numbers without a table row are not claims.
+Every published performance number has a row here. Numbers without a row are not
+claims. Engine-era rows (the removed custom engine, Speedometer, frame gates) are
+frozen in [archive/perf-engine](archive/perf-engine/).
 
-The 1.3–3.8 ms rows are the paired engine profile in the README (`pnpm bench --backend both`, 2026-09-16). The 15.5 ms and 13.2 ms rows are a later chrome-only run of the same records fixture, after Chromium navigation returned at DOMContentLoaded.
+## Browser layer (`pnpm bench`)
 
-| Metric | Value | Profile | n | Source |
-|---|---|---|---|---|
-| `pages.observe` compact (records fixture) | 1.3 ms p50 | production-labelled agent path | 5 | `pnpm bench --backend both` / README |
-| `pages.observe` full (records fixture) | 1.5 ms p50 | same | 5 | README |
-| `pages.open` | 7.8 ms p50 | same | 5 | README |
-| navigate + observe | 3.8 ms p50 | same | 5 | README |
-| `observe.full.ms` p50 (records fixture, chrome) | 15.5 ms | `node tests/benchmarks/run.mjs --backend chrome --repeats 5 --warmup 1` | 5 | local bench 2026-09-21, report `tests/benchmarks/reports/2026-09-21T23-40-16-886Z.json` |
-| `navigate+observe.ms` p50 (records fixture, chrome) | 13.2 ms | same run | 5 | same report; navigate itself 6.5 ms p50 after DOMContentLoaded, no post-navigation settle |
-| full observation size | 5,917 bytes | engine Compact/Full mix | 5 | README and `docs/engine/architecture.md` §0 |
-| `perf --gate m1` observe p95 | see last `perf` JSON | `production` | 200 | `cargo run --release -p perf -- --gate m1` |
-| Speedometer 3.0 displayed | 1.83 | profiling input, not a target | — | `docs/ROADMAP.md` §3 |
-| Speedometer 3.0 Chrome (same machine) | 11.6 ms TodoMVC-JavaScript-ES5 add/complete/delete (Google Chrome 148.0.7778.96) | tracked only | 1 | `docs/engine/evidence/speedometer-chrome-tracked.json`; not an official displayed score, not a target |
-| Held-out mock 5.32× | retired | MockModelClient, n=1 | 1 | superseded by live row |
-| Held-out live GPT 5.6 Luna | engine 15/15 verified; median wait 3159 ms, IQR 2882, CI 2691–5601; competitor 15/15 median 2869 ms | live planner `openai/gpt-5.6-luna-fast` | 5 trials × 3 tasks | `docs/engine/evidence/held-out-latest.json`; increment/submit/table oracles 5/5 each |
+Records fixture, headless standalone Chromium, darwin arm64, p50. Reports are
+written to `tests/benchmarks/reports/` (gitignored). CI runs
+`pnpm bench --repeats 5 --check-budgets` against `scripts/budgets.json`.
 
-README and architecture §0 both list Chromium 9,580 / engine 5,917 bytes for full observation.
+| Metric | Value | Build | n | Notes |
+|---|---:|---|---:|---|
+| `click.nav.step` | 158 ms | `main` 2b323d5a | 5 | Playwright click waited for the form navigation |
+| `click.nav.step` | 7 ms | `aux-excellence` | 10 | raw CDP dispatch; next read waits only for an in-flight commit |
+| `click.nonav.step` | 66 ms | `main` 2b323d5a | 5 | Playwright actionability checks |
+| `click.nonav.step` | 9 ms | `aux-excellence` | 10 | one in-page hit test, three `Input` events |
+| `fill.ref.step` | 5 ms | `aux-excellence` | 10 | |
+| `observe.full` | 32 ms | `aux-excellence` | 10 | isolated-world one-pass walk; load ≈ 14 |
+| `navigate+observe` | 44 ms | `aux-excellence` | 10 | load ≈ 14; 21 ms on an idle machine |
+| full observation | 9,593 bytes | `main` 2b323d5a | 5 | |
+| full observation | 4,117 bytes | `aux-excellence` | 10 | selectors/rects/links/console stay server-side |
+| MCP full observation | 6,760 bytes | `aux-excellence` | 10 | was 16,280 |
+
+Transport: `--transport http` adds the loopback API (auth, zod, JSON) to every call.
+
+## Agent surfaces
+
+| Metric | Value | Build | Source |
+|---|---:|---|---|
+| MCP `tools/list`, default scoped catalog | 20.4 KB | `aux-excellence` | `tests/unit/mcp-stdio.test.ts` (was 98.7 KB) |
+| MCP `tools/list`, with project tools | 46.5 KB | `aux-excellence` | same |
+| `aux_page_execute` input schema | 5.3 KB | `aux-excellence` | flat step schema (was 64.5 KB) |
+
+## Desktop
+
+| Metric | Value | Build | Source |
+|---|---:|---|---|
+| Renderer startup JS | 446 KB | `aux-excellence` | `pnpm budgets` (was 883 KB) |
+| Renderer startup CSS | 184 KB | `aux-excellence` | `pnpm budgets` (was 196 KB) |
+| Packaged app (`dir`, arm64) | 251.6 MB | `aux-excellence` | `pnpm package:local`; Electron framework 232.8 MB of it (was 357 MB) |
+
+## Tasks (`pnpm bench:tasks`)
+
+Runs three trials per task by default with a fixture reset before each task and
+reports pass@1, pass@k and flaky tasks. The last published run is 2026-09-15 (one
+trial, `alibaba/qwen3.8-27b`): `aux` 6/8, `aux-mcp` 8/8, `playwright-mcp` 8/8. It
+predates planner memory, grounded completion checks and the compact MCP catalog;
+re-run before quoting a current number.
