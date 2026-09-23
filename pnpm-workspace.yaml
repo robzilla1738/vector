@@ -14,3 +14,15 @@ onlyBuiltDependencies:
   - electron
   - electron-builder
   - esbuild
+
+# One version of the shared toolchain across every workspace package.
+catalog:
+  "@types/node": 24.3.0
+  jsdom: 26.1.0
+  typescript: 5.9.3
+  vitest: 3.2.4
+  zod: 4.5.4
+
+# Native canvas is only for pdf.js rendering; Aux extracts PDF text without it.
+ignoredOptionalDependencies:
+  - "@napi-rs/canvas"

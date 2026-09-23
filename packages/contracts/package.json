@@ -18,9 +18,9 @@
     "typecheck": "tsc -b --force"
   },
   "dependencies": {
-    "zod": "4.5.4"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   }
 }

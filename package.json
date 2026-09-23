@@ -31,10 +31,10 @@
     "lint": "oxlint apps packages tests scripts --max-warnings=390"
   },
   "devDependencies": {
-    "@types/node": "24.3.0",
-    "jsdom": "26.1.0",
+    "@types/node": "catalog:",
+    "jsdom": "catalog:",
     "oxlint": "1.83.0",
-    "typescript": "5.9.3",
-    "vitest": "3.2.4"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -17,10 +17,10 @@
     "@aux/sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@aux/contracts": "workspace:*",
-    "zod": "4.5.4"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "24.3.0",
-    "typescript": "5.9.3"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   }
 }
