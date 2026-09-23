@@ -2,14 +2,16 @@ import { runAnswerEntry } from "./run-answer-drafts";
 import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
-import { QuickAsk } from "./components/QuickAsk";
-import { useBrowsingMemory } from "./use-browsing-memory";
+import { BrowsingMemoryWatch } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
 import type { WorkspaceMemory, ShortcutOverrides } from "@aux/contracts";
-import { effectiveShortcuts, matchShortcut } from "@aux/contracts";
-import { deferSurface } from "./components/DeferredSurface";
+import { effectiveShortcuts, matchShortcut } from "@aux/contracts/shortcut-defs";
+import { deferSurface, preloadWhenIdle } from "./components/DeferredSurface";
+import { Conversation, AnswerPreview } from "./components/surfaces";
 import { useEffect, useRef, useState } from "react";
-import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, type SidebarMode } from "./store";
+import { useShallow } from "zustand/react/shallow";
+import type { PageTarget } from "@aux/contracts";
+import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
 import { bridge, inElectron, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
@@ -18,18 +20,13 @@ import { usePagePointerForward } from "./page-pointer";
 import { onStageReport, stageAvoiding } from "./stage-obstruction";
 import { isTab, tabsInSpace } from "./workspace";
 import { bookmarkWebUrl } from "./bookmark-files";
-import { HttpAuthPrompt } from "./components/HttpAuthPrompt";
-import { VaultOfferBanner } from "./components/VaultOfferBanner";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
 import { AgentRail } from "./components/AgentRail";
-import { Palette } from "./components/Palette";
 import { FindBar } from "./components/FindBar";
-import { Downloads } from "./components/Downloads";
-import { HorizontalTabs } from "./components/HorizontalTabs";
-import { SiteControls } from "./components/SiteControls";
 import { I } from "./components/icons";
+import { Toasts } from "./components/Toasts";
 import { applyUiFontSize } from "./ui-font-size";
 import { openLocalFile } from "./open-local-file";
 
@@ -38,12 +35,22 @@ const Settings = deferSurface(async () => { const module = await import("./compo
 const Library = deferSurface(async () => { const module = await import("./components/Library"); return {default:module.Library}; }, "Library");
 const Inspector = deferSurface(async () => { const module = await import("./components/Inspector"); return {default:module.Inspector}; }, "Page inspection");
 const Tasks = deferSurface(async () => { const module = await import("./components/Tasks"); return {default:module.Tasks}; }, "Tasks");
+const Palette = deferSurface(async () => { const module = await import("./components/Palette"); return {default:module.Palette}; }, "Command palette");
+const Downloads = deferSurface(async () => { const module = await import("./components/Downloads"); return {default:module.Downloads}; }, "Downloads");
+const SiteControls = deferSurface(async () => { const module = await import("./components/SiteControls"); return {default:module.SiteControls}; }, "Site controls");
+const QuickAsk = deferSurface(async () => { const module = await import("./components/QuickAsk"); return {default:module.QuickAsk}; }, "Quick Ask", true, true);
+const HorizontalTabs = deferSurface(async () => { const module = await import("./components/HorizontalTabs"); return {default:module.HorizontalTabs}; }, "Tabs", true, true);
+const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
+const VaultOfferBanner = deferSurface(async () => { const module = await import("./components/VaultOfferBanner"); return {default:module.VaultOfferBanner}; }, "Password offer", true, true);
+
+/** Only the fields that decide native-view placement — title/favicon churn must not re-render the shell. */
+const placementFields = (page?: PageTarget) => page && { pageId: page.pageId, url: page.url, backend: page.backend, viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument };
 
 type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string };
 type StoreState = ReturnType<typeof useStore.getState>;
 
 export function App() {
-  useBrowsingMemory();
+  useEffect(() => preloadWhenIdle([Conversation, AnswerPreview, Palette, Downloads, SiteControls]), []);
   useEffect(()=>{
     if(bridge.privateMode)return;
     const changed=(event:StorageEvent)=>{
@@ -133,7 +140,7 @@ export function App() {
   const sidebar = useStore((s) => s.sidebar);
   const sidebarPeek = useStore(s => s.sidebarPeek);
   const activePageId = useStore((s) => s.activePageId);
-  const activePage = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
+  const activePage = useStore(useShallow((s) => placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined)));
   const pageChrome = inElectron && !quickAsk && !!activePage && activePage.backend !== "chrome"
     && activePage.viewStatus !== "crashed" && !activePage.navigationError
     && (!!activePage.showBlankDocument || (!!activePage.url && activePage.url !== "about:blank"));
@@ -144,16 +151,15 @@ export function App() {
   const nativeShowing = !!nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
   usePagePointerForward(toolbarStacked && nativeShowing);
   const splitPageId = useStore((s) => s.splitPageId);
-  const splitCompanion = useStore((s) => (s.splitPageId ? s.pages.find((p) => p.pageId === s.splitPageId) : undefined));
+  const splitCompanion = useStore(useShallow((s) => placementFields(s.splitPageId ? s.pages.find((p) => p.pageId === s.splitPageId) : undefined)));
   const splitRatio = useStore(s => s.layout.splitRatio ?? .5);
-  const settings = useStore((s) => s.settings);
-  const toasts = useStore((s) => s.toasts);
+  const settings = useStore(useShallow((s) => ({ tabLayout: s.settings.tabLayout, theme: s.settings.theme, sidebarAppearance: s.settings.sidebarAppearance, sidebarMaterial: s.settings.sidebarMaterial, sidebarTint: s.settings.sidebarTint, contentOpacity: s.settings.contentOpacity })));
   const connected = useStore((s) => s.connected);
-  const layout = useStore((s) => s.layout);
+  const spaceColor = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).color);
+  const vaultOffer = useStore((s) => !!s.vaultOffer);
   const setOverlay = useStore((s) => s.setOverlay);
   const setMode = useStore((s) => s.setMode);
   const stageRef = useRef<HTMLDivElement>(null);
-  const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
 
   useEffect(() => { applyUiFontSize(); }, []);
 
@@ -204,8 +210,8 @@ export function App() {
     return () => { dark.removeEventListener("change", apply); reduced.removeEventListener("change", apply); };
   }, [settings.theme, settings.sidebarAppearance, settings.sidebarMaterial, settings.sidebarTint, settings.contentOpacity]);
   useEffect(() => {
-    document.documentElement.dataset.space = space.color;
-  }, [space.color]);
+    document.documentElement.dataset.space = spaceColor;
+  }, [spaceColor]);
 
   // mock mode: honour ?rail=1 / set scenario once the first snapshot lands, so
   // screenshots of the agent rail are deterministic
@@ -246,9 +252,7 @@ export function App() {
       useStore.setState({ connected: status.connected });
       if (status.connected) void useStore.getState().refresh();
     });
-    const offLoading = bridge.onLoading(({ pageId, loading }) => {
-      useStore.setState((s) => ({ pages: s.pages.map((p) => (p.pageId === pageId ? { ...p, loading } : p)) }));
-    });
+    const offLoading = bridge.onLoading(({ pageId, loading }) => patchPageFields(pageId, { loading }));
     let audioLive=true;
     const changedAudio=new Set<string>();
     const offAudio=bridge.onAudio(({pageId,removed,...state})=>{changedAudio.add(pageId);useStore.setState(current=>{const tabAudio={...current.tabAudio};if(removed)delete tabAudio[pageId];else tabAudio[pageId]=state;return {tabAudio};});});
@@ -466,7 +470,7 @@ export function App() {
           <div className="main">
             <div className="stage-wrap">
               {overlay === "find" && <FindBar />}
-              <Stage ref={stageRef} page={activePage} />
+              <Stage ref={stageRef} />
               {overlay === "reader" && <ReaderView />}
               {overlay === "settings" && <Settings />}
               {overlay === "tasks" && <Tasks />}
@@ -481,15 +485,9 @@ export function App() {
       {overlay === "observe" && <Inspector />}
       {overlay === "site" && <SiteControls />}
       <HttpAuthPrompt />
-      <VaultOfferBanner />
-      <div className={`toasts ${sidebar === "hidden" || sidebar === "rail" ? "top" : ""}`} aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast rise ${t.kind}`}>
-            {t.kind === "error" ? I.alert : I.check}
-            {t.text}
-          </div>
-        ))}
-      </div>
+      {vaultOffer && <VaultOfferBanner />}
+      <Toasts top={sidebar === "hidden" || sidebar === "rail"} />
+      <BrowsingMemoryWatch />
     </div>
   );
 }

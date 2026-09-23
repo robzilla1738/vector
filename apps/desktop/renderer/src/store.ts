@@ -50,8 +50,9 @@ import {
   reorderPin,
   reorderInSpace,
   setActiveSpace,
+  syncLayout,
   syncOrder,
-  syncSpaces,
+  withSyncedOrder,
   toggleFolder,
   togglePin,
   type Folder,
@@ -62,6 +63,34 @@ import {
 } from "./workspace";
 
 let findSequence = 0;
+const TOAST_LIMIT = 4;
+/** Highest runtime event seq applied — refresh() ordering only, never rendered. */
+let eventSeq = 0;
+export const lastEventSeq = () => eventSeq;
+const pageRevisions = new Map<string, number>();
+export const pageRevision = (pageId: string) => pageRevisions.get(pageId);
+/** Page previews stay out of reactive state; `previewVersion` announces changes. */
+const previewCache = new Map<string, string>();
+export const pagePreview = (pageId: string) => previewCache.get(pageId);
+const forgetPreview = (pageId: string) => {
+  const url = previewCache.get(pageId);
+  if (url === undefined) return false;
+  if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+  previewCache.delete(pageId);
+  pageRevisions.delete(pageId);
+  return true;
+};
+
+/** IPC delivers fresh objects every time — small records compare by content. */
+const sameValue = (a: unknown, b: unknown) => a === b || (!!a && !!b && typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));
+
+/** Shallow-merge fields into one page; the same state when nothing changes. */
+function patchPage<S extends { pages: PageTarget[] }>(st: S, pageId: string, fields: Partial<PageTarget>): S | { pages: PageTarget[] } {
+  const index = st.pages.findIndex((p) => p.pageId === pageId);
+  const page = index >= 0 ? st.pages[index]! : undefined;
+  if (!page || Object.entries(fields).every(([key, value]) => sameValue(page[key as keyof PageTarget], value))) return st;
+  return { pages: st.pages.with(index, { ...page, ...fields }) };
+}
 const zoomRequests = new Map<string,symbol>();
 
 export type Mode = "focus" | "overview" | "table" | "conversation";
@@ -72,17 +101,6 @@ export type RailView = { kind: "home" } | { kind: "draft"; chatId: string } | { 
 
 export const LIVE_RUN = new Set(["queued", "planning", "running", "paused", "needs_input"]);
 export const isLive = (r: Pick<Run, "status">) => LIVE_RUN.has(r.status);
-
-export interface TimelineItem {
-  id: string;
-  ts: number;
-  kind: "run" | "step" | "result" | "model" | "event" | "download" | "error";
-  title: string;
-  detail?: string;
-  status?: string;
-  runId?: string;
-  pageId?: string;
-}
 
 export interface RunModelStats {
   calls: number;
@@ -104,7 +122,6 @@ interface Workspace {
   sessions: BrowserSession[];
   programs: SavedProgram[];
   activePageId: string | null;
-  lastSeq: number;
 
   mode: Mode;
   conversationId: string | null;
@@ -130,8 +147,8 @@ interface Workspace {
   modelStats: Record<string, RunModelStats>;
   /** latest compact observation seen per run (from step artifacts or live observe) */
   observations: Record<string, CompactObservation>;
-  timeline: TimelineItem[];
-  previews: Record<string, string>;
+  /** bumps when the non-reactive page preview cache changes (see pagePreview) */
+  previewVersion: number;
   prompt: { runId: string; question: string } | null;
   runAnswerDrafts: Record<string, RunAnswerDraft>;
   setRunAnswerDraft(runId:string,question:string,text:string):void;
@@ -151,6 +168,7 @@ interface Workspace {
   downloads: Download[];
   tabAudio: Record<string,{muted:boolean;audible:boolean}>;
   toasts: { id: number; text: string; kind: "info" | "error" }[];
+  dismissToast(id: number): void;
   vaultOffer: import("./bridge").VaultOffer | null;
   setVaultOffer(offer: Workspace["vaultOffer"]): void;
   /** Active in-place page translation for the focused tab. */
@@ -290,7 +308,12 @@ const pageFromTab = (tab: TabRecord): PageTarget => ({
  * Overlay catalog-owned fields on a live target. Runtime-owned fields —
  * controller, epochs, documentEpoch, driver state — are never touched here.
  */
-const mergeTabInto = (page: PageTarget, tab: TabRecord): PageTarget => ({
+const mergeTabInto = (page: PageTarget, tab: TabRecord): PageTarget => {
+  const merged = mergedTab(page, tab);
+  for (const key in merged) if (!sameValue(merged[key as keyof PageTarget], page[key as keyof PageTarget])) return merged;
+  return page;
+};
+const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
   ...page,
   windowId: tab.windowId,
   url: tab.url,
@@ -350,8 +373,7 @@ function applyRemoval(st: Workspace, id: string, activeHint: string | null) {
       folderId: st.layout.tabFolder[id], index: Math.max(0, st.layout.order.indexOf(id)), closedAt: Date.now(), ...group,
     }].slice(-CLOSED_TAB_LIMIT) : st.closedTabs;
   if (closedTabs !== st.closedTabs) persistClosedTabs(closedTabs);
-  const previews = { ...st.previews };
-  delete previews[id];
+  const previewVersion = forgetPreview(id) ? st.previewVersion + 1 : st.previewVersion;
   const zoomLevels = { ...st.zoomLevels };
   delete zoomLevels[id];
   const pages = st.pages.filter(p => p.pageId !== id);
@@ -369,10 +391,10 @@ function applyRemoval(st: Workspace, id: string, activeHint: string | null) {
       activateNext = activePageId ?? undefined;
     }
   }
-  const layout = { ...st.layout, order: syncOrder(st.layout.order, pages, st.pendingRestoreIds) };
+  const layout = withSyncedOrder(st.layout, pages, st.pendingRestoreIds);
   persistLayout(layout);
   return {
-    next: { pages, closedTabs, previews, zoomLevels, layout, splitPageId: splitForPage(layout, pages, activePageId), activePageId },
+    next: { pages, closedTabs, previewVersion, zoomLevels, layout, splitPageId: splitForPage(layout, pages, activePageId), activePageId },
     activateNext,
   };
 }
@@ -388,12 +410,24 @@ const LAYOUT_KEY = `aux.layout.v1:${bridge.windowId}`;
 const CLOSED_TABS_KEY=`aux.closed-tabs.v1:${bridge.windowId}`;
 const storage = typeof localStorage !== "undefined" ? localStorage : null;
 let lastPersistedLayout = storage?.getItem(LAYOUT_KEY) ?? null;
-const persistLayout = (l: Layout) => {
-  const json = JSON.stringify(l);
+let pendingLayout: Layout | null = null;
+let layoutTimer: ReturnType<typeof setTimeout> | undefined;
+/** Write the latest scheduled layout now — also runs before the window unloads. */
+export const flushLayout = () => {
+  clearTimeout(layoutTimer); layoutTimer = undefined;
+  const layout = pendingLayout; pendingLayout = null;
+  if (!layout) return;
+  const json = JSON.stringify(layout);
   if (json === lastPersistedLayout) return;
   lastPersistedLayout = json;
-  storage?.setItem(LAYOUT_KEY, json);
+  try { storage?.setItem(LAYOUT_KEY, json); } catch { /* The live layout stays in memory. */ }
 };
+/** Layout writes coalesce: bursts of patches serialize and store once. */
+const persistLayout = (l: Layout) => {
+  pendingLayout = l;
+  layoutTimer ??= setTimeout(flushLayout, 250);
+};
+if (typeof window !== "undefined") window.addEventListener("pagehide", flushLayout);
 const persistClosedTabs=(tabs:ClosedTab[])=>{if(bridge.privateMode)return;try{storage?.setItem(CLOSED_TABS_KEY,JSON.stringify(tabs));}catch{/* Recovery remains available for this window. */}};
 const initialLayout = (() => {
   if (!storage) return emptyLayout();
@@ -425,7 +459,6 @@ export const useStore = create<Workspace>((set, get) => ({
   sessions: [],
   programs: [],
   activePageId: null,
-  lastSeq: 0,
   mode: "focus",
   conversationId: null,
   conversationContexts: readConversationContexts(storage),
@@ -463,8 +496,7 @@ export const useStore = create<Workspace>((set, get) => ({
   steps: {},
   modelStats: {},
   observations: {},
-  timeline: [],
-  previews: {},
+  previewVersion: 0,
   prompt: null,
   runAnswerDrafts: readRunAnswerDrafts(bridge.privateMode ? null : storage),
   setRunAnswerDraft: (runId,question,text) => {
@@ -613,11 +645,12 @@ export const useStore = create<Workspace>((set, get) => ({
     set((st) => ({ focusRequest: st.focusRequest + 1, focusSlot: resolved }));
   },
 
+  // Info toasts time out in <Toasts>; errors stay until dismissed.
   toast: (text, kind = "info") => {
     const id = Date.now() + Math.random();
-    set((s) => ({ toasts: [...s.toasts, { id, text, kind }] }));
-    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 3600);
+    set((s) => ({ toasts: [...s.toasts, { id, text, kind }].slice(-TOAST_LIMIT) }));
   },
+  dismissToast: (id) => set((s) => (s.toasts.some((t) => t.id === id) ? { toasts: s.toasts.filter((t) => t.id !== id) } : s)),
 
   applyDownload: (d) =>
     set((s) => {
@@ -642,7 +675,7 @@ export const useStore = create<Workspace>((set, get) => ({
       let layout = st.layout;
       let layoutDirty = false;
       let closedTabs = st.closedTabs;
-      let previews = st.previews;
+      let previewVersion = st.previewVersion;
       let zoomLevels = st.zoomLevels;
       let activePageId = st.activePageId;
       let splitPageId = st.splitPageId;
@@ -654,26 +687,27 @@ export const useStore = create<Workspace>((set, get) => ({
             // no closed-tabs bookkeeping; the page.moved event does layout.
             if (pages.some(page => page.pageId === tab.pageId)) {
               pages = pages.filter(page => page.pageId !== tab.pageId);
-              layout = { ...layout, order: syncOrder(layout.order, pages, st.pendingRestoreIds) };
+              layout = withSyncedOrder(layout, pages, st.pendingRestoreIds);
               if (activePageId === tab.pageId) activePageId = tabsInSpace(layout, pages, layout.activeSpaceId)[0]?.pageId ?? null;
               splitPageId = splitForPage(layout, pages, activePageId);
               layoutDirty = true;
             }
             continue;
           }
-          const existing = pages.find(page => page.pageId === tab.pageId);
-          if (existing) {
-            pages = pages.map(page => page.pageId === tab.pageId ? mergeTabInto(page, tab) : page);
+          const index = pages.findIndex(page => page.pageId === tab.pageId);
+          if (index >= 0) {
+            const merged = mergeTabInto(pages[index]!, tab);
+            if (merged !== pages[index]) pages = pages.with(index, merged);
           } else {
             pages = [...pages, pageFromTab(tab)];
             if (!st.restoringTabs) {
-              layout = syncSpaces({ ...layout, order: syncOrder(layout.order, pages, st.pendingRestoreIds) }, pages, st.pendingRestoreIds);
-              layoutDirty = true;
+              const synced = syncLayout(layout, pages, st.pendingRestoreIds);
+              if (synced !== layout) { layout = synced; layoutDirty = true; }
             }
           }
         } else if (op.op === "remove") {
-          const applied = applyRemoval({ ...st, pages, layout, closedTabs, previews, zoomLevels, activePageId, splitPageId }, op.pageId, null);
-          ({ pages, closedTabs, previews, zoomLevels, layout, activePageId, splitPageId } = applied.next);
+          const applied = applyRemoval({ ...st, pages, layout, closedTabs, previewVersion, zoomLevels, activePageId, splitPageId }, op.pageId, null);
+          ({ pages, closedTabs, previewVersion, zoomLevels, layout, activePageId, splitPageId } = applied.next);
           // No activateNext: a catalog remove is always followed by main's own
           // successor (a same-patch or focusPage window op) — commanding a local
           // neighbour pick races the runtime's return-target choice.
@@ -686,12 +720,12 @@ export const useStore = create<Workspace>((set, get) => ({
         }
       }
       if (windowChoseActive) {
-        layout = rememberActiveTab(layout, activePageId);
+        const remembered = rememberActiveTab(layout, activePageId);
+        if (remembered !== layout) { layout = remembered; layoutDirty = true; }
         splitPageId = splitForPage(layout, pages, activePageId);
-        layoutDirty = true;
       }
       if (layoutDirty) persistLayout(layout);
-      return { pages, layout, closedTabs, previews, zoomLevels, activePageId, splitPageId, catalogVersion: patch.version };
+      return { pages, layout, closedTabs, previewVersion, zoomLevels, activePageId, splitPageId, catalogVersion: patch.version };
     });
     if (resyncNeeded) void get().resyncTabs();
   },
@@ -712,7 +746,7 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       const mine = snapshot.windows.find(window => window.windowId === bridge.windowId);
       let layout = st.layout;
-      if (!st.restoringTabs) layout = syncSpaces({ ...layout, order: syncOrder(layout.order, pages, st.pendingRestoreIds) }, pages, st.pendingRestoreIds);
+      if (!st.restoringTabs) layout = syncLayout(layout, pages, st.pendingRestoreIds);
       if (mine) layout = rememberActiveTab({ ...layout, order: reconcileWindowOrder(layout.order, mine.order, pages, st.pendingRestoreIds) }, mine.activePageId);
       persistLayout(layout);
       const activePageId = mine ? mine.activePageId : st.activePageId;
@@ -807,7 +841,7 @@ export const useStore = create<Workspace>((set, get) => ({
         const existing = s.pages.some(x => x.pageId === pageId);
         if (!existing && observed.has(pageId)) return {}; // Closed while the open response was pending.
         const pages = existing ? s.pages : [...s.pages, pageFromTab({ pageId, windowId: bridge.windowId, url, title: "", loading: url !== "about:blank", muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 0, createdAt: Date.now(), lastActiveAt: Date.now() })];
-        const layout = assignSpace({ ...s.layout, order: syncOrder(s.layout.order, pages,s.pendingRestoreIds) }, pageId, s.layout.activeSpaceId);
+        const layout = assignSpace(withSyncedOrder(s.layout, pages, s.pendingRestoreIds), pageId, s.layout.activeSpaceId);
         persistLayout(layout);
         return { pages, layout, ...(!existing ? { activePageId: pageId, mode: "focus" as const, overlay: null } : {}) };
       });
@@ -1372,7 +1406,9 @@ export const useStore = create<Workspace>((set, get) => ({
         get().syncBrowserSpaces(spaces);
       }
       // Events received while the supporting data loaded take precedence over this snapshot.
-      if (get().lastSeq > ws.lastSeq) { void get().refresh(); return; }
+      if (eventSeq > ws.lastSeq) { void get().refresh(); return; }
+      const { lastSeq, ...snapshot } = ws;
+      eventSeq = Math.max(eventSeq, lastSeq);
       set((s) => {
         let restored = s.layout;
         for (const page of ws.pages) {
@@ -1386,7 +1422,7 @@ export const useStore = create<Workspace>((set, get) => ({
           if (page.pageId === ws.activePageId) restored = setActiveSpace(restored, placement.spaceId);
         }
         const pendingRestoreIds=(ws.pendingRestoreTabs??[]).map(tab=>tab.pageId);
-        const layout = ws.restoringTabs ? restored : syncSpaces({ ...restored, order: syncOrder(restored.order, ws.pages,pendingRestoreIds) }, ws.pages,pendingRestoreIds);
+        const layout = ws.restoringTabs ? restored : syncLayout(restored, ws.pages, pendingRestoreIds);
         persistLayout(layout);
         // The catalog snapshot already merged this window's durable active
         // into layout.activeTabs — prefer it over the first tab in the space
@@ -1395,7 +1431,7 @@ export const useStore = create<Workspace>((set, get) => ({
         const activePageId = ws.pages.some(page => page.pageId === ws.activePageId && layout.tabSpace[page.pageId] === layout.activeSpaceId)
           ? ws.activePageId
           : (remembered && ws.pages.some(page => page.pageId === remembered) ? remembered : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
-        return { ...ws, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
+        return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
       });
       void bridge.setShortcutOverrides(settings.shortcutOverrides ?? {}).catch(() => {});
     } catch {
@@ -1411,9 +1447,7 @@ export const useStore = create<Workspace>((set, get) => ({
 
   applyEvent: (e) => {
     const s = get();
-    const push = (item: Omit<TimelineItem, "id" | "ts">) =>
-      set((st) => ({ timeline: [{ id: `${e.seq}-${Math.random().toString(36).slice(2, 7)}`, ts: e.ts, ...item }, ...st.timeline].slice(0, 400) }));
-    if (e.seq > s.lastSeq) set({ lastSeq: e.seq });
+    if (e.seq > eventSeq) eventSeq = e.seq;
 
     switch (e.type) {
       case "conversation.deleted": {
@@ -1451,7 +1485,7 @@ export const useStore = create<Workspace>((set, get) => ({
           const pages = [...s.pages.filter(page => page.pageId !== moved.page.pageId), moved.page];
           const destinationLayout = s.layout.spaces.some(space => space.id === moved.spaceId) ? s.layout
             : { ...s.layout, spaces: [...s.layout.spaces, moved.space], archivedSpaces: s.layout.archivedSpaces?.filter(space => space.id !== moved.spaceId) };
-          let layout = assignSpace({ ...destinationLayout, order: syncOrder(destinationLayout.order, pages,get().pendingRestoreIds) }, moved.page.pageId, moved.spaceId);
+          let layout = assignSpace(withSyncedOrder(destinationLayout, pages, get().pendingRestoreIds), moved.page.pageId, moved.spaceId);
           if (moved.folder) {
             if (!layout.folders.some(folder => folder.id === moved.folder!.id)) layout = { ...layout, folders: [...layout.folders, moved.folder] };
             layout = assignFolder(layout, moved.page.pageId, moved.folder.id);
@@ -1463,7 +1497,7 @@ export const useStore = create<Workspace>((set, get) => ({
           if (moved.activate !== false) void bridge.overlay(false);
         } else if (moved.fromWindowId === bridge.windowId) {
           const pages = s.pages.filter(page => page.pageId !== moved.page.pageId);
-          const layout = { ...s.layout, order: syncOrder(s.layout.order, pages,s.pendingRestoreIds) };
+          const layout = withSyncedOrder(s.layout, pages, s.pendingRestoreIds);
           persistLayout(layout);
           const activePageId = s.activePageId === moved.page.pageId
             ? tabsInSpace(layout, pages, layout.activeSpaceId).find(page => page.pageId === moved.sourceActivePageId)?.pageId
@@ -1478,17 +1512,18 @@ export const useStore = create<Workspace>((set, get) => ({
         const p = e.payload.page as PageTarget | undefined;
         if (p) {
           set((st) => {
-            const pages = st.pages.some((x) => x.pageId === p.pageId) ? st.pages.map((x) => (x.pageId === p.pageId ? p : x)) : [...st.pages, p];
-            const layout = st.restoringTabs ? st.layout : syncSpaces({ ...st.layout, order: syncOrder(st.layout.order, pages,st.pendingRestoreIds) }, pages,st.pendingRestoreIds);
+            const index = st.pages.findIndex((x) => x.pageId === p.pageId);
+            // An update to a known page never changes order or Space assignment.
+            if (index >= 0) return { pages: st.pages.with(index, p) };
+            const pages = [...st.pages, p];
+            const layout = st.restoringTabs ? st.layout : syncLayout(st.layout, pages, st.pendingRestoreIds);
             if (layout !== st.layout) persistLayout(layout);
             return { pages, layout };
           });
         } else if (typeof e.payload.pageId === "string") {
           const { pageId, ...patch } = e.payload as { pageId: string } & Partial<PageTarget>;
           const fields = Object.fromEntries(Object.entries(patch).filter(([k]) => k !== "activePageId")) as Partial<PageTarget>;
-          if (Object.keys(fields).length) {
-            set((st) => ({ pages: st.pages.map((x) => (x.pageId === pageId ? { ...x, ...fields } : x)) }));
-          }
+          if (Object.keys(fields).length) set((st) => patchPage(st, pageId, fields));
         } else {
           void s.refresh();
         }
@@ -1520,13 +1555,12 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       case "page.loading": {
         const { pageId, loading } = e.payload as { pageId: string; loading: boolean };
-        set((st) => ({ pages: st.pages.map((p) => (p.pageId === pageId ? { ...p, loading } : p)) }));
+        set((st) => patchPage(st, pageId, { loading }));
         break;
       }
       case "page.takeover": {
         const { pageId, controller } = e.payload as { pageId: string; controller: string };
-        set((st) => ({ pages: st.pages.map((p) => (p.pageId === pageId ? { ...p, controller: controller as PageTarget["controller"] } : p)) }));
-        push({ kind: "event", title: controller === "human" ? "You took control" : `Page released (${controller})`, pageId, status: controller === "human" ? "paused" : "ok" });
+        set((st) => patchPage(st, pageId, { controller: controller as PageTarget["controller"] }));
         break;
       }
       case "routine.updated": {
@@ -1545,7 +1579,6 @@ export const useStore = create<Workspace>((set, get) => ({
         const run = e.payload.run as Run | undefined;
         if (run) {
           set((st) => ({ runs: st.runs.some((r) => r.runId === run.runId) ? st.runs.map((r) => (r.runId === run.runId ? run : r)) : [run, ...st.runs] }));
-          if (e.type === "run.status") push({ kind: "run", title: run.goal, detail: run.statusMessage, status: run.status, runId: run.runId });
           if (run.status === "needs_input" && run.statusMessage) {
             set({ prompt: { runId: run.runId, question: run.statusMessage }, railOpen: true, railView: { kind: "run", runId: run.runId } });
           } else if (get().prompt?.runId === run.runId) {
@@ -1562,14 +1595,6 @@ export const useStore = create<Workspace>((set, get) => ({
             const merged = existing.some((x) => x.stepId === step.stepId) ? existing.map((x) => (x.stepId === step.stepId ? step : x)) : [...existing, step];
             return { steps: { ...st.steps, [step.runId]: merged } };
           });
-          push({
-            kind: "step",
-            title: step.op,
-            detail: step.expected ?? step.outcome?.detail ?? step.outcome?.error?.message,
-            status: step.outcome?.status === "failed" ? "error" : "ok",
-            runId: step.runId,
-            pageId: step.pageId,
-          });
         }
         break;
       }
@@ -1581,23 +1606,14 @@ export const useStore = create<Workspace>((set, get) => ({
           pageId?: string;
           revision?: number;
         };
-        set((st) => {
-          const observations =
-            runId && observation && typeof observation.text === "string"
-              ? { ...st.observations, [runId]: observation }
-              : st.observations;
-          const pages =
-            typeof pageId === "string" && typeof revision === "number"
-              ? st.pages.map((p) => (p.pageId === pageId ? { ...p, lastRevision: revision } : p))
-              : st.pages;
-          return { observations, pages };
-        });
+        // Revisions are bookkeeping, not UI — they never re-render the shell.
+        if (typeof pageId === "string" && typeof revision === "number") pageRevisions.set(pageId, revision);
+        if (runId && observation && typeof observation.text === "string") set((st) => ({ observations: { ...st.observations, [runId]: observation } }));
         break;
       }
       case "result.added": {
         const r = e.payload.result as ResultRecord | undefined;
         if (r) {
-          push({ kind: "result", title: r.sourceUrl, detail: JSON.stringify(r.values).slice(0, 200), status: r.status, runId: r.runId });
           if (s.activeSetId) void s.refreshResults(s.activeSetId);
         }
         break;
@@ -1614,9 +1630,6 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       case "model.call": {
         const mc = e.payload as Partial<ModelCall> | undefined;
-        if (mc?.modelId) {
-          push({ kind: "model", title: `${mc.role} · ${mc.modelId}`, detail: `${mc.durationMs}ms${mc.error ? ` · ${mc.error}` : ""}`, status: mc.error ? "error" : "ok" });
-        }
         const runId = mc?.runId ?? e.runId;
         if (runId) {
           set((st) => {
@@ -1650,7 +1663,6 @@ export const useStore = create<Workspace>((set, get) => ({
       case "download.finished": {
         const d = e.payload as Download;
         if (d.id) s.applyDownload(d);
-        push({ kind: "download", title: d.filename ?? "download", status: d.state });
         break;
       }
       case "session.changed": {
@@ -1673,7 +1685,10 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       case "page.preview": {
         const { pageId, dataUrl } = e.payload as { pageId: string; dataUrl: string };
-        set((st) => ({ previews: { ...st.previews, [pageId]: dataUrl } }));
+        if (typeof pageId !== "string" || typeof dataUrl !== "string") break;
+        forgetPreview(pageId);
+        previewCache.set(pageId, dataUrl);
+        set((st) => ({ previewVersion: st.previewVersion + 1 }));
         break;
       }
     }
@@ -1681,6 +1696,9 @@ export const useStore = create<Workspace>((set, get) => ({
 }));
 
 export { call };
+
+/** Field update for one page from a side channel (loading, audio…) — a no-op when unchanged. */
+export const patchPageFields = (pageId: string, fields: Partial<PageTarget>) => useStore.setState(st => patchPage(st, pageId, fields));
 
 /** Fire-and-forget helper for UI actions — surfaces API errors as toasts. */
 export const toast = (text: string, kind: "info" | "error" = "info") => useStore.getState().toast(text, kind);

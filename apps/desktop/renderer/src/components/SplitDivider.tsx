@@ -1,5 +1,5 @@
 import type { PageTarget } from "@aux/contracts";
-import { MockPage } from "./MockPage";
+import { MockPage } from "./surfaces";
 import { useEffect, useRef, useState } from "react";
 import { splitWidths } from "@aux/contracts/split-layout";
 import { useStore } from "../store";

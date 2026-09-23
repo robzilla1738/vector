@@ -371,7 +371,7 @@ const FOLDER_EMOJIS = ["", "📁", "⭐", "🔖", "📌", "🧭", "🧪", "🎯"
 /*  Sidebar                                                             */
 /* ------------------------------------------------------------------ */
 
-export function Sidebar() {
+export const Sidebar = memo(function Sidebar() {
   const sidebarPref = useStore((s) => s.sidebar);
   const sections = useStore(s => s.sidebarSections);
   const toggleSection = useStore(s => s.toggleSidebarSection);
@@ -801,7 +801,8 @@ export function Sidebar() {
       )}
     </>
   );
-}
+});
+
 
 function NewTabButton({ onClick, dropOn, onDragOver, onDrop, onDragEnd }: {
   onClick: () => void;

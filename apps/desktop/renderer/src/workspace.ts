@@ -69,27 +69,39 @@ export function isTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime">): boo
   return p.viewStatus !== "detached" && !p.ownedByRuntime;
 }
 
-/** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. */
+/** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. Unchanged order is returned as-is. */
 export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): string[] {
-  pages=[...pages,...preservedIds.filter(id=>!pages.some(page=>page.pageId===id)).map(pageId=>({pageId}))];
   const live = new Set(pages.map((p) => p.pageId));
+  for (const id of preservedIds) live.add(id);
   const kept = order.filter((id) => live.has(id));
   const known = new Set(kept);
-  for (const p of pages) if (!known.has(p.pageId)) kept.push(p.pageId);
-  return kept;
+  for (const id of live) if (!known.has(id)) kept.push(id);
+  return kept.length === order.length && kept.every((id, index) => id === order[index]) ? order : kept;
+}
+
+/** Layout with its order synced; the same object when nothing moved. */
+export function withSyncedOrder(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
+  const order = syncOrder(layout.order, pages, preservedIds);
+  return order === layout.order ? layout : { ...layout, order };
+}
+
+/** Order and Space assignment synced to the live pages — identity-preserving. */
+export function syncLayout(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
+  return syncSpaces(withSyncedOrder(layout, pages, preservedIds), pages, preservedIds);
 }
 
 /** Ensure every live page has a space; new pages land in the active space. */
 export function syncSpaces(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
-  pages=[...pages,...preservedIds.filter(id=>!pages.some(page=>page.pageId===id)).map(pageId=>({pageId}))];
+  const ids = new Set(pages.map((p) => p.pageId));
+  for (const id of preservedIds) ids.add(id);
   const tabSpace: Record<string, string> = {};
   const valid = new Set([...layout.spaces, ...(layout.archivedSpaces ?? [])].map((s) => s.id));
   let changed = false;
-  for (const p of pages) {
-    const cur = layout.tabSpace[p.pageId];
+  for (const id of ids) {
+    const cur = layout.tabSpace[id];
     const next = cur && valid.has(cur) ? cur : layout.activeSpaceId;
     if (next !== cur) changed = true;
-    tabSpace[p.pageId] = next;
+    tabSpace[id] = next;
   }
   if (!changed && Object.keys(layout.tabSpace).length === Object.keys(tabSpace).length) return layout;
   return { ...layout, tabSpace };
@@ -108,8 +120,9 @@ export function tabsInSpace<T extends Pick<PageTarget, "pageId" | "viewStatus" |
     if (p && isTab(p) && (layout.tabSpace[id] ?? layout.activeSpaceId) === spaceId) out.push(p);
   }
   // pages that have not been ordered yet (racing an event) trail the list
+  const ordered = new Set(layout.order);
   for (const p of pages) {
-    if (!layout.order.includes(p.pageId) && isTab(p) && (layout.tabSpace[p.pageId] ?? layout.activeSpaceId) === spaceId) out.push(p);
+    if (!ordered.has(p.pageId) && isTab(p) && (layout.tabSpace[p.pageId] ?? layout.activeSpaceId) === spaceId) out.push(p);
   }
   return out;
 }

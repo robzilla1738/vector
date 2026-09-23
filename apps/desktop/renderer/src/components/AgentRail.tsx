@@ -5,7 +5,7 @@ import type { Run } from "@aux/contracts";
 import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { ResizeHandle } from "./ResizeHandle";
-import { Conversation } from "./Conversation";
+import { Conversation } from "./surfaces";
 import { SetPanel } from "./SetPanel";
 import { VirtualList } from "./VirtualList";
 import { I } from "./icons";
@@ -105,7 +105,7 @@ function RailHome() {
   );
 }
 
-export function AgentRail() {
+export const AgentRail = memo(function AgentRail() {
   const railOpen = useStore(s => s.railOpen);
   const view = useStore(s => s.railView);
   const setRailView = useStore(s => s.setRailView);
@@ -149,4 +149,4 @@ export function AgentRail() {
       <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={360} onResize={setRailWidth} />
     </aside>
   );
-}
+});

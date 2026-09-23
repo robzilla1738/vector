@@ -17,7 +17,7 @@ import { bridge } from "../bridge";
 import { hostOf, previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
-import { answerUrl } from "./AnswerMarkdown";
+import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
 import { I } from "./icons";
 

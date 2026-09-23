@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type { BrowsingMemoryPolicy } from "@aux/contracts";
 import { bridge, inElectron } from "./bridge";
 import { call, useStore } from "./store";
 
 /** The main process independently checks real window/stage visibility before recording. */
 export function useBrowsingMemory() {
-  const page = useStore(state => state.pages.find(page => page.pageId === state.activePageId));
-  const layout = useStore(state => state.layout);
+  const page = useStore(useShallow(state => {
+    const page = state.pages.find(page => page.pageId === state.activePageId);
+    return page && { pageId: page.pageId, documentEpoch: page.documentEpoch, url: page.url, title: page.title, loading: page.loading, viewStatus: page.viewStatus, ownedByRuntime: page.ownedByRuntime, backend: page.backend };
+  }));
+  const activeSpaceId = useStore(state => state.layout.activeSpaceId);
+  const spaceId = useStore(state => page ? state.layout.tabSpace[page.pageId] ?? state.layout.activeSpaceId : undefined);
+  const workspaceId = useStore(state => state.layout.spaces.find(space => space.id === spaceId)?.workspaceId);
   const mode = useStore(state => state.mode);
   const overlay = useStore(state => state.overlay);
-  const spaceId = page ? layout.tabSpace[page.pageId] ?? layout.activeSpaceId : undefined;
-  const workspaceId = layout.spaces.find(space => space.id === spaceId)?.workspaceId;
   const [revision, refresh] = useState(0);
   useEffect(() => bridge.onEvent(event => {
     if (["workspace.browsingMemory.updated", "workspace.memory.updated"].includes(event.type) && event.payload.workspaceId === workspaceId) refresh(value => value + 1);
   }), [workspaceId]);
   useEffect(() => {
-    if (!inElectron || bridge.privateMode || !workspaceId || spaceId !== layout.activeSpaceId || mode !== "focus" || overlay || !page || page.backend !== "aux" || page.ownedByRuntime || page.loading || page.viewStatus !== "visible") return;
+    if (!inElectron || bridge.privateMode || !workspaceId || spaceId !== activeSpaceId || mode !== "focus" || overlay || !page || page.backend !== "aux" || page.ownedByRuntime || page.loading || page.viewStatus !== "visible") return;
     let cancelled = false, recording = false, recorded = false;
     let interval: number | undefined;
     const record = async () => {
@@ -37,5 +41,11 @@ export function useBrowsingMemory() {
       }).catch(() => {});
     }, 5000);
     return () => { cancelled = true; window.clearTimeout(timer); if (interval !== undefined) window.clearInterval(interval); };
-  }, [workspaceId, spaceId, layout.activeSpaceId, mode, overlay, page?.pageId, page?.documentEpoch, page?.url, page?.title, page?.loading, page?.viewStatus, page?.ownedByRuntime, revision]);
+  }, [workspaceId, spaceId, activeSpaceId, mode, overlay, page?.pageId, page?.documentEpoch, page?.url, page?.title, page?.loading, page?.viewStatus, page?.ownedByRuntime, revision]);
+}
+
+/** Mounted beside the shell so memory bookkeeping never re-renders the app root. */
+export function BrowsingMemoryWatch() {
+  useBrowsingMemory();
+  return null;
 }

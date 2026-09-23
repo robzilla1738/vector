@@ -27,9 +27,19 @@ function SurfaceStatus({label, error, retry, pane}: {label:string; error?:Error;
   </div></div>;
 }
 
-/** A failed surface can retry without reloading the browser or discarding its drafts. */
-export function deferSurface<Props extends object>(load:()=>Promise<{default:ComponentType<Props>}>, label:string, pane=false) {
-  return function DeferredSurface(props:Props) {
+export type DeferredSurface<Props extends object> = ComponentType<Props> & { preload(): void };
+
+/**
+ * A failed surface can retry without reloading the browser or discarding its drafts.
+ * `preload()` fetches the chunk ahead of use; once loaded the surface renders
+ * synchronously, so a prefetched first open never shows the loading state.
+ * `quiet` surfaces render nothing while loading (always-mounted chrome).
+ */
+export function deferSurface<Props extends object>(load:()=>Promise<{default:ComponentType<Props>}>, label:string, pane=false, quiet=false): DeferredSurface<Props> {
+  let loaded: ComponentType<Props> | undefined;
+  let pending: Promise<{default:ComponentType<Props>}> | undefined;
+  const fetch = () => pending ??= load().then(module => { loaded = module.default; return module; }, (error: unknown) => { pending = undefined; throw error; });
+  function DeferredSurface(props:Props) {
     const [attempt, setAttempt] = useState(0);
     const previousFocus = useRef(document.activeElement as HTMLElement | null);
     useEffect(() => () => {
@@ -39,9 +49,17 @@ export function deferSurface<Props extends object>(load:()=>Promise<{default:Com
         if (previous?.isConnected && !previous.closest("[inert]")) previous.focus();
       });
     }, []);
-    const Surface = useMemo(() => lazy(load), [attempt]);
+    const Surface = useMemo(() => loaded ?? lazy(fetch), [attempt]);
     return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} retry={() => setAttempt(value => value + 1)} />}>
-      <Suspense fallback={<SurfaceStatus label={label} pane={pane} />}><Surface {...props}/></Suspense>
+      <Suspense fallback={quiet ? null : <SurfaceStatus label={label} pane={pane} />}><Surface {...props}/></Suspense>
     </SurfaceBoundary>;
-  };
+  }
+  return Object.assign(DeferredSurface, { preload: () => { void fetch().catch(() => {}); } });
+}
+
+/** Warm deferred chunks once the shell has painted and gone idle. */
+export function preloadWhenIdle(surfaces: readonly { preload(): void }[]) {
+  const run = () => { for (const surface of surfaces) surface.preload(); };
+  if (typeof requestIdleCallback === "function") { const id = requestIdleCallback(run, { timeout: 3000 }); return () => cancelIdleCallback(id); }
+  const timer = setTimeout(run, 1500); return () => clearTimeout(timer);
 }

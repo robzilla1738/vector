@@ -28,6 +28,26 @@ const shellCsp = (): Plugin => ({
   transformIndexHtml: () => [{ tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content: SHELL_CSP }, injectTo: "head-prepend" }],
 });
 
+/**
+ * main.tsx imports App dynamically so a failed chunk still shows a recoverable
+ * boot screen. Preload App and its static imports from the document so they
+ * download beside the entry instead of after it runs.
+ */
+const preloadApp = (): Plugin => ({
+  name: "aux-preload-app",
+  apply: "build",
+  transformIndexHtml: {
+    order: "post",
+    handler: (_html, ctx) => {
+      const chunks = Object.values(ctx.bundle ?? {}).filter(item => item.type === "chunk");
+      const app = chunks.find(chunk => chunk.moduleIds.some(id => id.endsWith("/src/App.tsx")));
+      if (!app) return [];
+      const entries = new Set(chunks.filter(chunk => chunk.isEntry).map(chunk => chunk.fileName));
+      return [app.fileName, ...app.imports.filter(file => !entries.has(file))].map(file => ({ tag: "link", attrs: { rel: "modulepreload", crossorigin: true, href: `./${file}` }, injectTo: "head" as const }));
+    },
+  },
+});
+
 export default defineConfig({
   root: join(import.meta.dirname, "renderer"),
   base: "./",
@@ -35,10 +55,12 @@ export default defineConfig({
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [react(), shellCsp()],
+  plugins: [react(), shellCsp(), preloadApp()],
   build: {
     outDir: join(import.meta.dirname, "dist", "renderer"),
     emptyOutDir: true,
+    // Electron 43 ships Chromium 150 — no syntax lowering or legacy polyfills.
+    target: "chrome150",
     // scripts/check-budgets.mjs walks the manifest to measure startup bytes
     manifest: true,
   },

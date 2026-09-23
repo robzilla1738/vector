@@ -1040,6 +1040,9 @@ table.rt code { font-family: var(--font-mono); font-size: var(--fs-xs); color: v
 .toasts.top { left: 50%; bottom: auto; top: var(--space-2); transform: translateX(-50%); }
 .toast { display: inline-flex; align-items: center; gap: var(--space-2); background: var(--bg-1); border-radius: var(--r-lg); padding: var(--space-2) var(--space-3); font-size: var(--fs-sm); box-shadow: var(--shadow-pop), var(--line-inset); color: var(--ink-0); }
 .toast svg { color: var(--ok); flex: none; }
+.toast { pointer-events: auto; }
+.toast .toast-dismiss { margin-right: calc(-1 * var(--space-1)); }
+.toast .toast-dismiss svg { color: var(--ink-2); }
 .toast.error svg { color: var(--err); }
 .toast.error { box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--err-line); }
 

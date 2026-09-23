@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import type { PageTarget, TabCommandAck } from "@aux/contracts";
 import { bridge } from "./bridge";
-import { useStore } from "./store";
+import { lastEventSeq, useStore } from "./store";
 afterEach(() => vi.restoreAllMocks());
 const pages = ["one", "two", "three"].map(pageId => ({pageId, url: "https://example.com"}) as PageTarget);
 const applied = (pageId?: string): TabCommandAck => ({ commandId: "", status: "applied", catalogVersion: 0, pageId });
@@ -29,7 +29,7 @@ it("restores a closed group in original order and activates its previous foregro
   const {emptyLayout} = await import("./workspace");
   const layout = emptyLayout(); layout.order = ["one", "two", "three"];
   useStore.setState({pages, layout, closedTabs: [], activePageId: "one", closingTabs: false, reopeningTab: false, pendingRestoreIds: []});
-  let eventSeq = useStore.getState().lastSeq + 1;
+  let eventSeq = lastEventSeq() + 1;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async (command: any) => {
     if (command.kind === "close") {
       useStore.getState().applyEvent({type: "page.removed", seq: eventSeq++, ts: Date.now(), payload: {pageId: command.pageId}});

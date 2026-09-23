@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@aux/contracts";
-import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts";
+import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
 import { bridge } from "../bridge";
 
 type Config = Awaited<ReturnType<typeof bridge.agentConfig>>;
