@@ -10,10 +10,10 @@
  */
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtempSync, mkdirSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, existsSync, readdirSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import http from "node:http";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -25,17 +25,24 @@ const fail = (msg) => { throw new Error(msg); };
 const ok = (msg) => console.log(`✓ ${msg}`);
 
 // Locate the desktop runtime; a standalone browser binary cannot satisfy this smoke.
+// The runtime runs on the app's own Electron binary as Node, like the shell's fork.
 let entry;
+let execPath = process.execPath;
 for (const dir of ["mac-arm64", "mac", "linux-unpacked", "win-unpacked"]) {
-  const p = join(release, dir, "Aux Browser.app", "Contents", "Resources", "runtime", "dist", "main.js");
-  if (existsSync(p)) { entry = p; break; }
+  const app = join(release, dir, "Aux Browser.app", "Contents");
+  const p = join(app, "Resources", "runtime", "dist", "main.js");
+  if (existsSync(p)) {
+    entry = p;
+    if (existsSync(join(app, "MacOS", "Aux Browser"))) execPath = join(app, "MacOS", "Aux Browser");
+    break;
+  }
   const alt = join(release, dir, "resources", "runtime", "dist", "main.js");
   if (existsSync(alt)) { entry = alt; break; }
 }
 if (!entry) {
   fail(`no packaged runtime under ${release} — run pnpm package:electron`);
 }
-ok(`packaged runtime: ${entry}`);
+ok(`packaged runtime: ${entry} (node via ${execPath === process.execPath ? "system node" : "packaged Electron"})`);
 
 // fixture server — the dev fixture bundle (all three apps, fixed ports).
 // Probe first: if dev fixtures are already running, reuse them.
@@ -64,9 +71,10 @@ mkdirSync(runtimeCwd, { recursive: true });
 
 function boot() {
   const port = 15200 + Math.floor(Math.random() * 500);
-  const proc = spawn(process.execPath, [entry], {
+  const proc = spawn(execPath, [entry], {
     cwd: runtimeCwd,
     env: {
+      ELECTRON_RUN_AS_NODE: "1",
       PATH: process.env.PATH,
       HOME: dataDir,
       TMPDIR: dataDir,
@@ -171,6 +179,20 @@ if (inv.status !== "completed") fail(`invoke failed: ${inv.error}`);
 ok(`zero-model invoke: ${inv.route.kind}`);
 
 await stop(second.proc);
+
+// Lazy chunks (provider SDKs, cloud sandbox) never load during boot — import each once.
+const chunkDir = join(dirname(entry), "chunks");
+const chunks = existsSync(chunkDir) ? readdirSync(chunkDir).filter((f) => f.endsWith(".js")).map((f) => pathToFileURL(join(chunkDir, f)).href) : [];
+const loader = spawn(execPath, ["--input-type=module", "-e", `for (const url of ${JSON.stringify(chunks)}) await import(url);`], {
+  env: { ELECTRON_RUN_AS_NODE: "1", PATH: process.env.PATH, HOME: dataDir },
+  stdio: ["ignore", "ignore", "pipe"],
+});
+let loaderErr = "";
+loader.stderr.on("data", (d) => (loaderErr += d));
+const [loaderCode] = await once(loader, "exit");
+if (loaderCode !== 0) fail(`lazy runtime chunks failed to load: ${loaderErr.slice(-800)}`);
+ok(`${chunks.length} lazy runtime chunks load`);
+
 if (fx) await stop(fx);
 rmSync(dataDir, { recursive: true, force: true });
 console.log("\n✓ packaged smoke passed");

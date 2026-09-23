@@ -26,7 +26,7 @@ asarUnpack:
   - dist/main/liquid-glass.node
   - dist/main/aux-dictation
 
-# the forked runtime + its production deps are staged by scripts/package-local.mjs
+# the forked runtime bundle + vendored playwright-core are staged by scripts/package-local.mjs
 extraResources:
   - from: "dist/mcp"
     to: "mcp"
@@ -36,8 +36,6 @@ extraResources:
     to: "runtime"
     filter:
       - "**/*"
-      - "**/node_modules"
-      - "**/node_modules/**" # bundled runtime deps — override default exclusion
 
 mac:
   extendInfo:
