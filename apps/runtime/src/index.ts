@@ -24,9 +24,8 @@ export { CookieService, decryptValue, chromeEpochToUnix, mapSameSite } from "./s
 export { BrowserImporter } from "./services/browser-import.js";
 export { readArcSidebar, readChromiumBookmarks, readChromiumHistory, readFirefoxBookmarks, readFirefoxHistory, readSafariBookmarks, readSafariHistory, snapshotSqlite, listImportSources } from "./services/import-sources.js";
 export { RunCoordinator, verifyDoneAgainstObservation } from "./agent/coordinator.js";
-export { initialMachine, reduce as reduceMachine, MACHINE_STATES } from "./agent/machine.js";
 export { MockModelClient } from "./agent/mock-client.js";
-export { DEFAULT_PLANNER_MODEL, LUNA_FAST_MODEL, FALLBACK_MODELS, type ModelClient } from "./agent/model-client.js";
+export { DEFAULT_PLANNER_MODEL, DEFAULT_MAX_MODEL_CALLS, LUNA_FAST_MODEL, FALLBACK_MODELS, modelCallCost, type ModelClient } from "./agent/model-client.js";
 export { GatewayModelClient } from "./agent/gateway-client.js";
 export { classifyModelFailure, ModelFailureError, type ClassifiedModelFailure } from "./agent/model-failure.js";
 export { executeProgram } from "./execution/executor.js";
@@ -42,13 +41,14 @@ export { SetRunner } from "./scheduler/set-runner.js";
 export { EarlyDispatcher } from "./agent/early-dispatch.js";
 export { PlanStreamParser } from "./agent/plan-stream.js";
 export { canResumeAfterPageRelease } from "./agent/control-authority.js";
-export { compileSkill, tryReuseSkill, markSkillFailed, guardsHold, verifySkillPostconditions, evaluateHeldOutAdvantage, siteKey, controlFingerprint, registrableOrigin, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
-export { redactForModel, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
-export { queryPage, queryAll, type PageQuery, type QueryHit } from "./agent/page-query.js";
+export { compileSkill, tryReuseSkill, markSkillFailed, guardsHold, verifySkillPostconditions, portableSkillSteps, siteKey, controlFingerprint, registrableOrigin, type CompiledSkill, type SkillGuard } from "./agent/skills.js";
+export { redactForModel, looksLikeSecret, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
+export { queryPage, type PageQuery, type QueryHit } from "./agent/page-query.js";
 export { compileAction, compileAndAuthorize, rebindSteps, type CompileResult, type DispatchPrep } from "./agent/action-compiler.js";
 export {
   authorizeProgram,
   classifyStep,
+  isConsequential,
   parseGrant,
   grantAllows,
   DEFAULT_GRANTS,
@@ -76,9 +76,7 @@ export {
   type RepairState,
   type RepairDecision,
 } from "./agent/repair.js";
-export { BrowserAuthority } from "./agent/browser-authority.js";
-export { attributeSample, attributeTodoMvc, type PhaseTimes, type AttributedSample } from "./agent/attribution.js";
 export { negotiate as negotiateBidi, dispatch as dispatchBidi, authorizePageTool, attachBidiRuntime, type BidiCommand, type BidiSession } from "./services/bidi.js";
-export { recoverAfterCrash, reconcileFallback, speculatePlan, COORDINATOR_TRANSITIONS, type CrashRecovery } from "./agent/recovery.js";
+export { recoverAfterCrash, COORDINATOR_TRANSITIONS, type CrashRecovery } from "./agent/recovery.js";
 
 export { directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "./agent/direct-providers.js";

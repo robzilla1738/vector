@@ -107,6 +107,8 @@ export const RunSchema = z.object({
       deadlineMs: z.number().optional(),
       /** prior-turn context for conversational runs — prompt-only, never shown */
       context: z.string().optional(),
+      /** human-authored instructions (task criteria, workspace memory) — prompt-only, not fenced as page data */
+      instructions: z.string().optional(),
       /** exact prior turns used to assemble context, for provenance and inspection */
       contextRunIds: z.array(z.string()).optional(),
       /** exact user-selected local document snapshots used for this turn */

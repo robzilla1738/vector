@@ -27,7 +27,9 @@ export function rebindSteps(steps: Step[], obs: ObservationContent, guards: Skil
   return steps.map((step) => {
     if (!("target" in step) || typeof step.target !== "string") return step;
     if (obs.elements.some((e) => e.ref === step.target)) return step;
+    // page-presence guards without a role/name would match the first element on the page
     for (const g of guards) {
+      if (!g.role && !g.nameIncludes) continue;
       const hit = queryPage(obs, guardQuery(g));
       if (hit) return { ...step, target: hit.ref };
     }

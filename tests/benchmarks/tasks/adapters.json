@@ -6,7 +6,8 @@
       "kind": "mcp",
       "command": ["node", "packages/mcp/dist/main.js"],
       "needsRuntime": true,
-      "note": "Aux's MCP server over the loopback API; the harness starts a runtime first."
+      "scoped": true,
+      "note": "Aux's MCP server over the loopback API; the harness starts a runtime, mints a workspace-scoped connection and saves one task per benchmark task with its start page attached."
     },
     "playwright-mcp": {
       "kind": "mcp",

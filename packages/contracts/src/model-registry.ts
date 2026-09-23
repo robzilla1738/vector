@@ -45,6 +45,7 @@ export const MODEL_REGISTRY: readonly ModelCapability[] = [
     modalities: ["text"],
     structuredOutput: true,
     streaming: true,
+    reasoning: "supported",
     source: "snapshot",
     status: "verified",
   },
@@ -55,10 +56,42 @@ export const MODEL_REGISTRY: readonly ModelCapability[] = [
     modalities: ["text", "image"],
     structuredOutput: true,
     streaming: true,
+    reasoning: "none",
     source: "snapshot",
     status: "verified",
   },
 ];
+
+/** Registry entry for a model ID; undefined means "unknown", never "unsupported". */
+export function modelCapabilities(
+  modelId: string,
+  models: readonly ModelCapability[] = MODEL_REGISTRY,
+): ModelCapability | undefined {
+  return models.find((m) => m.id === modelId);
+}
+
+/** Known-false only: an unknown model or one without modality data may accept images. */
+export function modelAcceptsImages(modelId: string, models?: readonly ModelCapability[]): boolean {
+  const modalities = modelCapabilities(modelId, models)?.modalities;
+  return !modalities || modalities.includes("image");
+}
+
+/** Clamp a requested output budget to the model's registered limit. */
+export function clampOutputTokens(modelId: string, requested: number, models?: readonly ModelCapability[]): number {
+  const limit = modelCapabilities(modelId, models)?.maxOutputTokens;
+  return limit ? Math.min(requested, limit) : requested;
+}
+
+/** USD for a call from registry pricing; undefined when either rate is unknown. */
+export function registryCostUsd(
+  modelId: string,
+  usage: { inputTokens?: number; outputTokens?: number },
+  models?: readonly ModelCapability[],
+): number | undefined {
+  const m = modelCapabilities(modelId, models);
+  if (m?.inputUsdPerMTok === undefined || m.outputUsdPerMTok === undefined) return undefined;
+  return ((usage.inputTokens ?? 0) * m.inputUsdPerMTok + (usage.outputTokens ?? 0) * m.outputUsdPerMTok) / 1_000_000;
+}
 
 /**
  * Merge capability lists left-to-right: later lists win per-ID metadata and

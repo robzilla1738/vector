@@ -6,7 +6,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   authorizeProgram,
-  attributeTodoMvc,
   compileAction,
   beginConsequentialWrite,
   compileAndAuthorize,
@@ -555,23 +554,6 @@ describe("Gate D fixture write counter", () => {
     expect(replay.duplicate).toBe(true);
     expect(replay.intent.status).toBe("pending");
     rmSync(dir, { recursive: true, force: true });
-  });
-});
-
-describe("Gate E attribution", () => {
-  it("splits a TodoMVC sample into named phases", () => {
-    const sample = attributeTodoMvc({
-      openMs: 12000,
-      jsMs: 40000,
-      settleMs: 8000,
-      observeMs: 2000,
-      totalMs: 64000,
-    });
-    expect(sample.label).toBe("speedometer.3.0.TodoMVC-JavaScript-ES5");
-    expect(sample.accountedMs).toBe(62000);
-    expect(sample.unaccountedMs).toBe(2000);
-    expect(sample.phases.jsMs).toBe(40000);
-    expect(sample.phases.parseMs + sample.phases.styleMs + sample.phases.layoutMs).toBe(12000);
   });
 });
 

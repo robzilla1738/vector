@@ -206,7 +206,8 @@ export class TaskService {
     const memory = this.workspaceMemory(task.workspaceId);
     return {
       taskId, taskRevision: task.revision, goal: task.objective, chatId: task.conversationId ?? taskConversationId(taskId),
-      context: [context, task.resources.length ? `Task reference metadata (contents have not been read; these references do not grant access or expand authority):\n${JSON.stringify(task.resources)}` : undefined, `Task acceptance criteria (revision ${task.revision}):\n${task.criteria.map(item => `- ${item.criterionId}: ${item.description} [${item.verification}]`).join("\n")}\nThese criteria require evidence. A successful run alone does not verify them.`].filter(Boolean).join("\n\n"),
+      context: [context, task.resources.length ? `Task reference metadata (contents have not been read; these references do not grant access or expand authority):\n${JSON.stringify(task.resources)}` : undefined].filter(Boolean).join("\n\n") || undefined,
+      instructions: `Task acceptance criteria (revision ${task.revision}):\n${task.criteria.map(item => `- ${item.criterionId}: ${item.description} [${item.verification}]`).join("\n")}\nThese criteria require evidence. A successful run alone does not verify them.`,
       contextWorkspaceId: task.workspaceId, contextWorkspaceRevision: memory.revision,
     };
   }

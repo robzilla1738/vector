@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MethodSchemas, SearchEngineTemplateSchema } from "@aux/contracts";
-import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@aux/runtime";
+import { DEFAULT_MAX_MODEL_CALLS, DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@aux/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "aux-settings-"));
@@ -58,11 +58,11 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults search to DuckDuckGo and 8 model calls", () => {
+  it("defaults search to DuckDuckGo and the shared model-call budget", () => {
     const { dir, settings } = harness();
     try {
       expect(settings.searchEngine()).toBe("https://duckduckgo.com/?q=%s");
-      expect(settings.maxModelCalls()).toBe(8);
+      expect(settings.maxModelCalls()).toBe(DEFAULT_MAX_MODEL_CALLS);
       expect(settings.plannerModel()).toBe(DEFAULT_PLANNER_MODEL);
     } finally {
       rmSync(dir, { recursive: true, force: true });

@@ -6,7 +6,6 @@ import {
 import {
   compileSkill,
   tryReuseSkill,
-  evaluateHeldOutAdvantage,
   siteKey,
   controlFingerprint,
   redactForModel,
@@ -16,8 +15,6 @@ import {
   dispatchBidi,
   authorizePageTool,
   recoverAfterCrash,
-  reconcileFallback,
-  speculatePlan,
   COORDINATOR_TRANSITIONS,
   attachBidiRuntime,
 } from "@aux/runtime";
@@ -93,33 +90,6 @@ describe("AUX-018 skills", () => {
     const skip = tryReuseSkill([skill], "increment", obs("Increment"), "https://evil.test/");
     expect(skip).toMatchObject({ skipped: expect.stringContaining("siteKey") });
   });
-
-  it("does not claim the 2x p95 stretch without measured metrics", () => {
-    const miss = evaluateHeldOutAdvantage(
-      { success: 6, p95Ms: 2000, tokensPerSuccess: 10000 },
-      { success: 6, p95Ms: 1500, tokensPerSuccess: 8000 },
-    );
-    expect(miss.meetsStretch).toBe(false);
-    const hit = evaluateHeldOutAdvantage(
-      { success: 6, p95Ms: 2000, tokensPerSuccess: 10000 },
-      { success: 6, p95Ms: 900, tokensPerSuccess: 4000 },
-    );
-    expect(hit.meetsStretch).toBe(true);
-    expect(hit.p95Ratio).toBeGreaterThanOrEqual(2);
-    const unmeasuredTokens = evaluateHeldOutAdvantage(
-      { success: 1, p95Ms: 14.9, tokensPerSuccess: null },
-      { success: 1, p95Ms: 2.8, tokensPerSuccess: null },
-    );
-    expect(unmeasuredTokens.p95Ratio).toBeGreaterThanOrEqual(2);
-    expect(unmeasuredTokens.tokensMeasured).toBe(false);
-    expect(unmeasuredTokens.meetsStretch).toBe(false);
-    const zeroCandidate = evaluateHeldOutAdvantage(
-      { success: 1, p95Ms: 2000, tokensPerSuccess: 8000 },
-      { success: 1, p95Ms: 900, tokensPerSuccess: 0 },
-    );
-    expect(zeroCandidate.tokensMeasured).toBe(true);
-    expect(zeroCandidate.meetsStretch).toBe(true);
-  });
 });
 
 describe("AUX-019 agent policy", () => {
@@ -172,10 +142,5 @@ describe("AUX-017 crash injection", () => {
       expect(flagged ? r.needsUserReview : true).toBe(true);
       expect(flagged ? r.restartSafe === false : true).toBe(true);
     }
-    const fb = reconcileFallback({ code: "needs-chromium:webgl", expiresAt: 1, version: 3 });
-    expect(fb.originWideBan).toBe(false);
-    expect(fb.version).toBe(3);
-    expect(speculatePlan({ archivedGetSafe: true, wouldWrite: true }).allowed).toBe(false);
-    expect(speculatePlan({ archivedGetSafe: true, wouldWrite: false }).requiresLiveRevalidation).toBe(true);
   });
 });

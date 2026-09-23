@@ -66,7 +66,8 @@ it("rejects revision and competing starts while a run is active", () => {
   const f = fixture();
   const prepared = f.service.prepareRun(f.task.taskId, 1);
   expect(prepared.goal).toBe(f.task.objective);
-  expect(prepared.context).toContain("All required tests pass");
+  expect(prepared.instructions).toContain("All required tests pass");
+  expect(prepared.context).not.toContain("All required tests pass");
   expect(prepared).not.toHaveProperty("grants");
   expect(prepared.context).toContain("contents have not been read");
   expect(prepared.context).toContain("/synthetic/no-such-repo");

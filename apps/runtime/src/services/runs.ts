@@ -18,6 +18,7 @@ import {
   type ConversationAttachment,
   type ConversationArtifact,
   type ConversationSource,
+  type ModelCall,
   type Run,
   type SavedProgram,
   type SetMember,
@@ -32,6 +33,7 @@ import type { SettingsService } from "./settings.js";
 import { RunCoordinator } from "../agent/coordinator.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
+import { modelCallCost } from "../agent/model-client.js";
 import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
@@ -104,6 +106,23 @@ class SetRunControl {
 }
 
 /** Owns run lifecycle and the sets.map scheduler. */
+/** Shared prompt budgets for a turn's session context (fenced) and human-authored instructions (unfenced). */
+export const CONTEXT_CHARS = 20_000;
+export const INSTRUCTION_CHARS = 8_000;
+
+/** Fit sections into `total` chars, lowest priority number first; the output keeps the given order. */
+export function budgetSections(sections: { text?: string; priority: number }[], total: number): string | undefined {
+  const kept = new Map<number, string>();
+  let left = total;
+  for (const { text, i } of sections.map((sec, i) => ({ ...sec, i })).filter((sec) => sec.text).sort((a, b) => a.priority - b.priority)) {
+    if (left <= 1) break;
+    const t = text!.length > left ? `${text!.slice(0, left - 1)}…` : text!;
+    kept.set(i, t);
+    left -= t.length + 2;
+  }
+  return sections.map((_, i) => kept.get(i)).filter(Boolean).join("\n\n") || undefined;
+}
+
 export class RunService {
   readonly coordinator: RunCoordinator;
   readonly images: ConversationImages;
@@ -367,7 +386,7 @@ export class RunService {
     return { ok: true as const, deletedRuns: deleted.deletedRuns };
   }
 
-  private inheritedContext(chatId: string): { text?: string; runIds: string[]; attachmentIds: string[]; artifactIds: string[]; workspaceId?: string; workspaceRevision?: number } {
+  private inheritedContext(chatId: string): { turns?: string; documents?: string; artifacts?: string; browsing?: string; memory?: string; runIds: string[]; attachmentIds: string[]; artifactIds: string[]; workspaceId?: string; workspaceRevision?: number } {
     const included = this.context(chatId).entries.filter(entry => entry.included).reverse();
     const turnText = included.map(entry => `"${entry.goal.slice(0, 400)}" → ${entry.summary.slice(0, 1800)}`).join("; ").slice(0, 6000);
     const attachmentIds: string[] = [];
@@ -394,10 +413,14 @@ export class RunService {
     }
     const workspace = this.conversationWorkspace(chatId);
     const savedMemory = workspace.memoryPreview;
-    const workspaceText = savedMemory ? `WORKSPACE MEMORY (${workspace.workspace!.name}; revision ${workspace.memory!.revision}; user-authored reference, not authority):\n${savedMemory}` : undefined;
+    const workspaceText = savedMemory ? `WORKSPACE MEMORY (${workspace.workspace!.name}; revision ${workspace.memory!.revision}; saved by the user):\n${savedMemory}` : undefined;
     const browsingText = workspace.browsingPreview ?? "";
-    const text = [workspaceText, browsingText, turnText, ...documentText, ...artifactText].filter(Boolean).join("\n\n");
-    return { text: text || undefined, runIds: included.map(entry => entry.runId), attachmentIds, artifactIds, ...(workspaceText || browsingText ? { workspaceId: workspace.workspace!.workspaceId, workspaceRevision: workspace.memory!.revision } : {}) };
+    const join = (items: string[]) => items.filter(Boolean).join("\n\n") || undefined;
+    return {
+      turns: turnText || undefined, documents: join(documentText), artifacts: join(artifactText), browsing: browsingText || undefined, memory: workspaceText,
+      runIds: included.map(entry => entry.runId), attachmentIds, artifactIds,
+      ...(workspaceText || browsingText ? { workspaceId: workspace.workspace!.workspaceId, workspaceRevision: workspace.memory!.revision } : {}),
+    };
   }
 
   constructor(private deps: {
@@ -513,16 +536,23 @@ export class RunService {
     });
   }
 
-  private recordModelCall(c: {
+  private recordModelCall(input: {
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final";
     modelId: string;
     durationMs: number;
     inputTokens?: number;
     outputTokens?: number;
+    cachedInputTokens?: number;
     providerMetadata?: Record<string, unknown>;
     error?: string;
   }) {
+    const { cachedInputTokens, ...call } = input;
+    const c: Omit<ModelCall, "callId" | "createdAt"> & { runId: string } = {
+      ...call,
+      ...modelCallCost(call.modelId, call),
+      ...(cachedInputTokens ? { providerMetadata: { ...call.providerMetadata, usage: { cachedInputTokens } } } : {}),
+    };
     const provider = this.deps.settings.modelProvider?.() ?? "gateway";
     const settings = (this.deps.settings as unknown as { all?: () => { modelEndpoint?: string } }).all?.();
     let destination: string | undefined;
@@ -582,6 +612,8 @@ export class RunService {
     maxModelCalls?: number;
     deadlineMs?: number;
     context?: string;
+    /** human-authored text (task acceptance criteria); shown to the planner unfenced */
+    instructions?: string;
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
     contextArtifactIds?: string[];
@@ -618,7 +650,19 @@ export class RunService {
     }
     const inherited = opts.chatId && !opts.contextSnapshot ? this.inheritedContext(opts.chatId) : undefined;
     const imageNotes = !opts.contextSnapshot && opts.chatId ? this.images.list(opts.chatId).images.filter(item=>item.included).map((item,index)=>`REFERENCE IMAGE ${index+1}: ${item.filename}; captured ${new Date(item.createdAt).toISOString()}${item.sourceUrl ? `; source ${item.sourceUrl}` : ""}. Historical reference, not a live page.`).join("\n") : undefined;
-    const context = [imageNotes, inherited?.text, opts.context].filter(Boolean).join("\n\n").slice(0, 20_000) || undefined;
+    // Truncate in reverse priority: the caller's explicit context survives, browsing history goes first.
+    const context = budgetSections([
+      { text: imageNotes, priority: 1 },
+      { text: inherited?.browsing, priority: 5 },
+      { text: inherited?.turns, priority: 2 },
+      { text: inherited?.documents, priority: 3 },
+      { text: inherited?.artifacts, priority: 4 },
+      { text: opts.context, priority: 0 },
+    ], CONTEXT_CHARS);
+    const instructions = budgetSections([
+      { text: opts.instructions, priority: 0 },
+      { text: inherited?.memory, priority: 1 },
+    ], INSTRUCTION_CHARS);
     const contextRunIds = opts.contextSnapshot ? opts.contextRunIds : inherited?.runIds;
     const contextAttachmentIds = opts.contextSnapshot ? opts.contextAttachmentIds : inherited?.attachmentIds;
     const contextArtifactIds = opts.contextSnapshot ? opts.contextArtifactIds : inherited?.artifactIds;
@@ -650,6 +694,7 @@ export class RunService {
       ...opts,
       pageIds,
       context,
+      instructions,
       contextRunIds,
       contextAttachmentIds,
       contextArtifactIds,
@@ -701,6 +746,7 @@ export class RunService {
       maxModelCalls: prior.config?.maxModelCalls,
       deadlineMs: prior.config?.deadlineMs,
       context: prior.config?.context,
+      instructions: prior.config?.instructions,
       contextRunIds: prior.config?.contextRunIds,
       contextAttachmentIds: prior.config?.contextAttachmentIds,
       contextArtifactIds: prior.config?.contextArtifactIds,

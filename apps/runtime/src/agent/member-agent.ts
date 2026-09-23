@@ -7,8 +7,8 @@ import {
   type StepOutcome,
 } from "@aux/contracts";
 import type { PageService } from "../services/pages.js";
-import { compileAndAuthorize } from "./action-compiler.js";
-import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
+import type { DurableWriteLedger } from "./durable.js";
+import { guardedExecute } from "./guarded-dispatch.js";
 import type { ModelClient } from "./model-client.js";
 import type { GrantSource } from "./permissions.js";
 import { buildPlannerPrompt, PLANNER_SYSTEM } from "./planner.js";
@@ -34,7 +34,7 @@ export async function runMemberAgent(opts: {
   grants?: GrantSource;
   /** Persist write intent before dispatch (Gate D). */
   durable?: DurableWriteLedger;
-  recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number }) => void;
+  recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; providerMetadata?: Record<string, unknown>; error?: string }) => void;
 }): Promise<{ result: ResultRecord; executedSteps: Step[] }> {
   const { member, pages, model, modelId, signal, runId } = opts;
   const pageId = opts.pageId;
@@ -42,21 +42,24 @@ export async function runMemberAgent(opts: {
   const executed: Step[] = [];
   const memberGoal = `For this single record/page: ${opts.goal}\nReturn result fields as the structured result when done.`;
 
+  let notes: string | undefined;
   for (let calls = 0, stepsRun = 0; calls < MEMBER_MAX_CALLS && stepsRun < MEMBER_MAX_STEPS; ) {
     if (signal.aborted) break;
     const obs = await pages.observe(pageId, {});
-    const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId], budget: { tokens: 3000 } });
+    const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId], notes, budget: { tokens: 3000 } });
     const call = await model.generateStructured({
       modelId,
       system: PLANNER_SYSTEM,
       prompt,
       schema: PlanChunkSchema,
       signal,
-      maxOutputTokens: 3072,
+      maxOutputTokens: 8192,
     });
-    calls++;
-    opts.recordModelCall?.({ modelId, durationMs: call.durationMs, inputTokens: call.inputTokens, outputTokens: call.outputTokens });
+    calls += 1 + (call.retries?.length ?? 0);
+    for (const retry of call.retries ?? []) opts.recordModelCall?.({ modelId, ...retry });
+    opts.recordModelCall?.({ modelId, durationMs: call.durationMs, inputTokens: call.inputTokens, outputTokens: call.outputTokens, cachedInputTokens: call.cachedInputTokens, providerMetadata: call.providerMetadata });
     const plan = call.object;
+    if (plan.notes !== undefined) notes = plan.notes;
 
     if (plan.status === "done") {
       return {
@@ -76,35 +79,29 @@ export async function runMemberAgent(opts: {
     if (plan.status === "needs_input") {
       return err(member, pageId, obs.content.url, plan.question ?? "needs input", executed);
     }
-    if (!plan.steps?.length) continue;
+    if (!plan.steps?.length) {
+      if (plan.observationRequest) continue;
+      return err(member, pageId, obs.content.url, "planner returned no steps", executed);
+    }
     const live = pages.get(pageId);
-    const prepared = compileAndAuthorize({
+    const g = await guardedExecute({ pages, durable: opts.durable, grants: opts.grants }, {
+      runId,
       pageId,
-      documentEpoch: live.documentEpoch ?? obs.documentEpoch,
-      observedEpoch: obs.documentEpoch,
       steps: plan.steps,
       observation: obs.content,
       url: live.url ?? obs.content.url,
-      grants: opts.grants,
-    });
-    if ("rejected" in prepared) return err(member, pageId, obs.content.url, prepared.rejected, executed);
-    if ("denied" in prepared) return err(member, pageId, obs.content.url, prepared.denied, executed);
-    const steps = prepared.program.steps ?? plan.steps;
-    const write = beginConsequentialWrite(opts.durable, {
-      runId,
-      pageId,
-      documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      documentEpoch: live.documentEpoch ?? obs.documentEpoch,
+      observedEpoch: obs.documentEpoch,
       revision: obs.revision,
-      steps,
+      exec: { runId, signal },
     });
-    if (write.skip) return err(member, pageId, obs.content.url, write.reason!, executed);
-    const res = await pages.execute(prepared.program, { runId, journaled: true, signal });
-    settleWrite(opts.durable, write.intentId, res);
+    if (g.kind !== "ran") return err(member, pageId, obs.content.url, g.reason, executed);
+    const steps = g.program.steps ?? plan.steps;
     executed.push(...steps);
-    outcomes.push(...res.steps);
+    outcomes.push(...g.result.steps);
     stepsRun += steps.length;
-    if (res.status === "failed") return err(member, pageId, obs.content.url, res.error ?? "step failed", executed);
-    if (res.status === "cancelled") break;
+    if (g.result.status === "failed") return err(member, pageId, obs.content.url, g.result.error ?? "step failed", executed);
+    if (g.result.status === "cancelled") break;
   }
   return err(member, pageId, member.url ?? "", "member budget exhausted without completion", executed);
 

@@ -44,6 +44,8 @@ const doneOutcome = (stepId: string, op: string): StepOutcome => ({
   status: "ok",
   startedAt: Date.now(),
   durationMs: 1,
+  // evaluate reports its return value as the step detail (e4 → "4")
+  ...(op === "evaluate" ? { detail: stepId.replace(/\D/g, "") } : {}),
   ...(WRITE_LIKE.has(op)
     ? { receipt: { observed: `${op} dispatched`, remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } }
     : {}),

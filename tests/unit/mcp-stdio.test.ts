@@ -152,6 +152,11 @@ describe("Gate F MCP stdio session", () => {
             break;
           }
           case "pages.execute":
+            if ((body.params as { program?: { steps?: { target?: string }[] } })?.program?.steps?.[0]?.target === "r404") {
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify({ error: { code: "ref_stale", message: "ref r404 is stale" } }));
+              return;
+            }
             result = { status: "completed", steps: [{ stepId: "c", op: "click", status: "ok", startedAt: 1, durationMs: 1 }] };
             break;
           case "pages.takeover":
@@ -254,4 +259,63 @@ describe("Gate F MCP stdio session", () => {
     expect(JSON.stringify(opened)).not.toMatch(/app\.test\/auto/);
     expect(calls.some(c => c.method === "pages.open")).toBe(false);
   });
+
+  it("keeps tools/list small, annotated and free of uncallable tools", async () => {
+    const listed = await mcp.call("tools/list");
+    const tools = (listed.result as { tools: { name: string; inputSchema: unknown; annotations?: Record<string, boolean> }[] }).tools;
+    expect(JSON.stringify(listed.result).length).toBeLessThan(30_000);
+    const execute = tools.find((t) => t.name === "aux_page_execute")!;
+    expect(JSON.stringify(execute).length).toBeLessThan(8_000);
+    expect(execute.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    expect(tools.find((t) => t.name === "aux_page_observe")?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(tools.every((t) => t.annotations)).toBe(true);
+    expect(tools.some((t) => t.name.startsWith("aux_development_") || t.name.startsWith("aux_cloud_"))).toBe(false);
+    for (const gone of ["aux_run_start", "aux_set_map", "aux_operation_invoke", "aux_chrome_import_cookies", "aux_task_create"]) expect(tools.map((t) => t.name)).not.toContain(gone);
+  });
+
+  it("validates flat steps against the planner vocabulary and summarizes results one line per step", async () => {
+    const bad = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "n", op: "navigate", url: "not a url" }] } });
+    expect(JSON.stringify(bad)).toMatch(/invalid_params/);
+    const good = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r9" }] } });
+    const text = (good.result as { content: [{ text: string }] }).content[0].text;
+    expect(text).toBe("completed (1 step)\nc click ok 1ms");
+  });
+
+  it("preserves runtime error codes", async () => {
+    const stale = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r404" }] } });
+    const payload = JSON.parse((stale.result as { content: [{ text: string }] }).content[0].text) as { code: string; retryable: boolean };
+    expect(payload).toMatchObject({ code: "ref_stale", retryable: true });
+  });
+});
+
+describe("MCP project tool gating", () => {
+  async function toolNames(env: Record<string, string>) {
+    const dir = mkdtempSync(join(tmpdir(), "aux-mcp-gate-"));
+    writeFileSync(join(dir, "runtime.json"), JSON.stringify({ port: 1, token: "t", pid: process.pid }));
+    const child = spawn(process.execPath, [join(process.cwd(), "packages/mcp/dist/main.js")], {
+      env: { ...process.env, AUX_DATA_DIR: dir, AUX_MCP_TOKEN: "t", ...env },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    try {
+      const mcp = new McpStdio(child);
+      await mcp.call("initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "gate", version: "0" } });
+      mcp.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+      const listed = await mcp.call("tools/list");
+      return ((listed.result as { tools: { name: string }[] }).tools ?? []).map((t) => t.name);
+    } finally {
+      child.kill();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("exposes development and cloud tools only to opted-in task or workspace scopes", async () => {
+    const task = await toolNames({ AUX_MCP_SCOPE_KIND: "task" });
+    expect(task).toContain("aux_task_create");
+    expect(task.some((n) => n.startsWith("aux_development_"))).toBe(false);
+    const projects = await toolNames({ AUX_MCP_SCOPE_KIND: "task", AUX_MCP_PROJECT_TOOLS: "1" });
+    expect(projects).toContain("aux_development_files");
+    expect(projects).toContain("aux_cloud_environments");
+    const unscoped = await toolNames({ AUX_MCP_PROJECT_TOOLS: "1" });
+    expect(unscoped.some((n) => n.startsWith("aux_cloud_"))).toBe(false);
+  }, 20_000);
 });
