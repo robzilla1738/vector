@@ -47,7 +47,10 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | `components/SetPanel.tsx` | Set status, per-member segmented bar, member grid, failed list, Results |
 | `components/Palette.tsx` | ⌘K: intent routing, tab switch, agent/window/spaces/sets/chrome/bookmarks commands, two-level pickers (split view, borrow a Chrome tab) |
 | `components/StartPage.tsx` | Aux arch mark, Search/Ask field, recent chats and routines |
-| `components/VirtualList.tsx` | Fixed-row-height windowed list used by the tab list and past runs |
+| `components/VirtualList.tsx` | Fixed-row-height windowed list used by past runs. The sidebar tab list windows its loose tabs with `use-windowed-rows.ts` instead |
+| `components/Skeleton.tsx` | Token-based placeholder rows for deferred surfaces and first list loads |
+| `use-shortcut-label.ts` | Display chord for a command after the person's remaps; every visible shortcut hint goes through it |
+| `use-dismissable.ts` | The Escape stack: the most recently opened menu, popover or dialog closes first |
 | `components/Overview.tsx`, `ResultsTable.tsx`, `History.tsx`, `Settings.tsx`, `Inspector.tsx`, `FindBar.tsx`, `Downloads.tsx` | Secondary surfaces restyled on the tokens. Settings navigation is a quiet column with one selected row; preference fields group into rounded cards |
 | `favicon.ts` | Favicon candidate chain (page icon → DuckDuckGo → Google s2) + host letter |
 | `workspace.ts` | Spaces / pins (cap 5) / folders / tab order (persisted in localStorage), `hostOf`, `previewSplit` |
@@ -94,15 +97,26 @@ the menu, and the menu does not cover the page with the shell overlay.
 
 ## Design tokens (`tokens.css`)
 
-Every colour, radius, size and duration used by `styles.css` is a custom
-property defined once in `tokens.css`. Components never introduce literals.
+Colours, radii, type sizes, weights and durations in `styles.css` come from
+custom properties defined once in `tokens.css`. Spacing uses the scale where a
+value is on it; about 150 off-scale optical offsets (3/5/7/9/18px and similar)
+remain literal. `tests/unit/chrome-tokens.test.ts` ratchets the literal counts,
+so they can fall but never rise. `tokens.css` declares the cascade layers,
+`reset, tokens, base, components, overrides`: element selectors live in `base`,
+and the reduced-motion, reduced-transparency and increased-contrast rules live
+in `overrides`. Each selector is defined once per context.
 
-- **Type** — Geist Variable and Geist Mono; 14px interface default with user scaling;
-  line heights `--lh-tight|normal|relaxed`; tracking `--tracking-tight|snug|wide`.
+- **Type** — Geist Variable and Geist Mono; 14px interface default with user scaling
+  (`--fs-2xs … --fs-3xl`); weights `--fw-regular 400`, `--fw-book 450`, `--fw-medium 500`,
+  `--fw-strong 550`, `--fw-semibold 600`; line heights `--lh-tight|normal|relaxed`;
+  tracking `--tracking-tight|snug|wide`.
 - **Icons** — Central Icons at `--ico-sm 14` / `--ico 16` / `--ico-lg 20`.
   Folders and sidebar toggles share the same icon family.
-- **Spacing** — 4 px grid, `--space-0 … --space-9` (2 → 56 px).
-- **Radii** — shared reference tokens, 0.5px hairlines and 1.4 squircle factor.
+- **Spacing** — 4 px grid, `--space-0 … --space-9` (2 → 56 px), plus the half steps
+  `--space-1-5` 6, `--space-2-5` 10 and `--space-3-5` 14 used by dense rows.
+- **Radii** — `--r-xs … --r-2xl` scale by the 1.4 squircle factor (`--r-sm` 4, `--r-md` 6,
+  `--r-lg` 8, `--r-xl` 12, `--r-2xl` 16 before the factor). Round-cornered shapes use
+  `--r-control` 10, `--r-card` 14 and `--r-composer` 20. Hairlines are 0.5px.
   Tab close targets and the suggestion send mark stay circular; the shared squircle does not flatten them.
 - **Shell metrics** — `--toolbar-h 40`, fully closed sidebar width 0;
   both panels are user-resizable and their widths persist in
@@ -115,19 +129,31 @@ property defined once in `tokens.css`. Components never introduce literals.
   and stays unclipped. The home Tab hint matches the Search and Ask pills
   (26px, medium weight, same radius and fill). With the sidebar hidden, a
   full-page chat title uses the traffic-light inset.
-- **Motion** — `--t-fast 150`, `--t-med 150`, `--t-slow 240` ms; toolbar reveal 180ms; eases
-  `--ease-out`, `--ease-spring`, `--ease-in-out`. `prefers-reduced-motion`
+- **Motion** — `--t-quick 100` (menus, scrims), `--t-fast 150` (hover and focus),
+  `--t-reveal 180` (toolbar controls), `--t-slow 240` (layout), `--t-enter 480`
+  (quick ask), `--t-slide 560` ms (the toolbar slides over a loaded page); loops
+  use `--t-spin`, `--t-sweep` and `--t-pulse`. Eases `--ease-out`, `--ease-in-out` and
+  `--ease-emphasized`. The toolbar keeps the shell raised until its slide's
+  `transitionend`, so JavaScript does not copy CSS durations. Menus and popovers
+  share one entrance (`menu-enter`); dialogs use `.pop-in`. `prefers-reduced-motion`
   zeroes the durations and collapses every animation/transition to 0.01 ms.
-  `prefers-reduced-transparency` removes the backdrop blurs.
+  `prefers-reduced-transparency` removes the backdrop blurs. Scrims are a solid
+  translucent `--scrim`: a CSS blur never reaches the native page views.
+  `prefers-contrast: more` strengthens secondary ink, lines, hairlines (1px) and
+  the focus ring.
 - **Colour** — two appearances, `[data-theme="dark"|"light"]`. Dark chrome
-  `--sb-bg` / `--bg-window` / `--stage-frame` is `#1f1f1f` so the stage floats
-  in an even gutter. Surfaces `--bg-0 … --bg-3`, `--bg-hover/active`, glass,
+  `--sb-bg` / `--bg-window` / `--stage-frame` is `oklch(20.5% 0 0)` so the stage
+  floats in an even gutter. Surfaces `--bg-0 … --bg-3` (dark popovers `--bg-2`
+  share the `--bg-1` panel step; light lifts them to white), `--bg-hover/active`, glass,
   hairlines `--line`, `--line-strong`, `--line-inset`; ink `--ink-0 … --ink-3`,
   `--ink-inverse`; accent is the inverse of the canvas (no purple agent tint,
   no teal engine tint — `--agent` and `--engine` follow ink). Semantic
-  `--ok`, `--warn`, `--err` keep distinct hues.
+  `--ok`, `--warn`, `--err` keep distinct hues; their `-soft`/`-line` variants,
+  `--selection` and the diff fills are `color-mix` of the base colour.
 - **Space identity** — `[data-space="blue|violet|pink|orange|green|teal|slate"]`
-  sets `--space-color` to grayscale steps, not a rainbow.
+  sets `--space-color` to a muted hue at one lightness per appearance
+  (`--space-l`, `--space-c`), so swatches are distinct without competing with
+  the blue accent. Nested swatches resolve the current appearance.
 - **Z** — `--z-stage < --z-panel < --z-peek < --z-scrim < --z-drawer < --z-toast`.
 
 ## States
@@ -136,13 +162,16 @@ property defined once in `tokens.css`. Components never introduce literals.
   recent chats/routines). No runs: rail home explains where
   the agent works.
 - **Loading** — 2 px sweeping progress line at the top of the stage card; tab
-  favicon becomes a spinner.
+  favicon becomes a spinner. Deferred surfaces (Settings, Library, Tasks, Palette)
+  show a skeleton until their chunk loads; Library and conversation history show
+  placeholder rows on first load.
 - **Disconnected** — full-width warning banner with *Reconnect now*; composer
   disabled; rail shows *offline*; stage shows *Waiting for the runtime*.
 - **Long titles** — single-line ellipsis everywhere (tab rows, run rows, command
   bar title, member labels); full text in `title` tooltips.
-- **40+ tabs** — the tab list virtualizes at 28 rows (`VirtualList`, 32 px
-  rows); past runs virtualize at 30. Hidden mode has no persistent icon rail.
+- **Many tabs** — past 60 loose tabs in a Space the sidebar windows the list
+  (`use-windowed-rows.ts`, 32px stride, paused while dragging); past runs
+  virtualize past 30 (`VirtualList`). Hidden mode has no persistent icon rail.
 - **Narrow** — ≤ 1100 px the agent rail clamps to 340 px and an expanded
   sidebar can close while the agent rail is open. ≤ 1000 px the command bar takes
   more of the toolbar and the control chip drops its label. ≤ 820 px the
@@ -163,7 +192,10 @@ the palette, `menu`/`menuitem` for menus, `alert` for the degraded banner,
 `status` for the takeover banner, `aria-live` toasts. Focus is visible on every
 control (`:focus-visible` ring shaped by the control); roving tabindex in the
 tab list; Esc closes menus, pickers and overlays and returns focus to where it
-came from. Icons carry `aria-label`s or are `aria-hidden` decorations.
+came from. Menus, popovers, the sidebar peek and the space editor register with
+`useDismissable`, so the most recently opened one closes first; the current
+overlay closes only when none is open. Shortcut hints in titles, menus and the
+palette follow the person's remapped shortcuts. Icons carry `aria-label`s or are `aria-hidden` decorations.
 
 ## Mock mode
 
