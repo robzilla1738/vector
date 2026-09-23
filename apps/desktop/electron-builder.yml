@@ -14,6 +14,7 @@ files:
   - "!node_modules/**" # main+preload are esbuild-bundled; no runtime deps
   - "!dist/*.tsbuildinfo"
   - "!dist/.vite/**" # build manifest, used only by scripts/check-budgets.mjs
+  - "!dist/.bundle-meta/**" # esbuild metafiles from bundle.mjs
 
 # Chromium ships ~55 UI locale packs (~46 MB); the shell is English-only.
 electronLanguages:

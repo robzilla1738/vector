@@ -6,7 +6,7 @@ import {randomUUID} from "node:crypto";
 
 function build(content:string,format:"snapshot"|"csv"):Promise<Buffer> {
   return new Promise((resolve,reject)=>{
-    const worker=new Worker(new URL("./workbook-export.cjs",import.meta.url),{workerData:{content,format},resourceLimits:{maxOldGenerationSizeMb:128,maxYoungGenerationSizeMb:16}});
+    const worker=new Worker(new URL("./document-worker.cjs",import.meta.url),{workerData:{task:"export",content,format},resourceLimits:{maxOldGenerationSizeMb:128,maxYoungGenerationSizeMb:16}});
     let settled=false;
     const timer=setTimeout(()=>finish(new Error("Workbook export took too long. Save the full snapshot instead.")),15000);
     function finish(error?:Error,bytes?:Buffer){if(settled)return;settled=true;clearTimeout(timer);void worker.terminate();if(error)reject(error);else resolve(bytes!);}

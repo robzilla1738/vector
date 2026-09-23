@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
-    "outDir": "dist/main",
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "dist/tsconfig.main.tsbuildinfo",
     "rootDir": "main",
     "types": ["node"]
   },
