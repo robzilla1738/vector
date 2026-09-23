@@ -373,6 +373,7 @@ body.resizing .sidebar { transition: none; }
 .sb-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .tab-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 var(--space-3) var(--space-2); display: flex; flex-direction: column; gap: 2px; }
 .tab-list.virtual { display: block; }
+.tab-window { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .tab-list.unfiled { flex: 1; min-height: 80px; padding: 0; }
 .tab-slot { animation: tab-in var(--t-med) var(--ease-out); }
 .folder-block {

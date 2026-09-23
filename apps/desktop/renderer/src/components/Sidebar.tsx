@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inElectron } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
@@ -20,6 +21,7 @@ import { PinMenu } from "./PinMenu";
 import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
+import { useWindowedRows } from "../use-windowed-rows";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
 
@@ -367,6 +369,54 @@ function FolderRow({ folder, open, dropOn, renaming, onToggle, onRename, onConte
 /** Preset folder glyphs — "" resets to the default folder icon. */
 const FOLDER_EMOJIS = ["", "📁", "⭐", "🔖", "📌", "🧭", "🧪", "🎯", "💼"];
 
+/** Rows beyond this render only inside the scroll window. */
+const VIRTUAL_TABS = 60;
+/** The sidebar previews the newest bookmarks; the Library holds the rest. */
+const SIDEBAR_BOOKMARKS = 12;
+
+type OpenLink = (link: Pin, event: React.MouseEvent) => void;
+
+const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: { onOpen: OpenLink; onDropped(): void }) {
+  const bookmarks = useStore(s => s.bookmarks);
+  // Favicons of open tabs, keyed by URL — a digest so unrelated tab churn doesn't re-render.
+  const favicons = useStore(useShallow(s => { const byUrl: Record<string, string> = {}; for (const page of s.pages) if (page.favicon && !(page.url in byUrl)) byUrl[page.url] = page.favicon; return byUrl; }));
+  const [hover, setHover] = useState(false);
+  const shown = bookmarks.slice(0, SIDEBAR_BOOKMARKS);
+  return <div className={`sb-bookmarks${hover ? " drop" : ""}`}
+    onDragOver={event => { if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return; event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setHover(true); }}
+    onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setHover(false); }}
+    onDrop={event => {
+      if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
+      event.preventDefault();
+      setHover(false);
+      const added = bookmarkTabsFromDrop(event.dataTransfer.getData(TAB_DRAG_TYPE), useStore.getState().pages);
+      onDropped();
+      if (!added.length) { toast("Only web tabs can be bookmarked"); return; }
+      void Promise.all(added.map(tab => call("bookmarks.add", tab))).then(() => toast(added.length === 1 ? "Bookmarked" : `Bookmarked ${added.length} tabs`)).catch(errToast);
+    }}>
+    {bookmarks.length ? <div className="sb-bookmark-list">{shown.map(bookmark => <button className="sb-link" key={bookmark.url} title={bookmark.title || bookmark.url}
+      onClick={event => onOpen(bookmark, event)} onAuxClick={event => onOpen(bookmark, event)}>
+      <FavIcon url={bookmark.url} src={favicons[bookmark.url]} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
+    </button>)}
+      {bookmarks.length > shown.length && <button className="sb-link sb-show-all" onClick={() => useStore.getState().setOverlay("bookmarks")}>Show all {bookmarks.length}</button>}
+    </div> : <div className="sb-bookmarks-empty">Drag tabs here to add bookmarks</div>}
+  </div>;
+});
+
+const SidebarChats = memo(function SidebarChats() {
+  const runs = useStore(s => s.runs);
+  const conversationId = useStore(s => s.conversationId);
+  const conversationMode = useStore(s => s.mode === "conversation");
+  const conversations = useMemo(() => recentConversations(runs).slice(0, 3), [runs]);
+  return <div className="sb-chats">
+    <button className={`sb-link ${conversationMode && !conversationId ? "active" : ""}`} aria-current={conversationMode && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>
+    {conversations.map(run => <button className={`sb-link ${conversationId === (run.config?.chatId ?? run.runId) ? "active" : ""}`} key={run.runId} onClick={() => useStore.getState().openConversation(run.runId)}>
+      <span>{run.goal}</span>
+    </button>)}
+    <button className="sb-link sb-show-all" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Show all</button>
+  </div>;
+});
+
 /* ------------------------------------------------------------------ */
 /*  Sidebar                                                             */
 /* ------------------------------------------------------------------ */
@@ -380,11 +430,9 @@ export const Sidebar = memo(function Sidebar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
-  const bookmarks = useStore(s => s.bookmarks);
-  const runs = useStore(s => s.runs);
-  const conversationId = useStore(s => s.conversationId);
-  const conversations = useMemo(() => recentConversations(runs).slice(0, 3), [runs]);
   const pages = useStore((s) => s.pages);
+  /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
+  const saved = useStore((s) => { const url = s.pages.find(p => p.pageId === s.activePageId)?.url; const b = url ? s.bookmarks.find(item => item.url === url) : undefined; return b ? b.readingList ? 2 : 1 : 0; });
   const activePageId = useStore((s) => s.activePageId);
   const mode = useStore((s) => s.mode);
   const sidebarPeek = useStore(s => s.sidebarPeek);
@@ -459,7 +507,6 @@ export const Sidebar = memo(function Sidebar() {
   const [pinDrop, setPinDrop] = useState<string | null>(null);
   const dragIds = useRef<string[]>([]);
   const [drag, setDrag] = useState(IDLE_DRAG);
-  const [bookmarkHover, setBookmarkHover] = useState(false);
   const [ctx, setCtx] = useState<{ p: PageTarget; x: number; y: number } | null>(null);
   const [pinCtx, setPinCtx] = useState<{ pin: Pin; spaceId: string; x: number; y: number } | null>(null);
   const [folderCtx, setFolderCtx] = useState<{ folder: Folder; x: number; y: number } | null>(null);
@@ -584,11 +631,24 @@ export const Sidebar = memo(function Sidebar() {
   );
 
   const onListKey = (e: React.KeyboardEvent<HTMLElement>) => { if (selection.keyDown(e)) return; moveListFocus(e, '[role="tab"]'); };
+  const selectedIds = useMemo(() => new Set(selection.ids), [selection.ids.join("\n")]);
+  const openLink = useRef<OpenLink>(() => {});
+  openLink.current = openPin;
+  const onOpenLink = useCallback<OpenLink>((link, event) => openLink.current(link, event), []);
+  const onBookmarkDrop = useCallback(() => { dragIds.current = []; setDrag(IDLE_DRAG); }, []);
+  // Long unfiled lists render only the rows near the viewport; a drag in
+  // flight renders everything so its source row never unmounts.
+  const tabScroller = useRef<HTMLDivElement>(null);
+  const looseRows = useRef<HTMLDivElement>(null);
+  const virtual = loose.length > VIRTUAL_TABS && !drag.pageId;
+  const rows = useWindowedRows(tabScroller, looseRows, loose.length, virtual);
+  const activeLoose = loose.findIndex(p => p.pageId === activePageId);
+  useEffect(() => { if (virtual && activeLoose >= 0 && (activeLoose < rows.start || activeLoose >= rows.end)) rows.reveal(activeLoose); }, [virtual, activeLoose]);
 
   const renderRow = (p: PageTarget, index: number, folderId: string | null, groupLen: number) => (
     <TabRow
       p={p}
-      selected={selection.ids.includes(p.pageId)}
+      selected={selectedIds.has(p.pageId)}
       selecting={selection.ids.length > 0}
       onSelect={selection.select}
       onSelectionKey={selection.keyDown}
@@ -637,36 +697,14 @@ export const Sidebar = memo(function Sidebar() {
       )}
 
       {!bridge.privateMode && <SidebarSection title="Bookmarks" open={sections.bookmarks} onToggle={() => toggleSection("bookmarks")}>
-        <div className={`sb-bookmarks${bookmarkHover ? " drop" : ""}`}
-          onDragOver={event => { if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return; event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setBookmarkHover(true); }}
-          onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setBookmarkHover(false); }}
-          onDrop={event => {
-            if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
-            event.preventDefault();
-            setBookmarkHover(false);
-            const added = bookmarkTabsFromDrop(event.dataTransfer.getData(TAB_DRAG_TYPE), pages);
-            if (!added.length) { toast("Only web tabs can be bookmarked"); return; }
-            void Promise.all(added.map(tab => call("bookmarks.add", tab))).then(() => toast(added.length === 1 ? "Bookmarked" : `Bookmarked ${added.length} tabs`)).catch(errToast);
-            dragIds.current = []; setDrag(IDLE_DRAG);
-          }}>
-          {bookmarks.length ? <div className="sb-bookmark-list">{bookmarks.map(bookmark => <button className="sb-link" key={bookmark.url} title={bookmark.title || bookmark.url}
-            onClick={event => openPin(bookmark, event)} onAuxClick={event => openPin(bookmark, event)}>
-            <FavIcon url={bookmark.url} src={pages.find(page => page.url === bookmark.url)?.favicon} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
-          </button>)}</div> : <div className="sb-bookmarks-empty">Drag tabs here to add bookmarks</div>}
-        </div>
+        <SidebarBookmarks onOpen={onOpenLink} onDropped={onBookmarkDrop} />
       </SidebarSection>}
       {!bridge.privateMode && <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
-        <div className="sb-chats">
-        <button className={`sb-link ${mode === "conversation" && !conversationId ? "active" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>
-        {conversations.map(run => <button className={`sb-link ${conversationId === (run.config?.chatId ?? run.runId) ? "active" : ""}`} key={run.runId} onClick={() => useStore.getState().openConversation(run.runId)}>
-          <span>{run.goal}</span>
-        </button>)}
-        <button className="sb-link sb-show-all" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Show all</button>
-        </div>
+        <SidebarChats />
       </SidebarSection>}
       <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>
       <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
-        <div className="tab-list" role="tablist" aria-multiselectable="true" aria-label="Tabs" aria-orientation="vertical">
+        <div className="tab-list" role="tablist" aria-multiselectable="true" aria-label="Tabs" aria-orientation="vertical" ref={tabScroller}>
           <NewTabButton
             onClick={() => void newTab()}
             dropOn={!!drag.pageId && drag.folderId != null && drag.over === ""}
@@ -701,7 +739,11 @@ export const Sidebar = memo(function Sidebar() {
 
           {(folders.length > 0 || loose.length > 0) && <div className="sb-rule" />}
 
-          {loose.map((p, i) => (
+          {virtual ? <div className="tab-window" ref={looseRows} style={{ paddingTop: rows.padTop, paddingBottom: rows.padBottom }}>
+            {loose.slice(rows.start, rows.end).map((p, i) => (
+              <div key={p.pageId} className="tab-slot">{renderRow(p, rows.start + i, null, loose.length)}</div>
+            ))}
+          </div> : loose.map((p, i) => (
             <div key={p.pageId} className="tab-slot">{renderRow(p, i, null, loose.length)}</div>
           ))}
 
@@ -749,14 +791,14 @@ export const Sidebar = memo(function Sidebar() {
             <button role="menuitem" aria-label="Library" onClick={() => setOverlay("bookmarks")}>{I.bookmark}<span>Library</span></button>
             <button role="menuitem" aria-label="Downloads" onClick={() => setOverlay("downloads")}>{I.downloadSm}<span>Downloads</span></button>
             <hr />
-            <button role="menuitem" aria-label={bookmarks.some(b => b.url === page?.url) ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
+            <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
               if (!page) return;
               void useStore.getState().toggleBookmark(page.url,page.title).catch(errToast);
-            }}>{I.bookmark}<span>{bookmarks.some(b => b.url === page?.url) ? "Remove bookmark" : "Bookmark this page"}</span><kbd>⌘D</kbd></button>
-            <button role="menuitem" aria-label={bookmarks.some(b => b.url === page?.url && b.readingList) ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
+            }}>{I.bookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span><kbd>⌘D</kbd></button>
+            <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
               if (!page) return;
               void useStore.getState().toggleReadingList(page.url, page.title).catch(errToast);
-            }}>{I.clock}<span>{bookmarks.some(b => b.url === page?.url && b.readingList) ? "Remove from reading list" : "Add to reading list"}</span></button>
+            }}>{I.clock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
             <button role="menuitem" aria-label="Tab overview" onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}<span>Tab overview</span></button>
             <button role="menuitem" aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span><kbd>⌘,</kbd></button>
           </div>

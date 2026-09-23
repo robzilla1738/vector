@@ -68,7 +68,15 @@ export function Palette() {
   const [searching,setSearching]=useState(false);
   const [searchError,setSearchError]=useState(false);
   const [searchRefresh,setSearchRefresh]=useState(0);
-  const [matches,setMatches]=useState<{query:string;prepared:PreparedConversation[];results:SavedResult[];chats:ConversationSummary[];tasks:Task[];history:HistoryEntry[];memory:{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]}>({query:"",prepared:[],results:[],chats:[],tasks:[],history:[],memory:[]});
+  const [matches,setMatches]=useState<{query:string;results:SavedResult[];chats:ConversationSummary[];tasks:Task[];history:HistoryEntry[];memory:{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]}>({query:"",results:[],chats:[],tasks:[],history:[],memory:[]});
+  // Prepared conversations don't depend on the query — one fetch per open.
+  const [prepared,setPrepared]=useState<PreparedConversation[]>([]);
+  useEffect(()=>{
+    if(bridge.privateMode)return;
+    let live=true;
+    void call<PreparedConversation[]>("conversations.prepared",{}).then(value=>{if(live)setPrepared(value);}).catch(()=>{});
+    return()=>{live=false;};
+  },[searchRefresh]);
   const [chromeTabs, setChromeTabs] = useState<ChromeTab[] | null>(null);
   const [splitPick, setSplitPick] = useState(false);
   const [vaultItems, setVaultItems] = useState<import("@aux/contracts").VaultItem[] | null>(null);
@@ -100,11 +108,10 @@ export function Palette() {
         history?call<HistoryEntry[]>("history.list",{query,limit:20}):Promise.resolve([]),
         work?call<{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]>("workspaces.memory.search",{query}):Promise.resolve([]),
         work?call<SavedResult[]>("results.search",{query,limit:12}):Promise.resolve([]),
-        work?call<PreparedConversation[]>("conversations.prepared",{}):Promise.resolve([]),
-      ]).then(([chats,tasks,history,memory,results,prepared])=>{
+      ]).then(([chats,tasks,history,memory,results])=>{
         if(!live)return;
-        setMatches({query,prepared:prepared.status==="fulfilled"?prepared.value:[],results:results.status==="fulfilled"?results.value:[],chats:chats.status==="fulfilled"?chats.value:[],tasks:tasks.status==="fulfilled"?tasks.value:[],history:history.status==="fulfilled"?history.value:[],memory:memory.status==="fulfilled"?memory.value.slice(0,8):[]});
-        setSearchError([chats,tasks,history,memory,results,prepared].some(result=>result.status==="rejected"));setSearching(false);
+        setMatches({query,results:results.status==="fulfilled"?results.value:[],chats:chats.status==="fulfilled"?chats.value:[],tasks:tasks.status==="fulfilled"?tasks.value:[],history:history.status==="fulfilled"?history.value:[],memory:memory.status==="fulfilled"?memory.value.slice(0,8):[]});
+        setSearchError([chats,tasks,history,memory,results].some(result=>result.status==="rejected"));setSearching(false);
       });
     },160);
     return()=>{live=false;window.clearTimeout(timer);};
@@ -279,7 +286,7 @@ export function Palette() {
       for(const note of matches.memory.filter(note=>[...layout.spaces,...(layout.archivedSpaces??[])].some(space=>space.workspaceId===note.workspaceId)))saved.push({id:`memory-${note.workspaceId}`,section:"memory",t:note.name,d:`${note.enabled?"":"Paused · "}${note.excerpt||"Space notes"}`,icon:I.result,run:()=>{useStore.setState({settingsCategory:"Memory",memoryWorkspaceId:note.workspaceId});setOverlay("settings");}});
     }
     if (!bridge.privateMode && !commandOnly && !tabOnly && term.length >= 2 && filter !== "pages" && filter !== "tabs") {
-      const entries = conversationDraftEntries(drafts, runs, matches.query === term ? matches.prepared : []);
+      const entries = conversationDraftEntries(drafts, runs, prepared);
       for (const draft of entries.filter(item => match(`${item.title} ${item.text}`))) {
         const existing = saved.find(item => item.id === `chat-${draft.id}`);
         if (existing) { existing.d = `Draft · ${draft.text || `${draft.count} saved attachments`}`; continue; }
@@ -293,7 +300,7 @@ export function Palette() {
     const exact = rest.filter(c => [c.t.replace(/[…]+$/g, ""), ...(c.aliases ?? [])].some(label => label.toLocaleLowerCase() === term.toLocaleLowerCase()));
     const combined=[...exact,...out,...saved,...rest.filter(c=>!exact.includes(c))];
     return combined.filter(command=>filter==="all"||commandOnly||(filter==="tabs"?command.section==="tabs":filter==="work"?["chats","tasks","memory","results"].includes(command.section):["bookmarks","history"].includes(command.section)));
-  }, [q, filter, matches, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
+  }, [q, filter, matches, prepared, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
 
   useEffect(() => setSel(0), [q, filter, chromeTabs, vaultItems, splitPick]);
   const previousCommands=useRef<string[]>([]);

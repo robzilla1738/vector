@@ -7,7 +7,7 @@ import { setDictationDraft } from "./dictation-drafts";
 import { conversationFinder, readerFinder } from "./text-surface-find";
 import { canSplitPage, splitForPage, rememberActiveTab } from "./workspace";
 import { create } from "zustand";
-import { writeConversationEntry, NEW_DRAFT_KEY, PENDING_CHAT_KEY, draftKey, readConversationContexts, readConversationDrafts } from "./conversation-drafts";
+import { createEntryWriter, writeConversationEntry, NEW_DRAFT_KEY, PENDING_CHAT_KEY, draftKey, readConversationContexts, readConversationDrafts } from "./conversation-drafts";
 import {CLOSED_TAB_LIMIT,readClosedTabs,type ClosedTab} from "./closed-tabs";
 import type {
   BrowserSession,
@@ -450,6 +450,8 @@ const initialLayout = (() => {
 })();
 
 let draftStorageWarned = false;
+const draftWriter = createEntryWriter(storage, () => { if (!draftStorageWarned) { draftStorageWarned = true; toast("Your draft is kept in this window, but could not be saved for restart.", "error"); } });
+if (typeof window !== "undefined") window.addEventListener("pagehide", draftWriter.flush);
 const emptyStats = (): RunModelStats => ({ calls: 0, costUsd: 0, costEstimated: false, inputTokens: 0, outputTokens: 0, modelIds: [], providers: [], destinations: [], costComplete: true });
 const modelAuxValue = (call: Partial<ModelCall> | undefined, key: "provider" | "destination") => {
   const aux = call?.providerMetadata?.aux;
@@ -523,8 +525,7 @@ export const useStore = create<Workspace>((set, get) => ({
   agentDraft: readConversationDrafts(storage)[NEW_DRAFT_KEY] ?? "",
   setAgentDraft: text => {
     const drafts={...get().conversationDrafts};if(text)drafts[NEW_DRAFT_KEY]=text;else delete drafts[NEW_DRAFT_KEY];set({agentDraft:text,conversationDrafts:drafts});
-    try{writeConversationEntry(storage,"draft",NEW_DRAFT_KEY,text);}
-    catch{if(!draftStorageWarned){draftStorageWarned=true;toast("Your prompt is kept in this window, but could not be saved for restart.","error");}}
+    draftWriter.write("draft",NEW_DRAFT_KEY,text);
   },
   conversationDrafts: readConversationDrafts(storage),
   setConversationDraft: (id, text) => {
@@ -532,8 +533,7 @@ export const useStore = create<Workspace>((set, get) => ({
     if (text) drafts[draftKey(id)] = text;
     else delete drafts[draftKey(id)];
     set({ conversationDrafts: drafts });
-    try { writeConversationEntry(storage,"draft",draftKey(id),text); }
-    catch { if (!draftStorageWarned) { draftStorageWarned = true; toast("Your reply is kept in this window, but could not be saved for restart.", "error"); } }
+    draftWriter.write("draft",draftKey(id),text);
   },
   bookmarks: [],
   bookmarkPending: {},
