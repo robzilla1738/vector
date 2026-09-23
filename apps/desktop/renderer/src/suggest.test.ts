@@ -60,7 +60,7 @@ describe("isPrivateAddress — remote suggestion gating", () => {
       // Bare single-label names might be intranet hosts — never leave the machine.
       "github", "wiki", "docs",
     ]) {
-      expect(isPrivateAddress(v), v).toBe(true);
+      expect(isPrivateAddress(v)).toBe(true);
     }
   });
 
@@ -69,7 +69,7 @@ describe("isPrivateAddress — remote suggestion gating", () => {
       "github copilot", "how to bake bread", "node.js", "münchen weather", "8.8.8.8",
       "docs.stripe.com/api", "what's new", "github.com",
     ]) {
-      expect(isPrivateAddress(v), v).toBe(false);
+      expect(isPrivateAddress(v)).toBe(false);
     }
   });
 });

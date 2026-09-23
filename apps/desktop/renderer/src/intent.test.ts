@@ -8,7 +8,7 @@ describe("command bar intent — URLs navigate", () => {
   it("routes full URLs and bare domains to navigate, never the model", () => {
     for (const v of ["https://example.com/path", "example.com", "localhost:4810/records", "127.0.0.1:3000", "docs.stripe.com/api"]) {
       const i = detectIntent(v, ctx);
-      expect(i.kind, v).toBe("navigate");
+      expect(i.kind).toBe("navigate");
     }
     const i = detectIntent("github.com/aux/pull/3", ctx);
     expect(i.kind === "navigate" && i.url).toBe("https://github.com/aux/pull/3");
@@ -28,7 +28,7 @@ describe("command bar intent — URLs navigate", () => {
       "node.js", "docs.stripe.com/api?q=1", "localhost:8080", "192.168.1.1:8443/admin",
       "[::1]:3000", "[2001:db8::1]/x", "münchen.de", "例え.jp", "xn--nxasmq6b.example",
     ]) {
-      expect(detectIntent(v, ctx).kind, v).toBe("navigate");
+      expect(detectIntent(v, ctx).kind).toBe("navigate");
     }
     expect(detectIntent("::1", ctx)).toMatchObject({ kind: "navigate", url: "http://[::1]" });
   });
@@ -38,7 +38,7 @@ describe("command bar intent — URLs navigate", () => {
       "what's on tv tonight", "c++ move semantics", "a,b testing", "version 1.2 notes",
       "qué tiempo hace", "今日の天気", "café menu", "(defun foo)", "100%",
     ]) {
-      expect(detectIntent(v, ctx).kind, v).toBe("search");
+      expect(detectIntent(v, ctx).kind).toBe("search");
     }
   });
 
