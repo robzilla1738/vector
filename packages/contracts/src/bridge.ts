@@ -11,18 +11,6 @@ import { TabCommandEnvelopeSchema } from "./tabs.js";
  * runtime.* notifications travel main -> runtime.
  */
 
-export const NativeCreatePageParams = z.object({
-  pageId: z.string(),
-  windowId: z.string().min(1).optional(),
-  marker: z.string().describe("target marker injected into every document"),
-  url: z.string(),
-  background: z.boolean().default(false),
-  ownedByRuntime: z.boolean().default(false),
-});
-export const NativeSetBoundsParams = z.object({
-  pageId: z.string(),
-  bounds: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).nullable(),
-});
 export const NativePageIdParams = z.object({ pageId: z.string() });
 export const NativeCaptureParams = z.object({
   pageId: z.string(),
@@ -67,18 +55,12 @@ const ProjectFileParams = ProjectParams.extend({ name: z.string().min(1) });
  */
 export const NativeMethods = {
   "native.listPages": z.object({}),
-  "native.createPage": NativeCreatePageParams,
-  "native.closePage": NativePageIdParams,
   "native.movePage": z.object({ pageId: z.string(), windowId: z.string().min(1).optional(), activate: z.boolean().optional() }),
-  "native.showPage": NativeSetBoundsParams,
-  "native.hidePage": NativePageIdParams,
   "native.focusPage": NativePageIdParams,
   "native.capturePage": NativeCaptureParams,
-  "native.openExternal": z.object({ url: z.string() }),
   "native.findInPage": NativeFindParams,
   "native.stopFind": z.object({ pageId: z.string(), action: z.enum(["clear", "keep"]).default("clear") }),
   "native.setZoom": NativeZoomParams,
-  "native.print": NativePageIdParams,
   "native.tabCommand": TabCommandEnvelopeSchema,
   "native.recoverPage": z.object({ pageId: z.string(), url: z.string() }),
   "native.stopPage": NativePageIdParams,

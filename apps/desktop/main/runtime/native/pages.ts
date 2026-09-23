@@ -1,20 +1,13 @@
 import { RpcChannel, type TabPatchOp } from "@aux/contracts";
-import { shell } from "electron";
 import { PRIMARY_WINDOW_ID } from "../../app/bootstrap.js";
-import { isWebUrl } from "../../app/external-urls.js";
 import { offscreen, pageFinder, registry, siteZoom } from "../../app/services.js";
-import { createPageView } from "../../native-views.js";
-import { printPage } from "../../page-output.js";
 import { setPageZoom } from "../../page-zoom.js";
-import { newTabRecord } from "../../tabs/catalog.js";
-import { scheduleIdleFreeze, wakePage } from "../../tabs/lifecycle-controller.js";
-import { closeTab } from "../../tabs/materialize.js";
+import { wakePage } from "../../tabs/lifecycle-controller.js";
 import { movePageToWindow, tabController } from "../../tabs/ports.js";
 import { flushTabPatches, publishTabPatch } from "../../tabs/publish.js";
 import { tabCatalog } from "../../tabs/store.js";
-import { viewHooks } from "../../views/hooks.js";
 import { createRegularWindow } from "../../windows/create.js";
-import { broadcastToShells, pageWindowOwners, regularWindows, stateForEntry } from "../../windows/registry.js";
+import { broadcastToShells, regularWindows, stateForEntry } from "../../windows/registry.js";
 import { applyStage, forgetPlacement } from "../../windows/stage.js";
 import { notifyRuntime } from "../supervisor.js";
 import { onNative } from "./validate.js";
@@ -33,28 +26,6 @@ export function registerPageMethods(ch: RpcChannel) {
         active: entry.popup ? entry.popup.isFocused() : entry.pageId === stateForEntry(entry)?.focusedPageId,
       })),
   }));
-  onNative(ch, "native.createPage", async ({ pageId, windowId, marker, url, background, ownedByRuntime }) => {
-    const requestedWindowId = windowId ?? PRIMARY_WINDOW_ID;
-    const state = regularWindows.get(requestedWindowId) ?? await createRegularWindow(requestedWindowId);
-    // The runtime may retry createPage after a dropped reply — one pageId must
-    // never produce two live views.
-    if (!registry.get(pageId)) {
-      createPageView({ win: state.win, registry, pageId, windowId: state.id, marker, url, background,ownedByRuntime, hooks: viewHooks });
-      pageWindowOwners.set(pageId, state.id);
-      applyStage(state);
-      const priorOrder = tabCatalog.window(state.id)?.order ?? [];
-      // A re-materialized tab keeps its strip position — only genuinely new
-      // pages append.
-      const order = priorOrder.includes(pageId) ? priorOrder : [...priorOrder, pageId];
-      publishTabPatch(tabCatalog.apply([
-        { op: "upsert", tab: newTabRecord({ pageId, windowId: state.id, url, runtimeOwned: ownedByRuntime === true }), origin: "runtime" },
-        ...(!background ? [{ op: "window", window: { windowId: state.id, order, activePageId: pageId } } satisfies TabPatchOp] : []),
-      ]));
-    }
-    const wc = registry.get(pageId)?.view.webContents;
-    if (wc) notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
-    return { ok: true };
-  });
   onNative(ch, "native.movePage", async ({ pageId, windowId, activate = true }) => {
     const moved = await movePageToWindow(pageId, windowId, activate);
     if (moved.moved) {
@@ -71,7 +42,7 @@ export function registerPageMethods(ch: RpcChannel) {
   });
   onNative(ch, "native.tabCommand", async env => {
     // The runtime scopes its command to the window it names; an open into a
-    // window that does not exist yet creates it, matching native.createPage.
+    // window that does not exist yet creates it.
     if (!regularWindows.has(env.windowId)) {
       if (env.command.kind !== "open") throw new Error("That window is not available.");
       await createRegularWindow(env.windowId);
@@ -81,26 +52,6 @@ export function registerPageMethods(ch: RpcChannel) {
     const wc = env.command.kind === "open" && ack.status === "applied" && ack.pageId ? registry.get(ack.pageId)?.view.webContents : undefined;
     const info = await wc?.debugger.sendCommand("Target.getTargetInfo").catch(() => undefined) as { targetInfo?: { targetId?: string } } | undefined;
     return info?.targetInfo?.targetId ? { ...ack, targetId: info.targetInfo.targetId } : ack;
-  });
-  onNative(ch, "native.closePage", async ({ pageId }) => {
-    return { ok: await closeTab(pageId, false) };
-  });
-  onNative(ch, "native.showPage", ({ pageId, bounds }) => {
-    const entry = registry.get(pageId);
-    const state = stateForEntry(entry);
-    if (!entry || !state) return { ok: false };
-    wakePage(entry);
-    if (entry.popup) return { ok: true };
-    if (bounds) {
-      state.stageBounds = bounds;
-      applyStage(state);
-    }
-    return { ok: true };
-  });
-  onNative(ch, "native.hidePage", ({ pageId }) => {
-    const entry = registry.get(pageId);
-    if (entry && !entry.popup && !offscreen.holds(pageId)){entry.view.setVisible(false);forgetPlacement(entry);scheduleIdleFreeze(entry);}
-    return { ok: true };
   });
   onNative(ch, "native.recoverPage", async ({ pageId, url }) => {
     const entry=registry.get(pageId);await wakePage(entry);const wc = entry?.view.webContents;
@@ -157,11 +108,6 @@ export function registerPageMethods(ch: RpcChannel) {
     return { ok: true };
   });
 
-  onNative(ch, "native.openExternal", ({ url }) => {
-    if (!isWebUrl(url)) return { ok: false, error: "only http(s) URLs can be opened externally" };
-    void shell.openExternal(url);
-    return { ok: true };
-  });
   onNative(ch, "native.findInPage", async ({ pageId, text, forward, findNext }) => {
     const entry = registry.get(pageId);
     if (!entry) return { matches: 0 };
@@ -183,10 +129,5 @@ export function registerPageMethods(ch: RpcChannel) {
       catch { throw new Error("Page size changed, but Aux could not save this site’s zoom preference."); }
     }
     return result;
-  });
-  onNative(ch, "native.print", async ({ pageId }) => {
-    const entry = registry.get(pageId);
-    if (!entry) throw new Error("This tab is no longer available.");
-    return { ok: await printPage(entry.view.webContents, entry.showBlankDocument) };
   });
 }

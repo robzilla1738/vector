@@ -26,7 +26,7 @@ export const tabPorts: TabPorts = {
     if (activate) tabPorts.focus(pageId);
     else applyStage(state);
   },
-  close: pageId => closeTab(pageId, true),
+  close: closeTab,
   focus: pageId => {
     const entry = ensureTabView(pageId);
     const state = stateForEntry(entry);

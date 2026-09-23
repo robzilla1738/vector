@@ -4,7 +4,6 @@ import type {
   ElementRef,
   ObservationContent,
   ObservationRequest,
-  SelectorStrategy,
 } from "@aux/contracts";
 
 export interface PageIdentity {
@@ -25,7 +24,6 @@ export interface ScreenshotResult {
 
 export interface DriverPageEvents {
   onNavigated?: (url: string, documentEpoch: number) => void;
-  onTitleChanged?: (title: string) => void;
   onLoading?: (loading: boolean) => void;
   onDestroyed?: (reason: "closed" | "crashed" | "detached") => void;
   onDialog?: (info: { type: string; message: string }) => void;
@@ -191,8 +189,3 @@ export interface BrowserDriver {
   resume?(pageId?: string): Promise<{ controller: string; controllerEpoch: number }>;
 }
 
-export interface ResolvedRef {
-  frame: string;
-  strategy: SelectorStrategy;
-  ordinal: number;
-}

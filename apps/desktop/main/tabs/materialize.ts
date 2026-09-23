@@ -6,7 +6,7 @@ import { viewHooks } from "../views/hooks.js";
 import { type RegularWindowState, pageWindowOwners, stateForEntry, stateForWindowId } from "../windows/registry.js";
 import { applyStage, clearPreviewWatch } from "../windows/stage.js";
 import { forgetPageLifecycle } from "./lifecycle-controller.js";
-import { controllerClosing, noteTab, publishTabPatch } from "./publish.js";
+import { controllerClosing, noteTab } from "./publish.js";
 import { tabCatalog } from "./store.js";
 
 /** Navigation history of recently closed tabs (BR-01: reopen restores real
@@ -52,38 +52,35 @@ export function materializeView(state: RegularWindowState, pageId: string, url: 
 }
 
 /**
- * The one tab-close path for typed commands and the runtime's native.closePage.
- * `controller` closes publish their own remove (+window) patch, so onDestroyed
- * must not race a second remove; runtime closes let onDestroyed publish it, and
- * a record whose view is already gone is removed here.
+ * Close a tab's view for the typed controller (human and agent commands).
+ * The controller publishes its own remove (+window) patch, so onDestroyed
+ * must not race a second remove.
  */
-export async function closeTab(pageId: string, controller: boolean): Promise<boolean> {
+export async function closeTab(pageId: string): Promise<boolean> {
   const entry = registry.get(pageId);
   const state = stateForEntry(entry);
-  if (entry) {
-    if (!state) return false;
-    if (controller) controllerClosing.add(pageId);
-    rememberClosedHistory(entry);
-    // A hung renderer must not hold ⌘W — scroll capture gets a short budget.
-    rememberScroll(entry, await captureScrollPosition(entry.view.webContents, 400));
-    let closed: boolean;
-    try {
-      closed = await destroyPageView(entry, state.win);
-    } finally {
-      controllerClosing.delete(pageId);
-    }
-    if (!closed) return false;
-    if (registry.get(pageId) === entry) registry.remove(pageId);
-  } else if (controller) return true;
+  if (!entry) return true;
+  if (!state) return false;
+  controllerClosing.add(pageId);
+  rememberClosedHistory(entry);
+  // A hung renderer must not hold ⌘W — scroll capture gets a short budget.
+  rememberScroll(entry, await captureScrollPosition(entry.view.webContents, 400));
+  let closed: boolean;
+  try {
+    closed = await destroyPageView(entry, state.win);
+  } finally {
+    controllerClosing.delete(pageId);
+  }
+  if (!closed) return false;
+  if (registry.get(pageId) === entry) registry.remove(pageId);
   // A closed page can't stay focused, split, previewed or hold the stage
   // lease — stale pointers would leave every other view hidden.
-  if (state?.focusedPageId === pageId) state.focusedPageId = null;
-  if (state?.splitPageId === pageId) state.splitPageId = null;
-  if (state?.previewWatch?.pageId === pageId) clearPreviewWatch(state);
+  if (state.focusedPageId === pageId) state.focusedPageId = null;
+  if (state.splitPageId === pageId) state.splitPageId = null;
+  if (state.previewWatch?.pageId === pageId) clearPreviewWatch(state);
   offscreen.forget(pageId);
   forgetPageLifecycle(pageId);
-  if (!controller && tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
-  if (state) applyStage(state);
+  applyStage(state);
   return true;
 }
 
