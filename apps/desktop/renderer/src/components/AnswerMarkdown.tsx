@@ -1,7 +1,7 @@
 import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
 import { answerHeadings, answerFragment } from "../answer-headings";
 import { answerTableCsv, answerTableMarkdown } from "../answer-table";
-import { Children, isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Children, isValidElement, memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { errToast, useStore } from "../store";
@@ -52,7 +52,11 @@ function ResponseTable({ children }: { children?: ReactNode }) {
   return <div className="answer-table-wrap"><div className="answer-table-actions"><button className="btn sm ghost" onClick={() => void copy()}>{copied ? I.check : I.copy}{copied ? "Copied" : "Copy table"}</button><button className="btn sm ghost" disabled={saving} onClick={() => void save()}>{I.downloadSm}{saving ? "Saving…" : "Save CSV"}</button></div><div className="answer-table" tabIndex={0} role="region" aria-label="Response table"><table ref={table}>{children}</table></div></div>;
 }
 
-export function AnswerMarkdown({ text }: { text: string }) {
+const REMARK_PLUGINS = [remarkGfm, answerHeadings];
+const answerUrlTransform = (value: string) => value.startsWith("#") ? value : answerUrl(value);
+
+/** Parsing markdown is the costliest thing a conversation renders; only a new text re-parses. */
+export const AnswerMarkdown = memo(function AnswerMarkdown({ text }: { text: string }) {
   const root = useRef<HTMLDivElement>(null);
   const components = useMemo<Components>(() => ({
       a: ({ href, children }) => {
@@ -77,5 +81,5 @@ export function AnswerMarkdown({ text }: { text: string }) {
       pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
       table: ({ children }) => <ResponseTable>{children}</ResponseTable>,
     }), []);
-  return <div className="answer-markdown" ref={root}><Markdown remarkPlugins={[remarkGfm, answerHeadings]} skipHtml urlTransform={value => value.startsWith("#") ? value : answerUrl(value)} components={components}>{text}</Markdown></div>;
-}
+  return <div className="answer-markdown" ref={root}><Markdown remarkPlugins={REMARK_PLUGINS} skipHtml urlTransform={answerUrlTransform} components={components}>{text}</Markdown></div>;
+});

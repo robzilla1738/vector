@@ -118,7 +118,7 @@ describe("run deadline as an abort signal", () => {
 });
 
 describe("model call accounting", () => {
-  it("stops on rate limits without amplifying requests and persists only safe recovery state", async () => {
+  it("retries a rate limit a bounded number of times, then stops and persists only safe recovery state", async () => {
     let attempts = 0;
     const model: ModelClient = {
       generateStructured: async () => {
@@ -132,10 +132,11 @@ describe("model call accounting", () => {
     const run = await h.coordinator.start({ goal: "g", pageIds: ["p1"], maxModelCalls: 10 });
     const done = await waitForRun(h.repo, run.runId);
     expect(done.status).toBe("failed");
-    expect(attempts).toBe(1);
+    // one call plus two backed-off retries; never unbounded amplification
+    expect(attempts).toBe(3);
     expect(h.recorded).toHaveLength(attempts);
     expect(h.recorded.every((c) => c.error)).toBe(true);
-    expect(h.recorded.map((c) => c.role)).toEqual(["planner"]);
+    expect(h.recorded.map((c) => c.role)).toEqual(["planner", "planner", "planner"]);
     expect(h.recorded[0]?.error).not.toContain("private provider response body");
     expect(done.error).not.toContain("private provider response body");
     expect(done.failure).toMatchObject({ category: "rate_limit", retryable: true, action: "retry" });

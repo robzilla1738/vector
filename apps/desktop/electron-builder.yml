@@ -12,6 +12,13 @@ files:
   - dist/**
   - package.json
   - "!node_modules/**" # main+preload are esbuild-bundled; no runtime deps
+  - "!dist/*.tsbuildinfo"
+  - "!dist/.vite/**" # build manifest, used only by scripts/check-budgets.mjs
+
+# Chromium ships ~55 UI locale packs (~46 MB); the shell is English-only.
+electronLanguages:
+  - en
+  - en_GB
 
 asar: true
 asarUnpack:

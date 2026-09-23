@@ -27,6 +27,8 @@ const DEFAULT_STEP_TIMEOUT = 15_000;
 const DEFAULT_CONDITION_TIMEOUT = 10_000;
 const FRAME_PROBE_MS = 2_000;
 const FRAME_OBSERVE_MS = 10_000;
+/** Upper bound a read/act waits for a main-frame navigation started by earlier input to commit. */
+const NAVIGATION_COMMIT_MS = 10_000;
 
 /** Race a promise against a timeout — resolves undefined on timeout.
  * The underlying promise keeps running (frame evaluates can't be cancelled)
@@ -99,8 +101,45 @@ export class PlaywrightDriverPage implements DriverPage {
     }
   }
 
+  /**
+   * Actions return as soon as input is dispatched (`noWaitAfter`). A
+   * main-frame navigation the input started is tracked here and awaited — up
+   * to commit — by whatever reads or acts on the page next, so a following
+   * observe never sees the document being replaced.
+   */
+  private pendingNavigation: { request: unknown; done: Promise<void>; resolve(): void } | null = null;
+
+  private async navigationCommitted(): Promise<void> {
+    const pending = this.pendingNavigation;
+    if (!pending) return;
+    await bounded(pending.done, NAVIGATION_COMMIT_MS).catch(() => {});
+    if (this.pendingNavigation === pending) this.pendingNavigation = null;
+  }
+
   private wireEvents() {
+    const endNavigation = (request?: unknown) => {
+      const pending = this.pendingNavigation;
+      if (pending && (request === undefined || pending.request === request)) {
+        this.pendingNavigation = null;
+        pending.resolve();
+      }
+    };
+    this.page.on("request", (request) => {
+      try {
+        if (!request.isNavigationRequest() || request.frame() !== this.page.mainFrame()) return;
+      } catch {
+        return; // service-worker requests have no frame
+      }
+      endNavigation();
+      let resolve!: () => void;
+      const done = new Promise<void>((r) => { resolve = r; });
+      this.pendingNavigation = { request, done, resolve };
+    });
+    // a download or a 204 never commits a document
+    this.page.on("requestfailed", (request) => endNavigation(request));
+    this.page.on("requestfinished", (request) => { if (request.isNavigationRequest()) setTimeout(() => endNavigation(request), 50); });
     this.page.on("framenavigated", (frame) => {
+      if (frame === this.page.mainFrame()) endNavigation();
       if (frame === this.page.mainFrame()) {
         this.documentEpoch++;
         this.refs.clear(this.identity.pageId);
@@ -334,6 +373,7 @@ export class PlaywrightDriverPage implements DriverPage {
    * changed), which is also what produces `target_detached`.
    */
   private async resolveActionable(target: string): Promise<Actionable> {
+    await this.navigationCommitted();
     const parsed = parseTarget(target);
     if (parsed.kind === "ref") {
       const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
@@ -359,11 +399,11 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async click(target: string, button: "left" | "right" | "middle" = "left", timeoutMs = DEFAULT_STEP_TIMEOUT) {
     const loc = await this.resolveActionable(target);
-    await loc.click({ button, timeout: timeoutMs });
+    await loc.click({ button, timeout: timeoutMs, noWaitAfter: true });
   }
   async dblclick(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     const loc = await this.resolveActionable(target);
-    await loc.dblclick({ timeout: timeoutMs });
+    await loc.dblclick({ timeout: timeoutMs, noWaitAfter: true });
   }
   async hover(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     const loc = await this.resolveActionable(target);
@@ -373,7 +413,7 @@ export class PlaywrightDriverPage implements DriverPage {
     const loc = await this.resolveActionable(target);
     await loc.fill(value, { timeout: timeoutMs });
   }
-  async typeText(target: string, value: string, delayMs = 20, timeoutMs = DEFAULT_STEP_TIMEOUT) {
+  async typeText(target: string, value: string, delayMs = 0, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     const loc = await this.resolveActionable(target);
     if (isHandle(loc)) await loc.type(value, { delay: delayMs, timeout: timeoutMs });
     else await loc.pressSequentially(value, { delay: delayMs, timeout: timeoutMs });
@@ -555,6 +595,7 @@ export class PlaywrightDriverPage implements DriverPage {
   // ---------- waits ----------
 
   async waitFor(condition: Condition): Promise<WaitOutcome> {
+    await this.navigationCommitted();
     const timeout = "timeoutMs" in condition && condition.timeoutMs ? condition.timeoutMs : DEFAULT_CONDITION_TIMEOUT;
     try {
       switch (condition.kind) {
@@ -631,6 +672,7 @@ export class PlaywrightDriverPage implements DriverPage {
   // ---------- observation ----------
 
   async screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult> {
+    await this.navigationCommitted();
     const buffer = await this.page.screenshot({ fullPage: opts?.fullPage ?? false, type: "png" });
     const meta = await this.page
       .evaluate(() => ({ w: innerWidth, h: innerHeight, s: devicePixelRatio || 1 }))
@@ -640,6 +682,7 @@ export class PlaywrightDriverPage implements DriverPage {
 
   /** One small evaluate on the main frame; frames are folded in by URL so a child navigation invalidates too. */
   async observeFingerprint(): Promise<string> {
+    await this.navigationCommitted();
     const main = await bounded(this.page.evaluate(observationFingerprint), FRAME_PROBE_MS);
     if (typeof main !== "string") throw new AuxError("backend_unavailable", "fingerprint probe timed out");
     if (main.startsWith("nomo")) {
@@ -657,6 +700,7 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {
+    await this.navigationCommitted();
     const maxElements = req?.maxElements ?? 120;
     const maxTextChars = req?.maxTextChars ?? 6000;
     const frameMap = this.assignFrameKeys();
@@ -812,6 +856,7 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   async extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>> {
+    await this.navigationCommitted();
     const out: Record<string, unknown> = {};
     for (const f of fields) {
       if (f.name === "url") {

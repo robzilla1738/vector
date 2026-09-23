@@ -16,7 +16,7 @@ import type { z } from "zod";
 import type { ModelClient } from "./model-client.js";
 import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
-import { buildFinalAnswerPrompt, buildPlannerPrompt, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM } from "./planner.js";
+import { buildFinalAnswerPrompt, buildPlannerPrompt, FINAL_ANSWER_SYSTEM, newFenceToken, PLANNER_SYSTEM } from "./planner.js";
 import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions } from "./skills.js";
 import { originOfAddress } from "@aux/contracts";
 import { promptCannotGrant } from "./policy.js";
@@ -70,6 +70,9 @@ export type TurnState = {
   doneChallenged: boolean;
   pendingObs?: { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string };
   carriedObs?: Observation;
+  /** One unguessable fence per run keeps the prompt prefix identical across turns (prompt caching). */
+  fenceToken?: string;
+  transientRetries?: number;
 };
 
 export function resetGuards(s: TurnState): void {
@@ -147,6 +150,7 @@ export async function tryFinalDecision(s: TurnState, reason: string, obs: Observ
       modelId: s.modelId,
       system: FINAL_ANSWER_SYSTEM,
       prompt: buildFinalAnswerPrompt({
+      fenceToken: (s.fenceToken ??= newFenceToken()),
         goal: s.run.goal,
         observation: obs,
         recentOutcomes: s.outcomes,
@@ -261,6 +265,7 @@ export async function planTurn(
       ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin, accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
       : undefined;
     const prompt = buildPlannerPrompt({
+      fenceToken: (s.fenceToken ??= newFenceToken()),
       goal: s.run.goal,
       observations: [obs],
       recentOutcomes: s.outcomes,
@@ -381,6 +386,31 @@ export function isPlanFailure(attempt: PlanAttempt | PlanFailure): attempt is Pl
 
 export type PlanFailure = { error: unknown; early?: EarlyDispatcher };
 
+const TRANSIENT_FAILURES = new Set(["rate_limit", "provider", "network", "timeout"]);
+const TRANSIENT_RETRY_LIMIT = 2;
+
+/** Honor Retry-After (seconds or HTTP date) when the provider sends one; otherwise jittered exponential backoff. */
+export function retryDelayMs(error: unknown, attempt: number): number {
+  const headers = (error as { responseHeaders?: Record<string, string> } | null)?.responseHeaders;
+  const header = headers?.["retry-after"] ?? headers?.["Retry-After"];
+  if (header) {
+    const seconds = Number(header);
+    const ms = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(header) - Date.now();
+    if (Number.isFinite(ms) && ms > 0) return Math.min(ms, 20_000);
+  }
+  const base = 500 * 2 ** (attempt - 1);
+  return base + Math.floor(Math.random() * base);
+}
+
+function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => { signal.removeEventListener("abort", onAbort); resolve(); }, ms);
+    const onAbort = () => { clearTimeout(timer); reject(signal.reason); };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 export async function handlePlannerFailure(
   s: TurnState,
   obs: Observation,
@@ -394,6 +424,13 @@ export async function handlePlannerFailure(
   }
   if (s.c.abort.signal.aborted) throw e;
   const failure = classifyModelFailure(e);
+  if (TRANSIENT_FAILURES.has(failure.category) && (s.transientRetries ?? 0) < TRANSIENT_RETRY_LIMIT) {
+    // A 429/5xx/network blip is not the model's mistake: back off and re-plan
+    // from a fresh observation without spending the model-error budget.
+    s.transientRetries = (s.transientRetries ?? 0) + 1;
+    await abortableDelay(retryDelayMs(e, s.transientRetries), s.c.abort.signal);
+    return "continue";
+  }
   if (!failure.automaticRetry) throw new ModelFailureError(failure);
   s.modelErrorCount++;
   if (s.modelErrorCount >= MODEL_ERROR_LIMIT) {
@@ -600,6 +637,7 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
       modelId: recoveryModelId,
       system: `${PLANNER_SYSTEM}\n\nYou are the recovery model. A chunk failed: ${s.lastError}. Produce a corrected bounded chunk.`,
       prompt: buildPlannerPrompt({
+      fenceToken: (s.fenceToken ??= newFenceToken()),
         goal: s.run.goal,
         observations: [fresh],
         recentOutcomes: s.outcomes,
