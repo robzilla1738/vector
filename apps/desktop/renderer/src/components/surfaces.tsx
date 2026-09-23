@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ComponentProps, type ComponentType } from "react";
+import { Suspense, lazy, useState, type ComponentProps, type ComponentType } from "react";
 import type { Conversation as ConversationPane } from "./Conversation";
 import { deferSurface } from "./DeferredSurface";
 
@@ -14,7 +14,7 @@ const LazyMarkdown = lazy(loadMarkdown);
 
 /** Markdown once its chunk is in; the same text as plain prose until then. */
 export function AnswerPreview({ text }: { text: string }) {
-  if (Markdown) return <Markdown text={text} />;
-  return <Suspense fallback={<div className="answer-markdown plain">{text}</div>}><LazyMarkdown text={text} /></Suspense>;
+  const [Surface] = useState(() => Markdown ?? LazyMarkdown);
+  return <Suspense fallback={<div className="answer-markdown plain">{text}</div>}><Surface text={text} /></Suspense>;
 }
 AnswerPreview.preload = () => { void loadMarkdown().catch(() => {}); };
