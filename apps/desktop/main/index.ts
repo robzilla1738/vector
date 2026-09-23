@@ -2591,8 +2591,14 @@ function wireRendererIpc() {
     const entry = app.isPackaged ? join(process.resourcesPath, "mcp", "aux-mcp.mjs") : join(import.meta.dirname, "..", "mcp", "aux-mcp.mjs");
     if (!existsSync(entry)) throw new Error("The MCP bridge is missing. Rebuild the desktop application.");
     const created = await channel.call("api.invoke", { method: "agentConnections.create", params: input, desktopUser: true }) as {connection:{scope:{kind:string;workspaceId:string;taskId?:string}};token:string};
+    // Development/cloud tools cost ~26KB of tool schema per client turn; list them only
+    // where they can do something: a workspace, or a task with a repository/environment.
+    const taskId = created.connection.scope.taskId;
+    const projectTools = !taskId || await channel.call("api.invoke", { method: "tasks.get", params: { taskId }, desktopUser: true })
+      .then(value => (value as { task: { resources: { kind: string }[] } }).task.resources.some(resource => resource.kind === "repository" || resource.kind === "environment"))
+      .catch(() => true);
     return { command: process.execPath, args: [entry], connection: created.connection,
-      env: { ELECTRON_RUN_AS_NODE: "1", AUX_DATA_DIR: DATA_DIR, AUX_MCP_TOKEN: created.token,
+      env: { ELECTRON_RUN_AS_NODE: "1", AUX_DATA_DIR: DATA_DIR, AUX_MCP_TOKEN: created.token, ...(projectTools ? { AUX_MCP_PROJECT_TOOLS: "1" } : {}),
         AUX_MCP_SCOPE_KIND: created.connection.scope.kind, AUX_MCP_WORKSPACE_ID: created.connection.scope.workspaceId,
         ...(created.connection.scope.taskId ? { AUX_MCP_TASK_ID: created.connection.scope.taskId } : {}) } };
   });

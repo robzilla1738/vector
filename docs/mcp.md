@@ -44,86 +44,31 @@ access, exports, account inventory and orphan cleanup remain desktop-only. If Au
 closed, proposals that need native review fail explicitly. A transport failure after
 dispatch is recorded as uncertain and is never retried automatically.
 
-## Legacy direct catalog
+## Browser, run and task tools
+
+Every scoped connection gets the browser, run and task tools below. Tool results are
+compact: `aux_page_execute` returns one line per step (`s3 click FAILED ref_stale: …`)
+plus the optional post-action observation, and error codes (`ref_stale`,
+`target_detached`, `permission_denied`, …) reach the client unchanged. Every tool
+declares `readOnlyHint`/`destructiveHint`/`idempotentHint` annotations.
 
 | Tool | Purpose |
 |---|---|
-| `aux_pages_list` | list open pages |
-| `aux_page_open` | open a page. Omit `backend` for the embedded Chromium session; `aux` selects it explicitly, `chrome` adopts an attached Chrome tab. `background` opens without activation. The result's `routeReason` says where it landed and why (`docs/api.md` → Backends) |
-| `aux_page_observe` | observation → element refs. `format` `compact` (default) returns the rendered text view (one line per ref, ~5–10× smaller than `full` JSON); `scope` (`full`/`forms`/`links`/`tables`/`subtree` + `subtreeRef`), `maxElements`, `maxTextChars` |
-| `aux_page_execute` | run a typed program on a page. `steps` use string targets (`"r3"`, `"css:#save"`); `documentEpoch` fails fast on a navigated page; `returnObservation { scope?, subtreeRef?, format? }` appends the post-action observation to the result so act + observe is one tool call. A trusted source: `evaluate` is allowed here |
-| `aux_page_capture` | screenshot as MCP image content (default), data URL, or stored artifact |
-| `aux_set_create` | define a named set (`urls`, `pageIds`, `records`, or links collected from a page) |
-| `aux_set_map` | apply a program or goal across a set (bounded parallel; `concurrency` honored) |
-| `aux_set_results` | per-member results |
-| `aux_run_start` | start an agent run on a goal (`context`, `deadlineMs`, `maxModelCalls` supported) |
-| `aux_run_get` | run status + steps + `modelCalls` |
-| `aux_run_control` | pause / resume / cancel — also gates and aborts set runs |
-| `aux_run_answer` | answer an agent question |
-| `aux_events` | event log (`events.since`) |
-| `aux_chrome_attach` | attach the user's Chrome (debug port) |
-| `aux_chrome_tabs` | list attachable chrome tabs |
-| `aux_chrome_import_cookies` | import Chrome cookies into Aux's session |
-| `aux_artifacts` | list run artifacts |
-| `aux_artifact_read` | read artifact bytes (base64) |
-| `aux_state_query` | query the state index (responses, records, controls, datasets, artifacts, operations) |
-| `aux_responses_list` | captured HTTP responses on a page (metadata) |
-| `aux_response_body` | body of a captured response (base64) |
-| `aux_operations_list` | registered operations and their implementations |
-| `aux_operation_invoke` | invoke an operation with zero model involvement |
-| `aux_operation_explain` | which implementation an invoke would pick, and why |
-| `aux_operation_save_program` | register a proven program as a named operation |
-| `aux_operation_compile` | compile an operation candidate from a run's step trace |
-| `aux_program_validate` | validate a program without executing it |
-| `aux_program_run` | replay a saved program; `parameters` fill `{{name}}` placeholders (missing → `invalid_params`) |
-| `aux_traces` | structured execution spans |
-| `aux_extract` | structured fields from the current observation (`pages.extract`) |
-| `aux_wait_for` | wait until a condition holds (`pages.waitFor`) |
-| `aux_console` | page console lines (`pages.console`) |
-| `aux_dialog` | list or accept/dismiss a page dialog (`pages.dialog`) |
-| `aux_network` | captured HTTP responses (`pages.network`) |
+| `aux_pages_list` | pages attached to the authorized task |
+| `aux_page_observe` | observation → element refs; `format` `compact` (default) or `full`; `scope` (`full`/`forms`/`links`/`tables`/`subtree` + `subtreeRef`), `maxElements`, `maxTextChars` |
+| `aux_page_execute` | run planner steps on a page (flat step schema, validated against the planner vocabulary; no page script); `returnObservation` makes act + observe one call |
+| `aux_page_capture` | screenshot as MCP image content |
+| `aux_page_takeover` / `aux_page_resume` | hand a page to the human and back |
+| `aux_extract`, `aux_wait_for`, `aux_console`, `aux_dialog`, `aux_network` | read fields, wait for a condition, read console/network, answer a dialog |
+| `aux_run_get`, `aux_run_control`, `aux_run_answer` | inspect, pause/resume/cancel, answer a run in scope |
+| `aux_workspaces_list`, `aux_tasks_list`, `aux_task_get`, `aux_task_create`, `aux_task_update`, `aux_task_archive`, `aux_task_start` | task lifecycle inside the connection's scope |
+| `aux_task_record_evidence`, `aux_task_capture_evidence`, `aux_task_receipt`, `aux_task_verify_criterion`, `aux_task_replace_agent` | evidence and verification |
 
-`aux_page_execute` step shape (the same `StepSchema` the API validates):
+`aux_development_*` and `aux_cloud_*` tools are listed only when the connection can use
+them: a workspace scope, or a task with a repository or environment resource. Aux sets
+`AUX_MCP_PROJECT_TOOLS=1` in the generated configuration in that case; without it the
+default catalog is ~20 KB of tool schema instead of ~46 KB.
 
-```json
-{ "pageId": "p_…", "documentEpoch": 3,
-  "steps": [
-    { "id": "s1", "op": "fill",  "target": "r4", "value": "hello" },
-    { "id": "s2", "op": "press", "key": "Enter", "target": "r4",
-      "expect": [{ "kind": "textVisible", "text": "Results" }] }
-  ],
-  "returnObservation": { "format": "compact" } }
-```
-
-Ops: `navigate` `back` `forward` `reload` `stop` `click` `dblclick` `hover`
-`fill` `type` `press` `check` `uncheck` `select` `scroll` `dragTo` `clickPoint`
-`upload` `waitFor` `extract` `screenshot` `expectDownload` `dialog`
-`collectScroll` `evaluate`. Conditions for `waitFor`/`expect`: `textVisible`,
-`selector`, `refReady`, `urlMatches`, `navigationSettled`, `settled`,
-`downloadCompleted`, `response`, `expression` (see `docs/api.md`).
-
-Typical agent flow: `aux_page_open` → `aux_page_observe` → build a
-typed program → `aux_page_execute` with `returnObservation` — the result
-already carries the new page state, so a separate observe is only needed to
-change scope. For a batch of similar pages, `aux_set_create` +
-`aux_set_map`.
-
-The server reads `runtime.json` once and re-reads it only when a call fails
-to connect (the runtime restarted on a new port).
-
-Things an MCP client should expect:
-
-- Step `target` is a **string**: an observation ref (`r3`) or a portable
-  locator (`css:#save`, `text:Save`, `role=button[name=Save]`) — not an
-  object.
-- A ref whose document navigated away fails with `target_detached` (there
-  is no `stale_ref` code); re-observe and retry with fresh refs.
-- If the human clicks or types in an agent-driven page *between* programs,
-  that page's `controller` becomes `human`, live runs on it pause, and
-  further programs fail with `conflict` until `pages.resume`. Agent
-  Playwright input during `pages.execute` is not a takeover.
-- `aux_run_control cancel` on a set run aborts in-flight member agents
-  and marks unfinished members `skipped`; the run stays `cancelled`.
-- Runs are crash-safe but not resumable across a runtime restart
-  (`runtime.describe` → `checkpointResume: false`).
-Scoped Aux connections expose `aux://page/observation`, `aux://page/console`, and `aux://page/network`.
+Pages cannot be opened, and `pages.execute` cannot run page script, through a scoped
+connection: attach pages to the task in Aux. The owner bearer token (CLI, SDK) keeps
+the full loopback API documented in [api.md](api.md).
