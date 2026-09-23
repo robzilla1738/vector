@@ -925,6 +925,7 @@ a.tl-chip, button.tl-chip { text-decoration: none; color: var(--link); cursor: p
 .import-row .hint { margin-left: auto; }
 .import-report { list-style: none; margin: 0; padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: 4px; background: var(--bg-2); border-radius: var(--r-md); font-size: var(--fs-sm); }
 .field { display: flex; flex-direction: column; gap: 6px; }
+fieldset.field { min-inline-size: 0; margin: 0; padding: 0; border: none; }
 .field label, .field > .setting-label { font-size: var(--fs-sm); color: var(--ink-1); font-weight: 400; }
 .field input, .field select { height: var(--control-h-lg); background: var(--surface-input); border: none; border-radius: var(--r-md); padding: 0 var(--space-3); outline: none; font-size: var(--fs-md); box-shadow: var(--line-inset); color: var(--ink-0); width: 100%; }
 .field select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%); background-position: calc(100% - 16px) 15px, calc(100% - 11px) 15px; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }

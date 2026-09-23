@@ -8,11 +8,11 @@ describe("isLocalDevHost", () => {
       "10.0.0.4", "192.168.1.20", "172.16.5.5", "172.31.9.9", "169.254.1.1", "100.64.0.1",
       "printer.local", "api.internal", "service.test", "home.home.arpa", "nas.lan",
       "devbox", "buildserver",
-    ]) expect(isLocalDevHost(host), host).toBe(true);
+    ]) expect(isLocalDevHost(host)).toBe(true);
   });
   it("does not treat public hosts as local", () => {
     for (const host of ["example.com", "localhost.evil.com", "test.example.com", "172.15.0.1", "192.167.0.1", "8.8.8.8", "local.io"]) {
-      expect(isLocalDevHost(host), host).toBe(false);
+      expect(isLocalDevHost(host)).toBe(false);
     }
   });
 });

@@ -46,7 +46,7 @@ export function PluginsPanel() {
         setInspection({ path, ...result });
       })}>Choose plugin file…</button>
     </div>
-    {inspection && <div className="field" role="group" aria-label="Plugin preview">
+    {inspection && <fieldset className="field" aria-label="Plugin preview">
       <strong>{inspection.name}{inspection.version ? ` · ${inspection.version}` : ""}</strong>
       {inspection.description && <p className="hint">{inspection.description}</p>}
       <span className="hint">Installs {inspection.routineCount} routine{inspection.routineCount === 1 ? "" : "s"}{inspection.routineTitles.length ? ` — ${inspection.routineTitles.slice(0, 4).join(", ")}${inspection.routineTitles.length > 4 ? ", …" : ""}` : ""}.</span>
@@ -59,9 +59,9 @@ export function PluginsPanel() {
         })}>Install into {workspaces.find(item => item.workspaceId === workspaceId)?.name ?? "space"}</button>
         <button className="btn sm ghost" disabled={busy} onClick={() => setInspection(null)}>Cancel</button>
       </div>
-    </div>}
+    </fieldset>}
     {error && <p className="field-error" role="alert">{error}</p>}
-    {message && <p className="hint" role="status">{message}</p>}
+    {message && <p className="hint" aria-live="polite">{message}</p>}
     {plugins.length === 0 && !inspection && <p className="hint">No plugins installed.</p>}
     {plugins.map(plugin => <div className="field" key={plugin.pluginId}>
       <strong>{plugin.name}{plugin.version ? ` · ${plugin.version}` : ""}</strong>

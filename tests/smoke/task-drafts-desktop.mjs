@@ -15,7 +15,7 @@ try {
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const workspace=await page.evaluate(()=>window.aux.invoke('workspaces.create',{name:'Research'}));
- const other=await page.evaluate(()=>window.aux.invoke('workspaces.create',{name:'Personal tasks'}));
+ await page.evaluate(()=>window.aux.invoke('workspaces.create',{name:'Personal tasks'}));
  const open=()=>sidebarAction(page,'Tasks');await open();
  const tasks=page.getByRole('region',{name:'Tasks',exact:true});
  const space=tasks.getByLabel('Space',{exact:true});

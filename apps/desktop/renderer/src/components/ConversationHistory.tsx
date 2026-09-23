@@ -157,11 +157,11 @@ export function ConversationHistory() {
           {viewMode === "grid" && <div className="history-card-preview home-excerpt" inert><AnswerMarkdown text={drafts[draftKey(item.chatId)]?.trim() || (typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal)} /></div>}
           <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-expanded={menu === item.chatId} onClick={() => { setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{I.more}</button>
         </>}
-        {menu === item.chatId && <div className="history-menu" role="menu" aria-label="Conversation actions" onKeyDown={event => moveListFocus(event, "button")}>
+        {menu === item.chatId && <div className="history-menu" role="menu" tabIndex={-1} aria-label="Conversation actions" onKeyDown={event => moveListFocus(event, "button")}>
           {item.taskId ? <button role="menuitem" disabled={saving} onClick={() => void openSavedTask(item.taskId!).catch(errToast)}>{I.layersSm} Open saved task</button> : <>
           <button role="menuitem" disabled={saving} onClick={() => { setTitle(item.title); setRenaming(item.chatId); setMenu(null); }}>{I.pencil} Rename</button>
           <button role="menuitem" disabled={saving} onClick={() => void mutate("archive", item)}>{item.archived ? I.reopen : I.archive} {item.archived ? "Restore" : "Archive"}</button>
-          {deleting === item.chatId ? <div className="history-delete-confirm" role="group"><span>Delete permanently?</span><button disabled={saving} onClick={() => void mutate("delete", item)}>Delete</button><button onClick={() => setDeleting(null)}>Cancel</button></div> : <button role="menuitem" disabled={saving} className="danger" onClick={() => setDeleting(item.chatId)}>{I.trash} Delete</button>}
+          {deleting === item.chatId ? <div className="history-delete-confirm"><span>Delete permanently?</span><button disabled={saving} onClick={() => void mutate("delete", item)}>Delete</button><button onClick={() => setDeleting(null)}>Cancel</button></div> : <button role="menuitem" disabled={saving} className="danger" onClick={() => setDeleting(item.chatId)}>{I.trash} Delete</button>}
           </>}
         </div>}
       </div>)}

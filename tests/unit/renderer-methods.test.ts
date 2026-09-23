@@ -50,13 +50,15 @@ describe("renderer runtime method gate", () => {
     }
     const smokeRoot = join(rendererRoot, "../../../../tests/smoke");
     const literal = /aux\.invoke\(['"]([A-Za-z0-9.]+)['"]/g;
+    const invoked = new Map<string, string>();
     for (const name of readdirSync(smokeRoot)) {
       if (!name.endsWith(".mjs")) continue;
       for (const match of readFileSync(join(smokeRoot, name), "utf8").matchAll(literal)) {
-        if (match[1] && match[1] in MethodSchemas) {
-          expect(rendererMayInvoke(match[1]), `${match[1]} invoked by ${name} is not allowed for the shell`).toBe(true);
-        }
+        if (match[1] && match[1] in MethodSchemas) invoked.set(match[1], name);
       }
+    }
+    for (const [method, name] of invoked) {
+      expect(rendererMayInvoke(method), `${method} invoked by ${name} is not allowed for the shell`).toBe(true);
     }
   });
 });

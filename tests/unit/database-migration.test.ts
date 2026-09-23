@@ -36,11 +36,11 @@ describe("schema versioning", () => {
       "vault_items", "vault_grants", "vault_access", "routines", "routine_revisions",
       "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts", "plugins",
     ]) {
-      expect(tables.map(row => row.name), table).toContain(table);
+      expect(tables.map(row => row.name)).toContain(table);
     }
     expect(tables.map(row => row.name)).not.toContain("journal_imports");
     for (const index of ["idx_conversations_state_updated", "idx_runs_task", "idx_tasks_workspace", "idx_action_intents_unresolved"]) {
-      expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name=?").get(index), index).toBeDefined();
+      expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name=?").get(index)).toBeDefined();
     }
     db.prepare("INSERT INTO kv VALUES (?, ?)").run("synthetic", "retained");
     db.close();

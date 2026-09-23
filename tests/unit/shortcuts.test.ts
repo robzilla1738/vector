@@ -33,7 +33,7 @@ describe("shortcut registry", () => {
       "reload", "hard-reload", "actual-size", "zoom-in", "zoom-out", "reader", "sidebar",
       "overview", "devtools", "view-source", "back", "forward", "tab-next", "tab-previous",
       "history", "downloads", "bookmark", "bookmark-all", "quick-ask",
-    ]) expect(shortcutById(id), id).toBeTruthy();
+    ]) expect(shortcutById(id)).toBeTruthy();
   });
 });
 

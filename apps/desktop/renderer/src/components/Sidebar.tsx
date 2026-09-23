@@ -846,18 +846,18 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
   const updateFolder = useStore((s) => s.updateFolder);
   return (
     <div ref={ref} className="menu ctx-menu pop-in" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
-      <div className="menu-swatches" role="radiogroup" aria-label="Folder colour">
+      <div className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
-          <button key={color} role="radio" aria-checked={folder.color === color} aria-label={color} data-space={color}
+          <button key={color} aria-pressed={folder.color === color} aria-label={color} data-space={color}
             className={`swatch sm ${folder.color === color ? "on" : ""}`}
             onClick={() => updateFolder(folder.id, { color: folder.color === color ? null : color })} />
         ))}
       </div>
-      <div className="menu-swatches" role="radiogroup" aria-label="Folder icon">
+      <div className="menu-swatches" aria-label="Folder icon">
         {FOLDER_EMOJIS.map((emoji) => {
           const on = (folder.emoji ?? "") === emoji;
           return (
-            <button key={emoji} role="radio" aria-checked={on} aria-label={emoji === "" ? "Default folder icon" : `Icon ${emoji}`}
+            <button key={emoji} aria-pressed={on} aria-label={emoji === "" ? "Default folder icon" : `Icon ${emoji}`}
               className={`swatch emoji ${on ? "on" : ""}`}
               onClick={() => updateFolder(folder.id, { emoji: emoji || null })}>{emoji || I.folderClosed}</button>
           );
