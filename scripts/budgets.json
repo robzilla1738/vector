@@ -1,0 +1,17 @@
+{
+  "bundle": {
+    "startupEntries": ["index.html"],
+    "bootDynamicImports": "^assets/App-",
+    "startupJsKb": 900,
+    "startupCssKb": 200,
+    "totalJsKb": 1800
+  },
+  "bench": {
+    "observe.full.ms": 60,
+    "observe.full.bytes": 10000,
+    "observe.compact.bytes": 4500,
+    "click.nonav.step.ms": 100,
+    "fill.ref.step.ms": 40,
+    "navigate+observe.ms": 100
+  }
+}

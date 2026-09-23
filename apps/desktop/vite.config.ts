@@ -13,6 +13,8 @@ export default defineConfig({
   build: {
     outDir: join(import.meta.dirname, "dist", "renderer"),
     emptyOutDir: true,
+    // scripts/check-budgets.mjs walks the manifest to measure startup bytes
+    manifest: true,
   },
   server: {
     port: 5197,

@@ -61,11 +61,8 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "cloud.syncProject",
   "cloud.taskResult",
   "conversations.archive",
-  "conversations.artifacts.get",
-  "conversations.artifacts.toggle",
   "conversations.attachments.add",
   "conversations.attachments.get",
-  "conversations.attachments.page",
   "conversations.attachments.read",
   "conversations.attachments.remove",
   "conversations.attachments.toggle",
@@ -81,7 +78,6 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "conversations.rename",
   "conversations.sources.get",
   "conversations.workspace.get",
-  "conversations.workspace.set",
   "development.githubStatus",
   "development.operationsStatus",
   "development.prepareIncidentFix",
@@ -134,8 +130,6 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "routines.update",
   "runs.answer",
   "runs.cancel",
-  "runs.context.get",
-  "runs.context.set",
   "runs.get",
   "runs.list",
   "runs.pause",
@@ -204,6 +198,8 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
  * RENDERER_METHODS instead.
  */
 export const SMOKE_HARNESS_METHODS: ReadonlySet<string> = new Set([
+  "conversations.artifacts.get",
+  "runs.context.get",
   "pages.activate",
   "pages.close",
   "pages.list",

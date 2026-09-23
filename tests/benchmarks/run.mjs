@@ -10,10 +10,12 @@
  *
  *   open                 pages.open (about:blank → navigate → attach)
  *   observe.full         pages.observe, full JSON — ms and bytes
- *   observe.compact      pages.observe format=compact — ms and bytes
+ *   observe.compact      pages.observe format=compact on a fresh document — ms and bytes
+ *   observe.compact.cached  compact right after a full observe (observation cache hit)
  *   mcp.*.bytes          what the MCP tool puts on stdio for one observe
  *                        (pretty-printed full JSON before / compact text now)
- *   click.ref            click via an observation ref (resolve + dispatch)
+ *   click.nav            click via ref that submits a form (includes the navigation)
+ *   click.nonav          click via ref that does not navigate (focus an input)
  *   fill.ref             fill via an observation ref
  *   navigate / +observe  pages.navigate then observe
  *   act+observe          pages.execute with returnObservation (one round trip)
@@ -22,6 +24,10 @@
  *
  *   node tests/benchmarks/run.mjs [--repeats 10] [--warmup 1] [--label name]
  *        [--runtime path/to/apps/runtime/dist/index.js] [--out dir]
+ *        [--transport inproc|http] [--check-budgets]
+ *
+ * `--transport http` sends every call over the loopback API with the bearer
+ * token (what the SDK, CLI and MCP pay); `inproc` (default) calls the handler.
  *
  * `--runtime` lets the same harness measure another checkout (e.g. a base
  * commit's worktree) for before/after comparisons.
@@ -30,7 +36,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir, totalmem } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import { findChromium } from "../../scripts/chromium.mjs";
 
@@ -48,6 +54,7 @@ const warmup = Number(opt("warmup", 1));
 const runtimeEntry = resolve(opt("runtime", join(root, "apps/runtime/dist/index.js")));
 const outDir = resolve(opt("out", join(root, "tests/benchmarks/reports")));
 const label = opt("label", "");
+const transport = opt("transport", "inproc");
 
 const sha = (dir) => {
   try {
@@ -97,8 +104,18 @@ async function runBench() {
     AUX_ELECTRON_CDP: "",
     AUX_API_TOKEN: "bench",
   });
-  const rpc = (m, p = {}) => rt.invoke(m, p);
-  const info = { backend: "aux", runtimeSha: sha(runtimeRoot) };
+  const http = async (method, params) => {
+    const res = await fetch(`http://127.0.0.1:${rt.port}/rpc`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${rt.token}` },
+      body: JSON.stringify({ method, params }),
+    });
+    const body = await res.json();
+    if (body.error) throw new Error(`${body.error.code}: ${body.error.message}`);
+    return body.result;
+  };
+  const rpc = transport === "http" ? (m, p = {}) => http(m, p) : (m, p = {}) => rt.invoke(m, p);
+  const info = { backend: "aux", transport, runtimeSha: sha(runtimeRoot) };
   try {
     // The benchmark deliberately exercises click, fill, and navigation without
     // a user-started run. Grant those effects in this isolated temp profile;
@@ -126,11 +143,11 @@ async function runBench() {
         R("observe.full.bytes", J(full));
         R("mcp.full.bytes", JSON.stringify(full, null, 2).length);
 
-        // observe — compact (older runtimes strip the param and return the full form)
+        // observe — compact straight after full: served from the observation cache
         t = now();
         const compact = await rpc("pages.observe", { pageId, format: "compact" });
         if (compact && compact.observation && typeof compact.observation.text === "string") {
-          R("observe.compact.ms", now() - t);
+          R("observe.compact.cached.ms", now() - t);
           R("observe.compact.bytes", J(compact));
           R("mcp.compact.bytes", compact.observation.text.length);
         } else unsupported.add("observe.compact");
@@ -140,13 +157,17 @@ async function runBench() {
         if (applyRef) {
           t = now();
           const r = await rpc("pages.execute", { program: { pageId, steps: [{ id: "c", op: "click", target: applyRef }] } });
-          R("click.ref.rpc.ms", now() - t);
-          if (r.steps[0]?.status === "ok") R("click.ref.step.ms", r.steps[0].durationMs);
+          R("click.nav.rpc.ms", now() - t);
+          if (r.steps[0]?.status === "ok") R("click.nav.step.ms", r.steps[0].durationMs);
           else failures.push(`click: ${r.steps[0]?.error?.message}`);
           const w = await rpc("pages.execute", {
             program: { pageId, steps: [{ id: "w", op: "waitFor", condition: { kind: "urlMatches", pattern: "status=" } }] },
           });
           if (w.steps[0]?.status !== "ok") failures.push(`click did not navigate: ${w.steps[0]?.error?.message}`);
+          // compact on the freshly navigated document — nothing cached yet
+          t = now();
+          const fresh = await rpc("pages.observe", { pageId, format: "compact" });
+          if (fresh?.observation) R("observe.compact.ms", now() - t);
         } else failures.push("click: no Apply filter ref");
 
         // navigate + observe
@@ -161,6 +182,12 @@ async function runBench() {
         // fill via ref
         const titleRef = obs2.content.elements.find((e) => e.tag === "input" && /title/i.test(e.name ?? ""))?.ref;
         if (titleRef) {
+          t = now();
+          const c = await rpc("pages.execute", { program: { pageId, steps: [{ id: "c2", op: "click", target: titleRef }] } });
+          R("click.nonav.rpc.ms", now() - t);
+          if (c.steps[0]?.status === "ok") R("click.nonav.step.ms", c.steps[0].durationMs);
+          else failures.push(`click.nonav: ${c.steps[0]?.error?.message}`);
+
           t = now();
           const f = await rpc("pages.execute", {
             program: { pageId, steps: [{ id: "f", op: "fill", target: titleRef, value: "Benchmark title" }] },
@@ -195,12 +222,15 @@ async function runBench() {
     "open.ms",
     "observe.full.ms",
     "observe.compact.ms",
+    "observe.compact.cached.ms",
     "observe.full.bytes",
     "observe.compact.bytes",
     "mcp.full.bytes",
     "mcp.compact.bytes",
-    "click.ref.step.ms",
-    "click.ref.rpc.ms",
+    "click.nav.step.ms",
+    "click.nav.rpc.ms",
+    "click.nonav.step.ms",
+    "click.nonav.rpc.ms",
     "fill.ref.step.ms",
     "fill.ref.rpc.ms",
     "navigate.ms",
@@ -228,6 +258,7 @@ if (result.skipped) console.log(`[bench] skipped — ${result.skipped}`);
 const report = {
   at: new Date().toISOString(),
   label: label || undefined,
+  transport,
   runtime: { entry: runtimeEntry, sha: sha(runtimeRoot) },
   harnessSha: sha(root),
   repeats,
@@ -260,4 +291,9 @@ table(["metric", "n", "mean", "p50", "p95", "min", "max"], rows);
 if (result.unsupported?.length) console.log(`unsupported: ${result.unsupported.join(", ")}`);
 if (result.failures?.length) console.log(`failures (${result.failures.length}): ${[...new Set(result.failures)].slice(0, 5).join(" | ")}`);
 console.log(`\nreport: ${reportPath}`);
-process.exit((result.failures?.length ?? 0) > 0 ? 1 : 0);
+let budgetFailed = false;
+if (argv.includes("--check-budgets")) {
+  const r = spawnSync(process.execPath, [join(root, "scripts/check-budgets.mjs"), "bench", reportPath], { stdio: "inherit" });
+  budgetFailed = r.status !== 0;
+}
+process.exit((result.failures?.length ?? 0) > 0 || budgetFailed ? 1 : 0);

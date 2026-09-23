@@ -31,6 +31,7 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @aux/desktop typecheck
       - run: pnpm --filter @aux/desktop build
+      - run: pnpm budgets
       - run: pnpm test:unit
 
   integration:
@@ -48,9 +49,11 @@ jobs:
       - name: Install headless Chromium (playwright-core download, no browsers bundled)
         run: pnpm --filter @aux/chromium-driver exec playwright-core install --with-deps chromium-headless-shell
       - name: Integration suite against the fixture sites
-        run: pnpm exec vitest run tests/integration
+        run: pnpm test:integration
         env:
           AUX_CAPTURE_RESPONSES: "1"
+      - name: Browser-layer benchmark against budgets
+        run: pnpm bench --repeats 5 --check-budgets
 
   e2e:
     name: Electron e2e (macOS)

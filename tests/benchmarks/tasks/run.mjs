@@ -57,7 +57,10 @@ const limit = Number(flag("limit", "0")) || 0;
 const only = flag("only", null);
 const timeoutMs = Number(flag("timeout", suiteName === "local" ? "180000" : "900000"));
 const modelId = flag("model", process.env.AUX_PLANNER_MODEL || "alibaba/qwen3.8-27b");
-const maxToolSteps = Number(flag("max-steps", "40"));
+// runtime adapter: product default budget unless --max-steps is given; MCP loops keep a 40-step cap
+const maxStepsFlag = flag("max-steps", null);
+const maxToolSteps = Number(maxStepsFlag ?? "40");
+const trials = Math.max(1, Number(flag("trials", "3")) || 1);
 
 loadDotEnv(join(repoRoot, ".env"));
 const adaptersCfg = JSON.parse(readFileSync(join(here, "adapters.json"), "utf8")).adapters;
@@ -135,6 +138,8 @@ const report = {
   startedAt: new Date().toISOString(),
   gitSha: sha(repoRoot),
   timeoutMs,
+  trials,
+  maxModelCalls: maxStepsFlag ? maxToolSteps : "product default",
   adapters: {},
 };
 
@@ -150,12 +155,13 @@ for (const name of adapterNames) {
     report.adapters[name] = { skipped: avail.reason };
     continue;
   }
-  console.log(`\n== ${name} (${cfg.kind}) — ${tasks.length} task(s), model ${modelId}`);
-  await resetSuiteState(suite);
+  console.log(`\n== ${name} (${cfg.kind}) — ${tasks.length} task(s) × ${trials} trial(s), model ${modelId}`);
   const adapter = cfg.kind === "runtime" ? await runtimeAdapter(name, cfg) : await mcpAdapter(name, cfg);
   const rows = [];
   try {
-    for (const task of tasks) {
+    for (let trial = 1; trial <= trials; trial++) for (const task of tasks) {
+      // a write task must not leak state into the next task or trial
+      await resetSuiteState(suite);
       const t0 = performance.now();
       let out;
       try {
@@ -165,10 +171,10 @@ for (const name of adapterNames) {
       }
       const wallMs = Math.round(performance.now() - t0);
       const score = out.answer == null ? 0 : scoreAnswer(out.answer, task.expected);
-      const row = { id: task.id, score, wallMs, ...out };
+      const row = { id: task.id, trial, score, wallMs, ...out };
       rows.push(row);
       console.log(
-        `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
+        `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
       );
     }
   } finally {
@@ -176,10 +182,22 @@ for (const name of adapterNames) {
   }
   const passed = rows.filter((r) => r.score === 1).length;
   const walls = rows.map((r) => r.wallMs).sort((a, b) => a - b);
+  const byTask = new Map();
+  for (const r of rows) byTask.set(r.id, [...(byTask.get(r.id) ?? []), r.score]);
+  const perTrial = Array.from({ length: trials }, (_, i) => rows.filter((r) => r.trial === i + 1 && r.score === 1).length);
+  const trialMean = perTrial.reduce((a, b) => a + b, 0) / trials;
   const summary = {
-    tasks: rows.length,
+    tasks: tasks.length,
+    trials,
+    runs: rows.length,
     passed,
     accuracy: rows.length ? +(passed / rows.length).toFixed(3) : 0,
+    passAt1: +(trialMean / Math.max(1, tasks.length)).toFixed(3),
+    passAtK: +([...byTask.values()].filter((s) => s.includes(1)).length / Math.max(1, tasks.length)).toFixed(3),
+    passAllK: +([...byTask.values()].filter((s) => s.every((x) => x === 1)).length / Math.max(1, tasks.length)).toFixed(3),
+    passedPerTrial: perTrial,
+    passedStdDev: +Math.sqrt(perTrial.reduce((a, b) => a + (b - trialMean) ** 2, 0) / trials).toFixed(2),
+    flaky: [...byTask].filter(([, s]) => s.includes(1) && s.includes(0)).map(([id]) => id),
     wallMsP50: walls[Math.floor(walls.length / 2)] ?? null,
     wallMsP95: walls.length ? walls[Math.min(walls.length - 1, Math.floor(walls.length * 0.95))] : null,
     wallMsMean: walls.length ? Math.round(walls.reduce((a, b) => a + b, 0) / walls.length) : null,
@@ -188,7 +206,7 @@ for (const name of adapterNames) {
     errors: rows.filter((r) => r.error).length,
   };
   report.adapters[name] = { summary, rows };
-  console.log(`-- ${name}: ${passed}/${rows.length} (${(summary.accuracy * 100).toFixed(1)}%), p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
+  console.log(`-- ${name}: pass@1 ${(summary.passAt1 * 100).toFixed(1)}% (per trial ${perTrial.join("/")} of ${tasks.length}, sd ${summary.passedStdDev}), pass@${trials} ${(summary.passAtK * 100).toFixed(1)}%, flaky [${summary.flaky.join(", ")}], p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
 }
 
 mkdirSync(reportsDir, { recursive: true });
@@ -239,7 +257,7 @@ async function runtimeAdapter() {
           goal: task.goal,
           pageId,
           deadlineMs: timeoutMs - 5000,
-          maxModelCalls: maxToolSteps,
+          ...(maxStepsFlag ? { maxModelCalls: maxToolSteps } : {}),
         });
         const runId = run.runId ?? run.id;
         const terminal = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted", "needs_input"]);

@@ -10,7 +10,7 @@ import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, ConversationContext, ConversationImage, ConversationArtifact, ConversationAttachment, ConversationSummary, ConversationSource, PageTarget, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationSummary, ConversationSource, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
@@ -113,14 +113,8 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [exporting, setExporting] = useState(false);
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
-  const [generatedResults, setGeneratedResults] = useState<ConversationArtifact[]>([]);
-  const [contextState, setContextState] = useState<ConversationContext | null>(null);
   const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
-  const [workspaceSaving, setWorkspaceSaving] = useState(false);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [workspaceMemoryDraft, setWorkspaceMemoryDraft] = useState("");
-  useEffect(() => { void call<Workspace[]>("workspaces.list", {}).then(setWorkspaces).catch(() => setWorkspaces([])); }, []);
 
   const [previewOpen, setPreviewOpen] = useState(true);
   const [previewMenu, setPreviewMenu] = useState(false);
@@ -136,7 +130,6 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const loadedContextChat = useRef<string | null>(null);
   const [contextError, setContextError] = useState("");
   const [contextRefresh, setContextRefresh] = useState(0);
-  const [contextSaving, setContextSaving] = useState(false);
   const [documentSaving, setAttachmentSaving] = useState(false);
   const [imageOperations, setImageOperations] = useState(0);
   const [incomingImage, setIncomingImage] = useState<File | null>(null);
@@ -148,7 +141,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   activeChat.current = id;
   const documentBusy = useRef(false);
   const conversationRoot = useRef<HTMLElement>(null);
-  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setGeneratedResults([]); setContextState(null); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); setWorkspaceMemoryDraft(""); }, [id]);
+  useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
   const [taskTitle, setTaskTitle] = useState("");
   const [archived, setArchived] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -249,32 +242,23 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
 
   useEffect(() => {
     let cancelled = false;
-    if (!connected || attachmentSaving || contextSaving || workspaceSaving) { setContextLoading(false); return; }
+    if (!connected || attachmentSaving) { setContextLoading(false); return; }
     setContextError(""); setContextLoading(!!id);
-    if (!id) { setImages([]); setAttachments([]); setGeneratedResults([]); setContextState(null); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
+    if (!id) { setImages([]); setAttachments([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
     void Promise.all([
       call<{ images: ConversationImage[] }>("conversations.images.get", { chatId: id }),
       call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
-      call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
       call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
       call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
-      call<ConversationContext>("runs.context.get", { chatId: id }),
-    ]).then(([imageReferences, documents, generated, workspace, sourceList, turnContext]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setGeneratedResults(generated.artifacts); setWorkspaceContext(workspace); setWorkspaceMemoryDraft(workspace.memory?.content ?? ""); setConversationSources(sourceList.sources); setContextState(turnContext); } })
+    ]).then(([imageReferences, documents, workspace, sourceList]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); setConversationSources(sourceList.sources); } })
       .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setContextLoading(false); });
     return () => { cancelled = true; };
-  }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving, contextSaving, workspaceSaving]);
+  }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving]);
   useEffect(() => bridge.onEvent(event => {
     if (event.type === "conversation.context.changed" && event.payload.chatId === id) setContextRefresh(value => value + 1);
     if (["workspace.memory.updated", "workspace.browsingMemory.updated"].includes(event.type) && event.payload.workspaceId === workspaceContext.workspace?.workspaceId) setContextRefresh(value => value + 1);
   }), [id, workspaceContext.workspace?.workspaceId]);
-  useEffect(() => {
-    if (!id) return;
-    const refresh = () => { if (document.visibilityState !== "hidden") setContextRefresh(value => value + 1); };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
-  }, [id]);
   const ensureChatId = () => {
     if (id) return id;
     const chatId = crypto.randomUUID();
@@ -321,8 +305,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       }
       const [documents, generated, workspace, sourceList] = await Promise.all([
         call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
-        call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
-        call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
+          call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
         call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
       ]);
       const title = all.at(-1)?.goal || turns[0]!.goal;
@@ -334,7 +317,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   };
   const send = async () => {
     if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
-    if (!answering && (attachmentSaving || contextSaving || workspaceSaving || missingContext || historyLoading || historyError || contextLoading || contextError || (live && last?.status !== "needs_input") || (taskBound && last?.status !== "needs_input"))) return;
+    if (!answering && (attachmentSaving || missingContext || historyLoading || historyError || contextLoading || contextError || (live && last?.status !== "needs_input") || (taskBound && last?.status !== "needs_input"))) return;
     sendPending.current = true;
     setSending(true); setSendError("");
     try {
@@ -438,7 +421,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {!connected && <p className="hint" role="status">Connecting to Aux… You can keep writing.</p>}
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
       {taskBound ? <>
-      <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || contextSaving || workspaceSaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
+      <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
 
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
@@ -447,7 +430,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      <div className="conversation-input"><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/>{dictation}<button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim() || (!answering && (attachmentSaving || contextSaving || workspaceSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onClick={() => void send()}>{I.send}</button></div>
+      <div className="conversation-input"><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/>{dictation}<button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim() || (!answering && (attachmentSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onClick={() => void send()}>{I.send}</button></div>
       </>}
     </div></div>
     </div>{browserPreview}</div>
