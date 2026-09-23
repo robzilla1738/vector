@@ -28,6 +28,8 @@ export interface ViewHooks {
   onPopup(entry: ViewEntry, activate?: boolean): void;
   onTakeover(pageId: string): void;
   confirmUnload?(entry: ViewEntry): boolean;
+  /** Tab/window close: ask without blocking the main process. Resolves true to leave. */
+  confirmUnloadAsync?(entry: ViewEntry): Promise<boolean>;
   openAsTab(url: string, options?: { windowId?: string; background?: boolean; referrer?: Electron.Referrer }): void;
   /** app-level shortcuts pressed while a page view is focused */
   sendShortcut(s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }, pageId: string): void;
@@ -127,6 +129,20 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   wc.on("will-navigate",(event,url)=>{if(hooks.onExternalLink?.(entry,url))event.preventDefault();});
   hooks.onFullscreenReady?.(entry);
   wc.on("will-prevent-unload", event => {
+    const closing = closingPages.get(wc);
+    if (closing && hooks.confirmUnloadAsync) {
+      // A close is pending: keep it pending behind an async prompt instead of
+      // freezing every window (and every tab's network callbacks) on a sync
+      // dialog. Leaving closes without re-running beforeunload.
+      closing.hold();
+      void hooks.confirmUnloadAsync(entry).then(
+        leave => { if (wc.isDestroyed()) return; if (leave) wc.close({ waitForBeforeUnload: false }); else closing.finish(false); },
+        () => closing.finish(false),
+      );
+      return;
+    }
+    // Navigation away from a dirty page: Chromium cannot resume a
+    // renderer-initiated navigation after the fact, so this decision is sync.
     try {
       if (hooks.confirmUnload?.(entry)) { event.preventDefault(); return; }
     } catch { /* No usable confirmation surface: keep the document. */ }
@@ -294,7 +310,7 @@ export function installNavGesture(wc: WebContents, onGesture: (direction: "back"
 }
 
 
-const closingPages = new Map<WebContents, { promise: Promise<boolean>; finish(ok: boolean): void }>();
+const closingPages = new Map<WebContents, { promise: Promise<boolean>; finish(ok: boolean): void; hold(): void }>();
 
 export function cancelPageClose(contents: WebContents) {
   closingPages.get(contents)?.finish(false);
@@ -316,8 +332,10 @@ export function destroyPageView(entry: ViewEntry, win: BaseWindow): Promise<bool
     resolve(ok);
   };
   const destroyed = () => finish(true);
-  const timer = setTimeout(() => finish(false), 45_000);
-  closingPages.set(wc, { promise, finish });
+  let timer = setTimeout(() => finish(false), 45_000);
+  // the user is answering a leave prompt: the close waits for them, not a timer
+  const hold = () => { clearTimeout(timer); timer = setTimeout(() => finish(false), 30 * 60_000); };
+  closingPages.set(wc, { promise, finish, hold });
   wc.once("destroyed", destroyed);
   try { wc.close({ waitForBeforeUnload: true }); } catch { finish(wc.isDestroyed()); }
   return promise;

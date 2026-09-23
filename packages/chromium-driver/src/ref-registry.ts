@@ -8,10 +8,13 @@ export class RefRegistry {
   private byPage = new Map<string, Map<string, ElementRef>>();
   private generation = new Map<string, number>();
 
-  register(pageId: string, elements: ElementRef[]): void {
-    // Merge: compact/subtree observations must not wipe refs from a prior
-    // full pass. Navigation calls `clear`. DOM mutation does not invalidate refs.
-    const map = this.byPage.get(pageId) ?? new Map<string, ElementRef>();
+  /**
+   * A full observation replaces the page's refs: a ref it did not return is
+   * gone from the page's live map too, and must fail as detached rather than
+   * fall back to an old selector. Subtree/expand passes merge (`replace: false`).
+   */
+  register(pageId: string, elements: ElementRef[], opts: { replace?: boolean } = {}): void {
+    const map = (opts.replace ? undefined : this.byPage.get(pageId)) ?? new Map<string, ElementRef>();
     for (const el of elements) map.set(el.ref, el);
     this.byPage.set(pageId, map);
     this.generation.set(pageId, (this.generation.get(pageId) ?? 0) + 1);
@@ -34,6 +37,16 @@ export class RefRegistry {
   clear(pageId: string): void {
     this.byPage.delete(pageId);
     this.generation.delete(pageId);
+  }
+
+  /** First unused ref number, so a merged pass never reuses a live ref. */
+  nextRef(pageId: string): number {
+    let max = 0;
+    for (const ref of this.byPage.get(pageId)?.keys() ?? []) {
+      const n = Number(ref.slice(1));
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+    return max + 1;
   }
 
   /** All registered refs for a page (used by expandRef fallbacks). */

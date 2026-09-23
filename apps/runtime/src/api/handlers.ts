@@ -21,6 +21,7 @@ import { BrowserImporter } from "../services/browser-import.js";
 import type { DriverSet } from "../services/pages.js";
 
 import { TaskService } from "../services/tasks.js";
+import { DurableWriteLedger } from "../agent/durable.js";
 import { SpaceService } from "../services/spaces.js";
 import { TaskEvidenceService } from "../services/task-evidence.js";
 import { summarizeModelUsage } from "../services/model-usage.js";
@@ -175,8 +176,9 @@ export function makeInvoker(s: Services) {
       } else if(method.startsWith('cloud.')&&typeof params.taskId==='string'){
         requireScopedTask(scope,params.taskId);
       } else if (method.startsWith("pages.") && method !== "pages.list") {
-        if (typeof params.pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
-        requireScopedPage(scope, params.pageId,client.connectionId);
+        const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
+        if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
+        requireScopedPage(scope, pageId,client.connectionId);
       } else if (method.startsWith("runs.") && method !== "runs.list") {
         const run = typeof params.runId === "string" ? s.repo.getRun(params.runId) : undefined;
         if (!run?.config?.taskId) throw new AuxError("permission_denied", "This connection can only access runs belonging to its task scope");
@@ -503,6 +505,15 @@ export function makeInvoker(s: Services) {
         if (params.folder && params.folder.spaceId !== params.spaceId) throw new AuxError("invalid_params", "The tab folder belongs to another space.");
         return s.pages.moveToWindow(params, space);
       }
+      case "pages.reconcileWrite": {
+        if (scope) throw new AuxError("permission_denied", "Only the Aux owner can reconcile an uncertain action");
+        const ledger = new DurableWriteLedger(s.repo.db);
+        const pending = ledger.unresolved(`direct:${params.pageId}`).filter(intent => !params.intentId || intent.id === params.intentId);
+        if (!pending.length) throw new AuxError("conflict", "No unresolved direct action on this page");
+        const note = JSON.stringify({ actor: client.external ? "owner_token" : "desktop_user", evidence: params.evidence, recordedAt: Date.now() });
+        for (const intent of pending) ledger.reconcile(intent.id, params.outcome, note);
+        return { reconciled: pending.map(intent => intent.id) };
+      }
       case "pages.activate": return s.pages.activate(params.pageId);
       case "pages.navigate": return s.pages.navigate(params.pageId, params["url" as never]);
       case "pages.back": return s.pages.back(params.pageId);
@@ -517,14 +528,15 @@ export function makeInvoker(s: Services) {
       case "pages.execute": {
         // `call` nodes dispatch through PageService's operation-registry
         // hook ("host/name" explicitly, or bare name → page's host).
-        // API callers hold the bearer token and author the program directly —
-        // a trusted source, so evaluate/eval stay available to them.
+        // The owner bearer token (CLI, desktop) authors programs directly and may
+        // run page script. A scoped agent connection is limited to its task and
+        // never gets evaluate/eval: page access is not code-execution authority.
         const p = params as { program: { pageId: string }; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown> };
         // act-and-observe (speed P0-2): the caller sees the resulting state in
         // the same round trip via a same-lane follow-up observe
         // (PageService.execute).
         const { format, ...req } = p.returnObservation ?? {};
-        const { observation, ...result } = await s.pages.execute(p.program as never, { allowEval: true }, {
+        const { observation, ...result } = await s.pages.execute(p.program as never, { allowEval: !scope }, {
           returnObservation: p.returnObservation ? (req as never) : undefined,
         });
         if (!p.returnObservation) return result;

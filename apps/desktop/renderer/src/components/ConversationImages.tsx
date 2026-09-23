@@ -1,3 +1,4 @@
+import { hostOf } from "../workspace";
 import { ImagePreview } from "./ImageSnapshot";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationImage, PageTarget } from "@aux/contracts";
@@ -130,7 +131,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     {busy && <p className="hint" role="status">Preparing image…</p>}
     {images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}
     {capture && <div className="capture-editor" ref={review}>
-      <p className="hint">{capture.title} · {capture.sourceUrl ? new URL(capture.sourceUrl).hostname : "Local image"}</p>
+      <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
       <p className="hint">Drag to select a region. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
       <div className="capture-canvas" tabIndex={0} role="group" aria-label="Image selection. Arrow keys select and move a region; Shift and arrows resize." onKeyDown={event => {
         if (event.key === "Escape") { setRegion(null); event.preventDefault(); return; }

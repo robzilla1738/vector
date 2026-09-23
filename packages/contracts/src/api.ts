@@ -83,6 +83,17 @@ export const PagesExecuteParams = z.object({
   program: ProgramSchema,
   returnObservation: ReturnObservationSchema.optional(),
 });
+/**
+ * Human/owner reconciliation of a direct (non-run) write on a page whose outcome
+ * is uncertain. Scoped agent connections cannot call it: an agent must not
+ * vouch for its own uncertain effect.
+ */
+export const PagesReconcileWriteParams = z.object({
+  pageId: z.string().min(1),
+  intentId: z.string().min(1).optional(),
+  outcome: z.enum(["applied", "not_applied"]),
+  evidence: z.string().min(1).max(4000),
+}).strict();
 /** Named observation keys (`title`, `r12`) or CSS extract specs. */
 export const ExtractFieldSchema = z.union([
   z.string().min(1),
@@ -599,6 +610,7 @@ export const MethodSchemas = {
   "pages.stop": PagesCloseParams,
   "pages.observe": PagesObserveParams,
   "pages.execute": PagesExecuteParams,
+  "pages.reconcileWrite": PagesReconcileWriteParams,
   "pages.extract": PagesExtractParams,
   "pages.waitFor": PagesWaitForParams,
   "pages.console": PagesConsoleParams,
@@ -958,6 +970,7 @@ export const ResultSchemas = {
     /** present when the request carried returnObservation; full or compact per its format */
     observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
   }),
+  "pages.reconcileWrite": z.object({ reconciled: z.array(z.string()) }),
   "pages.extract": z.object({
     pageId: z.string(),
     documentEpoch: z.number(),

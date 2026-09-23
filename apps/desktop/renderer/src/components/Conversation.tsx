@@ -10,11 +10,11 @@ import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationSummary, ConversationSource, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationArtifact, ConversationImage, ConversationAttachment, ConversationSummary, ConversationSource, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
-import { previewSplit } from "../workspace";
+import { hostOf, previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { answerUrl } from "./AnswerMarkdown";
@@ -63,7 +63,7 @@ function RunSources({ sources, onOpen }: { sources: ConversationSource[]; onOpen
   if (!sources.length) return null;
   return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
     {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
-      <span><b>{source.title}</b><small>{new URL(source.url).hostname} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
+      <span><b>{source.title}</b><small>{hostOf(source.url)} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
     </button>)}
     <p>Observed browser pages provide provenance, not independent proof of an external outcome.</p>
   </div></details>;
@@ -305,7 +305,8 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       }
       const [documents, generated, workspace, sourceList] = await Promise.all([
         call<{ attachments: ConversationAttachment[] }>("conversations.attachments.get", { chatId: id }),
-          call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
+        call<{ artifacts: ConversationArtifact[] }>("conversations.artifacts.get", { chatId: id }),
+        call<ConversationSpaceContext>("conversations.workspace.get", { chatId: id }),
         call<{ sources: ConversationSource[] }>("conversations.sources.get", { chatId: id }),
       ]);
       const title = all.at(-1)?.goal || turns[0]!.goal;

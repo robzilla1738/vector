@@ -125,6 +125,8 @@
   --accent-soft: oklch(98.5% 0 0 / .08);
   --accent-line: oklch(98.5% 0 0 / .2);
   --ring: oklch(98.5% 0 0 / .08);
+  /* keyboard focus: ≥3:1 against every surface, not the decorative glow */
+  --focus-ring: color-mix(in oklch, var(--link) 80%, transparent);
   --selection: rgba(64, 153, 255, 0.28);
   --focus-line: oklch(98.5% 0 0 / .55);
   --link: oklch(74.6% .16 232.661);
@@ -324,7 +326,7 @@
 [data-theme="light"][data-space="slate"]  { --space-color: #848480; }
 
 @media (prefers-contrast: more) {
-  :root { --ink-2: #c9c9c9; --line: #777777; --sb-ink-2: #cccccc; }
+  :root { --ink-2: #c9c9c9; --line: #777777; --sb-ink-2: #cccccc; --focus-ring: var(--link); }
   [data-theme="light"] { --ink-2: #424242; --line: #777777; --sb-ink-2: #424242; }
 }
 

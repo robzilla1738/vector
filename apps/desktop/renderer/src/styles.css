@@ -57,8 +57,8 @@ h1, h2, h3, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 img { display: block; }
 
-/* soft macOS-style ring, shaped by the control */
-:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); border-radius: inherit; }
+/* keyboard focus ring, shaped by the control */
+:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); border-radius: inherit; }
 input:focus-visible, textarea:focus-visible { box-shadow: none; }
 
 /* overlay scrollbars — thin, only on hover */
@@ -418,7 +418,7 @@ body.resizing .sidebar { transition: none; }
 .tab-row.drop-before::before, .tab-row.drop-after::after { content: ""; position: absolute; left: var(--space-2); right: var(--space-2); height: 2px; border-radius: 1px; background: var(--ink-0); }
 .tab-row.drop-before::before { top: -1.5px; }
 .tab-row.drop-after::after { bottom: -1.5px; }
-.tab-row:focus-visible { box-shadow: 0 0 0 2px var(--ring) inset; }
+.tab-row:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring) inset; }
 .tab-fav { width: var(--fav); height: var(--fav); flex: none; display: grid; place-items: center; color: var(--ink-2); }
 .tab-fav img { width: var(--fav); height: var(--fav); border-radius: var(--r-xs); object-fit: contain; background: #fff; }
 .tab-fav .ci { width: var(--fav); height: var(--fav); }
@@ -2576,3 +2576,6 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: 999px; }
 .settings-content .drawer-section + .field,
 .settings-content section > .field:first-child { border-start-start-radius: 16px; border-start-end-radius: 16px; }
 .settings-content .field:not(:has(+ .field)) { border-end-start-radius: 16px; border-end-end-radius: 16px; border-bottom-color: transparent; }
+
+.pane-failure { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-3); padding:var(--space-5); color:var(--ink-2); font-size:var(--fs-sm); }
+.pane-failure b { color:var(--ink-1); font-weight:500; }

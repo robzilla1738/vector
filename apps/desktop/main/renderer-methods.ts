@@ -62,6 +62,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "cloud.taskResult",
   "conversations.archive",
   "conversations.attachments.add",
+  "conversations.artifacts.get",
   "conversations.attachments.get",
   "conversations.attachments.read",
   "conversations.attachments.remove",
@@ -198,7 +199,6 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
  * RENDERER_METHODS instead.
  */
 export const SMOKE_HARNESS_METHODS: ReadonlySet<string> = new Set([
-  "conversations.artifacts.get",
   "runs.context.get",
   "pages.activate",
   "pages.close",

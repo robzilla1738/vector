@@ -152,12 +152,48 @@ export function beginConsequentialWrite(
   return { skip: false, intentId: began.intent.id };
 }
 
+/** Failures raised while resolving or authorizing a target: no input reached the page. */
+const PRE_DISPATCH_CODES = new Set([
+  "target_detached", "ref_stale", "target_ambiguous", "not_found", "invalid_params", "permission_denied", "capability_unsupported",
+]);
+
+export interface WriteResultLike {
+  status: string;
+  steps?: Array<{ op: string; status: string; error?: { code: string; message?: string } }>;
+}
+
+/**
+ * What a finished program means for its write intent.
+ * - every consequential step dispatched without error: `confirmed` (same as a completed program)
+ * - the first consequential failure happened before dispatch and nothing consequential ran: `not_applied`
+ * - otherwise an input may have reached the site: `uncertain`
+ */
+export function writeOutcome(result: WriteResultLike): { outcome: "confirmed" | "not_applied" | "uncertain"; reason?: string } {
+  if (result.status === "completed") return { outcome: "confirmed" };
+  // without step outcomes nothing proves the input stayed in this process
+  if (!result.steps?.length) return { outcome: "uncertain" };
+  const writes = (result.steps ?? []).filter((s) => classifyStep(s.op) !== "read");
+  const failed = writes.find((s) => s.status === "failed");
+  if (!failed) {
+    if (writes.length && writes.every((s) => s.status === "ok")) return { outcome: "confirmed" };
+    if (writes.every((s) => s.status === "skipped")) return { outcome: "not_applied", reason: "no consequential step was dispatched" };
+    return { outcome: "uncertain" };
+  }
+  const dispatchedBefore = writes.slice(0, writes.indexOf(failed)).some((s) => s.status === "ok");
+  if (!dispatchedBefore && failed.error && PRE_DISPATCH_CODES.has(failed.error.code)) {
+    return { outcome: "not_applied", reason: `${failed.op} failed before dispatch: ${failed.error.code}` };
+  }
+  return { outcome: "uncertain" };
+}
+
 export function settleWrite(
   ledger: DurableWriteLedger | undefined,
   intentId: string | undefined,
-  ok: boolean,
+  result: boolean | WriteResultLike,
 ): void {
   if (!ledger || !intentId) return;
-  if (ok) ledger.confirm(intentId);
+  const settled = typeof result === "boolean" ? { outcome: result ? "confirmed" as const : "uncertain" as const } : writeOutcome(result);
+  if (settled.outcome === "confirmed") ledger.confirm(intentId);
+  else if (settled.outcome === "not_applied") ledger.abortUndispatched(intentId, settled.reason ?? "not dispatched");
   else ledger.fail(intentId);
 }

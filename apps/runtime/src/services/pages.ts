@@ -1177,7 +1177,7 @@ export class PageService {
       } finally {
         if (needsStage) await this.deps.native.releaseStage(pageId).catch(() => {});
       }
-      settleWrite(this.deps.durableWrites, journal.intentId, result.status === "completed");
+      settleWrite(this.deps.durableWrites, journal.intentId, result);
       flushSteps();
       if (!ctx.runId && (lp.target.controller === "agent" || lp.target.controller === "external")) {
         lp.target.controller = "none";

@@ -1,4 +1,5 @@
 import { SplitDivider } from "./SplitDivider";
+import { PaneBoundary } from "./PaneBoundary";
 import { isScrimOverlay, nativePageId } from "../chrome";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
@@ -115,7 +116,7 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
         )}
         {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inElectron && inMock && !splitVisible && <MockPage page={page} />}
         {splitVisible && <SplitDivider preview={!inElectron && inMock ? [page!, companion!] : undefined} />}
-        {mode === "conversation" && <Conversation />}
+        {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation /></PaneBoundary>}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}
       </div>

@@ -1,4 +1,5 @@
 import { runAnswerEntry } from "./run-answer-drafts";
+import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { QuickAsk } from "./components/QuickAsk";
@@ -473,7 +474,7 @@ export function App() {
             </div>
           </div>
         </div>
-        {!bridge.privateMode && <AgentRail />}
+        {!bridge.privateMode && <PaneBoundary label="The assistant"><AgentRail /></PaneBoundary>}
       </div>
       {overlay === "palette" && !bridge.privateMode && <Palette />}
       {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && <Library key={overlay} initialView={overlay === "bookmarks" ? "bookmarks" : "history"} confirmClear={overlay === "clear-history"} />}

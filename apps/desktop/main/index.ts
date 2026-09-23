@@ -35,6 +35,7 @@ import { installHttpAuth } from "./http-auth.js";
 import { app, BaseWindow, dialog, globalShortcut, ipcMain, Menu, nativeTheme, powerMonitor, safeStorage, shell, webContents as electronWebContents, WebContentsView } from "electron";
 import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync, renameSync, lstatSync, realpathSync } from "node:fs";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { openablePath } from "./open-path-policy.js";
 import { copyFile, cp, rm, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -92,7 +93,12 @@ mkdirSync(PROFILE_DIR, { recursive: true, mode: 0o700 });
 // Chromium session path implicitly, or separate the user and agent profiles.
 app.setPath("userData", PROFILE_DIR);
 app.setPath("sessionData", PROFILE_DIR);
-if (!app.requestSingleInstanceLock()) app.exit(0);
+if (!app.requestSingleInstanceLock()) {
+  // app.exit() does not stop this module: without halting here the losing
+  // instance would still restore/swap aux-state.sqlite under the running one.
+  app.exit(0);
+  await new Promise<never>(() => {});
+}
 const DATA_DIR = resolveDataDirectory(desktopEnv);
 mkdirSync(DATA_DIR, { recursive: true });
 applyPendingRuntimeRestore(DATA_DIR);
@@ -1072,9 +1078,17 @@ function configurePagePermissions() {
 }
 
 function configureCloudPreviewHeaders(){
-  profileSession().webRequest.onBeforeSendHeaders((details,callback)=>{
+  // Filtered to preview hosts: every other request skips main-process JS.
+  profileSession().webRequest.onBeforeSendHeaders({urls:['https://vercel.run/*','https://*.vercel.run/*']},(details,callback)=>{
     let token:string|undefined;
-    try{token=cloudPreviewTokens.get(new URL(details.url).origin);}catch{/* malformed request URL */}
+    try{
+      const origin=new URL(details.url).origin;
+      // Only the preview's own document gets the token: a navigation to it, or
+      // a request from a tab already showing it. A third-party page must not
+      // be able to send authenticated subresource requests to the preview.
+      let top:string|undefined;try{top=details.webContents?new URL(details.webContents.getURL()).origin:undefined;}catch{/* no document yet */}
+      if(details.resourceType==='mainFrame'||top===origin)token=cloudPreviewTokens.get(origin);
+    }catch{/* malformed request URL */}
     callback(token?{requestHeaders:{...details.requestHeaders,'X-Aux-Preview-Token':token}}:{requestHeaders:details.requestHeaders});
   });
 }
@@ -1160,6 +1174,16 @@ async function runShowOriginal(pageId: string) {
   return restored;
 }
 
+function unloadPrompt(entry: ViewEntry): Electron.MessageBoxSyncOptions {
+  let site = "this page";
+  try { const origin = new URL(entry.view.webContents.getURL()).origin; if (origin !== "null") site = origin; } catch { /* no page-supplied message */ }
+  return {
+    type: "warning", title: "Leave website?", message: `Leave ${site}?`,
+    detail: "Changes you made may not be saved.", buttons: ["Stay", "Leave"],
+    defaultId: 0, cancelId: 0, noLink: true,
+  };
+}
+
 const viewHooks = {
   onExternalLink: (entry: ViewEntry, url: string) => {
     const state=stateForEntry(entry);
@@ -1194,16 +1218,14 @@ const viewHooks = {
   },
   confirmUnload: (entry: ViewEntry) => {
     if (exitApproved || stateForEntry(entry)?.closeApproved) return true;
-    const wc = entry.view.webContents;
-    let site = "this page";
-    try { const origin = new URL(wc.getURL()).origin; if (origin !== "null") site = origin; } catch { /* no page-supplied message */ }
-    const options: Electron.MessageBoxSyncOptions = {
-      type: "warning", title: "Leave website?", message: `Leave ${site}?`,
-      detail: "Changes you made may not be saved.", buttons: ["Stay", "Leave"],
-      defaultId: 0, cancelId: 0, noLink: true,
-    };
-    const owner = stateForEntry(entry)?.win;
-    return (entry.popup || owner ? dialog.showMessageBoxSync(entry.popup ?? owner!, options) : 0) === 1;
+    const owner = entry.popup ?? stateForEntry(entry)?.win;
+    return (owner ? dialog.showMessageBoxSync(owner, unloadPrompt(entry)) : 0) === 1;
+  },
+  confirmUnloadAsync: async (entry: ViewEntry) => {
+    if (exitApproved || stateForEntry(entry)?.closeApproved) return true;
+    const owner = entry.popup ?? stateForEntry(entry)?.win;
+    if (!owner) return false;
+    return (await dialog.showMessageBox(owner, unloadPrompt(entry))).response === 1;
   },
   onAudio: (pageId:string,state:{muted:boolean;audible:boolean})=>{noteTab(pageId,{muted:state.muted,audible:state.audible});shellForPage(pageId)?.webContents.send('view.audio',{pageId,...state});},
   onCursor: (pageId: string, cursor: string) => {
@@ -2429,16 +2451,20 @@ function wireRendererIpc() {
     const r = await dialog.showOpenDialog(state.win, { title: "Open File", properties: ["openFile"] });
     return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
   });
+  const openRoots = () => [DATA_DIR, downloadLocation.status().path, app.getPath("downloads")];
   ipcMain.handle("ui.revealPath", (event, p: unknown) => {
     requireShellUi(event);
-    if (typeof p !== "string" || !p) return false;
-    shell.showItemInFolder(p);
+    const target = openablePath(p, openRoots()) ?? (typeof p === "string" && isAbsolute(p) ? p : null);
+    if (!target) return false;
+    // revealing selects the item in Finder; it never launches it
+    shell.showItemInFolder(target);
     return true;
   });
   ipcMain.handle("ui.openPath", async (event, p: unknown) => {
     requireShellUi(event);
-    if (typeof p !== "string" || !p) return "";
-    return shell.openPath(p);
+    const target = openablePath(p, openRoots());
+    if (!target) return "Aux opens documents from its downloads and workspace folders only. Use Reveal to show this file in Finder.";
+    return shell.openPath(target);
   });
   ipcMain.handle("ui.saveWorkbook",(event,content:unknown,format:unknown)=>{const state=requireShellUi(event);return saveWorkbookSnapshot(state.win,content,false,format);});
   ipcMain.handle("ui.saveFile", async (event, name: string, content: string) => {

@@ -305,7 +305,7 @@ export async function planTurn(
             last ? { returnObservation: nextObserveReq() } : {},
           )
           .then((r) => {
-            settleWrite(s.self.durable, write.intentId, r.status === "completed");
+            settleWrite(s.self.durable, write.intentId, r);
             return r;
           });
       },
@@ -524,7 +524,7 @@ export async function dispatchPlan(
       ? await early!.finish(plan.steps ?? [])
       : await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
   if (early && !streamed) early.halt();
-  settleWrite(s.self.durable, write.intentId, result.status === "completed");
+  settleWrite(s.self.durable, write.intentId, result);
   const carried = early ? early.observation : (result as { observation?: Observation }).observation;
   if (carried && carried.pageId === s.activePageId) s.carriedObs = carried;
   s.stepsRun += plan.steps!.length;
@@ -637,7 +637,7 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
         if (write.skip) throw new AuxError("conflict", write.reason!);
         {
           const r2 = await s.self.deps.pages.execute(compiled.program, { runId: s.runId, taskId: s.run.config?.taskId, journaled: true, signal: s.c.abort.signal });
-          settleWrite(s.self.durable, write.intentId, r2.status === "completed");
+          settleWrite(s.self.durable, write.intentId, r2);
           s.stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
           if (r2.status === "completed") {
             s.lastError = undefined;

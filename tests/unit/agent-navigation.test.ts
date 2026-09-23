@@ -34,8 +34,9 @@ describe("agent page driver", () => {
         calls.push(`reload`);
         return null;
       },
-      evaluate: async () => {
-        calls.push("settle");
+      evaluate: async (fn: unknown) => {
+        // the readiness tracker is installed into the attached document; only a settle probe counts
+        if (typeof fn !== "string") calls.push("settle");
         return true;
       },
       url: () => "https://example.test/",

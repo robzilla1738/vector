@@ -361,7 +361,7 @@ export class SetRunner {
       signal: opts.signal,
       allowEval: learned.trusted,
     });
-    settleWrite(this.deps.durableWrites, write.intentId, res.status === "completed");
+    settleWrite(this.deps.durableWrites, write.intentId, res);
     return { res };
   }
 

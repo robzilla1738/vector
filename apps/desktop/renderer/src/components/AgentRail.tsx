@@ -129,7 +129,7 @@ export function AgentRail() {
     else useStore.getState().openConversationDraft(chatId);
   };
   return (
-    <aside ref={root} className={`rail ${railOpen ? "open" : ""}`} style={{ "--rail-w": `${railWidth}px` } as React.CSSProperties} aria-label="Aux assistant" aria-hidden={!railOpen}>
+    <aside ref={root} className={`rail ${railOpen ? "open" : ""}`} style={{ "--rail-w": `${railWidth}px` } as React.CSSProperties} aria-label="Aux assistant" aria-hidden={!railOpen} inert={!railOpen}>
       <div className="rail-inner">
         <div className="rail-head">
           <span className="rail-title">{recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}</span>

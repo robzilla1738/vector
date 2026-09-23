@@ -423,21 +423,23 @@ function configurePermissions() {
   ses.on("will-download",(_event,item,contents)=>{
     if(!win){item.cancel();return;}
     const filename=item.getFilename(),sourceUrl=retrySource(item.getURLChain()[0] ?? item.getURL());
-    const path=dialog.showSaveDialogSync(win,{title:"Save private download",message:"This file will be saved to disk and stays after private browsing ends.",defaultPath:join(app.getPath("downloads"),filename)});
-    if(!path){item.cancel();return;}item.setSavePath(path);
-    const record:Download={id:randomUUID(),sourceUrl,pageId:[...pages.values()].find(page=>page.view.webContents.id===contents?.id)?.target.pageId,filename,path,size:0,totalBytes:item.getTotalBytes()||undefined,state:"started",startedAt:Date.now(),paused:false,canResume:false,canCancel:true};downloads.unshift(record);shellView?.webContents.send("download",record);
+    // Electron shows this save panel itself, asynchronously; a sync dialog here
+    // would freeze every private window and its network callbacks meanwhile.
+    item.setSaveDialogOptions({title:"Save private download",message:"This file will be saved to disk and stays after private browsing ends.",defaultPath:join(app.getPath("downloads"),filename)});
+    const record:Download={id:randomUUID(),sourceUrl,pageId:[...pages.values()].find(page=>page.view.webContents.id===contents?.id)?.target.pageId,filename,path:"",size:0,totalBytes:item.getTotalBytes()||undefined,state:"started",startedAt:Date.now(),paused:false,canResume:false,canCancel:true};downloads.unshift(record);shellView?.webContents.send("download",record);
     const warning=downloadWarning(filename,sourceUrl);
     // Same local protection as regular downloads; the choice lives only in
     // this window's memory — nothing is persisted or reported.
     if(warning){record.warning=warning;void confirmDownload(win,item,filename,sourceUrl,warning);}
     const update = () => {
+      record.path=item.getSavePath()||record.path;
       record.size=item.getReceivedBytes();record.totalBytes=item.getTotalBytes()||undefined;
       record.state=item.getState();record.paused=item.isPaused();record.canResume=item.canResume();
       shellView?.webContents.send("download",{...record});
     };
     liveDownloads.set(record.id, { item, update });
     item.on("updated",update);
-    item.once("done",(_done,state)=>{liveDownloads.delete(record.id);record.size=item.getReceivedBytes();record.state=state;record.endedAt=Date.now();record.paused=false;record.canResume=false;record.canCancel=false;shellView?.webContents.send("download",{...record});});
+    item.once("done",(_done,state)=>{liveDownloads.delete(record.id);record.path=item.getSavePath()||record.path;record.size=item.getReceivedBytes();record.state=state;record.endedAt=Date.now();record.paused=false;record.canResume=false;record.canCancel=false;shellView?.webContents.send("download",{...record});});
   });
 }
 

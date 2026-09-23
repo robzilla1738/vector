@@ -91,6 +91,9 @@ export class PlaywrightDriverPage implements DriverPage {
     // double) must not break attach — readiness then falls back to bounded waits
     try {
       void this.page.addInitScript(READINESS_INIT_SCRIPT).catch(() => {});
+      // init scripts only reach future documents; a tab attached mid-document
+      // (human tab, restored tab, attached Chrome) needs the tracker now too
+      void this.page.evaluate(READINESS_INIT_SCRIPT).catch(() => {});
     } catch {
       /* readiness probe unavailable on this page */
     }
@@ -639,6 +642,12 @@ export class PlaywrightDriverPage implements DriverPage {
   async observeFingerprint(): Promise<string> {
     const main = await bounded(this.page.evaluate(observationFingerprint), FRAME_PROBE_MS);
     if (typeof main !== "string") throw new AuxError("backend_unavailable", "fingerprint probe timed out");
+    if (main.startsWith("nomo")) {
+      // no mutation tracker in this document: a text-only change would leave
+      // the fingerprint unchanged, so this observation must not be cached
+      void this.page.evaluate(READINESS_INIT_SCRIPT).catch(() => {});
+      throw new AuxError("backend_unavailable", "mutation tracker not installed in this document");
+    }
     const frames = this.page
       .frames()
       .filter((f) => f !== this.page.mainFrame())
@@ -662,7 +671,9 @@ export class PlaywrightDriverPage implements DriverPage {
     let elementsTotal = 0;
     let viewport = { width: 0, height: 0, scale: 1 };
     let scroll = { x: 0, y: 0, maxY: 0 };
-    let refStart = 1;
+    // a subtree pass adds to the page's refs; a full pass replaces them
+    const partial = req?.scope === "subtree";
+    let refStart = partial ? this.refs.nextRef(this.identity.pageId) : 1;
     let title: string | undefined;
 
     let mainOrigin: string | null = null;
@@ -727,6 +738,7 @@ export class PlaywrightDriverPage implements DriverPage {
             subtreeCss: subtree && !subtree.onlyFrame && key === subtree.frameKey ? subtree.css : undefined,
             frameKey: key,
             refStart,
+            mergeRefs: partial,
           }),
           FRAME_OBSERVE_MS,
         );
@@ -756,7 +768,7 @@ export class PlaywrightDriverPage implements DriverPage {
       }
     }
 
-    this.refs.register(this.identity.pageId, allElements);
+    this.refs.register(this.identity.pageId, allElements, { replace: !partial });
     const textChars = text.length;
     return {
       url: this.page.url(),
@@ -791,7 +803,7 @@ export class PlaywrightDriverPage implements DriverPage {
       maxTextChars: 0,
       subtreeCss: entry.selector.css,
       frameKey: entry.frame,
-      refStart: 10_000 + Math.floor(Math.random() * 1000),
+      refStart: this.refs.nextRef(this.identity.pageId),
       mergeRefs: true,
     });
     const els = part.elements as ElementRef[];
