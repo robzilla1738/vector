@@ -169,8 +169,8 @@ export class PlaywrightDriverPage implements DriverPage {
       void this.onDialog(dialog);
     });
     this.on("console", (msg: ConsoleMessage) => {
-      const info = { level: msg.type(), message: msg.text() };
-      this.consoleLines.push({ ...info, atMs: Date.now() });
+      const info = { level: msg.type(), message: msg.text(), atMs: Date.now() };
+      this.consoleLines.push(info);
       if (this.consoleLines.length > 200) this.consoleLines.splice(0, this.consoleLines.length - 200);
       this.events.onConsole?.(info);
     });
@@ -916,7 +916,6 @@ export class PlaywrightDriverPage implements DriverPage {
       tables,
       links,
       dialogs: this.lastDialog ? [this.lastDialog] : [],
-      console: this.consoleLines.slice(),
       truncated,
       stats: {
         elementsTotal,

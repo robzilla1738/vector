@@ -15,7 +15,7 @@ import type { Tracer } from "../services/tracing.js";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 
-import { compactObservation } from "../services/observation-render.js";
+import { wireObservation } from "../services/observation-wire.js";
 import { chromeBookmarkFiles, readChromeBookmarksFile } from "../services/chrome-bookmarks.js";
 import { BrowserImporter } from "../services/browser-import.js";
 import type { DriverSet } from "../services/pages.js";
@@ -522,8 +522,7 @@ export function makeInvoker(s: Services) {
       case "pages.stop": return s.pages.stop(params.pageId);
       case "pages.observe": {
         const { format, ...req } = params as { format?: "full" | "compact" } & Record<string, unknown>;
-        const obs = await s.pages.observe(params.pageId, req as never);
-        return format === "compact" ? { observation: compactObservation(obs) } : obs;
+        return wireObservation(await s.pages.observe(params.pageId, req as never), format);
       }
       case "pages.execute": {
         // `call` nodes dispatch through PageService's operation-registry
@@ -540,7 +539,8 @@ export function makeInvoker(s: Services) {
           returnObservation: p.returnObservation ? (req as never) : undefined,
         });
         if (!p.returnObservation) return result;
-        return { ...result, observation: observation ? (format === "compact" ? compactObservation(observation) : observation) : undefined };
+        const wire = observation ? wireObservation(observation, format as "full" | "compact" | undefined) : undefined;
+        return { ...result, observation: wire && "observation" in wire ? wire.observation : wire };
       }
       case "pages.extract": {
         const p = params as { pageId: string; fields?: Array<string | { name: string; selector?: string; attribute?: string; all?: boolean }> };

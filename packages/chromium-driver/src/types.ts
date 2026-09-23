@@ -29,7 +29,7 @@ export interface DriverPageEvents {
   onLoading?: (loading: boolean) => void;
   onDestroyed?: (reason: "closed" | "crashed" | "detached") => void;
   onDialog?: (info: { type: string; message: string }) => void;
-  onConsole?: (info: { level: string; message: string }) => void;
+  onConsole?: (info: { level: string; message: string; atMs?: number }) => void;
   onDownload?: (info: { suggestedFilename: string; path?: string }) => void;
   onPopup?: (targetId: string | null, url: string) => void;
   /** passive response capture — fired for every completed HTTP response. */

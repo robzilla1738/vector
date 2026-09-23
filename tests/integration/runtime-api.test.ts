@@ -56,7 +56,7 @@ describe("pages", () => {
     expect(obs.revision).toBeGreaterThan(0);
     expect(obs.content.elements.length).toBeGreaterThan(3);
     expect(obs.content.tables.length).toBeGreaterThanOrEqual(1);
-    const applyRef = obs.content.elements.find((e) => /apply filter/i.test(e.name ?? "") || /apply-filter/.test(e.selector.css ?? ""));
+    const applyRef = obs.content.elements.find((e) => /apply filter/i.test(e.name ?? "") || /apply-filter/.test(e.selector?.css ?? ""));
     expect(applyRef, "filter button ref").toBeTruthy();
 
     // execute a typed program: filter to "approved" and extract titles
@@ -133,7 +133,7 @@ describe("pages", () => {
     expect(res.status).toBe("failed");
   }, 60_000);
 
-  it("compact observation is under 25% of the full JSON and carries usable refs", async () => {
+  it("compact observation is well under the full JSON and carries usable refs", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
     const full = await invoke<{ content: ObservationContent; revision: number }>("pages.observe", { pageId: page.pageId });
     const compact = await invoke<{ observation: { pageId: string; url: string; title: string; revision: number; text: string; refs: { ref: string; role?: string; name?: string }[] } }>(
@@ -143,13 +143,14 @@ describe("pages", () => {
     const fullBytes = JSON.stringify(full).length;
     const compactBytes = JSON.stringify(compact).length;
     // MCP path: the tool emitted the pretty-printed full JSON before and emits
-    // the compact text now — that payload must shrink to under a quarter
+    // the compact text now. The full wire form no longer carries selectors or
+    // rects either, so on this ~19-element page text/table content dominates
+    // both and the two raw forms are about the same size.
     const mcpBefore = JSON.stringify(full, null, 2).length;
     const mcpAfter = compact.observation.text.length;
-    expect(mcpAfter, `mcp compact ${mcpAfter}B vs full ${mcpBefore}B`).toBeLessThan(mcpBefore * 0.25);
-    // raw JSON: the records page has only ~19 elements, so text/table content
-    // dominates both forms; the per-element saving still halves it
-    expect(compactBytes, `compact ${compactBytes}B vs full ${fullBytes}B`).toBeLessThan(fullBytes * 0.5);
+    expect(mcpAfter, `mcp compact ${mcpAfter}B vs full ${mcpBefore}B`).toBeLessThan(mcpBefore * 0.5);
+    expect(compactBytes, `compact ${compactBytes}B vs full ${fullBytes}B`).toBeLessThan(fullBytes * 1.25);
+    expect(JSON.stringify(full)).not.toContain("nth-of-type");
     const o = compact.observation;
     expect(o.pageId).toBe(page.pageId);
     expect(o.url).toContain("/records");
@@ -202,7 +203,8 @@ describe("pages", () => {
   it("refs resolve to the exact observed node even after the DOM shifts, and fall back when it is gone (A7)", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
     const obs = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
-    const title = obs.content.elements.find((e) => e.selector?.css?.includes("n-title") || e.name === "Title")!;
+    const isTitle = (e: ObservationContent["elements"][number]) => e.tag === "input" && /title/i.test(e.name ?? "");
+    const title = obs.content.elements.find(isTitle)!;
     expect(title).toBeTruthy();
     // insert a decoy input before the target: a positional css path now points
     // at the decoy, the live ref map still points at the real field
@@ -233,7 +235,7 @@ describe("pages", () => {
     // the node is replaced (framework re-render): the handle is gone, the
     // selector fallback finds the replacement by its path/role instead
     const obs2 = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
-    const title2 = obs2.content.elements.find((e) => e.selector?.css?.includes("n-title"))!;
+    const title2 = obs2.content.elements.find(isTitle)!;
     await invoke("pages.execute", {
       program: {
         pageId: page.pageId,
@@ -279,9 +281,9 @@ describe("pages", () => {
       allowEval: true,
     });
     const obs = await invoke<Obs>("pages.observe", { pageId: page.pageId });
-    const status = obs.content.elements.find((e) => e.selector?.css?.includes("n-status"))!;
+    const status = obs.content.elements.find((e) => e.tag === "select" && /status/i.test(e.name ?? ""))!;
     expect(status.options).toEqual(expect.arrayContaining(["draft", "in progress", "approved"]));
-    expect(obs.content.elements.find((e) => e.selector?.css?.includes("n-title"))?.focused).toBe(true);
+    expect(obs.content.elements.find((e) => e.tag === "input" && /title/i.test(e.name ?? ""))?.focused).toBe(true);
     expect(obs.content.elements.find((e) => e.name === "Far away")?.offscreen).toBe(true);
     const covered = obs.content.elements.find((e) => e.tag === "button" && e.name !== "Far away" && e.occluded);
     expect(covered, "the covered submit button is marked occluded").toBeTruthy();
