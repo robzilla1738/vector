@@ -90,6 +90,11 @@ if (has("validate")) {
   ok("scoring: list set-equality", scoreAnswer("a,b", { type: "list", value: ["b", "a"] }) === 1 && scoreAnswer("a,b,c", { type: "list", value: ["a", "b"] }) === 0);
   ok("scoring: object key-wise", scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1);
   ok("extractAnswer unwraps", extractAnswer({ answer: "x" }) === "x" && extractAnswer("y") === "y");
+  ok("aux-mcp mints a scoped connection", adaptersCfg["aux-mcp"]?.scoped === true && adaptersCfg["aux-mcp"]?.needsRuntime === true);
+  if (existsSync(runtimeEntry)) {
+    const rt = await import(pathToFileURL(runtimeEntry).href);
+    ok("runtime exports scoped-connection helpers", ["AgentConnectionService", "Repo", "openDb", "loadConfig"].every((k) => typeof rt[k] === "function"));
+  }
   const fx = await import(pathToFileURL(join(repoRoot, "scripts/fixtures.mjs")).href);
   const spawned = await fx.startFixturesIfNeeded();
   try {
@@ -306,13 +311,55 @@ async function tokensForRun(rpc, runId) {
   }
 }
 
+/**
+ * aux-mcp only accepts a generated scoped token. Mint a workspace-scoped
+ * connection on a second connection to the runtime's SQLite file (WAL), the
+ * same record Aux Settings would create; each task then gets its own saved
+ * task in that workspace with the start page attached as a resource.
+ */
+async function mintScopedConnection(runtime) {
+  const { AgentConnectionService, Repo, openDb, loadConfig } = await import(pathToFileURL(runtimeEntry).href);
+  const workspace = await runtime.rt.invoke("workspaces.create", { name: "Task benchmark" });
+  const db = openDb(loadConfig({ ...process.env, AUX_DATA_DIR: runtime.dataDir }).dbPath);
+  try {
+    const { token } = new AgentConnectionService(new Repo(db)).create({
+      name: "task-bench",
+      client: "codex",
+      scope: { kind: "workspace", workspaceId: workspace.workspaceId },
+    });
+    return { workspaceId: workspace.workspaceId, token };
+  } finally {
+    db.close();
+  }
+}
+
+/** Opens the start page and saves a task in the scoped workspace so the connection may use it. */
+async function scopedTaskPage(runtime, workspaceId, task) {
+  const rpc = (m, p = {}) => runtime.rt.invoke(m, p);
+  const page = await rpc("pages.open", { url: task.url, background: true });
+  const pageId = page.pageId ?? page.page?.pageId ?? page.id;
+  await rpc("tasks.create", {
+    workspaceId,
+    title: `Benchmark ${task.id}`.slice(0, 200),
+    objective: task.goal.slice(0, 10000),
+    criteria: [{ criterionId: "answer", description: "Report the answer", verification: "manual" }],
+    resources: [{ resourceId: "start", kind: "page", locator: pageId, label: "Start page" }],
+  });
+  return { pageId, close: () => rpc("pages.close", { pageId }).catch(() => {}) };
+}
+
 /** Generic MCP tool loop: one model, one system prompt, whatever tools the server exposes. */
 async function mcpAdapter(name, cfg) {
   let runtime = null;
+  let scope = null;
   const env = { ...process.env, ...cfg.env };
   if (cfg.needsRuntime) {
     runtime = await startRuntimeFor();
     env.AUX_DATA_DIR = runtime.dataDir;
+    if (cfg.scoped) {
+      scope = await mintScopedConnection(runtime);
+      Object.assign(env, { AUX_MCP_TOKEN: scope.token, AUX_MCP_SCOPE_KIND: "workspace", AUX_MCP_WORKSPACE_ID: scope.workspaceId });
+    }
   }
   const [command, ...args] = cfg.command;
   const transport = new StdioClientTransport({ command, args, env, cwd: repoRoot, stderr: "pipe" });
@@ -343,31 +390,40 @@ async function mcpAdapter(name, cfg) {
   ].join("\n");
   return {
     async run(task) {
-      const result = await generateText({
-        model: gateway(modelId),
-        system,
-        prompt: `Start URL: ${task.url}\nTask: ${task.goal}`,
-        tools,
-        stopWhen: stepCountIs(maxToolSteps),
-        maxRetries: 1,
-        providerOptions: { gateway: { sort: "ttft", caching: "auto", ...(only ? { only } : {}) } },
-        abortSignal: AbortSignal.timeout(timeoutMs),
-      });
-      const text = result.text ?? "";
-      const m = /FINAL ANSWER:\s*(.+)/is.exec(text);
-      const usage = result.totalUsage ?? result.usage ?? {};
-      return {
-        answer: m ? m[1].trim() : text.trim() || null,
-        modelCalls: result.steps?.length ?? null,
-        toolCalls: result.steps?.reduce((n, s) => n + (s.toolCalls?.length ?? 0), 0) ?? null,
-        tokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) || null,
-      };
+      const opened = scope ? await scopedTaskPage(runtime, scope.workspaceId, task) : null;
+      try {
+        return await runTools(task, opened ? `\nThe start page is already open as pageId ${opened.pageId}; use it with the aux_page_* tools.` : "");
+      } finally {
+        await opened?.close();
+      }
     },
     async close() {
       await client.close().catch(() => {});
       await runtime?.rt.close();
     },
   };
+
+  async function runTools(task, startNote) {
+    const result = await generateText({
+      model: gateway(modelId),
+      system,
+      prompt: `Start URL: ${task.url}${startNote}\nTask: ${task.goal}`,
+      tools,
+      stopWhen: stepCountIs(maxToolSteps),
+      maxRetries: 1,
+      providerOptions: { gateway: { sort: "ttft", caching: "auto", ...(only ? { only } : {}) } },
+      abortSignal: AbortSignal.timeout(timeoutMs),
+    });
+    const text = result.text ?? "";
+    const m = /FINAL ANSWER:\s*(.+)/is.exec(text);
+    const usage = result.totalUsage ?? result.usage ?? {};
+    return {
+      answer: m ? m[1].trim() : text.trim() || null,
+      modelCalls: result.steps?.length ?? null,
+      toolCalls: result.steps?.reduce((n, s) => n + (s.toolCalls?.length ?? 0), 0) ?? null,
+      tokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) || null,
+    };
+  }
 }
 
 // ---- scoring ----------------------------------------------------------------
