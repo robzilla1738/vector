@@ -22,7 +22,6 @@
   --fs-xl: calc(var(--ui-font-size) + 4px);
   --fs-lg: calc(var(--ui-font-size) + 2px);
   --fs-md: var(--ui-font-size);
-  --fs-caption: calc(var(--ui-font-size) - 1px);
   --fs-sm: calc(var(--ui-font-size) - 1px);
   --fs-xs: calc(var(--ui-font-size) - 2px);
   --fs-2xs: calc(var(--ui-font-size) - 3px);
@@ -33,15 +32,25 @@
   --lh-normal: 1.5;
   --lh-relaxed: 1.625;
 
+  /* Geist Variable: 540–560 read identically, so they share one strong step. */
+  --fw-regular: 400;
+  --fw-book: 450;
+  --fw-medium: 500;
+  --fw-strong: 550;
+  --fw-semibold: 600;
+
   --tracking-tight: -0.02em;
   --tracking-snug: 0em;
   --tracking-wide: 0.025em;
 
-  /* ---- spacing (4px grid) ---- */
+  /* ---- spacing (4px grid; -1-5/-2-5/-3-5 are the half steps dense rows use) ---- */
   --space-0: 2px;
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
+  --space-2-5: 10px;
   --space-3: 12px;
+  --space-3-5: 14px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
@@ -51,12 +60,16 @@
 
   /* ---- radii ---- */
   --r-xs: 2px;
-  --r-sm: calc(6px * var(--squircle-factor));
+  --r-sm: calc(4px * var(--squircle-factor));
   --r-md: calc(6px * var(--squircle-factor));
   --r-lg: calc(8px * var(--squircle-factor));
   --r-xl: calc(12px * var(--squircle-factor));
   --r-2xl: calc(16px * var(--squircle-factor));
   --r-pill: 999px;
+  /* round-cornered (corner-shape: round) shapes, so no squircle factor */
+  --r-control: 10px;
+  --r-card: 14px;
+  --r-composer: 20px;
 
   /* ---- shell metrics ---- */
   --toolbar-h: 40px;
@@ -85,11 +98,17 @@
 
   /* ---- motion ---- */
   --ease-out: cubic-bezier(0, 0, .2, 1);
-  --ease-spring: cubic-bezier(.4, 0, .2, 1);
   --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  /* long, soft landing for elements that travel (toolbar reveal, quick ask) */
+  --ease-emphasized: cubic-bezier(.22, 1, .36, 1);
+  --t-quick: 100ms;
   --t-fast: 150ms;
-  --t-med: 150ms;
+  --t-reveal: 180ms;
   --t-slow: 240ms;
+  --t-enter: 480ms;
+  --t-slide: 560ms;
+  --t-spin: 700ms;
+  --t-sweep: 1.2s;
 
   /* ---- z ---- */
   --z-stage: 1;
@@ -105,7 +124,8 @@
   --bg-window: oklch(20.5% 0 0);
   --bg-0: oklch(20.5% 0 0);
   --bg-1: oklch(26.9% 0 0);
-  --bg-2: oklch(26.9% 0 0);
+  /* Dark popovers sit on the panel step (reference 26.9%); light lifts them to white. */
+  --bg-2: var(--bg-1);
   --bg-3: oklch(37.1% 0 0);
   --bg-hover: oklch(98.5% 0 0 / .08);
   --bg-active: oklch(98.5% 0 0 / .1);
@@ -131,30 +151,30 @@
   --ring: oklch(98.5% 0 0 / .08);
   /* keyboard focus: ≥3:1 against every surface, not the decorative glow */
   --focus-ring: color-mix(in oklch, var(--link) 80%, transparent);
-  --selection: rgba(64, 153, 255, 0.28);
+  --selection: color-mix(in oklch, var(--link) 28%, transparent);
   --focus-line: oklch(98.5% 0 0 / .55);
   --link: oklch(74.6% .16 232.661);
   --accent-blue: var(--link);
-  --accent-blue-soft: rgba(64, 153, 255, 0.16);
-  --accent-blue-line: rgba(64, 153, 255, 0.32);
+  --accent-blue-soft: color-mix(in oklch, var(--link) 16%, transparent);
+  --accent-blue-line: color-mix(in oklch, var(--link) 32%, transparent);
   --accent-surface: color-mix(in oklch, var(--link) 10%, transparent);
   --icon-blue: var(--link);
 
   --ok: oklch(76.5% .177 163.223);
-  --ok-soft: rgba(70, 191, 114, 0.12);
+  --ok-soft: color-mix(in oklch, var(--ok) 12%, transparent);
   --warn: #ff8a30;
-  --warn-soft: rgba(255, 138, 48, 0.14);
-  --warn-line: rgba(255, 138, 48, 0.32);
+  --warn-soft: color-mix(in oklch, var(--warn) 14%, transparent);
+  --warn-line: color-mix(in oklch, var(--warn) 32%, transparent);
   --err: oklch(70.4% .191 22.216);
-  --err-soft: rgba(255, 92, 92, 0.12);
-  --err-line: rgba(255, 92, 92, 0.32);
+  --err-soft: color-mix(in oklch, var(--err) 12%, transparent);
+  --err-line: color-mix(in oklch, var(--err) 32%, transparent);
   --wait: #fbbf24;
   --wait-soft: color-mix(in oklch, var(--wait) 10%, transparent);
   --wait-line: color-mix(in oklch, var(--wait) 25%, transparent);
   --wait-ink: #000000;
-  --diff-add: rgba(70, 191, 114, 0.28);
+  --diff-add: color-mix(in oklch, var(--ok) 28%, transparent);
   --diff-add-fg: #d2eadc;
-  --diff-remove: rgba(255, 92, 92, 0.28);
+  --diff-remove: color-mix(in oklch, var(--err) 28%, transparent);
   --diff-remove-fg: #f0d4d4;
   --find-match: #542500;
   --find-active: #ff8a30;
@@ -172,6 +192,8 @@
   --img-outline: rgba(255, 255, 255, 0.1);
 
   --space-color: #8a8a86;
+  --space-l: 72%;
+  --space-c: .07;
 
   /* frozen chrome ink so sidebar remaps don’t leak into menus */
   --chrome-ink-0: var(--ink-0);
@@ -248,30 +270,30 @@
   --accent-soft: oklch(14.5% 0 0 / .08);
   --accent-line: oklch(14.5% 0 0 / .15);
   --ring: oklch(14.5% 0 0 / .08);
-  --selection: rgba(11, 127, 255, 0.22);
+  --selection: color-mix(in oklch, var(--link) 22%, transparent);
   --focus-line: oklch(14.5% 0 0 / .55);
   --link: oklch(58.8% .158 241.966);
   --accent-blue: var(--link);
-  --accent-blue-soft: rgba(11, 127, 255, 0.12);
-  --accent-blue-line: rgba(11, 127, 255, 0.28);
+  --accent-blue-soft: color-mix(in oklch, var(--link) 12%, transparent);
+  --accent-blue-line: color-mix(in oklch, var(--link) 28%, transparent);
   --accent-surface: color-mix(in oklch, var(--link) 10%, transparent);
   --icon-blue: var(--link);
 
   --ok: oklch(69.6% .17 162.48);
-  --ok-soft: rgba(30, 138, 62, 0.1);
+  --ok-soft: color-mix(in oklch, var(--ok) 10%, transparent);
   --warn: #e07b00;
-  --warn-soft: rgba(224, 123, 0, 0.1);
-  --warn-line: rgba(224, 123, 0, 0.28);
+  --warn-soft: color-mix(in oklch, var(--warn) 10%, transparent);
+  --warn-line: color-mix(in oklch, var(--warn) 28%, transparent);
   --err: oklch(57.7% .245 27.325);
-  --err-soft: rgba(224, 49, 49, 0.1);
-  --err-line: rgba(224, 49, 49, 0.28);
+  --err-soft: color-mix(in oklch, var(--err) 10%, transparent);
+  --err-line: color-mix(in oklch, var(--err) 28%, transparent);
   --wait: #b45309;
   --wait-soft: color-mix(in oklch, var(--wait) 10%, transparent);
   --wait-line: color-mix(in oklch, var(--wait) 25%, transparent);
   --wait-ink: #ffffff;
-  --diff-add: rgba(30, 138, 62, 0.16);
+  --diff-add: color-mix(in oklch, var(--ok) 16%, transparent);
   --diff-add-fg: #1a4a2a;
-  --diff-remove: rgba(224, 49, 49, 0.16);
+  --diff-remove: color-mix(in oklch, var(--err) 16%, transparent);
   --diff-remove-fg: #5a2020;
   --find-match: #fff4eb;
   --find-active: #ffb26b;
@@ -289,6 +311,8 @@
   --img-outline: rgba(0, 0, 0, 0.08);
 
   --space-color: #5c5c58;
+  --space-l: 55%;
+  --space-c: .09;
 
   --sb-bg: var(--bg-window);
   --sb-ink-0: var(--ink-0);
@@ -312,35 +336,41 @@
   --shadow-tint: #0000000d;
 }
 
-/* Space identity — grayscale steps, not a rainbow. */
-[data-space="blue"]   { --space-color: #8a8a86; }
-[data-space="violet"] { --space-color: #7a7a76; }
-[data-space="pink"]   { --space-color: #6e6e6a; }
-[data-space="orange"] { --space-color: #949490; }
-[data-space="green"]  { --space-color: #5c5c58; }
-[data-space="teal"]   { --space-color: #a8a8a4; }
-[data-space="slate"]  { --space-color: #848480; }
-
-[data-theme="light"][data-space="blue"]   { --space-color: #5c5c58; }
-[data-theme="light"][data-space="violet"] { --space-color: #4a4a47; }
-[data-theme="light"][data-space="pink"]   { --space-color: #6e6e6a; }
-[data-theme="light"][data-space="orange"] { --space-color: #3a3a38; }
-[data-theme="light"][data-space="green"]  { --space-color: #737370; }
-[data-theme="light"][data-space="teal"]   { --space-color: #2a2a28; }
-[data-theme="light"][data-space="slate"]  { --space-color: #848480; }
+/* Space identity — muted hues at one lightness per appearance, so swatches read
+ * as distinct without competing with the blue accent. Declared on every
+ * [data-space] element so nested swatches resolve the current theme. */
+[data-space="blue"]   { --space-color: oklch(var(--space-l) var(--space-c) 250); }
+[data-space="violet"] { --space-color: oklch(var(--space-l) var(--space-c) 295); }
+[data-space="pink"]   { --space-color: oklch(var(--space-l) var(--space-c) 350); }
+[data-space="orange"] { --space-color: oklch(var(--space-l) var(--space-c) 55); }
+[data-space="green"]  { --space-color: oklch(var(--space-l) var(--space-c) 150); }
+[data-space="teal"]   { --space-color: oklch(var(--space-l) var(--space-c) 195); }
+[data-space="slate"]  { --space-color: oklch(var(--space-l) .015 250); }
 } /* @layer tokens */
 
 @layer overrides {
 @media (prefers-contrast: more) {
-  :root { --ink-2: #c9c9c9; --line: #777777; --sb-ink-2: #cccccc; --focus-ring: var(--link); }
-  [data-theme="light"] { --ink-2: #424242; --line: #777777; --sb-ink-2: #424242; }
+  :root {
+    --hairline: 1px;
+    --ink-2: #c9c9c9;
+    --line: #777777;
+    --line-strong: #999999;
+    --sb-line: var(--line);
+    --sb-ink-2: #cccccc;
+    --focus-ring: var(--link);
+    --focus-line: var(--ink-0);
+  }
+  [data-theme="light"] { --ink-2: #424242; --line: #777777; --line-strong: #555555; --sb-ink-2: #424242; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --t-quick: 0ms;
     --t-fast: 0ms;
-    --t-med: 0ms;
+    --t-reveal: 0ms;
     --t-slow: 0ms;
+    --t-enter: 0ms;
+    --t-slide: 0ms;
   }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
