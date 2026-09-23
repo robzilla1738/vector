@@ -1,4 +1,5 @@
 import type { WebContents } from "electron";
+import { addDocumentBinding } from "./page-debugger.js";
 
 /**
  * Login-submit detection for vault save offers. An isolated-world script
@@ -61,19 +62,10 @@ export function credentialDetectScript(bindingName: string): string {
 }
 
 export function installCredentialWatch(wc: WebContents, onOffer: (offer: CredentialOffer) => void) {
-  if (wc.isDestroyed()) return;
-  try { if (!wc.debugger.isAttached()) wc.debugger.attach("1.3"); } catch { return; }
-  wc.debugger.on("message", (_e, method, params?: { name?: string; payload?: string }) => {
-    if (method !== "Runtime.bindingCalled" || params?.name !== CREDENTIAL_BINDING) return;
+  void addDocumentBinding(wc, CREDENTIAL_BINDING, payload => {
     try {
-      const parsed = JSON.parse(params.payload ?? "{}") as CredentialOffer;
+      const parsed = JSON.parse(payload || "{}") as CredentialOffer;
       if (parsed.origin && /^https?:\/\//.test(parsed.origin)) onOffer({ username: parsed.username ?? "", origin: parsed.origin, url: parsed.url ?? "" });
     } catch { /* not our payload */ }
-  });
-  void wc.debugger.sendCommand("Runtime.enable")
-    .then(() => wc.debugger.sendCommand("Runtime.addBinding", { name: CREDENTIAL_BINDING }))
-    .then(() => wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
-      source: credentialDetectScript(CREDENTIAL_BINDING), worldName: CREDENTIAL_WORLD,
-    }))
-    .catch(() => {});
+  }, { source: credentialDetectScript(CREDENTIAL_BINDING), worldName: CREDENTIAL_WORLD });
 }

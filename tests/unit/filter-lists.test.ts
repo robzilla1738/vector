@@ -65,6 +65,14 @@ describe("FilterLists", () => {
     expect(lists.loadHosts()).toEqual(new Set(["a1.example", "a2.example"]));
   });
 
+  it("parses lists off the main thread with the same merge", async () => {
+    const { dataDir, lists } = setup();
+    expect(await lists.loadHostsOffThread()).toEqual([]);
+    const [a] = lists.addSource("A", "https://a.example/hosts");
+    writeFileSync(join(dataDir, "filters", `${a!.id}.txt`), "# comment\n0.0.0.0 a1.example\n127.0.0.1 localhost\na2.example # trailing\n");
+    expect(new Set(await lists.loadHostsOffThread())).toEqual(lists.loadHosts());
+  });
+
   it("downloads atomically, honours etags and keeps the old list on failures", async () => {
     const { dataDir, lists } = setup();
     lists.addSource("A", "https://a.example/hosts");

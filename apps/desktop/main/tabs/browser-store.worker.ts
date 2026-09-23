@@ -9,7 +9,9 @@ import type { TabPatch, TabPatchOp, TabCatalogSnapshot, TabRecord, WindowTabs } 
  * the main thread. Requests are versioned patches applied in order inside a
  * single transaction; the acknowledgment is sent only after commit — a
  * durable acknowledgment is never issued for state SQLite did not keep.
- * synchronous=FULL: session state is not a rebuildable cache.
+ * synchronous=NORMAL under WAL: a commit survives an app crash; only an OS
+ * crash can drop the newest writes, and this catalog is rebuildable browser
+ * session state (the agent's action journal lives elsewhere).
  */
 
 const dir = String(workerData?.dir ?? "");
@@ -18,7 +20,7 @@ const db = new DatabaseSync(join(dir, "browser-state.sqlite"));
 
 db.exec(`
   PRAGMA journal_mode = WAL;
-  PRAGMA synchronous = FULL;
+  PRAGMA synchronous = NORMAL;
   PRAGMA foreign_keys = ON;
   CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
@@ -132,7 +134,10 @@ function loadSnapshot(): TabCatalogSnapshot {
   return { version, tabs, windows };
 }
 
-parentPort?.on("message", (request: { type: string; seq: number; patch?: TabPatch }) => {
+const clearTabs = db.prepare(`DELETE FROM tabs`);
+const clearWindows = db.prepare(`DELETE FROM windows`);
+
+parentPort?.on("message", (request: { type: string; seq: number; patch?: TabPatch; snapshot?: TabCatalogSnapshot }) => {
   try {
     switch (request.type) {
       case "apply": {
@@ -150,6 +155,24 @@ parentPort?.on("message", (request: { type: string; seq: number; patch?: TabPatc
           throw error;
         }
         post({ type: "applied", seq: request.seq, version: patch.version });
+        break;
+      }
+      case "replace": {
+        const snapshot = request.snapshot!;
+        db.exec("BEGIN IMMEDIATE");
+        db.exec("PRAGMA defer_foreign_keys = ON");
+        try {
+          clearWindows.run();
+          clearTabs.run();
+          for (const tab of snapshot.tabs) applyOp({ op: "upsert", tab }, snapshot.version);
+          for (const window of snapshot.windows) applyOp({ op: "window", window }, snapshot.version);
+          setVersion.run(String(snapshot.version));
+          db.exec("COMMIT");
+        } catch (error) {
+          db.exec("ROLLBACK");
+          throw error;
+        }
+        post({ type: "applied", seq: request.seq, version: snapshot.version });
         break;
       }
       case "load":

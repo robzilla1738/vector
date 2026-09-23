@@ -82,3 +82,12 @@ it("upgrades main-frame http requests before blocking checks", () => {
   expect(fixture.request("http://doubleclick.net/ad.js", "script")).toEqual({ cancel: true });
   expect(fixture.blocked).toHaveLength(1);
 });
+
+it("reads request hosts without URL parsing, including credentials, ports and IPv6", async () => {
+  const { urlHost } = await import("../../apps/desktop/main/request-policy.js");
+  expect(urlHost("https://a.doubleclick.net/serve?x=1")).toBe("a.doubleclick.net");
+  expect(urlHost("https://user:pw@ads.example:8443/x")).toBe("ads.example");
+  expect(urlHost("http://[::1]:3000/")).toBe("[::1]");
+  expect(urlHost("https://example.com#frag")).toBe("example.com");
+  expect(urlHost("https://example.com")).toBe("example.com");
+});

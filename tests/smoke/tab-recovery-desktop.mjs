@@ -45,7 +45,7 @@ try {
  assert.ok(await page.locator('.tab-row.active').filter({hasText:'Research'}).count());
  await page.screenshot({path:join(root,'release/test-artifacts/aux-tab-recovery.png')});
  await page.locator('.tab-row').filter({hasText:'First'}).getByRole('button',{name:'Close First',exact:true}).click();await page.waitForFunction(()=>!Array.from(document.querySelectorAll('.tab-title')).some(el=>el.textContent==='First'));
- const before=await page.evaluate(()=>window.aux.invoke('pages.list',{}));const layoutBeforeRestart=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));assert.equal(layoutBeforeRestart.order.includes(pages[0].pageId),false);
+ const before=await page.evaluate(()=>window.aux.invoke('pages.list',{}));await page.waitForFunction(id=>!JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)).order.includes(id),pages[0].pageId,{timeout:3000});const layoutBeforeRestart=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));
  await app.close(); app=await launch();
  page=undefined;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.app-body').waitFor();

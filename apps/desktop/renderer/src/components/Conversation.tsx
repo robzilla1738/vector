@@ -23,17 +23,17 @@ import { I } from "./icons";
 
 type DraftState = ReturnType<typeof useStore.getState>;
 /** The text a conversation's composer edits: the pending question's answer, the chat draft, or the new-chat draft. */
-const draftText = (s: DraftState, id: string | null | undefined, answerTo: { runId: string; question?: string } | null) => {
-  if (answerTo) { const draft = s.runAnswerDrafts[answerTo.runId]; return draft?.question === answerTo.question ? draft?.text ?? "" : ""; }
+const draftText = (s: DraftState, id: string | null | undefined, answerRunId?: string, answerQuestion?: string) => {
+  if (answerRunId) { const draft = s.runAnswerDrafts[answerRunId]; return draft?.question === answerQuestion ? draft?.text ?? "" : ""; }
   return id ? s.conversationDrafts[draftKey(id)] ?? "" : s.agentDraft;
 };
 
 /** Owns the draft subscription so typing re-renders the input, never the thread. */
-const ComposerInput = memo(function ComposerInput({ id, answerTo, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children }: {
-  id: string | null | undefined; answerTo: { runId: string; question?: string } | null; disabled: boolean; sendDisabled: boolean; placeholder: string; maxLength?: number;
+const ComposerInput = memo(function ComposerInput({ id, answerRunId, answerQuestion, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children }: {
+  id: string | null | undefined; answerRunId?: string; answerQuestion?: string; disabled: boolean; sendDisabled: boolean; placeholder: string; maxLength?: number;
   inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">; onChange(value: string): void; onSend(): void; children?: ReactNode;
 }) {
-  const text = useStore(s => draftText(s, id, answerTo));
+  const text = useStore(s => draftText(s, id, answerRunId, answerQuestion));
   return <div className="conversation-input"><textarea {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/>{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{I.send}</button></div>;
 });
 
@@ -44,6 +44,7 @@ function LivePage({ pageId }: { pageId: string }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let gone = false;
+    let objectUrl = "";
     const show = (image: string) => {
       if (gone || !img.current) return;
       img.current.src = image;
@@ -51,7 +52,11 @@ function LivePage({ pageId }: { pageId: string }) {
     };
     let timer = 0;
     const stopFrames = bridge.onPreviewFrame(frame => {
-      if (frame.pageId === pageId && frame.image) show(frame.image);
+      if (frame.pageId !== pageId || !frame.image?.byteLength || gone) return;
+      const previous = objectUrl;
+      objectUrl = URL.createObjectURL(new Blob([frame.image as Uint8Array<ArrayBuffer>], { type: "image/jpeg" }));
+      show(objectUrl);
+      if (previous) URL.revokeObjectURL(previous);
     });
     void bridge.watchPreview(pageId).catch(() => {
       const pull = () => {
@@ -66,6 +71,7 @@ function LivePage({ pageId }: { pageId: string }) {
       gone = true;
       window.clearTimeout(timer);
       stopFrames();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
       void bridge.unwatchPreview(pageId).catch(() => {});
     };
   }, [pageId]);
@@ -188,13 +194,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const turns = useMemo(() => runs.filter(r => (r.config?.chatId ?? r.runId) === id).sort((a,b) => a.createdAt - b.createdAt), [runs, id]);
   const last = turns.at(-1);
   const answering = last?.status === "needs_input";
-  const answerTo = useMemo(() => answering && last ? { runId: last.runId, question: last.statusMessage } : null, [answering, last?.runId, last?.statusMessage]);
+  const answerRunId = answering ? last?.runId : undefined, answerQuestion = last?.statusMessage;
   const [sendingChat, setSendingChat] = useState<string | null>(null);
   const pendingTurns = useStore(useShallow(s => s.pendingTurns.filter(turn => turn.chatId === (id ?? sendingChat))));
   const answerPending = useStore(s=>!!last && !!s.runAnswerPending[last.runId]);
   const [sendError,setSendError]=useState("");
   useEffect(()=>setSendError(""),[id,last?.runId,last?.statusMessage]);
-  const readText = () => draftText(useStore.getState(), id, answerTo);
+  const readText = () => draftText(useStore.getState(), id, answerRunId, answerQuestion);
   const setText = (value:string) => {
     setSendError("");
     if(answering && last)useStore.getState().setRunAnswerDraft(last.runId,last.statusMessage ?? "",value);
@@ -434,7 +440,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
       {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
-      {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><p className="hint" role="status">Starting…</p></article>)}
+      {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
     </div></div>
     <div className="conversation-compose"><div className="conversation-compose-content">
       {scrolling.awayFromLatest && <div className="conversation-jump"><button className="btn sm" onClick={scrolling.jumpToLatest}>{I.down} Jump to latest</button></div>}
@@ -453,12 +459,12 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
 
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
-      {last?.status === "needs_input" && <ComposerInput id={id} answerTo={answerTo} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} />}
+      {last?.status === "needs_input" && <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} />}
       </> : <>
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      <ComposerInput id={id} answerTo={answerTo} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
+      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
       </>}
     </div></div>
     </div>{browserPreview}</div>

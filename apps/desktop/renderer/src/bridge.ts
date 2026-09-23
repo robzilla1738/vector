@@ -104,7 +104,8 @@ export interface AuxBridge {
   /** Keep a hidden page laid out and stream JPEG frames until unwatch. */
   watchPreview(pageId: string): Promise<boolean>;
   unwatchPreview(pageId: string): Promise<boolean>;
-  onPreviewFrame(cb: (frame: { pageId: string; image: string }) => void): () => void;
+  /** JPEG bytes of the watched page, sent only when the picture changed. */
+  onPreviewFrame(cb: (frame: { pageId: string; image: Uint8Array }) => void): () => void;
   contextMenu(pageId: string | null): Promise<boolean>;
   openExternal(url: string): Promise<unknown>;
   registerCloudPreview(url:string,token:string):Promise<boolean>;
