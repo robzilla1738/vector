@@ -89,6 +89,8 @@ export const TabCommandAckSchema = z.object({
   pageId: z.string().optional(),
   /** the window the command landed on — populated for `move` */
   windowId: z.string().optional(),
+  /** CDP target id of the tab an `open` created, so the runtime attaches without scanning tabs */
+  targetId: z.string().optional(),
   error: z.object({ code: z.string(), message: z.string() }).optional(),
 });
 export type TabCommandAck = z.infer<typeof TabCommandAckSchema>;

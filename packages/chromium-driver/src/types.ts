@@ -29,7 +29,7 @@ export interface DriverPageEvents {
   onLoading?: (loading: boolean) => void;
   onDestroyed?: (reason: "closed" | "crashed" | "detached") => void;
   onDialog?: (info: { type: string; message: string }) => void;
-  onConsole?: (info: { level: string; message: string }) => void;
+  onConsole?: (info: { level: string; message: string; atMs?: number }) => void;
   onDownload?: (info: { suggestedFilename: string; path?: string }) => void;
   onPopup?: (targetId: string | null, url: string) => void;
   /** passive response capture — fired for every completed HTTP response. */
@@ -156,9 +156,10 @@ export interface BrowserDriver {
   /**
    * Attach to a target. For backend "aux" the targetId is the marker id
    * (`atab-<webContentsId>`) injected by the main process; for "chrome" it is
-   * the CDP target id.
+   * the CDP target id. `hint.cdpTargetId` (the shell's ack for a tab it just
+   * created) lets a marker-identified backend match the page directly.
    */
-  attach(targetId: string, pageId: string): Promise<DriverPage>;
+  attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string }): Promise<DriverPage>;
   /** Reattach a recovered renderer without reusing a crashed protocol handle. */
   recoverPage?(targetId: string, pageId: string, documentEpoch?: number): Promise<DriverPage>;
   /** Look up the registered element entry for an observation ref. */

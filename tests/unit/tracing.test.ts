@@ -7,7 +7,7 @@ const kvCounter = (db: ReturnType<typeof openDb>, name: string) => {
 };
 
 describe("Tracer counters (in-memory, flushed per span end)", () => {
-  it("incr does not touch SQLite until a span ends", () => {
+  it("incr does not touch SQLite until a span ends", async () => {
     const db = openDb(":memory:");
     const t = new Tracer(db, { counterFlushMs: 60_000 });
     t.incr("actions.dispatched");
@@ -19,6 +19,8 @@ describe("Tracer counters (in-memory, flushed per span end)", () => {
 
     const span = t.start("program.execute", { pageId: "p1" });
     span.end("ok");
+    expect(kvCounter(db, "actions.dispatched")).toBeUndefined(); // written with the span row on the next tick
+    await new Promise((r) => setImmediate(r));
     expect(kvCounter(db, "actions.dispatched")).toBe(2);
     expect(kvCounter(db, "actions.completed")).toBe(3);
     expect(t.counter("actions.dispatched")).toBe(2);

@@ -110,6 +110,34 @@ describe("CDP driver lifecycle (P1-6)", () => {
     expect(connect).toHaveBeenCalledTimes(2);
   });
 
+  it("attaches by the shell's CDP target id without a marker scan, including a tab that surfaces later", async () => {
+    const early = Object.assign(fakePage(), { tid: "CDP-A" });
+    const late = Object.assign(fakePage(), { tid: "CDP-B" });
+    const pages: Page[] = [early];
+    const sessions = vi.fn();
+    const ctx = Object.assign(new EventEmitter(), {
+      pages: () => pages,
+      newCDPSession: async (p: { tid: string }) => {
+        sessions();
+        return { send: async (m: string) => (m === "Target.getTargetInfo" ? { targetInfo: { targetId: p.tid } } : {}), detach: async () => {} };
+      },
+    });
+    const b = fakeBrowser([]);
+    Object.assign(b.browser, { contexts: () => [ctx] });
+    const d = new TestDriver("http://h", inject(async () => b.browser));
+    const scan = vi.spyOn(d as unknown as { identityOfPage(p: object): Promise<string | null> }, "identityOfPage");
+    await d.connect();
+    const a = (await d.attach("atab-a", "pa", { cdpTargetId: "CDP-A" })) as unknown as { rawPage(): unknown };
+    expect(a.rawPage()).toBe(early);
+    const pending = d.attach("atab-b", "pb", { cdpTargetId: "CDP-B" });
+    setTimeout(() => { pages.push(late); ctx.emit("page", late); }, 20);
+    expect(((await pending) as unknown as { rawPage(): unknown }).rawPage()).toBe(late);
+    expect(scan).not.toHaveBeenCalled();
+    const lookups = sessions.mock.calls.length;
+    await d.attach("atab-c", "pc", { cdpTargetId: "CDP-A" }); // a known page's id is cached
+    expect(sessions.mock.calls.length - lookups).toBeLessThanOrEqual(1); // only the new wrapper's own world session
+  });
+
   it("an intentional disconnect() does not report a drop", async () => {
     const b = fakeBrowser([]);
     const d = new TestDriver("http://h", inject(async () => b.browser));

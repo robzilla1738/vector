@@ -60,6 +60,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
   repo.pruneEvents();
+  setTimeout(() => { try { repo.pruneRetention(); } catch { /* retried next start */ } }, 10_000).unref();
   const events = new EventBus(repo);
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
@@ -421,7 +422,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await drivers.chrome?.disconnect().catch(() => {});
     await api.close().catch(() => {});
     tracer.close();
-    repo.db.close();
+    repo.close();
   };
   process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));
   process.on("SIGINT", () => void shutdown().then(() => process.exit(0)));

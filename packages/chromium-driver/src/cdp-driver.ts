@@ -1,4 +1,4 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
+import { chromium, type Browser, type BrowserContext, type CDPSession, type Page } from "playwright-core";
 import { AuxError } from "@aux/contracts";
 import { bounded, PlaywrightDriverPage } from "./playwright-page.js";
 import { RefRegistry } from "./ref-registry.js";
@@ -51,6 +51,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     // connectOverCDP accepts either the http(s) base or a ws URL.
     const browser = await this.connectOverCDP(endpoint, { timeout: 15_000 });
     this.browser = browser;
+    this.browserSession = null;
     const contexts = browser.contexts();
     this.context = contexts[0] ?? (await browser.newContext());
     this.context.on("page", () => this.notifyTargetsChanged());
@@ -60,6 +61,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
       if (this.browser !== browser) return;
       this.browser = null;
       this.context = null;
+      this.browserSession = null;
       this.dropped = true;
       for (const p of this.pagesByTarget.values()) void p.dispose().catch(() => {});
       this.pagesByTarget.clear();
@@ -93,6 +95,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     const browser = this.browser;
     this.browser = null; // clear first so the "disconnected" handler treats this close as intentional
     this.context = null;
+    this.browserSession = null;
     await browser?.close().catch(() => {});
   }
 
@@ -133,17 +136,83 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     return this.context.pages();
   }
 
+  /** Target ids are fixed for a page's lifetime — resolved once per page, not per scan. */
+  private targetIds = new WeakMap<Page, Promise<string | null>>();
+
   /** CDP target id for a playwright page via Target.getTargetInfo on its session. */
-  protected async cdpTargetId(page: Page): Promise<string | null> {
-    try {
-      const session = await this.context!.newCDPSession(page);
-      const info = (await session.send("Target.getTargetInfo")) as { targetInfo?: { targetId?: string } };
-      const id = info?.targetInfo?.targetId ?? null;
-      await session.detach().catch(() => {});
-      return id;
-    } catch {
-      return null;
+  protected cdpTargetId(page: Page): Promise<string | null> {
+    let id = this.targetIds.get(page);
+    if (!id) {
+      const context = this.context;
+      id = (async () => {
+        try {
+          const session = await context!.newCDPSession(page);
+          const info = (await session.send("Target.getTargetInfo")) as { targetInfo?: { targetId?: string } };
+          void session.detach().catch(() => {});
+          return info?.targetInfo?.targetId ?? null;
+        } catch {
+          return null;
+        }
+      })().then((v) => {
+        if (!v) this.targetIds.delete(page); // not ready yet — ask again next time
+        return v;
+      });
+      this.targetIds.set(page, id);
     }
+    return id;
+  }
+
+  /**
+   * The context page with this CDP target id: known pages are matched by
+   * their cached ids, and a tab that has not surfaced yet is caught by the
+   * context's "page" event instead of polling.
+   */
+  private pageWithTargetId(id: string, timeoutMs: number): Promise<Page | null> {
+    const context = this.context;
+    if (!context) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (page: Page | null) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        context.off("page", check);
+        resolve(page);
+      };
+      const check = (page: Page) => {
+        if (!page.isClosed()) void this.cdpTargetId(page).then((tid) => tid === id && finish(page));
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      context.on("page", check);
+      for (const page of context.pages()) check(page);
+    });
+  }
+
+  /** One page event or `ms`, whichever comes first. */
+  private nextPage(ms: number): Promise<void> {
+    const context = this.context;
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        context?.off("page", done);
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      context?.on("page", done);
+    });
+  }
+
+  private browserSession: Promise<CDPSession> | null = null;
+
+  /** One browser-level CDP session per connection, shared by target/cookie commands. */
+  protected browserCdp(): Promise<CDPSession> {
+    const browser = this.browser;
+    if (!browser) throw new AuxError("backend_unavailable", "not connected");
+    this.browserSession ??= browser.newBrowserCDPSession().catch((e) => {
+      this.browserSession = null;
+      throw e;
+    });
+    return this.browserSession;
   }
 
   protected async markerOf(page: Page, globalName: string): Promise<string | null> {
@@ -177,9 +246,27 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     return out;
   }
 
-  async attach(targetId: string, pageId: string): Promise<DriverPage> {
+  private track(page: Page, targetId: string, pageId: string): PlaywrightDriverPage {
+    const dp = new PlaywrightDriverPage({
+      page,
+      context: this.context!,
+      identity: { pageId, targetId, backend: this.backend },
+      refs: this.refs,
+    });
+    page.on("close", () => this.pagesByTarget.delete(targetId));
+    page.on("crash", () => this.pagesByTarget.delete(targetId));
+    this.pagesByTarget.set(targetId, dp);
+    return dp;
+  }
+
+  async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string }): Promise<DriverPage> {
     const existing = this.pagesByTarget.get(targetId);
     if (existing?.isAttached()) return existing;
+    // the shell named the tab's CDP target: match it directly, no marker scan
+    if (hint?.cdpTargetId) {
+      const page = await this.pageWithTargetId(hint.cdpTargetId, 10_000);
+      if (page) return this.track(page, targetId, pageId);
+    }
 
     // Marker+CDP-target surfacing can take seconds on a busy shell (app boot,
     // heavy parallel loads) — 8s proved too short in practice.
@@ -189,25 +276,14 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
       for (const page of this.pages()) {
         if (page.isClosed()) continue;
         const id = await this.identityOfPage(page);
-        if (id === targetId) {
-          const dp = new PlaywrightDriverPage({
-            page,
-            context: this.context!,
-            identity: { pageId, targetId, backend: this.backend },
-            refs: this.refs,
-          });
-          page.on("close", () => this.pagesByTarget.delete(targetId));
-          page.on("crash", () => this.pagesByTarget.delete(targetId));
-          this.pagesByTarget.set(targetId, dp);
-          return dp;
-        }
+        if (id === targetId) return this.track(page, targetId, pageId);
         if (id) lastSeen.push(id);
       }
       // Fallback path: the shared CDP context may not surface every target
       // (e.g. webview-typed targets). Attach per-target via its own ws URL.
       const hit = await this.attachDirect(targetId, pageId).catch(() => null);
       if (hit) return hit;
-      await new Promise((r) => setTimeout(r, 150));
+      await this.nextPage(150);
     }
     throw new AuxError(
       "target_detached",
@@ -247,49 +323,33 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   }
 
   async createTarget(url: string): Promise<string> {
-    if (!this.browser) throw new AuxError("backend_unavailable", "not connected");
-    const session = await this.browser.newBrowserCDPSession();
-    try {
-      const res = (await session.send("Target.createTarget", { url, newWindow: false, background: false })) as {
-        targetId: string;
-      };
-      return res.targetId;
-    } finally {
-      await session.detach().catch(() => {});
-    }
+    const session = await this.browserCdp();
+    const res = (await session.send("Target.createTarget", { url, newWindow: false, background: false })) as {
+      targetId: string;
+    };
+    return res.targetId;
   }
 
   async activateTarget(targetId: string): Promise<void> {
-    if (!this.browser) throw new AuxError("backend_unavailable", "not connected");
-    const session = await this.browser.newBrowserCDPSession();
-    try {
-      await session.send("Target.activateTarget", { targetId });
-    } finally {
-      await session.detach().catch(() => {});
-    }
+    await (await this.browserCdp()).send("Target.activateTarget", { targetId });
   }
 
   /** Browser-level Storage.getCookies — returns the backend's whole cookie jar. */
   async getAllCookies(): Promise<BrowserCookie[]> {
-    if (!this.browser) throw new AuxError("backend_unavailable", "not connected");
-    const session = await this.browser.newBrowserCDPSession();
-    try {
-      const res = (await session.send("Storage.getCookies")) as unknown as { cookies?: Record<string, unknown>[] };
-      return (res.cookies ?? []).map((c) => ({
-        name: String(c.name),
-        value: String(c.value ?? ""),
-        domain: String(c.domain ?? ""),
-        path: String(c.path ?? "/"),
-        secure: Boolean(c.secure),
-        httpOnly: Boolean(c.httpOnly),
-        sameSite: ["Strict", "Lax", "None"].includes(String(c.sameSite))
-          ? (c.sameSite as BrowserCookie["sameSite"])
-          : undefined,
-        expires: c.session ? undefined : typeof c.expires === "number" && c.expires > 0 ? c.expires : undefined,
-      }));
-    } finally {
-      await session.detach().catch(() => {});
-    }
+    const session = await this.browserCdp();
+    const res = (await session.send("Storage.getCookies")) as unknown as { cookies?: Record<string, unknown>[] };
+    return (res.cookies ?? []).map((c) => ({
+      name: String(c.name),
+      value: String(c.value ?? ""),
+      domain: String(c.domain ?? ""),
+      path: String(c.path ?? "/"),
+      secure: Boolean(c.secure),
+      httpOnly: Boolean(c.httpOnly),
+      sameSite: ["Strict", "Lax", "None"].includes(String(c.sameSite))
+        ? (c.sameSite as BrowserCookie["sameSite"])
+        : undefined,
+      expires: c.session ? undefined : typeof c.expires === "number" && c.expires > 0 ? c.expires : undefined,
+    }));
   }
 
   /**

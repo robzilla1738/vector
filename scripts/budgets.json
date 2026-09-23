@@ -7,11 +7,12 @@
     "totalJsKb": 1800
   },
   "bench": {
-    "observe.full.ms": 60,
-    "observe.full.bytes": 10000,
-    "observe.compact.bytes": 4500,
-    "click.nonav.step.ms": 100,
-    "fill.ref.step.ms": 40,
-    "navigate+observe.ms": 100
+    "observe.full.ms": 30,
+    "observe.full.bytes": 5350,
+    "observe.compact.bytes": 5500,
+    "click.nav.step.ms": 6,
+    "click.nonav.step.ms": 7,
+    "fill.ref.step.ms": 4,
+    "navigate+observe.ms": 37
   }
 }

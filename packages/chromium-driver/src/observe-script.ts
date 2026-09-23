@@ -9,7 +9,10 @@ export interface ObserveScriptArgs {
   maxTextChars: number;
   /** only collect inside this element (css path) — for subtree scope */
   subtreeCss?: string;
+  /** only collect inside this ref's live element — preferred over subtreeCss */
+  subtreeRef?: string;
   frameKey: string;
+  /** lowest number a newly seen element may take (page-wide, monotonic per document) */
   refStart: number;
   /** add to this frame's live ref map instead of replacing it (expandRef) */
   mergeRefs?: boolean;
@@ -58,6 +61,14 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     '[role="option"]',
     "[tabindex]",
   ].join(",");
+  const CANDIDATE_TAGS = new Set(["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA", "SUMMARY"]);
+  const FIELD_SELECTOR = "input:not([type=hidden]),select,textarea,[contenteditable=true]";
+  const SKIP_TEXT = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"]);
+  const BLOCK_TAGS = new Set([
+    "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "DD", "DETAILS", "DIALOG", "DIV", "DL", "DT", "FIELDSET", "FIGCAPTION",
+    "FIGURE", "FOOTER", "FORM", "H1", "H2", "H3", "H4", "H5", "H6", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE",
+    "SECTION", "SUMMARY", "TABLE", "TR", "UL", "OPTION",
+  ]);
 
   const IMPLICIT_ROLE: Record<string, string> = {
     BUTTON: "button",
@@ -75,8 +86,23 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     search: "searchbox",
   };
 
+  // one layout read per element per observation
+  const rects = new Map<any, any>();
+  const styles = new Map<any, any>();
+  const rectOf = (el: any) => {
+    let r = rects.get(el);
+    if (!r) rects.set(el, (r = el.getBoundingClientRect()));
+    return r;
+  };
+  const styleOf = (el: any) => {
+    let s = styles.get(el);
+    if (!s) styles.set(el, (s = getComputedStyle(el)));
+    return s;
+  };
+
   function implicitRole(el: any): string | undefined {
-    if (el.getAttribute && el.getAttribute("role")) return el.getAttribute("role");
+    const explicit = el.getAttribute && el.getAttribute("role");
+    if (explicit) return explicit;
     const tag = el.tagName as string;
     if (tag === "A" && el.getAttribute("href")) return "link";
     if (tag === "INPUT") {
@@ -87,13 +113,51 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   }
 
   function visible(el: any): boolean {
-    const style = getComputedStyle(el);
+    const style = styleOf(el);
     if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return false;
-    const r = el.getBoundingClientRect();
+    const r = rectOf(el);
     return r.width > 0 && r.height > 0;
   }
 
+  /** Rendered-ish text of a small subtree without forcing layout (innerText does). */
+  function textOf(el: any, max: number): string {
+    let out = "";
+    const walk = (n: any) => {
+      for (let c = n.firstChild; c && out.length <= max; c = c.nextSibling) {
+        if (c.nodeType === 3) out += c.nodeValue ?? "";
+        else if (c.nodeType === 1) {
+          if (SKIP_TEXT.has(c.tagName) || c.hidden) continue;
+          if (typeof c.checkVisibility === "function" && !c.checkVisibility()) continue;
+          const block = BLOCK_TAGS.has(c.tagName) || c.tagName === "BR";
+          if (block) out += " ";
+          walk(c);
+          if (block) out += " ";
+        }
+      }
+    };
+    walk(el);
+    return out.replace(/\s+/g, " ").trim();
+  }
+
+  let labelsFor: Map<string, any> | null = null;
+  const labelFor = (id: string) => {
+    if (!labelsFor) {
+      labelsFor = new Map();
+      for (const l of Array.from(doc.querySelectorAll("label[for]")) as any[]) {
+        const key = l.getAttribute("for");
+        if (key && !labelsFor.has(key)) labelsFor.set(key, l);
+      }
+    }
+    return labelsFor.get(id);
+  };
+
+  const names = new Map<any, string>();
   function accessibleName(el: any): string {
+    let n = names.get(el);
+    if (n === undefined) names.set(el, (n = computeName(el)));
+    return n;
+  }
+  function computeName(el: any): string {
     const aria = el.getAttribute("aria-label");
     if (aria) return redactText(aria).trim().slice(0, 120);
     const labelledBy = el.getAttribute("aria-labelledby");
@@ -108,7 +172,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     // associated <label for=> or wrapping <label>
     const id = el.getAttribute("id");
     if (id) {
-      const lab = el.ownerDocument.querySelector(`label[for="${CSS.escape(id)}"]`);
+      const lab = labelFor(id);
       if (lab?.textContent?.trim()) return redactText(lab.textContent).trim().slice(0, 120);
     }
     let p = el.parentElement;
@@ -128,9 +192,25 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       if (name) return redactText(name).slice(0, 120);
     }
     if (tag === "IMG") return redactText(el.getAttribute("alt") || "").slice(0, 120);
-    const text = redactText(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+    const text = redactText(textOf(el, 160));
     if (text) return text.slice(0, 120);
     return redactText(el.getAttribute("title") || el.getAttribute("placeholder") || el.getAttribute("name") || "").slice(0, 120);
+  }
+
+  /** nth-of-type index among same-tag siblings, 0 when the tag is unique. */
+  function typeIndex(node: any, parent: any): number {
+    let before = 0;
+    let passed = false;
+    let dup = false;
+    for (let s = parent.firstElementChild; s; s = s.nextElementSibling) {
+      if (s === node) passed = true;
+      else if (s.tagName === node.tagName) {
+        dup = true;
+        if (passed) break;
+        before++;
+      }
+    }
+    return dup ? before + 1 : 0;
   }
 
   /**
@@ -148,10 +228,8 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       if (node.nodeType !== 1) break;
       const tag = (node.tagName as string).toLowerCase();
       const id = node.getAttribute?.("id");
-      let seg: string;
       if (id && /^[A-Za-z][\w\-:.]*$/.test(id)) {
-        seg = `${tag}#${id}`;
-        segments.unshift(seg);
+        segments.unshift(`${tag}#${id}`);
         // an id segment is usually enough of an anchor
         const root = node.getRootNode?.();
         if (root === node.ownerDocument) break;
@@ -164,18 +242,8 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
         break;
       }
       const parent: any = node.parentElement ?? node.getRootNode?.()?.host ?? null;
-      if (parent) {
-        const sameTag = [...parent.children].filter((c: any) => c.tagName === node.tagName);
-        if (sameTag.length > 1) {
-          const idx = sameTag.indexOf(node) + 1;
-          seg = `${tag}:nth-of-type(${idx})`;
-        } else {
-          seg = tag;
-        }
-      } else {
-        seg = tag;
-      }
-      segments.unshift(seg);
+      const idx = parent ? typeIndex(node, node.parentElement ?? node.parentNode) : 0;
+      segments.unshift(idx ? `${tag}:nth-of-type(${idx})` : tag);
       const root = node.getRootNode?.();
       if (root && root !== node.ownerDocument && root.host) {
         node = root.host;
@@ -189,12 +257,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
 
   function xpathOf(el: any): string | undefined {
     // xpath cannot pierce shadow roots — only produce for light DOM.
-    let n: any = el;
-    while (n) {
-      const root = n.getRootNode?.();
-      if (root && root !== n.ownerDocument) return undefined;
-      n = n.parentElement;
-    }
+    if (el.getRootNode?.() !== el.ownerDocument) return undefined;
     const parts: string[] = [];
     let node: any = el;
     while (node && node.nodeType === 1) {
@@ -204,8 +267,8 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
         parts.unshift(tag);
         break;
       }
-      const same = [...parent.children].filter((c: any) => c.tagName === node.tagName);
-      parts.unshift(same.length > 1 ? `${tag}[${same.indexOf(node) + 1}]` : tag);
+      const idx = typeIndex(node, parent);
+      parts.unshift(idx ? `${tag}[${idx}]` : tag);
       node = parent;
     }
     return "/" + parts.join("/");
@@ -241,8 +304,22 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     return undefined;
   }
 
+  // Per-world ref state: a WeakMap keeps a node's ref across observations of
+  // one document; numbers only grow, so a ref is never reissued to another node.
+  const g: any = globalThis as any;
+  const store: { ids: WeakMap<any, number>; refs: Map<string, any>; next: number; cssPath?: (el: any) => string } =
+    g.__auxStore && g.__auxStore.ids instanceof WeakMap ? g.__auxStore : (g.__auxStore = { ids: new WeakMap(), refs: new Map(), next: 1 });
+  store.next = Math.max(store.next, args.refStart);
+  store.cssPath = cssPath;
+  const refOf = (el: any) => {
+    let id = store.ids.get(el);
+    if (id === undefined) store.ids.set(el, (id = store.next++));
+    return `r${id}`;
+  };
+
   const doc = document;
-  const root: any = args.subtreeCss ? doc.querySelector(args.subtreeCss) ?? doc.body : doc.body;
+  const scoped = args.subtreeRef ? store.refs.get(args.subtreeRef) : undefined;
+  const root: any = (scoped?.isConnected ? scoped : null) ?? (args.subtreeCss ? doc.querySelector(args.subtreeCss) ?? doc.body : doc.body);
   const result: ObserveScriptResult = {
     url: location.href,
     title: doc.title,
@@ -261,36 +338,45 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     dialogs: [],
     truncated: false,
     elementsTotal: 0,
-    nextRef: args.refStart,
+    nextRef: store.next,
   };
 
-  // Interactive elements — include shadow DOM via a manual deep walk.
-  const seen = new Set<any>();
+  // One pass over the tree (open shadow roots included): interactives from
+  // every tree; headings, fields, tables and the main region from the light tree.
   const elements: any[] = [];
-  const visit = (container: any) => {
-    const found = container.querySelectorAll ? container.querySelectorAll(INTERACTIVE_SELECTOR) : [];
-    for (const el of Array.from(found) as any[]) {
-      if (seen.has(el)) continue;
-      seen.add(el);
-      elements.push(el);
-    }
-    // descend into open shadow roots
-    const all = container.querySelectorAll ? container.querySelectorAll("*") : [];
-    for (const el of Array.from(all) as any[]) {
-      const sr = (el as any).shadowRoot;
-      if (sr) visit(sr);
+  const headingEls: any[] = [];
+  const fieldEls: any[] = [];
+  const tableEls: any[] = [];
+  const shadowHosts: any[] = [];
+  let mainEl: any = null;
+  const visit = (container: any, light: boolean) => {
+    if (!container) return;
+    const tw = doc.createTreeWalker(container, 1 /* SHOW_ELEMENT */);
+    for (let el: any = tw.nextNode(); el; el = tw.nextNode()) {
+      const tag = el.tagName as string;
+      if ((CANDIDATE_TAGS.has(tag) || el.hasAttribute("role") || el.hasAttribute("tabindex") || el.hasAttribute("contenteditable")) && el.matches(INTERACTIVE_SELECTOR))
+        elements.push(el);
+      if (light) {
+        if ((tag === "H1" || tag === "H2" || tag === "H3") && headingEls.length < 12) headingEls.push(el);
+        else if (tag === "TABLE" && tableEls.length < 6) tableEls.push(el);
+        if (fieldEls.length < 60 && (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || el.hasAttribute("contenteditable")) && el.matches(FIELD_SELECTOR))
+          fieldEls.push(el);
+        if (!mainEl && (tag === "MAIN" || tag === "ARTICLE" || el.getAttribute("role") === "main")) mainEl = el;
+      }
+      if (el.shadowRoot) {
+        shadowHosts.push(el);
+        visit(el.shadowRoot, false);
+      }
     }
   };
-  visit(root);
+  visit(root, true);
   for (const el of elements) rememberProtectedValue(el);
   protectedTexts = [...protectedValues].sort((a, b) => b.length - a.length);
   result.title = redactText(result.title);
-  // Headings
-  for (const h of (Array.from(root.querySelectorAll("h1,h2,h3")) as any[]).slice(0, 12)) {
+  for (const h of headingEls) {
     const t = redactText(h.textContent || "").replace(/\s+/g, " ").trim();
     if (t) result.headings.push(t.slice(0, 140));
   }
-
 
   result.elementsTotal = elements.length;
 
@@ -303,19 +389,18 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   const inView: any[] = [];
   const offView: any[] = [];
   for (const el of elements) {
-    const r = el.getBoundingClientRect();
+    const r = rectOf(el);
     (r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw ? inView : offView).push(el);
   }
   const ordered = inView.concat(offView);
 
   // Live ref map (speed P0-3 / plan A7): the driver resolves `rN` with one
-  // map lookup (`evaluateHandle`) instead of a css/xpath/role search, and
-  // falls back to the selectors only when the node is gone. A fresh map per
-  // observe: refs from an older observation are stale by contract.
-  const g: any = globalThis as any;
-  const refMap: Map<string, any> = args.mergeRefs && g.__auxRefs instanceof Map ? g.__auxRefs : new Map();
-  g.__auxRefs = refMap;
-  let refNum = args.refStart;
+  // map lookup instead of a css/xpath/role search, and falls back to the
+  // selectors only when the node is gone. A full observe replaces the map:
+  // refs it did not return are stale by contract.
+  const refMap: Map<string, any> = args.mergeRefs ? store.refs : new Map();
+  store.refs = refMap;
+  const refByEl = new Map<any, string>();
   for (const el of ordered) {
     if (result.elements.length >= args.maxElements) {
       result.truncated = true;
@@ -324,10 +409,10 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (!visible(el)) continue;
     const tag = (el.tagName as string).toLowerCase();
     const role = implicitRole(el);
-    const name = redactText(accessibleName(el));
-    const r = el.getBoundingClientRect();
+    const name = accessibleName(el);
+    const r = rectOf(el);
     const entry: any = {
-      ref: `r${refNum++}`,
+      ref: refOf(el),
       frame: args.frameKey,
       tag,
       selector: { css: cssPath(el), xpath: xpathOf(el) },
@@ -384,19 +469,20 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
         if (!forwards) entry.occluded = true;
       }
     }
-    const txt = redactText(el.innerText || "").replace(/\s+/g, " ").trim();
+    const txt = redactText(textOf(el, 160));
     if (txt && txt !== name) entry.text = txt.slice(0, 140);
     result.elements.push(entry);
     refMap.set(entry.ref, el);
+    refByEl.set(el, entry.ref);
     if (tag === "a" && entry.href) result.links.push({ ref: entry.ref, text: name || txt || entry.href, href: entry.href });
   }
-  result.nextRef = refNum;
+  result.nextRef = store.next;
 
   // Form fields with validity
-  for (const el of (Array.from(root.querySelectorAll("input:not([type=hidden]),select,textarea,[contenteditable=true]")) as any[]).slice(0, 60)) {
+  for (const el of fieldEls) {
     if (!visible(el)) continue;
     const field: any = {
-      ref: undefined as string | undefined,
+      ref: refByEl.get(el),
       label: redactText(accessibleName(el)) || undefined,
       name: el.getAttribute?.("name") || undefined,
       type: (el.tagName === "INPUT" ? (el.getAttribute("type") || "text").toLowerCase() : (el.tagName as string).toLowerCase()),
@@ -407,13 +493,11 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
       field.valid = el.checkValidity();
       if (!field.valid && el.validationMessage && !protectedField(el)) field.validationMessage = redactText(el.validationMessage);
     }
-    const existing = result.elements.find((e) => e.selector.css && e.selector.css === cssPath(el));
-    field.ref = existing?.ref;
     result.formFields.push(field);
   }
 
   // Tables — first rows only, marked truncated when applicable
-  for (const t of (Array.from(root.querySelectorAll("table")) as any[]).slice(0, 6)) {
+  for (const t of tableEls) {
     if (!visible(t)) continue;
     const rows = Array.from(t.querySelectorAll("tr")) as any[];
     const headerRow = rows.find((r) => r.querySelector("th")) ?? rows[0];
@@ -429,48 +513,83 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     });
   }
 
-  // Main text — prefer article/main, fall back to body
-  const mainEl = root.querySelector?.("main, article, [role=main]") ?? root;
-  let text = redactText(mainEl.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
-
   // innerText skips open shadow roots — collect their text so content living
   // in shadow DOM (widgets, counters) is still observable by the planner.
   const shadowTextOf = (sr: any): string => {
     const parts: string[] = [];
+    let len = 0;
     const walk = (n: any) => {
-      for (const c of Array.from(n.childNodes ?? []) as any[]) {
+      for (let c = n.firstChild; c && len <= 400; c = c.nextSibling) {
         if (c.nodeType === 3) {
           const t = (c.nodeValue ?? "").replace(/\s+/g, " ").trim();
-          if (t) parts.push(t);
-        } else if (c.nodeType === 1) {
-          const tag = (c.tagName as string).toLowerCase();
-          if (tag === "style" || tag === "script" || tag === "template" || tag === "noscript") continue;
-          walk(c);
-        }
+          if (t) {
+            parts.push(t);
+            len += t.length + 1;
+          }
+        } else if (c.nodeType === 1 && !SKIP_TEXT.has(c.tagName)) walk(c);
       }
     };
     walk(sr);
     return parts.join(" ");
   };
   const shadowChunks: string[] = [];
-  const visitShadow = (container: any) => {
-    for (const el of Array.from(container.querySelectorAll?.("*") ?? []) as any[]) {
-      const sr = (el as any).shadowRoot;
-      if (!sr) continue;
-      const t = redactText(shadowTextOf(sr)).slice(0, 400);
-      if (t) shadowChunks.push(`${(el.tagName as string).toLowerCase()}: ${t}`);
-      visitShadow(sr);
-    }
-  };
-  visitShadow(root);
-  // front-load it — shadow content is exactly what flat text extraction
-  // hides, so the planner needs it where it can't be missed
-  if (shadowChunks.length) {
-    text = `— shadow DOM —\n${shadowChunks.join("\n")}${text ? `\n\n${text}` : ""}`;
+  for (const host of shadowHosts) {
+    const t = redactText(shadowTextOf(host.shadowRoot)).slice(0, 400);
+    if (t) shadowChunks.push(`${(host.tagName as string).toLowerCase()}: ${t}`);
   }
 
-  text = redactText(text);
-  if (text.length > args.maxTextChars) {
+  // Main text — prefer article/main, fall back to the root. A budgeted walk
+  // stops once the budget (plus the longest secret, so redaction still sees
+  // whole values) is spent and skips hidden subtrees, instead of laying out
+  // the whole region through innerText and cutting it afterwards. Block
+  // edges emit break markers; like innerText, adjacent edges take the
+  // largest required break (\uFDD1 = blank line for <p>) rather than summing.
+  const budget = args.maxTextChars + (protectedTexts[0]?.length ?? 0) + 1;
+  let collected = shadowChunks.length ? `— shadow DOM —\n${shadowChunks.join("\n")}\n\n` : "";
+  let spent = collected.length;
+  const chunks: string[] = [];
+  const push = (s: string) => {
+    chunks.push(s);
+    spent += s.length;
+  };
+  const walkText = (n: any, shown: boolean) => {
+    for (let c = n.firstChild; c && spent <= budget; c = c.nextSibling) {
+      if (c.nodeType === 3) {
+        // whitespace-only nodes still separate inline siblings
+        const t = shown ? (c.nodeValue ?? "").replace(/[ \t\n\r\f]+/g, " ") : "";
+        if (t) push(t);
+        continue;
+      }
+      if (c.nodeType !== 1 || SKIP_TEXT.has(c.tagName)) continue;
+      const style = styleOf(c);
+      if (style.display === "none") continue;
+      if (c.tagName === "BR") {
+        push("\n");
+        continue;
+      }
+      const display = String(style.display || "");
+      const cell = display === "table-cell" || c.tagName === "TD" || c.tagName === "TH";
+      const block = !cell && (BLOCK_TAGS.has(c.tagName) || (display !== "" && !display.startsWith("inline") && display !== "contents"));
+      const edge = c.tagName === "P" ? "\uFDD1" : "\uFDD0";
+      if (block) push(edge);
+      // hidden boxes can hold visible descendants — only those contribute
+      walkText(c, style.visibility !== "hidden" && style.visibility !== "collapse");
+      if (block) push(edge);
+      else if (cell) push("\t");
+    }
+  };
+  walkText(mainEl ?? root, true);
+  collected += chunks
+    .join("")
+    .replace(/ {2,}/g, " ")
+    .replace(/ ?\t ?/g, "\t")
+    .replace(/[ \t]*[\uFDD0\uFDD1][\uFDD0\uFDD1 \t]*/g, (run) => (run.includes("\uFDD1") ? "\n\n" : "\n"))
+    .replace(/\t+\n/g, "\n")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  let text = redactText(collected.trim());
+  if (text.length > args.maxTextChars || spent > budget) {
     text = text.slice(0, args.maxTextChars) + "\n…[text truncated]";
     result.truncated = true;
   }

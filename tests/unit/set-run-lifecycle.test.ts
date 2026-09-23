@@ -419,6 +419,16 @@ describe("conversation turn retry", () => {
 });
 
 describe("set-run lifecycle (P0-2 / P1-3)", () => {
+  it("a member with neither url nor page fails alone instead of rejecting the whole run", async () => {
+    const h = harness({ execMs: 5 });
+    const set = await h.sets.create({ name: "s", source: "records", records: [{ id: "no-url" }, { id: "ok", url: urls(1)[0] }] });
+    const { runId } = await h.runs.mapSet({ setId: set.setId, program });
+    await untilTerminal(h.repo, runId);
+    const members = await untilMembersSettled(h.repo, set.setId);
+    expect(members.map((m) => [m.recordKey, m.status])).toEqual([["no-url", "failed"], ["ok", "completed"]]);
+    expect(members[0]!.error).toMatch(/neither url nor page/);
+  });
+
   it("cancel stops queued members, marks them skipped, and the run stays cancelled", async () => {
     const h = harness({ execMs: 150, maxWorkers: 1 });
     const set = await h.sets.create({ name: "s", source: "urls", urls: urls(4) });

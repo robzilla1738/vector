@@ -67,11 +67,12 @@ export const ElementRefSchema = z.object({
 });
 export type ElementRef = z.infer<typeof ElementRefSchema>;
 
+/** On the wire a field linked to an element (`ref`) omits the type and required flag that element already carries. */
 export const FormFieldSchema = z.object({
   ref: z.string(),
   label: z.string().optional(),
   name: z.string().optional(),
-  type: z.string(),
+  type: z.string().optional(),
   value: z.string().optional(),
   required: z.boolean().optional(),
   valid: z.boolean().optional(),
@@ -109,9 +110,10 @@ export const ObservationContentSchema = z.object({
   elements: z.array(ElementRefSchema),
   formFields: z.array(FormFieldSchema),
   tables: z.array(TableBlockSchema),
-  links: z.array(z.object({ ref: z.string(), text: z.string(), href: z.string() })),
+  /** Anchor summary. Omitted on the wire, where every link is already an `a` element with its href. */
+  links: z.array(z.object({ ref: z.string(), text: z.string(), href: z.string() })).default([]),
   dialogs: z.array(z.object({ type: z.string(), message: z.string() })),
-  /** Page `console.*` lines captured since the last navigation. */
+  /** Legacy: console lines now come from `pages.console`, not observations. */
   console: z
     .array(z.object({ level: z.string(), message: z.string(), atMs: z.number().optional() }))
     .optional(),
@@ -126,11 +128,20 @@ export const ObservationContentSchema = z.object({
 });
 export type ObservationContent = z.infer<typeof ObservationContentSchema>;
 
+/**
+ * `sinceRevision` delta against an earlier revision of the same document
+ * (absent after a navigation, or when that revision aged out): elements
+ * added, refs removed, per-ref changed fields (null = field went away), and
+ * text lines added/removed. Refs are stable across revisions of a document.
+ */
 export const ObservationDeltaSchema = z
   .object({
+    sinceRevision: z.number().optional(),
     added: z.array(z.unknown()).optional(),
     removed: z.array(z.string()).optional(),
     updated: z.array(z.unknown()).optional(),
+    changed: z.array(z.object({ ref: z.string(), fields: z.record(z.string(), z.unknown()) })).optional(),
+    textDelta: z.object({ added: z.array(z.string()), removed: z.array(z.string()) }).optional(),
   })
   .passthrough();
 export type ObservationDelta = z.infer<typeof ObservationDeltaSchema>;
@@ -169,6 +180,8 @@ export const CompactObservationSchema = z.object({
   /** compact rendering: header, headings, form fields, one line per ref, tables, text */
   text: z.string(),
   refs: z.array(z.object({ ref: z.string(), role: z.string().optional(), name: z.string().optional() })),
+  /** Set when `text` renders only the changes since this revision; `refs` then lists added and changed refs. */
+  sinceRevision: z.number().optional(),
 });
 export type CompactObservation = z.infer<typeof CompactObservationSchema>;
 

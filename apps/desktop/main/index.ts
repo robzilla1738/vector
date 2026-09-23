@@ -1451,7 +1451,10 @@ function registerNativeHandlers(ch: RpcChannel) {
       if (env.command.kind !== "open") throw new Error("That window is not available.");
       await createRegularWindow(env.windowId);
     }
-    return tabController.execute(env, env.windowId, { trusted: true });
+    const ack = await tabController.execute(env, env.windowId, { trusted: true });
+    const wc = env.command.kind === "open" && ack.status === "applied" && ack.pageId ? registry.get(ack.pageId)?.view.webContents : undefined;
+    const info = await wc?.debugger.sendCommand("Target.getTargetInfo").catch(() => undefined) as { targetInfo?: { targetId?: string } } | undefined;
+    return info?.targetInfo?.targetId ? { ...ack, targetId: info.targetInfo.targetId } : ack;
   });
   ch.onMethod("native.closePage", async (p) => {
     const { pageId } = p as { pageId: string };

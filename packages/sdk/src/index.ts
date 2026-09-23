@@ -3,7 +3,17 @@ import {MethodSchemas,ResultSchemas,type MethodName,type MethodParams,type Metho
 import {resolveRuntimeDescriptor} from '@aux/contracts/installation';
 
 export interface AuxConnection{port:number;token:string;pid?:number}
-export interface AuxClientOptions{timeoutMs?:number;fetch?:typeof fetch}
+/**
+ * `validateResults` parses every result with its zod schema (fills schema
+ * defaults, rejects drift). By default the hot page loop — observe, execute,
+ * extract, waitFor, console, events.since — skips it and returns the wire
+ * value as sent: fields the runtime omits on the wire (e.g. an observation's
+ * `links`, element `selector`/`frame`) are then absent rather than defaulted.
+ * Requests are always validated.
+ */
+export interface AuxClientOptions{timeoutMs?:number;fetch?:typeof fetch;validateResults?:boolean}
+
+const HOT_METHODS=new Set<string>(['pages.observe','pages.execute','pages.extract','pages.waitFor','pages.console','events.since']);
 
 export class AuxRpcError extends Error{
   constructor(message:string,public readonly code:string,public readonly status?:number,public readonly detail?:unknown){super(message);this.name='AuxRpcError';}
@@ -21,7 +31,8 @@ export function readRuntimeDescriptor(path=resolveRuntimeDescriptor()):AuxConnec
 export class AuxClient{
   private readonly timeoutMs:number;
   private readonly fetchImpl:typeof fetch;
-  constructor(private readonly connection:AuxConnection,options:AuxClientOptions={}){this.timeoutMs=options.timeoutMs??120_000;this.fetchImpl=options.fetch??fetch;}
+  private readonly validateResults?:boolean;
+  constructor(private readonly connection:AuxConnection,options:AuxClientOptions={}){this.timeoutMs=options.timeoutMs??120_000;this.fetchImpl=options.fetch??fetch;this.validateResults=options.validateResults;}
   static running(options:AuxClientOptions&{descriptorPath?:string;token?:string}={}){const connection=readRuntimeDescriptor(options.descriptorPath);return new AuxClient({...connection,...(options.token?{token:options.token}:{})},options);}
   async call<M extends MethodName>(method:M,params:MethodParams<M>):Promise<MethodResult<M>>{
     const request=MethodSchemas[method].parse(params);
@@ -29,7 +40,7 @@ export class AuxClient{
     let body:{result?:unknown;error?:{code?:string;message?:string;detail?:unknown}};try{body=await response.json() as typeof body;}catch{throw new AuxRpcError(`Aux returned a non-JSON response (HTTP ${response.status}).`,'invalid_response',response.status);}
     if(body.error)throw new AuxRpcError(body.error.message??`Aux request failed with HTTP ${response.status}.`,body.error.code??'request_failed',response.status,body.error.detail);
     if(!response.ok)throw new AuxRpcError(`Aux request failed with HTTP ${response.status}.`,'http_error',response.status);
-    return ResultSchemas[method].parse(body.result) as MethodResult<M>;
+    return (this.validateResults??!HOT_METHODS.has(method))?ResultSchemas[method].parse(body.result) as MethodResult<M>:body.result as MethodResult<M>;
   }
   async *events(lastSeq=0,options:{signal?:AbortSignal;pollMs?:number}={}):AsyncGenerator<AuxEvent>{
     let sequence=lastSeq;const pollMs=options.pollMs??400;

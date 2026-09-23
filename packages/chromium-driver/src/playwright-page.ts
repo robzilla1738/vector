@@ -1,5 +1,5 @@
 import { extractElements } from "./extract-script.js";
-import type { BrowserContext, Dialog, ElementHandle, Frame, Locator, Page, Response } from "playwright-core";
+import type { BrowserContext, ConsoleMessage, Dialog, Download, ElementHandle, Frame, Locator, Page, Request, Response } from "playwright-core";
 import {
   AuxError,
   normalizeAuxEnvironment,
@@ -10,17 +10,12 @@ import {
   type ObservationRequest,
   type SelectorStrategy,
 } from "@aux/contracts";
-import { collectObservation, type ObserveScriptResult } from "./observe-script.js";
+import { collectObservation, type ObserveScriptArgs, type ObserveScriptResult } from "./observe-script.js";
 import { parseTarget, RefRegistry } from "./ref-registry.js";
 import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
 import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
-import {
-  READINESS_INIT_SCRIPT,
-  SETTLED_CONDITION_MS,
-  SETTLED_QUIET_MS,
-  observationFingerprint,
-  settledProbe,
-} from "./readiness.js";
+import { RequestTracker, SETTLED_CONDITION_MS, SETTLED_QUIET_MS, settledProbe } from "./readiness.js";
+import { AuxWorld } from "./aux-world.js";
 import type { DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
 
 const DEFAULT_STEP_TIMEOUT = 15_000;
@@ -70,6 +65,13 @@ export class PlaywrightDriverPage implements DriverPage {
   }[] = [];
   private attached = true;
   private capture: ResponseCaptureOptions;
+  /** Resolves to null when the page cannot host the isolated world (test doubles, exotic targets). */
+  private world: Promise<AuxWorld | null>;
+  private requests: RequestTracker;
+  /** Lowest ref number a new node may take — page-wide across frames, reset per document. */
+  private refCounter = 1;
+  /** This wrapper's page listeners; the driver's own close/crash handlers must survive dispose. */
+  private listeners: [string, (...args: never[]) => void][] = [];
 
   constructor(opts: {
     page: Page;
@@ -86,19 +88,19 @@ export class PlaywrightDriverPage implements DriverPage {
     this.refs = opts.refs;
     this.documentEpoch = opts.initialDocumentEpoch ?? 0;
     this.capture = { ...defaultResponseCaptureOptions(), ...opts.responseCapture };
+    this.requests = new RequestTracker(() => this.page.mainFrame());
     this.wireEvents();
-    // readiness signal (P1-8): every new document tracks in-flight fetch/XHR
-    // and DOM mutations so navigate/waitFor can wait for quiescence
-    // best-effort: a page handle that cannot take init scripts (or a test
-    // double) must not break attach — readiness then falls back to bounded waits
-    try {
-      void this.page.addInitScript(READINESS_INIT_SCRIPT).catch(() => {});
-      // init scripts only reach future documents; a tab attached mid-document
-      // (human tab, restored tab, attached Chrome) needs the tracker now too
-      void this.page.evaluate(READINESS_INIT_SCRIPT).catch(() => {});
-    } catch {
-      /* readiness probe unavailable on this page */
-    }
+    // best-effort: without the world, observe/act use Playwright's main-world
+    // paths and readiness falls back to bounded frame waits
+    this.world =
+      typeof this.context?.newCDPSession === "function"
+        ? AuxWorld.open(this.context, this.page).catch(() => null)
+        : Promise.resolve(null);
+  }
+
+  private on(event: string, fn: (...args: never[]) => void) {
+    this.page.on(event as never, fn as never);
+    this.listeners.push([event, fn]);
   }
 
   /**
@@ -124,7 +126,8 @@ export class PlaywrightDriverPage implements DriverPage {
         pending.resolve();
       }
     };
-    this.page.on("request", (request) => {
+    this.on("request", (request: Request) => {
+      this.requests.started(request);
       try {
         if (!request.isNavigationRequest() || request.frame() !== this.page.mainFrame()) return;
       } catch {
@@ -136,35 +139,42 @@ export class PlaywrightDriverPage implements DriverPage {
       this.pendingNavigation = { request, done, resolve };
     });
     // a download or a 204 never commits a document
-    this.page.on("requestfailed", (request) => endNavigation(request));
-    this.page.on("requestfinished", (request) => { if (request.isNavigationRequest()) setTimeout(() => endNavigation(request), 50); });
-    this.page.on("framenavigated", (frame) => {
-      if (frame === this.page.mainFrame()) endNavigation();
-      if (frame === this.page.mainFrame()) {
-        this.documentEpoch++;
-        this.refs.clear(this.identity.pageId);
-        this.frameKeys.keyToFrame.clear();
-        this.events.onNavigated?.(frame.url(), this.documentEpoch);
-      }
+    this.on("requestfailed", (request: Request) => {
+      this.requests.ended(request);
+      endNavigation(request);
     });
-    this.page.on("close", () => {
+    this.on("requestfinished", (request: Request) => {
+      this.requests.ended(request);
+      if (request.isNavigationRequest()) setTimeout(() => endNavigation(request), 50);
+    });
+    this.on("framenavigated", (frame: Frame) => {
+      if (frame !== this.page.mainFrame()) return;
+      endNavigation();
+      this.documentEpoch++;
+      this.refs.clear(this.identity.pageId);
+      this.refCounter = 1;
+      this.requests.reset();
+      this.frameKeys.keyToFrame.clear();
+      this.events.onNavigated?.(frame.url(), this.documentEpoch);
+    });
+    this.on("close", () => {
       this.attached = false;
       this.events.onDestroyed?.("closed");
     });
-    this.page.on("crash", () => {
+    this.on("crash", () => {
       this.attached = false;
       this.events.onDestroyed?.("crashed");
     });
-    this.page.on("dialog", (dialog) => {
+    this.on("dialog", (dialog: Dialog) => {
       void this.onDialog(dialog);
     });
-    this.page.on("console", (msg) => {
-      const info = { level: msg.type(), message: msg.text() };
-      this.consoleLines.push({ ...info, atMs: Date.now() });
+    this.on("console", (msg: ConsoleMessage) => {
+      const info = { level: msg.type(), message: msg.text(), atMs: Date.now() };
+      this.consoleLines.push(info);
       if (this.consoleLines.length > 200) this.consoleLines.splice(0, this.consoleLines.length - 200);
       this.events.onConsole?.(info);
     });
-    this.page.on("download", (download) => {
+    this.on("download", (download: Download) => {
       const info = { suggestedFilename: download.suggestedFilename(), path: undefined as string | undefined };
       const waiters = this.externalDownloadWaiters.splice(0);
       for (const w of waiters) {
@@ -174,7 +184,7 @@ export class PlaywrightDriverPage implements DriverPage {
       this.events.onDownload?.(info);
     });
     if (CAPTURE_RESPONSES) {
-      this.page.on("response", (response) => {
+      this.on("response", (response: Response) => {
         void this.captureResponse(response);
       });
     }
@@ -285,6 +295,9 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   async navigate(url: string, timeoutMs = 30_000) {
+    // the world's new-document script must be registered before the document
+    // is created, or the first call pays a lazy install on a busy renderer
+    await this.world;
     await this.page.goto(url, { timeout: timeoutMs, waitUntil: "domcontentloaded" });
   }
   async back(timeoutMs = 15_000) {
@@ -307,11 +320,23 @@ export class PlaywrightDriverPage implements DriverPage {
    * page settled. Never throws; a wedged renderer just reports false.
    */
   async waitForSettled(timeoutMs = SETTLED_CONDITION_MS): Promise<boolean> {
-    const r = await bounded(
-      this.page.evaluate(settledProbe, { timeoutMs, quietMs: SETTLED_QUIET_MS }).catch(() => false),
-      timeoutMs + 250,
-    );
-    return r === true;
+    const world = await this.world;
+    if (!world) {
+      const r = await bounded(this.page.evaluate(settledProbe, { timeoutMs, quietMs: SETTLED_QUIET_MS }), timeoutMs + 250);
+      return r === true;
+    }
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const left = Math.max(0, deadline - Date.now());
+      const dom = await bounded(world.call<boolean>(`__aux.settle(${left}, ${SETTLED_QUIET_MS})`, true), left + 250);
+      if (dom !== true) return false;
+      if (this.requests.quiet(SETTLED_QUIET_MS)) return true;
+      // requests in flight: wait them out, then re-check the DOM — a completed fetch usually renders
+      while (!this.requests.quiet(SETTLED_QUIET_MS)) {
+        if (Date.now() >= deadline) return false;
+        await new Promise((r) => setTimeout(r, Math.min(20, Math.max(1, deadline - Date.now()))));
+      }
+    }
   }
   async stop() {
     // bounded — window.stop() itself needs the renderer's event loop, which
@@ -365,12 +390,14 @@ export class PlaywrightDriverPage implements DriverPage {
 
   /**
    * One-hop ref resolution (speed P0-3 / plan A7): the observe script keeps
-   * the live `ref → Element` map in the page, so a ref becomes an
-   * ElementHandle with a single `evaluateHandle` — no css/xpath/role search
-   * and no accessible-name computation. Playwright's actionability checks
-   * apply to handles exactly as to locators. Falls back to the selector
-   * search when the node is gone (removed, re-rendered, or the document
-   * changed), which is also what produces `target_detached`.
+   * the live `ref → Element` map, so a ref resolves to its node directly —
+   * no css/xpath/role search. A main-frame node lives in the aux world, which
+   * Playwright cannot hand out handles for; the world computes a fresh css
+   * path for it instead. Child frames keep the map in their own world and
+   * return an ElementHandle. Playwright's actionability checks apply either
+   * way. Falls back to the registry selectors when the node is gone
+   * (removed, re-rendered, or the document changed), which is also what
+   * produces `target_detached`.
    */
   private async resolveActionable(target: string): Promise<Actionable> {
     await this.navigationCommitted();
@@ -379,52 +406,121 @@ export class PlaywrightDriverPage implements DriverPage {
       const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
       if (entry) {
         const frame = this.frameForKey(entry.frame);
-        const handle = await bounded(
-          frame.evaluateHandle((ref) => {
-            const m = (globalThis as unknown as { __auxRefs?: Map<string, Element> }).__auxRefs;
-            const el = m instanceof Map ? m.get(ref) : undefined;
-            return el && el.isConnected ? el : null;
-          }, parsed.ref),
-          FRAME_PROBE_MS,
-        ).catch(() => undefined);
-        const el = handle?.asElement();
-        if (el) return el as ElementHandle<HTMLElement | SVGElement>;
-        await handle?.dispose().catch(() => {});
+        const world = entry.frame === "main" ? await this.world : null;
+        if (world) {
+          const css = await bounded(world.call<string | null>(`__aux.css(${JSON.stringify(parsed.ref)})`), FRAME_PROBE_MS);
+          const loc = css ? await selectUniqueLocator(locatorAttempts(frame, { css }), target).catch(() => null) : null;
+          if (loc) return loc;
+        } else {
+          const handle = await bounded(
+            frame.evaluateHandle((ref) => {
+              const m = (globalThis as unknown as { __auxStore?: { refs?: Map<string, Element> } }).__auxStore?.refs;
+              const el = m instanceof Map ? m.get(ref) : undefined;
+              return el && el.isConnected ? el : null;
+            }, parsed.ref),
+            FRAME_PROBE_MS,
+          );
+          const el = handle?.asElement();
+          if (el) return el as ElementHandle<HTMLElement | SVGElement>;
+          await handle?.dispose().catch(() => {});
+        }
       }
     }
     return this.resolveLocator(target);
   }
 
+  /** A registered main-frame ref plus the world holding its node; null routes to Playwright. */
+  private async worldRef(target: string): Promise<{ world: AuxWorld; ref: string } | null> {
+    await this.navigationCommitted();
+    const parsed = parseTarget(target);
+    if (parsed.kind !== "ref" || this.refs.resolve(this.identity.pageId, parsed.ref)?.frame !== "main") return null;
+    const world = await this.world;
+    return world ? { world, ref: JSON.stringify(parsed.ref) } : null;
+  }
+
+  /**
+   * Raw CDP pointer input: one world call scrolls the node in, checks it is
+   * connected, visible, enabled and actually hit at its centre, then the
+   * mouse events are pipelined on the page session. Any failed check returns
+   * false so the caller takes Playwright's actionability path — its waits
+   * and error messages stay the behaviour for everything but the easy case.
+   */
+  private async rawPointer(target: string, button: "left" | "right" | "middle" | "none", clicks: number): Promise<boolean> {
+    const w = await this.worldRef(target);
+    if (!w) return false;
+    const point = await bounded(w.world.call<[number, number] | string>(`__aux.point(${w.ref})`), FRAME_PROBE_MS);
+    if (!Array.isArray(point)) return false;
+    const [x, y] = point;
+    const mask = button === "left" ? 1 : button === "right" ? 2 : button === "middle" ? 4 : 0;
+    const sent = [w.world.input("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 })];
+    for (let n = 1; n <= clicks; n++) {
+      sent.push(w.world.input("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button, buttons: mask, clickCount: n }));
+      sent.push(w.world.input("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button, buttons: 0, clickCount: n }));
+    }
+    await Promise.all(sent);
+    return true;
+  }
+
+  /** Focus (and for fill, select) the ref's node in the world; true when keyboard input may follow. */
+  private async rawFocus(target: string, fill: boolean): Promise<AuxWorld | null> {
+    const w = await this.worldRef(target);
+    if (!w) return null;
+    const r = await bounded(w.world.call<string>(`__aux.focus(${w.ref}, ${fill})`), FRAME_PROBE_MS);
+    return r === "ok" ? w.world : null;
+  }
+
   // ---------- actions ----------
 
   async click(target: string, button: "left" | "right" | "middle" = "left", timeoutMs = DEFAULT_STEP_TIMEOUT) {
+    if (await this.rawPointer(target, button, 1)) return;
     const loc = await this.resolveActionable(target);
     await loc.click({ button, timeout: timeoutMs, noWaitAfter: true });
   }
   async dblclick(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
+    if (await this.rawPointer(target, "left", 2)) return;
     const loc = await this.resolveActionable(target);
     await loc.dblclick({ timeout: timeoutMs, noWaitAfter: true });
   }
   async hover(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
+    if (await this.rawPointer(target, "none", 0)) return;
     const loc = await this.resolveActionable(target);
     await loc.hover({ timeout: timeoutMs });
   }
   async fill(target: string, value: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
+    // select-all + Input.insertText, exactly Playwright's fill minus the
+    // actionability waits: frameworks see trusted beforeinput/input events
+    const world = await this.rawFocus(target, true);
+    if (world) {
+      if (value) await world.input("Input.insertText", { text: value });
+      else {
+        const key = { key: "Delete", code: "Delete", windowsVirtualKeyCode: 46 };
+        await Promise.all([world.input("Input.dispatchKeyEvent", { type: "keyDown", ...key }), world.input("Input.dispatchKeyEvent", { type: "keyUp", ...key })]);
+      }
+      return;
+    }
     const loc = await this.resolveActionable(target);
     await loc.fill(value, { timeout: timeoutMs });
   }
   async typeText(target: string, value: string, delayMs = 0, timeoutMs = DEFAULT_STEP_TIMEOUT) {
+    if (await this.rawFocus(target, false)) {
+      await this.page.keyboard.type(value, { delay: delayMs });
+      return;
+    }
     const loc = await this.resolveActionable(target);
     if (isHandle(loc)) await loc.type(value, { delay: delayMs, timeout: timeoutMs });
     else await loc.pressSequentially(value, { delay: delayMs, timeout: timeoutMs });
   }
   async press(key: string, target?: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    if (target) {
-      const loc = await this.resolveActionable(target);
-      await loc.press(key, { timeout: timeoutMs });
-    } else {
+    if (!target) {
       await this.page.keyboard.press(key);
+      return;
     }
+    if (await this.rawFocus(target, false)) {
+      await this.page.keyboard.press(key);
+      return;
+    }
+    const loc = await this.resolveActionable(target);
+    await loc.press(key, { timeout: timeoutMs });
   }
   async check(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     const loc = await this.resolveActionable(target);
@@ -683,14 +779,12 @@ export class PlaywrightDriverPage implements DriverPage {
   /** One small evaluate on the main frame; frames are folded in by URL so a child navigation invalidates too. */
   async observeFingerprint(): Promise<string> {
     await this.navigationCommitted();
-    const main = await bounded(this.page.evaluate(observationFingerprint), FRAME_PROBE_MS);
+    // without the world's mutation tracker a text-only change would leave the
+    // fingerprint unchanged, so such a document is never served from cache
+    const world = await this.world;
+    if (!world) throw new AuxError("backend_unavailable", "mutation tracker unavailable on this page");
+    const main = await bounded(world.call<string>("__aux.fingerprint()"), FRAME_PROBE_MS);
     if (typeof main !== "string") throw new AuxError("backend_unavailable", "fingerprint probe timed out");
-    if (main.startsWith("nomo")) {
-      // no mutation tracker in this document: a text-only change would leave
-      // the fingerprint unchanged, so this observation must not be cached
-      void this.page.evaluate(READINESS_INIT_SCRIPT).catch(() => {});
-      throw new AuxError("backend_unavailable", "mutation tracker not installed in this document");
-    }
     const frames = this.page
       .frames()
       .filter((f) => f !== this.page.mainFrame())
@@ -717,7 +811,7 @@ export class PlaywrightDriverPage implements DriverPage {
     let scroll = { x: 0, y: 0, maxY: 0 };
     // a subtree pass adds to the page's refs; a full pass replaces them
     const partial = req?.scope === "subtree";
-    let refStart = partial ? this.refs.nextRef(this.identity.pageId) : 1;
+    const world = await this.world;
     let title: string | undefined;
 
     let mainOrigin: string | null = null;
@@ -748,13 +842,13 @@ export class PlaywrightDriverPage implements DriverPage {
     // observation or a css selector. A ref resolves through the registry to
     // its css path *and* frame; a ref to an <iframe> scopes the observation
     // to that frame's document instead.
-    let subtree: { css?: string; frameKey?: string; onlyFrame?: Frame } | undefined;
+    let subtree: { css?: string; ref?: string; frameKey?: string; onlyFrame?: Frame } | undefined;
     if (req?.scope === "subtree" && req.subtreeRef) {
       const parsed = parseTarget(req.subtreeRef);
       if (parsed.kind === "ref") {
         const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
         if (!entry) throw new AuxError("target_detached", `subtreeRef ${parsed.ref} is unknown or stale — re-observe the page`);
-        subtree = { css: entry.selector.css, frameKey: entry.frame };
+        subtree = { css: entry.selector.css, ref: parsed.ref, frameKey: entry.frame };
         if (entry.tag === "iframe" && entry.selector.css) {
           const owner = this.frameForKey(entry.frame);
           const child = await bounded(
@@ -773,24 +867,19 @@ export class PlaywrightDriverPage implements DriverPage {
       if (!sameOrigin) continue;
       if (subtree?.onlyFrame && frame !== subtree.onlyFrame) continue;
       if (subtree?.frameKey && key !== subtree.frameKey && key !== "main") continue;
-      let part: ObserveScriptResult | undefined;
-      try {
-        part = await bounded(
-          frame.evaluate(collectObservation, {
-            maxElements: Math.max(10, maxElements - allElements.length),
-            maxTextChars,
-            subtreeCss: subtree && !subtree.onlyFrame && key === subtree.frameKey ? subtree.css : undefined,
-            frameKey: key,
-            refStart,
-            mergeRefs: partial,
-          }),
-          FRAME_OBSERVE_MS,
-        );
-      } catch {
-        continue; // frame navigated mid-observe or is not evaluatable
-      }
-      if (!part) continue; // frame timed out — skip it rather than stall the lane
-      refStart = part.nextRef;
+      const scoped = subtree && !subtree.onlyFrame && key === subtree.frameKey;
+      // a frame that navigated mid-observe, is not evaluatable, or timed out
+      // is skipped rather than stalling the lane
+      const part = await this.collect(key, frame, world, {
+        maxElements: Math.max(10, maxElements - allElements.length),
+        maxTextChars,
+        subtreeCss: scoped ? subtree!.css : undefined,
+        subtreeRef: scoped ? subtree!.ref : undefined,
+        frameKey: key,
+        refStart: this.refCounter,
+        mergeRefs: partial,
+      });
+      if (!part) continue;
       elementsTotal += part.elementsTotal;
       truncated ||= part.truncated;
       if (key === "main") {
@@ -827,7 +916,6 @@ export class PlaywrightDriverPage implements DriverPage {
       tables,
       links,
       dialogs: this.lastDialog ? [this.lastDialog] : [],
-      console: this.consoleLines.slice(),
       truncated,
       stats: {
         elementsTotal,
@@ -838,19 +926,31 @@ export class PlaywrightDriverPage implements DriverPage {
     };
   }
 
+  /** One frame's observe pass: the aux world for the main frame, the frame's own world otherwise. */
+  private async collect(key: string, frame: Frame, world: AuxWorld | null, args: ObserveScriptArgs): Promise<ObserveScriptResult | undefined> {
+    const part = await bounded(
+      key === "main" && world
+        ? world.call<string>(`__aux.collect(${JSON.stringify(args)})`).then((json) => JSON.parse(json) as ObserveScriptResult)
+        : frame.evaluate(collectObservation, args),
+      FRAME_OBSERVE_MS,
+    );
+    if (part) this.refCounter = Math.max(this.refCounter, part.nextRef);
+    return part;
+  }
+
   async expandRef(ref: string, maxElements = 60): Promise<ElementRef[]> {
     const entry = this.refs.resolve(this.identity.pageId, ref);
     if (!entry?.selector.css) return [];
-    const frame = this.frameForKey(entry.frame);
-    const part = await frame.evaluate(collectObservation, {
+    const part = await this.collect(entry.frame, this.frameForKey(entry.frame), await this.world, {
       maxElements,
       maxTextChars: 0,
       subtreeCss: entry.selector.css,
+      subtreeRef: ref,
       frameKey: entry.frame,
-      refStart: this.refs.nextRef(this.identity.pageId),
+      refStart: this.refCounter,
       mergeRefs: true,
     });
-    const els = part.elements as ElementRef[];
+    const els = (part?.elements ?? []) as ElementRef[];
     this.refs.register(this.identity.pageId, els);
     return els;
   }
@@ -889,8 +989,9 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async dispose() {
     // We never close the underlying page — lifecycle belongs to the
-    // native tab manager or to Chrome. Detach listeners only.
+    // native tab manager or to Chrome. Detach this wrapper's listeners only.
     this.attached = false;
-    this.page.removeAllListeners();
+    for (const [event, fn] of this.listeners.splice(0)) this.page.off(event as never, fn as never);
+    void this.world.then((w) => w?.dispose());
   }
 }

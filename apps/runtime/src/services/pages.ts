@@ -8,8 +8,10 @@ import {
   type AuxErrorCode,
   type Backend,
   type Condition,
+  type ElementRef,
   type Observation,
   type ObservationContent,
+  type ObservationDelta,
   type ObservationRequest,
   type PageTarget,
   type Program,
@@ -61,12 +63,60 @@ interface LivePage {
   /** observation cache (plan A6): the last observation with the page fingerprint and request it answered */
   lastObs?: { fingerprint: string; reqKey: string; obs: Observation };
   /** recent observations by revision so `sinceRevision` can diff against the one the caller last saw */
-  history: { revision: number; text: string; fields: Map<string, string> }[];
+  history: ObservedRevision[];
   consoleLines: { level: string; message: string; atMs?: number }[];
   lastDialog?: { type: string; message: string };
 }
 
 const OBSERVATION_HISTORY = 8;
+
+interface ObservedRevision {
+  revision: number;
+  epoch: number;
+  /** scope + subtree: a delta only compares like with like */
+  shape: string;
+  text: string;
+  fields: Map<string, string>;
+  /** wire view of each element by ref — the base for structural deltas */
+  elements: Map<string, Record<string, unknown>>;
+}
+
+/** Element fields a client sees; selectors and geometry stay in the ref registry. */
+const elementView = ({ selector: _s, rect: _r, frame, ...rest }: ElementRef): Record<string, unknown> =>
+  frame === "main" ? rest : { ...rest, frame };
+
+/**
+ * `sinceRevision` delta against a revision of the same document: elements
+ * added (full), removed (refs), changed (ref + the fields that differ, null
+ * for a field that went away) and the text lines added/removed.
+ */
+function structuralDelta(base: ObservedRevision, elements: Map<string, Record<string, unknown>>, text: string): ObservationDelta {
+  const added: Record<string, unknown>[] = [];
+  const changed: { ref: string; fields: Record<string, unknown> }[] = [];
+  for (const [ref, el] of elements) {
+    const prev = base.elements.get(ref);
+    if (!prev) {
+      added.push(el);
+      continue;
+    }
+    const fields: Record<string, unknown> = {};
+    for (const key of new Set([...Object.keys(prev), ...Object.keys(el)])) {
+      if (JSON.stringify(prev[key]) !== JSON.stringify(el[key])) fields[key] = el[key] ?? null;
+    }
+    if (Object.keys(fields).length) changed.push({ ref, fields });
+  }
+  const removed = [...base.elements.keys()].filter((ref) => !elements.has(ref));
+  return { sinceRevision: base.revision, added, removed, changed, textDelta: lineDelta(base.text, text) };
+}
+
+function lineDelta(before: string, after: string, cap = Infinity): { added: string[]; removed: string[] } {
+  if (before === after) return { added: [], removed: [] };
+  const a = before.split("\n").filter(Boolean);
+  const b = after.split("\n").filter(Boolean);
+  const inA = new Set(a);
+  const inB = new Set(b);
+  return { added: b.filter((l) => !inA.has(l)).slice(0, cap), removed: a.filter((l) => !inB.has(l)).slice(0, cap) };
+}
 
 const observeReqKey = (req: ObserveReq) =>
   `${req.scope ?? "full"}|${req.subtreeRef ?? ""}|${req.maxElements ?? 120}|${req.maxTextChars ?? 6000}`;
@@ -156,11 +206,7 @@ export class PageService {
     if(deps.native.available())for(const tab of deps.repo.loadTabs().filter(tab=>tab.backend==="aux"))this.pendingRestore.set(tab.page_id,tab);
     this.restoring = this.pendingRestore.size > 0;
     // restore persisted page rows as detached history entries
-    for (const p of deps.repo.listPages({ includeDetached: true })) {
-      p.viewStatus = "detached";
-      p.controller = "none";
-      this.deps.repo.upsertPage(p);
-    }
+    deps.repo.detachAllPages();
   }
 
   list(opts?: { backend?: Backend; includeDetached?: boolean }): PageTarget[] {
@@ -261,7 +307,7 @@ export class PageService {
     background: boolean,
     windowId?: string,
     ownedByRuntime=false,
-  ): Promise<{ targetId: string; nativeCreated: boolean }> {
+  ): Promise<{ targetId: string; nativeCreated: boolean; cdpTargetId?: string }> {
     if (backend === "aux") {
       const marker = `atab-${pageId}`;
       if (this.deps.native.available()) {
@@ -273,7 +319,7 @@ export class PageService {
           command: { kind: "open", pageId, url: initialUrl, background, activate: !background, runtimeOwned: ownedByRuntime },
         });
         if (ack.status === "rejected") throw new AuxError((ack.error?.code ?? "unavailable") as AuxErrorCode, ack.error?.message ?? "The tab could not be opened.");
-        return { targetId: marker, nativeCreated: true };
+        return { targetId: marker, nativeCreated: true, cdpTargetId: ack.targetId };
       }
       if (driver.createTarget) {
         // standalone mode: the driver owns the surface (headless chrome page)
@@ -308,20 +354,21 @@ export class PageService {
     const pageId = restored?.pageId ?? newPageId();
     let targetId: string;
     let nativeCreated = false;
+    let cdpTargetId: string | undefined;
     // Open on about:blank, then navigate AFTER response listeners are wired —
     // otherwise the page's own first load escapes passive capture.
     const initialUrl = opts.targetId ? opts.url : "about:blank";
     if (opts.targetId && backend === "chrome") {
       targetId = opts.targetId;
     } else {
-      ({ targetId, nativeCreated } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
+      ({ targetId, nativeCreated, cdpTargetId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
     }
 
     let dp: DriverPage;
     try {
       dp = restored && driver.recoverPage
         ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
-        : await driver.attach(targetId, pageId);
+        : await driver.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
     } catch (e) {
       // the shell view already exists — destroy it rather than leaking a
       // driverless zombie tab in the strip
@@ -475,7 +522,7 @@ export class PageService {
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, dialog: info });
       },
       onConsole: (info) => {
-      lp.consoleLines.push({ level: info.level, message: info.message, atMs: Date.now() });
+      lp.consoleLines.push({ level: info.level, message: info.message, atMs: info.atMs ?? Date.now() });
       if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
       },
       onDownload: (info) => {
@@ -490,11 +537,15 @@ export class PageService {
     });
   }
 
+  /** Coalesced: the page row and tab strip commit once per tick however many fields changed. */
   private persist(lp: LivePage) {
     lp.target.lastActiveAt = Date.now();
-    this.deps.repo.upsertPage(lp.target);
+    this.deps.repo.deferPage(lp.target);
     this.saveTabsSnapshot();
   }
+
+  /** Last tab strip handed to the repo — the strip is rewritten only when it changed. */
+  private savedTabs = "";
 
   /** Persist the human-facing tab strip so a restart restores it. */
   private saveTabsSnapshot() {
@@ -510,13 +561,21 @@ export class PageService {
         backend: x.target.backend,
         active: this.activeByWindow.get(x.target.windowId ?? "main") === x.target.pageId,
       }));
-    try {
-      const liveIds=new Set(tabs.map(tab=>tab.pageId));
-      for(const saved of this.pendingRestore.values())if(!liveIds.has(saved.page_id))tabs.push({pageId:saved.page_id,windowId:saved.window_id,ordinal:tabs.length,url:saved.url,title:saved.title,backend:saved.backend as Backend,active:!!saved.active});
-      this.deps.repo.saveTabs(tabs);
-    } catch {
-      /* snapshot is best-effort */
-    }
+    const liveIds=new Set(tabs.map(tab=>tab.pageId));
+    for(const saved of this.pendingRestore.values())if(!liveIds.has(saved.page_id))tabs.push({pageId:saved.page_id,windowId:saved.window_id,ordinal:tabs.length,url:saved.url,title:saved.title,backend:saved.backend as Backend,active:!!saved.active});
+    const key = JSON.stringify(tabs);
+    if (key === this.savedTabs) return;
+    this.savedTabs = key;
+    // snapshot is best-effort — a failed write is retried by the next change;
+    // late: tab rows reference page rows queued in the same batch
+    this.deps.repo.defer("tabs", () => {
+      try {
+        this.deps.repo.saveTabs(tabs);
+      } catch (e) {
+        if (this.savedTabs === key) this.savedTabs = "";
+        throw e;
+      }
+    }, true);
   }
 
   /** Reopen the tabs that were live when the app last shut down. */
@@ -621,7 +680,8 @@ export class PageService {
       lp.target.url = url;
       this.persist(lp);
       this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, title: lp.target.title, url: lp.target.url });
-      if (lp.target.url.startsWith("http")) this.deps.repo.addHistory(lp.target.url, lp.target.title, lp.target.pageId);
+      // browsing history is the human's: agent/worker pages do not write it
+      if (!lp.target.ownedByRuntime && lp.target.url.startsWith("http")) this.deps.repo.recordVisit(lp.target.url, lp.target.title, lp.target.pageId);
     } catch {
       /* target racing a navigation — next event fixes it */
     }
@@ -834,18 +894,22 @@ export class PageService {
           hit.obs.documentEpoch === lp.target.documentEpoch
         ) {
           this.deps.tracer?.incr("observe.cache_hit");
-          return { ...hit.obs, observedAt: Date.now(), cached: true, changesSince: undefined, deltaFrom: undefined };
+          const current = lp.history.find((h) => h.revision === hit.obs.revision);
+          const delta = current ? this.deltaSince(lp, req, current) : undefined;
+          return { ...hit.obs, observedAt: Date.now(), cached: true, changesSince: undefined, deltaFrom: undefined, delta };
         }
       }
-    const content = await dp.observe(req);
-    if (lp && content.console?.length) {
-      for (const line of content.console) {
-        lp.consoleLines.push({ level: line.level, message: line.message, atMs: line.atMs ?? Date.now() });
-      }
-      if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
-    }
-    return this.recordObservation(pageId, content, req, fingerprint);
+    // console lines reach lp.consoleLines through onConsole; observations do not carry them
+    return this.recordObservation(pageId, await dp.observe(req), req, fingerprint);
     });
+  }
+
+  /** Structural delta for `sinceRevision` — only against a revision of the same document. */
+  private deltaSince(lp: LivePage, req: ObserveReq, current: ObservedRevision): ObservationDelta | undefined {
+    if (req.sinceRevision === undefined) return undefined;
+    const base = lp.history.find((h) => h.revision === req.sinceRevision);
+    if (!base || base.epoch !== current.epoch || base.shape !== current.shape) return undefined;
+    return structuralDelta(base, current.elements, current.text);
   }
 
   /**
@@ -867,7 +931,16 @@ export class PageService {
     const changesSince = this.diffObservations(base, content);
     const deltaFrom = lp.lastObservationId;
     const fields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
-    lp.history.push({ revision, text: content.text, fields });
+    const current: ObservedRevision = {
+      revision,
+      epoch: lp.target.documentEpoch,
+      shape: `${req.scope ?? "full"}|${req.subtreeRef ?? ""}`,
+      text: content.text,
+      fields,
+      elements: new Map(content.elements.map((e) => [e.ref, elementView(e)])),
+    };
+    const delta = this.deltaSince(lp, req, current);
+    lp.history.push(current);
     if (lp.history.length > OBSERVATION_HISTORY) lp.history.splice(0, lp.history.length - OBSERVATION_HISTORY);
     const obs: Observation = {
       observationId: newObservationId(),
@@ -879,18 +952,21 @@ export class PageService {
       content,
       changesSince: changesSince.length ? changesSince : undefined,
       deltaFrom: changesSince.length ? deltaFrom : undefined,
+      delta,
     };
     lp.lastObservationId = obs.observationId;
     lp.lastObs = fingerprint ? { fingerprint, reqKey: observeReqKey(req), obs } : undefined;
-    this.deps.repo.saveObservation({
-      observationId: obs.observationId,
-      pageId,
-      epoch: obs.documentEpoch,
-      revision,
-      observedAt: obs.observedAt,
-      scope: obs.scope,
-      json: JSON.stringify(obs),
-    });
+    this.deps.repo.defer(`obs:${obs.observationId}`, () =>
+      this.deps.repo.saveObservation({
+        observationId: obs.observationId,
+        pageId,
+        epoch: obs.documentEpoch,
+        revision,
+        observedAt: obs.observedAt,
+        scope: obs.scope,
+        json: JSON.stringify(obs),
+      }),
+    );
     this.persist(lp);
     this.deps.events.emit(EventTypes.Observation, {
       pageId,
@@ -905,10 +981,7 @@ export class PageService {
     const changes: string[] = [];
     if (!base) return changes;
     if (base.text !== next.text) {
-      const a = base.text.split("\n").filter(Boolean);
-      const b = next.text.split("\n").filter(Boolean);
-      const added = b.filter((l) => !a.includes(l)).slice(0, 5);
-      const removed = a.filter((l) => !b.includes(l)).slice(0, 5);
+      const { added, removed } = lineDelta(base.text, next.text, 5);
       for (const l of added) changes.push(`+ ${l.slice(0, 120)}`);
       for (const l of removed) changes.push(`- ${l.slice(0, 120)}`);
       if (!added.length && !removed.length) changes.push("page text changed");
@@ -958,7 +1031,7 @@ export class PageService {
     };
   }
 
-  /** Page console lines (driver buffer, observe payload, and event log). */
+  /** Page console lines: the page's event log merged with the driver buffer (same timestamps, so no duplicates). */
   async console(
     pageId: string,
     opts?: { since?: number; limit?: number },
@@ -969,9 +1042,6 @@ export class PageService {
     if (dp.console) {
       const fromDriver = await dp.console();
       if (fromDriver.length) lines = mergeConsoleLines(lines, fromDriver);
-    } else if (!lines.length) {
-      const obs = await this.observe(pageId, {});
-      if (obs.content.console?.length) lines = mergeConsoleLines(lines, obs.content.console);
     }
     if (opts?.since !== undefined) lines = lines.filter((l) => (l.atMs ?? 0) >= opts.since!);
     if (opts?.limit !== undefined) lines = lines.slice(-opts.limit);
@@ -1074,19 +1144,16 @@ export class PageService {
       });
       // §6.2 — proposed vs dispatched vs completed vs verified
       this.deps.tracer?.incr("actions.proposed", allSteps.length);
-      // step rows are collected here and written in ONE transaction when the
-      // program ends instead of an autocommit per step (speed P2-1)
+      // step rows are collected here and written with the tick's other
+      // observational rows when the program ends (speed P2-1); the step
+      // ledger is observational — a failed write never fails the program
       const stepRecords: StepRecord[] = [];
       const flushSteps = () => {
         if (!stepRecords.length || !this.deps.recordStep) return;
         const rows = stepRecords.splice(0);
-        try {
-          this.deps.repo.transaction(() => {
-            for (const r of rows) this.deps.recordStep!(r);
-          });
-        } catch {
-          /* the step ledger is observational — never fail the program for it */
-        }
+        this.deps.repo.defer(`steps:${rows[0]!.stepId}`, () => {
+          for (const r of rows) this.deps.recordStep!(r);
+        });
       };
       let result: ProgramResult & { observation?: ObservationContent };
       let observation: Observation | undefined;

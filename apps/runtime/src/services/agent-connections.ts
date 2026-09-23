@@ -15,7 +15,13 @@ export interface ScopedExternalClient {
 
 const digest = (token: string) => createHash("sha256").update(token, "utf8").digest("hex");
 
+/** last_used_at is bookkeeping: written at most this often per connection. */
+const LAST_USED_WRITE_MS = 60_000;
+
 export class AgentConnectionService {
+  /** Active tokens by hash. Revocation goes through this service and evicts, so it takes effect on the next request. */
+  private active = new Map<string, { client: ScopedExternalClient; lastUsedWrite: number }>();
+
   constructor(private repo: Repo) {}
 
   list(): AgentConnection[] {
@@ -42,6 +48,7 @@ export class AgentConnectionService {
 
   revoke(connectionId: string): AgentConnection {
     const now = Date.now();
+    for (const [hash, entry] of this.active) if (entry.client.connectionId === connectionId) this.active.delete(hash);
     const result = this.repo.db.prepare("UPDATE agent_connections SET revoked_at=? WHERE connection_id=? AND revoked_at IS NULL").run(now, connectionId);
     if (result.changes !== 1) throw new AuxError("not_found", "Active connection does not exist");
     return this.get(connectionId);
@@ -49,11 +56,27 @@ export class AgentConnectionService {
 
   authorize(token: string): ScopedExternalClient | null {
     if (!token.startsWith("auxc_")) return null;
+    const hash = digest(token);
+    const now = Date.now();
+    const cached = this.active.get(hash);
+    if (cached) {
+      if (now - cached.lastUsedWrite >= LAST_USED_WRITE_MS) {
+        cached.lastUsedWrite = now;
+        this.touch(cached.client.connectionId, now);
+      }
+      return cached.client;
+    }
     const row = this.repo.db.prepare(`SELECT connection_id,name,client,scope_kind,workspace_id,task_id,created_at,last_used_at,revoked_at
-      FROM agent_connections WHERE token_hash=? AND revoked_at IS NULL`).get(digest(token)) as Row | undefined;
+      FROM agent_connections WHERE token_hash=? AND revoked_at IS NULL`).get(hash) as Row | undefined;
     if (!row) return null;
-    this.repo.db.prepare("UPDATE agent_connections SET last_used_at=? WHERE connection_id=?").run(Date.now(), row.connection_id);
-    return { external: true, connectionId: row.connection_id, scope: this.record(row).scope };
+    const client: ScopedExternalClient = { external: true, connectionId: row.connection_id, scope: this.record(row).scope };
+    this.active.set(hash, { client, lastUsedWrite: now });
+    this.touch(row.connection_id, now);
+    return client;
+  }
+
+  private touch(connectionId: string, at: number) {
+    this.repo.db.prepare("UPDATE agent_connections SET last_used_at=? WHERE connection_id=?").run(at, connectionId);
   }
 
   private get(connectionId: string): AgentConnection {

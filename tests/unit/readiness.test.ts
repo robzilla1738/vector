@@ -1,60 +1,44 @@
 import { describe, it, expect } from "vitest";
 import { executeProgram } from "@aux/runtime";
-import { READINESS_INIT_SCRIPT, READINESS_GLOBAL } from "@aux/chromium-driver";
+import { AUX_WORLD_SOURCE, RequestTracker } from "@aux/chromium-driver";
 import type { DriverPage } from "@aux/chromium-driver";
 import type { Condition } from "@aux/contracts";
 
-describe("readiness init script", () => {
-  it("is self-contained, idempotent, and wraps fetch/XHR into an in-flight counter", async () => {
-    // run the serialized script in a sandbox standing in for a document
-    const calls: string[] = [];
-    const sandbox: Record<string, unknown> = {
-      performance: { now: () => Date.now() },
-      setTimeout,
-      Promise,
-      MutationObserver: class {
-        observe() {
-          calls.push("observe");
-        }
-      },
-      document: { documentElement: {} },
-      fetch: () => {
-        calls.push("fetch");
-        return new Promise<string>((r) => setTimeout(() => r("ok"), 10));
-      },
-      XMLHttpRequest: class {
-        addEventListener(ev: string, cb: () => void) {
-          setTimeout(cb, 5);
-        }
-        send() {
-          calls.push("send");
-        }
-      },
-    };
-    sandbox.globalThis = sandbox;
-    const run = new Function("globalThis", `with (globalThis) { ${READINESS_INIT_SCRIPT} }`) as (g: unknown) => void;
-    run(sandbox);
-    run(sandbox); // second install is a no-op
-    const st = sandbox[READINESS_GLOBAL] as { inflight: number; requests: number; lastMutation: number | null };
-    expect(st).toBeTruthy();
-    expect(calls).toContain("observe");
-    expect(st.lastMutation).toBeNull(); // "never" — a fresh document is quiet, not "100 ms old"
+describe("readiness request tracking", () => {
+  const req = (type: string, frame: unknown) => ({ resourceType: () => type, frame: () => frame });
 
-    const before = 0;
-    await new Promise((r) => setTimeout(r, 2));
-    const p = (sandbox.fetch as () => Promise<string>)();
-    const xhr = new (sandbox.XMLHttpRequest as new () => { send(): void })();
-    xhr.send();
-    expect(st.inflight).toBe(2);
-    expect(st.requests).toBe(2);
-    await expect(p).resolves.toBe("ok");
-    await new Promise((r) => setTimeout(r, 15));
-    expect(st.inflight).toBe(0);
-    expect(st.lastMutation).not.toBeNull();
-    expect(st.lastMutation!).toBeGreaterThanOrEqual(before);
-    expect(calls.filter((c) => c === "fetch")).toHaveLength(1); // the original fetch was called exactly once
+  it("counts main-frame fetch/XHR from Node and needs a quiet window after the last one ends", () => {
+    const main = {};
+    const t = new RequestTracker(() => main);
+    expect(t.quiet(100)).toBe(true); // a fresh document is quiet, not "100 ms old"
+    const a = req("fetch", main);
+    const b = req("xhr", main);
+    t.started(a);
+    t.started(b);
+    t.started(req("image", main));
+    t.started(req("fetch", {})); // child frame
+    t.started({ resourceType: () => "fetch", frame: () => { throw new Error("service worker"); } });
+    expect(t.size).toBe(2);
+    t.ended(a);
+    const endedAt = Date.now();
+    expect(t.quiet(100, endedAt + 500)).toBe(false); // b still in flight
+    t.ended(b);
+    expect(t.quiet(100, Date.now())).toBe(false);
+    expect(t.quiet(100, Date.now() + 100)).toBe(true);
   });
 
+  it("forgets the old document's requests on navigation", () => {
+    const main = {};
+    const t = new RequestTracker(() => main);
+    t.started(req("fetch", main));
+    t.reset();
+    expect(t.size).toBe(0);
+  });
+
+  it("installs nothing in the page's own world — the tracker lives in the aux isolated world", () => {
+    expect(AUX_WORLD_SOURCE).toContain("MutationObserver");
+    expect(AUX_WORLD_SOURCE).not.toMatch(/\.fetch\s*=|prototype\.send\s*=/);
+  });
 });
 
 describe("executor: waitFor settled", () => {
