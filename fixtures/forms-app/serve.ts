@@ -35,8 +35,6 @@ function saveWrites(n: number) {
   writeFileSync(counterPath, JSON.stringify({ writes: n }));
 }
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
 const FORM_PAGE = page(
   "Intake form — fixture",
   `<header><h1>Intake form</h1><a href="/">Form</a><a href="/api/state">State JSON</a><span class="muted" style="margin-left:auto">fixture :4811</span></header>
