@@ -254,10 +254,12 @@ export async function executeNodes(
           const items = resolveValue(node.items, env, ctx.allowEval);
           const list = Array.isArray(items) ? items : [];
           const cap = node.maxItems !== undefined ? Math.min(node.maxItems, list.length) : list.length;
-          const conc = Math.max(1, Math.min(node.concurrency ?? 1, 8));
+          const declared = Math.max(1, Math.min(node.concurrency ?? 1, 8));
+          // iterations share one page: only bodies that just read it may overlap
+          const conc = drivesPage(node.body) ? 1 : declared;
           ctx.emit(nodeOutcome(nodeId, "forEach", `${cap} items${conc > 1 ? ` · ×${conc}` : ""}`), fakeStep(nodeId, "forEach"));
           // sequential: shared env, in-order side effects
-          if (conc === 1) {
+          if (declared === 1) {
             for (let idx = 0; idx < cap; idx++) {
               if (ctx.signal?.aborted) throw new AuxError("cancelled", "program cancelled");
               if (state.returned) return;
@@ -394,6 +396,20 @@ export async function executeNodes(
     checkpoints: state.checkpoints.length ? state.checkpoints : undefined,
   };
 }
+
+/** Steps that only read the page; anything else (input, navigation, script, operations) drives it. */
+const READ_ONLY_OPS = new Set(["waitFor", "screenshot", "extract"]);
+const drivesPage = (nodes: readonly ProgramNode[]): boolean =>
+  nodes.some((n) => {
+    switch (n.kind) {
+      case "step": return !READ_ONLY_OPS.has(n.step.op);
+      case "call": return true;
+      case "if": return drivesPage(n.then) || drivesPage(n.else ?? []);
+      case "forEach":
+      case "until": return drivesPage(n.body);
+      default: return false;
+    }
+  });
 
 const nodeIdOf = (node: ProgramNode, i: number): string => {
   switch (node.kind) {

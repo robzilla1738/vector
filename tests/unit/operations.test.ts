@@ -100,6 +100,18 @@ describe("OperationService", () => {
     expect(decision.candidates[0]!.eligible).toBe(true);
   });
 
+  it("invoke observes once: the route guard's observation seeds the first attempt", async () => {
+    const pages = fakePages();
+    let observes = 0;
+    const observe = pages.observe;
+    pages.observe = async () => { observes++; return observe(); };
+    const s = svc(pages);
+    s.saveFromProgram({ siteKey: "app.test", name: "edit", program: program(), guards: { controls: [{ role: "button", name: "Save" }] } });
+    const r = await s.invoke({ siteKey: "app.test", name: "edit", pageId: "p1" });
+    expect(r.status).toBe("completed");
+    expect(observes).toBe(1);
+  });
+
   it("verifies the postcondition — unverified invocations fail and demote validated impls", async () => {
     const pages = fakePages({ executeResult: { status: "completed", steps: [], extracted: { saved: false } } });
     const s = svc(pages);

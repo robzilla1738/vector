@@ -154,7 +154,14 @@ export class SetRunner {
         this.skip(m, opts.runId);
         return;
       }
-      const url = m.url ?? this.deps.pages.get(m.pageId ?? "")?.url;
+      let url: string | undefined;
+      try {
+        url = this.memberUrl(m);
+      } catch (e) {
+        // one member's vanished page must not reject the whole set run
+        this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
+        return;
+      }
       if (!url && !m.pageId) {
         this.fail(m, "member has neither url nor page", opts.runId);
         return;
@@ -232,7 +239,12 @@ export class SetRunner {
     if (opts.goal && !learned && target.length > 1) {
       const bySite = new Map<string, number[]>();
       target.forEach((m, i) => {
-        const key = siteKeyOf(m.url ?? this.deps.pages.get(m.pageId ?? "")?.url ?? "");
+        let key = "";
+        try {
+          key = siteKeyOf(this.memberUrl(m) ?? "");
+        } catch {
+          /* the member fails when its job runs */
+        }
         const list = bySite.get(key) ?? [];
         list.push(i);
         bySite.set(key, list);
@@ -377,6 +389,11 @@ export class SetRunner {
       status: res.status === "completed" ? "ok" : res.status === "cancelled" ? "partial" : "error",
       error: res.error,
     };
+  }
+
+  /** The member's url, or its page's; throws not_found when that page is gone. */
+  private memberUrl(m: SetMember): string | undefined {
+    return m.url ?? (m.pageId ? this.deps.pages.get(m.pageId).url : undefined);
   }
 
   private fail(m: SetMember, error: string, runId?: string) {

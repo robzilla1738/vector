@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AuxError, type Predicate, type Program, type ProgramResult, type Step } from "@aux/contracts";
+import { AuxError, type Observation, type Predicate, type Program, type ProgramResult, type Step } from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
@@ -255,7 +255,7 @@ export class OperationService {
   async selectRoute(
     op: OperationRow,
     impls: ImplRow[],
-    ctx: { pageId?: string; allowPageOpen?: boolean },
+    ctx: { pageId?: string; allowPageOpen?: boolean; observed?: { obs?: Observation } },
   ): Promise<RouteDecision> {
     // fetch a fresh observation once, only if a browser-program impl needs it
     const needsObs = op.guards["controls"] != null && impls.some((i) => i.kind === "browser-program" && i.state !== "quarantined");
@@ -263,6 +263,7 @@ export class OperationService {
     if (needsObs && ctx.pageId) {
       try {
         const obs = await this.deps.pages.observe(ctx.pageId, {});
+        if (ctx.observed) ctx.observed.obs = obs;
         elements = obs.content.elements as typeof elements;
       } catch {
         elements = undefined;
@@ -394,13 +395,15 @@ export class OperationService {
     }
 
     const impls = this.deps.repo.listImplementations(op.operationId) as ImplRow[];
+    // the route guard's observation is also the first attempt's program base
+    const observed: { obs?: Observation } = {};
     let route: RouteDecision;
     if (opts.implId) {
       const impl = impls.find((i) => i.implId === opts.implId);
       if (!impl) throw new AuxError("not_found", `no impl ${opts.implId} on ${opts.name}`);
       route = { implId: impl.implId, kind: impl.kind, reason: "explicit impl override", candidates: [], ranked: [{ implId: impl.implId, kind: impl.kind, state: impl.state }] };
     } else {
-      route = await this.selectRoute(op, impls, { pageId: opts.pageId });
+      route = await this.selectRoute(op, impls, { pageId: opts.pageId, observed });
     }
     const ladder = route.ranked ?? [];
     if (!ladder.length) {
@@ -463,7 +466,8 @@ export class OperationService {
         intentId = journal.intentId;
       }
       try {
-        const result = await this.executeImpl(impl, { ...opts, journaled: journalWrites || undefined }, op.guards);
+        // a fallback runs after a failed attempt touched the page — it observes afresh
+        const result = await this.executeImpl(impl, { ...opts, journaled: journalWrites || undefined, observation: i === 0 ? observed.obs : undefined }, op.guards);
         const failed = result && typeof result === "object" && (result as ProgramResult).status === "failed";
 
         // postcondition: guards.verify predicate over {result, extracted, inputs}
@@ -555,13 +559,13 @@ export class OperationService {
   /** Execute one implementation against the invoke context. */
   private async executeImpl(
     impl: ImplRow,
-    opts: { pageId?: string; runId?: string; inputs?: Record<string, unknown>; journaled?: boolean },
+    opts: { pageId?: string; runId?: string; inputs?: Record<string, unknown>; journaled?: boolean; observation?: Observation },
     guards:Record<string,unknown>,
   ): Promise<unknown> {
     if (impl.kind === "browser-program") {
       if (!opts.pageId) throw new AuxError("invalid_params", "browser-program impl requires pageId");
       const saved = JSON.parse(impl.executable) as Omit<Program, "pageId">;
-      const obs = await this.deps.pages.observe(opts.pageId, {});
+      const obs = opts.observation ?? await this.deps.pages.observe(opts.pageId, {});
       const live = this.deps.pages.get(opts.pageId);
       const prepared = compileAndAuthorize({
         pageId: opts.pageId,
