@@ -9,8 +9,10 @@ import { useTabSelection } from "../use-tab-selection";
 import { TabMenu } from "./TabMenu";
 import { I } from "./icons";
 import { TAB_DRAG_TYPE } from "../bookmark-drop";
+import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 export function HorizontalTabs() {
+  const key = useShortcutLabels();
   const layout = useStore(state => state.layout);
   const pages = useStore(state => state.pages);
   const activePageId = useStore(state => state.activePageId);
@@ -58,7 +60,7 @@ export function HorizontalTabs() {
       </div>)}
     </div>
       <div className="horizontal-tab-tools">
-        <button className="icon-btn" aria-label="New tab" title="New tab (⌘T)" onClick={() => void useStore.getState().newTab().catch(errToast)}>{I.plus}</button>
+        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} onClick={() => void useStore.getState().newTab().catch(errToast)}>{I.plus}</button>
       </div>
     </div>
     {menu && <TabMenu selectedPages={selection.pagesFor(menu.page)} onSelectionDone={selection.clear} page={menu.page} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}

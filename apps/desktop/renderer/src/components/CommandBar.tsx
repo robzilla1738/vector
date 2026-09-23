@@ -13,6 +13,7 @@ import { I } from "./icons";
 import { bridge } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
+import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 interface Suggestion {
   id: string;
@@ -30,6 +31,7 @@ interface Suggestion {
  * new task, ⇥ flips a task between "this page" and "new task".
  */
 export function CommandBar({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
+  const key = useShortcutLabels();
   const slot = hero ? "hero" : "toolbar";
   // Tab suggestions depend on identity/title/url/favicon — a digest of exactly
   // those fields keeps loading/audio churn from re-rendering the bar.
@@ -448,9 +450,9 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           {intent.kind === "run" && <kbd>⇥</kbd>}
         </button>
       ) : (
-        !editing && !compact && !hero && !bridge.privateMode && (
-          <button type="button" className="cb-kbd" tabIndex={-1} title="Command palette (⌘K)" aria-label="Open command palette" onMouseDown={(e) => e.preventDefault()} onClick={() => setOverlay("palette")}>
-            ⌘K
+        !editing && !compact && !hero && !bridge.privateMode && key("palette") && (
+          <button type="button" className="cb-kbd" tabIndex={-1} title={withShortcut("Command palette", key("palette"))} aria-label="Open command palette" onMouseDown={(e) => e.preventDefault()} onClick={() => setOverlay("palette")}>
+            {key("palette")}
           </button>
         )
       )}

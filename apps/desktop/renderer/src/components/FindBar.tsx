@@ -3,9 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore, call } from "../store";
 import { I } from "./icons";
 import { bridge } from "../bridge";
+import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 /** ⌘F — in-flow strip above the page so highlighting stays live. */
 export function FindBar({ scope }: {scope?: "reader"} = {}) {
+  const key = useShortcutLabels();
   const inReader = scope === "reader";
   const mode = useStore(s => s.mode);
   const conversationId = useStore(s => s.conversationId);
@@ -124,8 +126,8 @@ export function FindBar({ scope }: {scope?: "reader"} = {}) {
         void search(text);
         ref.current?.focus();
       }}>Retry</button>}
-      <button className="icon-btn sm" title="Previous (⇧⌘G)" aria-label="Previous match" disabled={!res || !res.matches} onClick={() => void search(text, true, false)}>{I.up}</button>
-      <button className="icon-btn sm" title="Next (⌘G)" aria-label="Next match" disabled={!res || !res.matches} onClick={() => void search(text, true, true)}>{I.down}</button>
+      <button className="icon-btn sm" title={withShortcut("Previous", key("find-previous"))} aria-label="Previous match" disabled={!res || !res.matches} onClick={() => void search(text, true, false)}>{I.up}</button>
+      <button className="icon-btn sm" title={withShortcut("Next", key("find-next"))} aria-label="Next match" disabled={!res || !res.matches} onClick={() => void search(text, true, true)}>{I.down}</button>
       <button className="btn sm ghost" onClick={() => void close()}>Done</button>
     </div>
   );

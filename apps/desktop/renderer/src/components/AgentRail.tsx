@@ -9,6 +9,7 @@ import { Conversation } from "./surfaces";
 import { SetPanel } from "./SetPanel";
 import { VirtualList } from "./VirtualList";
 import { I } from "./icons";
+import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 const ago = (ts: number) => {
   const m = Math.floor((Date.now() - ts) / 60000);
@@ -120,6 +121,7 @@ function RailHome() {
 }
 
 export const AgentRail = memo(function AgentRail() {
+  const key = useShortcutLabels();
   const railOpen = useStore(s => s.railOpen);
   const view = useStore(s => s.railView);
   const setRailView = useStore(s => s.setRailView);
@@ -152,7 +154,7 @@ export const AgentRail = memo(function AgentRail() {
           <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? I.left : I.chats}</button>
           {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{I.open}</button>}
           <button className="icon-btn" title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{I.plus}</button>
-          <button className="icon-btn" title="Hide (⌘⇧A)" aria-label="Hide assistant" onClick={toggleRail}>{I.rail}</button>
+          <button className="icon-btn" title={withShortcut("Hide", key("agent-rail"))} aria-label="Hide assistant" onClick={toggleRail}>{I.rail}</button>
         </div>
         <div className={`rail-body${recentOpen ? " rail-recents" : ""}`}>
           {railOpen && recentOpen && <RailHome />}

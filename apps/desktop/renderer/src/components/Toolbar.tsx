@@ -4,8 +4,10 @@ import { bridge, inElectron } from "../bridge";
 import { useStore, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
+import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 export const Toolbar = memo(function Toolbar() {
+  const key = useShortcutLabels();
   const sidebar = useStore(s => s.sidebar);
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const mode = useStore((s) => s.mode);
@@ -26,7 +28,7 @@ export const Toolbar = memo(function Toolbar() {
   return (
     <header className={`toolbar ${inElectron && sidebar !== "expanded" ? "traffic" : ""}`}>
       <div className="tb-left">
-        {sidebar !== "expanded" && <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebarOpen}</button>}
+        {sidebar !== "expanded" && <button className="icon-btn" title={withShortcut("Show sidebar", key("sidebar"))} aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebarOpen}</button>}
         <div className="nav-btns">
           <NavigationButtons page={page} />
         </div>
@@ -50,11 +52,11 @@ export const Toolbar = memo(function Toolbar() {
             <span className="ctl-chip-label">Agent</span>
           </span>
         )}
-        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title="Tab overview (⌘⇧O)" aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
-        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={bookmarked ? "Remove bookmark (⌘D)" : "Bookmark this page (⌘D)"} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} onClick={toggleBookmark}>
+        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
+        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} onClick={toggleBookmark}>
           {bookmarked ? I.bookmarkFill : I.bookmark}
         </button>}
-        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
+        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
           {I.agent}
         </button>}
       </div>

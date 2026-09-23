@@ -11,6 +11,7 @@ import { RecentlyClosed } from "./RecentlyClosed";
 import { ClearHistory } from "./ClearHistory";
 import { OpenBookmarkFolder } from "./OpenBookmarkFolder";
 import { parseBookmarkFile, exportBookmarkFile, bookmarkWebUrl, MAX_BOOKMARK_FILE_SIZE } from "../bookmark-files";
+import { useShortcutLabels } from "../use-shortcut-label";
 
 type SavedPage = { url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
 type View = "bookmarks" | "reading" | "history" | "closed";
@@ -28,6 +29,7 @@ const dayOf = (item: SavedPage | HistoryEntry) => "visitedAt" in item ? new Date
 
 /** Browser library: saved pages and recent visits share search and navigation. */
 export function Library({ initialView = "bookmarks", confirmClear = false }: { initialView?: View; confirmClear?: boolean }) {
+  const key = useShortcutLabels();
   const close = useStore(s => s.setOverlay);
   const bookmarks = useStore(s => s.bookmarks);
   const active = useStore(s => s.pages.find(page => page.pageId === s.activePageId));
@@ -322,7 +324,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
           <span className="library-folder-icon">{I.folderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span className="hint">{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{I.right}
         </button>)}
         {loading && <p className="library-message hint" role="status">{items.length ? "Updating…" : "Loading…"}</p>}
-        {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="pal-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? "Save a page with Bookmark current page or ⌘D." : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => <Fragment key={"visitedAt" in item ? `${item.url}:${item.visitedAt}` : item.url}>
+        {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="pal-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => <Fragment key={"visitedAt" in item ? `${item.url}:${item.visitedAt}` : item.url}>
           {view === "history" && (index === 0 || dayOf(displayItems[index - 1]!) !== dayOf(item)) && <h4 className="library-day">{dayOf(item)}</h4>}
           {view === "reading" && index === 0 && unread.length > 0 && <h4 className="library-day">Unread</h4>}
           {view === "reading" && index === unread.length && read.length > 0 && <h4 className="library-day">Read</h4>}

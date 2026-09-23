@@ -8,9 +8,11 @@ import { bookmarkWebUrl } from "../bookmark-files";
 import { hostOf, isPinned } from "../workspace";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
+import { useShortcutLabels } from "../use-shortcut-label";
 
 /** A searchable, keyboard-accessible place to organize several tabs together. */
 export function Overview() {
+  const key = useShortcutLabels();
   const pages = useStore(useShallow(state => state.pages.filter(page => page.viewStatus !== "detached" && !page.ownedByRuntime)));
   const layout = useStore(state => state.layout);
   const activePageId = useStore(state => state.activePageId);
@@ -236,7 +238,7 @@ export function Overview() {
               setSelected(previous => { const next = new Set(previous); next.delete(pageId); return next; });
             },
           });
-          setProgress(`${closed} ${closed === 1 ? "tab" : "tabs"} closed.${completed ? " Reopen with ⌘⇧T." : " Closing stopped."}`);
+          setProgress(`${closed} ${closed === 1 ? "tab" : "tabs"} closed.${completed ? (key("reopen-closed-tab") ? ` Reopen with ${key("reopen-closed-tab")}.` : "") : " Closing stopped."}`);
         } finally { setClosing(false); }
       })}>Close tabs</button>
       {closing && <button className="btn sm ghost" onClick={() => { stopClosing.current=true; setProgress("Stopping after the current tab…"); }}>Stop</button>}

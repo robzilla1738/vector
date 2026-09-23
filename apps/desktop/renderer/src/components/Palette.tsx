@@ -3,6 +3,7 @@ import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEnt
 import { openSavedTask } from "../task-navigation";
 import { savePagePdf, printCurrentPage } from "../page-export";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useShortcutLabels } from "../use-shortcut-label";
 import { useStore, call, toast, errToast, tabCommand } from "../store";
 import { bridge } from "../bridge";
 import { detectIntent } from "../intent";
@@ -52,6 +53,7 @@ export function Palette() {
   const railOpen = useStore((s) => s.railOpen);
   const layout = useStore((s) => s.layout);
   const settings = useStore((s) => s.settings);
+  const key = useShortcutLabels();
   const drafts = useStore(s => s.conversationDrafts);
   const runs = useStore(s => s.runs);
   const refreshResults = useStore((s) => s.refreshResults);
@@ -194,10 +196,10 @@ export function Palette() {
 
     const w: Cmd[] = [
       { id: "tabs", section: "window", t: "Search open tabs", aliases: ["tabs", "switch tab"], d: "Across Spaces · type @", icon: I.search, keep: true, run: () => setQ("@") },
-      { id: "new", section: "window", t: "New tab", k: "⌘T", icon: I.plusSm, run: () => newTab() },
-      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: "⌘⇧T", icon: I.reopen, run: async () => { await useStore.getState().reopenClosedTab(); } }] : []),
-      { id: "ov", section: "window", t: "Tab overview", k: "⌘⇧O", icon: I.grid, run: async () => setMode("overview") },
-      { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: "⌘⇧A", icon: I.agentSm, run: () => useStore.getState().toggleRail() },
+      { id: "new", section: "window", t: "New tab", k: key("new-tab"), icon: I.plusSm, run: () => newTab() },
+      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: key("reopen-closed-tab"), icon: I.reopen, run: async () => { await useStore.getState().reopenClosedTab(); } }] : []),
+      { id: "ov", section: "window", t: "Tab overview", k: key("overview"), icon: I.grid, run: async () => setMode("overview") },
+      { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: key("agent-rail"), icon: I.agentSm, run: () => useStore.getState().toggleRail() },
       { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: I.obs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
       { id: "collect", section: "agent", t: "Collect open tabs into a set", d: "map a task over every tab", icon: I.layersSm, run: async () => {
         const ids = pages.filter((p) => !p.ownedByRuntime).map((p) => p.pageId);
@@ -205,13 +207,13 @@ export function Palette() {
         await call("sets.create", { name: `Tabs ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, source: "tabs", pageIds: ids });
         toast(`Set created from ${ids.length} tabs`);
       } },
-      { id: "reload", section: "window", t: "Reload page", k: "⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await tabCommand({ kind: "reload", pageId: activePageId }); } },
-      { id: "reader", section: "window", t: "Reader view", d: "Read this page with fewer distractions", k: "⌥⌘R", icon: I.result, run: () => setOverlay("reader") },
-      { id: "hard", section: "window", t: "Hard reload", k: "⇧⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
-      { id: "find", section: "window", t: "Find in page", k: "⌘F", icon: I.findSm, run: async () => setOverlay("find") },
-      { id: "sb", section: "window", t: "Toggle sidebar", k: "⌘S", icon: I.sidebarSm, run: async () => useStore.getState().toggleSidebar() },
+      { id: "reload", section: "window", t: "Reload page", k: key("reload"), icon: I.reloadSm, run: async () => { if (activePageId) await tabCommand({ kind: "reload", pageId: activePageId }); } },
+      { id: "reader", section: "window", t: "Reader view", d: "Read this page with fewer distractions", k: key("reader"), icon: I.result, run: () => setOverlay("reader") },
+      { id: "hard", section: "window", t: "Hard reload", k: key("hard-reload"), icon: I.reloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
+      { id: "find", section: "window", t: "Find in page", k: key("find"), icon: I.findSm, run: async () => setOverlay("find") },
+      { id: "sb", section: "window", t: "Toggle sidebar", k: key("sidebar"), icon: I.sidebarSm, run: async () => useStore.getState().toggleSidebar() },
       { id: "hide-sb", section: "window", t: useStore.getState().sidebar === "hidden" ? "Show sidebar" : "Hide sidebar completely", icon: I.sidebarCloseSm, run: async () => useStore.getState().setSidebar(useStore.getState().sidebar === "hidden" ? "expanded" : "hidden") },
-      { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: "⌘D", icon: I.bookmarkSm, run: async () => {
+      { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: key("bookmark"), icon: I.bookmarkSm, run: async () => {
         if (!activePage || !activePage.url.startsWith("http")) return;
         await useStore.getState().toggleBookmark(activePage.url, activePage.title);
       } },
@@ -245,14 +247,14 @@ export function Palette() {
       { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
       ...(canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
       ...(splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => useStore.getState().setSplitPage(null) }] : []),
-      { id: "open", section: "window", t: "Open file…", k: "⌘O", icon: I.folder, run: openLocalFile },
-      ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: "⌘⇧P", icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
-      { id: "print", section: "window", t: "Print…", k: "⌘P", icon: I.print, run: async () => printCurrentPage(activePageId) },
-      { id: "dev", section: "window", t: "Developer tools", k: "⌥⌘I", icon: I.code, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
-      { id: "settings", section: "window", t: "Settings", k: "⌘,", icon: I.gear, run: async () => setOverlay("settings") },
+      { id: "open", section: "window", t: "Open file…", k: key("open-file"), icon: I.folder, run: openLocalFile },
+      ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: key("save-pdf"), icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
+      { id: "print", section: "window", t: "Print…", k: key("print"), icon: I.print, run: async () => printCurrentPage(activePageId) },
+      { id: "dev", section: "window", t: "Developer tools", k: key("devtools"), icon: I.code, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
+      { id: "settings", section: "window", t: "Settings", k: key("settings"), icon: I.gear, run: async () => setOverlay("settings") },
       { id: "bookmarks", section: "window", t: "Bookmarks and history", icon: I.bookmark, run: async () => setOverlay("bookmarks") },
-      { id: "history", section: "window", t: "History", k: "⌘Y", icon: I.clockSm, run: async () => setOverlay("history") },
-      { id: "downloads", section: "window", t: "Downloads", k: "⌘⇧J", icon: I.downloadSm, run: async () => setOverlay("downloads") },
+      { id: "history", section: "window", t: "History", k: key("history"), icon: I.clockSm, run: async () => setOverlay("history") },
+      { id: "downloads", section: "window", t: "Downloads", k: key("downloads"), icon: I.downloadSm, run: async () => setOverlay("downloads") },
       { id: "attach", section: "chrome", t: "Attach Chrome", d: "your signed-in Chrome, port 9222", icon: I.chromeSm, run: async () => { await call("chrome.attach", { port: 9222 }); toast("Chrome attached"); } },
       ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", icon: I.chromeSm, keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
       { id: "detach", section: "chrome", t: "Detach Chrome", icon: I.unplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
@@ -300,7 +302,7 @@ export function Palette() {
     const exact = rest.filter(c => [c.t.replace(/[…]+$/g, ""), ...(c.aliases ?? [])].some(label => label.toLocaleLowerCase() === term.toLocaleLowerCase()));
     const combined=[...exact,...out,...saved,...rest.filter(c=>!exact.includes(c))];
     return combined.filter(command=>filter==="all"||commandOnly||(filter==="tabs"?command.section==="tabs":filter==="work"?["chats","tasks","memory","results"].includes(command.section):["bookmarks","history"].includes(command.section)));
-  }, [q, filter, matches, prepared, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
+  }, [q, filter, matches, prepared, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, key, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
 
   useEffect(() => setSel(0), [q, filter, chromeTabs, vaultItems, splitPick]);
   const previousCommands=useRef<string[]>([]);
