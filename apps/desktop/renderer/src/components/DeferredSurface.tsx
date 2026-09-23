@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useStore } from "../store";
+import { SurfaceSkeleton } from "./Skeleton";
 
 class SurfaceBoundary extends Component<{children:ReactNode; fallback(error:Error):ReactNode}, {error:Error|null}> {
   override state: {error:Error|null} = {error:null};
@@ -21,10 +22,13 @@ function SurfaceStatus({label, error, retry, pane}: {label:string; error?:Error;
       const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
       event.preventDefault(); buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length]?.focus();
     }
-  }}><div>
-    <h2>{error ? `${label} couldn’t open` : `Opening ${label.toLowerCase()}…`}</h2>
-    {error ? <><p>Try again. Your browser tabs and saved work stay available.</p><div className="row"><button className="btn primary" onClick={retry}>Try again</button><button className="btn" onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details></> : <><p role="status">Loading this view…</p><button className="btn sm ghost" onClick={close}>Cancel</button></>}
-  </div></div>;
+  }}>{error ? <div>
+    <h2>{label} couldn’t open</h2>
+    <p>Try again. Your browser tabs and saved work stay available.</p><div className="row"><button className="btn primary" onClick={retry}>Try again</button><button className="btn" onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details>
+  </div> : <div className="surface-loading">
+    <SurfaceSkeleton label={`Opening ${label.toLowerCase()}…`} />
+    <button className="btn sm ghost" onClick={close}>Cancel</button>
+  </div>}</div>;
 }
 
 export type DeferredSurface<Props extends object> = ComponentType<Props> & { preload(): void };

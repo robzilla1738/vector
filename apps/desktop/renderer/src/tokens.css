@@ -109,6 +109,7 @@
   --t-slide: 560ms;
   --t-spin: 700ms;
   --t-sweep: 1.2s;
+  --t-pulse: 1.4s;
 
   /* ---- z ---- */
   --z-stage: 1;

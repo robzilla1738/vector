@@ -11,6 +11,7 @@ import { AnswerMarkdown } from "./AnswerMarkdown";
 
 import { mergeHistory } from "../run-history";
 import { useDismissable } from "../use-dismissable";
+import { SkeletonRows } from "./Skeleton";
 export { mergeHistory };
 export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
 export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
@@ -165,7 +166,7 @@ export function ConversationHistory() {
         </div>}
       </div>)}
       </div>
-      {loading && <p role="status" className="hint">Loading conversations…</p>}
+      {loading && (rows.length ? <p role="status" className="hint">Loading conversations…</p> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
       {!loading && !error && !rows.length && <p className="hint">{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
       {error && <p role="alert">{error} <button className="btn sm" onClick={() => void load(retryAppend.current,retryRefresh.current)}>Try again</button></p>}
       {more && !error && <button className="btn" disabled={loading} onClick={() => void load(true)}>Load more conversations</button>}

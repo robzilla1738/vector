@@ -12,6 +12,7 @@ import { ClearHistory } from "./ClearHistory";
 import { OpenBookmarkFolder } from "./OpenBookmarkFolder";
 import { parseBookmarkFile, exportBookmarkFile, bookmarkWebUrl, MAX_BOOKMARK_FILE_SIZE } from "../bookmark-files";
 import { useShortcutLabels } from "../use-shortcut-label";
+import { SkeletonRows } from "./Skeleton";
 
 type SavedPage = { url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
 type View = "bookmarks" | "reading" | "history" | "closed";
@@ -323,7 +324,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         {view === "bookmarks" && childFolders.map(path => <button key={JSON.stringify(path)} className="library-folder" onClick={() => openFolder(path)}>
           <span className="library-folder-icon">{I.folderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span className="hint">{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{I.right}
         </button>)}
-        {loading && <p className="library-message hint" role="status">{items.length ? "Updating…" : "Loading…"}</p>}
+        {loading && (items.length ? <p className="library-message hint" role="status">Updating…</p> : <SkeletonRows label="Loading…" />)}
         {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="pal-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => <Fragment key={"visitedAt" in item ? `${item.url}:${item.visitedAt}` : item.url}>
           {view === "history" && (index === 0 || dayOf(displayItems[index - 1]!) !== dayOf(item)) && <h4 className="library-day">{dayOf(item)}</h4>}
           {view === "reading" && index === 0 && unread.length > 0 && <h4 className="library-day">Unread</h4>}
