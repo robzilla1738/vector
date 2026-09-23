@@ -8,6 +8,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+/** Lookups by run/page that previously scanned their tables (schema v5). */
+const HOT_PATH_INDEXES = [
+  "CREATE INDEX IF NOT EXISTS idx_datasets_page ON datasets(page_id)",
+  "CREATE INDEX IF NOT EXISTS idx_artifacts_run ON artifacts(run_id)",
+  "CREATE INDEX IF NOT EXISTS idx_artifacts_page ON artifacts(page_id)",
+  "CREATE INDEX IF NOT EXISTS idx_model_calls_run ON model_calls(run_id)",
+  "CREATE INDEX IF NOT EXISTS idx_events_run ON events(run_id, seq)",
+  "CREATE INDEX IF NOT EXISTS idx_invocations_request ON operation_invocations(request_key, operation_id)",
+  "CREATE INDEX IF NOT EXISTS idx_respmeta_run ON response_metadata(run_id)",
+];
+
 /**
  * Canonical schema v1 for Aux profiles. Declared as one unit with explicit
  * foreign keys; created atomically for a fresh database. Pre-versioning
@@ -216,15 +227,16 @@ CREATE TABLE plugins(
   routine_ids TEXT NOT NULL DEFAULT '[]',
   created_at INTEGER NOT NULL, uninstalled_at INTEGER);
 CREATE INDEX idx_plugins_workspace ON plugins(workspace_id,uninstalled_at);
+${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
  */
-const MIGRATIONS: Record<number, string[]> = {
+const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = {
   // v1 → v2: history full-text index, populated from existing rows.
   1: [
     `CREATE VIRTUAL TABLE history_fts USING fts5(url, title, content='history', content_rowid='rowid')`,
@@ -256,6 +268,9 @@ const MIGRATIONS: Record<number, string[]> = {
        created_at INTEGER NOT NULL, uninstalled_at INTEGER)`,
     `CREATE INDEX idx_plugins_workspace ON plugins(workspace_id,uninstalled_at)`,
   ],
+  // v4 → v5: indexes for per-run/per-page lookups and retention deletes.
+  4: (db) =>
+    HOT_PATH_INDEXES.filter((sql) => db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(/ ON (\w+)\(/.exec(sql)![1]!)),
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */
@@ -277,7 +292,8 @@ function migrate(db: DatabaseSync, path: string, from: number): void {
     db.exec(`VACUUM INTO '${backup.replaceAll("'", "''")}'`);
   }
   for (let version = from; version < SCHEMA_VERSION; version += 1) {
-    const statements = MIGRATIONS[version];
+    const step = MIGRATIONS[version];
+    const statements = typeof step === "function" ? step(db) : step;
     if (!statements) {
       throw new Error(
         `This Aux database is schema ${version} but no migration to ${version + 1} is defined. The file was preserved unchanged.`,
@@ -322,6 +338,32 @@ export function openDb(path: string): DatabaseSync {
     db.close();
     throw error;
   }
+}
+
+/**
+ * Commit `fn` as one transaction without an fsync of its own. The connection
+ * stays `synchronous = FULL` for everything else — the action journal among
+ * it — and WAL NORMAL commits remain crash-consistent: a power loss can drop
+ * the latest of them, never corrupt the file, and the next FULL commit syncs
+ * the WAL including these frames. Returns false (nothing run) while another
+ * transaction is open on the connection.
+ */
+export function commitRelaxed(db: DatabaseSync, fn: () => void): boolean {
+  if (db.isTransaction) return false;
+  db.exec("PRAGMA synchronous = NORMAL");
+  try {
+    db.exec("BEGIN");
+    try {
+      fn();
+      db.exec("COMMIT");
+    } catch (e) {
+      if (db.isTransaction) db.exec("ROLLBACK");
+      throw e;
+    }
+  } finally {
+    db.exec("PRAGMA synchronous = FULL");
+  }
+  return true;
 }
 
 export function kvGet(db: DatabaseSync, key: string): string | undefined {

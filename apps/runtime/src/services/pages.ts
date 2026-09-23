@@ -156,11 +156,7 @@ export class PageService {
     if(deps.native.available())for(const tab of deps.repo.loadTabs().filter(tab=>tab.backend==="aux"))this.pendingRestore.set(tab.page_id,tab);
     this.restoring = this.pendingRestore.size > 0;
     // restore persisted page rows as detached history entries
-    for (const p of deps.repo.listPages({ includeDetached: true })) {
-      p.viewStatus = "detached";
-      p.controller = "none";
-      this.deps.repo.upsertPage(p);
-    }
+    deps.repo.detachAllPages();
   }
 
   list(opts?: { backend?: Backend; includeDetached?: boolean }): PageTarget[] {
@@ -490,11 +486,15 @@ export class PageService {
     });
   }
 
+  /** Coalesced: the page row and tab strip commit once per tick however many fields changed. */
   private persist(lp: LivePage) {
     lp.target.lastActiveAt = Date.now();
-    this.deps.repo.upsertPage(lp.target);
+    this.deps.repo.deferPage(lp.target);
     this.saveTabsSnapshot();
   }
+
+  /** Last tab strip handed to the repo — the strip is rewritten only when it changed. */
+  private savedTabs = "";
 
   /** Persist the human-facing tab strip so a restart restores it. */
   private saveTabsSnapshot() {
@@ -510,13 +510,21 @@ export class PageService {
         backend: x.target.backend,
         active: this.activeByWindow.get(x.target.windowId ?? "main") === x.target.pageId,
       }));
-    try {
-      const liveIds=new Set(tabs.map(tab=>tab.pageId));
-      for(const saved of this.pendingRestore.values())if(!liveIds.has(saved.page_id))tabs.push({pageId:saved.page_id,windowId:saved.window_id,ordinal:tabs.length,url:saved.url,title:saved.title,backend:saved.backend as Backend,active:!!saved.active});
-      this.deps.repo.saveTabs(tabs);
-    } catch {
-      /* snapshot is best-effort */
-    }
+    const liveIds=new Set(tabs.map(tab=>tab.pageId));
+    for(const saved of this.pendingRestore.values())if(!liveIds.has(saved.page_id))tabs.push({pageId:saved.page_id,windowId:saved.window_id,ordinal:tabs.length,url:saved.url,title:saved.title,backend:saved.backend as Backend,active:!!saved.active});
+    const key = JSON.stringify(tabs);
+    if (key === this.savedTabs) return;
+    this.savedTabs = key;
+    // snapshot is best-effort — a failed write is retried by the next change;
+    // late: tab rows reference page rows queued in the same batch
+    this.deps.repo.defer("tabs", () => {
+      try {
+        this.deps.repo.saveTabs(tabs);
+      } catch (e) {
+        if (this.savedTabs === key) this.savedTabs = "";
+        throw e;
+      }
+    }, true);
   }
 
   /** Reopen the tabs that were live when the app last shut down. */
@@ -621,7 +629,8 @@ export class PageService {
       lp.target.url = url;
       this.persist(lp);
       this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, title: lp.target.title, url: lp.target.url });
-      if (lp.target.url.startsWith("http")) this.deps.repo.addHistory(lp.target.url, lp.target.title, lp.target.pageId);
+      // browsing history is the human's: agent/worker pages do not write it
+      if (!lp.target.ownedByRuntime && lp.target.url.startsWith("http")) this.deps.repo.recordVisit(lp.target.url, lp.target.title, lp.target.pageId);
     } catch {
       /* target racing a navigation — next event fixes it */
     }
@@ -882,15 +891,17 @@ export class PageService {
     };
     lp.lastObservationId = obs.observationId;
     lp.lastObs = fingerprint ? { fingerprint, reqKey: observeReqKey(req), obs } : undefined;
-    this.deps.repo.saveObservation({
-      observationId: obs.observationId,
-      pageId,
-      epoch: obs.documentEpoch,
-      revision,
-      observedAt: obs.observedAt,
-      scope: obs.scope,
-      json: JSON.stringify(obs),
-    });
+    this.deps.repo.defer(`obs:${obs.observationId}`, () =>
+      this.deps.repo.saveObservation({
+        observationId: obs.observationId,
+        pageId,
+        epoch: obs.documentEpoch,
+        revision,
+        observedAt: obs.observedAt,
+        scope: obs.scope,
+        json: JSON.stringify(obs),
+      }),
+    );
     this.persist(lp);
     this.deps.events.emit(EventTypes.Observation, {
       pageId,
@@ -1074,19 +1085,16 @@ export class PageService {
       });
       // §6.2 — proposed vs dispatched vs completed vs verified
       this.deps.tracer?.incr("actions.proposed", allSteps.length);
-      // step rows are collected here and written in ONE transaction when the
-      // program ends instead of an autocommit per step (speed P2-1)
+      // step rows are collected here and written with the tick's other
+      // observational rows when the program ends (speed P2-1); the step
+      // ledger is observational — a failed write never fails the program
       const stepRecords: StepRecord[] = [];
       const flushSteps = () => {
         if (!stepRecords.length || !this.deps.recordStep) return;
         const rows = stepRecords.splice(0);
-        try {
-          this.deps.repo.transaction(() => {
-            for (const r of rows) this.deps.recordStep!(r);
-          });
-        } catch {
-          /* the step ledger is observational — never fail the program for it */
-        }
+        this.deps.repo.defer(`steps:${rows[0]!.stepId}`, () => {
+          for (const r of rows) this.deps.recordStep!(r);
+        });
       };
       let result: ProgramResult & { observation?: ObservationContent };
       let observation: Observation | undefined;
