@@ -1,11 +1,10 @@
 import { splitRatio } from "@aux/contracts/split-layout";
 import { ipcMain } from "electron";
-import { requireShellUi, stateForShell } from "../windows/registry.js";
+import { handleShell, stateForShell } from "../windows/registry.js";
 import { applyStage, deliverPagePointer } from "../windows/stage.js";
 
 export function wireStageIpc() {
-  ipcMain.handle("ui.setStage", (event, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number, ratio?: number) => {
-    const state = requireShellUi(event);
+  handleShell("ui.setStage", (state, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number, ratio?: number) => {
     state.stageBounds = bounds;
     state.stagePageId = pageId;
     // `null` means the selected tab currently renders shell-owned content
@@ -18,14 +17,12 @@ export function wireStageIpc() {
     applyStage(state);
     return true;
   });
-  ipcMain.handle("ui.overlay", (event, open: boolean) => {
-    const state = requireShellUi(event);
+  handleShell("ui.overlay", (state, open: boolean) => {
     state.overlayOpen = open;
     applyStage(state);
     return true;
   });
-  ipcMain.handle("ui.toolbarOverlay", (event, open: unknown, ticket: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("ui.toolbarOverlay", (state, open: unknown, ticket: unknown) => {
     const seq = typeof ticket === "number" && Number.isFinite(ticket) ? ticket : 0;
     if (seq < state.toolbarOverlaySeq) return false;
     state.toolbarOverlaySeq = seq;
@@ -33,8 +30,7 @@ export function wireStageIpc() {
     applyStage(state);
     return true;
   });
-  ipcMain.handle("ui.trafficLights", (event, visible: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("ui.trafficLights", (state, visible: unknown) => {
     if (process.platform === "darwin") state.win.setWindowButtonVisibility(visible !== false);
     return true;
   });
@@ -44,6 +40,6 @@ export function wireStageIpc() {
     deliverPagePointer(state, value);
   });
   // Kept for older shells: the peek is a real column beside the page, so main has nothing to do.
-  ipcMain.handle("ui.sidebarPeek", event => { requireShellUi(event); return true; });
-  ipcMain.handle("ui.focusShell", event => { requireShellUi(event).shellView.webContents.focus(); });
+  handleShell("ui.sidebarPeek", () => true);
+  handleShell("ui.focusShell", state => { state.shellView.webContents.focus(); });
 }

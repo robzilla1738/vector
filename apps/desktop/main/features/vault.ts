@@ -2,7 +2,7 @@ import { originOfAddress } from "@aux/contracts";
 import { dialog } from "electron";
 import { registry } from "../app/services.js";
 import { captureLoginScript, credentialFillScript } from "../credential-fill.js";
-import { channel } from "../runtime/supervisor.js";
+import { channel, requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 import { broadcastToShells, shellForPage } from "../windows/registry.js";
 
 // ---------- vault: human credential fill + save/update offers ----------
@@ -17,9 +17,9 @@ export async function noteCredentialOffer(pageId: string, offer: { username: str
   const origin = originOfAddress(offer.origin);
   if (!origin) return;
   try {
-    const status = await channel.call("api.invoke", { method: "vault.status", params: {}, desktopUser: true }) as { configured?: boolean; locked?: boolean };
+    const status = await runtimeInvoke("vault.status") as { configured?: boolean; locked?: boolean };
     if (!status.configured) return;
-    const items = await channel.call("api.invoke", { method: "vault.itemsForOrigin", params: { origin }, desktopUser: true }) as { itemId: string; username?: string }[];
+    const items = await runtimeInvoke("vault.itemsForOrigin", { origin }) as { itemId: string; username?: string }[];
     // Capture now: a submit that navigates immediately would otherwise lose the
     // fields. The form may live in a subframe (embedded auth widgets) — capture
     // in the reporting frame when we can find it.
@@ -29,7 +29,7 @@ export async function noteCredentialOffer(pageId: string, offer: { username: str
     const existing = items.find(item => item.username && item.username === (captured.username || offer.username));
     // An unchanged credential is a successful sign-in, not an update.
     if (existing && !status.locked) {
-      const same = await channel.call("api.invoke", { method: "vault.secretMatches", params: { itemId: existing.itemId, secret: captured.password }, desktopUser: true }) as { matches?: boolean };
+      const same = await runtimeInvoke("vault.secretMatches", { itemId: existing.itemId, secret: captured.password }) as { matches?: boolean };
       if (same?.matches) return;
     }
     const key = `${pageId}:${origin}`;
@@ -48,14 +48,14 @@ export async function noteCredentialOffer(pageId: string, offer: { username: str
 
 export async function runVaultFill(pageId: string, frame: Electron.WebFrameMain, itemId: string) {
   try {
-    if (!channel) throw new Error("The browser runtime is not connected yet.");
+    requireRuntime("The browser runtime is not connected yet.");
     const entry = registry.get(pageId);
     const url = entry?.view.webContents.isDestroyed() ? "" : entry?.view.webContents.getURL() ?? "";
     // Validate the frame being filled — the credential lookup keyed on this
     // frame's origin, and a subframe auth widget may differ from the top page.
     const origin = originOfAddress(frame.url || url);
     if (!origin) throw new Error("Credentials can only fill on an http(s) page.");
-    const credential = await channel.call("api.invoke", { method: "vault.fill", params: { itemId, pageId, origin }, desktopUser: true }) as { username?: string; secret: string };
+    const credential = await runtimeInvoke("vault.fill", { itemId, pageId, origin }) as { username?: string; secret: string };
     const filled = await frame.executeJavaScript(credentialFillScript(credential), true) as number;
     if (!filled) void dialog.showMessageBox({ type: "info", title: "Sign-in", message: "Aux couldn’t find a sign-in form on this page.", detail: "Fill works on a visible username + password form.", buttons: ["OK"] });
   } catch (error) {

@@ -3,12 +3,12 @@ import { shell } from "electron";
 import { PRIMARY_WINDOW_ID } from "../../app/bootstrap.js";
 import { isWebUrl } from "../../app/external-urls.js";
 import { offscreen, pageFinder, registry, siteZoom } from "../../app/services.js";
-import { createPageView, destroyPageView } from "../../native-views.js";
+import { createPageView } from "../../native-views.js";
 import { printPage } from "../../page-output.js";
 import { setPageZoom } from "../../page-zoom.js";
 import { newTabRecord } from "../../tabs/catalog.js";
-import { forgetPageLifecycle, scheduleIdleFreeze, wakePage } from "../../tabs/lifecycle-controller.js";
-import { rememberClosedHistory } from "../../tabs/materialize.js";
+import { scheduleIdleFreeze, wakePage } from "../../tabs/lifecycle-controller.js";
+import { closeTab } from "../../tabs/materialize.js";
 import { movePageToWindow, tabController } from "../../tabs/ports.js";
 import { flushTabPatches, publishTabPatch } from "../../tabs/publish.js";
 import { tabCatalog } from "../../tabs/store.js";
@@ -95,28 +95,7 @@ export function registerPageMethods(ch: RpcChannel) {
   });
   ch.onMethod("native.closePage", async (p) => {
     const { pageId } = p as { pageId: string };
-    const entry = registry.get(pageId);
-    const state = stateForEntry(entry);
-    if (entry && state) {
-      rememberClosedHistory(entry);
-      if (!await destroyPageView(entry, state.win)) return { ok: false };
-      if (registry.get(pageId) === entry) registry.remove(pageId);
-    }
-    // a closed page can't stay focused, split, or hold the stage lease —
-    // stale pointers would leave every other view hidden
-    if (state?.focusedPageId === pageId) state.focusedPageId = null;
-    if (state?.splitPageId === pageId) state.splitPageId = null;
-    if (state?.previewWatch?.pageId === pageId) {
-      state.previewWatch.stop();
-      state.previewWatch = null;
-    }
-    offscreen.forget(pageId);
-    forgetPageLifecycle(pageId);
-    // destroyPageView already ran the catalog remove through onDestroyed —
-    // the remaining case is a record with no live view left to destroy.
-    if (tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
-    if (state) applyStage(state);
-    return { ok: true };
+    return { ok: await closeTab(pageId, false) };
   });
   ch.onMethod("native.showPage", (p) => {
     const { pageId, bounds } = p as { pageId: string; bounds: { x: number; y: number; width: number; height: number } | null };
@@ -126,7 +105,6 @@ export function registerPageMethods(ch: RpcChannel) {
     wakePage(entry);
     if (entry.popup) return { ok: true };
     if (bounds) {
-      entry.visibleBounds = bounds;
       state.stageBounds = bounds;
       applyStage(state);
     }

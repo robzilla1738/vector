@@ -1,15 +1,13 @@
-import { dialog, ipcMain } from "electron";
+import { dialog } from "electron";
 import { extensionManager } from "../app/services.js";
 import { profileSession } from "../native-views.js";
-import { requireShellUi } from "../windows/registry.js";
+import { handleShell } from "../windows/registry.js";
 
 export function wireExtensionsIpc() {
-  ipcMain.handle("app.extensions", event => {
-    requireShellUi(event);
+  handleShell("app.extensions", () => {
     return extensionManager.list(profileSession());
   });
-  ipcMain.handle("app.installUnpackedExtension", async event => {
-    const state = requireShellUi(event);
+  handleShell("app.installUnpackedExtension", async state => {
     const selected = await dialog.showOpenDialog(state.win, { title: "Choose an unpacked Chrome extension", properties: ["openDirectory"] });
     if (selected.canceled || !selected.filePaths[0]) return null;
     return extensionManager.install(selected.filePaths[0], profileSession(), async details => {
@@ -27,8 +25,7 @@ export function wireExtensionsIpc() {
       return response === 1;
     });
   });
-  ipcMain.handle("app.updateUnpackedExtension", async (event, key: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("app.updateUnpackedExtension", async (state, key: unknown) => {
     if (typeof key !== "string") throw new Error("Invalid extension.");
     const selected = await dialog.showOpenDialog(state.win, { title: "Choose the updated extension folder", properties: ["openDirectory"] });
     if (selected.canceled || !selected.filePaths[0]) return null;
@@ -43,13 +40,11 @@ export function wireExtensionsIpc() {
       return decision.response === 1;
     });
   });
-  ipcMain.handle("app.setExtensionEnabled", async (event, key: unknown, enabled: unknown) => {
-    requireShellUi(event);
+  handleShell("app.setExtensionEnabled", async (_, key: unknown, enabled: unknown) => {
     if (typeof key !== "string" || typeof enabled !== "boolean") throw new Error("Invalid extension state.");
     return extensionManager.setEnabled(key, enabled, profileSession());
   });
-  ipcMain.handle("app.removeExtension", async (event, key: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("app.removeExtension", async (state, key: unknown) => {
     if (typeof key !== "string") throw new Error("Invalid extension.");
     const extension = extensionManager.list(profileSession()).find(item => item.key === key && item.managed);
     if (!extension) throw new Error("The extension is no longer installed.");

@@ -2,7 +2,7 @@ import { MethodSchemas } from "@aux/contracts";
 import { app } from "electron";
 import { type ChildProcess, spawn as spawnProcess } from "node:child_process";
 import { filterOps, privacy } from "../privacy/state.js";
-import { channel } from "../runtime/supervisor.js";
+import { requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 import { DATA_DIR } from "./bootstrap.js";
 
 export const privateChildren = new Map<ChildProcess, { ready: boolean }>();
@@ -42,9 +42,9 @@ export function openPrivateWindow() {
         try {
           const method = value.method;
           if (method !== "translate.page" && method !== "translate.text") throw new Error("Unsupported method.");
-          if (!channel) throw new Error("Translation is unavailable while the runtime is offline.");
+          requireRuntime("Translation is unavailable while the runtime is offline.");
           const params = MethodSchemas[method].parse(value.params ?? {});
-          payload = { ok: true, result: await channel.call("api.invoke", { method, params, desktopUser: true }) };
+          payload = { ok: true, result: await runtimeInvoke(method, params) };
         } catch (error) {
           payload = { ok: false, error: error instanceof Error ? error.message : String(error) };
         }

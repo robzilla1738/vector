@@ -1,11 +1,10 @@
-import { dialog, ipcMain } from "electron";
+import { dialog } from "electron";
 import { registry } from "../app/services.js";
 import { applyCosmeticAll, blockedRequests, filterOps, httpsFirst, insecureBypass, privacy, savePrivacy, saveSitePermissions, sitePermissions, trackersAllowed } from "../privacy/state.js";
-import { broadcastToShells, requireOwnedEntry, requireShellUi } from "../windows/registry.js";
+import { broadcastToShells, handleShell, requireOwnedEntry } from "../windows/registry.js";
 
 export function wirePrivacyIpc() {
-  ipcMain.handle("app.clearSiteData", async (event, pageId: unknown) => {
-    const state=requireShellUi(event);
+  handleShell("app.clearSiteData", async (state, pageId: unknown) => {
     const entry = requireOwnedEntry(state, pageId);
     const wc = entry.view.webContents;
     const url = new URL(wc.getURL());
@@ -22,8 +21,7 @@ export function wirePrivacyIpc() {
       dataTypes: ['cookies', 'localStorage', 'indexedDB', 'fileSystems', 'serviceWorkers', 'webSQL'] });
     return true;
   });
-  ipcMain.handle("app.siteInfo", async (event, pageId: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("app.siteInfo", async (state, pageId: unknown) => {
     const entry = requireOwnedEntry(state, pageId);
     const wc = entry.view.webContents;
     const url = new URL(wc.getURL());
@@ -40,26 +38,23 @@ export function wirePrivacyIpc() {
     };
   });
 
-  ipcMain.handle("app.sitePermissions", event => { requireShellUi(event); return sitePermissions; });
-  ipcMain.handle("app.privacy", event => { requireShellUi(event); return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests, allowedHosts: privacy.allowedHosts, httpsUpgrade: privacy.httpsUpgrade }; });
-  ipcMain.handle("app.setHttpsUpgrade", (event, enabled: unknown) => {
-    requireShellUi(event);
+  handleShell("app.sitePermissions", () => sitePermissions);
+  handleShell("app.privacy", () => { return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests, allowedHosts: privacy.allowedHosts, httpsUpgrade: privacy.httpsUpgrade }; });
+  handleShell("app.setHttpsUpgrade", (_, enabled: unknown) => {
     if (typeof enabled !== "boolean") throw new Error("Choose whether secure connections are required first.");
     savePrivacy({ ...privacy, httpsUpgrade: enabled });
     httpsFirst.enabled = enabled;
     broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
     return privacy.httpsUpgrade;
   });
-  ipcMain.handle("app.setTrackerBlock", (event, enabled: unknown) => {
-    requireShellUi(event);
+  handleShell("app.setTrackerBlock", (_, enabled: unknown) => {
     if (typeof enabled !== "boolean") throw new Error("Choose whether tracker blocking is on or off.");
     savePrivacy({ ...privacy, trackerBlock: enabled });
     applyCosmeticAll();
     broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
     return { trackerBlock: privacy.trackerBlock, blocked: blockedRequests };
   });
-  ipcMain.handle("app.setSiteTrackers", (event, pageId: unknown, allowed: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("app.setSiteTrackers", (state, pageId: unknown, allowed: unknown) => {
     const entry = requireOwnedEntry(state, pageId);
     if (typeof allowed !== "boolean") throw new Error("Choose whether this site allows trackers and ads.");
     const wc = entry.view.webContents;
@@ -72,26 +67,23 @@ export function wirePrivacyIpc() {
     broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
     return { hostname, allowed: trackersAllowed(hostname) };
   });
-  ipcMain.handle("app.removeAllowedHost", (event, hostname: unknown) => {
-    requireShellUi(event);
+  handleShell("app.removeAllowedHost", (_, hostname: unknown) => {
     if (typeof hostname !== "string" || !hostname) throw new Error("Choose a website exception to remove.");
     savePrivacy({ ...privacy, allowedHosts: privacy.allowedHosts.filter(host => host !== hostname.toLowerCase()) });
     applyCosmeticAll();
     broadcastToShells("privacy-changed", { trackerBlock: privacy.trackerBlock, blocked: blockedRequests });
     return privacy.allowedHosts;
   });
-  ipcMain.handle("app.filterLists", event => { requireShellUi(event); return filterOps.status(); });
-  ipcMain.handle("app.updateFilters", async event => { requireShellUi(event); return filterOps.update(); });
-  ipcMain.handle("app.addFilterSource", async (event, name: unknown, url: unknown) => { requireShellUi(event); return filterOps.add(name, url); });
-  ipcMain.handle("app.removeFilterSource", (event, id: unknown) => { requireShellUi(event); return filterOps.remove(id); });
-  ipcMain.handle("app.proceedInsecure", (event, url: unknown) => {
-    requireShellUi(event);
+  handleShell("app.filterLists", () => filterOps.status());
+  handleShell("app.updateFilters", async () => filterOps.update());
+  handleShell("app.addFilterSource", async (_, name: unknown, url: unknown) => filterOps.add(name, url));
+  handleShell("app.removeFilterSource", (_, id: unknown) => filterOps.remove(id));
+  handleShell("app.proceedInsecure", (_, url: unknown) => {
     if (typeof url !== "string") throw new Error("An HTTPS address is required.");
     insecureBypass.proceed(url);
     return true;
   });
-  ipcMain.handle("app.useHttp", (event, pageId: unknown, url: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("app.useHttp", (state, pageId: unknown, url: unknown) => {
     const entry = requireOwnedEntry(state, pageId);
     if (typeof url !== "string") throw new Error("An address is required.");
     let target: URL;
@@ -102,8 +94,7 @@ export function wirePrivacyIpc() {
     void entry.view.webContents.loadURL(target.href).catch(() => {});
     return true;
   });
-  ipcMain.handle("app.clearSitePermission", (event, origin: unknown, permission?: unknown) => {
-    requireShellUi(event);
+  handleShell("app.clearSitePermission", (_, origin: unknown, permission?: unknown) => {
     if (typeof origin !== "string" || !sitePermissions[origin]) return false;
     const next = { ...sitePermissions };
     if (typeof permission === "string") {

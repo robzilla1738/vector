@@ -7,18 +7,17 @@ import { cloudPreviewTokens, registry } from "../app/services.js";
 import { cancelDictation, dictationStatus, startDictation, stopDictation } from "../dictation.js";
 import { configureQuickAskShortcut, openQuickAsk, quickAskShortcutStatus, retuneQuickAskShortcut } from "../features/quick-ask.js";
 import { setPageShortcuts } from "../page-shortcuts.js";
-import { regularWindows, requireOwnedEntry, requireShellUi } from "../windows/registry.js";
+import { handleShell, regularWindows, requireOwnedEntry, requireShellUi } from "../windows/registry.js";
 import { updateWindowTitle, windowPageTitle } from "../windows/stage.js";
 
 export function wireShellIpc() {
-  ipcMain.handle("ui.dictationStatus", event => { requireShellUi(event); return dictationStatus(); });
-  ipcMain.handle("ui.startDictation", (event, id: unknown) => { const state = requireShellUi(event); return startDictation(event.sender, id, state.win); });
+  handleShell("ui.dictationStatus", () => dictationStatus());
+  ipcMain.handle("ui.startDictation", (event, id: unknown) => startDictation(event.sender, id, requireShellUi(event).win));
   ipcMain.handle("ui.stopDictation", (event, id: unknown) => { requireShellUi(event); return stopDictation(event.sender, id); });
   ipcMain.handle("ui.cancelDictation", (event, id: unknown) => { requireShellUi(event); cancelDictation(event.sender, id); });
 
-  ipcMain.handle("ui.quickAskShortcut",(event,enabled?:unknown)=>{requireShellUi(event);if(enabled===undefined)return quickAskShortcutStatus();if(typeof enabled!=="boolean")throw new Error("Invalid shortcut preference.");return configureQuickAskShortcut(enabled);});
-  ipcMain.handle("ui.quickAsk", async (event, action: string) => {
-    const state = requireShellUi(event);
+  handleShell("ui.quickAskShortcut", (_, enabled?:unknown) => {if(enabled===undefined)return quickAskShortcutStatus();if(typeof enabled!=="boolean")throw new Error("Invalid shortcut preference.");return configureQuickAskShortcut(enabled);});
+  handleShell("ui.quickAsk", async (state, action: string) => {
     if (action === "open") { await openQuickAsk(); return state.quickAsk; }
     if (action === "expand" && state.quickAsk) {
       state.quickAsk = false;
@@ -30,16 +29,15 @@ export function wireShellIpc() {
     return state.quickAsk;
   });
 
-  ipcMain.handle("ui.defaultBrowser",event=>{requireShellUi(event);return {isDefault:app.isDefaultProtocolClient("http")&&app.isDefaultProtocolClient("https")};});
-  ipcMain.handle("ui.setDefaultBrowser",event=>{requireShellUi(event);
+  handleShell("ui.defaultBrowser", () => {return {isDefault:app.isDefaultProtocolClient("http")&&app.isDefaultProtocolClient("https")};});
+  handleShell("ui.setDefaultBrowser", () => {
     // Report the measured state, not the request — unsigned/dev registrations
     // may be declined by the OS and the UI should not claim otherwise.
     app.setAsDefaultProtocolClient("http");app.setAsDefaultProtocolClient("https");
     return {isDefault:app.isDefaultProtocolClient("http")&&app.isDefaultProtocolClient("https")};
   });
 
-  ipcMain.handle('ui.registerCloudPreview',(event,url:unknown,token:unknown)=>{
-    requireShellUi(event);
+  handleShell('ui.registerCloudPreview', (_, url:unknown,token:unknown) => {
     if(typeof url!=='string'||typeof token!=='string'||token.length<32||token.length>256)throw new Error('Invalid protected preview session.');
     let parsed:URL;try{parsed=new URL(url);}catch{throw new Error('Invalid protected preview address.');}
     if(parsed.protocol!=='https:'||(!parsed.hostname.endsWith('.vercel.run')&&parsed.hostname!=='vercel.run')||parsed.username||parsed.password)throw new Error('Aux only registers protected Vercel Sandbox previews.');
@@ -47,16 +45,14 @@ export function wireShellIpc() {
     cloudPreviewTokens.set(parsed.origin,token);return true;
   });
 
-  ipcMain.handle("ui.windows", event => {
-    const current = requireShellUi(event);
+  handleShell("ui.windows", current => {
     return [...regularWindows.values()].filter(state => state.id !== current.id && !state.quickAsk).map(state => {
       const entries = registry.all().filter(entry => !entry.popup && !entry.runtimeOwned && (entry.windowId ?? PRIMARY_WINDOW_ID) === state.id);
       return { id: state.id, title: windowPageTitle(state), tabCount: entries.length };
     });
   });
 
-  ipcMain.handle("ui.shortcutOverrides", (event, value: unknown) => {
-    requireShellUi(event);
+  handleShell("ui.shortcutOverrides", (_, value: unknown) => {
     if (value === undefined) return shortcutOverrides;
     const parsed = ShortcutOverridesSchema.safeParse(value);
     if (!parsed.success) throw new Error("Invalid shortcut overrides.");
@@ -67,8 +63,7 @@ export function wireShellIpc() {
     return shortcutOverrides;
   });
 
-  ipcMain.handle("ui.contextMenu", (event, pageId: string | null) => {
-    const state = requireShellUi(event);
+  handleShell("ui.contextMenu", (state, pageId: string | null) => {
     const entry = pageId ? requireOwnedEntry(state, pageId) : undefined;
     const wc = entry?.view.webContents;
     // page context → nav + edit + inspect on the page; chrome/input context
@@ -96,14 +91,13 @@ export function wireShellIpc() {
     Menu.buildFromTemplate(template).popup();
     return true;
   });
-  ipcMain.handle("ui.openExternal", (event, url: unknown) => {
-    requireShellUi(event);
+  handleShell("ui.openExternal", (_, url: unknown) => {
     if (!isWebUrl(url)) return false;
     return shell.openExternal(url).then(() => true);
   });
 
-  ipcMain.handle("ui.closeWindow", event => {
-    requireShellUi(event).win.close();
+  handleShell("ui.closeWindow", state => {
+    state.win.close();
     return true;
   });
 }

@@ -1,17 +1,15 @@
 import { newPageId } from "@aux/contracts";
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
-import { offscreen, registry } from "../app/services.js";
-import { createPageView, destroyPageView } from "../native-views.js";
-import { captureScrollPosition, restoreScrollPosition } from "../page-suspension.js";
-import { channel } from "../runtime/supervisor.js";
+import { registry } from "../app/services.js";
+import { channel, runtimeInvoke } from "../runtime/supervisor.js";
 import { viewHooks } from "../views/hooks.js";
 import { createRegularWindow } from "../windows/create.js";
 import { broadcastToShells, notifyHttpAuthChanged, pageWindowOwners, regularWindows, stateForEntry, stateForWindowId } from "../windows/registry.js";
 import { applyStage, clearPreviewWatch, forgetPlacement } from "../windows/stage.js";
 import { TabController, type TabPorts } from "./controller.js";
-import { forgetPageLifecycle, wakePage } from "./lifecycle-controller.js";
-import { closedHistory, ensureTabView, rememberClosedHistory, rememberScroll, scrollPositions } from "./materialize.js";
-import { controllerClosing, noteTab, publishTabPatch } from "./publish.js";
+import { wakePage } from "./lifecycle-controller.js";
+import { closeTab, ensureTabView, materializeView } from "./materialize.js";
+import { noteTab, publishTabPatch } from "./publish.js";
 import { tabCatalog } from "./store.js";
 
 export const tabPorts: TabPorts = {
@@ -20,53 +18,15 @@ export const tabPorts: TabPorts = {
   open: ({ pageId, windowId, url, background, activate }) => {
     const state = stateForWindowId(windowId);
     if (!state || state.win.isDestroyed()) throw new Error("window gone");
-    const history = closedHistory.get(pageId);
     if (!registry.get(pageId)) {
-      // Skip the initial load when a history stack will be restored — the two
-      // navigations would race and the restore would lose.
-      createPageView({ win: state.win, registry, pageId, windowId: state.id, marker: `atab-${pageId}`, url: history ? "" : url, background, hooks: viewHooks });
-      pageWindowOwners.set(pageId, state.id);
-      if (history) {
-        closedHistory.delete(pageId);
-        void registry.get(pageId)!.view.webContents.navigationHistory.restore({ entries: history.entries, index: history.index })
-          .catch(() => void registry.get(pageId)?.view.webContents.loadURL(url).catch(() => {}));
-      }
-      const scroll = scrollPositions.get(pageId);
-      if (scroll) {
-        scrollPositions.delete(pageId);
-        registry.get(pageId)!.view.webContents.once("did-finish-load", () => void restoreScrollPosition(registry.get(pageId)!.view.webContents, scroll));
-      }
+      materializeView(state, pageId, url, { background });
       // A placeholder record whose view now exists is live again.
       noteTab(pageId, { lifecycle: "live" });
     }
     if (activate) tabPorts.focus(pageId);
     else applyStage(state);
   },
-  close: async pageId => {
-    const entry = registry.get(pageId);
-    if (!entry) return true;
-    const state = stateForEntry(entry);
-    if (!state) return false;
-    controllerClosing.add(pageId);
-    rememberClosedHistory(entry);
-    // A hung renderer must not hold ⌘W — scroll capture gets a short budget.
-    rememberScroll(entry,await captureScrollPosition(entry.view.webContents,400));
-    let closed: boolean;
-    try {
-      closed = await destroyPageView(entry, state.win);
-    } finally {
-      controllerClosing.delete(pageId);
-    }
-    if (!closed) return false;
-    if (registry.get(pageId) === entry) registry.remove(pageId);
-    if (state.focusedPageId === pageId) state.focusedPageId = null;
-    if (state.splitPageId === pageId) state.splitPageId = null;
-    if (state.previewWatch?.pageId === pageId) clearPreviewWatch(state);
-    offscreen.forget(pageId);
-    forgetPageLifecycle(pageId);
-    applyStage(state);
-    return true;
-  },
+  close: pageId => closeTab(pageId, true),
   focus: pageId => {
     const entry = ensureTabView(pageId);
     const state = stateForEntry(entry);
@@ -102,7 +62,7 @@ export const tabPorts: TabPorts = {
     if (wc.isCrashed() && channel) {
       // A dead renderer has no live driver — the runtime reload path recovers
       // the view and re-attaches its CDP session, which `wc.reload` cannot do.
-      await channel.call("api.invoke", { method: "pages.reload", params: { pageId, hard }, desktopUser: true });
+      await runtimeInvoke("pages.reload", { pageId, hard });
       return;
     }
     await wakePage(entry);

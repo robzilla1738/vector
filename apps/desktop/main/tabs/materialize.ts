@@ -1,10 +1,12 @@
-import { registry } from "../app/services.js";
-import { createPageView } from "../native-views.js";
-import { restoreScrollPosition } from "../page-suspension.js";
+import { offscreen, registry } from "../app/services.js";
+import { createPageView, destroyPageView } from "../native-views.js";
+import { captureScrollPosition, restoreScrollPosition } from "../page-suspension.js";
 import type { ViewEntry } from "../target-registry.js";
 import { viewHooks } from "../views/hooks.js";
-import { pageWindowOwners, stateForWindowId } from "../windows/registry.js";
-import { noteTab } from "./publish.js";
+import { type RegularWindowState, pageWindowOwners, stateForEntry, stateForWindowId } from "../windows/registry.js";
+import { applyStage, clearPreviewWatch } from "../windows/stage.js";
+import { forgetPageLifecycle } from "./lifecycle-controller.js";
+import { controllerClosing, noteTab, publishTabPatch } from "./publish.js";
 import { tabCatalog } from "./store.js";
 
 /** Navigation history of recently closed tabs (BR-01: reopen restores real
@@ -22,6 +24,68 @@ export function rememberClosedHistory(entry: ViewEntry) {
   while (closedHistory.size > CLOSED_HISTORY_LIMIT) closedHistory.delete(closedHistory.keys().next().value!);
 }
 
+/**
+ * Create the view for a known pageId in `state`'s window, restoring the
+ * navigation stack and scroll offset a discard/close captured. The initial
+ * load is skipped when a history stack will be restored — the two navigations
+ * would race and the restore would lose.
+ */
+export function materializeView(state: RegularWindowState, pageId: string, url: string, options: { background: boolean; ownedByRuntime?: boolean }): ViewEntry {
+  const history = closedHistory.get(pageId);
+  const entry = createPageView({
+    win: state.win, registry, pageId, windowId: state.id,
+    marker: `atab-${pageId}`, url: history ? "" : url, background: options.background,
+    ownedByRuntime: options.ownedByRuntime, hooks: viewHooks,
+  });
+  pageWindowOwners.set(pageId, state.id);
+  if (history) {
+    closedHistory.delete(pageId);
+    void entry.view.webContents.navigationHistory.restore({ entries: history.entries, index: history.index })
+      .catch(() => void entry.view.webContents.loadURL(url).catch(() => {}));
+  }
+  const scroll = scrollPositions.get(pageId);
+  if (scroll) {
+    scrollPositions.delete(pageId);
+    entry.view.webContents.once("did-finish-load", () => void restoreScrollPosition(entry.view.webContents, scroll));
+  }
+  return entry;
+}
+
+/**
+ * The one tab-close path for typed commands and the runtime's native.closePage.
+ * `controller` closes publish their own remove (+window) patch, so onDestroyed
+ * must not race a second remove; runtime closes let onDestroyed publish it, and
+ * a record whose view is already gone is removed here.
+ */
+export async function closeTab(pageId: string, controller: boolean): Promise<boolean> {
+  const entry = registry.get(pageId);
+  const state = stateForEntry(entry);
+  if (entry) {
+    if (!state) return false;
+    if (controller) controllerClosing.add(pageId);
+    rememberClosedHistory(entry);
+    // A hung renderer must not hold ⌘W — scroll capture gets a short budget.
+    rememberScroll(entry, await captureScrollPosition(entry.view.webContents, 400));
+    let closed: boolean;
+    try {
+      closed = await destroyPageView(entry, state.win);
+    } finally {
+      controllerClosing.delete(pageId);
+    }
+    if (!closed) return false;
+    if (registry.get(pageId) === entry) registry.remove(pageId);
+  } else if (controller) return true;
+  // A closed page can't stay focused, split, previewed or hold the stage
+  // lease — stale pointers would leave every other view hidden.
+  if (state?.focusedPageId === pageId) state.focusedPageId = null;
+  if (state?.splitPageId === pageId) state.splitPageId = null;
+  if (state?.previewWatch?.pageId === pageId) clearPreviewWatch(state);
+  offscreen.forget(pageId);
+  forgetPageLifecycle(pageId);
+  if (!controller && tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
+  if (state) applyStage(state);
+  return true;
+}
 
 /**
  * Catalog records can outlive their views (restored session, runtime
@@ -35,25 +99,7 @@ export function ensureTabView(pageId: string): ViewEntry | undefined {
   if (!record) return undefined;
   const state = stateForWindowId(record.windowId);
   if (!state || state.win.isDestroyed()) return undefined;
-  // A discarded tab restores its captured navigation stack; the initial load
-  // is skipped so the two navigations don't race.
-  const history = closedHistory.get(pageId);
-  const entry = createPageView({
-    win: state.win, registry, pageId, windowId: state.id,
-    marker: `atab-${pageId}`, url: history ? "" : record.url, background: true,
-    ownedByRuntime: record.runtimeOwned, hooks: viewHooks,
-  });
-  pageWindowOwners.set(pageId, state.id);
-  if (history) {
-    closedHistory.delete(pageId);
-    void entry.view.webContents.navigationHistory.restore({ entries: history.entries, index: history.index })
-      .catch(() => void entry.view.webContents.loadURL(record.url).catch(() => {}));
-  }
-  const scroll = scrollPositions.get(pageId);
-  if (scroll) {
-    scrollPositions.delete(pageId);
-    entry.view.webContents.once("did-finish-load", () => void restoreScrollPosition(entry.view.webContents, scroll));
-  }
+  const entry = materializeView(state, pageId, record.url, { background: true, ownedByRuntime: record.runtimeOwned });
   // Materializing a fresh WebContents for a known tab bumps its instance
   // generation — stale commands aimed at the previous instance stay rejected.
   noteTab(pageId, { generation: tabCatalog.nextGeneration(pageId), lifecycle: "live" });

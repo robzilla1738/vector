@@ -1,96 +1,79 @@
 import { ProjectCommandContextSchema, ProjectCommandSchema, ProjectCommitRequestSchema, ProjectServiceStackRequestSchema, TaskSchema } from "@aux/contracts";
-import { dialog, ipcMain, shell } from "electron";
+import { dialog, shell } from "electron";
 import { localProjects, projectCommands, projectFiles } from "../app/services.js";
-import { savingProjects } from "../projects/lock.js";
-import { channel } from "../runtime/supervisor.js";
-import { requireShellUi } from "../windows/registry.js";
+import { assertProjectEditable, projectCommandsActive, requireCurrentTask, savingProjects, withProjectLock } from "../projects/lock.js";
+import { requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
+import { handleShell } from "../windows/registry.js";
 
 export function wireProjectsIpc() {
-  ipcMain.handle("ui.selectRepository", async event => {
-    const state=requireShellUi(event);
+  handleShell("ui.selectRepository", async state => {
     const result = await dialog.showOpenDialog(state.win, { title: "Select a local repository", properties: ["openDirectory"] });
     return result.canceled || !result.filePaths[0] ? null : localProjects.select(result.filePaths[0]);
   });
-  ipcMain.handle("ui.createProject", (event, id: string) => { requireShellUi(event); return localProjects.create(id); });
-  ipcMain.handle("ui.createBlankProject", (event, name: string) => { requireShellUi(event); return localProjects.createBlank(name); });
-  ipcMain.handle("ui.listProjects", event => { requireShellUi(event); return localProjects.list(); });
-  ipcMain.handle("ui.inspectProject", (event, id: string) => { requireShellUi(event); return localProjects.inspect(id); });
-  ipcMain.handle("ui.checkLocalPreview", (event, id: string, url: string) => { requireShellUi(event); return localProjects.checkPreview(id,url); });
-  ipcMain.handle("ui.listProjectFiles", async (event, id: string) => { requireShellUi(event); return (await localProjects.files(id)).files; });
-  ipcMain.handle("ui.readProjectFile", (event, id: string, name: string) => { requireShellUi(event); return projectFiles.read(id,name); });
-  ipcMain.handle("ui.createProjectFile", async (event, id: string, name: string) => {
-    requireShellUi(event);
-    if(projectCommands.list(id).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before creating a file.");
-    if(savingProjects.has(id))throw new Error("A file is already being saved in this project.");
-    savingProjects.add(id);
-    try{return await projectFiles.create(id,name);}finally{savingProjects.delete(id);}
+  handleShell("ui.createProject", (_, id: string) => localProjects.create(id));
+  handleShell("ui.createBlankProject", (_, name: string) => localProjects.createBlank(name));
+  handleShell("ui.listProjects", () => localProjects.list());
+  handleShell("ui.inspectProject", (_, id: string) => localProjects.inspect(id));
+  handleShell("ui.checkLocalPreview", (_, id: string, url: string) => localProjects.checkPreview(id,url));
+  handleShell("ui.listProjectFiles", async (_, id: string) => (await localProjects.files(id)).files);
+  handleShell("ui.readProjectFile", (_, id: string, name: string) => projectFiles.read(id,name));
+  handleShell("ui.createProjectFile", async (_, id: string, name: string) => {
+    assertProjectEditable(id,"creating");
+    return withProjectLock(id,()=>projectFiles.create(id,name),"A file is already being saved in this project.");
   });
-  ipcMain.handle("ui.projectFileHistory", (event, id: string, name: string) => { requireShellUi(event); return projectFiles.history(id,name); });
-  ipcMain.handle("ui.readProjectFileVersion", (event, id: string, name: string, versionId: string) => { requireShellUi(event); return projectFiles.readVersion(id,name,versionId); });
-  ipcMain.handle("ui.saveProjectFile", async (event, id: string, name: string, hash: string, content: string) => {
-    requireShellUi(event);
-    if(projectCommands.list(id).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before saving a file.");
-    if(savingProjects.has(id))throw new Error("A file is already being saved in this project.");
-    savingProjects.add(id);
-    try{return await projectFiles.save(id,name,hash,content);}finally{savingProjects.delete(id);}
+  handleShell("ui.projectFileHistory", (_, id: string, name: string) => projectFiles.history(id,name));
+  handleShell("ui.readProjectFileVersion", (_, id: string, name: string, versionId: string) => projectFiles.readVersion(id,name,versionId));
+  handleShell("ui.saveProjectFile", async (_, id: string, name: string, hash: string, content: string) => {
+    assertProjectEditable(id,"saving");
+    return withProjectLock(id,()=>projectFiles.save(id,name,hash,content),"A file is already being saved in this project.");
   });
-  ipcMain.handle("ui.renameProjectFile", async (event, id: string, name: string, nextName: string, hash: string) => {
-    requireShellUi(event);
-    if(projectCommands.list(id).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before renaming a file.");
-    if(savingProjects.has(id))throw new Error("A file is already being changed in this project.");
-    savingProjects.add(id);
-    try{return await projectFiles.move(id,name,nextName,hash);}finally{savingProjects.delete(id);}
+  handleShell("ui.renameProjectFile", async (_, id: string, name: string, nextName: string, hash: string) => {
+    assertProjectEditable(id,"renaming");
+    return withProjectLock(id,()=>projectFiles.move(id,name,nextName,hash));
   });
-  ipcMain.handle("ui.deleteProjectFile", async (event, id: string, name: string, hash: string) => {
-    const state=requireShellUi(event);
-    if(projectCommands.list(id).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before deleting a file.");
+  handleShell("ui.deleteProjectFile", async (state, id: string, name: string, hash: string) => {
+    assertProjectEditable(id,"deleting");
     if(savingProjects.has(id))throw new Error("A file is already being changed in this project.");
     const file=await projectFiles.read(id,name);
     if(file.sha256!==hash)throw new Error('The file changed outside Aux. Reload it before deleting.');
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:'Delete checkout file',message:`Delete ${name} from this isolated checkout?`,detail:'Aux will retain a recovery copy outside the Git working tree. The original repository checkout is not changed.',buttons:['Cancel','Delete file'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;
-    savingProjects.add(id);
-    try{return await projectFiles.remove(id,name,hash);}finally{savingProjects.delete(id);}
+    return withProjectLock(id,()=>projectFiles.remove(id,name,hash));
   });
-  ipcMain.handle("ui.openProjectFileExternal", async (event, id: string, name: string, context: unknown) => {
-    requireShellUi(event);if(!channel)throw new Error('Runtime not connected');const selection=ProjectCommandContextSchema.parse(context);
-    const details=await channel.call('api.invoke',{method:'tasks.get',params:{taskId:selection.taskId},desktopUser:true}) as {task:unknown};const task=TaskSchema.parse(details.task);
-    if(task.revision!==selection.expectedRevision)throw new Error('The task revision changed. Reopen it before editing outside Aux.');
-    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===id))throw new Error('Attach this checkout to the current task before editing outside Aux.');
+  handleShell("ui.openProjectFileExternal", async (_, id: string, name: string, context: unknown) => {
+    requireRuntime('Runtime not connected');
+    await requireCurrentTask(ProjectCommandContextSchema.parse(context),id,{revision:'The task revision changed. Reopen it before editing outside Aux.',detached:'Attach this checkout to the current task before editing outside Aux.'});
     const path=await projectFiles.externalPath(id,name);const error=await shell.openPath(path);
     if(error)throw new Error(`Couldn’t open this file in its default app: ${error}`);return true;
   });
-  ipcMain.handle("ui.prepareProjectReview", async (event, id: string, context: unknown) => {
-    requireShellUi(event);if(!channel)throw new Error('Runtime not connected');const selection=ProjectCommandContextSchema.parse(context);
-    const details=await channel.call('api.invoke',{method:'tasks.get',params:{taskId:selection.taskId},desktopUser:true}) as {task:unknown};const task=TaskSchema.parse(details.task);
-    if(task.revision!==selection.expectedRevision)throw new Error('The task revision changed. Reopen it before preparing delivery.');
-    if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===id))throw new Error('Attach this checkout to the current task before preparing delivery.');
+  handleShell("ui.prepareProjectReview", async (_, id: string, context: unknown) => {
+    requireRuntime('Runtime not connected');
+    const task=await requireCurrentTask(ProjectCommandContextSchema.parse(context),id,{revision:'The task revision changed. Reopen it before preparing delivery.',detached:'Attach this checkout to the current task before preparing delivery.'});
     const inspection=await localProjects.inspect(id);
     return localProjects.writeReviewSummary(id,inspection,projectCommands.list(id),{taskId:task.taskId,taskRevision:task.revision,title:task.title,objective:task.objective,workspaceId:task.workspaceId});
   });
-  ipcMain.handle("ui.commitProject", async (event, id: string, input: unknown, context: unknown) => {
-    const state=requireShellUi(event);if(!channel)throw new Error('Runtime not connected');const request=ProjectCommitRequestSchema.parse(input);const selection=ProjectCommandContextSchema.parse(context);
-    const currentTask=async()=>{const details=await channel!.call('api.invoke',{method:'tasks.get',params:{taskId:selection.taskId},desktopUser:true}) as {task:unknown};const task=TaskSchema.parse(details.task);if(task.revision!==selection.expectedRevision)throw new Error('The task revision changed. Reopen it before creating a commit.');if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===id))throw new Error('Attach this checkout to the current task before creating a commit.');return task;};
-    if(projectCommands.list(id).some(command=>command.state==='running'||command.state==='stopping'))throw new Error('Stop local commands and services before creating a commit.');
+  handleShell("ui.commitProject", async (state, id: string, input: unknown, context: unknown) => {
+    requireRuntime('Runtime not connected');const request=ProjectCommitRequestSchema.parse(input);const selection=ProjectCommandContextSchema.parse(context);
+    const currentTask=()=>requireCurrentTask(selection,id,{revision:'The task revision changed. Reopen it before creating a commit.',detached:'Attach this checkout to the current task before creating a commit.'});
+    if(projectCommandsActive(id))throw new Error('Stop local commands and services before creating a commit.');
     if(savingProjects.has(id))throw new Error('Wait for the file change before creating a commit.');
     const task=await currentTask();const reviewContext={taskId:task.taskId,taskRevision:task.revision,title:task.title,objective:task.objective,workspaceId:task.workspaceId};const inspected=await localProjects.inspect(id);
     const review=await localProjects.writeReviewSummary(id,inspected,projectCommands.list(id),reviewContext);
     if(review.readiness.state!=='ready'||review.patch.sha256!==request.expectedPatchHash||review.snapshotTree!==request.expectedTree)throw new Error('The prepared handoff changed. Prepare it again before creating a commit.');
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:'Create local commit',message:`Create a commit on ${inspected.project.branch}?`,detail:`Task: ${task.title} · Revision ${task.revision}\nBranch: ${inspected.project.branch}\n\n${request.message}\n\nAuthor: ${request.authorName} <${request.authorEmail}>\nPatch: ${request.expectedPatchHash}\n\nThis creates one local commit in Aux’s isolated checkout. It does not push, publish, or open a pull request. Repository hooks, commit signing, credential helpers, and network protocols are disabled.`,buttons:['Cancel','Create local commit'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;const refreshed=await currentTask();
-    if(refreshed.revision!==task.revision||projectCommands.list(id).some(command=>command.state==='running'||command.state==='stopping')||savingProjects.has(id))throw new Error('The task or checkout changed. Review the commit again.');
+    if(refreshed.revision!==task.revision||projectCommandsActive(id)||savingProjects.has(id))throw new Error('The task or checkout changed. Review the commit again.');
     return localProjects.commit(id,request,projectCommands.list(id),reviewContext);
   });
-  ipcMain.handle("ui.listProjectCommands", (event, id: string) => { requireShellUi(event); return projectCommands.list(id); });
-  ipcMain.handle("ui.stopProjectCommand", (event, projectId: string, id: string) => { requireShellUi(event); return projectCommands.stop(projectId,id); });
-  ipcMain.handle("ui.stopProjectServiceStack",(event,projectId:string,stackId:string)=>{requireShellUi(event);return projectCommands.stopStack(projectId,stackId);});
-  ipcMain.handle("ui.runProjectCommand", async (event, id: string, input: string, context: unknown, requestedMode: unknown) => {
-    const state=requireShellUi(event);
+  handleShell("ui.listProjectCommands", (_, id: string) => projectCommands.list(id));
+  handleShell("ui.stopProjectCommand", (_, projectId: string, id: string) => projectCommands.stop(projectId,id));
+  handleShell("ui.stopProjectServiceStack", (_, projectId:string,stackId:string) => projectCommands.stopStack(projectId,stackId));
+  handleShell("ui.runProjectCommand", async (state, id: string, input: string, context: unknown, requestedMode: unknown) => {
     const command = ProjectCommandSchema.shape.command.parse(input);
     const mode = ProjectCommandSchema.shape.mode.parse(requestedMode);
     const selection = ProjectCommandContextSchema.parse(context);
-    if(!channel)throw new Error('Runtime not connected');
-    const prepare=async()=>TaskSchema.parse(await channel!.call('api.invoke',{method:'tasks.prepareLocalCommand',params:{...selection,projectId:id},desktopUser:true}));
+    requireRuntime('Runtime not connected');
+    const prepare=async()=>TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {...selection,projectId:id}));
     const reviewed=await prepare();
     const inspected = await localProjects.inspect(id);
     const answer = await dialog.showMessageBox(state.win, {type:"warning",title:mode==="service"?"Start local service":"Run local command",message:mode==="service"?"Keep this service running in the isolated checkout?":"Run this command in the isolated checkout?",
@@ -103,10 +86,10 @@ export function wireProjectsIpc() {
     if(savingProjects.has(id))throw new Error("Wait for the file save before starting a command.");
     return projectCommands.start(current.project,command,{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId},mode);
   });
-  ipcMain.handle("ui.runProjectServiceStack",async(event,id:string,input:unknown,context:unknown)=>{
-    const state=requireShellUi(event);const request=ProjectServiceStackRequestSchema.parse(input);const selection=ProjectCommandContextSchema.parse(context);
-    if(!channel)throw new Error('Runtime not connected');
-    const prepare=async()=>TaskSchema.parse(await channel!.call('api.invoke',{method:'tasks.prepareLocalCommand',params:{...selection,projectId:id},desktopUser:true}));
+  handleShell("ui.runProjectServiceStack", async(state, id:string,input:unknown,context:unknown) => {
+    const request=ProjectServiceStackRequestSchema.parse(input);const selection=ProjectCommandContextSchema.parse(context);
+    requireRuntime('Runtime not connected');
+    const prepare=async()=>TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {...selection,projectId:id}));
     const reviewed=await prepare();const inspected=await localProjects.inspect(id);
     const ordered=request.commands.map((command,index)=>`${index+1}. ${command}`).join('\n');
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:'Start local service stack',message:`Start ${request.commands.length} services in this checkout?`,detail:`Task: ${reviewed.title} · Revision ${reviewed.revision}\n\n${ordered}\n\nWorking directory: ${inspected.project.path}\n\nAux starts these commands in the shown order and keeps separate output for each. If a service fails, the remaining stack stops. This is not a sandbox: commands can change files and access the network. Aux uses a separate HOME and does not supply model credentials.`,buttons:['Cancel','Start services'],defaultId:0,cancelId:0,noLink:true});

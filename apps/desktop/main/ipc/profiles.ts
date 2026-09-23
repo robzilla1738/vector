@@ -1,20 +1,19 @@
-import { app, ipcMain } from "electron";
+import { app } from "electron";
 import { spawn as spawnProcess } from "node:child_process";
 import { browserProfiles, profile } from "../app/services.js";
-import { focusedRegularWindow, regularWindows, requireShellUi } from "../windows/registry.js";
+import { focusedRegularWindow, handleShell, regularWindows } from "../windows/registry.js";
 import { updateWindowTitle } from "../windows/stage.js";
 
 export const profileLaunches=new Map<string,Promise<void>>();
 
 export function wireProfilesIpc() {
-  ipcMain.handle("ui.browserProfiles",event=>{requireShellUi(event);const profiles=browserProfiles.list();const current=profiles.find(profile=>profile.current);if(current){profile.name=current.name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
+  handleShell("ui.browserProfiles", () => {const profiles=browserProfiles.list();const current=profiles.find(profile=>profile.current);if(current){profile.name=current.name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
 
-  ipcMain.handle("ui.archiveBrowserProfile",(event,id:string,archived:boolean)=>{requireShellUi(event);return browserProfiles.archive(id,archived);});
-  ipcMain.handle("ui.deleteBrowserProfile",(event,id:string)=>{requireShellUi(event);return browserProfiles.delete(id);});
-  ipcMain.handle("ui.createBrowserProfile",(event,name:unknown)=>{requireShellUi(event);return browserProfiles.create(name);});
-  ipcMain.handle("ui.renameBrowserProfile",(event,id:string,name:unknown)=>{requireShellUi(event);const profiles=browserProfiles.rename(id,name);if(id===browserProfiles.currentId){profile.name=browserProfiles.read(id).name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
-  ipcMain.handle("ui.openBrowserProfile",async(event,id:string)=>{
-    requireShellUi(event);
+  handleShell("ui.archiveBrowserProfile", (_, id:string,archived:boolean) => browserProfiles.archive(id,archived));
+  handleShell("ui.deleteBrowserProfile", (_, id:string) => browserProfiles.delete(id));
+  handleShell("ui.createBrowserProfile", (_, name:unknown) => browserProfiles.create(name));
+  handleShell("ui.renameBrowserProfile", (_, id:string,name:unknown) => {const profiles=browserProfiles.rename(id,name);if(id===browserProfiles.currentId){profile.name=browserProfiles.read(id).name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
+  handleShell("ui.openBrowserProfile", async(_, id:string) => {
     const env=browserProfiles.environment(id,process.env);
     if(id===browserProfiles.currentId){const state=focusedRegularWindow();state?.win.show();state?.win.focus();return true;}
     let launch=profileLaunches.get(id);

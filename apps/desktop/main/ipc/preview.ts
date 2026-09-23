@@ -3,7 +3,7 @@ import { offscreen } from "../app/services.js";
 import { nextFrame, previewJpeg, startPreviewWatch } from "../preview-watch.js";
 import { wakePage } from "../tabs/lifecycle-controller.js";
 import type { ViewEntry } from "../target-registry.js";
-import { requireOwnedEntry, requireShellUi } from "../windows/registry.js";
+import { handleShell, requireOwnedEntry, requireShellUi } from "../windows/registry.js";
 import { applyStage, clearPreviewWatch } from "../windows/stage.js";
 
 export function wirePreviewIpc() {
@@ -43,13 +43,11 @@ export function wirePreviewIpc() {
       return false;
     }
   });
-  ipcMain.handle("ui.unwatchPreview", (event, pageId: unknown) => {
-    const state = requireShellUi(event);
+  handleShell("ui.unwatchPreview", (state, pageId: unknown) => {
     if (state.previewWatch && (typeof pageId !== "string" || state.previewWatch.pageId === pageId)) clearPreviewWatch(state);
     return true;
   });
-  ipcMain.handle("ui.preview", async (event, pageId: string) => {
-    const state = requireShellUi(event);
+  handleShell("ui.preview", async (state, pageId: string) => {
     let entry: ViewEntry;
     try { entry = requireOwnedEntry(state, pageId); } catch { return null; }
     const reveal = !entry.popup && !entry.view.getVisible();

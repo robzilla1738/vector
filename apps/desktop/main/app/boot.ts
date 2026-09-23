@@ -6,7 +6,7 @@ import { gatePageLoads, profileSession } from "../native-views.js";
 import { IDLE_MATERIALIZE_MAX, IDLE_MATERIALIZE_MS } from "../page-lifecycle.js";
 import { configureCloudPreviewHeaders, configurePagePermissions } from "../privacy/session.js";
 import { maintainFilterLists } from "../privacy/state.js";
-import { channel, runtimeProcess, runtimeReady, scheduleRuntimeRestart, startRuntimeWhenReady } from "../runtime/supervisor.js";
+import { channel, runtimeInvoke, runtimeProcess, runtimeReady, scheduleRuntimeRestart, startRuntimeWhenReady } from "../runtime/supervisor.js";
 import { ensureTabView } from "../tabs/materialize.js";
 import { shellTabWindow } from "../tabs/publish.js";
 import { savedCatalogLoad, tabCatalog } from "../tabs/store.js";
@@ -79,7 +79,7 @@ export async function boot() {
   maintainFilterLists();
   powerMonitor.on("resume", () => {
     if (!runtimeReady || !channel) return scheduleRuntimeRestart(0);
-    void channel.call("api.invoke", { method: "workspace.get", params: {}, desktopUser: true }, 10_000).catch(() => {
+    void runtimeInvoke("workspace.get", {}, 10_000).catch(() => {
       runtimeProcess?.kill("SIGTERM");
     });
   });

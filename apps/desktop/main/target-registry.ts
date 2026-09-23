@@ -7,8 +7,6 @@ interface ViewIdentity {
   showBlankDocument?: boolean;
   owned: boolean;
   runtimeOwned?:boolean;
-  lastPreview?: string;
-  visibleBounds?: { x: number; y: number; width: number; height: number };
 }
 
 export type ViewEntry = ViewIdentity & (

@@ -1,6 +1,6 @@
 import { dialog } from "electron";
 import { type AutofillProfile, autofillScript, hasAutofillData } from "../autofill.js";
-import { channel } from "../runtime/supervisor.js";
+import { requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 
 /**
  * Fill a frame's form with saved personal info — explicit user request only.
@@ -9,8 +9,8 @@ import { channel } from "../runtime/supervisor.js";
  */
 export async function runAutofill(frame: Electron.WebFrameMain): Promise<number> {
   try {
-    if (!channel) throw new Error("The browser runtime is not connected yet.");
-    const settings = await channel.call("api.invoke", { method: "settings.get", params: {}, desktopUser: true }) as { autofill?: AutofillProfile };
+    requireRuntime("The browser runtime is not connected yet.");
+    const settings = await runtimeInvoke("settings.get") as { autofill?: AutofillProfile };
     const profile = settings.autofill;
     if (!hasAutofillData(profile)) {
       void dialog.showMessageBox({ type: "info", title: "Personal info", message: "No personal info is saved yet.", detail: "Add your details in Settings → Browsing → Personal info, then use Fill personal info on a form.", buttons: ["OK"] });

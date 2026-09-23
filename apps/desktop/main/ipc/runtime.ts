@@ -1,11 +1,10 @@
 import { EvidenceCommandSelectionParams, MethodSchemas } from "@aux/contracts";
-import { ipcMain } from "electron";
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 import { projectCommands, registry } from "../app/services.js";
 import { liveDownloads } from "../downloads/controller.js";
 import { rendererMayInvoke } from "../renderer-methods.js";
-import { channel } from "../runtime/supervisor.js";
-import { type RegularWindowState, requireShellUi } from "../windows/registry.js";
+import { requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
+import { type RegularWindowState, handleShell } from "../windows/registry.js";
 
 export function scopeRuntimeResult(method: string, result: unknown, state: RegularWindowState) {
   const owns = (page: unknown) => {
@@ -21,9 +20,8 @@ export function scopeRuntimeResult(method: string, result: unknown, state: Regul
 }
 
 export function wireRuntimeIpc() {
-  ipcMain.handle("api.invoke", async (event, method: string, params: unknown) => {
-    const state = requireShellUi(event);
-    if (!channel) throw new Error("runtime not connected");
+  handleShell("api.invoke", async (state, method: string, params: unknown) => {
+    requireRuntime("runtime not connected");
     if (!rendererMayInvoke(method)) throw new Error("This action is not available from the Aux window.");
     if (method === "pages.open" && params && typeof params === "object") params = { ...params, windowId: state.id };
     const requestedPageId = params && typeof params === "object" && "pageId" in params ? (params as { pageId?: unknown }).pageId : undefined;
@@ -46,7 +44,7 @@ export function wireRuntimeIpc() {
       if (!command || command.state === "running" || command.state === "stopping") throw new Error("Select a finished local command result.");
       params = {...selection, command};
     }
-    const result = await channel.call("api.invoke", { method, params, desktopUser: true }, 60_000);
+    const result = await runtimeInvoke(method, params, 60_000);
     return scopeRuntimeResult(method, result, state);
   });
 }

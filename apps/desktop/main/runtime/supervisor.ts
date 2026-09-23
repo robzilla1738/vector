@@ -119,6 +119,16 @@ export function startRuntimeProcess() {
 
 // ---------- native.* surface (called by the runtime) ----------
 
+/** A desktop-user api.invoke on the runtime; rejects while it is offline. */
+export async function runtimeInvoke<T = unknown>(method: string, params: unknown = {}, timeoutMs?: number): Promise<T> {
+  if (!channel) throw new Error("The Aux runtime is not connected.");
+  return channel.call<T>("api.invoke", { method, params, desktopUser: true }, timeoutMs);
+}
+
+export function requireRuntime(message = "The Aux runtime is not connected.") {
+  if (!channel) throw new Error(message);
+}
+
 export function notifyRuntime(type: string, payload: unknown) {
   channel?.notify(type, payload);
 }

@@ -349,16 +349,7 @@ export function destroyPageView(entry: ViewEntry, win: BaseWindow): Promise<bool
   return promise;
 }
 
-export function downloadsSession() {
-  return session.fromPartition(PROFILE_PARTITION);
-}
-
 /** The shared profile partition human page views run in (cookies, cache, storage). */
 export function profileSession() {
-  return session.fromPartition(PROFILE_PARTITION);
-}
-
-/** Compatibility alias: agent-driven pages use the shared browsing profile. */
-export function agentSession() {
   return session.fromPartition(PROFILE_PARTITION);
 }

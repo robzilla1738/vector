@@ -1,6 +1,6 @@
 import { app } from "electron";
 import { spawn as spawnProcess } from "node:child_process";
-import { channel, runtimeReady } from "../runtime/supervisor.js";
+import { channel, runtimeInvoke, runtimeReady } from "../runtime/supervisor.js";
 import { focusedRegularWindow } from "../windows/registry.js";
 import { PRIMARY_WINDOW_ID, desktopEnv, log } from "./bootstrap.js";
 import { browserProfiles } from "./services.js";
@@ -52,8 +52,8 @@ export async function flushExternalUrls() {
         const owner = focusedRegularWindow();
         if(owner?.win.isMinimized())owner.win.restore();
         owner?.win.show();owner?.win.focus();
-        const target = await channel.call("api.invoke", { method: "pages.open", params: { url, windowId: owner?.id ?? PRIMARY_WINDOW_ID }, desktopUser:true }) as { pageId: string };
-        await channel.call("api.invoke", { method: "pages.activate", params: { pageId: target.pageId }, desktopUser:true });
+        const target = await runtimeInvoke("pages.open", { url, windowId: owner?.id ?? PRIMARY_WINDOW_ID }) as { pageId: string };
+        await runtimeInvoke("pages.activate", { pageId: target.pageId });
       } catch (error) {
         log("external URL failed", new URL(url).origin, error instanceof Error ? error.message : String(error));
       }

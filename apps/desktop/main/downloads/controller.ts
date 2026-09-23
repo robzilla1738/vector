@@ -1,7 +1,7 @@
 import { downloadLocation, registry } from "../app/services.js";
 import { confirmDownload, downloadWarning } from "../download-guard.js";
 import { retrySource } from "../download-retry.js";
-import { downloadsSession } from "../native-views.js";
+import { profileSession } from "../native-views.js";
 import { notifyRuntime } from "../runtime/supervisor.js";
 import { broadcastToShells, regularWindows, stateForEntry } from "../windows/registry.js";
 
@@ -9,7 +9,7 @@ import { broadcastToShells, regularWindows, stateForEntry } from "../windows/reg
 export const liveDownloads = new Map<string, { item: Electron.DownloadItem; snapshot: () => import("@aux/contracts").Download }>();
 
 export function wireDownloads() {
-  downloadsSession().on("will-download", (event, item, webContents) => {
+  profileSession().on("will-download", (event, item, webContents) => {
     const entry = registry.byWebContentsId(webContents?.id ?? -1);
     const filename = item.getFilename();
     const sourceUrl = retrySource(item.getURLChain()[0] ?? item.getURL());

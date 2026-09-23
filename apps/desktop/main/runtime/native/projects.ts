@@ -3,9 +3,9 @@ import { dialog } from "electron";
 import { PRIMARY_WINDOW_ID } from "../../app/bootstrap.js";
 import { localProjects, projectCommands, projectFiles } from "../../app/services.js";
 import { normalizeLocalPreviewUrl } from "../../local-preview.js";
-import { savingProjects } from "../../projects/lock.js";
+import { assertProjectEditable, projectCommandsActive, requireCurrentTask, savingProjects, withProjectLock } from "../../projects/lock.js";
 import { focusedRegularWindow, stateForWindowId } from "../../windows/registry.js";
-import { channel } from "../supervisor.js";
+import { requireRuntime, runtimeInvoke } from "../supervisor.js";
 
 export function registerProjectMethods(ch: RpcChannel) {
   ch.onMethod('native.developmentProjects',async p=>{
@@ -17,8 +17,8 @@ export function registerProjectMethods(ch: RpcChannel) {
   ch.onMethod('native.recordGithubStatus',p=>{const input=p as {projectId:string;status:unknown};return localProjects.recordGithubStatus(input.projectId,ProjectGithubStatusSchema.parse(input.status));});
   ch.onMethod('native.writeIncidentReport',async p=>{
     const input=p as {projectId:string;task:unknown;page:{pageId:string;url:string;title:string};console:{level:string;message:string;atMs?:number}[];network:{method:string;status?:number;url:string;durationMs?:number;startedAt?:number}[];operations?:unknown};const task=ProjectCommandTaskSchema.parse(input.task);
-    if(!channel)throw new Error('Runtime not connected');const details=await channel.call('api.invoke',{method:'tasks.get',params:{taskId:task.taskId},desktopUser:true}) as {task:unknown};const current=TaskSchema.parse(details.task);
-    if(current.revision!==task.taskRevision||!current.resources.some(resource=>resource.kind==='repository'&&resource.projectId===input.projectId))throw new Error('The task or checkout attachment changed. Prepare the incident snapshot again.');
+    requireRuntime('Runtime not connected');const changed='The task or checkout attachment changed. Prepare the incident snapshot again.';
+    await requireCurrentTask({taskId:task.taskId,expectedRevision:task.taskRevision},input.projectId,{revision:changed,detached:changed});
     const page={pageId:String(input.page.pageId).slice(0,200),url:String(input.page.url).slice(0,8192),title:String(input.page.title).slice(0,1000)};
     const consoleLines=(Array.isArray(input.console)?input.console:[]).slice(-100).filter(item=>item&&typeof item.level==='string'&&typeof item.message==='string').map(item=>({level:item.level.slice(0,40),message:item.message.slice(0,8000),...(typeof item.atMs==='number'?{atMs:item.atMs}:{})}));
     const network=(Array.isArray(input.network)?input.network:[]).slice(-100).filter(item=>item&&typeof item.method==='string'&&typeof item.url==='string').map(item=>({method:item.method.slice(0,20),url:item.url.slice(0,8192),...(typeof item.status==='number'?{status:item.status}:{}),...(typeof item.durationMs==='number'?{durationMs:item.durationMs}:{}),...(typeof item.startedAt==='number'?{startedAt:item.startedAt}:{})}));
@@ -36,23 +36,21 @@ export function registerProjectMethods(ch: RpcChannel) {
       detail:`Task: ${task.title} · Revision ${task.taskRevision}\nProject: ${project.name}\nPath: ${project.path}/${input.name}\nSize: ${Buffer.byteLength(input.content,'utf8').toLocaleString()} bytes\n\nContent preview${input.content.length>preview.length?' (truncated)':''}:\n${preview||'(Empty file)'}\n\nAux keeps recovery data for replacements. This does not change the original checkout, commit, push, or publish.`,
       buttons:['Cancel',create?'Create file':'Save change'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;
-    if(!channel)throw new Error('Runtime not connected');
-    const current=TaskSchema.parse(await channel.call('api.invoke',{method:'tasks.prepareLocalCommand',params:{taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId},desktopUser:true}));
+    requireRuntime('Runtime not connected');
+    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
     if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the request again.');
     return task;
   };
   ch.onMethod('native.writeProjectFile',async p=>{
     const input=p as {projectId:string;name:string;expectedHash:string;content:string;task:unknown};
     if((await projectFiles.read(input.projectId,input.name)).sha256!==input.expectedHash)throw new Error('The file changed outside the agent session. Read it again before proposing a save.');
-    if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before saving a file.");
+    assertProjectEditable(input.projectId,'saving');
     if(!await confirmProjectChange(input,false))return null;
-    if(savingProjects.has(input.projectId))throw new Error('A file is already being changed in this project.');savingProjects.add(input.projectId);
-    try{if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before saving a file.");return await projectFiles.save(input.projectId,input.name,input.expectedHash,input.content);}finally{savingProjects.delete(input.projectId);}
+    return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'saving');return projectFiles.save(input.projectId,input.name,input.expectedHash,input.content);});
   });
   ch.onMethod('native.createProjectFile',async p=>{
-    const input=p as {projectId:string;name:string;content:string;task:unknown};if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before creating a file.");if(!await confirmProjectChange(input,true))return null;
-    if(savingProjects.has(input.projectId))throw new Error('A file is already being changed in this project.');savingProjects.add(input.projectId);
-    try{if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before creating a file.");const created=await projectFiles.create(input.projectId,input.name);if(!input.content)return created;return await projectFiles.save(input.projectId,input.name,created.sha256,input.content);}finally{savingProjects.delete(input.projectId);}
+    const input=p as {projectId:string;name:string;content:string;task:unknown};assertProjectEditable(input.projectId,'creating');if(!await confirmProjectChange(input,true))return null;
+    return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'creating');const created=await projectFiles.create(input.projectId,input.name);if(!input.content)return created;return projectFiles.save(input.projectId,input.name,created.sha256,input.content);});
   });
   const confirmProjectFileLifecycle=async(input:{projectId:string;name:string;nextName?:string;expectedHash:string;task:unknown},action:'rename'|'delete')=>{
     const task=ProjectCommandTaskSchema.parse(input.task);const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
@@ -61,22 +59,22 @@ export function registerProjectMethods(ch: RpcChannel) {
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:action==='rename'?'Rename agent project file':'Delete agent project file',message:action==='rename'?`Rename ${input.name} to ${input.nextName}?`:`Delete ${input.name} from the isolated checkout?`,
       detail:`Task: ${task.title} · Revision ${task.taskRevision}\nProject: ${project.name}\nCheckout: ${project.path}\nExpected file: ${input.expectedHash}\n\nAux will preserve the current file in recovery history. This does not change the original checkout, commit, push, or publish.`,
       buttons:['Cancel',action==='rename'?'Rename file':'Delete file'],defaultId:0,cancelId:0,noLink:true});
-    if(answer.response!==1)return null;if(!channel)throw new Error('Runtime not connected');
-    const current=TaskSchema.parse(await channel.call('api.invoke',{method:'tasks.prepareLocalCommand',params:{taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId},desktopUser:true}));
+    if(answer.response!==1)return null;requireRuntime('Runtime not connected');
+    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
     if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the request again.');
     return task;
   };
   ch.onMethod('native.renameProjectFile',async p=>{
     const input=p as {projectId:string;name:string;nextName:string;expectedHash:string;task:unknown};
-    if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before renaming a file.");
-    if(!await confirmProjectFileLifecycle(input,'rename'))return null;if(savingProjects.has(input.projectId))throw new Error('A file is already being changed in this project.');savingProjects.add(input.projectId);
-    try{if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before renaming a file.");return await projectFiles.move(input.projectId,input.name,input.nextName,input.expectedHash);}finally{savingProjects.delete(input.projectId);}
+    assertProjectEditable(input.projectId,'renaming');
+    if(!await confirmProjectFileLifecycle(input,'rename'))return null;
+    return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'renaming');return projectFiles.move(input.projectId,input.name,input.nextName,input.expectedHash);});
   });
   ch.onMethod('native.deleteProjectFile',async p=>{
     const input=p as {projectId:string;name:string;expectedHash:string;task:unknown};
-    if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before deleting a file.");
-    if(!await confirmProjectFileLifecycle(input,'delete'))return null;if(savingProjects.has(input.projectId))throw new Error('A file is already being changed in this project.');savingProjects.add(input.projectId);
-    try{if(projectCommands.list(input.projectId).some(command=>['running','stopping'].includes(command.state)&&(command.mode!=='service'||command.state==='stopping')))throw new Error("Stop the project's command before deleting a file.");return await projectFiles.remove(input.projectId,input.name,input.expectedHash);}finally{savingProjects.delete(input.projectId);}
+    assertProjectEditable(input.projectId,'deleting');
+    if(!await confirmProjectFileLifecycle(input,'delete'))return null;
+    return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'deleting');return projectFiles.remove(input.projectId,input.name,input.expectedHash);});
   });
   ch.onMethod('native.projectCommands',p=>projectCommands.list((p as {projectId:string}).projectId));
   ch.onMethod('native.runProjectCommand',async p=>{
@@ -84,8 +82,8 @@ export function registerProjectMethods(ch: RpcChannel) {
     const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');const project=(await localProjects.inspect(input.projectId)).project;
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:mode==='service'?'Start agent-requested service':'Run agent-requested command',message:mode==='service'?'Keep this task service running?':'Run this task command?',
       detail:`Task: ${task.title} · Revision ${task.taskRevision}\n\n${command}\n\nWorking directory: ${project.path}\n\nThis is not a sandbox. The command can change local files and access the network. Aux uses a separate HOME and does not supply model credentials. Output is saved locally.`,buttons:['Cancel',mode==='service'?'Start service':'Run command'],defaultId:0,cancelId:0,noLink:true});
-    if(answer.response!==1)return null;if(!channel)throw new Error('Runtime not connected');
-    const current=TaskSchema.parse(await channel.call('api.invoke',{method:'tasks.prepareLocalCommand',params:{taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId},desktopUser:true}));
+    if(answer.response!==1)return null;requireRuntime('Runtime not connected');
+    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
     if(savingProjects.has(input.projectId))throw new Error('Wait for the file change before starting a command.');
     return projectCommands.start(project,command,{taskId:current.taskId,taskRevision:current.revision,title:current.title,workspaceId:current.workspaceId},mode);
   });
@@ -103,10 +101,8 @@ export function registerProjectMethods(ch: RpcChannel) {
     const input=p as {projectId:string;url:string;task:unknown};const task=ProjectCommandTaskSchema.parse(input.task);const url=normalizeLocalPreviewUrl(input.url).href;
     const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');const project=(await localProjects.inspect(input.projectId)).project;
     const answer=await dialog.showMessageBox(state.win,{type:'question',title:'Open agent local preview',message:`Allow this task to open ${url}?`,detail:`Task: ${task.title} · Revision ${task.taskRevision}\nProject: ${project.name}\n\nAux will send a cookie-free loopback check, then open a browser tab only after a successful response. This grants this connection access to that preview tab until Aux restarts or the connection is revoked.`,buttons:['Cancel','Check and open'],defaultId:0,cancelId:0,noLink:true});
-    if(answer.response!==1)return null;if(!channel)throw new Error('Runtime not connected');
-    const details=await channel.call('api.invoke',{method:'tasks.get',params:{taskId:task.taskId},desktopUser:true}) as {task:unknown};const current=TaskSchema.parse(details.task);
-    if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the preview request again.');
-    if(!current.resources.some(resource=>resource.kind==='repository'&&resource.projectId===input.projectId))throw new Error('The checkout is no longer attached to this task.');
+    if(answer.response!==1)return null;requireRuntime('Runtime not connected');
+    await requireCurrentTask({taskId:task.taskId,expectedRevision:task.taskRevision},input.projectId,{revision:'Task revision changed; review the preview request again.',detached:'The checkout is no longer attached to this task.'});
     return localProjects.checkPreview(input.projectId,url);
   });
   ch.onMethod('native.stopProjectCommand',p=>{const input=p as {projectId:string;commandId:string};return projectCommands.stop(input.projectId,input.commandId);});
@@ -114,16 +110,16 @@ export function registerProjectMethods(ch: RpcChannel) {
   ch.onMethod('native.commitProject',async p=>{
     const input=p as {projectId:string;request:unknown;task:unknown};const request=ProjectCommitRequestSchema.parse(input.request);const task=ProjectReviewContextSchema.parse(input.task);
     const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
-    if(projectCommands.list(input.projectId).some(command=>command.state==='running'||command.state==='stopping'))throw new Error('Stop local commands and services before creating a commit.');
+    if(projectCommandsActive(input.projectId))throw new Error('Stop local commands and services before creating a commit.');
     if(savingProjects.has(input.projectId))throw new Error('Wait for the file change before creating a commit.');
     const review=await localProjects.writeReviewSummary(input.projectId,await localProjects.inspect(input.projectId),projectCommands.list(input.projectId),task);
     if(review.readiness.state!=='ready'||review.patch.sha256!==request.expectedPatchHash||review.snapshotTree!==request.expectedTree)throw new Error('The prepared handoff changed. Prepare it again before creating a commit.');
     const project=(await localProjects.inspect(input.projectId)).project;
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:'Create local commit',message:`Create a commit on ${project.branch}?`,detail:`Task: ${task.title} · Revision ${task.taskRevision}\n\n${request.message}\n\nAuthor: ${request.authorName} <${request.authorEmail}>\nPatch: ${request.expectedPatchHash}\n\nThis creates one local commit in Aux’s isolated checkout. It does not push, publish, or open a pull request. Repository hooks, commit signing, credential helpers, and network protocols are disabled.`,buttons:['Cancel','Create local commit'],defaultId:0,cancelId:0,noLink:true});
-    if(answer.response!==1)return null;if(!channel)throw new Error('Runtime not connected');
-    const current=TaskSchema.parse(await channel.call('api.invoke',{method:'tasks.prepareLocalCommand',params:{taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId},desktopUser:true}));
+    if(answer.response!==1)return null;requireRuntime('Runtime not connected');
+    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
     if(current.revision!==task.taskRevision||!current.resources.some(resource=>resource.kind==='repository'&&resource.projectId===input.projectId))throw new Error('The task or checkout attachment changed. Review the commit again.');
-    if(projectCommands.list(input.projectId).some(command=>command.state==='running'||command.state==='stopping')||savingProjects.has(input.projectId))throw new Error('The checkout became busy. Review the commit again.');
+    if(projectCommandsActive(input.projectId)||savingProjects.has(input.projectId))throw new Error('The checkout became busy. Review the commit again.');
     return localProjects.commit(input.projectId,request,projectCommands.list(input.projectId),task);
   });
 }

@@ -13,7 +13,7 @@ import { createPageView, markDocument } from "../native-views.js";
 import { exitPageFullscreen, wirePageFullscreen } from "../page-fullscreen.js";
 import { cssCursor } from "../page-pointer.js";
 import { httpsFirst, privacy, trackersAllowed } from "../privacy/state.js";
-import { channel, notifyRuntime } from "../runtime/supervisor.js";
+import { channel, notifyRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 import { newTabRecord } from "../tabs/catalog.js";
 import { discarding, forgetPageLifecycle, scheduleIdleFreeze, wakePage } from "../tabs/lifecycle-controller.js";
 import { tabPorts } from "../tabs/ports.js";
@@ -155,7 +155,7 @@ export const viewHooks = {
     const origin = originOfAddress(frame.url);
     if (!origin) return [];
     try {
-      return await channel.call("api.invoke", { method: "vault.itemsForOrigin", params: { origin }, desktopUser: true }) as { itemId: string; label: string; username?: string }[];
+      return await runtimeInvoke("vault.itemsForOrigin", { origin }) as { itemId: string; label: string; username?: string }[];
     } catch { return []; }
   },
   onCredentialOffer: (pageId: string, offer: { username: string; origin: string }) => { void noteCredentialOffer(pageId, offer); },

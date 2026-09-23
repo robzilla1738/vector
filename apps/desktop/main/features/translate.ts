@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { registry } from "../app/services.js";
 import { applyTranslationsScript, extractTextsScript, restoreOriginalScript, translateBubbleScript } from "../page-translate.js";
-import { channel } from "../runtime/supervisor.js";
+import { channel, requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 import { broadcastToShells } from "../windows/registry.js";
 
 /** Locale-appropriate label for the model prompt, e.g. "English". */
@@ -20,15 +20,11 @@ export async function runPageTranslate(pageId: string) {
   const url = wc.getURL();
   if (!/^https?:/.test(url)) throw new Error("Open a web page to translate.");
   if (/\.pdf($|[?#])/i.test(url)) throw new Error("PDF documents can't be translated in place — open them in Reader or export text first.");
-  if (!channel) throw new Error("Translation is unavailable while the runtime is offline.");
+  requireRuntime("Translation is unavailable while the runtime is offline.");
   broadcastToShells("translation-changed", { pageId, pending: true });
   const extracted = await wc.executeJavaScript(extractTextsScript(), true) as { texts?: string[]; title?: string; lang?: string };
   if (!extracted?.texts?.length) throw new Error("No readable text was found on this page.");
-  const result = await channel.call("api.invoke", {
-    method: "translate.page",
-    params: { texts: extracted.texts, target: translateTargetLabel(), context: (extracted.title ?? "").slice(0, 200) },
-    desktopUser: true,
-  }) as { lang: string; translations: string[]; truncated: boolean };
+  const result = await runtimeInvoke("translate.page", { texts: extracted.texts, target: translateTargetLabel(), context: (extracted.title ?? "").slice(0, 200) }) as { lang: string; translations: string[]; truncated: boolean };
   if (wc.isDestroyed() || wc.getURL() !== url) throw new Error("The page changed while translating.");
   const applied = await wc.executeJavaScript(applyTranslationsScript(result.translations), true) as { applied: number; expired: boolean };
   if (applied.expired) throw new Error("The page changed while translating.");
@@ -41,11 +37,7 @@ export async function runPageTranslate(pageId: string) {
 export async function runSelectionTranslate(pageId: string, text: string, x: number, y: number) {
   const entry = registry.get(pageId);
   if (!entry || !channel) throw new Error("Translation is unavailable right now.");
-  const result = await channel.call("api.invoke", {
-    method: "translate.text",
-    params: { text: text.slice(0, 12000), target: translateTargetLabel(), context: entry.view.webContents.getTitle().slice(0, 200) },
-    desktopUser: true,
-  }) as { lang: string; translation: string };
+  const result = await runtimeInvoke("translate.text", { text: text.slice(0, 12000), target: translateTargetLabel(), context: entry.view.webContents.getTitle().slice(0, 200) }) as { lang: string; translation: string };
   if (entry.view.webContents.isDestroyed()) return;
   await entry.view.webContents.executeJavaScript(translateBubbleScript(x, y, result.lang, translateTargetLabel(), result.translation), true).catch(() => {});
 }

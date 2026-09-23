@@ -1,4 +1,4 @@
-import { BaseWindow, WebContentsView } from "electron";
+import { BaseWindow, WebContentsView, ipcMain } from "electron";
 import { join } from "node:path";
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 import { registry } from "../app/services.js";
@@ -49,6 +49,11 @@ export const requireOwnedEntry = (state: RegularWindowState, pageId: unknown, me
   if (!entry || (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id || entry.view.webContents.isDestroyed()) throw new Error(message);
   return entry;
 };
+
+/** Register a renderer handler that only the Aux shell document of a regular window may call. */
+export function handleShell<A extends unknown[]>(channel: string, fn: (state: RegularWindowState, ...args: A) => unknown) {
+  ipcMain.handle(channel, (event, ...args) => fn(requireShellUi(event), ...(args as A)));
+}
 
 export const requireShellUi = (event: Electron.IpcMainInvokeEvent) => {
   const state = stateForShell(event.sender.id);
