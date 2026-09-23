@@ -1,6 +1,11 @@
-// Primary sidebar actions are now grouped in the compact More menu.
+// Primary sidebar actions live in the compact More menu (`.sb-more`) as
+// menuitems. "Chats" and "Tasks" are also collapsible sidebar *sections*
+// whose headings are plain buttons, so a bare getByRole('button', {name})
+// either toggles the wrong control or matches nothing at all — scope to
+// the menu item inside the More menu.
 export async function sidebarAction(page, name) {
-  const button = page.getByRole('button', {name, exact: true});
-  if (!await button.isVisible()) await page.locator('.sb-more summary').click();
-  await button.click();
+  const menu = page.locator(".sb-more");
+  const item = menu.getByRole("menuitem", { name, exact: true });
+  if (!(await item.isVisible())) await menu.locator("summary").click();
+  await item.click();
 }

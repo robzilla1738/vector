@@ -78,7 +78,7 @@ try {
   await page.getByText("Connection needs attention", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Model settings", exact: true }).click();
   await page.getByRole("region", { name: "Settings" }).waitFor();
-  assert.equal(await page.getByRole("button", { name: /Models/ }).getAttribute("aria-current"), "page");
+  assert.equal(await page.getByRole("tab", { name: "Models" }).getAttribute("aria-selected"), "true");
   await page.screenshot({ path: join(artifacts, "aux-conversation-provider-settings.png") });
   console.log("Provider failures render safe recovery actions and route configuration failures to model settings.");
 } finally {

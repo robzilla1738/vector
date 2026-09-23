@@ -42,6 +42,7 @@ try {
  const chosen=join(dir,'chosen-downloads');mkdirSync(chosen);
  const originalFolder=await page.evaluate(()=>window.aux.downloadFolder());
  await app.evaluate(({dialog})=>{dialog.showOpenDialog=async()=>({canceled:true,filePaths:[]});});
+ await page.getByRole('button',{name:'Save location',exact:true}).click();
  await page.getByRole('button',{name:'Change folder',exact:true}).click();assert.deepEqual(await page.evaluate(()=>window.aux.downloadFolder()),originalFolder);
  await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},chosen);
  await page.getByRole('button',{name:'Change folder',exact:true}).click();await page.getByRole('button',{name:'Use default',exact:true}).waitFor();
@@ -67,6 +68,7 @@ try {
  await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
  for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url().startsWith(base));if(fixture)break;await new Promise(r=>setTimeout(r,50));}
  await sidebarAction(page,'Downloads');
+ await page.getByRole('button',{name:'Save location',exact:true}).click();
  const oldCancelled=page.locator('.dl-row').filter({hasText:'file-two.txt'});await oldCancelled.getByRole('button',{name:'Retry',exact:true}).click();
  const completed=page.locator('.dl-row').filter({hasText:'file-two.txt'}).first();await completed.getByText('Done',{exact:true}).waitFor();
  const latest=(await page.evaluate(()=>window.aux.invoke('downloads.list',{}))).filter(item=>item.filename==='file-two.txt').sort((a,b)=>b.startedAt-a.startedAt)[0];

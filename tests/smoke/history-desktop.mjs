@@ -30,7 +30,7 @@ try {
   await page.locator('.history-conversation').nth(79).waitFor();
   const search=page.getByRole('textbox',{name:'Search conversations',exact:true});
   await search.fill('archived needle');
-  await page.locator('.history-conversation').filter({hasText:'Continue archived research 54'}).waitFor();
+  await page.locator('.history-conversation').filter({hasText:'Find the archived needle'}).waitFor();
   assert.equal(await page.locator('.history-conversation').count(),1);
   await page.screenshot({path:join(root,'release/test-artifacts/aux-history-search.png')});
   await page.locator('.history-conversation').click();
