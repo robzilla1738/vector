@@ -49,7 +49,9 @@ export function deferSurface<Props extends object>(load:()=>Promise<{default:Com
         if (previous?.isConnected && !previous.closest("[inert]")) previous.focus();
       });
     }, []);
-    const Surface = useMemo(() => loaded ?? lazy(fetch), [attempt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a retry needs a fresh lazy component
+    const Lazy = useMemo(() => lazy(fetch), [attempt]);
+    const Surface = loaded ?? Lazy;
     return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} retry={() => setAttempt(value => value + 1)} />}>
       <Suspense fallback={quiet ? null : <SurfaceStatus label={label} pane={pane} />}><Surface {...props}/></Suspense>
     </SurfaceBoundary>;

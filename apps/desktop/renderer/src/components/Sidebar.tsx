@@ -450,10 +450,6 @@ export const Sidebar = memo(function Sidebar() {
       if (!editing && !document.querySelector(".sidebar:hover")) setSidebarPeek(false);
     }, 180);
   };
-  useEffect(() => {
-    void bridge.sidebarPeek(sidebar !== "expanded" && sidebarPeek).catch(errToast);
-    return () => { void bridge.sidebarPeek(false).catch(errToast); };
-  }, [sidebar, sidebarPeek]);
   useEffect(() => () => { if (peekClose.current) clearTimeout(peekClose.current); }, []);
   useEffect(() => bridge.onSidebarEdge(near => {
     if (sidebar === "expanded") return;
@@ -631,19 +627,14 @@ export const Sidebar = memo(function Sidebar() {
   );
 
   const onListKey = (e: React.KeyboardEvent<HTMLElement>) => { if (selection.keyDown(e)) return; moveListFocus(e, '[role="tab"]'); };
-  const selectedIds = useMemo(() => new Set(selection.ids), [selection.ids.join("\n")]);
-  const openLink = useRef<OpenLink>(() => {});
-  openLink.current = openPin;
-  const onOpenLink = useCallback<OpenLink>((link, event) => openLink.current(link, event), []);
+  const selectedIds = new Set(selection.ids);
   const onBookmarkDrop = useCallback(() => { dragIds.current = []; setDrag(IDLE_DRAG); }, []);
   // Long unfiled lists render only the rows near the viewport; a drag in
   // flight renders everything so its source row never unmounts.
   const tabScroller = useRef<HTMLDivElement>(null);
   const looseRows = useRef<HTMLDivElement>(null);
   const virtual = loose.length > VIRTUAL_TABS && !drag.pageId;
-  const rows = useWindowedRows(tabScroller, looseRows, loose.length, virtual);
-  const activeLoose = loose.findIndex(p => p.pageId === activePageId);
-  useEffect(() => { if (virtual && activeLoose >= 0 && (activeLoose < rows.start || activeLoose >= rows.end)) rows.reveal(activeLoose); }, [virtual, activeLoose]);
+  const rows = useWindowedRows(tabScroller, looseRows, loose.length, virtual, loose.findIndex(p => p.pageId === activePageId));
 
   const renderRow = (p: PageTarget, index: number, folderId: string | null, groupLen: number) => (
     <TabRow
@@ -697,7 +688,7 @@ export const Sidebar = memo(function Sidebar() {
       )}
 
       {!bridge.privateMode && <SidebarSection title="Bookmarks" open={sections.bookmarks} onToggle={() => toggleSection("bookmarks")}>
-        <SidebarBookmarks onOpen={onOpenLink} onDropped={onBookmarkDrop} />
+        <SidebarBookmarks onOpen={openPin} onDropped={onBookmarkDrop} />
       </SidebarSection>}
       {!bridge.privateMode && <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
         <SidebarChats />

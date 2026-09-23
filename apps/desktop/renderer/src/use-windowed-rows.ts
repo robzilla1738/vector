@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 export interface RowWindow { start: number; end: number }
 
@@ -14,42 +14,38 @@ export function windowRange(scrollTop: number, viewport: number, listTop: number
 /**
  * Windowing for a list that lives inside a larger scroller (folders and pins
  * above it scroll with it). `anchor` wraps the rows; padding stands in for the
- * rows outside the window so the scrollbar keeps its true length.
+ * rows outside the window so the scrollbar keeps its true length. Row
+ * `activeIndex` is scrolled into view when it falls outside the window.
  */
-export function useWindowedRows(scroller: RefObject<HTMLElement | null>, anchor: RefObject<HTMLElement | null>, count: number, enabled: boolean, gap = 2, overscan = 10) {
-  const [range, setRange] = useState<RowWindow>(() => ({ start: 0, end: enabled ? Math.min(count, 60) : count }));
-  const stride = useRef(32);
-  const measure = useCallback(() => {
-    const el = scroller.current, list = anchor.current;
-    if (!el || !list) return;
-    const row = list.firstElementChild as HTMLElement | null;
-    if (row && row.offsetHeight > 0) stride.current = row.offsetHeight + gap;
-    const listTop = list.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
-    const next = windowRange(el.scrollTop, el.clientHeight, listTop, stride.current, count, overscan);
-    setRange(current => current.start === next.start && current.end === next.end ? current : next);
-  }, [scroller, anchor, count, gap, overscan]);
+export function useWindowedRows(scroller: RefObject<HTMLElement | null>, anchor: RefObject<HTMLElement | null>, count: number, enabled: boolean, activeIndex = -1, gap = 2, overscan = 10) {
+  const [view, setView] = useState({ start: 0, end: 60, stride: 32 });
+  const revealed = useRef(-1);
   useLayoutEffect(() => {
-    if (!enabled) { setRange(current => current.start === 0 && current.end === count ? current : { start: 0, end: count }); return; }
-    measure();
-    const el = scroller.current;
-    if (!el) return;
+    const el = scroller.current, list = anchor.current;
+    if (!enabled || !el || !list) return;
     let frame = 0;
+    const listTop = () => list.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+    const measure = () => {
+      const row = list.firstElementChild as HTMLElement | null;
+      const stride = row && row.offsetHeight > 0 ? row.offsetHeight + gap : 32;
+      const next = { ...windowRange(el.scrollTop, el.clientHeight, listTop(), stride, count, overscan), stride };
+      setView(current => current.start === next.start && current.end === next.end && current.stride === next.stride ? current : next);
+      return stride;
+    };
+    const stride = measure();
+    if (activeIndex >= 0 && activeIndex !== revealed.current) {
+      revealed.current = activeIndex;
+      const top = listTop() + activeIndex * stride;
+      if (top < el.scrollTop) el.scrollTo({ top });
+      else if (top + stride > el.scrollTop + el.clientHeight) el.scrollTo({ top: top + stride - el.clientHeight });
+    }
     const onScroll = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
     el.addEventListener("scroll", onScroll, { passive: true });
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver(() => measure());
     observer.observe(el);
     return () => { cancelAnimationFrame(frame); el.removeEventListener("scroll", onScroll); observer.disconnect(); };
-  }, [enabled, measure, scroller, count]);
-  /** Scroll row `index` into view when it sits outside the rendered window. */
-  const reveal = useCallback((index: number) => {
-    const el = scroller.current, list = anchor.current;
-    if (!el || !list || index < 0) return;
-    const listTop = list.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
-    const top = listTop + index * stride.current;
-    if (top < el.scrollTop) el.scrollTop = top;
-    else if (top + stride.current > el.scrollTop + el.clientHeight) el.scrollTop = top + stride.current - el.clientHeight;
-  }, [scroller, anchor]);
-  const start = enabled ? Math.min(range.start, count) : 0;
-  const end = enabled ? Math.min(range.end, count) : count;
-  return { start, end, padTop: start * stride.current, padBottom: Math.max(0, count - end) * stride.current, reveal };
+  }, [enabled, scroller, anchor, count, activeIndex, gap, overscan]);
+  if (!enabled) return { start: 0, end: count, padTop: 0, padBottom: 0 };
+  const start = Math.min(view.start, count), end = Math.min(view.end, count);
+  return { start, end, padTop: start * view.stride, padBottom: Math.max(0, count - end) * view.stride };
 }
