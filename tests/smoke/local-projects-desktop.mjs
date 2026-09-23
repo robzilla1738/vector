@@ -8,6 +8,15 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:net';
 import {createSpace} from './create-space.mjs';
 async function until(check,timeoutMs=45000){const deadline=Date.now()+timeoutMs;while(Date.now()<deadline){if(await check())return;await new Promise(resolve=>setTimeout(resolve,50));}throw new Error(`Local command condition did not settle within ${timeoutMs}ms: ${check}`);}
+import {get as httpGet} from 'node:http';
+function httpProbe(url){return new Promise(resolve=>{const req=httpGet(url,res=>{res.resume();resolve(`HTTP ${res.statusCode}`);});req.setTimeout(3000,()=>{req.destroy();resolve('timeout');});req.on('error',e=>resolve(String(e.code||e)));});}
+async function describeFailure(){try{
+ const runs=await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId).catch(()=>[]);
+ const urls=await app.evaluate(({webContents})=>webContents.getAllWebContents().map(w=>w.getURL())).catch(()=>[]);
+ const preview=runs.flatMap(r=>r.preview&&r.preview.url?[r.preview.url]:[]);
+ const probes=[];for(const u of preview)probes.push(`${u} -> ${await httpProbe(u)}`);
+ return JSON.stringify({commands:runs.map(r=>({command:r.command,state:r.state,output:String(r.output??'').slice(-400)})),views:urls,probes},null,1);
+}catch(e){return `describeFailure failed: ${e}`;}}
 import {sidebarAction} from './sidebar-action.mjs';
 const root=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
@@ -310,4 +319,4 @@ try{
  const result=await rejected;assert.equal(result.rejected,true);assert.match(result.message,/revision changed/);
  assert.equal((await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId)).length,savedRuns.length,'Approval must not launch a command after the task changed');
  console.log('PASS: native selection/cancel, reviewed dirty source, isolated checkout, attachment, refresh, restart, detach/re-attach without file loss');
-}catch(error){console.error('Project UI error',error,await page?.getByRole('alert').allTextContents(),await page?.evaluate(()=>window.aux.listProjects()).catch(()=>[]));throw error;}finally{if(app)await app.close();for(let i=0;;i++){try{rmSync(temp,{recursive:true,force:true});break;}catch(cleanupError){if(i>=9)throw cleanupError;await new Promise(r=>setTimeout(r,300));}}}
+}catch(error){console.error('Project UI error',error,await page?.getByRole('alert').allTextContents(),await page?.evaluate(()=>window.aux.listProjects()).catch(()=>[]),await describeFailure());throw error;}finally{if(app)await app.close();for(let i=0;;i++){try{rmSync(temp,{recursive:true,force:true});break;}catch(cleanupError){if(i>=9)throw cleanupError;await new Promise(r=>setTimeout(r,300));}}}
