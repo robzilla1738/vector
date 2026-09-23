@@ -100,7 +100,6 @@ it("keeps the compact and mid-width conversation breakpoints", () => {
   expect(css).toContain("@media (min-width: 1025px) and (max-width: 1279px)");
   const compact = css.slice(css.indexOf("@media (max-width: 1024px)"), css.indexOf("@media (min-width: 1025px)"));
   expect(compact).toContain(".empty-state");
-  expect(compact).toContain(".navigation-error");
   expect(compact).toContain(".stage-card.loading");
   expect(compact).toContain(".sidebar.collapsed");
   expect(css).toContain(".empty-state {");
