@@ -19,6 +19,13 @@
   local-projects, packaged); `pnpm smoke:all` runs the full inventory. A
   `desktop smoke (release suite)` CI job now runs it on macOS per PR after
   `pnpm package:local`.
+- AI-04 gap closed: `packages/contracts/src/model-registry.ts` is the one
+  typed registry (ID, route/provider family, context/output limits,
+  modalities, structured-output, streaming, reasoning, prompt caching,
+  pricing, `source` provenance, verified/unverified status) shared by the
+  runtime (`settings.listModels` merges snapshot + live catalog + configured),
+  the desktop picker, the mock bridge and `FALLBACK_MODELS`. Catalog-only IDs
+  pass through — no blacklist; offline defaults stay covered.
 - PL-06 gap closed: the handoff doc is committed and `docs/AUX-ROADMAP.md`
   declares it the release authority; `docs/local-testing.md` documents the
   suite runner.

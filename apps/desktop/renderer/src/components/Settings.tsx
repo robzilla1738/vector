@@ -9,6 +9,7 @@ import { ImportDataSetting } from "./ImportDataSetting";
 import { ShortcutsSetting } from "./ShortcutsSetting";
 import type { AutofillProfile, ShortcutOverrides } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
+import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
 import { ClearHistory } from "./ClearHistory";
 import { MemorySettings } from "./MemorySettings";
 import type { ModelProvider } from "@aux/contracts";
@@ -31,10 +32,7 @@ const KEY_MASK = "••••••••";
 
 interface ModelEntry { id: string; name?: string }
 
-const KNOWN_PLANNER_MODELS: ModelEntry[] = [
-  { id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" },
-  { id: "openai/gpt-5.6-luna-fast", name: "GPT 5.6 Luna Fast" },
-];
+const KNOWN_PLANNER_MODELS: ModelEntry[] = modelPickerEntries(MODEL_REGISTRY);
 
 const TURN_OPTIONS = [8, 16, 32, 64, 128, 0];
 

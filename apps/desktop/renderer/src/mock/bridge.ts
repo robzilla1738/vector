@@ -1,5 +1,6 @@
 import { steppedZoomLevel } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
+import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";
 import { textContextShares } from "@aux/contracts/text-context";
 /**
@@ -348,13 +349,7 @@ export function installMockBridge(q: URLSearchParams) {
           .sort((a,b) => b.visitedAt-a.visitedAt || (a.url < b.url ? 1 : a.url > b.url ? -1 : 0)).slice(0, Number(p.limit ?? 100));
       }
       case "models.list":
-        return {
-          models: [
-            { id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" },
-            { id: "openai/gpt-5.6-luna-fast", name: "GPT 5.6 Luna Fast" },
-          ],
-          source: "static",
-        };
+        return { models: modelPickerEntries(MODEL_REGISTRY), source: "static" };
       case "models.probe":
         return { ok: true, modelId: (p.modelId as string) || "alibaba/qwen3.8-27b", latencyMs: 42, vision: false };
       case "chrome.importCookies":

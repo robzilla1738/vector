@@ -2,8 +2,9 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ModelProviderSchema, SidebarMaterialSchema, type ModelProvider, type ShortcutOverrides } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
+import { MODEL_REGISTRY, mergeModelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
-import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
+import { DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { DIRECT_PROVIDERS, PROVIDER_ENV, directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "../agent/direct-providers.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
@@ -452,10 +453,10 @@ export class SettingsService {
     return this.gatewayClient;
   }
 
-  async listModels(): Promise<{ models: { id: string; name?: string }[]; source: "gateway" | "static" | "configured" }> {
+  async listModels(): Promise<{ models: ModelCapability[]; source: "gateway" | "static" | "configured" }> {
     const provider = this.modelProvider();
     if (provider !== "gateway") {
-      const configured = [...new Set([this.plannerModel(), this.visionModel()].filter((value): value is string => !!value))].map(id => ({ id }));
+      const configured = [...new Set([this.plannerModel(), this.visionModel()].filter((value): value is string => !!value))].map(id => ({ id, source: "configured" as const }));
       if (provider !== "openai-compatible") return { models: configured, source: "configured" };
       const endpoint = this.compatibleEndpoint();
       const key = this.selectedKey();
@@ -481,7 +482,7 @@ export class SettingsService {
         const discovered = data.flatMap(item => {
           if (!item || typeof item !== "object" || typeof (item as { id?: unknown }).id !== "string") return [];
           const id = (item as { id: string }).id.trim();
-          return id && id.length <= 500 ? [{ id }] : [];
+          return id && id.length <= 500 ? [{ id, source: "configured" as const }] : [];
         });
         const seen = new Set<string>();
         const unique = discovered.filter(item => !seen.has(item.id) && !!seen.add(item.id)).slice(0, 500);
@@ -502,9 +503,9 @@ export class SettingsService {
         extra = [];
       }
     }
-    const seen = new Set(FALLBACK_MODELS.map((x) => x.id));
+    const catalog = extra.map((x) => ({ ...x, source: "catalog" as const }));
     return {
-      models: [...FALLBACK_MODELS, ...extra.filter((x) => !seen.has(x.id))],
+      models: mergeModelCapabilities(MODEL_REGISTRY, catalog),
       source,
     };
   }

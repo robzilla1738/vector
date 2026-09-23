@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
 
 export interface StructuredCallResult<T> {
   object: T;
@@ -67,10 +68,7 @@ export interface ModelClient {
 /** Static fallback list used until the Gateway catalog is reachable. */
 export const DEFAULT_PLANNER_MODEL = "alibaba/qwen3.8-27b";
 export const LUNA_FAST_MODEL = "openai/gpt-5.6-luna-fast";
-export const FALLBACK_MODELS = [
-  { id: DEFAULT_PLANNER_MODEL, name: "Qwen 3.8 27B" },
-  { id: LUNA_FAST_MODEL, name: "GPT 5.6 Luna Fast" },
-];
+export const FALLBACK_MODELS = modelPickerEntries(MODEL_REGISTRY);
 
 /** `0` means no per-run model-call cap. */
 export function modelCallBudget(raw: unknown, fallback = 8): number {
