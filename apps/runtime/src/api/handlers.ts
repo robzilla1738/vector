@@ -135,11 +135,25 @@ export function makeInvoker(s: Services) {
     if (!allowed) throw new AuxError("permission_denied", "This connection is not authorized for that task");
     return task;
   };
-  const scopedPageIds = (scope: AgentConnectionScope,connectionId?:string) => new Set([...scopedTasks(scope).flatMap(task => {
-    const resources = task.resources.filter(resource => resource.kind === "page").map(resource => resource.locator);
-    const runs = tasks.details(task.taskId).runs.filter(item => item.currentRevision).flatMap(item => item.run.pageIds);
-    return [...resources, ...runs];
-  }),...(connectionId?previewPageGrants.get(connectionId)??[]:[])]);
+  // Pages a scope's tasks authorize. Building the set reads every task's
+  // details, so it is cached per scope: dropped on any task or run event and
+  // rebuilt at most once a second otherwise. Preview grants are read live.
+  const taskPages = new Map<string, { at: number; pages: Set<string> }>();
+  s.events.subscribe(event => { if (event.type.startsWith("task.") || event.type.startsWith("run.")) taskPages.clear(); });
+  const scopedPageIds = (scope: AgentConnectionScope,connectionId?:string): Set<string> => {
+    const key = JSON.stringify(scope);
+    let cached = taskPages.get(key);
+    if (!cached || Date.now() - cached.at > 1_000) {
+      cached = { at: Date.now(), pages: new Set(scopedTasks(scope).flatMap(task => {
+        const resources = task.resources.filter(resource => resource.kind === "page").map(resource => resource.locator);
+        const runs = tasks.details(task.taskId).runs.filter(item => item.currentRevision).flatMap(item => item.run.pageIds);
+        return [...resources, ...runs];
+      })) };
+      taskPages.set(key, cached);
+    }
+    const preview = connectionId ? previewPageGrants.get(connectionId) : undefined;
+    return preview?.size ? new Set([...cached.pages, ...preview]) : cached.pages;
+  };
   const requireScopedPage = (scope: AgentConnectionScope, pageId: string,connectionId?:string) => {
     if (!scopedPageIds(scope,connectionId).has(pageId)) throw new AuxError("permission_denied", "Attach this page to the authorized task before using it");
   };
