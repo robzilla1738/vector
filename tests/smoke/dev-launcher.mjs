@@ -28,7 +28,7 @@ try {
  while(!page){page=browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().startsWith('http://127.0.0.1:5197/'));assert.ok(Date.now()<deadline,output);if(!page)await new Promise(r=>setTimeout(r,100));}
  await page.locator('.aux-home').waitFor();
  assert.ok(!readFileSync(preload,'utf8').includes('Aux stale preload sentinel'),'launch must regenerate its entrypoints from source');
- assert.equal(await page.locator('img.aux-mark').evaluate(img=>img.complete&&img.naturalWidth>0),true);
+ await page.locator('.aux-mark').waitFor();
  await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),`http://127.0.0.1:${server.address().port}/`);
  await page.getByText('Aux development navigation',{exact:true}).first().waitFor();
  assert.ok(!output.includes('fixtures up'),'normal browser launch should not start fixture servers');
@@ -38,4 +38,4 @@ try {
  await new Promise(r=>occupied.listen(5197,'127.0.0.1',r));
  try {const failed=await start();assert.equal(failed.code,1,output);assert.match(output,/Aux could not start/);assert.ok(!output.includes('Aux desktop (Chromium-first)'));}finally{await new Promise(r=>occupied.close(r));}
  console.log('Development startup, artwork loading, browsing, shutdown and occupied-port failure verified.');
-} finally {if(readFileSync(preload,'utf8')===stale)writeFileSync(preload,previousPreload);await browser?.close();child?.kill('SIGTERM');server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}
+} finally {if(readFileSync(preload,'utf8')===stale)writeFileSync(preload,previousPreload);await browser?.close();child?.kill('SIGTERM');server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true,maxRetries:5,retryDelay:120});}

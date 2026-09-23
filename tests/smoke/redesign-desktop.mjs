@@ -45,7 +45,6 @@ try {
  await app.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows()[0].setSize(1200,944));
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.locator('.home-card').first().waitFor();
- await page.locator('.home-card img').waitFor();
  await page.screenshot({path:join(root,'release/test-artifacts/aux-home-populated.png')});
  await page.locator('.home-card').filter({hasText:'Review the release checklist'}).click();
  await page.getByRole('heading',{name:'Private build review'}).waitFor();

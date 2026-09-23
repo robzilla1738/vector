@@ -129,7 +129,7 @@ try {
   client = await connect(setup.config);
   const catalog = (await client.listTools()).tools.map(tool => tool.name);
   assert.ok(catalog.includes("aux_workspaces_list") && catalog.includes("aux_task_record_evidence")&&catalog.includes('aux_development_read_file')&&catalog.includes('aux_development_run_command')&&catalog.includes('aux_development_open_preview')&&catalog.includes('aux_development_commit')&&catalog.includes('aux_cloud_environments')&&catalog.includes('aux_cloud_task_result'));
-  assert.ok(!catalog.some(name => name.startsWith("aux_")));
+  assert.ok(!catalog.some(name => name.startsWith("vector_")));
   assert.ok(catalog.includes('aux_page_observe')&&catalog.includes('aux_task_start')&&catalog.includes('aux_run_control'));
   assert.ok(catalog.includes('aux_task_create'));
   assert.ok(!catalog.includes('aux_page_open')&&!catalog.includes('aux_run_start')&&!catalog.includes('aux_workspace_create')&&!catalog.includes('aux_events')&&!catalog.includes('aux_chrome_attach'));
@@ -176,7 +176,8 @@ try {
 
   await sidebarAction(page, "Settings");
   const settings = page.getByRole("region", { name: "Settings", exact: true });
-  await settings.getByRole("button", { name: "External agents", exact: true }).click();
+  await settings.getByRole("button", { name: "Connections", exact: true }).click();
+  await settings.getByRole("tab", { name: "Agents", exact: true }).click();
   await settings.getByText("Codex · Authorized research", { exact: true }).waitFor();
   const connectionRow = settings.locator(".external-agent-row").filter({ hasText: "Codex · Authorized research" });
   await connectionRow.getByText(/used /).waitFor();

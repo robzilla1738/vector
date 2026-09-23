@@ -32,13 +32,14 @@ const choose = async path => app.evaluate(({dialog},path)=>{dialog.showOpenDialo
 try {
   await launch(); await sidebarAction(page,'Tasks');
   const tasks=page.getByRole('region',{name:'Tasks',exact:true});
-  await tasks.getByRole('textbox',{name:'New workspace name'}).fill('Document review');
-  await tasks.getByRole('button',{name:'Create',exact:true}).click();
+  await page.evaluate(()=>window.aux.invoke('spaces.create',{name:'Document review',color:'slate'}));
+  await tasks.getByLabel('Space',{exact:true}).selectOption({label:'Document review'});
+  await tasks.getByRole('button',{name:'New task',exact:true}).click();
   await tasks.getByLabel('Title',{exact:true}).fill('Review order receipt');
   await tasks.getByLabel('Objective',{exact:true}).fill('Review a local receipt and record the outcome.');
   await tasks.getByLabel('What must be true when this is done?',{exact:true}).fill('The order is paid with quantity one.');
   await tasks.getByRole('button',{name:'Save task',exact:true}).click();
-  await tasks.getByText('Revision 1',{exact:true}).waitFor();
+  await tasks.getByRole('button',{name:'Import document',exact:true}).waitFor();
   taskId=await page.evaluate(async()=>{const ws=await window.aux.invoke('workspaces.list',{});return (await window.aux.invoke('tasks.list',{workspaceId:ws.find(w=>w.name==='Document review').workspaceId}))[0].taskId;});
   await choose(null); await tasks.getByRole('button',{name:'Import document',exact:true}).click();
   assert.equal((await receipt()).criteria[0].evidence.length,0);

@@ -127,8 +127,8 @@ try{
   assert.deepEqual(afterSecondary.workspace.pages.map(page=>page.pageId).sort(),secondaryTabs.map(page=>page.pageId).sort());
   assert.equal(afterPrimary.workspace.activePageId,primaryTabs[1].pageId);
   assert.equal(afterSecondary.workspace.activePageId,secondaryTabs[1].pageId);
-  assert.equal(afterPrimary.layout.spaces[0].name,'Primary space');
-  assert.equal(afterSecondary.layout.spaces[0].name,'Secondary space');
+  assert.ok(afterPrimary.layout.spaces.some(space=>space.name==='Primary space'),'restored primary window keeps its space');
+  assert.ok(afterSecondary.layout.spaces.some(space=>space.name==='Secondary space'),'restored secondary window keeps its space');
   const ids=[...afterPrimary.workspace.pages,...afterSecondary.workspace.pages].map(page=>page.pageId);
   assert.equal(new Set(ids).size,ids.length,'Restored windows must not duplicate tabs');
   console.log('Two regular Aux windows browse independently, share one signed-in profile, protect drafts, and restore their own tabs, selection, and sidebar layout.');

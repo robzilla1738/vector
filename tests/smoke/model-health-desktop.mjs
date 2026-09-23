@@ -36,11 +36,12 @@ try {
   assert.ok(page); page.setDefaultTimeout(20_000); await page.locator(".app").waitFor();
   await sidebarAction(page, "Settings");
   const settings = page.getByRole("region", { name: "Settings", exact: true });
-  await settings.getByRole("button", { name: "Models", exact: true }).click();
+  await settings.getByRole("button", { name: "Connections", exact: true }).click();
+  await settings.getByRole("tab", { name: "Models", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "Failed — Last connection test failed" }).waitFor();
   mkdirSync(join(root, "release/test-artifacts"), { recursive: true });
   await page.screenshot({ path: join(root, "release/test-artifacts/aux-model-health.png") });
-  await settings.getByLabel("Planner model", { exact: true }).fill("changed-model");
+  await settings.getByRole("combobox", { name: "Planner model", exact: true }).fill("changed-model");
   await settings.getByRole("button", { name: "Save model", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "Failed — Last connection test failed" }).waitFor({ state: "hidden" });
   assert.equal((await page.evaluate(() => window.aux.invoke("settings.get", {}))).modelProbe, undefined);

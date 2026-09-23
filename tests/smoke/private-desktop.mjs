@@ -26,8 +26,8 @@ try{
  await shell.getByRole('region',{name:'Private browsing',exact:true}).waitFor();
  await shell.getByLabel('Collapse sidebar').evaluate(button=>button.click());await shell.waitForTimeout(400);
  assert.equal(await shell.locator('.sidebar').evaluate(element=>getComputedStyle(element).width),'0px','private sidebar must collapse completely');
- assert.equal(await shell.getByLabel('Expand sidebar').count(),1,'collapsed shell must retain a reveal target');
- await shell.getByLabel('Expand sidebar').evaluate(button=>button.click());await shell.waitForTimeout(400);
+ assert.equal(await shell.getByLabel('Show sidebar').count(),1,'collapsed shell must retain a reveal target');
+ await shell.getByLabel('Show sidebar').evaluate(button=>button.click());await shell.waitForTimeout(400);
  assert.notEqual(await shell.locator('.sidebar').evaluate(element=>getComputedStyle(element).width),'0px','private sidebar must restore without losing its structure');
  await shell.screenshot({path:join(root,'release/test-artifacts/aux-private-home.png')});
  assert.equal(await shell.getByText('New chat',{exact:true}).count(),0);assert.equal(await shell.getByLabel('Toggle agent rail').count(),0);assert.equal(await shell.getByLabel('Settings').count(),0);

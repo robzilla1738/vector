@@ -22,7 +22,7 @@ let app;
 const launch=async()=>{
   const next=await _electron.launch({executablePath:electron,args:[join(root,'apps/desktop'),'--use-mock-keychain'],env});
   let shell;for(let i=0;i<100;i++){shell=next.windows().find(p=>p.url().includes('renderer/index.html'));if(shell)break;await new Promise(r=>setTimeout(r,100));}
-  assert.ok(shell);shell.setDefaultTimeout(15000);await shell.locator('.aux-home').waitFor();return {next,shell};
+  assert.ok(shell);shell.setDefaultTimeout(15000);await shell.locator('.app').waitFor();return {next,shell};
 };
 try{
  let started=await launch();app=started.next;let page=started.shell;
@@ -37,7 +37,8 @@ try{
  await page.keyboard.press('Meta+O');
  await poll(page,async url=>{const pages=await window.aux.invoke('pages.list',{});return pages.some(p=>p.url===url&&!p.loading);},fixtureUrl);
  const opened=(await page.evaluate(()=>window.aux.invoke('pages.list',{}))).find(p=>p.url===fixtureUrl);assert.ok(opened);
- assert.equal(opened.pageId,initial[0].pageId,'opening a file should navigate the selected tab');
+ assert.notEqual(opened.pageId,initial[0].pageId,'opening a file should keep the existing document and open a new tab');
+ assert.equal((await page.evaluate(()=>window.aux.invoke('pages.list',{}))).find(p=>p.pageId===initial[0].pageId).url,startingUrl);
  let document=app.windows().find(p=>p.url()===fixtureUrl);assert.ok(document);await document.getByRole('heading',{name:'Local review document',exact:true}).waitFor();
  await page.screenshot({path:join(root,'release/test-artifacts/aux-open-file.png')});
  await document.getByLabel('Local note').fill('Unsaved local edit');

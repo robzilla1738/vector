@@ -40,9 +40,9 @@ try{
  const read=async origin=>app.evaluate(async({webContents},origin)=>webContents.getAllWebContents().find(w=>w.getURL()===origin+'/').executeJavaScript(`(async()=>({local:localStorage.getItem('auxFixture'),cookie:document.cookie,dbs:(await indexedDB.databases()).map(x=>x.name)}))()`),origin);
  await seed(base);await seed(other);
  await sidebarAction(page,'Settings');await page.getByRole('button',{name:'Site permissions',exact:true}).click();await page.getByLabel('Website to clear').selectOption(target.pageId);
- await app.evaluate(({dialog})=>{dialog.showMessageBox=async options=>{globalThis.auxPrompt=options;return {response:0,checkboxChecked:false}}});
+ await app.evaluate(({dialog})=>{dialog.showMessageBox=async(...args)=>{globalThis.auxPrompt=args.at(-1);return {response:0,checkboxChecked:false}}});
  await page.getByRole('button',{name:'Clear website data…',exact:true}).click();await page.waitForTimeout(100);assert.equal((await read(base)).local,'saved');
- await app.evaluate(({dialog})=>{dialog.showMessageBox=async options=>{globalThis.auxPrompt=options;return {response:1,checkboxChecked:false}}});
+ await app.evaluate(({dialog})=>{dialog.showMessageBox=async(...args)=>{globalThis.auxPrompt=args.at(-1);return {response:1,checkboxChecked:false}}});
  await page.getByRole('button',{name:'Clear website data…',exact:true}).click();await page.getByRole('status').filter({hasText:'Cookies and stored website data cleared.'}).waitFor();
  assert.deepEqual(await read(base),{local:null,cookie:'',dbs:[]});assert.deepEqual(await read(other),{local:'saved',cookie:'auxFixture=cookie',dbs:['auxFixture']});
  const prompt=await app.evaluate(()=>globalThis.auxPrompt);assert.match(prompt.detail,/related subdomains/);assert.equal(prompt.defaultId,0);

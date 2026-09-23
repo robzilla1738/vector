@@ -35,12 +35,12 @@ try{
  await page.waitForTimeout(100);
  assert.equal(await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].contentView.children.filter(v=>v.webContents?.getURL().startsWith('http://127.0.0.1:')&&v.getVisible()).length),0,'modal hides native page views');
  mkdirSync(join(root,'release/test-artifacts'),{recursive:true});await page.screenshot({path:join(root,'release/test-artifacts/aux-keyboard-space-dialog.png')});
- await dialog.getByPlaceholder('Name').focus();await page.keyboard.press('Shift+Tab');assert.equal(await focused(),'Create');
+ await dialog.getByPlaceholder('Name').focus();await page.keyboard.press('Shift+Tab');assert.equal(await focused(),'Cancel');
  await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('placeholder')),'Name');
  await dialog.getByRole('button',{name:'Cancel',exact:true}).focus();await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
  assert.equal(await page.evaluate(()=>document.activeElement?.className),'space-switch');
- await page.keyboard.press('Meta+s');await page.getByRole('button',{name:'Expand sidebar',exact:true}).waitFor();
- await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Expand sidebar');
+ await page.keyboard.press('Meta+s');await page.getByRole('button',{name:'Show sidebar',exact:true}).waitFor();
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Show sidebar');
  await page.keyboard.press('Enter');await page.waitForFunction(()=>document.activeElement?.className==='space-switch');
  await page.locator('.space-switch').click();await page.getByRole('menuitem',{name:'New folder',exact:false}).click();
  await page.locator('.folder-name-input').fill('Keyboard folder');await page.locator('.folder-name-input').press('Enter');

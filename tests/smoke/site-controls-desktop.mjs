@@ -23,7 +23,10 @@ try{
   await shell.locator('.aux-home').waitFor();await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
   const target=await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base);
   await poll(shell,async id=>(await window.aux.invoke('pages.list',{})).some(page=>page.pageId===id&&!page.loading),target.pageId);
-  await shell.getByRole('button',{name:'Site controls',exact:true}).click();
+  // The toolbar hides over a loaded page until the pointer approaches it —
+  // pointerenter holds it open, same as a real hover.
+  await shell.locator('.main-col > .toolbar').dispatchEvent('pointerenter');
+  await shell.locator('button[aria-label="Site controls"]:visible').click();
   const dialog=shell.getByRole('dialog',{name:base});await dialog.waitFor();
   await dialog.getByText('Local connection',{exact:true}).first().waitFor();
   await dialog.getByText('1 cookie currently visible to this page',{exact:true}).waitFor();
@@ -41,7 +44,7 @@ try{
   await dialog.getByText('0 cookies currently visible to this page',{exact:true}).waitFor();
   await dialog.getByText('Cookies and stored website data cleared.',{exact:false}).waitFor();
   await dialog.getByRole('button',{name:'Close site controls',exact:true}).click();
-  await shell.getByRole('button',{name:'Site controls',exact:true}).waitFor();
+  await shell.locator('button[aria-label="Site controls"]:visible').waitFor();
   await shell.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Site controls');
   assert.equal(await shell.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'Site controls');
   console.log('Current-site connection, cookie and permission state is inspectable; permission reset and guarded site-data clearing refresh the accessible shell surface.');

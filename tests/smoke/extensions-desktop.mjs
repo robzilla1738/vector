@@ -68,7 +68,7 @@ try {
   let settings = await openExtensions(page);
   await settings.getByRole("button", { name: "Install unpacked extension…", exact: true }).click();
   let row = settings.getByRole("article", { name: "Aux synthetic page helper", exact: true });
-  await row.getByText(/Loaded · managed by Aux/).waitFor();
+  await row.getByText("Enabled").waitFor();
   await open(page, "installed", true);
 
   await app.close();
@@ -77,7 +77,7 @@ try {
   settings = await openExtensions(page);
   row = settings.getByRole("article", { name: "Aux synthetic page helper", exact: true });
   await row.getByRole("button", { name: "Disable", exact: true }).click();
-  await row.getByText(/Disabled · managed by Aux/).waitFor();
+  await row.getByText("Disabled").waitFor();
   await open(page, "disabled", false);
 
   await app.close();
@@ -85,9 +85,9 @@ try {
   await open(page, "disabled-after-restart", false);
   settings = await openExtensions(page);
   row = settings.getByRole("article", { name: "Aux synthetic page helper", exact: true });
-  await row.getByText(/Disabled · managed by Aux/).waitFor();
+  await row.getByText("Disabled").waitFor();
   await row.getByRole("button", { name: "Enable", exact: true }).click();
-  await row.getByText(/Loaded · managed by Aux/).waitFor();
+  await row.getByText("Enabled").waitFor();
   await open(page, "enabled-again", true);
   await page.screenshot({ path: join(root, "release/test-artifacts/aux-extensions.png") });
 
@@ -106,13 +106,13 @@ try {
   settings = await openExtensions(page);
   row = settings.getByRole("article", { name: "Aux synthetic page helper", exact: true });
   await row.getByRole("button", { name: "Remove", exact: true }).click();
-  await settings.getByText("No unpacked extensions installed.", { exact: true }).waitFor();
+  await settings.getByText("No extensions installed. Add one when you need it.", { exact: true }).waitFor();
   await open(page, "removed", false);
   await app.close();
   app = await launch(); page = await shell();
   await open(page, "removed-after-restart", false);
   settings = await openExtensions(page);
-  await settings.getByText("No unpacked extensions installed.", { exact: true }).waitFor();
+  await settings.getByText("No extensions installed. Add one when you need it.", { exact: true }).waitFor();
 
   console.log("Aux installs a chosen unpacked extension, persists enable/disable across restart, excludes private browsing, and removes the managed copy cleanly.");
 } finally {

@@ -22,10 +22,10 @@ try {
  await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:80,y:80,width:1200,height:944}));
  const pages=await page.evaluate(async base=>{const a=await window.aux.invoke('pages.open',{url:base+'/notes',activate:true});const b=await window.aux.invoke('pages.open',{url:base+'/design',activate:true});const c=await window.aux.invoke('pages.open',{url:'about:blank',activate:true});return[a,b,c];},base);
- await page.evaluate(({pages,base})=>{localStorage.setItem('aux.layout.v1',JSON.stringify({spaces:[{id:'personal',name:'Personal',color:'slate'},{id:'work',name:'Studio',color:'slate'}],activeSpaceId:'work',tabSpace:Object.fromEntries(pages.map(p=>[p.pageId,'work'])),order:pages.map(p=>p.pageId),pins:{work:[{url:base+'/notes',title:'Project notes'},{url:base+'/design',title:'Design reference'}]},folders:[{id:'research',name:'Research',spaceId:'work',collapsed:false}],tabFolder:{[pages[0].pageId]:'research'}}));},{pages,base});
+ await page.evaluate(({pages,base})=>{localStorage.setItem(`aux.layout.v1:${window.aux.windowId}`,JSON.stringify({spaces:[{id:'personal',name:'Personal',color:'slate'},{id:'work',name:'Studio',color:'slate'}],activeSpaceId:'work',tabSpace:Object.fromEntries(pages.map(p=>[p.pageId,'work'])),order:pages.map(p=>p.pageId),pins:{work:[{url:base+'/notes',title:'Project notes'},{url:base+'/design',title:'Design reference'}]},folders:[{id:'research',name:'Research',spaceId:'work',collapsed:false}],tabFolder:{[pages[0].pageId]:'research'}}));},{pages,base});
  await page.reload();await page.getByRole('group',{name:'Research',exact:true}).waitFor();await page.locator('.aux-home').waitFor();
- assert.equal(await page.locator('.sb-bookmarks,.sb-conversations').count(),0);
- assert.equal(await page.getByRole('list',{name:'Pinned sites'}).count(),1);
+ assert.equal(await page.getByRole('group',{name:'Research',exact:true}).count(),1);
+ assert.equal(await page.getByRole('group',{name:'Pinned sites',exact:true}).count(),1);
  await page.screenshot({path:join(out,'aux-shell-restored.png')});
  const material=await app.evaluate(async ({BaseWindow,BrowserWindow,systemPreferences})=>{
    const main=BaseWindow.getAllWindows()[0];
@@ -55,7 +55,7 @@ try {
    assert.ok(png);writeFileSync(join(out,'aux-native-solid.png'),Buffer.from(png,'base64'));
  }
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width===0);
- await page.getByRole('button',{name:'Expand sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
+ await page.getByRole('button',{name:'Show sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
  await page.getByTitle('Switch space',{exact:true}).click();
  await page.getByRole('menu').waitFor();
  await page.keyboard.press('Escape');
@@ -74,9 +74,9 @@ try {
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width===0);
  await new Promise(r=>setTimeout(r,300));
  if(material.screenPermission==='granted')await capture('aux-clean-collapsed.png');
- await page.keyboard.press('Meta+l');await page.waitForFunction(()=>document.activeElement===document.querySelector('.sb-cmd input'));
+ await page.keyboard.press('Meta+l');await page.waitForFunction(()=>document.activeElement===document.querySelector('.cmdbar.compact input'));
  await page.keyboard.press('Escape');await page.keyboard.press('Meta+s');await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width===0);
- await page.getByRole('button',{name:'Expand sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
+ await page.getByRole('button',{name:'Show sidebar',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width>=279);
  await page.locator('.sb-more summary').click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();
  assert.equal(await page.getByLabel('Sidebar blur',{exact:true}).count(),0);
  await page.getByLabel('Tab layout',{exact:true}).selectOption('horizontal');

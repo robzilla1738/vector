@@ -18,7 +18,9 @@ try {
  let page;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
  await page.locator('.aux-home').waitFor();await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const task=await page.evaluate(async()=>{const ws=await window.aux.invoke('workspaces.create',{name:'Research'});return window.aux.invoke('tasks.create',{workspaceId:ws.workspaceId,title:'Review references',objective:'Compare sources',criteria:[{criterionId:'c1',description:'Cite sources',verification:'manual'}]});});
- await sidebarAction(page, "Tasks");await page.getByRole('button',{name:'Review references',exact:true}).click();
+ await sidebarAction(page, "Tasks");const tasks=page.getByRole('region',{name:'Tasks',exact:true});
+ await tasks.getByLabel('Space',{exact:true}).selectOption({label:'Research'});
+ await tasks.getByRole('button',{name:/Review references/,exact:false}).click();
  const resources=page.getByRole('region',{name:'Task resources',exact:true});
  await resources.getByLabel('Resource URL').fill('javascript:alert(1)');await resources.getByRole('button',{name:'Add URL',exact:true}).click();
  await resources.getByRole('alert').waitFor();

@@ -19,20 +19,26 @@ try {
  await page.locator('.aux-home').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  const pages=await page.evaluate(async base=>{const pages=[];for(const title of ['First','Research','Last','Personal'])pages.push(await window.aux.invoke('pages.open',{url:base+'/'+title,activate:true}));return pages;},base);
- await page.evaluate(pages=>localStorage.setItem(`aux.layout.v1:${window.aux.windowId}`,JSON.stringify({spaces:[{id:'work',name:'Studio',color:'slate'},{id:'personal',name:'Personal',color:'slate'}],activeSpaceId:'work',order:pages.map(p=>p.pageId),tabSpace:Object.fromEntries(pages.map((p,i)=>[p.pageId,i===3?'personal':'work'])),pins:{},folders:[{id:'research',name:'Research folder',spaceId:'work',collapsed:false}],tabFolder:{[pages[1].pageId]:'research'}})),pages);
+ await page.evaluate(pages=>localStorage.setItem(`aux.layout.v1:${window.aux.windowId}`,JSON.stringify({spaces:[{id:'work',name:'Studio',color:'slate'},{id:'personal',name:'Private',color:'slate'}],activeSpaceId:'work',order:pages.map(p=>p.pageId),tabSpace:Object.fromEntries(pages.map((p,i)=>[p.pageId,i===3?'personal':'work'])),pins:{},folders:[{id:'research',name:'Research folder',spaceId:'work',collapsed:false}],tabFolder:{[pages[1].pageId]:'research'}})),pages);
  await page.reload();
  await page.getByRole('group',{name:'Research folder',exact:true}).waitFor();
  await page.locator('.tab-row').filter({hasText:'Research'}).click();
  await page.getByRole('button',{name:'Close Research',exact:true}).click();
  await page.waitForFunction(()=>!Array.from(document.querySelectorAll('.tab-title')).some(el=>el.textContent==='Research'));
  await page.getByTitle('Switch space',{exact:true}).click();
- await page.getByRole('menuitem').filter({hasText:'Personal'}).first().click();
+ await page.getByRole('menuitemradio').filter({hasText:'Private'}).first().click();
  await page.locator('.tab-title').getByText('Personal',{exact:true}).waitFor();
  await app.evaluate(({Menu})=>{const item=Menu.getApplicationMenu().items.flatMap(item=>item.submenu?.items??[]).find(item=>item.label==='Reopen Closed Tab');if(!item)throw new Error('Menu missing');item.click();});
  await page.getByRole('group',{name:'Research folder',exact:true}).locator('.tab-title').getByText('Research',{exact:true}).waitFor();
- const layout=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));
- assert.equal(layout.activeSpaceId,'work');
- const restored=layout.order[1];assert.notEqual(restored,pages[1].pageId);
+ const others=[pages[0].pageId,pages[2].pageId,pages[3].pageId];
+ let layout;for(let i=0;i<60;i++){
+   const snap=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));
+   const restored=snap.order[1];
+   if(snap.activeSpaceId==='work'&&restored===pages[1].pageId&&snap.tabFolder[restored]==='research'&&JSON.stringify(snap.order.filter(id=>id!==restored))===JSON.stringify(others)){layout=snap;break;}
+   await new Promise(r=>setTimeout(r,250));
+ }
+ assert.ok(layout,'reopened tab restores the closed tab id, position and folder so its history and records re-attach');
+ const restored=layout.order[1];assert.equal(restored,pages[1].pageId,'reopen restores the closed tab id so its history and records re-attach');
  assert.equal(layout.tabFolder[restored],'research');
  assert.deepEqual(layout.order.filter(id=>id!==restored),[pages[0].pageId,pages[2].pageId,pages[3].pageId]);
  assert.ok(await page.locator('.tab-row.active').filter({hasText:'Research'}).count());
@@ -41,15 +47,31 @@ try {
  const before=await page.evaluate(()=>window.aux.invoke('pages.list',{}));const layoutBeforeRestart=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));assert.equal(layoutBeforeRestart.order.includes(pages[0].pageId),false);
  await app.close(); app=await launch();
  page=undefined;for(let i=0;i<100;i++){page=app.windows().find(p=>p.url().includes('renderer/index.html'));if(page)break;await new Promise(r=>setTimeout(r,100));}assert.ok(page);
+ await page.locator('.app-body').waitFor();
  await page.getByRole('group',{name:'Research folder',exact:true}).locator('.tab-title').getByText('Research',{exact:true}).waitFor();
- const after=await page.evaluate(()=>window.aux.invoke('pages.list',{}));
+ let after;for(let i=0;i<120&&!after;i++){
+   const list=await page.evaluate(()=>window.aux.invoke('pages.list',{}));
+   if(Array.isArray(list)&&list.length===before.length&&before.every(p=>list.some(q=>q.pageId===p.pageId&&q.documentEpoch>p.documentEpoch)))after=list;
+   else await new Promise(r=>setTimeout(r,500));
+ }
+ assert.ok(after,'restored pages must carry bumped document epochs');
  assert.deepEqual(after.map(p=>p.pageId).sort(),before.map(p=>p.pageId).sort());
  for(const prior of before)assert.ok(after.find(p=>p.pageId===prior.pageId).documentEpoch>prior.documentEpoch,'reopened documents must invalidate prior observations');
- await page.getByTitle('Switch space',{exact:true}).click();await page.getByRole('menuitem').filter({hasText:'Personal'}).first().click();
+ await page.getByTitle('Switch space',{exact:true}).click();await page.getByRole('menuitemradio').filter({hasText:'Private'}).first().click();
  await page.locator('.tab-title').getByText('Personal',{exact:true}).waitFor();
  await app.evaluate(({Menu})=>{Menu.getApplicationMenu().items.flatMap(item=>item.submenu?.items??[]).find(item=>item.label==='Reopen Closed Tab').click();});await page.locator('.tab-row.active').filter({hasText:'First'}).waitFor();
- await page.waitForFunction(async()=>{const layout=JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`));const pages=await window.aux.invoke('pages.list',{});const first=pages.find(item=>item.title==='First');return first&&layout.order[0]===first.pageId;});
- const reopenedLayout=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));const reopenedPages=await page.evaluate(()=>window.aux.invoke('pages.list',{}));const reopenedFirst=reopenedPages.find(item=>item.title==='First').pageId;assert.notEqual(reopenedFirst,pages[0].pageId);assert.equal(reopenedLayout.order.indexOf(reopenedFirst),0);assert.equal(reopenedLayout.tabSpace[reopenedFirst],'work');assert.equal(reopenedLayout.tabFolder[reopenedFirst],undefined);assert.deepEqual(reopenedLayout.order.filter(id=>id!==reopenedFirst),layoutBeforeRestart.order);
+ let reopen;for(let i=0;i<120&&!reopen;i++){
+   const snap=await page.evaluate(async()=>{
+     const layout=JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`));
+     const list=await window.aux.invoke('pages.list',{});
+     const first=list.find(item=>item.title==='First');
+     return first?{pageId:first.pageId,order:layout.order,tabSpace:layout.tabSpace[first.pageId],tabFolder:layout.tabFolder[first.pageId]}:null;
+   });
+   if(snap&&snap.order[0]===snap.pageId&&snap.tabSpace==='work'&&snap.tabFolder===undefined&&JSON.stringify(snap.order.filter(id=>id!==snap.pageId))===JSON.stringify(layoutBeforeRestart.order))reopen=snap;
+   else await new Promise(r=>setTimeout(r,500));
+ }
+ assert.ok(reopen,'reopened tab restores position, space and placement after restart');
+ assert.equal(reopen.pageId,pages[0].pageId,'reopen restores the closed tab id so its history and records re-attach');
  await page.screenshot({path:join(root,'release/test-artifacts/aux-tab-recovery-after-restart.png')});
  console.log('Closed-tab recovery survives full app restart while preserving tab identity for open pages and restoring space, folder and position with fresh documents.');
 } finally {await app?.close();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}

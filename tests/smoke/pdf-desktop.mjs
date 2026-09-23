@@ -35,7 +35,7 @@ try {
  assert.equal(pages[0].url,url+'/');
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setSize(1200,944));
  await page.keyboard.press('Meta+k');
- await page.getByPlaceholder('Type a command, address, or a task for the agent…').fill('Save page as PDF');
+ await page.getByPlaceholder('Search tabs, chats, tasks, pages… / for commands').fill('Save page as PDF');
  await page.getByText('Save page as PDF…',{exact:true}).waitFor();
  assert.equal(await page.locator('[role=option]').first().getAttribute('aria-selected'),'true');
  assert.ok((await page.locator('[role=option]').first().innerText()).includes('Save page as PDF'));
