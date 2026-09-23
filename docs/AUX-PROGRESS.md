@@ -1,5 +1,27 @@
 # Aux implementation progress
 
+## 2026-09-22 — Desktop smoke suite green (full sweep)
+
+- Ran the entire `tests/smoke/*.mjs` desktop suite serially on macOS (real
+  Electron, mock keychain): 54 suites, all verified green standalone. Three
+  flakes under back-to-back launch load (Playwright `electron.launch`
+  handshake timeout, an actionability race on the animating toolbar button,
+  and a 13-minute hang) each passed cleanly on isolated re-run — no product
+  regressions behind them.
+- Smoke triage fixes (test-side only, no product changes): stale locators
+  after the shell redesign (`.sb-more-menu` `menuitem` role, `select[aria-label]`
+  Field scoping, permanent `.toolbar` chrome, `BaseWindow.getMediaSourceId()`
+  for captures, visible buttons instead of intercepted Meta chords, catalog
+  restore via `browser.recovery.retry` after restart), updated private-mode
+  cookie copy (`N cookie(s) stored for this address`), and hardened cleanup:
+  `app.close()` in `private-desktop`'s finally now races a force-kill of the
+  report-file pid so a Stay-prompt can never mask a real failure, and the
+  animated `cb-site-trigger`/`Show sidebar` buttons are activated via
+  `evaluate(click)` where actionability is provably unstable.
+- Gates: `npm run typecheck` clean; `npx vitest run` 984/984; `npx oxlint`
+  clean on touched files (one pre-existing `no-unused-vars` in
+  `task-drafts-desktop.mjs` predates this work).
+
 ## 2026-09-22 — Roadmap phases 0–2 execution batch
 
 - Dependencies: the roadmap review, the renderer method gate contract, the
