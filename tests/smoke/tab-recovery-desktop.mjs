@@ -21,7 +21,8 @@ try {
  const pages=await page.evaluate(async base=>{const pages=[];for(const title of ['First','Research','Last','Personal'])pages.push(await window.aux.invoke('pages.open',{url:base+'/'+title,activate:true}));return pages;},base);
  await page.evaluate(id=>window.aux.invoke('pages.activate',{pageId:id}),pages[1].pageId);
  await page.waitForFunction(()=>document.querySelectorAll('.tab-row').length===4);
- await page.evaluate(pages=>localStorage.setItem(`aux.layout.v1:${window.aux.windowId}`,JSON.stringify({spaces:[{id:'work',name:'Studio',color:'slate'},{id:'personal',name:'Private',color:'slate'}],activeSpaceId:'work',order:pages.map(p=>p.pageId),tabSpace:Object.fromEntries(pages.map((p,i)=>[p.pageId,i===3?'personal':'work'])),pins:{},folders:[{id:'research',name:'Research folder',spaceId:'work',collapsed:false}],tabFolder:{[pages[1].pageId]:'research'}})),pages);
+ // Seed after the shell flushes its pending layout on pagehide.
+ await page.evaluate(pages=>window.addEventListener('pagehide',()=>localStorage.setItem(`aux.layout.v1:${window.aux.windowId}`,JSON.stringify({spaces:[{id:'work',name:'Studio',color:'slate'},{id:'personal',name:'Private',color:'slate'}],activeSpaceId:'work',order:pages.map(p=>p.pageId),tabSpace:Object.fromEntries(pages.map((p,i)=>[p.pageId,i===3?'personal':'work'])),pins:{},folders:[{id:'research',name:'Research folder',spaceId:'work',collapsed:false}],tabFolder:{[pages[1].pageId]:'research'}})),{once:true}),pages);
  await page.reload();
  await page.getByRole('group',{name:'Research folder',exact:true}).waitFor();
  await page.locator('.tab-row').filter({hasText:'Research'}).click();

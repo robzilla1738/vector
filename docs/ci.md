@@ -53,6 +53,10 @@ persist credentials. Tests load no local `.env`, require no provider credentials
 and run untrusted PR code only in hosted disposable runners. No
 `pull_request_target` or release-publishing credentials are used.
 
+pnpm 11.27.1 replaces the rejected 11.12.0 release (the maintained installer
+reports that release’s standalone binary as broken). The frozen dependency
+lockfile remains the source of dependency versions.
+
 Node 22 matches the project's supported runtime; pnpm comes from the exact
 `packageManager` field and installation uses the frozen lockfile. Action-runtime
 Node versions are separate from the Node version used to build Aux. Electron

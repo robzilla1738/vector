@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Aux \u2014 a local agent-first browser with one execution runtime shared by its native human interface and structured agent interfaces.",
-  "packageManager": "pnpm@11.12.0",
+  "packageManager": "pnpm@11.27.1",
   "engines": {
     "node": ">=22.18.0"
   },
