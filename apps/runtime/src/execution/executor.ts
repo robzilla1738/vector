@@ -8,6 +8,8 @@ import {
   type StepOutcome,
 } from "@aux/contracts";
 import type { DriverPage } from "@aux/chromium-driver";
+import { readFile, stat } from "node:fs/promises";
+import { isConsequential } from "../agent/permissions.js";
 
 export interface ExecContext {
   runId?: string;
@@ -166,10 +168,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         }
       }
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
-      const mutating = [
-        "navigate", "back", "forward", "reload", "click", "dblclick", "fill", "fillCredential", "type",
-        "press", "select", "check", "uncheck", "submit", "dragTo", "clickPoint", "upload", "dialog",
-      ].includes(step.op);
+      const mutating = isConsequential(step.op);
       const outcome: StepOutcome = {
         stepId: step.id,
         op: step.op,
@@ -263,7 +262,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         startedAt: dlStarted,
         durationMs: Date.now() - dlStarted,
         detail: `downloaded ${res.suggestedFilename}`,
-        extracted: { downloaded: res.suggestedFilename, path: res.path },
+        extracted: await downloadExtract(res.suggestedFilename, res.path),
       };
     } catch (e) {
       dlOutcome = {
@@ -370,3 +369,15 @@ export async function executeProgram(
 }
 
 const hasKeys = (r: Record<string, unknown>) => (Object.keys(r).length ? r : undefined);
+
+/** Small text downloads (CSV/JSON/TXT ≤64KB) carry a preview so the planner can read them without another trip. */
+export async function downloadExtract(filename: string, path?: string): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = { downloaded: filename, path };
+  if (!path || !/\.(csv|tsv|json|txt|md|xml|log|ics)$/i.test(filename)) return out;
+  try {
+    if ((await stat(path)).size > 64 * 1024) return out;
+    const text = await readFile(path, "utf8");
+    if (!text.includes("\0")) out.text = text;
+  } catch { /* file moved or unreadable — filename is still the receipt */ }
+  return out;
+}

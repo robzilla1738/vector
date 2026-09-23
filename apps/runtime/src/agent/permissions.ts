@@ -98,11 +98,20 @@ const WRITE_OPS = new Set([
 const DESTRUCTIVE_OPS = new Set(["evaluate"]);
 const EGRESS_OPS = new Set(["navigate", "back", "forward", "reload"]);
 
+/** Write-class ops that only move the viewport or pointer — nothing reaches the site. */
+const LOCAL_ONLY_OPS = new Set(["hover", "scroll", "stop"]);
+
+/** Single source of step classification; executor, durable writes and verification derive from it. */
 export function classifyStep(op: string): EffectClass {
   if (EGRESS_OPS.has(op)) return "egress";
   if (DESTRUCTIVE_OPS.has(op)) return "destructive";
   if (WRITE_OPS.has(op)) return "write";
   return "read";
+}
+
+/** The step can change remote or document state, so its outcome is uncertain until observed. */
+export function isConsequential(op: string): boolean {
+  return classifyStep(op) !== "read" && !LOCAL_ONLY_OPS.has(op);
 }
 
 export function authorizeProgram(
