@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 import { launchApp } from './launch.mjs';
+import { poll } from './poll.mjs';
 
 const dir=mkdtempSync(join(tmpdir(),'aux-multi-window-'));
 const server=createServer((req,res)=>{
@@ -90,6 +91,11 @@ try{
     },{name:record.name,spaceId:record.spaceId,tabs:record.tabs});
     await record.shell.reload();
     await record.shell.locator('.app-body').waitFor();
+    // The import broadcasts spaces.updated to every window, which schedules a
+    // debounced layout write there; let it land before the next injection or
+    // that window's pagehide flush overwrites the injected layout.
+    await poll(record.shell,name=>window.aux.invoke('spaces.list',{}).then(spaces=>spaces.some(space=>space.name===name)),record.name);
+    await delay(400);
   }
   console.log('multi-window: independent layouts ready');
 
