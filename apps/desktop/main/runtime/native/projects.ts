@@ -1,4 +1,4 @@
-import { ProjectCommandSchema, ProjectCommandTaskSchema, ProjectCommitRequestSchema, ProjectGithubStatusSchema, ProjectReviewContextSchema, RpcChannel, TaskSchema } from "@aux/contracts";
+import { type ProjectCommandTask, RpcChannel, TaskSchema } from "@aux/contracts";
 import { dialog } from "electron";
 import { PRIMARY_WINDOW_ID } from "../../app/bootstrap.js";
 import { localProjects, projectCommands, projectFiles } from "../../app/services.js";
@@ -6,17 +6,18 @@ import { normalizeLocalPreviewUrl } from "../../local-preview.js";
 import { assertProjectEditable, projectCommandsActive, requireCurrentTask, savingProjects, withProjectLock } from "../../projects/lock.js";
 import { focusedRegularWindow, stateForWindowId } from "../../windows/registry.js";
 import { requireRuntime, runtimeInvoke } from "../supervisor.js";
+import { onNative } from "./validate.js";
 
 export function registerProjectMethods(ch: RpcChannel) {
-  ch.onMethod('native.developmentProjects',async p=>{
-    const ids=new Set((p as {projectIds?:unknown}).projectIds instanceof Array?(p as {projectIds:string[]}).projectIds.filter(id=>typeof id==='string'):[]);
+  onNative(ch,'native.developmentProjects',async ({projectIds})=>{
+    const ids=new Set(projectIds);
     return (await localProjects.list()).filter(project=>ids.has(project.projectId));
   });
-  ch.onMethod('native.inspectProject',p=>localProjects.inspect((p as {projectId:string}).projectId));
-  ch.onMethod('native.githubProject',p=>localProjects.githubIdentity((p as {projectId:string}).projectId));
-  ch.onMethod('native.recordGithubStatus',p=>{const input=p as {projectId:string;status:unknown};return localProjects.recordGithubStatus(input.projectId,ProjectGithubStatusSchema.parse(input.status));});
-  ch.onMethod('native.writeIncidentReport',async p=>{
-    const input=p as {projectId:string;task:unknown;page:{pageId:string;url:string;title:string};console:{level:string;message:string;atMs?:number}[];network:{method:string;status?:number;url:string;durationMs?:number;startedAt?:number}[];operations?:unknown};const task=ProjectCommandTaskSchema.parse(input.task);
+  onNative(ch,'native.inspectProject',({projectId})=>localProjects.inspect(projectId));
+  onNative(ch,'native.githubProject',({projectId})=>localProjects.githubIdentity(projectId));
+  onNative(ch,'native.recordGithubStatus',input=>{return localProjects.recordGithubStatus(input.projectId,input.status);});
+  onNative(ch,'native.writeIncidentReport',async input=>{
+    const task=input.task;
     requireRuntime('Runtime not connected');const changed='The task or checkout attachment changed. Prepare the incident snapshot again.';
     await requireCurrentTask({taskId:task.taskId,expectedRevision:task.taskRevision},input.projectId,{revision:changed,detached:changed});
     const page={pageId:String(input.page.pageId).slice(0,200),url:String(input.page.url).slice(0,8192),title:String(input.page.title).slice(0,1000)};
@@ -25,11 +26,11 @@ export function registerProjectMethods(ch: RpcChannel) {
     const operations=typeof input.operations==='string'?input.operations.slice(0,32*1024):undefined;
     return localProjects.writeIncidentReport(input.projectId,{task,page,console:consoleLines,network,operations},projectCommands.list(input.projectId));
   });
-  ch.onMethod('native.listProjectFiles',async p=>(await localProjects.files((p as {projectId:string}).projectId)).files);
-  ch.onMethod('native.readProjectFile',p=>{const input=p as {projectId:string;name:string};return projectFiles.read(input.projectId,input.name);});
-  ch.onMethod('native.projectSnapshotTree',p=>localProjects.snapshotTree((p as {projectId:string}).projectId));
-  const confirmProjectChange=async(input:{projectId:string;name:string;content:string;task:unknown},create:boolean)=>{
-    const task=ProjectCommandTaskSchema.parse(input.task);const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
+  onNative(ch,'native.listProjectFiles',async ({projectId})=>(await localProjects.files(projectId)).files);
+  onNative(ch,'native.readProjectFile',input=>{return projectFiles.read(input.projectId,input.name);});
+  onNative(ch,'native.projectSnapshotTree',({projectId})=>localProjects.snapshotTree(projectId));
+  const confirmProjectChange=async(input:{projectId:string;name:string;content:string;task:ProjectCommandTask},create:boolean)=>{
+    const task=input.task;const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
     const project=(await localProjects.inspect(input.projectId)).project;
     const preview=input.content.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g,'').slice(0,6000);
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:create?'Create project file':'Save agent file change',message:`${create?'Create':'Replace'} ${input.name} in the isolated checkout?`,
@@ -41,19 +42,19 @@ export function registerProjectMethods(ch: RpcChannel) {
     if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the request again.');
     return task;
   };
-  ch.onMethod('native.writeProjectFile',async p=>{
-    const input=p as {projectId:string;name:string;expectedHash:string;content:string;task:unknown};
+  onNative(ch,'native.writeProjectFile',async input=>{
+    
     if((await projectFiles.read(input.projectId,input.name)).sha256!==input.expectedHash)throw new Error('The file changed outside the agent session. Read it again before proposing a save.');
     assertProjectEditable(input.projectId,'saving');
     if(!await confirmProjectChange(input,false))return null;
     return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'saving');return projectFiles.save(input.projectId,input.name,input.expectedHash,input.content);});
   });
-  ch.onMethod('native.createProjectFile',async p=>{
-    const input=p as {projectId:string;name:string;content:string;task:unknown};assertProjectEditable(input.projectId,'creating');if(!await confirmProjectChange(input,true))return null;
+  onNative(ch,'native.createProjectFile',async input=>{
+    assertProjectEditable(input.projectId,'creating');if(!await confirmProjectChange(input,true))return null;
     return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'creating');const created=await projectFiles.create(input.projectId,input.name);if(!input.content)return created;return projectFiles.save(input.projectId,input.name,created.sha256,input.content);});
   });
-  const confirmProjectFileLifecycle=async(input:{projectId:string;name:string;nextName?:string;expectedHash:string;task:unknown},action:'rename'|'delete')=>{
-    const task=ProjectCommandTaskSchema.parse(input.task);const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
+  const confirmProjectFileLifecycle=async(input:{projectId:string;name:string;nextName?:string;expectedHash:string;task:ProjectCommandTask},action:'rename'|'delete')=>{
+    const task=input.task;const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
     const project=(await localProjects.inspect(input.projectId)).project;const file=await projectFiles.read(input.projectId,input.name);
     if(file.sha256!==input.expectedHash)throw new Error('The file changed outside the agent session. Read it again before proposing this change.');
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:action==='rename'?'Rename agent project file':'Delete agent project file',message:action==='rename'?`Rename ${input.name} to ${input.nextName}?`:`Delete ${input.name} from the isolated checkout?`,
@@ -64,21 +65,21 @@ export function registerProjectMethods(ch: RpcChannel) {
     if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the request again.');
     return task;
   };
-  ch.onMethod('native.renameProjectFile',async p=>{
-    const input=p as {projectId:string;name:string;nextName:string;expectedHash:string;task:unknown};
+  onNative(ch,'native.renameProjectFile',async input=>{
+    
     assertProjectEditable(input.projectId,'renaming');
     if(!await confirmProjectFileLifecycle(input,'rename'))return null;
     return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'renaming');return projectFiles.move(input.projectId,input.name,input.nextName,input.expectedHash);});
   });
-  ch.onMethod('native.deleteProjectFile',async p=>{
-    const input=p as {projectId:string;name:string;expectedHash:string;task:unknown};
+  onNative(ch,'native.deleteProjectFile',async input=>{
+    
     assertProjectEditable(input.projectId,'deleting');
     if(!await confirmProjectFileLifecycle(input,'delete'))return null;
     return withProjectLock(input.projectId,async()=>{assertProjectEditable(input.projectId,'deleting');return projectFiles.remove(input.projectId,input.name,input.expectedHash);});
   });
-  ch.onMethod('native.projectCommands',p=>projectCommands.list((p as {projectId:string}).projectId));
-  ch.onMethod('native.runProjectCommand',async p=>{
-    const input=p as {projectId:string;command:string;mode:unknown;task:unknown};const command=ProjectCommandSchema.shape.command.parse(input.command);const mode=ProjectCommandSchema.shape.mode.parse(input.mode);const task=ProjectCommandTaskSchema.parse(input.task);
+  onNative(ch,'native.projectCommands',({projectId})=>projectCommands.list(projectId));
+  onNative(ch,'native.runProjectCommand',async input=>{
+    const {command,mode}=input;const task=input.task;
     const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');const project=(await localProjects.inspect(input.projectId)).project;
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:mode==='service'?'Start agent-requested service':'Run agent-requested command',message:mode==='service'?'Keep this task service running?':'Run this task command?',
       detail:`Task: ${task.title} · Revision ${task.taskRevision}\n\n${command}\n\nWorking directory: ${project.path}\n\nThis is not a sandbox. The command can change local files and access the network. Aux uses a separate HOME and does not supply model credentials. Output is saved locally.`,buttons:['Cancel',mode==='service'?'Start service':'Run command'],defaultId:0,cancelId:0,noLink:true});
@@ -87,28 +88,28 @@ export function registerProjectMethods(ch: RpcChannel) {
     if(savingProjects.has(input.projectId))throw new Error('Wait for the file change before starting a command.');
     return projectCommands.start(project,command,{taskId:current.taskId,taskRevision:current.revision,title:current.title,workspaceId:current.workspaceId},mode);
   });
-  ch.onMethod('native.approveCloudCommand',async p=>{
-    const input=p as {task:unknown;environment?:unknown;executable?:unknown;args?:unknown;mode?:unknown;timeoutMinutes?:unknown};const task=ProjectCommandTaskSchema.parse(input.task);
-    if(!input.environment||typeof input.environment!=='object')throw new Error('Cloud environment details are missing.');const environment=input.environment as Record<string,unknown>;
-    const remoteName=String(environment.remoteName??'').slice(0,200),runtime=String(environment.runtime??'').slice(0,100),region=String(environment.region??'').slice(0,100);if(!remoteName||!runtime||!region)throw new Error('Cloud environment details are invalid.');
-    const executable=String(input.executable??'');const args=Array.isArray(input.args)?input.args.map(value=>String(value)):[];const mode=input.mode==='service'?'service':'command';const timeoutMinutes=typeof input.timeoutMinutes==='number'?Math.max(5,Math.min(45,Math.trunc(input.timeoutMinutes))):undefined;
+  onNative(ch,'native.approveCloudCommand',async input=>{
+    const task=input.task;
+    const {environment}=input;
+    const remoteName=environment.remoteName.slice(0,200),runtime=environment.runtime.slice(0,100),region=environment.region.slice(0,100);if(!remoteName||!runtime||!region)throw new Error('Cloud environment details are invalid.');
+    const {executable,args,mode}=input;const timeoutMinutes=input.timeoutMinutes===undefined?undefined:Math.max(5,Math.min(45,Math.trunc(input.timeoutMinutes)));
     const state=focusedRegularWindow();if(!state)throw new Error('Aux window is unavailable');state.win.show();state.win.focus();
     const command=[executable,...args].map(value=>/[\s"'\\]/.test(value)?JSON.stringify(value):value).join(' ').slice(0,8000);
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:mode==='service'?'Start agent-requested cloud service':'Run agent-requested cloud command',message:mode==='service'?'Start this service in the task cloud environment?':'Run this command in the task cloud environment?',detail:`Task: ${task.title} · Revision ${task.taskRevision}\nEnvironment: ${remoteName}\nRuntime: ${runtime} · ${region}${timeoutMinutes?` · ${timeoutMinutes}-minute limit`:''}\n\n${command}\n\nThis runs in the existing Vercel Sandbox and may consume billable compute and network. Aux will save the command state and output. It does not receive browser cookies, model credentials or local environment variables.`,buttons:['Cancel',mode==='service'?'Start service':'Run command'],defaultId:0,cancelId:0,noLink:true});
     return answer.response===1;
   });
-  ch.onMethod('native.approveProjectPreview',async p=>{
-    const input=p as {projectId:string;url:string;task:unknown};const task=ProjectCommandTaskSchema.parse(input.task);const url=normalizeLocalPreviewUrl(input.url).href;
+  onNative(ch,'native.approveProjectPreview',async input=>{
+    const task=input.task;const url=normalizeLocalPreviewUrl(input.url).href;
     const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');const project=(await localProjects.inspect(input.projectId)).project;
     const answer=await dialog.showMessageBox(state.win,{type:'question',title:'Open agent local preview',message:`Allow this task to open ${url}?`,detail:`Task: ${task.title} · Revision ${task.taskRevision}\nProject: ${project.name}\n\nAux will send a cookie-free loopback check, then open a browser tab only after a successful response. This grants this connection access to that preview tab until Aux restarts or the connection is revoked.`,buttons:['Cancel','Check and open'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;requireRuntime('Runtime not connected');
     await requireCurrentTask({taskId:task.taskId,expectedRevision:task.taskRevision},input.projectId,{revision:'Task revision changed; review the preview request again.',detached:'The checkout is no longer attached to this task.'});
     return localProjects.checkPreview(input.projectId,url);
   });
-  ch.onMethod('native.stopProjectCommand',p=>{const input=p as {projectId:string;commandId:string};return projectCommands.stop(input.projectId,input.commandId);});
-  ch.onMethod('native.prepareProjectReview',async p=>{const input=p as {projectId:string;task:unknown};const task=ProjectReviewContextSchema.parse(input.task);return localProjects.writeReviewSummary(input.projectId,await localProjects.inspect(input.projectId),projectCommands.list(input.projectId),task);});
-  ch.onMethod('native.commitProject',async p=>{
-    const input=p as {projectId:string;request:unknown;task:unknown};const request=ProjectCommitRequestSchema.parse(input.request);const task=ProjectReviewContextSchema.parse(input.task);
+  onNative(ch,'native.stopProjectCommand',input=>{return projectCommands.stop(input.projectId,input.commandId);});
+  onNative(ch,'native.prepareProjectReview',async input=>{const task=input.task;return localProjects.writeReviewSummary(input.projectId,await localProjects.inspect(input.projectId),projectCommands.list(input.projectId),task);});
+  onNative(ch,'native.commitProject',async input=>{
+    const request=input.request;const task=input.task;
     const state=stateForWindowId(PRIMARY_WINDOW_ID);if(!state)throw new Error('Aux window is unavailable');
     if(projectCommandsActive(input.projectId))throw new Error('Stop local commands and services before creating a commit.');
     if(savingProjects.has(input.projectId))throw new Error('Wait for the file change before creating a commit.');

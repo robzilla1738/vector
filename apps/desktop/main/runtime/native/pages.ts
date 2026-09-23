@@ -1,4 +1,4 @@
-import { RpcChannel, TabCommandEnvelopeSchema, type TabPatchOp } from "@aux/contracts";
+import { RpcChannel, type TabPatchOp } from "@aux/contracts";
 import { shell } from "electron";
 import { PRIMARY_WINDOW_ID } from "../../app/bootstrap.js";
 import { isWebUrl } from "../../app/external-urls.js";
@@ -17,9 +17,10 @@ import { createRegularWindow } from "../../windows/create.js";
 import { broadcastToShells, pageWindowOwners, regularWindows, stateForEntry } from "../../windows/registry.js";
 import { applyStage, forgetPlacement } from "../../windows/stage.js";
 import { notifyRuntime } from "../supervisor.js";
+import { onNative } from "./validate.js";
 
 export function registerPageMethods(ch: RpcChannel) {
-  ch.onMethod("native.listPages", () => ({
+  onNative(ch, "native.listPages", () => ({
     pages: registry.all()
       .filter(entry => !entry.view.webContents.isDestroyed())
       .map(entry => ({
@@ -32,15 +33,7 @@ export function registerPageMethods(ch: RpcChannel) {
         active: entry.popup ? entry.popup.isFocused() : entry.pageId === stateForEntry(entry)?.focusedPageId,
       })),
   }));
-  ch.onMethod("native.createPage", async (p) => {
-    const { pageId, windowId, marker, url, background,ownedByRuntime } = p as {
-      pageId: string;
-      windowId?: string;
-      marker: string;
-      url: string;
-      background: boolean;
-      ownedByRuntime?:boolean;
-    };
+  onNative(ch, "native.createPage", async ({ pageId, windowId, marker, url, background, ownedByRuntime }) => {
     const requestedWindowId = windowId ?? PRIMARY_WINDOW_ID;
     const state = regularWindows.get(requestedWindowId) ?? await createRegularWindow(requestedWindowId);
     // The runtime may retry createPage after a dropped reply — one pageId must
@@ -62,8 +55,7 @@ export function registerPageMethods(ch: RpcChannel) {
     if (wc) notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
     return { ok: true };
   });
-  ch.onMethod("native.movePage", async (raw) => {
-    const { pageId, windowId, activate = true } = raw as { pageId: string; windowId?: string; activate?: boolean };
+  onNative(ch, "native.movePage", async ({ pageId, windowId, activate = true }) => {
     const moved = await movePageToWindow(pageId, windowId, activate);
     if (moved.moved) {
       const source = regularWindows.get(moved.sourceWindowId);
@@ -77,10 +69,7 @@ export function registerPageMethods(ch: RpcChannel) {
     }
     return { windowId: moved.windowId, sourceActivePageId: moved.sourceActivePageId, activePageId: moved.activePageId };
   });
-  ch.onMethod("native.tabCommand", async raw => {
-    const parsed = TabCommandEnvelopeSchema.safeParse(raw);
-    if (!parsed.success) throw new Error("invalid tab command envelope");
-    const env = parsed.data;
+  onNative(ch, "native.tabCommand", async env => {
     // The runtime scopes its command to the window it names; an open into a
     // window that does not exist yet creates it, matching native.createPage.
     if (!regularWindows.has(env.windowId)) {
@@ -93,12 +82,10 @@ export function registerPageMethods(ch: RpcChannel) {
     const info = await wc?.debugger.sendCommand("Target.getTargetInfo").catch(() => undefined) as { targetInfo?: { targetId?: string } } | undefined;
     return info?.targetInfo?.targetId ? { ...ack, targetId: info.targetInfo.targetId } : ack;
   });
-  ch.onMethod("native.closePage", async (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.closePage", async ({ pageId }) => {
     return { ok: await closeTab(pageId, false) };
   });
-  ch.onMethod("native.showPage", (p) => {
-    const { pageId, bounds } = p as { pageId: string; bounds: { x: number; y: number; width: number; height: number } | null };
+  onNative(ch, "native.showPage", ({ pageId, bounds }) => {
     const entry = registry.get(pageId);
     const state = stateForEntry(entry);
     if (!entry || !state) return { ok: false };
@@ -110,28 +97,24 @@ export function registerPageMethods(ch: RpcChannel) {
     }
     return { ok: true };
   });
-  ch.onMethod("native.hidePage", (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.hidePage", ({ pageId }) => {
     const entry = registry.get(pageId);
     if (entry && !entry.popup && !offscreen.holds(pageId)){entry.view.setVisible(false);forgetPlacement(entry);scheduleIdleFreeze(entry);}
     return { ok: true };
   });
-  ch.onMethod("native.recoverPage", async (p) => {
-    const { pageId, url } = p as { pageId: string; url: string };
+  onNative(ch, "native.recoverPage", async ({ pageId, url }) => {
     const entry=registry.get(pageId);await wakePage(entry);const wc = entry?.view.webContents;
     if (!wc || wc.isDestroyed()) return { ok: false };
     await wc.loadURL(url);
     return { ok: true };
   });
-  ch.onMethod("native.stopPage", (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.stopPage", ({ pageId }) => {
     const entry=registry.get(pageId);void wakePage(entry);const wc = entry?.view.webContents;
     if (!wc) return { ok: false };
     wc.stop();
     return { ok: true };
   });
-  ch.onMethod("native.focusPage", (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.focusPage", ({ pageId }) => {
     const entry = registry.get(pageId);
     const state = stateForEntry(entry);
     if (!entry || !state) return { ok: false };
@@ -158,8 +141,7 @@ export function registerPageMethods(ch: RpcChannel) {
   // A program with pointer/keyboard steps is starting on this page: keep the
   // view laid out (offscreen if it is not the focused tab). Returns at once —
   // parallel programs on different pages never wait on each other.
-  ch.onMethod("native.acquireStage", (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.acquireStage", ({ pageId }) => {
     const entry = registry.get(pageId);
     const state = stateForEntry(entry);
     if (!entry || !state) return { ok: false };
@@ -168,36 +150,31 @@ export function registerPageMethods(ch: RpcChannel) {
     applyStage(state);
     return { ok: true };
   });
-  ch.onMethod("native.releaseStage", (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.releaseStage", ({ pageId }) => {
     const state = stateForEntry(registry.get(pageId));
     // A preview still capturing this page keeps it laid out.
     if (offscreen.releaseStage(pageId) && state) applyStage(state);
     return { ok: true };
   });
 
-  ch.onMethod("native.openExternal", (p) => {
-    const { url } = p as { url: unknown };
+  onNative(ch, "native.openExternal", ({ url }) => {
     if (!isWebUrl(url)) return { ok: false, error: "only http(s) URLs can be opened externally" };
     void shell.openExternal(url);
     return { ok: true };
   });
-  ch.onMethod("native.findInPage", async (p) => {
-    const { pageId, text, forward, findNext } = p as { pageId: string; text: string; forward: boolean; findNext: boolean };
+  onNative(ch, "native.findInPage", async ({ pageId, text, forward, findNext }) => {
     const entry = registry.get(pageId);
     if (!entry) return { matches: 0 };
     const bounds = entry.popup ? entry.popup.getContentBounds() : entry.view.getBounds();
     const visible = (entry.popup ? entry.popup.isVisible() : entry.view.getVisible()) && bounds.width > 0 && bounds.height > 0;
     return pageFinder.find(entry.view.webContents, text, { forward, findNext, visible });
   });
-  ch.onMethod("native.stopFind", (p) => {
-    const { pageId, action } = p as { pageId: string; action: "clear" | "keep" };
+  onNative(ch, "native.stopFind", ({ pageId, action }) => {
     const entry = registry.get(pageId);
     if (entry) pageFinder.stop(entry.view.webContents, action);
     return { ok: true };
   });
-  ch.onMethod("native.setZoom", (p) => {
-    const { pageId, level, delta, reset, direction } = p as { pageId: string; level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" };
+  onNative(ch, "native.setZoom", ({ pageId, level, delta, reset, direction }) => {
     const entry = registry.get(pageId);
     if (!entry) throw new Error("This tab is no longer available.");
     const result = setPageZoom(entry.view.webContents, { level, delta, reset, direction });
@@ -207,8 +184,7 @@ export function registerPageMethods(ch: RpcChannel) {
     }
     return result;
   });
-  ch.onMethod("native.print", async (p) => {
-    const { pageId } = p as { pageId: string };
+  onNative(ch, "native.print", async ({ pageId }) => {
     const entry = registry.get(pageId);
     if (!entry) throw new Error("This tab is no longer available.");
     return { ok: await printPage(entry.view.webContents, entry.showBlankDocument) };

@@ -1,7 +1,6 @@
-import type { BaseWindow, WebContents } from "electron";
-import { dialog } from "electron";
-import type { HttpsFirst } from "../https-first.js";
-import type { createInsecureBypass } from "../insecure-bypass.js";
+import { BaseWindow, type WebContents, dialog } from "electron";
+import { HttpsFirst } from "../https-first.js";
+import { createInsecureBypass } from "../insecure-bypass.js";
 
 /** Process-neutral: regular windows persist these choices, private windows keep them in memory. */
 export type PermissionDecisions = Record<string, Record<string, "allow" | "deny">>;

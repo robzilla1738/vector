@@ -1,25 +1,17 @@
-import { RpcChannel } from "@aux/contracts";
+import { NativeCookieSchema, RpcChannel } from "@aux/contracts";
 import { profileSession } from "../../native-views.js";
+import { onNative } from "./validate.js";
 
 export function registerCookieMethods(ch: RpcChannel) {
-  ch.onMethod("native.setCookies", async (p) => {
+  onNative(ch, "native.setCookies", async ({ cookies }) => {
     // cookie values flow through but are never logged or persisted to disk
     // beyond Chromium's own encrypted profile store
-    const { cookies } = p as {
-      cookies: {
-        name: string;
-        value: string;
-        domain: string;
-        path: string;
-        secure: boolean;
-        httpOnly: boolean;
-        sameSite?: "Strict" | "Lax" | "None";
-        expires?: number;
-      }[];
-    };
     const ses = profileSession();
     let count = 0;
-    for (const c of cookies) {
+    for (const raw of cookies) {
+      const parsed = NativeCookieSchema.safeParse(raw);
+      if (!parsed.success) continue;
+      const c = parsed.data;
       const bare = c.domain.replace(/^\./, "");
       try {
         await ses.cookies.set({

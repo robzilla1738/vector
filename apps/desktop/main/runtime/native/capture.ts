@@ -1,10 +1,10 @@
 import { RpcChannel } from "@aux/contracts";
 import { registry } from "../../app/services.js";
 import { wakePage } from "../../tabs/lifecycle-controller.js";
+import { onNative } from "./validate.js";
 
 export function registerCaptureMethods(ch: RpcChannel) {
-  ch.onMethod("native.capturePage", async (p) => {
-    const { pageId, scale } = p as { pageId: string; scale: number };
+  onNative(ch, "native.capturePage", async ({ pageId, scale }) => {
     const entry = registry.get(pageId);
     if (!entry) throw new Error(`no view for ${pageId}`);
     await wakePage(entry);
