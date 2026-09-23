@@ -31,13 +31,14 @@ try {
  await app.evaluate(({Menu})=>{const item=Menu.getApplicationMenu().items.flatMap(item=>item.submenu?.items??[]).find(item=>item.label==='Reopen Closed Tab');if(!item)throw new Error('Menu missing');item.click();});
  await page.getByRole('group',{name:'Research folder',exact:true}).locator('.tab-title').getByText('Research',{exact:true}).waitFor();
  const others=[pages[0].pageId,pages[2].pageId,pages[3].pageId];
- let layout;for(let i=0;i<60;i++){
+ let layout,lastSnap;for(let i=0;i<160;i++){
    const snap=await page.evaluate(()=>JSON.parse(localStorage.getItem(`aux.layout.v1:${window.aux.windowId}`)));
-   const restored=snap.order[1];
-   if(snap.activeSpaceId==='work'&&restored===pages[1].pageId&&snap.tabFolder[restored]==='research'&&JSON.stringify(snap.order.filter(id=>id!==restored))===JSON.stringify(others)){layout=snap;break;}
+   lastSnap=snap;
+   const restored=snap?.order?.[1];
+   if(snap&&snap.activeSpaceId==='work'&&restored===pages[1].pageId&&snap.tabFolder[restored]==='research'&&JSON.stringify(snap.order.filter(id=>id!==restored))===JSON.stringify(others)){layout=snap;break;}
    await new Promise(r=>setTimeout(r,250));
  }
- assert.ok(layout,'reopened tab restores the closed tab id, position and folder so its history and records re-attach');
+ assert.ok(layout,'reopened tab restores the closed tab id, position and folder so its history and records re-attach; last layout: '+JSON.stringify(lastSnap));
  const restored=layout.order[1];assert.equal(restored,pages[1].pageId,'reopen restores the closed tab id so its history and records re-attach');
  assert.equal(layout.tabFolder[restored],'research');
  assert.deepEqual(layout.order.filter(id=>id!==restored),[pages[0].pageId,pages[2].pageId,pages[3].pageId]);

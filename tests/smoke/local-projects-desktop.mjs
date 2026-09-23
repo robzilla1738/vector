@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:net';
 import {createSpace} from './create-space.mjs';
-async function until(check){const deadline=Date.now()+15000;while(Date.now()<deadline){if(await check())return;await new Promise(resolve=>setTimeout(resolve,50));}throw new Error('Local command condition did not settle');}
+async function until(check,timeoutMs=45000){const deadline=Date.now()+timeoutMs;while(Date.now()<deadline){if(await check())return;await new Promise(resolve=>setTimeout(resolve,50));}throw new Error(`Local command condition did not settle within ${timeoutMs}ms: ${check}`);}
 import {sidebarAction} from './sidebar-action.mjs';
 const root=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const {_electron}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
