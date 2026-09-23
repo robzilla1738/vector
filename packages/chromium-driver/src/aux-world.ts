@@ -164,46 +164,63 @@ export const AUX_WORLD_SOURCE = `(${installAuxWorld.toString()})(${collectObserv
 
 /** One CDP session per page that evaluates in the aux world and dispatches raw input. */
 export class AuxWorld {
-  private context: Promise<number> | null = null;
+  /** aux-world context id per frame, learned from Runtime events as documents create their world. */
+  private worlds = new Map<string, number>();
+  private creating: Promise<number> | null = null;
+  private frameId = "";
 
-  private constructor(
-    private session: CDPSession,
-    private frameId: string,
-  ) {}
+  private constructor(private session: CDPSession) {
+    session.on("Runtime.executionContextCreated", ({ context }) => {
+      const frameId = (context.auxData as { frameId?: string } | undefined)?.frameId;
+      if (context.name === AUX_WORLD && frameId) this.worlds.set(frameId, context.id);
+    });
+    session.on("Runtime.executionContextDestroyed", ({ executionContextId }) => {
+      for (const [frameId, id] of this.worlds) if (id === executionContextId) this.worlds.delete(frameId);
+    });
+    session.on("Runtime.executionContextsCleared", () => this.worlds.clear());
+  }
 
   static async open(context: BrowserContext, page: Page): Promise<AuxWorld> {
     const session = await context.newCDPSession(page);
+    const world = new AuxWorld(session);
     try {
-      await session.send("Page.enable");
-      const [{ frameTree }] = await Promise.all([
+      // pipelined: the session processes commands in order
+      const [, { frameTree }] = await Promise.all([
+        session.send("Page.enable"),
         session.send("Page.getFrameTree"),
         session.send("Page.addScriptToEvaluateOnNewDocument", { source: AUX_WORLD_SOURCE, worldName: AUX_WORLD }),
+        session.send("Runtime.enable"),
       ]);
-      return new AuxWorld(session, frameTree.frame.id);
+      world.frameId = frameTree.frame.id;
+      return world;
     } catch (e) {
       await session.detach().catch(() => {});
       throw e;
     }
   }
 
-  /** The main frame committed a new document; its world went with the old one. */
-  reset() {
-    this.context = null;
+  private get known(): number | null {
+    return this.worlds.get(this.frameId) ?? null;
   }
 
+  /** Known id when the document already made its world; otherwise ask for it (slow on a busy renderer). */
   private contextId(): Promise<number> {
-    this.context ??= this.session
+    if (this.known !== null) return Promise.resolve(this.known);
+    this.creating ??= this.session
       .send("Page.createIsolatedWorld", { frameId: this.frameId, worldName: AUX_WORLD })
-      .then((r) => r.executionContextId);
-    return this.context;
+      .then((r) => r.executionContextId)
+      .finally(() => {
+        this.creating = null;
+      });
+    return this.creating;
   }
 
   /** Evaluate `expression` (which may use `__aux`) in the world, by value. */
   async call<T>(expression: string, awaitPromise = false): Promise<T> {
     for (let attempt = 0; ; attempt++) {
-      const pending = this.contextId();
+      let contextId: number | undefined;
       try {
-        const contextId = await pending;
+        contextId = await this.contextId();
         const res = await this.session.send("Runtime.evaluate", {
           expression: `globalThis.__aux ? ${expression} : "${MISSING}"`,
           contextId,
@@ -218,7 +235,7 @@ export class AuxWorld {
       } catch (e) {
         // navigation destroyed the context between calls — take the new document's
         if (attempt >= 2 || !/context|frame|world/i.test(e instanceof Error ? e.message : String(e))) throw e;
-        if (this.context === pending) this.context = null;
+        if (this.known === contextId) this.worlds.delete(this.frameId);
       }
     }
   }
@@ -229,7 +246,7 @@ export class AuxWorld {
   }
 
   async dispose() {
-    this.context = null;
+    this.worlds.clear();
     await this.session.detach().catch(() => {});
   }
 }

@@ -154,7 +154,6 @@ export class PlaywrightDriverPage implements DriverPage {
       this.refs.clear(this.identity.pageId);
       this.refCounter = 1;
       this.requests.reset();
-      void this.world.then((w) => w?.reset());
       this.frameKeys.keyToFrame.clear();
       this.events.onNavigated?.(frame.url(), this.documentEpoch);
     });
@@ -296,6 +295,9 @@ export class PlaywrightDriverPage implements DriverPage {
   }
 
   async navigate(url: string, timeoutMs = 30_000) {
+    // the world's new-document script must be registered before the document
+    // is created, or the first call pays a lazy install on a busy renderer
+    await this.world;
     await this.page.goto(url, { timeout: timeoutMs, waitUntil: "domcontentloaded" });
   }
   async back(timeoutMs = 15_000) {
@@ -991,6 +993,6 @@ export class PlaywrightDriverPage implements DriverPage {
     // native tab manager or to Chrome. Detach this wrapper's listeners only.
     this.attached = false;
     for (const [event, fn] of this.listeners.splice(0)) this.page.off(event as never, fn as never);
-    await (await this.world)?.dispose();
+    void this.world.then((w) => w?.dispose());
   }
 }
