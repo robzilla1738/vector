@@ -2,8 +2,8 @@
  *
  * The shell is an internal client (desktopUser), so this list is the
  * boundary. It is the set of method names that appear in the renderer
- * source. pages.execute and other methods the window does not call are
- * rejected in the main process.
+ * source, plus SMOKE_HARNESS_METHODS below. pages.execute and other
+ * methods the window does not call are rejected in the main process.
  */
 export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "artifacts.list",
@@ -81,6 +81,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "conversations.rename",
   "conversations.sources.get",
   "conversations.workspace.get",
+  "conversations.workspace.set",
   "development.githubStatus",
   "development.operationsStatus",
   "development.prepareIncidentFix",
@@ -131,6 +132,8 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "routines.update",
   "runs.answer",
   "runs.cancel",
+  "runs.context.get",
+  "runs.context.set",
   "runs.get",
   "runs.list",
   "runs.pause",
@@ -190,6 +193,24 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "workspaces.memory.set",
 ]);
 
+/** Methods the desktop smoke harness (tests/smoke) drives through
+ * window.aux.invoke that the renderer itself never calls. Each is
+ * capability-equivalent to ui.* channels the shell already owns
+ * (tabCommand navigates/closes/activates tabs, tabsSnapshot lists
+ * them), so allowing them on the runtime channel grants nothing new.
+ * Keep this list small — anything the renderer calls belongs in
+ * RENDERER_METHODS instead.
+ */
+export const SMOKE_HARNESS_METHODS: ReadonlySet<string> = new Set([
+  "pages.activate",
+  "pages.close",
+  "pages.list",
+  "pages.navigate",
+  "workspaces.create",
+]);
+
+const ALLOWED_METHODS: ReadonlySet<string> = new Set([...RENDERER_METHODS, ...SMOKE_HARNESS_METHODS]);
+
 export function rendererMayInvoke(method: string): boolean {
-  return RENDERER_METHODS.has(method);
+  return ALLOWED_METHODS.has(method);
 }

@@ -1255,6 +1255,11 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .conversation-memory label b { color: var(--ink-0); font-size: var(--fs-xs); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-memory label small { color: var(--ink-2); font-size: var(--fs-2xs); line-height: var(--lh-normal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-memory-list { max-height: 220px; overflow: auto; margin-top: 4px; padding-top: 4px; border-top: var(--hairline) solid var(--line); }
+.context-body > .conversation-turns { flex: 1 0 100%; }
+.conversation-turns input { margin-top: 2px; accent-color: var(--ink-0); }
+.conversation-turns label > span { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.conversation-turns label b { color: var(--ink-0); font-size: var(--fs-xs); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-turns label small { color: var(--ink-2); font-size: var(--fs-2xs); line-height: var(--lh-normal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-documents-head { display: flex; align-items: center; gap: var(--space-3); margin-top: 4px; }
 .conversation-documents-head > div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-0); }
 .conversation-documents-head b { font-size: var(--fs-xs); font-weight: 500; }
@@ -1729,7 +1734,7 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 /* The same conversation becomes a compact companion while browsing. */
 .rail-body:has(.conversation-embedded) { display: flex; flex-direction: column; overflow: hidden; padding: 0; -webkit-app-region: no-drag; }
 .rail-body { -webkit-app-region: no-drag; }
-.conversation-embedded { position: relative; inset: auto; flex: 1; min-width: 0; min-height: 0; background: transparent; }
+.rail-body .conversation-embedded { position: relative; inset: auto; flex: 1; min-width: 0; min-height: 0; background: transparent; }
 .conversation-embedded .conversation-scroll { padding: 12px 16px; }
 .conversation-embedded .conversation-turn { margin: 4px 0 24px; }
 .conversation-embedded .conversation-turn > time { margin-bottom: 12px; font-size: var(--fs-xs); }
@@ -1921,7 +1926,8 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .context-body .btn.sm { height:28px; padding:0 12px; border-radius:999px; background:color-mix(in srgb, var(--ink-0) 6%, transparent); box-shadow:none; color:var(--ink-0); }
 .conversation-context-note > span { flex:1; flex-basis:auto; }
 .conversation .composer-options, .conversation .composer-attach { display:none; }
-.conversation-input > .context-toggle { width: 28px; height: 28px; border-radius: 999px; }
+.conversation-input > .context-toggle { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: var(--fs-xs); color: var(--ink-2); flex: none; }
+.conversation-input > .context-toggle[aria-expanded="true"] { background: color-mix(in srgb, var(--ink-0) 8%, transparent); color: var(--ink-0); }
 
 .answer-code header { display:flex; align-items:center; gap:4px; padding:6px 8px 6px 14px; border-bottom:1px solid var(--line); }
 .answer-code header > span { margin-right:auto; font-size:var(--fs-xs); color:var(--ink-2); }
@@ -2397,8 +2403,7 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: 999px; }
 .conversation-scroll:has(.conversation-empty) { align-items: center; }
 .conversation-empty h1, .conversation-empty p { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .conversation-input > .icon-btn { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }
-.conversation-input > .icon-btn.context-toggle { background: transparent; color: var(--ink-2); }
-.conversation-input > .icon-btn.context-toggle[aria-pressed="true"] { background: color-mix(in srgb, var(--ink-0) 8%, transparent); color: var(--ink-0); }
+
 .conversation-input > .composer-attach { background: var(--bg-hover); color: var(--ink-2); }
 .conversation-input > .dictation-trigger { flex: none; align-self: center; justify-content: center; width: 28px; height: 28px; font-size: 0; }
 .conversation-input:focus-within { outline: none; box-shadow: var(--shadow-pop); }

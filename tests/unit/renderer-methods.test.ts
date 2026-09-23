@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MethodSchemas } from "@aux/contracts";
-import { RENDERER_METHODS, rendererMayInvoke } from "../../apps/desktop/main/renderer-methods.js";
+import { RENDERER_METHODS, SMOKE_HARNESS_METHODS, rendererMayInvoke } from "../../apps/desktop/main/renderer-methods.js";
 
 const rendererRoot = join(dirname(fileURLToPath(import.meta.url)), "../../apps/desktop/renderer/src");
 
@@ -41,5 +41,22 @@ describe("renderer runtime method gate", () => {
 
   it("matches the methods named in the renderer and nothing else", () => {
     expect([...RENDERER_METHODS].sort()).toEqual(methodsNamedInRenderer());
+  });
+
+  it("keeps the smoke-harness surface disjoint and covers every smoke-invoked method", () => {
+    const renderer = new Set(methodsNamedInRenderer());
+    for (const method of SMOKE_HARNESS_METHODS) {
+      expect(renderer.has(method), `${method} is called by the renderer — it belongs in RENDERER_METHODS`).toBe(false);
+    }
+    const smokeRoot = join(rendererRoot, "../../../../tests/smoke");
+    const literal = /aux\.invoke\(['"]([A-Za-z0-9.]+)['"]/g;
+    for (const name of readdirSync(smokeRoot)) {
+      if (!name.endsWith(".mjs")) continue;
+      for (const match of readFileSync(join(smokeRoot, name), "utf8").matchAll(literal)) {
+        if (match[1] && match[1] in MethodSchemas) {
+          expect(rendererMayInvoke(match[1]), `${match[1]} invoked by ${name} is not allowed for the shell`).toBe(true);
+        }
+      }
+    }
   });
 });
