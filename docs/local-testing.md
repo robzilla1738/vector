@@ -49,6 +49,20 @@ Run the product with `pnpm dev` (fixtures + desktop shell). Drive it with the CL
 UI work: `pnpm -C apps/desktop dev:mock` serves the renderer at
 `http://127.0.0.1:5197` (see `docs/ui/shell.md` → Mock mode).
 
+## Desktop smoke suites
+
+`tests/smoke/*.mjs` are real-Electron acceptance cases (isolated profiles,
+serial execution). `tests/smoke/run-suite.mjs` groups them:
+
+```bash
+pnpm smoke:release    # the release gate named in the 2026-09-22 handoff §18.1
+pnpm smoke:all        # every smoke file, serially
+node tests/smoke/run-suite.mjs private-boundary-desktop   # named files
+```
+
+The release suite also runs in CI as the `desktop smoke (release suite)` job.
+`packaged.mjs` needs `pnpm package:local` first.
+
 ## Benchmarks
 
 ```bash

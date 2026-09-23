@@ -1,5 +1,34 @@
 # Aux implementation progress
 
+## 2026-09-22 — Workspace-handoff audit + grouped smoke CI gate
+
+- Audited the 2026-09-22 workspace handoff (now committed at
+  `docs/AUX-ROADMAP-2026-09-22.md`) package-by-package against the branch:
+  BR-01–07, CH-01–04, AI-01–07, WS-01–06, ME-01–02, SK-01–02 verified in
+  code/tests; TR-01 (prompt fences + planner schemas + narrow preload +
+  sandbox/contextIsolation everywhere), TR-02 (private process rejects every
+  agent/runtime IPC surface; model-side secret redaction in `agent/policy.ts`),
+  TR-03 (opaque `cref_` grants, wrong-origin/account tests) verified; PL-01/02
+  done (no `vector_*`/`@vector/*` product leftovers — only assertions checking
+  their absence); PL-03 consolidated contracts in place.
+- PL-04 gap closed: `tests/smoke/run-suite.mjs` groups the smoke files into
+  named serial suites with per-file timeouts and stray-process cleanup;
+  `pnpm smoke:release` runs the release suite named in handoff §18.1
+  (runtime-recovery, tab-recovery, unsaved-work ×2, conversation-lifecycle/
+  context, private-boundary, authentication-navigation, scoped-agent-connection,
+  local-projects, packaged); `pnpm smoke:all` runs the full inventory. A
+  `desktop smoke (release suite)` CI job now runs it on macOS per PR after
+  `pnpm package:local`.
+- PL-06 gap closed: the handoff doc is committed and `docs/AUX-ROADMAP.md`
+  declares it the release authority; `docs/local-testing.md` documents the
+  suite runner.
+- Recorded as externally blocked (no code claim): J7/J9 real-account and
+  signed-build qualification, PL-05 signing/notarization/update lanes, TR-04
+  release-ownership/advisory SLAs, §6 budgets on signed builds (this-host
+  measurements in `docs/perf/`), the frozen ≥15-task R1 corpus with paid
+  inference, and §18.5 human pilot observations.
+- Lint: `npx oxlint tests/smoke/run-suite.mjs` clean.
+
 ## 2026-09-22 — Desktop smoke suite green (full sweep)
 
 - Ran the entire `tests/smoke/*.mjs` desktop suite serially on macOS (real

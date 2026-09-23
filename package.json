@@ -18,6 +18,8 @@
     "test:unit": "vitest run tests/unit apps/desktop/renderer",
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "smoke:packaged": "node tests/smoke/packaged.mjs",
+    "smoke:release": "node tests/smoke/run-suite.mjs release",
+    "smoke:all": "node tests/smoke/run-suite.mjs all",
     "bench": "node tests/benchmarks/run.mjs",
     "package": "node scripts/package-local.mjs",
     "package:local": "node scripts/package-local.mjs",

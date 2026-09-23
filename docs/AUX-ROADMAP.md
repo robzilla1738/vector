@@ -4,6 +4,12 @@ Active implementation roadmap, 2026-09-20. This supersedes previous delivery
 boundaries. The previous roadmap is preserved in
 [planning/aux-roadmap-2026-09-20-previous.md](planning/aux-roadmap-2026-09-20-previous.md).
 
+> **Authority (2026-09-22):** the product and engineering direction is
+> [AUX-ROADMAP-2026-09-22.md](AUX-ROADMAP-2026-09-22.md) — its work packages
+> (BR/CH/AI/WS/ME/SK/TR/PL), trust rules, release sequence, and acceptance
+> criteria are the release authority. This document remains the implementation
+> phase tracker; where the two differ, the 2026-09-22 handoff wins.
+
 ## Direction and decisions
 
 Build one continuous experience: browse → ask → act → continue → repeat.
