@@ -851,20 +851,34 @@ export const useStore = create<Workspace>((set, get) => ({
     let foreground: string | undefined;
     let lastOpened: string | undefined;
     set({ reopeningTab: true });
+    // The catalog patch can lag behind a resolved open — the page may take a
+    // moment to land in `pages`. Wait for it (bounded) before writing order,
+    // else an interim syncOrder drops the id and the tab ends up appended
+    // instead of at its recorded position.
+    const awaitPage = (id: string) => new Promise<boolean>(resolve => {
+      if (get().pages.some(item => item.pageId === id)) return resolve(true);
+      const timer = setTimeout(() => { unsub(); resolve(false); }, 3000);
+      const unsub = useStore.subscribe(state => { if (state.pages.some(item => item.pageId === id)) { clearTimeout(timer); unsub(); resolve(true); } });
+    });
     try {
       for (const entry of entries) {
         if (get().layout.archivedSpaces?.some(space => space.id === entry.spaceId)) {
           get().syncBrowserSpaces(await call<BrowserSpace[]>("spaces.update", { id: entry.spaceId, archived: false }));
         }
         const destinationSpace = get().layout.spaces.some(space => space.id === entry.spaceId) ? entry.spaceId : get().layout.activeSpaceId;
-        const page = entries.length > 1
+        let page = entries.length > 1
           ? await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId, entry.index)
           : await get().newTab(entry.url, entry.pageId, entry.index);
+        if (!page && entry.pageId && await awaitPage(entry.pageId)) {
+          // The catalog acknowledged the open while its patch was still in
+          // flight — the tab did land, it just wasn't visible yet.
+          page = get().pages.find(item => item.pageId === entry.pageId) ?? null;
+        }
         if (!page) return; // Keep the entry available if opening failed.
         lastOpened = page.pageId;
         if (entry.wasActive) foreground = page.pageId;
+        await awaitPage(page.pageId);
         set(state => {
-          if (!state.pages.some(item => item.pageId === page.pageId)) return {};
           const spaceId = state.layout.spaces.some(space => space.id === entry.spaceId) ? entry.spaceId : state.layout.activeSpaceId;
           let layout = assignSpace(state.layout, page.pageId, spaceId);
           const folder = layout.folders.find(folder => folder.id === entry.folderId && folder.spaceId === spaceId);
