@@ -459,7 +459,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {!connected && <p className="hint" role="status">Connecting to Aux… You can keep writing.</p>}
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
       {taskBound ? <>
-      <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
+      <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || historySaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
 
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}

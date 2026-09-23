@@ -71,17 +71,17 @@ try {
   await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
   await actions(page, "Autumn weekend planning");
   await page.getByRole("menuitem", { name: /Archive/ }).click();
-  await page.getByRole("button", { name: "Archived", exact: true }).click();
+  await page.getByRole("region", { name: "Conversation history", exact: true }).getByRole("button", { name: "Archived", exact: true }).click();
   await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
   await page.screenshot({ path: join(artifactOutput, "aux-conversation-lifecycle-archived.png") });
   await app.close(); app = undefined;
 
   app = await launch(); page = await shell(); await history(page);
-  await page.getByRole("button", { name: "Archived", exact: true }).click();
+  await page.getByRole("region", { name: "Conversation history", exact: true }).getByRole("button", { name: "Archived", exact: true }).click();
   await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
   await actions(page, "Autumn weekend planning");
   await page.getByRole("menuitem", { name: /Restore/ }).click();
-  await page.getByRole("button", { name: "Active", exact: true }).click();
+  await page.getByRole("region", { name: "Conversation history", exact: true }).getByRole("button", { name: "Active", exact: true }).click();
   await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
   await actions(page, "Autumn weekend planning");
   await page.getByRole("menuitem", { name: /Delete/ }).click();

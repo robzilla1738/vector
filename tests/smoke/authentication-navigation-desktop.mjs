@@ -17,7 +17,7 @@ const rp=createServer((req,res)=>{
     res.end(`<title>Signed in</title><body data-state="${url.searchParams.get('state')??''}">Signed in<script>opener.postMessage('sso-complete',${JSON.stringify(rpBase)});window.close()</script></body>`);return;
   }
   if(req.url==='/background') {res.end('<title>Background destination</title><body data-referrer=""><script>document.body.dataset.referrer=document.referrer</script></body>');return;}
-  res.end('<title>Relying party</title><a id="background" href="/background" target="_blank">Open background</a><output></output><script>addEventListener("message",event=>{if(event.origin===location.origin)document.querySelector("output").textContent=event.data})</script>');
+  res.end('<title>Relying party</title><body style="padding-top:80px"><a id="background" href="/background" target="_blank">Open background</a><output></output><script>addEventListener("message",event=>{if(event.origin===location.origin)document.querySelector("output").textContent=event.data})</script>');
 });
 const idp=createServer((req,res)=>{
   res.setHeader('Content-Type','text/html');

@@ -39,8 +39,10 @@ try {
  assert.deepEqual(await bounds(),before);
  const frost=await app.evaluate(async({webContents},url)=>webContents.getAllWebContents().find(w=>w.getURL().startsWith(url)).executeJavaScript(`(()=>{const el=document.getElementById('aux-sidebar-glass');return el&&getComputedStyle(el).backdropFilter})()`),url);
  assert.match(frost,/blur\(28px\)/);
- const png=await app.evaluate(async({desktopCapturer,BaseWindow})=>{const id=BaseWindow.getAllWindows()[0].getMediaSourceId();return (await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}})).find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
+  // Hosted macOS cannot grant Screen Recording; optional compositor evidence must not block input assertions.
+ const png=process.env.CI ? null : await app.evaluate(async({desktopCapturer,BaseWindow,systemPreferences})=>{if(systemPreferences.getMediaAccessStatus("screen")!=="granted")return null;const id=BaseWindow.getAllWindows()[0].getMediaSourceId();return (await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}})).find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
  if(png)writeFileSync(root+'/release/test-artifacts/tabs/floating-sidebar.png',Buffer.from(png,'base64'));
+  else await page.screenshot({path:root+'/release/test-artifacts/tabs/floating-sidebar-shell.png'});
  await page.mouse.click(800,500);await settle();
  assert.equal(await page.locator('.sidebar').isVisible(),false,'outside click closes panel');assert.deepEqual(await bounds(),before);
  await page.mouse.move(2,150);await page.locator('.sidebar.peek').waitFor();await settle();

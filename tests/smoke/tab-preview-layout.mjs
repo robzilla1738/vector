@@ -37,8 +37,10 @@ try {
   assert.deepEqual(await bounds(),before,'preview must not move/resize the native web page');
   const viewport=await page.evaluate(()=>({width:innerWidth,height:innerHeight}));
   assert.ok(loaded.x>=8&&loaded.y>=8&&loaded.x+loaded.width<=viewport.width-7&&loaded.y+loaded.height<=viewport.height-7);
-  const png=await app.evaluate(async({desktopCapturer,BaseWindow})=>{const id=BaseWindow.getAllWindows()[0].getMediaSourceId();return (await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}})).find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
+  // Hosted macOS cannot grant Screen Recording; optional compositor evidence must not block input assertions.
+  const png=process.env.CI ? null : await app.evaluate(async({desktopCapturer,BaseWindow,systemPreferences})=>{if(systemPreferences.getMediaAccessStatus("screen")!=="granted")return null;const id=BaseWindow.getAllWindows()[0].getMediaSourceId();return (await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}})).find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
   if(png)writeFileSync(root+`/release/test-artifacts/tabs/preview-${layout}.png`,Buffer.from(png,'base64'));
+  else await page.screenshot({path:root+`/release/test-artifacts/tabs/preview-${layout}-shell.png`});
   await page.keyboard.press('Escape');await preview.waitFor({state:'hidden'});
   assert.deepEqual(await bounds(),before,'dismissing must not move the native web page');
   await page.mouse.move(1100,700);

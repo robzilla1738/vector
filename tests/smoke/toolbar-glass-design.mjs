@@ -66,8 +66,10 @@ try {
   await new Promise(r=>setTimeout(r,150));
   assert.ok(await nativeRead('scrollY')>0,'page scroll works with bar raised');
   assert.ok(await nativeRead('window.framesSeen')>frames,'page animation continues');
-  const png=await app.evaluate(async({desktopCapturer,BaseWindow})=>{const id=BaseWindow.getAllWindows()[0].getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}});return sources.find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
+  // Hosted macOS cannot grant Screen Recording; optional compositor evidence must not block input assertions.
+  const png=process.env.CI ? null : await app.evaluate(async({desktopCapturer,BaseWindow,systemPreferences})=>{if(systemPreferences.getMediaAccessStatus("screen")!=="granted")return null;const id=BaseWindow.getAllWindows()[0].getMediaSourceId();const sources=await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}});return sources.find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
   if(png)writeFileSync(root+`/release/test-artifacts/tabs/toolbar-${variant}.png`,Buffer.from(png,'base64'));
+  else await page.screenshot({path:root+`/release/test-artifacts/tabs/toolbar-${variant}-shell.png`});
   await page.mouse.move(600,400);
   await bar.dispatchEvent('pointerleave');
   await page.evaluate(()=>document.activeElement?.blur());
