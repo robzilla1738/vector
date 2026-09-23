@@ -626,7 +626,6 @@ export const useStore = create<Workspace>((set, get) => ({
    * renderer never has to guess.
    */
   applyTabsPatch: (patch) => {
-    let activateNext: string | undefined;
     let resyncNeeded = false;
     let windowChoseActive = false;
     set((st) => {
@@ -667,7 +666,9 @@ export const useStore = create<Workspace>((set, get) => ({
         } else if (op.op === "remove") {
           const applied = applyRemoval({ ...st, pages, layout, closedTabs, previews, zoomLevels, activePageId, splitPageId }, op.pageId, null);
           ({ pages, closedTabs, previews, zoomLevels, layout, activePageId, splitPageId } = applied.next);
-          activateNext = applied.activateNext ?? activateNext;
+          // No activateNext: a catalog remove is always followed by main's own
+          // successor (a same-patch or focusPage window op) — commanding a local
+          // neighbour pick races the runtime's return-target choice.
           layoutDirty = true;
         } else if (op.op === "window" && op.window.windowId === bridge.windowId) {
           windowChoseActive = true;
@@ -685,9 +686,6 @@ export const useStore = create<Workspace>((set, get) => ({
       return { pages, layout, closedTabs, previews, zoomLevels, activePageId, splitPageId, catalogVersion: patch.version };
     });
     if (resyncNeeded) void get().resyncTabs();
-    // The catalog's window op carries main's activation pick — only command
-    // our local pick when no op arrived (out-of-band destroy).
-    else if (activateNext && !windowChoseActive) void tabCommand({ kind: "activate", pageId: activateNext }).catch(() => {});
   },
 
   syncTabsSnapshot: (snapshot) => {

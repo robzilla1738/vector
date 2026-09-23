@@ -1229,7 +1229,11 @@ const viewHooks = {
     // A stale destroy from a superseded instance must not touch the current
     // view's bookkeeping — the pageId already has a fresh view registered.
     const registered = registry.get(pageId);
-    if (registered && registered.view.webContents !== wc) return;
+    // Electron hands out a fresh webContents wrapper per access, so === is
+    // meaningless — compare the stable wc id through byWcId instead. A stale
+    // destroy from a superseded view no longer owns a byWcId slot and must not
+    // touch the fresh entry's bookkeeping.
+    if (registered && registry.byWebContentsId(wc.id) !== registered) return;
     forgetPageLifecycle(pageId); registry.remove(pageId); pageWindowOwners.delete(pageId);
     for (const [key, pending] of pendingVaultSaves) if (pending.pageId === pageId) { clearTimeout(pending.timer); pendingVaultSaves.delete(key); }
     // view.removed must land before the catalog remove: the catalog path skips
