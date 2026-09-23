@@ -1,5 +1,16 @@
 # Aux implementation progress
 
+## 2026-09-23 — Loaded-page chrome
+
+- A loaded page clips to the main column's corner (`--stage-radius` follows
+  `--r-xl`; a hidden sidebar stays square). Traffic lights for the 40px
+  toolbar are `{ x: 16, y: 13 }`.
+- The address row fades out by its bottom edge. The URL and toolbar buttons
+  stay clickable. Edge hover grows the same glass sidebar beside the page.
+- A full-page chat is opaque, so a parked page cannot show through it. With
+  the sidebar hidden, the title uses the traffic-light inset. The composer
+  is the reply field, dictation, and send.
+
 ## 2026-09-23 — Excellence pass + merged to main (PR #23)
 
 - Holistic verification sweep of the whole workstream: `npm run typecheck`

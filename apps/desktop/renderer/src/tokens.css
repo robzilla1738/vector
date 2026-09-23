@@ -61,7 +61,7 @@
   --sidebar-rail-w: 56px;
   --rail-w: 400px;
   --stage-inset: 0px;
-  --stage-radius: 0px;
+  --stage-radius: var(--r-xl);
 
   --ico: 16px;
   --ico-sm: 14px;

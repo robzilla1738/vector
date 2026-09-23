@@ -18,7 +18,7 @@ Nothing in the shell talks to Electron except through the preload
 ├── .degraded                     runtime-disconnected banner (full width, only when offline)
 └── .app-body
     ├── .sidebar                  pins · bookmarks · chats · tabs/folders · space footer
-    │                             fully hidden or floating edge-hover peek when closed
+    │                             fully hidden; edge hover grows the same glass column
     └── .main-col
         ├── .toolbar              loaded page: out of flow until top-edge hover or focus; otherwise a 40px row
         └── .main
@@ -34,14 +34,14 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | File | Role |
 | --- | --- |
 | `App.tsx` | Frame, shortcut dispatch (renderer + main-process shortcuts), stage-rect reporting to the native view, `narrow` media query |
-| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode with floating edge peek, tab/folder context menus. A web tab dropped on Bookmarks is saved |
-| `components/Toolbar.tsx` | On a loaded page the row is out of the layout until the pointer reaches the top or the field is focused. Back/forward/reload, `CommandBar`, the controller chip, overview, bookmark and the rail toggle reveal together. Touch keeps the row in the layout. ⌘L still focuses it |
+| `components/Sidebar.tsx` | Space switcher, row-filling pins, collapsible bookmarks/chats/tabs, tab folders, drag-reorder, fully hidden mode. Edge hover grows the same glass column beside the page; it does not float a card over it. A web tab dropped on Bookmarks is saved |
+| `components/Toolbar.tsx` | On a loaded page the row is out of the layout until the pointer reaches the top or the field is focused. A frost on the page fades out by the bottom of that row. Back/forward/reload, `CommandBar`, the controller chip, overview, bookmark and the rail toggle reveal together and stay clickable. Touch keeps the row in the layout. ⌘L still focuses it |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again). The primary suggestion's enter mark is the same circular accent up-arrow as the composer send control. Other hints stay text keys |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
 | `components/Stage.tsx` | Inset rounded card; load progress line; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `MockPage` in mock mode |
 | `components/AgentRail.tsx` | Rail chrome, home view (live, sets, searchable past runs — virtualized at 30+), composer, `ResizeHandle` |
 | `components/RunPanel.tsx` | Goal, status/elapsed/model calls/cost, page chip, takeover banner + Return control, needs-input prompt, final answer with copy, `StepTimeline`, `ObservationPanel` |
-| `components/Conversation.tsx` | Chat transcript and composer. A web-tab context shows a live preview of that page beside the messages as soon as the chat opens. The globe hides it. The preview is a sibling of the message column and hides when the chat column is under 900px. Clicking it offers Open in tab, and Split view only when `previewSplit` can pair the page with the current tab or another tab in the same Space. The composer plus opens one attachment row — Document, Page, Image, Capture — not a history or memory switcher. A finished turn hides options and work history |
+| `components/Conversation.tsx` | Chat transcript and composer. The chat surface is opaque, so a parked page underneath the shell cannot show through. A web-tab context shows a live preview of that page beside the messages as soon as the chat opens. The globe hides it. The preview is a sibling of the message column and hides when the chat column is under 900px. Clicking it offers Open in tab, and Split view only when `previewSplit` can pair the page with the current tab or another tab in the same Space. The composer is the reply field, dictation, and send; paste still adds images. With the sidebar hidden, the title uses the traffic-light inset |
 | `components/StepTimeline.tsx` | Steps with outcome, duration, detail, inspect-observation affordance |
 | `components/ObservationPanel.tsx` | Compact observation: title/url/viewport, headings, refs, raw text |
 | `components/SetPanel.tsx` | Set status, per-member segmented bar, member grid, failed list, Results |
@@ -69,7 +69,7 @@ listener and from the main-process accelerator relay.
 | ⌃Tab / ⌃⇧Tab, ⌘⌥← / → , ⌘⇧[ / ] | Cycle tabs |
 | ⌘⇧A | Toggle agent rail |
 | ⌘⇧O | Tab overview |
-| ⌘S | Hide / expand sidebar (no logo strip; edge-hover peek) |
+| ⌘S | Hide / expand sidebar (no logo strip; edge hover grows the glass column) |
 | ⌘D / ⌘⇧D | Bookmark page / bookmark all tabs |
 | ⌘F, ⌘G / ⌘⇧G | Find in page, next / previous match |
 | ⌘R / ⌘⇧R | Reload / hard reload |
@@ -107,12 +107,14 @@ property defined once in `tokens.css`. Components never introduce literals.
 - **Shell metrics** — `--toolbar-h 40`, fully closed sidebar width 0;
   both panels are user-resizable and their widths persist in
   localStorage `aux.sb-w` / `aux.rail-w`. Controls are 28/32px;
-  `--traffic-inset 80` (macOS traffic lights). On a loaded page the native
-  view radius is 0 so the page sits flush; the rounded edge is `.main-col`,
-  with a 14px radius on the stage card in horizontal tabs. The window glass
-  matches the window corner radius and stays unclipped, so the corner stays
-  clear. The home Tab hint matches the Search and Ask pills (26px, medium
-  weight, same radius and fill).
+  `--traffic-inset 80` (macOS traffic lights). For the 40px toolbar the
+  light position is `{ x: 16, y: 13 }`: `y` is the top of the 13px circles.
+  A loaded page uses the main column's corner (`--stage-radius` is
+  `--r-xl`; a hidden sidebar stays square). Horizontal tabs keep a 14px
+  card radius in CSS. The window glass matches the window corner radius
+  and stays unclipped. The home Tab hint matches the Search and Ask pills
+  (26px, medium weight, same radius and fill). With the sidebar hidden, a
+  full-page chat title uses the traffic-light inset.
 - **Motion** — `--t-fast 150`, `--t-med 150`, `--t-slow 240` ms; toolbar reveal 180ms; eases
   `--ease-out`, `--ease-spring`, `--ease-in-out`. `prefers-reduced-motion`
   zeroes the durations and collapses every animation/transition to 0.01 ms.
@@ -197,8 +199,9 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
   `offscreen-holds.test.ts`, `page-pointer.test.ts`).
 - `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
   (native material layering, row-filling pins, coordinated toolbar reveal,
-  the suggestion send mark, round tab-close targets, settings groups, and
-  the one-row attachment composer). `workspace.test.ts` covers `previewSplit`.
+  the suggestion send mark, round tab-close targets, settings groups,
+  the glass sidebar column, and the hidden attachment row in chat).
+  `workspace.test.ts` covers `previewSplit`.
 
 ## Runtime contract dependencies
 

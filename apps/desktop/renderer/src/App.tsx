@@ -41,8 +41,6 @@ const Tasks = deferSurface(async () => { const module = await import("./componen
 type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string };
 type StoreState = ReturnType<typeof useStore.getState>;
 
-const STAGE_RADIUS = 0;
-
 export function App() {
   useBrowsingMemory();
   useEffect(()=>{
@@ -288,6 +286,8 @@ export function App() {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const r = el.getBoundingClientRect();
+        const shell = el.closest(".main-col");
+        const stageRadius = shell ? Math.round(parseFloat(getComputedStyle(shell).borderTopLeftRadius) || 0) : 0;
         const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
         const companion = splitCompanion;
         const split = showPage && companion && companion.pageId !== showPage && nativePageId({mode,overlay,activePageId:companion.pageId,...companion}) ? splitPageId : null;
@@ -299,7 +299,7 @@ export function App() {
           { x: Math.round(r.x), y: Math.round(r.y), width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) },
           menus,
         );
-        void bridge.setStage(showPage, fitted, split, STAGE_RADIUS, splitRatio);
+        void bridge.setStage(showPage, fitted, split, stageRadius, splitRatio);
       });
     };
     const ro = new ResizeObserver(report);

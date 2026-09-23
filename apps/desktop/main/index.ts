@@ -1,5 +1,6 @@
 import { saveWorkbookSnapshot } from "./save-workbook.js";
 import { setWindowMaterial } from "./window-material.js";
+import { trafficLights } from "./traffic-lights.js";
 import { showNavigationMenu } from "./navigation-menu.js";
 import { splitRatio, splitWidths } from "@aux/contracts/split-layout";
 import { dictationStatus, startDictation, stopDictation, cancelDictation } from "./dictation.js";
@@ -43,6 +44,7 @@ import { resolveBrowserProfileDirectory, resolveDataDirectory } from "@aux/contr
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
 import { createPageView, destroyPageView, downloadsSession, profileSession } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
+import { recolorToolbarGlass, syncToolbarGlass } from "./toolbar-glass.js";
 import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
 import { interruptedDownloadHistory } from "./download-recovery.js";
 import { controlDownload } from "./download-control.js";
@@ -351,6 +353,7 @@ nativeTheme.on("updated", () => {
     setWindowMaterial(state.win, glass ? requestedMaterial : null);
     state.shellView.setBackgroundColor(glass ? "#00000000" : WINDOW_BG[nativeTheme.shouldUseDarkColors ? "dark" : "light"]);
   }
+  recolorToolbarGlass(nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
 });
 function applyAppearance(theme: "system" | "dark" | "light", translucent = requestedGlass, material = requestedMaterial) {
   requestedGlass = translucent;
@@ -1790,6 +1793,7 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
       if(shown){wakePage(entry);entry.view.setBounds({x:0,y:0,width:size.width,height:size.height});entry.view.setBorderRadius(0);win.contentView.addChildView(entry.view);}
     }
     syncToolbarEdge();
+    syncToolbarGlass(state.id, [], false, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
     return;
   }
   // The tab the stage wants must exist — restored/discarded records
@@ -1847,6 +1851,15 @@ function applyStage(state = stateForWindowId(PRIMARY_WINDOW_ID)) {
   }
   placeChrome(state);
   syncToolbarEdge();
+  syncToolbarGlass(state.id, stageWebContents(state), state.toolbarOverlay, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
+}
+
+function stageWebContents(state: RegularWindowState): Electron.WebContents[] {
+  return [state.stagePageId, state.splitPageId].flatMap(id => {
+    const entry = id ? registry.get(id) : undefined;
+    if (!entry || entry.popup || (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id || entry.view.webContents.isDestroyed() || !entry.view.getVisible()) return [];
+    return [entry.view.webContents];
+  });
 }
 
 function placeChrome(state: RegularWindowState) {
@@ -1858,7 +1871,7 @@ function placeChrome(state: RegularWindowState) {
   }
   if (state.win.isDestroyed()) return;
   // The address bar lives in the shell. Raise that view while it is open so it paints over the page instead of pushing the page down.
-  if (state.sidebarPeek || state.toolbarOverlay) {
+  if (state.toolbarOverlay) {
     state.chromeOnTop = true;
     state.win.contentView.addChildView(state.shellView);
     return;
@@ -2162,15 +2175,9 @@ function wireRendererIpc() {
   });
   ipcMain.handle("ui.sidebarPeek", (event, open: unknown) => {
     const state = requireShellUi(event);
+    // The preview is a real column beside the page, same as the open sidebar.
+    // Raising the shell over the page is what made the old card flicker.
     state.sidebarPeek = open === true;
-    state.win.contentView.addChildView(state.shellView);
-    if (!state.sidebarPeek) {
-      for (const pageId of [state.stagePageId, state.splitPageId]) {
-        const entry = pageId ? registry.get(pageId) : undefined;
-        if (entry && !entry.popup && (entry.windowId ?? PRIMARY_WINDOW_ID) === state.id) state.win.contentView.addChildView(entry.view);
-      }
-    }
-    applyStage(state);
     return true;
   });
   ipcMain.handle("ui.focusShell", event => { requireShellUi(event).shellView.webContents.focus(); });
@@ -2846,7 +2853,7 @@ async function createRegularWindow(id = `window-${randomUUID()}`, quickAsk = fal
     show: !quickAsk,
     // A square system shadow sits outside the rounded panel. The panel draws its own.
     hasShadow: quickAsk ? false : undefined,
-    title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: quickAsk ? { x: 30, y: 26 } : { x: 16, y: 18 }, roundedCorners: true,
+    title: `${quickAsk ? "Ask Aux" : "Aux"} — ${currentProfileName}`, titleBarStyle: "hiddenInset", trafficLightPosition: quickAsk ? { x: 30, y: 26 } : trafficLights, roundedCorners: true,
   });
   const regularShell = new WebContentsView({ webPreferences: {
     preload: join(import.meta.dirname, "..", "preload", "index.cjs"),

@@ -3,6 +3,14 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Loaded-page chrome
+
+A loaded page uses the main column's corner. The address row fades out by
+its own bottom edge and stays clickable. Hovering the left edge grows the
+same glass sidebar beside the page. A chat covers a page kept alive under
+the shell, and with the sidebar hidden its title clears the traffic lights.
+The composer is the reply field, dictation, and send.
+
 ## Desktop chrome (PR #16)
 
 The search suggestion's primary enter mark is the same circular accent

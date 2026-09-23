@@ -1,4 +1,5 @@
 import { saveWorkbookSnapshot } from "./save-workbook.js";
+import { trafficLights } from "./traffic-lights.js";
 import { showNavigationMenu } from "./navigation-menu.js";
 import { splitRatio as normalizeSplitRatio, splitWidths } from "@aux/contracts/split-layout";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
@@ -16,6 +17,7 @@ import { wirePageFullscreen, fullscreenContents, exitPageFullscreen } from "./pa
 import { pageShortcut } from "./page-shortcuts.js";
 import { installNavGesture } from "./native-views.js";
 import { attachToolbarEdgeWatch } from "./toolbar-edge-watch.js";
+import { recolorToolbarGlass, syncToolbarGlass } from "./toolbar-glass.js";
 import { boundsContaining, cssCursor, inputEventFor, readPagePointer } from "./page-pointer.js";
 /**
  * Aux private browser process.
@@ -209,6 +211,7 @@ function applyStage(focus = false) {
       if(shown){page.view.setBounds({x:0,y:0,width:size.width,height:size.height});page.view.setBorderRadius(0);win.contentView.addChildView(page.view);}
     }
     toolbarEdge?.sync();
+    syncToolbarGlass("private", [], false, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
     return;
   }
   const visible = (id: string | null) => {
@@ -244,6 +247,8 @@ function applyStage(focus = false) {
     }
   }
   toolbarEdge?.sync();
+  const open = [primary, companion].flatMap(page => page && !page.view.webContents.isDestroyed() ? [page.view.webContents] : []);
+  syncToolbarGlass("private", open, toolbarOverlay, nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);
 }
 
 function activate(pageId: string, viaController = false) {
@@ -666,7 +671,7 @@ function registerIpc() {
     const local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
     return {pageId,url:url.href,origin:url.origin,title:wc.getTitle(),security:url.protocol==='https:'?'secure':local?'local':'insecure',cookieCount:cookies.length,permissions:{...permissionDecisions[url.origin]},trackersAllowed:privateTrackersAllowed(url.hostname)};
   });
-  ipcMain.handle("ui.setAppearance",(event,theme:"system"|"dark"|"light",translucent=false)=>{requireShell(event);nativeTheme.themeSource=theme;const glass=translucent&&!nativeTheme.prefersReducedTransparency&&process.platform==="darwin";win?.setVibrancy(glass?"under-window":null);shellView?.setBackgroundColor(glass?"#00000000":nativeTheme.shouldUseDarkColors?"#1c1c1e":"#e4e4e1");return true;});
+  ipcMain.handle("ui.setAppearance",(event,theme:"system"|"dark"|"light",translucent=false)=>{requireShell(event);nativeTheme.themeSource=theme;const glass=translucent&&!nativeTheme.prefersReducedTransparency&&process.platform==="darwin";win?.setVibrancy(glass?"under-window":null);shellView?.setBackgroundColor(glass?"#00000000":nativeTheme.shouldUseDarkColors?"#1c1c1e":"#e4e4e1");recolorToolbarGlass(nativeTheme.shouldUseDarkColors, nativeTheme.prefersReducedTransparency);return true;});
 
   ipcMain.handle("ui.readArticle",(event,pageId:string)=>{
     requireShell(event);const page=pages.get(pageId);
@@ -790,7 +795,7 @@ process.on("message",message=>{
 async function boot(){
   const shellSession=session.fromPartition(`aux-private-shell-${process.pid}`,{cache:false});
   configurePermissions();registerIpc();
-  win=new BaseWindow({width:1320,height:900,minWidth:900,minHeight:620,title:"Aux — Private",titleBarStyle:"hiddenInset",trafficLightPosition:{x:16,y:18},roundedCorners:true,backgroundColor:"#1c1c1e"});
+  win=new BaseWindow({width:1320,height:900,minWidth:900,minHeight:620,title:"Aux — Private",titleBarStyle:"hiddenInset",trafficLightPosition:trafficLights,roundedCorners:true,backgroundColor:"#1c1c1e"});
   shellView=new WebContentsView({webPreferences:{preload:join(import.meta.dirname,"..","preload","index.cjs"),session:shellSession,additionalArguments:["--aux-private-renderer"],contextIsolation:true,sandbox:true,nodeIntegration:false}});
   shellView.setBackgroundColor("#1c1c1e");win.contentView.addChildView(shellView);
   toolbarEdge=attachToolbarEdgeWatch(win,shellView.webContents,()=>({page:!!stagePageId&&!overlayOpen,stage:stageBounds}));

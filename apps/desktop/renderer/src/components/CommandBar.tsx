@@ -380,7 +380,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       </span>
       <div className="cb-field">
         {!editing && (
-          <span className="cb-display" aria-hidden onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus(); }}>
+          <span className="cb-display" aria-hidden onMouseDown={(e) => { e.preventDefault(); const input = inputRef.current; if (!input) return; input.focus(); void bridge.focusShell().then(() => input.focus()).catch(errToast); }}>
             {hasPage && !hero ? (
               compact ? (
                 <span className="cb-title">{hostOf(pageAddress)}</span>
@@ -451,7 +451,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             void submit(() => chosen && sel > 0 ? chosen.run() : exec(intent));
           }}
         >
-          {intent.kind === "run" ? I.send : I.enter}
+          {I.send}
         </button>
       )}
       {suggestions.length > 0 && (

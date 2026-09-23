@@ -207,7 +207,7 @@ kbd {
 .cmdbar {
   flex: 2.2; position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--control-h-lg);
   max-width: 760px; min-width: 200px; padding: 0 var(--space-2) 0 var(--space-2);
-  background: var(--bg-2); border-radius: var(--r-lg); box-shadow: var(--line-inset), var(--highlight-inset);
+  background: var(--bg-2); border-radius: var(--r-lg); --cb-radius: var(--r-lg); box-shadow: var(--line-inset), var(--highlight-inset);
   -webkit-app-region: no-drag;
   transition: box-shadow var(--t-med) var(--ease-out), background var(--t-med) var(--ease-out);
 }
@@ -260,7 +260,7 @@ kbd {
   min-width: 0;
   height: var(--control-h-lg);
   padding: 0 var(--space-3) 0 var(--space-2);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-xl); --cb-radius: var(--r-xl);
   background: var(--sb-field);
   box-shadow: var(--sb-selected-shadow);
 }
@@ -286,7 +286,7 @@ kbd {
   max-width: none;
   height: var(--control-h-hero);
   padding: 0 var(--space-4) 0 var(--space-3);
-  border-radius: var(--r-2xl);
+  border-radius: var(--r-2xl); --cb-radius: var(--r-2xl);
   background: var(--bg-2);
   box-shadow: var(--line-inset), var(--shadow-sm);
 }
@@ -299,18 +299,17 @@ kbd {
   width: var(--control-h);
   height: var(--control-h);
   display: grid; place-items: center; flex: none;
-  border-radius: var(--r-md); color: var(--ink-0); background: var(--bg-3);
 }
 .cb-send:hover { background: var(--bg-hover); }
 
 .cb-pop {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: var(--z-drawer);
   background: var(--bg-1);
-  border-radius: var(--r-xl); box-shadow: var(--shadow-pop), var(--line-inset); padding: var(--space-1);
+  border-radius: var(--cb-radius); box-shadow: var(--shadow-pop), var(--line-inset); padding: 0; overflow-x: hidden;
   max-height: 420px; overflow-y: auto;
 }
 .cb-section { font-size: var(--fs-2xs); font-weight: 500; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--ink-2); padding: var(--space-2) var(--space-3) var(--space-1); }
-.cb-opt { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--r-md); min-height: var(--row-h-lg); }
+.cb-opt { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 0; min-height: var(--row-h-lg); }
 .cb-opt.sel { background: var(--bg-hover); }
 .cb-opt.intent.sel { background: var(--accent-soft); }
 .cmdbar.intent-run .cb-opt.intent.sel { background: var(--agent-soft); }
@@ -733,6 +732,11 @@ body.resizing .rail { transition: none; }
 
 .answer { position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--control-h) 0 0; user-select: text; }
 .answer-copy { position: absolute; top: 0; right: 0; }
+.conversation .answer { flex-direction: row; align-items: flex-start; width: fit-content; max-width: 62ch; padding-right: 0; }
+.conversation .answer-tools { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; opacity: 0; }
+.conversation .answer-tools .answer-copy { position: static; }
+.conversation .answer:hover .answer-tools,
+.conversation .answer:focus-within .answer-tools { opacity: 1; }
 .answer-text { font-size: var(--fs-md); line-height: var(--lh-relaxed); color: var(--ink-0); cursor: text; overflow-wrap: anywhere; }
 .answer-text.err { color: var(--err); }
 .answer-result { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
@@ -1190,7 +1194,8 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .conversation-jump { display: flex; justify-content: center; margin-bottom: 10px; }
 .conversation:not(.conversation-embedded) .conversation-body { justify-content: center; gap: 0; padding: 0 32px 20px; }
 .conversation:not(.conversation-embedded) .conversation-body:has(.conversation-preview) { gap: 28px; align-items: flex-start; }
-.conversation:not(.conversation-embedded) .conversation-main { width: min(680px, 100%); max-width: 680px; margin-inline: auto; padding-top: 36px; }
+.conversation:not(.conversation-embedded) .conversation-main { width: min(680px, 100%); max-width: 680px; margin-inline: auto; padding-top: 8px; }
+.main-col:has(.conversation:not(.conversation-embedded)) > .toolbar { display: none; }
 .conversation:not(.conversation-embedded) .conversation-thread,
 .conversation:not(.conversation-embedded) .conversation-compose-content { max-width: none; }
 .conversation:not(.conversation-embedded) .composer-options { display: none; }
@@ -1815,8 +1820,7 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .conversation .run-provenance { font-size: 11px; margin: 6px 0 12px; color: var(--ink-3); }
 .answer-details { font-size: 12px; color: var(--ink-2); margin-top: 12px; }
 .answer-details summary { cursor: pointer; }
-.conversation .answer-copy { opacity: 0; }
-.conversation .answer:hover .answer-copy, .conversation .answer:focus-within .answer-copy { opacity: 1; }
+
 .site-controls-card { border-radius: 14px; box-shadow: var(--shadow-pop); }
 .site-controls-group { border: 0; border-radius: 10px; }
 @media (max-height: 600px) { .aux-home .start-inner { padding-block: 40px; } }
@@ -1934,7 +1938,8 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .context-body > .hint, .context-body > .conversation-document-list, .context-body .attach-page-picker, .context-body .conversation-capture-rest, .context-body .field-error { flex:1 0 100%; }
 .context-body .btn.sm { height:28px; padding:0 12px; border-radius:999px; background:color-mix(in srgb, var(--ink-0) 6%, transparent); box-shadow:none; color:var(--ink-0); }
 .conversation-context-note > span { flex:1; flex-basis:auto; }
-.conversation .composer-options, .conversation .composer-attach { display:none; }
+.conversation .composer-options, .conversation .composer-attach, .conversation .capture-triggers { display:none; }
+.conversation .conversation-captures { margin: 0; padding: 0; border: 0; }
 .conversation-input > .context-toggle { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: var(--fs-xs); color: var(--ink-2); flex: none; }
 .conversation-input > .context-toggle[aria-expanded="true"] { background: color-mix(in srgb, var(--ink-0) 8%, transparent); color: var(--ink-0); }
 
@@ -2203,7 +2208,7 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 :root[data-sidebar-appearance="translucent"] .sidebar { background: transparent; backdrop-filter: none; }
 .main-col { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; margin: 0; border: var(--hairline) solid var(--line); border-radius: var(--r-xl); background: var(--bg-0); isolation: isolate; overflow: clip; box-shadow: var(--shadow-sm); position: relative; }
 .sidebar, :root[data-sidebar-appearance="translucent"] .sidebar { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; }
-.sidebar { width: var(--sb-w, var(--sidebar-w)); flex: none; display: flex; flex-direction: column; min-height: 0; position: relative; color: var(--sb-ink-0); -webkit-app-region: drag; transition: width var(--t-slow) var(--ease-out); }
+.sidebar { width: var(--sb-w, var(--sidebar-w)); flex: none; display: flex; flex-direction: column; min-height: 0; position: relative; color: var(--sb-ink-0); -webkit-app-region: drag; transition: width var(--t-slow) var(--ease-out); border-radius: var(--r-xl); }
 .toolbar { display: flex; align-items: center; gap: 4px; height: var(--toolbar-h); padding: 0 8px; flex: none; -webkit-app-region: drag; position: relative; z-index: var(--z-panel); background: transparent; border: 0; }
 .toolbar .cmdbar { flex: 1; max-width: none; min-width: 0; background: transparent; box-shadow: none; border: 0; }
 .toolbar .cmdbar.editing { background: var(--surface-primary); box-shadow: var(--line-inset); }
@@ -2232,20 +2237,20 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
   transform: translate3d(0, calc(-100% - 10px), 0);
   transition: transform 560ms cubic-bezier(.22, 1, .36, 1), opacity 560ms cubic-bezier(.22, 1, .36, 1);
 }
+/* Glass only as tall as the address row. The mask is clear before the
+   bottom edge, so the blur fades out instead of ending in a line on the page. */
 .app.electron .main-col:has(.stage-card.has-page) > .toolbar::before {
   content: "";
   position: absolute;
   z-index: -1;
   left: 0;
   right: 0;
-  top: -24px;
-  bottom: -64px;
+  top: 0;
+  bottom: 0;
   pointer-events: none;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--bg-0) 22%, transparent) 0%, color-mix(in srgb, var(--bg-0) 8%, transparent) 38%, transparent 100%);
-  -webkit-backdrop-filter: blur(22px) saturate(1.4);
-  backdrop-filter: blur(22px) saturate(1.4);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--bg-0) 14%, transparent) 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.45) 42%, transparent 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.45) 42%, transparent 72%, transparent 100%);
 }
 .app.electron .main-col:has(.stage-card.has-page) > .toolbar > :is(.cmdbar, .tb-left, .tb-right) {
   opacity: 1;
@@ -2260,19 +2265,11 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
   background: transparent;
   box-shadow: none;
 }
-/* The window buttons sit in the top-left. With the sidebar closed they must not read the page through a clear toolbar. */
-.app.electron:is(.layout-hidden, .layout-rail) .main-col:has(.stage-card.has-page) > .toolbar.traffic::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  left: 0;
-  top: 0;
-  bottom: -18px;
-  width: var(--traffic-inset);
-  pointer-events: none;
-  background: linear-gradient(to bottom, var(--bg-window, var(--bg-0)) 0, var(--bg-window, var(--bg-0)) 34px, transparent 100%);
+/* A fully clear no-drag box is treated as window drag on macOS, so the URL and buttons never receive the click. */
+.app.electron .main-col.toolbar-revealed:has(.stage-card.has-page) > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right) {
+  -webkit-app-region: no-drag;
+  background-color: rgb(0 0 0 / 0.012);
 }
-.app.electron:is(.layout-hidden, .layout-rail) .main-col:has(.stage-card.has-page) > .toolbar.traffic > * { position: relative; z-index: 1; }
 .app.electron:is(.layout-hidden, .layout-rail) .main-col:has(.stage-card.has-page) .stage-wrap > .findbar { padding-left: var(--traffic-inset); }
 :root[data-sidebar-appearance="solid"] .app.toolbar-stacked .sidebar.expanded { background: var(--sb-bg); }
 
@@ -2328,13 +2325,14 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .history-segment { display: flex; gap: 2px; padding: 3px; border: 0; border-radius: var(--r-pill); background: var(--tabs-list); }
 .history-segment button { padding: 4px 10px; border-radius: var(--r-pill); color: var(--ink-2); font-size: var(--fs-xs); font-weight: 500; }
 .history-segment button.active { background: var(--surface-primary); color: var(--ink-0); box-shadow: var(--shadow-sm); }
-.conversation { position: absolute; inset: 0; display: flex; flex-direction: column; background: transparent; container-type: inline-size; }
+.conversation { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg-0); container-type: inline-size; }
 .conversation-body { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 28px; padding: 0 24px 8px 28px; }
 .conversation-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; max-width: 880px; margin-inline: auto; }
 .conversation-body:has(.conversation-preview) .conversation-main { max-width: none; margin-inline: 0; }
 .conversation-embedded .conversation-body { padding: 0; gap: 0; }
 .conversation-embedded .conversation-main { max-width: none; margin: 0; }
-.conversation-head { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 24px 4px 28px; font-weight: 500; font-size: var(--fs-md); }
+.conversation-head { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 2px 20px 0 24px; font-weight: 500; font-size: var(--fs-md); }
+.app.electron:is(.layout-hidden, .layout-rail):not(.sidebar-peek) .conversation:not(.conversation-embedded) > .conversation-head { padding-left: var(--traffic-inset); }
 .conversation-empty { padding: 24px 0; text-align: center; }
 .conversation-empty .aux-mark { display: block; width: 64px; height: 64px; margin: 0 auto; opacity: .12; }
 .conversation-input { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; padding: 8px; border: 0; border-radius: 20px; background: var(--surface-primary); box-shadow: var(--shadow-card); }
@@ -2359,10 +2357,11 @@ html:has(:is(.app.toolbar-stacked, .app.sidebar-peek)) :is(.app, .app-body, .mai
   isolation: auto;
 }
 :root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }
+:root[data-sidebar-appearance="translucent"] .sidebar.peek { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }
 :root[data-sidebar-appearance="translucent"] .stage-card:not(.has-page) { background: transparent; }
 :root[data-sidebar-appearance="solid"] .app-body { background: var(--sb-bg); }
 
-button, input, textarea, select, .cmdbar, .main-col, .menu, .sheet, .palette,
+button, input, textarea, select, .cmdbar, .cb-pop, .main-col, .menu, .sheet, .palette,
 .home-card, .user-message, .conversation-input, .conversation-preview,
 .settings-content .field, .tab-row, .tab-new, .folder-row, .tile-face, .answer-code {
   corner-shape: superellipse(var(--squircle-factor));
@@ -2411,7 +2410,8 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: 999px; }
 .home-mode kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 var(--space-2); border-radius: var(--r-md); corner-shape: superellipse(var(--squircle-factor)); background: var(--tabs-list); color: var(--ink-0); box-shadow: none; font-size: var(--fs-md); font-weight: 500; line-height: 1; }
 .conversation-scroll:has(.conversation-empty) { align-items: center; }
 .conversation-empty h1, .conversation-empty p { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.conversation-input > .icon-btn { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }
+.conversation-input > .icon-btn,
+.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }
 
 .conversation-input > .composer-attach { background: var(--bg-hover); color: var(--ink-2); }
 .conversation-input > .dictation-trigger { flex: none; align-self: center; justify-content: center; width: 28px; height: 28px; font-size: 0; }
@@ -2424,12 +2424,15 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: 999px; }
 .sidebar .tab-row, .sidebar .tab-new, .sidebar .folder-row { min-height: 34px; padding-inline: 8px; font-size: var(--fs-md); }
 .sidebar .folder-block.open { padding: 0; }
 .sidebar .sb-link[aria-current="page"] { box-shadow: none; }
-:root .app .sidebar.peek { position: absolute; left: 8px; top: calc(var(--toolbar-h) + 8px); bottom: 8px; width: var(--sb-w, 280px); z-index: var(--z-peek); pointer-events: auto; overflow: visible; border: var(--hairline) solid var(--line-strong); border-radius: var(--r-xl); background: var(--surface-menu); box-shadow: var(--shadow-dialog); animation: menu-enter 150ms var(--ease-out); -webkit-app-region: no-drag; }
+/* Edge preview uses the same glass column as the open sidebar. It grows in the row; it does not pop a card over the page. */
+.sidebar.peek { background: transparent; border: 0; box-shadow: none; }
+.app.electron .sidebar.fully-hidden.peek { width: var(--sb-w, var(--sidebar-w)); pointer-events: auto; }
 .sidebar.peek .sidebar-content { opacity: 1; transform: none; pointer-events: auto; }
-.sidebar.peek .sb-head { height: 32px; padding-left: 8px; }
-.app.electron .sidebar.expanded .sb-head.electron { padding-left: var(--traffic-inset); }
+.app.electron .sidebar.expanded .sb-head.electron,
+.app.electron .sidebar.peek .sb-head.electron { padding-left: var(--traffic-inset); }
+.app.sidebar-peek.layout-hidden .main-col,
+.app.sidebar-peek.layout-rail .main-col { border-radius: var(--r-xl); }
 :root .app.sidebar-peek .main-col:has(.stage-card.has-page), .app.sidebar-peek .stage-card.has-page { background: transparent; }
-.app.sidebar-peek .main-col:has(.stage-card.has-page) .toolbar { background: var(--bg-0); }
 .sb-bookmarks-empty:hover { color: var(--ink-2); background: var(--bg-hover); }
 .icon-btn:not(:disabled):active, .btn:not(:disabled):active { scale: .97; opacity: .9; }
 .icon-btn, .btn { transition: background var(--t-fast) var(--ease-in-out), color var(--t-fast) var(--ease-in-out), opacity var(--t-fast) var(--ease-in-out), scale var(--t-fast) var(--ease-in-out); }

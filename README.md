@@ -102,20 +102,23 @@ rows when the binaries are on PATH.
 The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
 follows [Aside-inspired visual direction](docs/AUX-DESIGN-DIRECTION.md), retaining
 Aux branding and capabilities. It uses Geist/Geist Mono, Central Icons, native
-macOS material, a fully hidden or edge-revealed sidebar, and a resizable agent
-panel. See the [parity audit](docs/ASIDE-PARITY.md) for remaining verification.
+macOS material, a fully hidden sidebar that grows back as the same glass
+column, and a resizable agent panel. See the [parity audit](docs/ASIDE-PARITY.md)
+for remaining verification.
 
 - `⌘T` new tab · `⌘W` close · `⌘⇧T` reopen · `⌘1–9` switch · `⌃Tab` cycle
 - `⌘L` / `⌘E` focus the **command bar** (new-tab hero or top toolbar).
   On a loaded page the address row stays out of the layout until the pointer
-  reaches the top or the field is focused. A URL or search navigates
+  reaches the top or the field is focused. The row fades out by its own
+  bottom edge and stays clickable. A URL or search navigates
   immediately (no model); a prompt starts an agent run. Prefixes: `/`
   command, `>` force a run, `?` force a search.
 - A conversation with a web tab shows a live preview of that page beside the
-  messages. Click it to open the page in the tab, or in split view when
-  another tab in the Space can share the stage. The composer plus adds a
-  document, page, image, or capture on one row. Drop a web tab on Bookmarks
-  to save it. A tab menu leaves the loaded page visible.
+  messages. The chat itself is opaque, so the open tab does not show through
+  the transcript. Click the preview to open the page in the tab, or in split
+  view when another tab in the Space can share the stage. Drop a web tab on
+  Bookmarks to save it. A tab menu leaves the loaded page visible. With the
+  sidebar hidden, the chat title sits clear of the window buttons.
 - `⌘K` command palette · `⌘⇧A` agent rail · `⌘⇧O` tab overview ·
   `⌘S` collapse the sidebar · `⌘F` find · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom ·
   `⌘[`/`⌘]` back/forward · `⌘Y` history · `⌘⇧J` downloads · `⌘,` settings

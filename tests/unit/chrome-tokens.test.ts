@@ -119,11 +119,17 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).toContain(".app.electron .main-col.toolbar-revealed:has(.stage-card.has-page)");
     expect(styles).toContain("translate3d(0, calc(-100% - 10px), 0)");
     expect(styles).toContain("cubic-bezier(.22, 1, .36, 1)");
-    expect(styles).toContain("backdrop-filter: blur(22px) saturate(1.4)");
+    expect(styles).not.toContain("bottom: -64px");
+    expect(styles).not.toContain("backdrop-filter: blur(22px) saturate(1.4)");
+    expect(styles).toContain("transparent 72%, transparent 100%");
+    expect(styles).toContain(".app.electron .main-col.toolbar-revealed:has(.stage-card.has-page) > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right)");
     expect(styles).toContain("html:has(:is(.app.toolbar-stacked, .app.sidebar-peek)) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)");
     expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail) .main-col:has(.stage-card.has-page) .stage-wrap > .findbar { padding-left: var(--traffic-inset); }");
-    expect(styles).toContain(".app.electron .sidebar.expanded .sb-head.electron { padding-left: var(--traffic-inset); }");
-    expect(styles).not.toContain(".sidebar.peek .sb-head.electron");
+    expect(styles).toContain(".app.electron .sidebar.expanded .sb-head.electron,");
+    expect(styles).toContain(".app.electron .sidebar.peek .sb-head.electron { padding-left: var(--traffic-inset); }");
+    expect(styles).toContain(".app.electron .sidebar.fully-hidden.peek { width: var(--sb-w, var(--sidebar-w)); pointer-events: auto; }");
+    expect(styles).toContain(".app.electron:is(.layout-hidden, .layout-rail):not(.sidebar-peek) .conversation:not(.conversation-embedded) > .conversation-head { padding-left: var(--traffic-inset); }");
+    expect(styles).not.toContain(".sidebar.peek { position: absolute");
   });
 
   it("reveals the URL field and both icon groups together without moving page layout", () => {
@@ -163,11 +169,22 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   const images = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ConversationImages.tsx"), "utf8");
   const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
 
+  it("uses one corner for the address field and its suggestion menu", () => {
+    expect(styles).toContain(".cmdbar, .cb-pop, .main-col");
+    expect(styles).toMatch(/\.cb-pop\s*\{[^}]*border-radius:\s*var\(--cb-radius\)/);
+    expect(styles).toMatch(/\.cb-opt\s*\{[^}]*border-radius:\s*0;/);
+    expect(styles).toContain("--cb-radius: var(--r-xl)");
+    expect(styles).toContain("--cb-radius: var(--r-2xl)");
+  });
+
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
     expect(commandBar).toContain('s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null');
     expect(commandBar).toContain('hint: "Ask"');
     expect(commandBar).toContain('hint: "Switch"');
     expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
+    expect(commandBar).toContain("{I.send}");
+    expect(commandBar).not.toContain("I.enter");
+    expect(styles).toContain(".conversation-input > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
   });
 
   it("keeps a conversation page card live and offers Open in tab and Split view", () => {
@@ -208,24 +225,21 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(styles).toContain(".context-body .conversation-capture-rest");
     expect(styles).toContain(".capture-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; }");
     expect(styles).not.toMatch(/capture-actions[^{]*\{[^}]*display:\s*contents/);
-    expect(conversation).toContain('className="context-body" aria-label="Conversation context"');
+    expect(conversation).not.toContain("context-toggle");
     expect(conversation).not.toContain("conversation-memory-head");
     expect(conversation).not.toContain('aria-label="Context sections"');
-    expect(conversation).toContain('? "Adding…" : "Attach document"}</button>');
     expect(attachPage).toContain(">Page</button>");
     expect(images).toContain('className="capture-triggers"');
     expect(images).toContain('className="conversation-capture-rest"');
     expect(images).toContain(">Image</button>");
     expect(images).toContain(">Capture</button>");
-    expect(conversation).toContain('className="context-toggle" aria-expanded={contextOpen}');
-    expect(styles).toContain(".conversation .composer-options, .conversation .composer-attach { display:none; }");
+    expect(styles).toContain(".conversation .composer-options, .conversation .composer-attach, .conversation .capture-triggers { display:none; }");
     expect(styles).toContain(".conversation .run-msg { display: none; }");
     // Run status (Pause/Stop/state badge) and Work history stay visible in chat panels;
     // hiding them regresses the live-run controls — see .conversation .run-msg above.
     expect(styles).not.toMatch(/\.conversation \.run-status[^{}]*display:\s*none/);
     expect(styles).not.toMatch(/\.conversation \.run-section[^{}]*display:\s*none/);
-    expect(styles).toContain(".conversation-input > .icon-btn { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
-    expect(styles).toContain(".conversation-input > .context-toggle { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: var(--fs-xs); color: var(--ink-2); flex: none; }");
-    expect(styles).toContain(".conversation-input > .context-toggle[aria-expanded=\"true\"] { background: color-mix(in srgb, var(--ink-0) 8%, transparent); color: var(--ink-0); }");
+    expect(styles).toContain(".conversation-input > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
+
   });
 });

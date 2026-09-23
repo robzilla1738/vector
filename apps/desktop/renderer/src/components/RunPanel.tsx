@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, Run } from "@aux/contracts";
 import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
@@ -53,10 +53,27 @@ function ResultFields({ result, labeled }: { result: Record<string, unknown>; la
   ))}</dl>;
 }
 
+function chatReply(run: Run): string | null {
+  const goal = run.goal.trim().toLowerCase();
+  const prose = (value: unknown) => {
+    const text = typeof value === "string" ? value.trim() : "";
+    return text && text.toLowerCase() !== goal ? text : "";
+  };
+  const answer = prose(run.result?.answer);
+  const message = prose(run.statusMessage);
+  if (answer && run.status !== "completed" && message) return `${message}\n\n${answer}`;
+  if (answer) return answer;
+  if (message) return message;
+  if (!run.result) return null;
+  const rest = Object.entries(run.result).flatMap(([key, value]) => key === "answer" ? [] : [prose(value)]).filter(Boolean);
+  return rest.length ? rest.join("\n\n") : null;
+}
+
 /** Final answer as prose — no status chrome, copy is an icon. */
-function Answer({ run, conversation = false }: { run: Run; conversation?: boolean }) {
+function Answer({ run, conversation = false, retry = null }: { run: Run; conversation?: boolean; retry?: ReactNode }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
   const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
+  const reply = conversation ? chatReply(run) : null;
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {
     const parts: string[] = [];
@@ -67,11 +84,21 @@ function Answer({ run, conversation = false }: { run: Run; conversation?: boolea
   }, [run, plainAnswer, showSummary]);
   useEffect(()=>{if(!copied)return;const timer=window.setTimeout(()=>setCopied(false),1200);return()=>window.clearTimeout(timer);},[copied]);
   const copy = () => {
-    void navigator.clipboard.writeText(text).then(() => {
+    void navigator.clipboard.writeText(conversation && reply ? reply : text).then(() => {
       setCopied(true);
     }).catch(errToast);
   };
   if (isLive(run) && !run.error) return null;
+  if (conversation) {
+    if (!reply && !retry && !(run.error && !run.failure)) return null;
+    return (
+      <section className="answer">
+        {reply && <AnswerMarkdown text={reply} />}
+        {(reply || retry) && <span className="answer-tools">{reply && <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>{copied ? I.check : I.copy}</button>}{retry}</span>}
+        {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
+      </section>
+    );
+  }
   if (!run.statusMessage && !run.result && !run.error) return null;
   return (
     <section className="answer">
@@ -83,9 +110,7 @@ function Answer({ run, conversation = false }: { run: Run; conversation?: boolea
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
       {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && (
-        conversation
-          ? <ResultFields result={run.result} labeled={false} />
-          : <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={run.result} labeled /></details>
+        <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={run.result} labeled /></details>
       )}
       {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
     </section>
@@ -211,7 +236,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         <h2>{run.goal}</h2>
       </div>
 
-      <div className="run-status nums">
+      {!(conversation && !live && run.status === "completed") && <div className="run-status nums">
         {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {!conversation && <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>}
         {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
@@ -230,13 +255,11 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
           {live && <button className="icon-btn sm danger" disabled={controlBusy === "stop"} title={controlBusy === "stop" ? "Stopping" : "Stop"} aria-label={controlBusy === "stop" ? "Stopping run" : "Stop run"} onClick={() => void stopRun()}>{I.square}</button>}
           {!live && (run.config?.taskId
             ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{I.layersSm}</button>
-            : conversation && latestConversationTurn && !run.failure
-              ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button>
-              : !conversation && !run.failure
+            : !conversation && !run.failure
                 ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>
                 : null)}
         </span>
-      </div>
+      </div>}
       {!live && latestConversationTurn && !run.config?.taskId && !page && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
         <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</button>
@@ -285,9 +308,9 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </div>
       )}
 
-      <Answer run={run} conversation={conversation} />
+      <Answer run={run} conversation={conversation} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
 
-      {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
+      {!conversation && stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
         <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
         <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
       </details>}
@@ -319,7 +342,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </section>
       )}
 
-      <section className="run-section">
+      {( !conversation || live || (steps?.length ?? 0) > 0) && <section className="run-section">
         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{I.right}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>
@@ -327,7 +350,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
         </button>
         {showSteps && (!!steps?.length || live) && <StepTimeline compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={(id) => void inspect(id)} />}
-      </section>
+      </section>}
 
       {(obs || observationArtifact) && (!conversation || showSteps) && (
         <section className="run-section">

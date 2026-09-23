@@ -19,8 +19,10 @@ Pause, Stop, approval requests and errors remain available. AI SDK is already
 
 Browser checks cover opening and cancelling the optional form, and revealing
 the toolbar from focus. On a loaded page the toolbar is out of the layout
-until the pointer reaches the top or the field is focused. Full Aside chat
-fidelity remains unverified.
+until the pointer reaches the top or the field is focused, and the frost
+ends at the bottom of that row. Edge hover grows the same glass column
+beside the page. A chat covers a parked page instead of showing it through
+the transcript. Full Aside chat fidelity remains unverified.
 
 ### Branding and final chat cleanup
 
