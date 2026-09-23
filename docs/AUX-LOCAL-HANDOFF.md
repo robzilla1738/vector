@@ -12,13 +12,14 @@ Related: [AUX-HANDOFF.md](AUX-HANDOFF.md) (checkpoint history),
 
 ## Current state
 
-**Update 2026-09-23:** the entire browser workstream (BR-01–07) is now
-implemented and verified — see `AUX-PROGRESS.md` for the per-slice evidence.
-Remaining roadmap workstreams are CH-01–04 (conversation), AI-01–07 (agent
-capability), WS-01–06 (projects/agents/cloud), ME-01–02 (memory), SK-01–02
-(skills/schedules). The workspace was checkpointed to a branch for a Devin
-Cloud macOS environment; the B-items below still mark what genuinely needs
-the founder's own Mac/accounts.
+**Update 2026-09-23 (2):** all roadmap workstreams are now implemented and
+verified on `aux-browser-workstream` (PR #23): BR-01–07 (browser), CH-01–04
+(conversation), AI-01–07 (agent capability), WS-01–06 (projects/agents/cloud),
+ME-01–02 (memory), SK-01–02 (skills/schedules) — see `AUX-PROGRESS.md` for the
+per-slice evidence. The full `tests/smoke/*.mjs` desktop suite runs green on
+macOS (54 suites, real Electron, serial). What remains genuinely open is the
+founder-Mac list below (B1–B7) and the non-gated engineering items R1–R6 —
+not implementation gaps in the roadmap itself.
 
 Landed from PR 14 (`cursor/aux-remaining-implementation-4932`) onto `main`.
 PR 13 remains an earlier handoff-only draft and is superseded.
