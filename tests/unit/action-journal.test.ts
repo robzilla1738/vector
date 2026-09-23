@@ -100,7 +100,8 @@ it("cannot report completion while the persistent journal contains an unresolved
 it("retains a committed intent after actual SIGKILL following a remote write", async () => {
   const f = fixture();
   let writes = 0;
-  const server = createServer((_req, res) => { writes++; res.end("accepted"); });
+  // count only the write: local tools may probe a new loopback port with a GET
+  const server = createServer((req, res) => { if (req.method === "POST") writes++; res.end("accepted"); });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   try {

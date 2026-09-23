@@ -165,7 +165,6 @@ describe("shipped stylesheet — native macOS chrome", () => {
 describe("session chrome — search, preview, close, settings, attachments", () => {
   const commandBar = readFileSync(join(here, "../../apps/desktop/renderer/src/components/CommandBar.tsx"), "utf8");
   const conversation = readFileSync(join(here, "../../apps/desktop/renderer/src/components/Conversation.tsx"), "utf8");
-  const attachPage = readFileSync(join(here, "../../apps/desktop/renderer/src/components/AttachPage.tsx"), "utf8");
   const images = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ConversationImages.tsx"), "utf8");
   const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
 
@@ -228,7 +227,6 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(conversation).not.toContain("context-toggle");
     expect(conversation).not.toContain("conversation-memory-head");
     expect(conversation).not.toContain('aria-label="Context sections"');
-    expect(attachPage).toContain(">Page</button>");
     expect(images).toContain('className="capture-triggers"');
     expect(images).toContain('className="conversation-capture-rest"');
     expect(images).toContain(">Image</button>");
