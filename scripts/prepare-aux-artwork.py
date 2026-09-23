@@ -38,7 +38,7 @@ scale = 824 / max(tile.size)
 tile = tile.resize(tuple(round(side*scale) for side in tile.size), Image.Resampling.LANCZOS)
 icon = Image.new('RGBA', (1024,1024))
 icon.alpha_composite(tile, ((1024-tile.width)//2, (1024-tile.height)//2))
-icon.save(PUBLIC / 'aux-icon.png')
+icon.resize((512,512), Image.Resampling.LANCZOS).save(PUBLIC / 'aux-icon.png')
 icon.save(BRAND / 'aux-icon-1024.png')
 
 # Extract the pale interior symbol, not the colored background or tile outline.

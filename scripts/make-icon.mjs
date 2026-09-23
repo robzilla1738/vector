@@ -28,7 +28,8 @@ try {
   execFileSync("iconutil", ["-c", "icns", iconset, "-o", compiled]);
   copyFileSync(compiled, `${output}.next`);
   renameSync(`${output}.next`, output);
-  copyFileSync(source, join(root, "apps/desktop/renderer/public/aux-icon.png"));
+  // The runtime dock icon never renders above 512px.
+  copyFileSync(join(iconset, "icon_512x512.png"), join(root, "apps/desktop/renderer/public/aux-icon.png"));
   cpSync(iconset, join(root, "apps/desktop/brand/Aux.iconset"), { recursive: true });
   console.log(`Built ${output} from ${source}`);
 } finally {
