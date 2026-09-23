@@ -1220,10 +1220,14 @@ const viewHooks = {
   onUnresponsive:()=>browserHealth.notePageUnresponsive(),
   onDestroyed: (pageId: string) => { const owner=shellForPage(pageId);forgetPageLifecycle(pageId); registry.remove(pageId); pageWindowOwners.delete(pageId);
     for (const [key, pending] of pendingVaultSaves) if (pending.pageId === pageId) { clearTimeout(pending.timer); pendingVaultSaves.delete(key); }
+    // view.removed must land before the catalog remove: the catalog path skips
+    // the runtime's successor pick by contract, and deleting the live page
+    // there first would leave a removed stage page with no restore.
+    notifyRuntime("view.removed", { pageId });
     // A discarded tab keeps its record — it reloads lazily on activation.
     if (discarding.has(pageId) && tabCatalog.tab(pageId)) noteTab(pageId, { lifecycle: "discarded" });
     else if (!controllerClosing.has(pageId) && tabCatalog.tab(pageId)) publishTabPatch(tabCatalog.apply([{ op: "remove", pageId }]));
-    owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true});notifyRuntime("view.removed", { pageId }); },
+    owner?.webContents.send('view.audio',{pageId,muted:false,audible:false,removed:true}); },
   onPopup: (entry: ViewEntry, activate = false) => {
     registry.add(entry);
     pageWindowOwners.set(entry.pageId, entry.windowId ?? PRIMARY_WINDOW_ID);

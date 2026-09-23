@@ -120,6 +120,8 @@ export class PageService {
   private pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
   /** Foreground tabs/popups return to the tab that launched them when closed. */
   private returnTargets = new Map<string, string>();
+  /** Window hint for pages not yet (or never) registered — set by window/upsert ops. */
+  private lastKnownWindow = new Map<string, string>();
   private revCounters = new Map<string, number>();
   private activeId: string | null = null;
   /** Each regular browser window owns an independent selected tab. */
@@ -1335,7 +1337,14 @@ export class PageService {
       if (op.op !== "window" || !op.window) continue;
       const w = op.window;
       if (this.activeByWindow.get(w.windowId) === w.activePageId) continue;
-      if (w.activePageId) this.activeByWindow.set(w.windowId, w.activePageId);
+      if (w.activePageId) {
+        const displaced = this.activeByWindow.get(w.windowId);
+        // The window op is activation truth — record the displaced tab as the
+        // close-return target even for a page that dies before registering.
+        if (displaced && displaced !== w.activePageId) this.returnTargets.set(w.activePageId, displaced);
+        this.activeByWindow.set(w.windowId, w.activePageId);
+        this.lastKnownWindow.set(w.activePageId, w.windowId);
+      }
       else this.activeByWindow.delete(w.windowId);
       const lp = w.activePageId ? this.live.get(w.activePageId) : undefined;
       if (lp) {
@@ -1363,6 +1372,7 @@ export class PageService {
       case "upsert": {
         const tab = op.tab;
         if (!tab) return;
+        this.lastKnownWindow.set(tab.pageId, tab.windowId);
         const lp = this.live.get(tab.pageId);
         if (lp) {
           // The catalog owns window placement; the driver and view.* events
@@ -1392,29 +1402,49 @@ export class PageService {
       }
       case "remove": {
         if (!op.pageId) return;
-        this.onNativeRemoved(op.pageId, false);
+        this.applyNativeRemoved(op.pageId, false);
         return;
       }
     }
   }
 
-  /** main -> runtime: a native webContents was destroyed out-of-band (popup close). */
+  /**
+   * main -> runtime: a native webContents was destroyed out-of-band (popup
+   * close). The catalog patch announcing the page's activation was emitted
+   * first, so the restore decision is enqueued on the catalog queue — reading
+   * the window-active pointer synchronously would race the queued ops.
+   */
   onNativeRemoved(pageId: string, chooseSuccessor = true) {
     const pending = this.pendingExternal.get(pageId);
     if (pending) pending.removed = true;
+    if (!chooseSuccessor) {
+      // Called from syncCatalogOp — already serialized on the catalog queue.
+      this.applyNativeRemoved(pageId, false);
+      return;
+    }
+    const run = this.catalogQueue.then(() => this.applyNativeRemoved(pageId, true));
+    this.catalogQueue = run.catch(() => {});
+  }
+
+  private applyNativeRemoved(pageId: string, chooseSuccessor: boolean) {
     const lp = this.live.get(pageId);
-    if (!lp) return;
-    if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "detached";
-    lp.target.controller = "none";
-    this.persist(lp);
-    this.live.delete(pageId);
+    if (lp) {
+      if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "detached";
+      lp.target.controller = "none";
+      this.persist(lp);
+      this.live.delete(pageId);
+      void lp.driver?.dispose().catch(() => {});
+    }
     const returnTarget = this.returnTargets.get(pageId);
     this.returnTargets.delete(pageId);
     for (const [child, parent] of this.returnTargets) if (parent === pageId) this.returnTargets.delete(child);
-    void lp.driver?.dispose().catch(() => {});
+    // A popup that dies before its attach completes never lands in `live`,
+    // but a window op may still have made it the window's active tab —
+    // the stale pointer must be cleared and a successor chosen either way.
+    const windowId = lp?.target.windowId ?? this.lastKnownWindow.get(pageId) ?? "main";
+    this.lastKnownWindow.delete(pageId);
     if (!this.closing) {
       let next: LivePage | undefined;
-      const windowId = lp.target.windowId ?? "main";
       const wasWindowActive = this.activeByWindow.get(windowId) === pageId;
       if (wasWindowActive) this.activeByWindow.delete(windowId);
       const wasActive = this.activeId === pageId;
@@ -1432,7 +1462,7 @@ export class PageService {
           .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0] ?? candidates
           .sort((a, b) => b.target.lastActiveAt - a.target.lastActiveAt)[0];
       }
-      this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
+      if (lp || next) this.deps.events.emit(EventTypes.PageRemoved, { pageId, ...(next ? { activePageId: next.target.pageId } : {}) });
       if (next) void this.activate(next.target.pageId).catch(() => {});
     }
   }
