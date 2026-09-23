@@ -75,7 +75,8 @@ try{
  await execute(rpBase+'/',`window.sso=window.open(${JSON.stringify(authorize)},'sso','popup,width=520,height=640');void 0`);
  await poll(app,({BrowserWindow},prefix)=>BrowserWindow.getAllWindows().some(window=>window.webContents.getURL().startsWith(prefix)),idpBase+'/consent');
  assert.match(consentCookie,/idp_session=synthetic/,'IdP redirect receives its SameSite cookie');
- const consent=app.windows().find(page=>page.url().startsWith(idpBase+'/consent'));assert.ok(consent);assert.equal(await consent.locator('body').getAttribute('data-referrer'),rpBase+'/');
+ let consent;for(let i=0;i<80;i++){consent=app.windows().find(page=>page.url().startsWith(idpBase+'/consent'));if(consent)break;await new Promise(r=>setTimeout(r,250));}
+ assert.ok(consent,'consent popup must be attached as a Playwright page');assert.equal(await consent.locator('body').getAttribute('data-referrer'),rpBase+'/');
  await consent.getByRole('button',{name:'Continue'}).click();
  await poll(app,async({webContents},url)=>{const contents=webContents.getAllWebContents().find(item=>item.getURL()===url);return contents?await contents.executeJavaScript('document.querySelector("output").textContent')==='sso-complete':false;},rpBase+'/');
  await poll(app,({BrowserWindow})=>BrowserWindow.getAllWindows().length===0);

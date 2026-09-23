@@ -11,10 +11,12 @@ async function until(check,timeoutMs=45000){const deadline=Date.now()+timeoutMs;
 import {get as httpGet} from 'node:http';
 function httpProbe(url){return new Promise(resolve=>{const req=httpGet(url,res=>{res.resume();resolve(`HTTP ${res.statusCode}`);});req.setTimeout(3000,()=>{req.destroy();resolve('timeout');});req.on('error',e=>resolve(String(e.code||e)));});}
 async function describeFailure(){try{
- const runs=await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId).catch(()=>[]);
+ const projects=await page.evaluate(()=>window.aux.listProjects()).catch(()=>[]);
+ const projectId=projects?.[0]?.projectId;
+ const runs=projectId?await page.evaluate(id=>window.aux.listProjectCommands(id),projectId).catch(()=>[]):[];
  const urls=await app.evaluate(({webContents})=>webContents.getAllWebContents().map(w=>w.getURL())).catch(()=>[]);
- const preview=runs.flatMap(r=>r.preview&&r.preview.url?[r.preview.url]:[]);
- const probes=[];for(const u of preview)probes.push(`${u} -> ${await httpProbe(u)}`);
+ const previewUrls=projects.flatMap(p=>p.preview&&p.preview.url?[p.preview.url]:[]);
+ const probes=[];for(const u of previewUrls)probes.push(`${u} -> ${await httpProbe(u)}`);
  return JSON.stringify({commands:runs.map(r=>({command:r.command,state:r.state,output:String(r.output??'').slice(-400)})),views:urls,probes},null,1);
 }catch(e){return `describeFailure failed: ${e}`;}}
 import {sidebarAction} from './sidebar-action.mjs';
