@@ -9,8 +9,11 @@ import { useMenuDismiss } from "../use-menu-dismiss";
 import { positionContextMenu } from "../position-context-menu";
 import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
+import { useShortcutLabels } from "../use-shortcut-label";
+import { useDismissable } from "../use-dismissable";
 
 export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, onClose: finishClose }: { page: PageTarget; selectedPages?: PageTarget[]; onSelectionDone?: () => void; x: number; y: number; onClose: () => void }) {
+  const key = useShortcutLabels();
   const bulk = selectedPages.length > 1;
   const selectedIds = selectedPages.map(item => item.pageId);
   const layout = useStore(state => state.layout);
@@ -61,17 +64,15 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
 
   useEffect(() => {
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeRef.current(); } };
     document.addEventListener("mousedown", outside);
-    document.addEventListener("keydown", escape);
     ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     return () => {
       document.removeEventListener("mousedown", outside);
-      document.removeEventListener("keydown", escape);
       requestStageReport();
       if (previous.current?.isConnected) previous.current.focus();
     };
   }, []);
+  useDismissable(true, () => closeRef.current());
 
   async function closeRelated(following: boolean) {
     const state = useStore.getState();
@@ -128,7 +129,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
 
     {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
     {!bulk && <>
-    <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}><span className="t">Reload</span><kbd>⌘R</kbd></button>
+    <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}><span className="t">Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
     <TabAudioButton pageId={page.pageId} title={page.title || "New Tab"} menu onDone={onClose} />
     {web && <>
       <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>Duplicate tab</button>
@@ -142,7 +143,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     {bulk ? <button className="menu-item" role="menuitem" onClick={() => action(async () => {
       if (await useStore.getState().closeTabs(selectedIds)) onSelectionDone?.();
     })}>Close selected tabs</button> : <>
-    <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().closeTab(page.pageId))}><span className="t">Close tab</span><kbd>⌘W</kbd></button>
+    <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().closeTab(page.pageId))}><span className="t">Close tab</span>{key("close-tab") && <kbd>{key("close-tab")}</kbd>}</button>
     <button className="menu-item" role="menuitem" disabled={closing || spaceTabs.length < 2} onClick={() => action(() => closeRelated(false))}>Close other tabs</button>
     {horizontal && pageIndex >= 0 && pageIndex < spaceTabs.length - 1 && <button className="menu-item" role="menuitem" disabled={closing} onClick={() => action(() => closeRelated(true))}>Close tabs to the right</button>}
     </>}

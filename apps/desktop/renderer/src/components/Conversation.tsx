@@ -20,6 +20,7 @@ import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory
 import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
 import { I } from "./icons";
+import { useDismissable } from "../use-dismissable";
 
 type DraftState = ReturnType<typeof useStore.getState>;
 /** The text a conversation's composer edits: the pending question's answer, the chat draft, or the new-chat draft. */
@@ -244,14 +245,10 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     const close = (event: PointerEvent) => {
       if (!previewRoot.current?.contains(event.target as Node)) setPreviewMenu(false);
     };
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setPreviewMenu(false); };
     window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", onKey);
-    };
+    return () => window.removeEventListener("pointerdown", close);
   }, [previewMenu]);
+  useDismissable(previewMenu, () => setPreviewMenu(false));
   const live = !!last && isLive(last);
   const boundTaskId = last?.config?.taskId ?? workspaceContext.taskId;
   const taskBound = !!boundTaskId;

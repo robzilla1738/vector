@@ -5,6 +5,7 @@ import { useMenuDismiss } from "../use-menu-dismiss";
 import { positionContextMenu } from "../position-context-menu";
 import { errToast, toast, useStore } from "../store";
 import type { Pin } from "../workspace";
+import { useDismissable } from "../use-dismissable";
 
 export function PinMenu({ pin, spaceId, x, y, onClose: finishClose }: {
   pin: Pin; spaceId: string; x: number; y: number; onClose: () => void;
@@ -23,19 +24,15 @@ export function PinMenu({ pin, spaceId, x, y, onClose: finishClose }: {
   }, [x, y]);
   useEffect(() => {
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) close.current(); };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close.current(); }
-    };
     document.addEventListener("mousedown", outside);
-    document.addEventListener("keydown", escape);
     ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
     return () => {
       document.removeEventListener("mousedown", outside);
-      document.removeEventListener("keydown", escape);
       requestStageReport();
       if (trigger.current?.isConnected) trigger.current.focus();
     };
   }, []);
+  useDismissable(true, () => close.current());
   function action(work: () => unknown | Promise<unknown>) {
     onClose();
     void Promise.resolve().then(work).catch(errToast);

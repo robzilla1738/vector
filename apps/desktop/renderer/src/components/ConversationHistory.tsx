@@ -10,6 +10,7 @@ import { draftKey } from "../conversation-drafts";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 
 import { mergeHistory } from "../run-history";
+import { useDismissable } from "../use-dismissable";
 export { mergeHistory };
 export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
 export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
@@ -96,15 +97,14 @@ export function ConversationHistory() {
   useEffect(() => {
     if (!menu) return;
     const close = (event: PointerEvent) => { if (!(event.target as Element).closest?.(".history-menu, .history-actions")) setMenu(null); };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault(); setMenu(null); setDeleting(null);
-      list.current?.querySelector<HTMLButtonElement>('.history-actions[aria-expanded="true"]')?.focus();
-    };
     list.current?.querySelector<HTMLButtonElement>(".history-menu button")?.focus();
-    document.addEventListener("pointerdown", close); document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
   }, [menu]);
+  useDismissable(!!menu, () => {
+    list.current?.querySelector<HTMLButtonElement>('.history-actions[aria-expanded="true"]')?.focus();
+    setMenu(null); setDeleting(null);
+  });
   const mutate = async (action: "rename" | "archive" | "delete", item: ConversationSummary) => {
     if (pending.current) return;
     pending.current = true;

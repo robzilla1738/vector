@@ -22,6 +22,8 @@ import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
 import { useWindowedRows } from "../use-windowed-rows";
+import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+import { useDismissable } from "../use-dismissable";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
 
@@ -101,6 +103,7 @@ interface TabRowProps {
 }
 
 const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
+  const key = useShortcutLabels();
   const row = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (active && !row.current?.closest('[inert]')) row.current?.scrollIntoView({ block: "nearest" });
@@ -164,7 +167,7 @@ const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, 
       <button
         className="tab-close"
         tabIndex={-1}
-        title="Close tab (⌘W)"
+        title={withShortcut("Close tab", key("close-tab"))}
         aria-label={`Close ${title}`}
         onClick={(e) => {
           e.stopPropagation();
@@ -197,6 +200,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
   onSettings: () => void;
   onClose: () => void;
 }) {
+  const key = useShortcutLabels();
   const ref = useRef<HTMLDivElement>(null);
   const onClose = useMenuDismiss(ref, finishClose);
   const closeRef = useRef(onClose); closeRef.current = onClose;
@@ -211,23 +215,19 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
   }, []);
   useEffect(() => {
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeRef.current(); trigger.current?.focus(); } };
     document.addEventListener("mousedown", outside);
-    document.addEventListener("keydown", escape);
     ref.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
-    return () => {
-      document.removeEventListener("mousedown", outside);
-      document.removeEventListener("keydown", escape);
-    };
+    return () => document.removeEventListener("mousedown", outside);
   }, []);
+  useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
   const choose = (action: () => void) => { action(); onClose(); };
   const actions = [
     { label: "New space", icon: I.plusSm, run: onNew },
     { label: "New folder", icon: I.folderClosed, run: onNewFolder },
-    { label: "History", icon: I.clockSm, run: onHistory, key: "⌘Y", separator: true },
-    { label: "Downloads", icon: I.downloadSm, run: onDownloads, key: "⌘⇧J" },
-    ...(!bridge.privateMode ? [{ label: "Settings", icon: I.gearSm, run: onSettings, key: "⌘," }] : []),
-    { label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: "⌘S", separator: true },
+    { label: "History", icon: I.clockSm, run: onHistory, key: key("history"), separator: true },
+    { label: "Downloads", icon: I.downloadSm, run: onDownloads, key: key("downloads") },
+    ...(!bridge.privateMode ? [{ label: "Settings", icon: I.gearSm, run: onSettings, key: key("settings") }] : []),
+    { label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: key("sidebar"), separator: true },
   ];
   return (
     <div className="menu space-menu" role="menu" aria-label="Spaces and browser controls" ref={ref}
@@ -286,8 +286,8 @@ function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: 
       target?.focus();
     };
   }, []);
+  useDismissable(true, onClose);
   const onDialogKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); }
     if (event.key !== 'Tab') return;
     const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')];
     const first = items[0], last = items.at(-1);
@@ -422,6 +422,7 @@ const SidebarChats = memo(function SidebarChats() {
 /* ------------------------------------------------------------------ */
 
 export const Sidebar = memo(function Sidebar() {
+  const key = useShortcutLabels();
   const sidebarPref = useStore((s) => s.sidebar);
   const sections = useStore(s => s.sidebarSections);
   const toggleSection = useStore(s => s.toggleSidebarSection);
@@ -456,16 +457,10 @@ export const Sidebar = memo(function Sidebar() {
     if (near) keepPeek();
     else dismissPeek();
   }), [sidebar]);
-  useEffect(() => {
-    if (!sidebarPeek) return;
-    const dismiss = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      setSidebarPeek(false);
-      document.querySelector<HTMLButtonElement>('.toolbar [aria-label="Show sidebar"]')?.focus();
-    };
-    window.addEventListener("keydown", dismiss);
-    return () => window.removeEventListener("keydown", dismiss);
-  }, [sidebarPeek, setSidebarPeek]);
+  useDismissable(sidebarPeek, () => {
+    setSidebarPeek(false);
+    document.querySelector<HTMLButtonElement>('.toolbar [aria-label="Show sidebar"]')?.focus();
+  });
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);
   const newTab = useStore((s) => s.newTab);
@@ -663,7 +658,7 @@ export const Sidebar = memo(function Sidebar() {
 
   const full = (
     <>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}><button className="icon-btn" aria-label={sidebarPeek ? "Pin sidebar" : "Collapse sidebar"} title={sidebarPeek ? "Keep sidebar open" : "Collapse sidebar (⌘S)"} onClick={toggleSidebar}>{sidebarPeek ? I.pin : I.sidebarClose}</button></div>
+      <div className={`sb-head ${inElectron ? "electron" : ""}`}><button className="icon-btn" aria-label={sidebarPeek ? "Pin sidebar" : "Collapse sidebar"} title={sidebarPeek ? "Keep sidebar open" : withShortcut("Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{sidebarPeek ? I.pin : I.sidebarClose}</button></div>
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
           {visiblePins.map((b) => {
@@ -771,9 +766,9 @@ export const Sidebar = memo(function Sidebar() {
       </div>
         {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{I.grid}</button></> : <>
         <span className="sp" />
-        <button className="icon-btn" title="Search (⌘K)" aria-label="Search browser" onClick={() => setOverlay("palette")}>{I.search}</button>
+        <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" onClick={() => setOverlay("palette")}>{I.search}</button>
         {page?.controller === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(page.pageId)}>{I.handSm}</button>}
-        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
+        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
         <details className="sb-more" onKeyDown={detailsMenuKey}>
           <summary className="icon-btn" aria-haspopup="menu" aria-label="More" title="More">{I.more}</summary>
           <div className="sb-more-menu" role="menu" aria-label="Browser tools" onClick={event => { const details = event.currentTarget.closest("details"); if (details) details.open = false; }}>
@@ -785,13 +780,13 @@ export const Sidebar = memo(function Sidebar() {
             <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
               if (!page) return;
               void useStore.getState().toggleBookmark(page.url,page.title).catch(errToast);
-            }}>{I.bookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span><kbd>⌘D</kbd></button>
+            }}>{I.bookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
             <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
               if (!page) return;
               void useStore.getState().toggleReadingList(page.url, page.title).catch(errToast);
             }}>{I.clock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
             <button role="menuitem" aria-label="Tab overview" onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}<span>Tab overview</span></button>
-            <button role="menuitem" aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span><kbd>⌘,</kbd></button>
+            <button role="menuitem" aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
           </div>
         </details>
         </>}
@@ -867,16 +862,14 @@ function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDel
   }, [x, y, folder.name]);
   useEffect(() => {
     const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && closeRef.current();
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeRef.current(); trigger.current?.focus(); } };
     document.addEventListener("mousedown", h);
-    document.addEventListener("keydown", k);
     ref.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
     return () => {
       document.removeEventListener("mousedown", h);
-      document.removeEventListener("keydown", k);
       requestStageReport();
     };
   }, []);
+  useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
   const updateFolder = useStore((s) => s.updateFolder);
   return (
     <div ref={ref} className="menu ctx-menu" role="menu" aria-label="Folder actions" onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
