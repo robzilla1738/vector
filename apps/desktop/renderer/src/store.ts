@@ -2,6 +2,7 @@ import { clearResultDrafts } from "./result-drafts";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { readRunAnswerDrafts, writeRunAnswerDraft, clearSubmittedRunAnswer, type RunAnswerDraft } from "./run-answer-drafts";
 import { splitRatio } from "@aux/contracts/split-layout";
+import { newPageId } from "@aux/contracts/ids";
 import { setDictationDraft } from "./dictation-drafts";
 import { conversationFinder, readerFinder } from "./text-surface-find";
 import { canSplitPage, splitForPage, rememberActiveTab } from "./workspace";
@@ -68,6 +69,11 @@ const TOAST_LIMIT = 4;
 let eventSeq = 0;
 export const lastEventSeq = () => eventSeq;
 const pageRevisions = new Map<string, number>();
+const answerSeq = new Map<string, number>();
+/** Tabs this window removed ahead of main's confirmation — late upserts must not resurrect them. */
+const closingOptimistic = new Set<string>();
+/** Tabs this window opened ahead of main's confirmation — removed again if the open is refused. */
+const openingOptimistic = new Set<string>();
 export const pageRevision = (pageId: string) => pageRevisions.get(pageId);
 /** Page previews stay out of reactive state; `previewVersion` announces changes. */
 const previewCache = new Map<string, string>();
@@ -216,7 +222,12 @@ interface Workspace {
   closingTabs: boolean;
   closeTabs(pageIds: string[], options?: { shouldStop?(): boolean; onClosed?(pageId: string, count: number): void }): Promise<boolean>;
   reopenClosedTab(pageId?: string, group?: boolean): Promise<void>;
-  startRun(goal: string, opts?: { pageId?: string | null; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation" }): Promise<Run | null>;
+  /** `ownsDraft`: the caller already cleared its composer and restores it on failure. */
+  startRun(goal: string, opts?: { pageId?: string | null; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean }): Promise<Run | null>;
+  /** Messages shown in the thread while their run is still being created. */
+  pendingTurns: { id: string; chatId: string | null; goal: string; createdAt: number }[];
+  /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */
+  answerStreams: Record<string, string>;
   retryRun(runId: string, pageId?: string): Promise<Run | null>;
   answerRun(runId: string, answer: string): Promise<void>;
   returnControl(pageId: string): Promise<void>;
@@ -694,7 +705,9 @@ export const useStore = create<Workspace>((set, get) => ({
             }
             continue;
           }
+          openingOptimistic.delete(tab.pageId);
           const index = pages.findIndex(page => page.pageId === tab.pageId);
+          if (index < 0 && closingOptimistic.has(tab.pageId)) continue;
           if (index >= 0) {
             const merged = mergeTabInto(pages[index]!, tab);
             if (merged !== pages[index]) pages = pages.with(index, merged);
@@ -829,28 +842,59 @@ export const useStore = create<Workspace>((set, get) => ({
   },
 
   newTab: async (url = "about:blank", reuseId?: string, index?: number) => {
-    const observed = new Set(get().pages.map(page => page.pageId));
+    // Optimistic: the row and the start page appear now under a renderer-minted
+    // id that main adopts; a refused open removes the placeholder again.
+    const pageId = reuseId ?? newPageId();
+    const before = get();
+    const optimistic = !before.pages.some(page => page.pageId === pageId);
+    const observed = new Set(before.pages.map(page => page.pageId));
     const unsubscribe = useStore.subscribe(state => { for (const page of state.pages) observed.add(page.pageId); });
-    try {
-      get().setOverlay(null);
-      set({ mode: "focus" });
-      const ack = await bridge.tabCommand({ kind: "open", url, activate: true, ...(reuseId ? { pageId: reuseId } : {}), ...(index == null ? {} : { index }) }, get().catalogVersion);
-      if (ack.status === "rejected" || !ack.pageId) throw new Error(ack.error?.message ?? "The tab could not be opened.");
-      const pageId = ack.pageId;
+    const stub = (id: string) => pageFromTab({ pageId: id, windowId: bridge.windowId, url, title: "", loading: url !== "about:blank", muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 0, createdAt: Date.now(), lastActiveAt: Date.now() });
+    const dropPlaceholder = () => {
+      if (!optimistic || !openingOptimistic.has(pageId)) return;
+      openingOptimistic.delete(pageId);
       set((s) => {
-        const existing = s.pages.some(x => x.pageId === pageId);
-        if (!existing && observed.has(pageId)) return {}; // Closed while the open response was pending.
-        const pages = existing ? s.pages : [...s.pages, pageFromTab({ pageId, windowId: bridge.windowId, url, title: "", loading: url !== "about:blank", muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 0, createdAt: Date.now(), lastActiveAt: Date.now() })];
+        const pages = s.pages.filter(page => page.pageId !== pageId);
+        const layout = withSyncedOrder(s.layout, pages, s.pendingRestoreIds);
+        persistLayout(layout);
+        const activePageId = s.activePageId === pageId ? before.activePageId : s.activePageId;
+        return { pages, layout, activePageId, splitPageId: splitForPage(layout, pages, activePageId) };
+      });
+    };
+    get().setOverlay(null);
+    if (optimistic) {
+      openingOptimistic.add(pageId);
+      set((s) => {
+        const pages = [...s.pages, stub(pageId)];
         const layout = assignSpace(withSyncedOrder(s.layout, pages, s.pendingRestoreIds), pageId, s.layout.activeSpaceId);
         persistLayout(layout);
-        return { pages, layout, ...(!existing ? { activePageId: pageId, mode: "focus" as const, overlay: null } : {}) };
+        return { pages, layout, activePageId: pageId, mode: "focus" as const, overlay: null, splitPageId: splitForPage(layout, pages, pageId) };
       });
-      if (url === "about:blank" && get().activePageId === pageId) get().focusCommandBar("hero");
-      return get().pages.find(page => page.pageId === pageId) ?? null;
+      if (url === "about:blank") get().focusCommandBar("hero");
+    } else set({ mode: "focus" });
+    try {
+      const ack = await bridge.tabCommand({ kind: "open", url, activate: true, pageId, ...(index == null ? {} : { index }) }, get().catalogVersion);
+      if (ack.status === "rejected" || !ack.pageId) throw new Error(ack.error?.message ?? "The tab could not be opened.");
+      const confirmed = ack.pageId;
+      if (confirmed !== pageId) {
+        // Main chose its own id: retire the placeholder and file the real tab.
+        dropPlaceholder();
+        set((s) => {
+          const existing = s.pages.some(x => x.pageId === confirmed);
+          if (!existing && observed.has(confirmed)) return {}; // Closed while the open response was pending.
+          const pages = existing ? s.pages : [...s.pages, stub(confirmed)];
+          const layout = assignSpace(withSyncedOrder(s.layout, pages, s.pendingRestoreIds), confirmed, s.layout.activeSpaceId);
+          persistLayout(layout);
+          return { pages, layout, ...(!existing ? { activePageId: confirmed, mode: "focus" as const, overlay: null } : {}) };
+        });
+        if (url === "about:blank" && get().activePageId === confirmed) get().focusCommandBar("hero");
+      }
+      return get().pages.find(page => page.pageId === confirmed) ?? null;
     } catch (e) {
+      dropPlaceholder();
       errToast(e);
       return null;
-    } finally { unsubscribe(); }
+    } finally { openingOptimistic.delete(pageId); unsubscribe(); }
   },
 
   openBackgroundTab: async (url, spaceId, reuseExisting = true, reuseId?: string, index?: number) => {
@@ -991,11 +1035,33 @@ export const useStore = create<Workspace>((set, get) => ({
     } finally { set({closingTabs: false}); }
   },
   closeTab: async (pageId) => {
+    // Optimistic: the row leaves now; main's remove op confirms, a refusal
+    // (kept by beforeunload, agent-held) puts it back where it was.
+    const before = get();
+    const page = before.pages.find(item => item.pageId === pageId);
+    const optimistic = !!page && isTab(page) && page.controller !== "agent" && page.controller !== "external" && !closingOptimistic.has(pageId);
+    if (optimistic) {
+      closingOptimistic.add(pageId);
+      set(st => applyRemoval(st, pageId, null).next);
+    }
     try {
       await tabCommand({ kind: "close", pageId });
     } catch (e) {
+      if (optimistic && page) set(st => {
+        if (st.pages.some(item => item.pageId === pageId)) return st;
+        const pages = [...st.pages, page];
+        const order = st.layout.order.filter(id => id !== pageId);
+        order.splice(Math.max(0, Math.min(before.layout.order.indexOf(pageId), order.length)), 0, pageId);
+        const layout = { ...st.layout, order };
+        persistLayout(layout);
+        const closedTabs = st.closedTabs.filter(tab => tab.pageId !== pageId || before.closedTabs.includes(tab));
+        if (closedTabs.length !== st.closedTabs.length) persistClosedTabs(closedTabs);
+        const activePageId = before.activePageId === pageId ? pageId : st.activePageId;
+        const zoom = before.zoomLevels[pageId];
+        return { pages, layout, closedTabs, activePageId, splitPageId: splitForPage(layout, pages, activePageId), ...(zoom === undefined ? {} : { zoomLevels: { ...st.zoomLevels, [pageId]: zoom } }) };
+      });
       errToast(e);
-    }
+    } finally { closingOptimistic.delete(pageId); }
   },
 
   find: async (text, findNext = false, forward = true) => {
@@ -1023,6 +1089,8 @@ export const useStore = create<Workspace>((set, get) => ({
       && get().pages.find(page => page.pageId === id)?.documentEpoch === epoch) set({ findMatches: r });
   },
 
+  pendingTurns: [],
+  answerStreams: {},
   startRun: async (goal, opts = {}) => {
     const g = goal.trim();
     if (!g) return null;
@@ -1040,6 +1108,7 @@ export const useStore = create<Workspace>((set, get) => ({
     const existingChat = opts.chatId && before.runs.some(r => (r.config?.chatId ?? r.runId) === opts.chatId);
     const hasChatDraft = !!opts.chatId && Object.prototype.hasOwnProperty.call(before.conversationDrafts, draftKey(opts.chatId));
     const preserveDraft = () => {
+      if (opts.ownsDraft) return;
       if ((existingChat || hasChatDraft) && opts.chatId) {
         const key = draftKey(opts.chatId);
         if (get().conversationDrafts[key] === before.conversationDrafts[key]) get().setConversationDraft(opts.chatId, g);
@@ -1052,6 +1121,9 @@ export const useStore = create<Workspace>((set, get) => ({
       toast("Set up a model connection before starting the agent. Your prompt is kept.");
       return null;
     }
+    const pending = { id: crypto.randomUUID(), chatId: opts.chatId ?? null, goal: g, createdAt: Date.now() };
+    set(state => ({ pendingTurns: [...state.pendingTurns, pending] }));
+    const settle = (runs?: (state: Workspace) => Run[]) => set(state => ({ pendingTurns: state.pendingTurns.filter(turn => turn !== pending), ...(runs ? { runs: runs(state) } : {}) }));
     try {
       let pageId = opts.pageId === undefined ? before.activePageId : opts.pageId;
       if (opts.scope === "new" || !pageId) {
@@ -1064,14 +1136,15 @@ export const useStore = create<Workspace>((set, get) => ({
         maxModelCalls: budget, chatId: opts.chatId,
         defaultWorkspaceId: bridge.privateMode ? undefined : before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
       const reveal = stayed();
-      set(state => ({ runs: state.runs.some(item => item.runId === run.runId) ? state.runs : [run, ...state.runs] }));
-      if (!existingChat && !hasChatDraft && get().agentDraft === before.agentDraft) get().setAgentDraft("");
+      settle(state => state.runs.some(item => item.runId === run.runId) ? state.runs : [run, ...state.runs]);
+      if (!opts.ownsDraft && !existingChat && !hasChatDraft && get().agentDraft === before.agentDraft) get().setAgentDraft("");
       if (reveal) {
         if (opts.presentation === "conversation") get().openConversation(run.runId);
         else set({ railOpen: true, railView: { kind: "run", runId: run.runId } });
       } else toast("Started in the background. Find it in Chats.");
       return run;
     } catch (error) {
+      settle();
       preserveDraft();
       errToast(error);
       return null;
@@ -1515,6 +1588,7 @@ export const useStore = create<Workspace>((set, get) => ({
             const index = st.pages.findIndex((x) => x.pageId === p.pageId);
             // An update to a known page never changes order or Space assignment.
             if (index >= 0) return { pages: st.pages.with(index, p) };
+            if (closingOptimistic.has(p.pageId)) return st;
             const pages = [...st.pages, p];
             const layout = st.restoringTabs ? st.layout : syncLayout(st.layout, pages, st.pendingRestoreIds);
             if (layout !== st.layout) persistLayout(layout);
@@ -1578,13 +1652,32 @@ export const useStore = create<Workspace>((set, get) => ({
       case "run.status": {
         const run = e.payload.run as Run | undefined;
         if (run) {
-          set((st) => ({ runs: st.runs.some((r) => r.runId === run.runId) ? st.runs.map((r) => (r.runId === run.runId ? run : r)) : [run, ...st.runs] }));
+          const settled = !isLive(run) && run.runId in get().answerStreams;
+          if (settled) answerSeq.delete(run.runId);
+          set((st) => ({
+            runs: st.runs.some((r) => r.runId === run.runId) ? st.runs.map((r) => (r.runId === run.runId ? run : r)) : [run, ...st.runs],
+            ...(settled ? { answerStreams: Object.fromEntries(Object.entries(st.answerStreams).filter(([id]) => id !== run.runId)) } : {}),
+          }));
           if (run.status === "needs_input" && run.statusMessage) {
             set({ prompt: { runId: run.runId, question: run.statusMessage }, railOpen: true, railView: { kind: "run", runId: run.runId } });
           } else if (get().prompt?.runId === run.runId) {
             set({ prompt: null });
           }
         }
+        break;
+      }
+      case "run.answer.delta": {
+        const { runId, text, delta, seq } = e.payload as { runId?: unknown; text?: unknown; delta?: unknown; seq?: unknown };
+        const id = typeof runId === "string" ? runId : e.runId;
+        if (!id || (typeof text !== "string" && typeof delta !== "string")) break;
+        const run = s.runs.find(item => item.runId === id);
+        if (run && !isLive(run)) break;
+        if (typeof seq === "number") { if (seq <= (answerSeq.get(id) ?? -Infinity)) break; answerSeq.set(id, seq); }
+        set((st) => {
+          const current = st.answerStreams[id] ?? "";
+          const next = typeof text === "string" ? text : current + String(delta);
+          return next === current ? st : { answerStreams: { ...st.answerStreams, [id]: next } };
+        });
         break;
       }
       case "step.finished": {

@@ -8,7 +8,7 @@ import { AuxMark } from "./AuxMark";
 import { ConversationTask } from "./ConversationTask";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, ConversationArtifact, ConversationImage, ConversationAttachment, ConversationSummary, ConversationSource, Run, StepRecord, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
@@ -20,6 +20,22 @@ import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory
 import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
 import { I } from "./icons";
+
+type DraftState = ReturnType<typeof useStore.getState>;
+/** The text a conversation's composer edits: the pending question's answer, the chat draft, or the new-chat draft. */
+const draftText = (s: DraftState, id: string | null | undefined, answerTo: { runId: string; question?: string } | null) => {
+  if (answerTo) { const draft = s.runAnswerDrafts[answerTo.runId]; return draft?.question === answerTo.question ? draft?.text ?? "" : ""; }
+  return id ? s.conversationDrafts[draftKey(id)] ?? "" : s.agentDraft;
+};
+
+/** Owns the draft subscription so typing re-renders the input, never the thread. */
+const ComposerInput = memo(function ComposerInput({ id, answerTo, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children }: {
+  id: string | null | undefined; answerTo: { runId: string; question?: string } | null; disabled: boolean; sendDisabled: boolean; placeholder: string; maxLength?: number;
+  inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">; onChange(value: string): void; onSend(): void; children?: ReactNode;
+}) {
+  const text = useStore(s => draftText(s, id, answerTo));
+  return <div className="conversation-input"><textarea {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/>{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{I.send}</button></div>;
+});
 
 type ConversationSpaceContext = { workspace: Workspace | null; memory: WorkspaceMemory | null; assigned?: boolean; taskId?: string; memoryPreview?: string; browsingPreview?: string };
 
@@ -85,7 +101,6 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const activePageId = useStore(s => s.activePageId);
   const layout = useStore(s => s.layout);
   const connected = useStore(s => s.connected);
-  const conversationDraft = useStore(s => id ? s.conversationDrafts[draftKey(id)] ?? "" : s.agentDraft);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [earlier, setEarlier] = useState<ReturnType<typeof cursor> | null>(null);
@@ -170,14 +185,16 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "active");
   const setContextPage = (pageId: string) => useStore.getState().setConversationContext(id,pageId);
   const [reopening, setReopening] = useState(false);
-  const turns = runs.filter(r => (r.config?.chatId ?? r.runId) === id).sort((a,b) => a.createdAt - b.createdAt);
+  const turns = useMemo(() => runs.filter(r => (r.config?.chatId ?? r.runId) === id).sort((a,b) => a.createdAt - b.createdAt), [runs, id]);
   const last = turns.at(-1);
   const answering = last?.status === "needs_input";
-  const answerDraft = useStore(s=>last ? s.runAnswerDrafts[last.runId] : undefined);
+  const answerTo = useMemo(() => answering && last ? { runId: last.runId, question: last.statusMessage } : null, [answering, last?.runId, last?.statusMessage]);
+  const [sendingChat, setSendingChat] = useState<string | null>(null);
+  const pendingTurns = useStore(useShallow(s => s.pendingTurns.filter(turn => turn.chatId === (id ?? sendingChat))));
   const answerPending = useStore(s=>!!last && !!s.runAnswerPending[last.runId]);
   const [sendError,setSendError]=useState("");
   useEffect(()=>setSendError(""),[id,last?.runId,last?.statusMessage]);
-  const text = answering ? (answerDraft?.question === last?.statusMessage ? answerDraft?.text ?? "" : "") : conversationDraft;
+  const readText = () => draftText(useStore.getState(), id, answerTo);
   const setText = (value:string) => {
     setSendError("");
     if(answering && last)useStore.getState().setRunAnswerDraft(last.runId,last.statusMessage ?? "",value);
@@ -263,6 +280,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     if (id) return id;
     const chatId = crypto.randomUUID();
     createdChat.current = chatId;
+    const text = readText();
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
     useStore.getState().setAgentDraft("");
@@ -317,6 +335,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     finally { setExporting(false); }
   };
   const send = async () => {
+    const text = readText();
     if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
     if (!answering && (attachmentSaving || missingContext || historyLoading || historyError || contextLoading || contextError || (live && last?.status !== "needs_input") || (taskBound && last?.status !== "needs_input"))) return;
     sendPending.current = true;
@@ -326,11 +345,18 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
         await useStore.getState().answerRun(last.runId,text.trim());
         scrolling.jumpToLatest();
       } else {
-        const run = await useStore.getState().startRun(text, { chatId: id ?? crypto.randomUUID(), pageId: selectedContext?.pageId ?? null, scope: selectedContext ? "page" : "new", presentation: embedded ? "rail" : "conversation" });
-        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); } catch { /* storage is optional */ } if ((id ? useStore.getState().conversationDrafts[draftKey(id)] : useStore.getState().agentDraft) === text) setText(""); if (activeChat.current === id) scrolling.jumpToLatest(); }
+        // Optimistic: the message leaves the composer and joins the thread now;
+        // a failed start puts it back unless something new was typed meanwhile.
+        const chatId = id ?? crypto.randomUUID();
+        setSendingChat(chatId);
+        setText("");
+        if (activeChat.current === id) scrolling.jumpToLatest();
+        const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, scope: selectedContext ? "page" : "new", presentation: embedded ? "rail" : "conversation", ownsDraft: true });
+        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); } catch { /* storage is optional */ } if (activeChat.current === id) scrolling.jumpToLatest(); }
+        else if (!readText()) setText(text);
       }
     } catch (error) { setSendError(error instanceof Error ? error.message : String(error)); }
-    finally { sendPending.current = false; setSending(false); }
+    finally { sendPending.current = false; setSending(false); setSendingChat(null); }
   };
   const reopen = async () => {
     if (!recoverUrl || reopening || !last) return;
@@ -407,7 +433,8 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
+      {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><p className="hint" role="status">Starting…</p></article>)}
     </div></div>
     <div className="conversation-compose"><div className="conversation-compose-content">
       {scrolling.awayFromLatest && <div className="conversation-jump"><button className="btn sm" onClick={scrolling.jumpToLatest}>{I.down} Jump to latest</button></div>}
@@ -426,12 +453,12 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
 
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
-      {last?.status === "needs_input" && <div className="conversation-input"><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder="Answer Aux’s question…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/><button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim()} onClick={() => void send()}>{I.send}</button></div>}
+      {last?.status === "needs_input" && <ComposerInput id={id} answerTo={answerTo} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} />}
       </> : <>
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      <div className="conversation-input"><textarea {...imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} aria-label="Reply to conversation" placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/>{dictation}<button className="icon-btn" aria-label="Send message" disabled={archived || !connected || sending || answerPending || !text.trim() || (!answering && (attachmentSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onClick={() => void send()}>{I.send}</button></div>
+      <ComposerInput id={id} answerTo={answerTo} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
       </>}
     </div></div>
     </div>{browserPreview}</div>

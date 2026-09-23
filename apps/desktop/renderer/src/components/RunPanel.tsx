@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, Run } from "@aux/contracts";
 import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
@@ -11,18 +11,30 @@ import { AnswerMarkdown } from "./AnswerMarkdown";
 
 import { STATUS_LABEL } from "../run-status";
 
-function useElapsed(run: Run | undefined) {
-  const live = !!run && isLive(run);
+/** Ticks on its own so a live run's clock never re-renders the whole panel. */
+function Elapsed({ run }: { run: Run }) {
+  const live = isLive(run);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!live) return;
     const t = window.setInterval(() => tick((n) => n + 1), 1000);
     return () => window.clearInterval(t);
   }, [live]);
-  if (!run) return 0;
-  const start = run.startedAt ?? run.createdAt;
-  const end = run.endedAt ?? Date.now();
-  return Math.max(0, end - start);
+  const elapsed = Math.max(0, (run.endedAt ?? Date.now()) - (run.startedAt ?? run.createdAt));
+  return <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>;
+}
+
+/** Whether `runId` is its conversation's newest turn. */
+export function isLatestTurn(runs: readonly Run[], runId: string): boolean {
+  const target = runs.find((item) => item.runId === runId);
+  if (!target) return false;
+  const chatId = target.config?.chatId ?? target.runId;
+  let latest: Run | undefined;
+  for (const item of runs) {
+    if ((item.config?.chatId ?? item.runId) !== chatId) continue;
+    if (!latest || item.createdAt > latest.createdAt || (item.createdAt === latest.createdAt && item.runId > latest.runId)) latest = item;
+  }
+  return latest?.runId === runId;
 }
 
 function fmtElapsed(ms: number): string {
@@ -70,7 +82,7 @@ function chatReply(run: Run): string | null {
 }
 
 /** Final answer as prose — no status chrome, copy is an icon. */
-function Answer({ run, conversation = false, retry = null }: { run: Run; conversation?: boolean; retry?: ReactNode }) {
+function Answer({ run, conversation = false, retry = null, stream }: { run: Run; conversation?: boolean; retry?: ReactNode; stream?: string }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
   const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const reply = conversation ? chatReply(run) : null;
@@ -88,7 +100,8 @@ function Answer({ run, conversation = false, retry = null }: { run: Run; convers
       setCopied(true);
     }).catch(errToast);
   };
-  if (isLive(run) && !run.error) return null;
+  // Streamed text is plain until the run settles; markdown parses once, at the end.
+  if (isLive(run) && !run.error) return stream ? <section className="answer" aria-live="polite" aria-busy="true"><p className="answer-text answer-stream">{stream}</p></section> : null;
   if (conversation) {
     if (!reply && !retry && !(run.error && !run.failure)) return null;
     return (
@@ -117,15 +130,11 @@ function Answer({ run, conversation = false, retry = null }: { run: Run; convers
   );
 }
 
-export function RunPanel({ runId, conversation = false, readOnly = false, retryPageId }: { runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string }) {
+/** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
+export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest }: { runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
-  const latestConversationTurn = useStore((s) => {
-    const target = s.runs.find((item) => item.runId === runId);
-    if (!target) return false;
-    const chatId = target.config?.chatId ?? target.runId;
-    return s.runs.filter(item => (item.config?.chatId ?? item.runId) === chatId)
-      .sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId))[0]?.runId === runId;
-  });
+  const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
+  const stream = useStore((s) => s.answerStreams[runId]);
   const steps = useStore((s) => s.steps[runId]);
   const stats = useStore((s) => s.modelStats[runId]);
   const obs = useStore((s) => s.observations[runId]);
@@ -164,7 +173,8 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
     return () => { pendingControl.current=null; ++observationRequest.current; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
-  const elapsed = useElapsed(run);
+  const inspectRef = useRef<(artifactId: string) => Promise<void>>(async () => {});
+  const onInspect = useCallback((artifactId: string) => void inspectRef.current(artifactId), []);
 
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
@@ -229,6 +239,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
       if(version===observationRequest.current)setObsError(e instanceof Error ? e.message : String(e));
     } finally { if(version===observationRequest.current)setObsLoading(false); }
   };
+  inspectRef.current = inspect;
 
   return (
     <div className="run-panel" data-testid="run-panel">
@@ -238,7 +249,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
 
       {!(conversation && !live && run.status === "completed") && <div className="run-status nums">
         {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
-        {!conversation && <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>}
+        {!conversation && <Elapsed run={run} />}
         {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
         {!conversation && stats && stats.costUsd > 0 && <span title={`${stats.inputTokens.toLocaleString()} in · ${stats.outputTokens.toLocaleString()} out tokens`}>{fmtCost(stats.costUsd, stats.costEstimated)}</span>}
         {page && page.url !== "about:blank" && page.pageId !== activePageId && (
@@ -308,7 +319,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
         </div>
       )}
 
-      <Answer run={run} conversation={conversation} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
+      <Answer run={run} conversation={conversation} stream={stream} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
 
       {!conversation && stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
         <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
@@ -349,7 +360,7 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
           <span className="count nums">{steps?.length ?? 0}</span>
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
         </button>
-        {showSteps && (!!steps?.length || live) && <StepTimeline compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={(id) => void inspect(id)} />}
+        {showSteps && (!!steps?.length || live) && <StepTimeline compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={onInspect} />}
       </section>}
 
       {(obs || observationArtifact) && (!conversation || showSteps) && (
@@ -364,4 +375,4 @@ export function RunPanel({ runId, conversation = false, readOnly = false, retryP
       )}
     </div>
   );
-}
+});

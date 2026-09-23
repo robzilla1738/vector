@@ -1204,6 +1204,8 @@ html, body, .app, .app.electron, .app-body { background: transparent; }
 .conversation:not(.conversation-embedded) .composer-options { display: none; }
 .conversation-turn { margin: 0 0 40px; user-select: text; }
 .conversation-turn > time { display: none; }
+.conversation-turn.pending .user-message { opacity: .72; }
+.answer-stream { white-space: pre-wrap; }
 .user-message { margin: 0 0 18px auto; max-width: min(78%, 420px); width: fit-content; border-radius: 18px; background: color-mix(in srgb, var(--ink-0) 7%, transparent); padding: 10px 14px; white-space: pre-wrap; font-size: 15px; line-height: 1.5; }
 .conversation .run-goal { display: none; }
 .conversation .run-panel { padding: 0; gap: 0; }
