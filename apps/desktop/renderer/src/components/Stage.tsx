@@ -72,7 +72,6 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
   const mode = useStore((s) => s.mode);
   const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
   const overlay = useStore(s => s.overlay);
-  const connected = useStore((s) => s.connected);
   const hasUrl = !!page && (!!page.showBlankDocument || (!!page.url && page.url !== "about:blank"));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
@@ -104,16 +103,7 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
           <PageRecovery key={`${page.pageId}:${page.navigationError.url}`} page={page} />
         )}
         {mode === "focus" && page?.viewStatus === "crashed" && <PageRecovery key={page.pageId} page={page} />}
-        {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && connected && <StartPage />}
-        {mode === "focus" && !hasUrl && page?.viewStatus !== "crashed" && !connected && (
-          <div className="stage-message">
-            <div className="empty-state">
-              <span className="empty-ico"><span className="spin" /></span>
-              <h2>Waiting for the runtime</h2>
-              <p>Aux's runtime process is not answering yet. Your tabs stay open. Reconnect to inspect the task before resuming.</p>
-            </div>
-          </div>
-        )}
+        {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
         {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inElectron && inMock && !splitVisible && <MockPage page={page} />}
         {splitVisible && <SplitDivider preview={!inElectron && inMock ? [page!, companion!] : undefined} />}
         {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation /></PaneBoundary>}

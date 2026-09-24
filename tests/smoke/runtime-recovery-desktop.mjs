@@ -34,9 +34,11 @@ try{
   const secondUrl=url.replace('/work','/second');
   process.kill(runtimePid,'SIGSTOP');
   try{
+    await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].contentView.children.find(view=>view.webContents?.getURL().includes('renderer/index.html'))?.webContents.send('runtime-status',{connected:false,detail:'Runtime unavailable during native browsing check'}));
     await shell.bringToFront();
     await shell.keyboard.press('Meta+t');
     for(let i=0;i<100;i++){if((await shell.evaluate(()=>window.aux.tabsSnapshot())).tabs.length===originalCatalog.tabs.length+1)break;await new Promise(resolve=>setTimeout(resolve,50));}
+    await shell.getByText('AI tools are reconnecting. Search and open sites as usual.').waitFor();
     const address=shell.getByRole('combobox',{name:/Search or address/});
     await address.fill(secondUrl);
     assert.equal(await address.inputValue(),secondUrl);
@@ -56,6 +58,7 @@ try{
     assert.equal(await website.getByLabel('Unsaved draft').inputValue(),'Keep this live document through runtime recovery');
   }finally{
     process.kill(runtimePid,'SIGCONT');
+    await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].contentView.children.find(view=>view.webContents?.getURL().includes('renderer/index.html'))?.webContents.send('runtime-status',{connected:true}));
   }
   let before;for(let i=0;i<100;i++){before=await shell.evaluate(()=>window.aux.invoke('workspace.get',{}));if(before.pages.some(page=>page.url===secondUrl))break;await new Promise(resolve=>setTimeout(resolve,50));}
   assert.ok(before.pages.some(page=>page.url===secondUrl),'the resumed runtime must discover the tab opened while it was stopped');
@@ -72,7 +75,7 @@ try{
   const afterWake=await shell.evaluate(()=>window.aux.invoke('workspace.get',{}));
   assert.deepEqual(afterWake.pages.map(page=>page.pageId),before.pages.map(page=>page.pageId),'wake health check must not duplicate or replace tabs');
   assert.equal(await website.getByLabel('Unsaved draft').inputValue(),'Keep this live document through runtime recovery');
-  console.log('Aux opens, navigates, and switches native tabs while its AI runtime is stopped, then reconnects after runtime loss and synthetic wake without replacing live tabs, changing selection, or losing an unsaved page draft.');
+  console.log('Aux keeps the new-tab address bar usable, opens, navigates, and switches native tabs while its AI runtime is stopped and the shell reports disconnection; crash and wake recovery preserve live tabs, selection, and an unsaved draft.');
 }finally{
   await app?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});
 }

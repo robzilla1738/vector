@@ -9,6 +9,7 @@ import { RecentWork } from "./RecentWork";
 /** Browsing starts with one input; saved work stays one step away. */
 export function StartPage() {
   const focus = useStore(s => s.focusCommandBar);
+  const connected = useStore(s => s.connected);
   useEffect(() => { focus("hero"); }, [focus]);
   return <div className="start aux-home"><div className="start-inner">
     <AuxMark />
@@ -18,7 +19,7 @@ export function StartPage() {
       <span>Aux won’t save this window’s tabs, history, site data, or permissions. Files you download remain on your Mac.</span>
     </section> : <>
       <SessionRecovery compact />
-      <RecentWork />
+      {connected ? <RecentWork /> : <p className="hint" role="status">AI tools are reconnecting. Search and open sites as usual.</p>}
     </>}
   </div></div>;
 }
