@@ -19,7 +19,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   ?scenario=disconnected  runtime unreachable → degraded banner
  *   &theme=dark|light  &sidebar=expanded|rail  &live=1 (stream new steps)
  */
-import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
+import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -35,6 +35,7 @@ export function installMockBridge(q: URLSearchParams) {
   const conversationSpaces = new Map<string, string | null>();
   const memoryNotes=new Map<string,WorkspaceMemory>();
   const browsingMemory = new Map<string, {workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[]}>();
+  const contentMemory = new Map<string, ContentMemoryPolicy>();
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
@@ -236,6 +237,16 @@ export function installMockBridge(q: URLSearchParams) {
     "workspaces.browsingMemory.record": async () => {
       return { recorded: false };
     },
+    "workspaces.contentMemory.policy": async p => contentMemory.get(String(p.workspaceId)) ?? { enabled: false, retentionDays: 30, allowedOrigins: [] },
+    "workspaces.contentMemory.setPolicy": async p => {
+      const policy = p.policy as ContentMemoryPolicy;
+      contentMemory.set(String(p.workspaceId), policy);
+      emit("workspace.contentMemory.updated", { workspaceId: String(p.workspaceId) });
+      return policy;
+    },
+    "workspaces.contentMemory.capture": async () => { throw new Error("Article capture needs a native Aux tab."); },
+    "workspaces.contentMemory.search": async () => [],
+    "workspaces.contentMemory.forget": async p => { emit("workspace.contentMemory.updated", { workspaceId: String(p.workspaceId) }); return { forgotten: 0 }; },
     "workspaces.memory.get": async p => {
       return memoryNotes.get(String(p.workspaceId))??{workspaceId:String(p.workspaceId),content:"",revision:0,enabled:true};
     },

@@ -4,10 +4,17 @@ import { profileSession } from "../native-views.js";
 import { installRequestPolicy } from "../request-policy.js";
 import { installSitePermissions, permissionOrigin } from "../site-permissions.js";
 import { stateForEntry } from "../windows/registry.js";
+import { noteContentResponse } from "../content-capture.js";
 import { blockedHostSet, httpsFirst, insecureBypass, noteBlockedRequest, privacy, saveSitePermissions, sitePermissions, trackersAllowed } from "./state.js";
 
 export function configurePagePermissions() {
   const ses = profileSession();
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    const contents = details.webContents;
+    if (details.resourceType === "mainFrame" && contents && registry.byWebContentsId(contents.id))
+      noteContentResponse(contents.id, details.url, details.statusCode, details.responseHeaders ?? {});
+    callback({});
+  });
   // On supported macOS releases Chromium hands modern getDisplayMedia requests to
   // the native source picker. The picker is the consent boundary: Aux never sees
   // or preselects the list of windows/screens, and every request requires a fresh

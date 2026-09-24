@@ -1,4 +1,5 @@
 import { BrowsingMemory } from "./services/browsing-memory.js";
+import { ContentMemoryStore } from "./services/content-memory.js";
 /**
  * Aux runtime entry point.
  *
@@ -156,6 +157,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
   const responses = new ResponseStore({ repo, events, artifacts });
   const vault = new VaultService(repo, native);
+  const contentMemory = native.available() && env.AUX_BROWSER_PROFILE_ID
+    ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events) : undefined;
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
   const pages = new PageService({
@@ -304,6 +307,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   const invoke = makeInvoker({
     native,
+    contentMemory,
     pages,
     sets,
     runs,
@@ -414,9 +418,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let closed = false;
   const browsingMemory = new BrowsingMemory(repo);
   const memoryExpiry = setInterval(() => { try { browsingMemory.prune(); } catch (error) { console.error("Browsing memory cleanup failed", error); } }, 60_000);
+  const contentExpiry = setInterval(() => { try { contentMemory?.prune(); } catch (error) { console.error("Page-content memory cleanup failed", error); } }, 60_000);
   memoryExpiry.unref();
+  contentExpiry.unref();
   const shutdown = async () => {
     clearInterval(memoryExpiry);
+    clearInterval(contentExpiry);
+    contentMemory?.close();
     clearInterval(dueTimer);
     if (closed) return;
     closed = true;

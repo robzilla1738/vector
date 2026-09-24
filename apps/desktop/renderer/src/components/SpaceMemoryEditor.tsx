@@ -1,4 +1,5 @@
 import { BrowsingMemory } from "./BrowsingMemory";
+import { ContentMemory } from "./ContentMemory";
 import { MemoryItems } from "./MemoryItems";
 import { useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
@@ -70,6 +71,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
       onSaved(saved);
     }}/>
     <BrowsingMemory key={memory.workspaceId} memory={memory}/>
+    <ContentMemory key={`content-${memory.workspaceId}`} memory={memory}/>
     {storageError && <p role="status" className="hint">Your draft is available in this window but could not be saved for restart.</p>}
     {error && <p role="alert" className="field-error">{error}</p>}
     {conflict && <div className="memory-conflict"><strong>These notes changed elsewhere</strong><p>Your draft is preserved. Review the latest saved notes before choosing which version to keep.</p><pre>{conflict.content || "No saved notes"}</pre><div className="row">

@@ -1,5 +1,6 @@
 import { SavedResults } from "../services/saved-results.js";
 import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
+import { ContentMemoryStore } from "../services/content-memory.js";
 import { EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
@@ -50,6 +51,7 @@ export interface Services {
   agentConnections?: AgentConnectionService;
   calendar?: CalendarConnectionService;
   native?:NativeBridge;
+  contentMemory?: ContentMemoryStore;
   vault?: VaultService;
   routines?: RoutineService;
   responses?: ResponseStore;
@@ -371,6 +373,44 @@ export function makeInvoker(s: Services) {
         revokeWorkspaceContext(params.workspaceId, true);
         s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
         return result;
+      }
+      case "workspaces.contentMemory.policy":
+      case "workspaces.contentMemory.setPolicy":
+      case "workspaces.contentMemory.capture":
+      case "workspaces.contentMemory.search":
+      case "workspaces.contentMemory.forget": {
+        if (client.external) throw new AuxError("permission_denied", "Page-content memory is managed in Aux.");
+        const store = s.contentMemory;
+        if (!store) throw new AuxError("backend_unavailable", "Protected page-content memory requires the Aux desktop app.");
+        if (method === "workspaces.contentMemory.policy") return store.policy(params.workspaceId);
+        if (method === "workspaces.contentMemory.setPolicy") {
+          const result = store.setPolicy(params.workspaceId, params.policy);
+          s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
+          return result;
+        }
+        if (method === "workspaces.contentMemory.search") return store.search(params.workspaceId, params.query);
+        if (method === "workspaces.contentMemory.forget") {
+          const forgotten = store.forget(params.workspaceId, params.memoryId);
+          s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
+          return { forgotten };
+        }
+        const page = s.pages.get(params.pageId);
+        if (!s.native?.captureReadablePage || page.backend !== "aux" || page.ownedByRuntime
+          || page.documentEpoch !== params.expectedDocumentEpoch || page.url !== params.expectedUrl)
+          throw new AuxError("conflict", "The selected document changed. Select the current page and retry.");
+        const policy = store.policy(params.workspaceId);
+        const origin = new URL(params.expectedUrl).origin;
+        if (!policy.enabled || !policy.allowedOrigins.includes(origin))
+          throw new AuxError("permission_denied", "Allow this site for page-content recall in the selected Space first.");
+        const captured = await s.native.captureReadablePage(page.pageId, params.expectedUrl);
+        const current = s.pages.get(page.pageId);
+        if (current.documentEpoch !== page.documentEpoch || current.sessionId !== page.sessionId
+          || current.url !== page.url || current.backend !== "aux" || current.ownedByRuntime)
+          throw new AuxError("conflict", "The document changed during capture. Try again.");
+        const saved = await store.saveEligible({ workspaceId: params.workspaceId, pageId: page.pageId,
+          documentEpoch: page.documentEpoch, sessionId: page.sessionId, ...captured });
+        s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
+        return { memoryId: saved.memoryId, capturedAt: saved.capturedAt, title: saved.title, url: saved.url };
       }
       case "workspaces.memory.get":
         if (client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");

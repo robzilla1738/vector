@@ -26,6 +26,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const onClose = useMenuDismiss(ref, finishClose);
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const [moving, setMoving] = useState(false);
+  const [remembering, setRemembering] = useState(false);
   const [query, setQuery] = useState("");
   const moveButton = useRef<HTMLButtonElement>(null);
   const [windows, setWindows] = useState<Awaited<ReturnType<typeof bridge.windows>>>([]);
@@ -37,6 +38,10 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   }, []);
   const previous = useRef(document.activeElement as HTMLElement | null);
   const spaceId = layout.tabSpace[page.pageId] ?? layout.activeSpaceId;
+  const space = layout.spaces.find(item => item.id === spaceId);
+  const rememberable = !bulk && inElectron && !bridge.privateMode && page.backend === "aux"
+    && !page.ownedByRuntime && page.pageId === activePageId && !!space?.workspaceId
+    && page.url.startsWith("https://");
   const rawTabs = tabsInSpace(layout, pages, spaceId);
   const spaceTabs = horizontal ? groupedTabs(layout, rawTabs) : rawTabs;
   const pageIndex = spaceTabs.findIndex(item => item.pageId === page.pageId);
@@ -52,16 +57,17 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const canMoveWindow = inElectron && !bridge.privateMode;
   const canMove = folders.some(folder => folder.id !== currentFolder) || hasFolder || layout.spaces.length > 1 || canMoveWindow;
   useEffect(() => {
-    if (moving) ref.current?.querySelector<HTMLInputElement>("input")?.focus();
+    if (remembering) ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    else if (moving) ref.current?.querySelector<HTMLInputElement>("input")?.focus();
     else moveButton.current?.focus();
-  }, [moving]);
+  }, [moving, remembering]);
 
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
     positionContextMenu(menu, x, y);
     requestStageReport();
-  }, [x, y, folders.length, layout.spaces.length, windows.length, moving, query]);
+  }, [x, y, folders.length, layout.spaces.length, windows.length, moving, remembering, query]);
 
   useEffect(() => {
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
@@ -102,12 +108,33 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     void Promise.resolve().then(work).catch(errToast);
   }
 
+  async function rememberPage() {
+    const workspaceId = space?.workspaceId;
+    if (!workspaceId) return;
+    const origin = new URL(page.url).origin;
+    const policy = await call("workspaces.contentMemory.policy", { workspaceId });
+    if (!policy.enabled || !policy.allowedOrigins.includes(origin)) {
+      await call("workspaces.contentMemory.setPolicy", { workspaceId, policy: {
+        ...policy, enabled: true, allowedOrigins: [...new Set([...policy.allowedOrigins, origin])],
+      } });
+    }
+    const saved = await call("workspaces.contentMemory.capture", {
+      workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch, expectedUrl: page.url,
+    });
+    toast(`Remembered “${saved.title}” in ${space?.name}`);
+  }
+
   return <div ref={ref} className="menu ctx-menu tab-menu" role="menu" style={{ left: x, top: y }} onKeyDown={event => {
     if(event.key==="Tab"){event.preventDefault();onClose();return;}
     if (moving && (event.key === "Escape" || (event.key === "ArrowLeft" && !(event.target instanceof HTMLInputElement)))) { event.preventDefault(); event.stopPropagation(); setMoving(false); setQuery(""); return; }
     moveMenuFocus(event);
   }}>
-    {moving ? <>
+    {remembering ? <>
+      <div className="menu-label">Remember page content</div>
+      <p className="menu-empty">Save readable article text from {hostOf(page.url)} in {space?.name}. This allows this site in the Space until you remove it in Space memory. Forms and private pages are excluded.</p>
+      <button className="menu-item" role="menuitem" onClick={() => action(rememberPage)}>Remember this article</button>
+      <button className="menu-item" role="menuitem" onClick={() => setRemembering(false)}>Cancel</button>
+    </> : moving ? <>
       <button className="menu-item tab-menu-back" role="menuitem" onClick={() => { setMoving(false); setQuery(""); }}>{I.left}<span className="t">{bulk ? `Move ${selectedIds.length} tabs` : "Move tab"}</span></button>
       <input className="tab-menu-search" aria-label="Find a folder, Space or window" placeholder="Find a destination…" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
         if (event.key === "ArrowDown") { event.preventDefault(); ref.current?.querySelector<HTMLElement>('[data-destination]')?.focus(); }
@@ -138,6 +165,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
       <button className="menu-item" role="menuitem" onClick={() => action(async () => { await navigator.clipboard.writeText(page.url); toast("URL copied"); })}>{I.copy}<span className="t">Copy URL</span></button>
       <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{I.pin}<span className="t">{pinned ? "Unpin" : "Pin to space"}</span></button>
     </>}
+    {rememberable && <button className="menu-item" role="menuitem" onClick={() => setRemembering(true)}>{I.copy}<span className="t">Remember article in {space?.name}…</span></button>}
     {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(pages.find(item => item.pageId === activePageId)))) && <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().setSplitPage(splitPageId === page.pageId ? null : page.pageId))}>{I.split}<span className="t">{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</span></button>}
     </>}
     {horizontal && <button className="menu-item" role="menuitem" onClick={() => action(() => { useStore.getState().moveTabs(selectedIds, spaceId, { name: "New group" }); onSelectionDone?.(); })}>{I.folderClosed}<span className="t">New tab group</span></button>}

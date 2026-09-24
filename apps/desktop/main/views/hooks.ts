@@ -22,6 +22,7 @@ import { tabCatalog } from "../tabs/store.js";
 import type { ViewEntry } from "../target-registry.js";
 import { pageWindowOwners, shellForPage, stateForEntry, stateForWindowId } from "../windows/registry.js";
 import { applyStage, forgetPlacement, updateWindowTitle } from "../windows/stage.js";
+import { forgetContentResponse } from "../content-capture.js";
 
 export function unloadPrompt(entry: ViewEntry): Electron.MessageBoxSyncOptions {
   let site = "this page";
@@ -34,6 +35,7 @@ export function unloadPrompt(entry: ViewEntry): Electron.MessageBoxSyncOptions {
 }
 
 export const viewHooks = {
+  onNavigationStarted: forgetContentResponse,
   onExternalLink: (entry: ViewEntry, url: string) => {
     const state=stateForEntry(entry);
     // Hidden task pages cannot open applications over the user's current work.
@@ -100,6 +102,7 @@ export const viewHooks = {
   onCrashed: (pageId: string) => { noteTab(pageId, { crashed: true, loading: false }); browserHealth.notePageCrash(); notifyRuntime("view.crashed", { pageId }); },
   onUnresponsive:()=>browserHealth.notePageUnresponsive(),
   onDestroyed: (pageId: string, wc: Electron.WebContents) => { const owner=shellForPage(pageId);const ownerState=stateForWindowId(pageWindowOwners.get(pageId));
+    forgetContentResponse(wc.id);
     // A stale destroy from a superseded instance must not touch the current
     // view's bookkeeping — the pageId already has a fresh view registered.
     const registered = registry.get(pageId);

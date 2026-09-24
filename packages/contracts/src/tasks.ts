@@ -150,3 +150,10 @@ export const BrowsingMemoryPageSchema = z.object({ memoryId: text, url: z.string
 export const WorkspaceBrowsingMemorySchema = z.object({ workspaceId: text, policy: BrowsingMemoryPolicySchema, pages: z.array(BrowsingMemoryPageSchema) });
 export type BrowsingMemoryPolicy = z.infer<typeof BrowsingMemoryPolicySchema>;
 export type BrowsingMemoryPage = z.infer<typeof BrowsingMemoryPageSchema>;
+
+/** Page text is opt-in per Space and exact HTTPS site. */
+export const ContentMemoryPolicySchema = z.object({ enabled: z.boolean(), retentionDays: z.union([z.literal(30), z.literal(90)]), allowedOrigins: z.array(z.string().url()).max(100) });
+export type ContentMemoryPolicy = z.infer<typeof ContentMemoryPolicySchema>;
+export const ContentMemoryMatchSchema = z.object({ memoryId: text, profileId: text, workspaceId: text, pageId: text,
+  documentEpoch: z.number().int().nonnegative(), url: z.string().url(), title: z.string(), capturedAt: z.number(), snippet: z.string() });
+export type ContentMemoryMatch = z.infer<typeof ContentMemoryMatchSchema>;

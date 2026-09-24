@@ -36,9 +36,12 @@ export function wireRuntimeIpc() {
         if (entry && (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) throw new Error("That tab belongs to another Aux window.");
       }
     }
-    if (method === "workspaces.browsingMemory.record") {
+    if (method === "workspaces.browsingMemory.record" || method === "workspaces.contentMemory.capture") {
       const entry = typeof requestedPageId === "string" ? registry.get(requestedPageId) : undefined;
-      if (!entry || entry.popup || entry.runtimeOwned || !state.win.isFocused() || state.overlayOpen || state.stagePageId !== requestedPageId || !entry.view.getVisible()) return { recorded: false };
+      if (!entry || entry.popup || entry.runtimeOwned || !state.win.isFocused() || state.overlayOpen || state.stagePageId !== requestedPageId || !entry.view.getVisible()) {
+        if (method === "workspaces.contentMemory.capture") throw new Error("Select the visible tab before remembering its content.");
+        return { recorded: false };
+      }
     }
     if (method === "downloads.remove") {
       const selection = MethodSchemas["downloads.remove"].parse(params);

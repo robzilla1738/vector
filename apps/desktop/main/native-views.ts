@@ -26,6 +26,7 @@ export interface ViewHooks {
   onCrashed(pageId: string): void;
   onUnresponsive?(pageId:string):void;
   onNavigationError(pageId: string, error: { url: string; code: number; message: string } | null): void;
+  onNavigationStarted?(webContentsId: number): void;
   onDestroyed(pageId: string, webContents: Electron.WebContents): void;
   onPopup(entry: ViewEntry, activate?: boolean): void;
   onTakeover(pageId: string): void;
@@ -171,7 +172,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   wc.on('audio-state-changed',audio);wc.on('dom-ready',audio);audio();
   const navState = () => hooks.onNavState(id, wc.navigationHistory.canGoBack(), wc.navigationHistory.canGoForward());
   wc.on("did-start-navigation", (_event, _url, _inPlace, isMainFrame) => {
-    if (isMainFrame) hooks.onNavigationError(id, null);
+    if (isMainFrame) { hooks.onNavigationStarted?.(wc.id); hooks.onNavigationError(id, null); }
   });
   wc.on("did-fail-load", (_event, code, message, url, isMainFrame) => {
     if (isMainFrame && code !== -3) hooks.onNavigationError(id, { url, code, message });

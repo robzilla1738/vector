@@ -25,6 +25,7 @@ export interface NativeBridge {
   /** Persist a secret via Electron safeStorage (plan A22). */
   storeSecret(name: string, value: string): Promise<{ ok: true }>;
   readSecret(name: string): Promise<{ value?: string }>;
+  captureReadablePage?(pageId: string, expectedUrl: string): Promise<{ url: string; title: string; text: string }>;
   developmentProjects?(projectIds:string[]):Promise<LocalProject[]>;
   inspectProject?(projectId:string):Promise<ProjectInspection>;
   githubProject?(projectId:string):Promise<{owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string}>;
@@ -95,6 +96,9 @@ export class ChannelNativeBridge implements NativeBridge {
   readSecret(name: string) {
     return this.channel.call<{ value?: string }>("native.readSecret", { name });
   }
+  captureReadablePage(pageId: string, expectedUrl: string) {
+    return this.channel.call<{ url: string; title: string; text: string }>("native.captureReadablePage", { pageId, expectedUrl }, 15_000);
+  }
   developmentProjects(projectIds:string[]){return this.channel.call<LocalProject[]>("native.developmentProjects",{projectIds});}
   inspectProject(projectId:string){return this.channel.call<ProjectInspection>("native.inspectProject",{projectId});}
   githubProject(projectId:string){return this.channel.call<{owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string}>("native.githubProject",{projectId});}
@@ -138,6 +142,7 @@ export class NullNativeBridge implements NativeBridge {
   setCookies(): never { this.fail(); }
   async storeSecret(): Promise<{ ok: true }> { throw new Error("Secure credential storage is unavailable without the desktop"); }
   async readSecret() { return { value: undefined as string | undefined }; }
+  async captureReadablePage(): Promise<{ url: string; title: string; text: string }> { throw new Error("Page-content capture requires the Aux desktop app."); }
   developmentProjects(): never { this.fail(); }
   inspectProject(): never { this.fail(); }
   githubProject(): never { this.fail(); }

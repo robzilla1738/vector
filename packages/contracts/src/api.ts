@@ -28,7 +28,7 @@ import { EventSchema } from "./events.js";
 import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
-import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
+import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, ContentMemoryPolicySchema, ContentMemoryMatchSchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
@@ -536,6 +536,11 @@ export const MethodSchemas = {
   "workspaces.browsingMemory.set": z.object({ workspaceId: id, policy: BrowsingMemoryPolicySchema }),
   "workspaces.browsingMemory.record": z.object({ workspaceId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }),
   "workspaces.browsingMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
+  "workspaces.contentMemory.policy": z.object({ workspaceId: id }),
+  "workspaces.contentMemory.setPolicy": z.object({ workspaceId: id, policy: ContentMemoryPolicySchema }),
+  "workspaces.contentMemory.capture": z.object({ workspaceId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), expectedUrl: z.string().url().max(8192) }),
+  "workspaces.contentMemory.search": z.object({ workspaceId: id, query: z.string().trim().min(1).max(200) }),
+  "workspaces.contentMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.memory.get": z.object({ workspaceId: id }),
   "workspaces.memory.search": z.object({query:z.string().trim().min(1).max(1000)}),
   "workspaces.memory.set": z.object({ workspaceId: id, expectedRevision: z.number().int().nonnegative(), content: z.string().max(16_000), enabled:z.boolean().optional(), items:z.array(WorkspaceMemoryItemSchema).max(40).optional(), excludedOrigins:z.array(z.string().max(2048)).max(100).optional() }),
@@ -894,6 +899,11 @@ export const ResultSchemas = {
   "workspaces.browsingMemory.set": WorkspaceBrowsingMemorySchema,
   "workspaces.browsingMemory.record": z.object({ recorded: z.boolean() }),
   "workspaces.browsingMemory.forget": WorkspaceBrowsingMemorySchema,
+  "workspaces.contentMemory.policy": ContentMemoryPolicySchema,
+  "workspaces.contentMemory.setPolicy": ContentMemoryPolicySchema,
+  "workspaces.contentMemory.capture": z.object({ memoryId: id, capturedAt: z.number(), title: z.string(), url: z.string().url() }),
+  "workspaces.contentMemory.search": z.array(ContentMemoryMatchSchema),
+  "workspaces.contentMemory.forget": z.object({ forgotten: z.number().int().nonnegative() }),
   "workspaces.memory.get": WorkspaceMemorySchema,
   "workspaces.memory.search": z.array(z.object({workspaceId:id,name:z.string(),excerpt:z.string(),enabled:z.boolean()})),
   "workspaces.memory.set": WorkspaceMemorySchema,

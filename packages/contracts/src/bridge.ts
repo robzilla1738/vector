@@ -64,6 +64,7 @@ export const NativeMethods = {
   "native.setCookies": z.object({ cookies: z.array(z.unknown()) }),
   "native.storeSecret": z.object({ name: z.string(), value: z.string() }),
   "native.readSecret": z.object({ name: z.string() }),
+  "native.captureReadablePage": z.object({ pageId: z.string().min(1), expectedUrl: z.string().url().max(8192) }),
   "native.developmentProjects": z.object({ projectIds: z.array(z.string()).default([]) }),
   "native.inspectProject": ProjectParams,
   "native.githubProject": ProjectParams,
