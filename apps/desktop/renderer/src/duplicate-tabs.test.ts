@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { PageTarget } from "@aux/contracts";
-import { duplicateTabs } from "./duplicate-tabs";
+import { duplicateTabs, protectedDuplicateIds } from "./duplicate-tabs";
 import { emptyLayout } from "./workspace";
 
 const tab = (pageId: string, lastActiveAt: number, extra: Partial<PageTarget> = {}) => ({
@@ -16,4 +16,21 @@ it("preserves the active copy, separate Spaces, exact queries/fragments and cont
   expect(duplicateTabs(pages,layout,"active")).toEqual(["old","newest"]);
   expect(duplicateTabs(pages,layout,null)).toEqual(["old","active"]);
   expect(duplicateTabs(pages.filter(page=>page.pageId!=="active"&&page.pageId!=="newest"),layout,null)).toEqual([]);
+});
+
+it("keeps pinned and playing copies out of a duplicate cleanup proposal", () => {
+  const layout = emptyLayout();
+  const pages = [tab("pinned", 1), tab("playing", 2), tab("extra", 3), tab("other", 4, {url:"https://other.test/"})];
+  expect(duplicateTabs(pages, layout, null, new Set(["pinned", "playing"]))).toEqual(["extra"]);
+  expect(duplicateTabs(pages, layout, "playing", new Set(["pinned", "playing"]))).toEqual(["extra"]);
+});
+
+it("derives protection from Space pins and live audio before proposing cleanup", () => {
+  const base = emptyLayout();
+  const layout = { ...base, pins: { [base.activeSpaceId]: [{ url: "https://example.com/", title: "Pinned" }] } };
+  const pages = [tab("pinned-copy", 1), tab("playing", 2, {url:"https://media.test/"}),
+    tab("media-extra", 3, {url:"https://media.test/"})];
+  const protectedIds = protectedDuplicateIds(pages, layout, { playing: { audible: true } });
+  expect([...protectedIds]).toEqual(["pinned-copy", "playing"]);
+  expect(duplicateTabs(pages, layout, null, protectedIds)).toEqual(["media-extra"]);
 });

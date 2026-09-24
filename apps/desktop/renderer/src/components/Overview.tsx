@@ -1,4 +1,4 @@
-import { duplicateTabs } from "../duplicate-tabs";
+import { duplicateTabs, protectedDuplicateIds } from "../duplicate-tabs";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
@@ -46,7 +46,8 @@ export function Overview() {
     const folder = layout.folders.find(folder => folder.id === layout.tabFolder[page.pageId]);
     return (!spaceId || ownerId === spaceId) && `${page.title} ${page.url} ${owner?.name ?? ""} ${folder?.name ?? ""}`.toLocaleLowerCase().includes(search);
   }).sort((a, b) => (order.get(a.pageId) ?? Infinity) - (order.get(b.pageId) ?? Infinity));
-  const duplicates = duplicateTabs(visible, layout, activePageId);
+  const protectedDuplicates = protectedDuplicateIds(visible, layout, audio);
+  const duplicates = duplicateTabs(visible, layout, activePageId, protectedDuplicates);
   const visibleKey = JSON.stringify(visible.map(page => page.pageId));
   const focusedId = visible.some(page => page.pageId === focused) ? focused : visible[0]?.pageId;
   const selection = pages.filter(page => selected.has(page.pageId));
@@ -182,10 +183,10 @@ export function Overview() {
         <option value="">All spaces</option>{[...layout.spaces, ...(layout.archivedSpaces ?? [])].map(space => <option key={space.id} value={space.id}>{space.name}{layout.archivedSpaces?.some(item => item.id === space.id) ? " · Archived" : ""}</option>)}
       </select>
       <button className="btn sm" disabled={busy || !visible.length} onClick={() => setSelected(new Set(visible.map(page => page.pageId)))}>Select all</button>
-      {duplicates.length > 0 && <button className="btn sm ghost" disabled={busy} title="Select extra copies of the exact same address in each Space. Keep the active or most recently used copy. Agent-controlled tabs are excluded." onClick={() => {
+      {duplicates.length > 0 && <button className="btn sm ghost" disabled={busy} title="Preview extra copies of the exact same address in each Space. Active, pinned, audible, and agent-controlled tabs are excluded." onClick={() => {
         setSelected(new Set(duplicates)); anchor.current = duplicates[0] ?? null;
         setSavingFolder(false); setError("");
-        setProgress(`Selected ${duplicates.length} duplicate ${duplicates.length === 1 ? "tab" : "tabs"} in this view. The active or most recently used copy stays unselected in each Space.`);
+        setProgress(`Review ${duplicates.length} duplicate ${duplicates.length === 1 ? "tab" : "tabs"} below before closing. Active, pinned, and playing tabs stay open; site unsaved-work prompts can stop closing.`);
         focusTab(duplicates[0]);
       }}>Select duplicates · {duplicates.length}</button>}
     </div>
