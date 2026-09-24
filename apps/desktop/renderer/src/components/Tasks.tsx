@@ -1,3 +1,4 @@
+import { WorkRow } from "./ui";
 import { useEffect, useRef, useState } from "react";
 import type { Run, Task, TaskReceipt } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -151,10 +152,16 @@ export function Tasks() {
         {!selected && !creating && <>
           <div className="task-index-tools"><input aria-label="Search tasks" placeholder="Search tasks…" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} /><button className="btn primary" disabled={!workspaceId} onClick={() => reset()}>{I.plusSm}New task</button></div>
           <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Task status">{(["all", "active", "archived"] as const).map(filter => <button key={filter} className={taskFilter === filter ? "active" : ""} aria-pressed={taskFilter === filter} onClick={() => setTaskFilter(filter)}>{filter === "all" ? "All" : filter === "active" ? "Active" : "Archived"}</button>)}</div><span className="hint" role="status">{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span></div>
-          <div className="task-index-grid">
-            {visibleTasks.map(task => <button key={task.taskId} className="task-index-card" onClick={() => void action(() => refresh(task.taskId))}>
-              <span className="work-status">{task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"}</span><strong>{task.title}</strong><p>{task.objective}</p><small>{task.criteria.length} success {task.criteria.length === 1 ? "criterion" : "criteria"}</small>
-            </button>)}
+          <div className="ui-work-list">
+            {visibleTasks.map(task => <WorkRow key={task.taskId} title={task.title} summary={task.objective} icon={I.folder}
+              status={task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"}
+              metadata={`${task.criteria.length} success ${task.criteria.length === 1 ? "criterion" : "criteria"} · Updated ${new Date(task.updatedAt).toLocaleDateString()}`}
+              disabled={busy} onOpen={() => void action(() => refresh(task.taskId))}
+              actions={[{ label: "Open task", onSelect: () => void action(() => refresh(task.taskId)) },
+                { label: task.state === "archived" ? "Restore" : "Archive", onSelect: () => void action(async () => {
+                  await call("tasks.archive", { taskId: task.taskId, expectedRevision: task.revision, archived: task.state !== "archived" });
+                  setTasks(await call("tasks.list", { workspaceId, includeArchived: true }));
+                }) }]} />)}
           </div>
           {!busy && !tasks.length && <div className="home-empty"><p>No saved tasks yet.</p><button className="btn ghost" disabled={!workspaceId} onClick={() => reset()}>Create your first task</button></div>}
           {!busy && tasks.length > 0 && !visibleTasks.length && <div className="home-empty" role="status"><p>No tasks match these filters.</p><button className="btn ghost" onClick={() => { setTaskQuery(""); setTaskFilter("all"); }}>Clear filters</button></div>}

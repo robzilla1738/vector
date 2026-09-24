@@ -48,6 +48,7 @@ function RefLine({ line }: { line: string }) {
 
 const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: string; lines: string[]; startOpen: boolean }) {
   const [open, setOpen] = useState(startOpen);
+  const [limit, setLimit] = useState(80);
   const isRefs = /interactive|form|links|tables/i.test(name);
   const isHeadings = /heading/i.test(name);
   return (
@@ -59,8 +60,8 @@ const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: 
       </button>
       {open && (
         <ul className={`obs-lines ${isRefs ? "refs" : ""} ${isHeadings ? "headings" : ""}`}>
-          {lines.slice(0, 80).map((l, i) => (isRefs ? <RefLine key={i} line={l} /> : <li key={i} className="obs-text">{l.replace(/^-\s*/, "")}</li>))}
-          {lines.length > 80 && <li className="obs-more">+{lines.length - 80} more</li>}
+          {lines.slice(0, limit).map((l, i) => (isRefs ? <RefLine key={i} line={l} /> : <li key={i} className="obs-text">{l.replace(/^-\s*/, "")}</li>))}
+          {lines.length > limit && <li className="obs-more"><button className="btn sm ghost" onClick={() => setLimit(value => value + 80)}>Show {Math.min(80, lines.length - limit)} more in {name}</button></li>}
         </ul>
       )}
     </section>
@@ -82,10 +83,10 @@ export const ObservationPanel = memo(
         {!compact && parsed.header.slice(1).map((l, i) => (
           <div key={i} className="obs-subtle nums">{l}</div>
         ))}
-        {parsed.sections.map((s) => <ObsSection key={s.name} name={s.name} lines={s.lines} startOpen={!compact} />)}
+        {parsed.sections.map((s) => <ObsSection key={`${obs.pageId}:${obs.revision}:${s.name}`} name={s.name} lines={s.lines} startOpen={!compact} />)}
         {parsed.sections.length === 0 && <pre className="obs-raw">{obs.text}</pre>}
       </div>
     );
   },
-  (a, b) => a.obs.pageId === b.obs.pageId && a.obs.revision === b.obs.revision && a.obs.text === b.obs.text && a.compact === b.compact,
+  (a, b) => a.obs.pageId === b.obs.pageId && a.obs.revision === b.obs.revision && a.obs.text === b.obs.text && a.compact === b.compact && a.onCopy === b.onCopy && a.obs.title === b.obs.title && a.obs.url === b.obs.url && a.obs.refs === b.obs.refs,
 );

@@ -214,6 +214,10 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
   const trigger = useRef(document.activeElement as HTMLElement | null);
   const [profileName, setProfileName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [spaceQuery, setSpaceQuery] = useState("");
+  const currentSpace = spaces.find(space => space.id === active);
+  const matchesSpace = (space: Space) => space.name.toLocaleLowerCase().includes(spaceQuery.trim().toLocaleLowerCase());
+  const visibleSpaces = [...spaces].sort((a, b) => Number(b.id === active) - Number(a.id === active)).filter(matchesSpace);
   useEffect(() => {
     if (!inNativeHost || bridge.privateMode) return;
     let live = true;
@@ -223,7 +227,7 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
   useEffect(() => {
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
     document.addEventListener("mousedown", outside);
-    ref.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
+    ref.current?.querySelector<HTMLElement>('input[type="search"], [role^="menuitem"]')?.focus();
     return () => document.removeEventListener("mousedown", outside);
   }, []);
   useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
@@ -243,7 +247,12 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
       onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }}>
       {profileName && <div className="menu-caption space-profile-caption" title={`${profileName} browser profile`}>Profile · {profileName}</div>}
       {bridge.privateMode && <div className="menu-caption">Private window</div>}
-      {spaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} role="none">
+      <div className="space-current" data-space={currentSpace?.color}><span className="space-dot" /><div><small>Current Space</small><strong>{currentSpace?.name ?? "Space"}</strong></div></div>
+      {spaces.length + archivedSpaces.length > 6 && <label className="space-search">{I.search}<input type="search" aria-label="Search Spaces" placeholder="Find a Space…" value={spaceQuery} onChange={event => setSpaceQuery(event.target.value)} onKeyDown={event => {
+        if (event.key === "ArrowDown") { event.preventDefault(); ref.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus(); }
+      }} /></label>}
+      {!visibleSpaces.length && <p className="menu-caption" role="status">No matching Spaces</p>}
+      {visibleSpaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} role="none">
         <button className={`menu-item ${space.id === active ? "on" : ""}`} role="menuitemradio" aria-checked={space.id === active}
           onClick={() => choose(() => onPick(space.id))}>
           <span className="space-dot" /><span className="t">{space.name}</span>
@@ -258,7 +267,7 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
         <button className="menu-item" role="menuitem" aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
           <span className="menu-ico">{I.reload}</span><span className="t">Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
         </button>
-        {showArchived && archivedSpaces.map(space => <button key={space.id} className="menu-item space-restore-item" role="menuitem"
+        {showArchived && archivedSpaces.filter(matchesSpace).map(space => <button key={space.id} className="menu-item space-restore-item" role="menuitem"
           onClick={() => choose(() => onRestore(space.id))} title="Restore this space and its saved work">
           <span className="t">{space.name}</span><span className="muted">Restore</span>
         </button>)}

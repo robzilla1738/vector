@@ -107,3 +107,13 @@ export function DetailPane({ title, metadata, actions, onClose, children, classN
 export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {
   return <div className="composer-frame-wrap">{notices && <div className="composer-notices">{notices}</div>}<Surface material="inset" className="composer-frame">{context && <div className="composer-context">{context}</div>}{children}</Surface></div>;
 }
+
+/** Shared saved-work list anatomy; execution/revision authority stays with each owner. */
+export function WorkRow({ title, summary, metadata, status, icon, disabled, onOpen, actions }: {
+  title: string; summary: string; metadata: ReactNode; status: string; icon: ReactNode;
+  disabled?: boolean; onOpen(): void; actions: MenuAction[];
+}) {
+  return <div className="ui-work-row"><ListRow title={title} leading={icon} disabled={disabled} onOpen={onOpen}
+    description={<><span className="ui-work-summary">{summary}</span><span className="ui-work-meta">{metadata}</span></>}
+    trailing={<><StatusBadge label={status} /><ActionMenu label={`Actions for ${title}`} actions={actions.map(action => ({ ...action, disabled: disabled || action.disabled }))} /></>} /></div>;
+}

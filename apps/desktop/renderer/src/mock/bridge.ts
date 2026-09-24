@@ -1,3 +1,4 @@
+import { workFixtures } from "./work";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
@@ -280,9 +281,7 @@ export function installMockBridge(q: URLSearchParams) {
     "plugins.uninstall": async p => {
       return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
     },
-    "tasks.list": async () => {
-      return [];
-    },
+    ...workFixtures(`workspace:${DEFAULT_SPACE.id}`, scenario === "work"),
     "conversations.prepared": async () => {
       return [];
     },

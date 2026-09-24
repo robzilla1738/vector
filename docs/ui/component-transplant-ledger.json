@@ -1085,7 +1085,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1096,7 +1096,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "2026-09-24: shared work rows (Tasks/Skills) with revision-preserving actions; inspector DetailPane with raw disclosure, stale-response rejection and incremental observation lines. WorkLists 1, Inspector 2, shared menu 1 and RoutineSchedule 5 focused tests passed. Renderer typecheck passed. Native and full visual qualification pending."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1327,7 +1329,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1338,7 +1340,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "2026-09-24: shared work rows (Tasks/Skills) with revision-preserving actions; inspector DetailPane with raw disclosure, stale-response rejection and incremental observation lines. WorkLists 1, Inspector 2, shared menu 1 and RoutineSchedule 5 focused tests passed. Renderer typecheck passed. Native and full visual qualification pending."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1813,7 +1817,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/routines-B2j0DOh-.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1824,7 +1828,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "2026-09-24: shared work rows (Tasks/Skills) with revision-preserving actions; inspector DetailPane with raw disclosure, stale-response rejection and incremental observation lines. WorkLists 1, Inspector 2, shared menu 1 and RoutineSchedule 5 focused tests passed. Renderer typecheck passed. Native and full visual qualification pending."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -2141,7 +2147,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Space menu now shows current Space separately from Profile, current-first ordering and search above six entries. Search takes initial keyboard focus; ArrowDown enters matches. Full Space keyboard matrix pending."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -2711,7 +2719,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -2722,7 +2730,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "2026-09-24: shared work rows (Tasks/Skills) with revision-preserving actions; inspector DetailPane with raw disclosure, stale-response rejection and incremental observation lines. WorkLists 1, Inspector 2, shared menu 1 and RoutineSchedule 5 focused tests passed. Renderer typecheck passed. Native and full visual qualification pending."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",

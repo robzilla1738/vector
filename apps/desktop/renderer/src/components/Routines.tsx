@@ -1,3 +1,4 @@
+import { WorkRow } from "./ui";
 import { useEffect, useState } from "react";
 import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, Task, VaultItem } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -91,12 +92,15 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     {!selected && <>
       <label className="routine-search">{I.search}<input aria-label="Search Skills" placeholder="Search Skills…" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Skill status">{(["all", "ready", "paused", "archived"] as const).map(filter => <button key={filter} className={status === filter ? "active" : ""} aria-pressed={status === filter} onClick={() => setStatus(filter)}>{filter[0]!.toUpperCase() + filter.slice(1)}</button>)}</div><span className="hint" role="status">{visibleRoutines.length} {visibleRoutines.length === 1 ? "Skill" : "Skills"}</span></div>
-      {loading ? <p className="hint" role="status">Loading Skills…</p> : <div className="routine-grid">
-        {visibleRoutines.map(item => <button className="routine-card" disabled={busy} key={item.routineId} onClick={() => void action(() => refresh(item.routineId))}>
-          <span className="routine-card-top">{matchesCurrentSite(item) ? <span className="hint">Saved for this site</span> : I.clock}<span className="routine-status">{item.archivedAt ? "Archived" : item.paused ? "Paused" : "Ready"}</span></span>
-          <strong>{item.title}</strong><p>{item.objective}</p>
-          <span className="routine-card-trigger">{routineScheduleSummary(item.trigger)}{I.right}</span>
-        </button>)}
+      {loading ? <p className="hint" role="status">Loading Skills…</p> : <div className="ui-work-list">
+        {visibleRoutines.map(item => <WorkRow key={item.routineId} title={item.title} summary={item.objective} icon={I.clock}
+          status={item.archivedAt ? "Archived" : item.paused ? "Paused" : !item.sourceTaskId ? "Unbound" : "Ready"}
+          metadata={`${routineScheduleSummary(item.trigger)}${matchesCurrentSite(item) ? " · Saved for this site" : ""} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`}
+          disabled={busy} onOpen={() => void action(() => refresh(item.routineId))}
+          actions={[{ label: "Edit Skill", onSelect: () => void action(() => refresh(item.routineId)) },
+            { label: item.paused ? "Resume" : "Pause", disabled: !!item.archivedAt || (item.paused && !item.sourceTaskId), onSelect: () => void action(async () => {
+              await call("routines.pause", { routineId: item.routineId, expectedRevision: item.revision, paused: !item.paused }); await refresh();
+            }) }]} />)}
         {!error && !visibleRoutines.length && <div className="routine-empty">{I.clock}<strong>{query || status !== "all" ? "No matching Skills" : "Make room for repeatable work"}</strong><p>{query || status !== "all" ? "Try another title or status." : "Open a saved task to turn it into a Skill."}</p>{(query || status !== "all") && <button className="btn ghost" onClick={() => { setQuery(""); setStatus("all"); }}>Clear filters</button>}</div>}
       </div>}
     </>}

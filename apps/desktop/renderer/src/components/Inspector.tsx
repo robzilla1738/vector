@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { useStore, call } from "../store";
 import { ObservationPanel } from "./ObservationPanel";
-import { I } from "./icons";
+import { DetailPane, EmptyState } from "./ui";
 
 /**
  * Observation drawer — the compact observation of the active page (live), or
@@ -16,18 +16,20 @@ export function Inspector() {
   const activePageId = (inspectorObs?.pageId ?? page?.pageId) || null;
   const [liveObs, setLiveObs] = useState<CompactObservation | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [tab, setTab] = useState<"readable" | "raw">("readable");
+  const [retry, setRetry] = useState(0);
   const historical = !!inspectorObs;
-  const obs = inspectorObs ?? liveObs;
+  const obs = inspectorObs ?? (liveObs?.pageId === activePageId ? liveObs : null);
 
   useEffect(() => {
-    if (inspectorObs || !activePageId) return;
     setLiveObs(null);
     setErr(null);
+    if (inspectorObs || !activePageId) return;
+    let current = true;
     call("pages.observe", { pageId: activePageId, format: "compact" })
-      .then((r) => setLiveObs("observation" in r ? r.observation : (r as unknown as CompactObservation)))
-      .catch((e) => setErr(e instanceof Error ? e.message : String(e)));
-  }, [activePageId, inspectorObs]);
+      .then((r) => { if (current) setLiveObs("observation" in r ? r.observation : (r as unknown as CompactObservation)); })
+      .catch((e) => { if (current) setErr(e instanceof Error ? e.message : String(e)); });
+    return () => { current = false; };
+  }, [activePageId, inspectorObs, retry]);
 
   const close = () => {
     useStore.setState({ inspectorObs: null });
@@ -37,25 +39,15 @@ export function Inspector() {
   return (
     <div className="overlay-scrim fade-in" onMouseDown={close}>
       <div className="drawer slide-in wide" role="dialog" aria-label="Observation" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="drawer-head">
-          <h3>What the agent sees</h3>
-          {historical && <span className="badge historic">snapshot</span>}
-          <span className="sp" />
-          <div className="seg small" role="tablist">
-            {(["readable", "raw"] as const).map((t) => (
-              <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
-            ))}
-          </div>
-          <button className="icon-btn" title="Close (Esc)" aria-label="Close" onClick={close}>{I.close}</button>
-        </div>
-        {historical && <p className="hint">The exact state the planner saw before that step — the live page has since changed.</p>}
-        {!activePageId && !historical && <p className="hint">No active page.</p>}
-        {err && <p className="hint err">{err}</p>}
-        {!obs && !err && (activePageId || historical) && (
-          <div className="drawer-loading"><span className="spin" /> Observing {page?.title || page?.url || activePageId}…</div>
-        )}
-        {obs && tab === "readable" && <ObservationPanel obs={obs} />}
-        {obs && tab === "raw" && <pre className="obs-raw selectable">{obs.text}</pre>}
+        <DetailPane className="observation-detail" title="What the agent sees" onClose={close}
+          metadata={historical ? "Recorded snapshot · may differ from the live page" : "Current page observation"}
+          actions={!historical && activePageId ? <button className="btn sm ghost" onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
+          {!activePageId && !historical && <EmptyState title="No active page" description="Open a page to inspect its available content." />}
+          {err && <div role="alert"><p className="hint err">{err}</p><button className="btn sm" onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
+          {!obs && !err && (activePageId || historical) && <div className="drawer-loading" role="status"><span className="spin" /> Observing {page?.title || page?.url || activePageId}…</div>}
+          {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
+            <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}
+        </DetailPane>
       </div>
     </div>
   );

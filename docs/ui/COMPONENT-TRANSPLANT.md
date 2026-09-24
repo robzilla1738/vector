@@ -113,3 +113,10 @@ The existing Siso build was observed still running at nice 10, approximately 52,
 - Focused verification: CommandBar 9, palette search 1, chrome tokens 25 and shared search/caption 2 cases passed (single worker, no file parallelism); renderer typecheck passed. Mock UI confirmed literal query emphasis and Down/Down/Enter switching to the existing matching tab, command-only `/overview` matching and Enter execution, plus overview Right/Space selection and selected-tab actions. Screenshots: `evidence/2026-09-24/search-suggestions-light.png`, `evidence/2026-09-24/overview-captions-light.png`, `evidence/2026-09-24/palette-match-light.png`.
 - Evidence limits: screenshots cover the current horizontal/light preview only; hover capture against live pages, full appearance/viewport/text/accessibility matrix and Chromium native overlays remain open. This is another partial port, not qualification of Batch 4.
 - Inventory now includes 127 surfaces and 84 reference routes. The inventory gate checks coverage integrity, not implementation quality or completion.
+
+
+### Work lists, Space picker and inspection — 2026-09-24
+
+Tasks and Skills now consume one compact WorkRow with title, summary, recency/schedule, status and an overflow menu. Archive/restore and pause/resume retain expected revision checks; unbound Skills cannot resume. Large superseded card rules were removed. Explicit `scenario=work` fixtures support visual review without pretending to execute real tasks. The Space picker distinguishes current Space from Profile, sorts the current Space first and provides search for longer inventories.
+
+Inspector now uses the shared sticky detail header and a raw-content disclosure after structured evidence. A page switch invalidates the previous read; historical inspection never fetches a replacement. Observation sections reveal additional lines in increments rather than hiding everything after 80. Tests passed: WorkLists 1, Inspector 2, shared menu 1, RoutineSchedule 5; renderer TypeScript passed. Visual review is still underway; these surfaces remain partial pending its evidence and native qualification.
