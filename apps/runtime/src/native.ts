@@ -17,7 +17,6 @@ export interface NativeBridge {
   /** Temporarily show a hidden page's view while pointer steps run — serialized. */
   acquireStage(pageId: string): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
-  capturePage(pageId: string, scale: number): Promise<{ dataUrl: string; width: number; height: number; scale: number }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
   stopFind(pageId: string, action: "clear" | "keep"): Promise<{ ok: boolean }>;
   setZoom(pageId: string, level?: number, delta?: number, reset?: boolean, direction?: "in" | "out"): Promise<{ level: number }>;
@@ -78,9 +77,6 @@ export class ChannelNativeBridge implements NativeBridge {
   releaseStage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.releaseStage", { pageId });
   }
-  capturePage(pageId: string, scale: number) {
-    return this.channel.call<{ dataUrl: string; width: number; height: number; scale: number }>("native.capturePage", { pageId, scale });
-  }
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean) {
     return this.channel.call<{ matches: number; activeMatch?: number }>("native.findInPage", { pageId, text, forward, findNext });
   }
@@ -136,7 +132,6 @@ export class NullNativeBridge implements NativeBridge {
   stopPage(): never { this.fail(); }
   acquireStage(): never { this.fail(); }
   releaseStage(): never { this.fail(); }
-  capturePage(): never { this.fail(); }
   findInPage(): never { this.fail(); }
   stopFind(): never { this.fail(); }
   setZoom(): never { this.fail(); }

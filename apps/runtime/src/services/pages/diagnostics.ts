@@ -107,12 +107,10 @@ export class PageDiagnostics {
     const url = dp.url();
     if (opts?.expectedDocumentEpoch !== undefined && opts.expectedDocumentEpoch !== epoch)
       throw new AuxError("conflict", "The page changed before capture. Capture it again.");
-    const shot = before.backend === "aux" && this.pages.deps.native.available() && !opts?.fullPage
-      ? await this.pages.deps.native.capturePage(pageId, 1).then(image => ({
-        buffer: Buffer.from(image.dataUrl.split(",")[1] ?? "", "base64"),
-        width: image.width, height: image.height, scale: image.scale,
-      }))
-      : await dp.screenshot({ fullPage: opts?.fullPage });
+    // Every capture can later enter chat or an external agent. Keep the raw
+    // native preview path separate; model-visible and exported page captures
+    // always mask editable pixels across frames.
+    const shot = await dp.screenshot({ fullPage: opts?.fullPage });
     const after = this.pages.get(pageId);
     if (after.documentEpoch !== epoch || dp.url() !== url || !dp.isAttached())
       throw new AuxError("conflict", "The page changed during capture. Capture it again.");

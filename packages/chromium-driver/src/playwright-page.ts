@@ -825,7 +825,13 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult> {
     await this.navigationCommitted();
-    const buffer = await this.page.screenshot({ fullPage: opts?.fullPage ?? false, type: "png" });
+    // A model-visible screenshot must not carry typed credentials, card data,
+    // tokens, or text from an unlabeled editor. Playwright resolves each
+    // locator in its own frame, including out-of-process child frames. If a
+    // frame cannot be masked, screenshot() fails closed instead of retrying raw.
+    const editable = "input:not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select, [contenteditable]:not([contenteditable='false'])";
+    const mask = this.page.frames().map(frame => frame.locator(editable).filter({ visible: true }));
+    const buffer = await this.page.screenshot({ fullPage: opts?.fullPage ?? false, type: "png", mask, maskColor: "#242424" });
     const meta = await this.page
       .evaluate(() => ({ w: innerWidth, h: innerHeight, s: devicePixelRatio || 1 }))
       .catch(() => ({ w: 0, h: 0, s: 1 }));

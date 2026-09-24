@@ -12,11 +12,6 @@ import { TabCommandEnvelopeSchema } from "./tabs.js";
  */
 
 export const NativePageIdParams = z.object({ pageId: z.string() });
-export const NativeCaptureParams = z.object({
-  pageId: z.string(),
-  /** scale factor for thumbnails, e.g. 0.25 */
-  scale: z.number().positive().max(1).default(0.25),
-});
 export const NativeFindParams = z.object({
   pageId: z.string(),
   text: z.string(),
@@ -57,7 +52,6 @@ export const NativeMethods = {
   "native.listPages": z.object({}),
   "native.movePage": z.object({ pageId: z.string(), windowId: z.string().min(1).optional(), activate: z.boolean().optional() }),
   "native.focusPage": NativePageIdParams,
-  "native.capturePage": NativeCaptureParams,
   "native.findInPage": NativeFindParams,
   "native.stopFind": z.object({ pageId: z.string(), action: z.enum(["clear", "keep"]).default("clear") }),
   "native.setZoom": NativeZoomParams,

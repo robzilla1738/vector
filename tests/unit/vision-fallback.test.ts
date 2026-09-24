@@ -112,7 +112,7 @@ async function waitForRun(repo: Repo, runId: string, ms = 5000) {
 }
 
 describe("vision fallback", () => {
-  it("uses vision after a failed write but refuses completion without reconciliation", async () => {
+  it("stops before vision replanning when a failed write may have taken effect", async () => {
     const h = harness({
       executeFails: 1,
       structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
@@ -123,12 +123,8 @@ describe("vision fallback", () => {
     expect(final.status).toBe("interrupted");
     expect(final.result).toBeUndefined();
     expect(final.error).toContain("Uncertain action outcome");
-    expect(h.generateText).toHaveBeenCalledOnce();
-    const call = h.generateText.mock.calls[0]?.[0];
-    expect(call?.imageDataUrl).toMatch(/^data:image\/png/);
-    expect(call?.modelId).toBe("test/vision");
-    expect(h.modelCalls.some((c) => c.role === "vision" && c.modelId === "test/vision")).toBe(true);
-    expect(h.pages.capture).toHaveBeenCalledOnce();
+    expect(h.generateText).not.toHaveBeenCalled();
+    expect(h.pages.capture).not.toHaveBeenCalled();
   });
 
   it("uses vision first when the structured observation is empty", async () => {
@@ -198,7 +194,7 @@ describe("vision fallback", () => {
     expect(h.pages.capture).not.toHaveBeenCalled();
   });
 
-  it("falls back to the text planner when the vision response is not valid JSON", async () => {
+  it("does not fall back to another planner after an uncertain write", async () => {
     const h = harness({
       executeFails: 1,
       structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
@@ -210,15 +206,15 @@ describe("vision fallback", () => {
     expect(final.status).toBe("interrupted");
     expect(final.result).toBeUndefined();
     expect(final.error).toContain("Uncertain action outcome");
-    expect(h.modelCalls.filter((c) => c.role === "vision")).toHaveLength(1);
-    expect(h.generateStructured).toHaveBeenCalled();
+    expect(h.modelCalls.filter((c) => c.role === "vision")).toHaveLength(0);
+    expect(h.generateStructured).toHaveBeenCalledOnce();
   });
 });
 
 describe("no-progress guard", () => {
   const cont = (op: string, id: string) => ({ status: "continue", message: "working", steps: [{ id, op, expression: "1" }] });
 
-  it("does not trip when observation-blind steps keep succeeding on an unchanging page", async () => {
+  it("does not trip while observation-blind steps succeed, even if final write verification fails", async () => {
     const h = harness({
       structuredPlan: cont("evaluate", "e1"),
       thenPlans: [cont("evaluate", "e2"), cont("evaluate", "e3"), cont("evaluate", "e4"), { status: "done", message: "count is 4", result: { count: 4 } }],
@@ -226,7 +222,8 @@ describe("no-progress guard", () => {
     });
     const run = await h.coordinator.start({ goal: "increment a shadow counter", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
-    expect(final.status).toBe("completed");
+    expect(final.status).toBe("failed");
+    expect(final.error).toContain("done not verified");
     expect(final.result).toEqual({ count: 4 });
     expect(h.executeCalls.length).toBe(4);
   });
