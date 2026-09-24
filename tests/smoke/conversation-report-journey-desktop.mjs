@@ -110,7 +110,7 @@ try {
   const originalReport=await page.evaluate(chatId=>window.aux.invoke("conversations.artifacts.get",{chatId}).then(value=>value.artifacts.find(item=>item.runId)),firstRun.config.chatId);
   assert.ok(originalReport?.artifactId);
   const reports=page.locator('.composer-documents[aria-label="Generated reports and results"]');
-  await reports.getByRole("button",{name:"report.md",exact:true}).click();
+  await reports.getByRole("button",{name:"report.md · v1",exact:true}).click();
   const preview=page.getByRole("region",{name:"Saved result preview"});
   await preview.getByRole("button",{name:"Edit copy"}).click();
   await preview.getByRole("textbox",{name:"Edit result copy"}).fill("# Report\nEdited note.");
@@ -126,14 +126,15 @@ try {
   const secondRun=await page.evaluate(goal=>window.aux.invoke("runs.list",{limit:20}).then(runs=>runs.find(run=>run.goal===goal)),secondGoal);
   assert.match(secondRun.config.contextDocumentEvidence,/Edited note/);
   assert.match(secondRun.result.report,/Edited note/);
+  assert.deepEqual(secondRun.config.contextSourceArtifactIds,[originalReport.artifactId]);
   await app.close();app=undefined;
   app=await launch();page=await shell();
   await sidebarAction(page,"Chats");
   await page.locator(".history-conversation").filter({hasText:firstGoal}).click();
-  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md",exact:true}).first().click();
+  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md · v2",exact:true}).click();
   await page.getByRole("region",{name:"Saved result preview"}).getByText("Edited note.").waitFor();
   await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();
-  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md",exact:true}).last().click();
+  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md · v1",exact:true}).click();
   await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Discard edits",exact:true}).click();
   const beforeSource=await page.evaluate(()=>window.aux.invoke("pages.list",{}).then(items=>items.length));
   await page.getByRole("region",{name:"Saved result preview"}).getByRole("link",{name:"Source"}).first().click();

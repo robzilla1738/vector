@@ -307,6 +307,7 @@ export const ConversationArtifactSchema = z.object({
   byteLength: z.number().int().nonnegative(),
   createdAt: z.number(),
   turnGoal: z.string().max(400),
+  sourceArtifactIds: z.array(id).optional(),
   included: z.boolean(),
 });
 export type ConversationArtifact = z.infer<typeof ConversationArtifactSchema>;

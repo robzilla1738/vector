@@ -129,6 +129,8 @@ export const RunSchema = z.object({
       contextArtifactEvidence: z.string().max(20_000).optional(),
       /** exact Aux-generated text artifacts used for this turn */
       contextArtifactIds: z.array(z.string()).optional(),
+      /** Source artifacts of included edited-copy documents, pinned when this turn starts. */
+      contextSourceArtifactIds: z.array(z.string()).optional(),
       /** Immutable image snapshots explicitly included in this run. */
       contextImageArtifactIds: z.array(z.string()).max(4).optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */

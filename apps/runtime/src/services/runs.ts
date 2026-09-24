@@ -255,6 +255,7 @@ export class RunService {
             byteLength: artifact.size,
             createdAt: artifact.createdAt,
             turnGoal: byRun.get(artifact.runId!)?.goal.slice(0, 400) ?? "Earlier turn",
+            sourceArtifactIds: [...new Set([...(run.config?.contextArtifactIds ?? []), ...(run.config?.contextSourceArtifactIds ?? [])])],
             included: included.has(artifact.artifactId),
           });
         } catch { /* a missing artifact remains unavailable rather than widening context */ }
@@ -660,6 +661,7 @@ export class RunService {
     contextDocumentEvidence?: string;
     contextArtifactEvidence?: string;
     contextArtifactIds?: string[];
+    contextSourceArtifactIds?: string[];
     contextImageArtifactIds?: string[];
     contextPageRefs?: PageContextRef[];
     contextWorkspaceId?: string;
@@ -714,6 +716,9 @@ export class RunService {
     const contextRunIds = opts.contextSnapshot ? opts.contextRunIds : inherited?.runIds;
     const contextAttachmentIds = opts.contextSnapshot ? opts.contextAttachmentIds : inherited?.attachmentIds;
     const contextArtifactIds = opts.contextSnapshot ? opts.contextArtifactIds : inherited?.artifactIds;
+    const contextSourceArtifactIds = opts.contextSnapshot ? opts.contextSourceArtifactIds : [...new Set(
+      (opts.chatId ? this.attachmentRecords(opts.chatId) : []).filter(item => item.included && contextAttachmentIds?.includes(item.attachmentId) && item.sourceArtifactId).map(item => item.sourceArtifactId!),
+    )];
     const contextImageArtifactIds = opts.contextSnapshot ? opts.contextImageArtifactIds : opts.chatId ? this.images.selected(opts.chatId) : [];
     const contextWorkspaceId = opts.contextSnapshot ? opts.contextWorkspaceId : inherited?.workspaceId ?? opts.contextWorkspaceId;
     const contextWorkspaceRevision = opts.contextSnapshot ? opts.contextWorkspaceRevision : inherited?.workspaceRevision ?? opts.contextWorkspaceRevision;
@@ -763,6 +768,7 @@ export class RunService {
       contextDocumentEvidence,
       contextArtifactEvidence,
       contextArtifactIds,
+      contextSourceArtifactIds,
       contextImageArtifactIds,
       contextPageRefs: opts.contextPageRefs,
       contextWorkspaceId,
@@ -818,6 +824,7 @@ export class RunService {
       contextDocumentEvidence: prior.config?.contextDocumentEvidence,
       contextArtifactEvidence: prior.config?.contextArtifactEvidence,
       contextArtifactIds: prior.config?.contextArtifactIds,
+      contextSourceArtifactIds: prior.config?.contextSourceArtifactIds,
       contextImageArtifactIds: prior.config?.contextImageArtifactIds,
       contextWorkspaceId: prior.config?.contextWorkspaceId,
       contextWorkspaceRevision: prior.config?.contextWorkspaceRevision,
