@@ -712,6 +712,7 @@ export class RunService {
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
+    calendarGrantIds?: string[];
   }): Promise<Run> {
     if (opts.defaultWorkspaceId && !opts.taskId && !opts.contextSnapshot) {
       opts = { ...opts, chatId: opts.chatId ?? randomUUID() };
@@ -825,6 +826,7 @@ export class RunService {
       contextWorkspaceRevision,
       contextBrowsingMemory,
       accountLabels: opts.accountLabels,
+      calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
     });
   }
@@ -885,6 +887,8 @@ export class RunService {
       contextSnapshot: true,
       chatId,
       retryOfRunId: prior.runId,
+      accountLabels: prior.config?.accountLabels,
+      calendarGrantIds: prior.config?.calendarGrantIds,
     });
   }
 

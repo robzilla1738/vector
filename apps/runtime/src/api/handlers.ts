@@ -114,6 +114,7 @@ export function makeInvoker(s: Services) {
       goal: [substituteRoutine(routine.objective, parameters), routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined].filter(Boolean).join("\n\n"),
       pageIds,
       accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined,
+      calendarGrantIds: routine.calendarGrantIds,
     });
     return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
   });

@@ -66,6 +66,35 @@ it("versions Skill outcome criteria and blocks reruns after the source task chan
   expect((await f.routines.run({ routineId: skill.routineId, expectedRevision: reviewed.revision })).status).toBe("running");
 });
 
+it("pins Calendar grants when saving a Skill and requires review after grant changes", async () => {
+  const f = fixture(async () => ({ runId: "calendar-skill-run" }));
+  const addGrant = (suffix: string) => {
+    const connectionId = `00000000-0000-4000-8000-00000000000${suffix}`;
+    const grantId = `10000000-0000-4000-8000-00000000000${suffix}`;
+    f.repo.db.prepare("INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?, 'active',1,1)")
+      .run(connectionId, `${suffix}@example.test`, suffix, `calendar-${suffix}`, "[]");
+    f.repo.db.prepare("INSERT INTO calendar_task_grants(grant_id,task_id,task_revision,connection_id,created_at) VALUES(?,?,?,?,1)")
+      .run(grantId, f.task.taskId, f.task.revision, connectionId);
+    return grantId;
+  };
+  const first = addGrant("1");
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Account-bound brief" });
+  expect(skill.calendarGrantIds).toEqual([first]);
+  const second = addGrant("2");
+  expect(f.routines.get(skill.routineId).routine.calendarGrantIds).toEqual([first]);
+  expect(f.routines.exportRoutines([skill.routineId]).routines[0]).not.toHaveProperty("calendarGrantIds");
+  f.repo.db.prepare("UPDATE calendar_task_grants SET revoked_at=2 WHERE grant_id=?").run(first);
+  await expect(f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision }))
+    .rejects.toThrow(/Calendar grant is no longer available/);
+  const reviewed = f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision, calendarGrantIds: [second] });
+  expect(reviewed.calendarGrantIds).toEqual([second]);
+  f.repo.db.prepare("UPDATE calendar_connections SET state='needs_reauth' WHERE connection_id=(SELECT connection_id FROM calendar_task_grants WHERE grant_id=?)").run(second);
+  await expect(f.routines.run({ routineId: skill.routineId, expectedRevision: reviewed.revision }))
+    .rejects.toThrow(/Reconnect a selected Calendar account/);
+  f.repo.db.prepare("UPDATE calendar_connections SET state='active' WHERE connection_id=(SELECT connection_id FROM calendar_task_grants WHERE grant_id=?)").run(second);
+  expect((await f.routines.run({ routineId: skill.routineId, expectedRevision: reviewed.revision })).status).toBe("running");
+});
+
 it("shows criterion evidence only for the linked Skill run and marks it stale after a later task run", async () => {
   const f = fixture(async () => ({ runId: "skill-agent-run" }));
   const evidence = new TaskEvidenceService(f.repo, f.events);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, Task, VaultItem } from "@aux/contracts";
+import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, Task, VaultItem } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
@@ -130,6 +130,10 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       })} />
       <RoutineAccounts key={`${selected.routine.routineId}-accounts:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={accountLabels => void action(async () => {
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, accountLabels });
+        await refresh(selected.routine.routineId);
+      })} />
+      <RoutineCalendarGrants key={`${selected.routine.routineId}-calendar:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={calendarGrantIds => void action(async () => {
+        await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, calendarGrantIds });
         await refresh(selected.routine.routineId);
       })} />
       {comparison && comparison.routineId === selected.routine.routineId && <p className="hint" role="status">{comparison.summary}</p>}
@@ -293,5 +297,33 @@ function RoutineAccounts({ routine, disabled, onSave }: { routine: Routine; disa
     {items !== null && !choices.length && <p className="hint">No labeled vault items yet — every vault item without an account label stays unrestricted.</p>}
     {choices.map(label => <label className="routine-account" key={label}><input type="checkbox" checked={picked.includes(label)} disabled={disabled} onChange={event => toggle(label, event.target.checked)} /><span>{label}{!known.includes(label) && <small> · not in vault</small>}</span></label>)}
     {(items !== null || picked.length > 0) && <button className="btn sm" disabled={disabled || !dirty} onClick={() => onSave(picked)}>Save accounts</button>}
+  </details>;
+}
+
+function RoutineCalendarGrants({ routine, disabled, onSave }: { routine: Routine; disabled: boolean; onSave: (grantIds: string[]) => void }) {
+  const [grants, setGrants] = useState<CalendarTaskGrant[] | null>(null);
+  const [picked, setPicked] = useState<string[]>(routine.calendarGrantIds);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!routine.sourceTaskId) return;
+    let live = true;
+    void call("calendar.taskGrants.list", { taskId: routine.sourceTaskId })
+      .then(items => { if (live) setGrants(items.filter(item => item.taskRevision === routine.sourceTaskRevision)); })
+      .catch(reason => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); });
+    return () => { live = false; };
+  }, [routine.sourceTaskId, routine.sourceTaskRevision]);
+  const available = new Set((grants ?? []).map(grant => grant.grantId));
+  const stale = picked.filter(id => !available.has(id));
+  const dirty = picked.length !== routine.calendarGrantIds.length || picked.some(id => !routine.calendarGrantIds.includes(id));
+  const toggle = (id: string, on: boolean) => setPicked(current => on ? [...new Set([...current, id])] : current.filter(item => item !== id));
+  return <details className="routine-accounts"><summary>Calendar accounts — {picked.length} allowed</summary>
+    <p className="hint">This Skill can read only the Calendar grants selected here and still active on its saved task. New task grants are not added automatically.</p>
+    {!routine.sourceTaskId && <p className="hint">Bind a saved task before selecting Calendar accounts.</p>}
+    {error && <p className="field-error" role="alert">Calendar grants could not be loaded. {error}</p>}
+    {grants?.length === 0 && <p className="hint">No Calendar accounts are granted to this task revision.</p>}
+    {grants?.map(grant => <label className="routine-account" key={grant.grantId}><input type="checkbox" checked={picked.includes(grant.grantId)} disabled={disabled} onChange={event => toggle(grant.grantId, event.target.checked)} /><span>{grant.label} · {grant.accountKey}</span></label>)}
+    {grants && stale.length > 0 && <p className="hint">{stale.length} saved Calendar grant{stale.length === 1 ? " is" : "s are"} no longer available. Remove them before this Skill can run.</p>}
+    {grants && dirty && <button className="btn sm" disabled={disabled} onClick={() => onSave(picked.filter(id => available.has(id)))}>Save Calendar accounts</button>}
+    {grants && stale.length > 0 && !dirty && <button className="btn sm" disabled={disabled} onClick={() => onSave(picked.filter(id => available.has(id)))}>Remove unavailable grants</button>}
   </details>;
 }

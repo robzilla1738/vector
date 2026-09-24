@@ -158,6 +158,8 @@ export const RunSchema = z.object({
       taskRevision: z.number().int().positive().optional(),
       /** routine-declared account boundary — when non-empty, only vault grants with a matching accountLabel are visible to this run */
       accountLabels: z.array(z.string().min(1).max(120)).max(20).optional(),
+      /** Pinned provider authority for this turn, even when empty. Only these exact Calendar grants may be used. */
+      calendarGrantIds: z.array(z.string().uuid()).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */
       retryOfRunId: z.string().optional(),
       /** AUX-017 durable coordinator snapshot. */

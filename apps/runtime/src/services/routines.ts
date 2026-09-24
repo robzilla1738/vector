@@ -117,7 +117,7 @@ export class RoutineService {
     return RoutineRunOutcomeSchema.parse({ run, sourceTaskId: definition.sourceTaskId, sourceTaskRevision: definition.sourceTaskRevision, ...result });
   }
 
-  create(input: Omit<RoutineDefinition, "successCriteria"> & { successCriteria?: Routine["successCriteria"] }): Routine {
+  create(input: Omit<RoutineDefinition, "successCriteria" | "calendarGrantIds"> & { successCriteria?: Routine["successCriteria"]; calendarGrantIds?: string[] }): Routine {
     this.requireWorkspace(input.workspaceId);
     const source = input.sourceTaskId ? this.requireSourceTask(input.sourceTaskId, input.workspaceId) : undefined;
     const now = Date.now();
@@ -127,6 +127,7 @@ export class RoutineService {
       parameters: input.parameters ?? [],
       siteOrigins: input.siteOrigins ?? [],
       accountLabels: input.accountLabels ?? [],
+      calendarGrantIds: input.calendarGrantIds ?? [],
       successCriteria: input.successCriteria ?? [],
       reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
       cloudCapable: input.cloudCapable ?? false,
@@ -138,6 +139,7 @@ export class RoutineService {
       createdAt: now,
       updatedAt: now,
     };
+    this.requireCalendarGrants(routine);
     this.insert(routine);
     this.events.emit("routine.updated", { routine });
     return routine;
@@ -166,6 +168,7 @@ export class RoutineService {
       parameters: input.parameters ?? [],
       siteOrigins: origins.slice(0, 20),
       accountLabels: [],
+      calendarGrantIds: this.activeCalendarGrantIds(input.taskId, this.requireSourceTask(input.taskId, taskRow.workspace_id).revision),
       successCriteria: task.criteria ?? [],
       consecutive: false,
       paused: false,
@@ -184,6 +187,7 @@ export class RoutineService {
       parameters: input.parameters ?? current.parameters,
       siteOrigins: input.siteOrigins ?? current.siteOrigins,
       accountLabels: input.accountLabels ?? current.accountLabels,
+      calendarGrantIds: input.calendarGrantIds ?? (input.sourceTaskId !== undefined || input.sourceTaskRevision !== undefined ? [] : current.calendarGrantIds),
       successCriteria: input.successCriteria ?? current.successCriteria,
       sourceRunId: input.sourceRunId ?? (input.sourceTaskId && input.sourceTaskId !== current.sourceTaskId ? undefined : current.sourceRunId),
       trigger: input.trigger ?? current.trigger,
@@ -198,6 +202,7 @@ export class RoutineService {
       if (input.sourceTaskRevision !== undefined) this.requireCriteriaMatch(next);
     }
     if (!next.sourceTaskId && !next.paused) throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
+    this.requireCalendarGrants(next);
     this.persist(next);
     this.events.emit("routine.updated", { routine: next });
     return next;
@@ -273,6 +278,7 @@ export class RoutineService {
     const source = this.requireSourceTask(routine.sourceTaskId, routine.workspaceId);
     if (source.revision !== routine.sourceTaskRevision) throw new AuxError("conflict", "The source task changed. Review and sync this Skill before running it.");
     this.requireCriteriaMatch(routine);
+    this.requireCalendarGrants(routine);
     const uncertain = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status='uncertain' LIMIT 1").get(routine.routineId);
     if (uncertain) throw new AuxError("conflict", "Reconcile the previous uncertain write before running this routine again.");
     const active = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status IN ('queued','running','needs_review') LIMIT 1").get(routine.routineId);
@@ -359,7 +365,7 @@ export class RoutineService {
       return await this.run({ routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} },
         { occurrenceId: randomUUID(), identity, scheduledFor });
     } catch (error) {
-      if (!(error instanceof AuxError) || (error.code !== "conflict" && error.code !== "invalid_params")) throw error;
+      if (!(error instanceof AuxError) || !["conflict", "invalid_params", "needs_input"].includes(error.code)) throw error;
       // A live or uncertain prior run, a changed task, or missing parameters
       // cannot consume the next occurrence or stall unrelated Skills.
       return this.recordMissed(routine, identity, `Skill occurrence skipped: ${error.message}`);
@@ -421,6 +427,7 @@ export class RoutineService {
         const source = this.requireSourceTask(routine.sourceTaskId, routine.workspaceId);
         if (source.revision !== routine.sourceTaskRevision) throw new AuxError("conflict", "The source task changed after this Skill was queued. Review and sync it before running again.");
         this.requireCriteriaMatch(routine);
+        this.requireCalendarGrants(routine);
         const started = (await this.startWork?.(routine, record.parameters)) ?? {};
         const next: RoutineRun = { ...record, status: "running", chatId: started.chatId, runId: started.runId, startedAt: Date.now(), ...(retried ? { reason: "Dispatched after a transient read failure." } : {}) };
         this.updateRun(next);
@@ -551,6 +558,26 @@ export class RoutineService {
       return !expected || item.criterionId !== expected.criterionId || item.description !== expected.description || item.verification !== expected.verification;
     }))
       throw new AuxError("conflict", "The source task's success criteria changed. Review and sync this Skill before running it.");
+  }
+
+  private activeCalendarGrantIds(taskId: string, revision: number): string[] {
+    return (this.repo.db.prepare(`SELECT g.grant_id AS grantId FROM calendar_task_grants g
+      JOIN calendar_connections c ON c.connection_id=g.connection_id
+      WHERE g.task_id=? AND g.task_revision=? AND g.revoked_at IS NULL AND c.revoked_at IS NULL
+      ORDER BY g.created_at,g.grant_id`).all(taskId, revision) as { grantId: string }[]).map(row => row.grantId);
+  }
+
+  private requireCalendarGrants(routine: Routine): void {
+    if (!routine.calendarGrantIds.length) return;
+    if (!routine.sourceTaskId || !routine.sourceTaskRevision) throw new AuxError("conflict", "Bind a saved task before selecting Calendar accounts for this Skill.");
+    const active = new Set(this.activeCalendarGrantIds(routine.sourceTaskId, routine.sourceTaskRevision));
+    if (routine.calendarGrantIds.some(id => !active.has(id)))
+      throw new AuxError("conflict", "A selected Calendar grant is no longer available for this task revision. Review this Skill's accounts.");
+    const unavailable = this.repo.db.prepare(`SELECT 1 FROM calendar_task_grants g
+      JOIN calendar_connections c ON c.connection_id=g.connection_id
+      WHERE g.grant_id IN (${routine.calendarGrantIds.map(() => "?").join(",")}) AND c.state<>'active' LIMIT 1`)
+      .get(...routine.calendarGrantIds);
+    if (unavailable) throw new AuxError("needs_input", "Reconnect a selected Calendar account before running this Skill.");
   }
 
   private insert(routine: Routine) {

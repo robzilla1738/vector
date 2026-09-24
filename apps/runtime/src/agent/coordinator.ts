@@ -144,15 +144,19 @@ export class RunCoordinator {
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
+    calendarGrantIds?: string[];
   }): Promise<Run> {
+    if (opts.runId) {
+      const existing = this.deps.repo.getRun(opts.runId);
+      if (existing) return existing;
+    }
+    const calendarGrantIds = opts.calendarGrantIds ?? (opts.taskId && opts.taskRevision && this.deps.calendar
+      ? this.deps.calendar.taskGrants(opts.taskId).filter(grant => grant.taskRevision === opts.taskRevision).map(grant => grant.grantId)
+      : undefined);
     const leaseKey = opts.taskId ? `task:${opts.taskId}` : undefined;
     if (leaseKey) {
       this.leases.acquire(leaseKey, this.leaseOwner);
       this.heldLeases.add(leaseKey);
-    }
-    if (opts.runId) {
-      const existing = this.deps.repo.getRun(opts.runId);
-      if (existing) return existing;
     }
     const run: Run = {
       runId: opts.runId ?? newRunId(),
@@ -184,6 +188,7 @@ export class RunCoordinator {
         taskId: opts.taskId,
         taskRevision: opts.taskRevision,
         accountLabels: opts.accountLabels,
+        calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
         implementation: opts.modelId ? `agent:${opts.modelId}` : "agent",
       },

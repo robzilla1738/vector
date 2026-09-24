@@ -258,13 +258,14 @@ describe("outbound Google Calendar connection", () => {
     } finally { await setup.service.close(); }
   });
 
-  it("lets the built-in planner read only its granted account and finish with a sourced brief", async () => {
+  it("keeps a Skill run within its saved Calendar grants even when the task gains another account", async () => {
     const setup = fixture();
     try {
       await connect(setup.service, "alice"); await connect(setup.service, "bob");
       const space = setup.tasks.createWorkspace("Research");
       const task = makeTask(setup.tasks, space.workspaceId, "Meeting brief");
       const grant = setup.service.grantTask(task.taskId, task.revision, setup.service.list().connections.find(item => item.accountKey === "alice@example.test")!.connectionId);
+      const otherGrant = setup.service.grantTask(task.taskId, task.revision, setup.service.list().connections.find(item => item.accountKey === "bob@example.test")!.connectionId);
       const eventUrl = "https://calendar.google.com/calendar/event?eid=alice";
       const observation: Observation = { observationId: "o1", pageId: "p1", documentEpoch: 1, revision: 1, observedAt: Date.now(), scope: "full",
         content: { url: "https://notes.example.test/", title: "Notes", text: "Meeting brief", viewport: { width: 800, height: 600, scale: 1 },
@@ -274,8 +275,9 @@ describe("outbound Google Calendar connection", () => {
       let calls = 0;
       const model: ModelClient = { generateStructured: async options => {
         prompts.push(options.prompt);
-        const object = calls++ === 0
-          ? { status: "source", message: "Reading Calendar", sourceRequest: { kind: "calendar.events.list", grantId: grant.grantId,
+        const selectedGrant = calls++ === 0 ? otherGrant.grantId : grant.grantId;
+        const object = calls <= 2
+          ? { status: "source", message: "Reading Calendar", sourceRequest: { kind: "calendar.events.list", grantId: selectedGrant,
             timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 10 } }
           : { status: "done", message: "Brief ready", result: { report: `- Meeting alice [source](${eventUrl})` } };
         return { object: options.schema.parse(object), durationMs: 1 };
@@ -283,18 +285,57 @@ describe("outbound Google Calendar connection", () => {
       const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
         pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
-      const run = await coordinator.start({ goal: "Prepare a sourced meeting brief", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
+      const run = await coordinator.start({ goal: "Prepare a sourced meeting brief", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision, calendarGrantIds: [grant.grantId] });
       for (let attempt = 0; attempt < 200 && !["completed", "failed", "partially_completed"].includes(setup.repo.getRun(run.runId)!.status); attempt++)
         await new Promise(resolve => setTimeout(resolve, 10));
       const result = setup.repo.getRun(run.runId)!;
       expect(result.status, result.error).toBe("completed");
       expect(result.result?.report).toContain(eventUrl);
       expect(prompts[0]).toContain(grant.grantId);
-      expect(prompts[1]).toContain("Meeting alice");
+      expect(prompts[0]).not.toContain(otherGrant.grantId);
+      expect(prompts.at(-1)).toContain("Meeting alice");
       expect(prompts.join(" ")).not.toContain("Meeting bob");
       expect(setup.repo.listSteps(run.runId).map(step => step.op)).toContain("calendar.events.list");
+      expect(setup.calls.filter(call => call.url.pathname.endsWith("/events"))).toHaveLength(1);
       expect(setup.db.prepare("SELECT status,effect_outcome FROM operation_invocations WHERE run_id=?").get(run.runId)).toMatchObject({ status: "completed", effect_outcome: "observed" });
       expect(() => setup.operations.forget("aux.connector.google-calendar", "events.list")).toThrow(/managed by Aux/);
+    } finally { await setup.service.close(); }
+  });
+
+  it("does not expand a task run when another Calendar account is granted mid-turn", async () => {
+    const setup = fixture();
+    try {
+      await connect(setup.service, "alice"); await connect(setup.service, "bob");
+      const space = setup.tasks.createWorkspace("Research");
+      const task = makeTask(setup.tasks, space.workspaceId, "Calendar boundary");
+      const alice = setup.service.list().connections.find(item => item.accountKey === "alice@example.test")!;
+      const bob = setup.service.list().connections.find(item => item.accountKey === "bob@example.test")!;
+      const original = setup.service.grantTask(task.taskId, task.revision, alice.connectionId);
+      const observation = { observationId: "o1", pageId: "p1", documentEpoch: 1, revision: 1, observedAt: Date.now(), scope: "full", content: {
+        url: "https://notes.example.test/", title: "Notes", text: "Calendar", viewport: { width: 800, height: 600, scale: 1 },
+        scroll: { x: 0, y: 0, maxY: 0 }, frames: [], headings: [], elements: [], formFields: [], tables: [], links: [], dialogs: [], truncated: false,
+        stats: { elementsTotal: 0, elementsShown: 0, textChars: 8, approxTokens: 2 } } } as Observation;
+      let laterGrant = "", calls = 0;
+      const prompts: string[] = [];
+      const model: ModelClient = { generateStructured: async options => {
+        prompts.push(options.prompt);
+        if (calls++ === 0) {
+          laterGrant = setup.service.grantTask(task.taskId, task.revision, bob.connectionId).grantId;
+          return { object: options.schema.parse({ status: "source", message: "Read new account", sourceRequest: {
+            kind: "calendar.events.list", grantId: laterGrant, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z" } }), durationMs: 1 };
+        }
+        return { object: options.schema.parse({ status: "done", message: "No source read", result: { answer: "No new account was read." } }), durationMs: 1 };
+      }, generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
+      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
+        pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
+        recoveryModel: () => undefined, recordModelCall: () => {} });
+      const run = await coordinator.start({ goal: "Read granted Calendar", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
+      for (let attempt = 0; attempt < 200 && !["completed", "failed", "partially_completed"].includes(setup.repo.getRun(run.runId)!.status); attempt++)
+        await new Promise(resolve => setTimeout(resolve, 10));
+      expect(setup.repo.getRun(run.runId)?.config?.calendarGrantIds).toEqual([original.grantId]);
+      expect(prompts[0]).toContain(original.grantId);
+      expect(prompts.join(" ")).not.toContain(laterGrant);
+      expect(setup.calls.filter(call => call.url.pathname.endsWith("/events"))).toHaveLength(0);
     } finally { await setup.service.close(); }
   });
 

@@ -343,7 +343,9 @@ function calendarGrantsFor(s: TurnState) {
   const listed = calendar.list();
   if (!listed.available) return [];
   const active = new Set(listed.connections.filter(connection => connection.state === "active").map(connection => connection.connectionId));
-  return calendar.taskGrants(taskId).filter(grant => grant.taskRevision === revision && active.has(grant.connectionId))
+  const saved = s.run.config?.calendarGrantIds;
+  return calendar.taskGrants(taskId).filter(grant => grant.taskRevision === revision && active.has(grant.connectionId)
+    && (saved === undefined || saved.includes(grant.grantId)))
     .map(grant => ({ grantId: grant.grantId, accountKey: grant.accountKey, label: grant.label }));
 }
 
@@ -518,7 +520,8 @@ export async function dispatchSourcePlan(s: TurnState, plan: Extract<TaskPlanChu
   const calendar = s.self.deps.calendar, operations = s.self.deps.operations, taskId = s.run.config?.taskId, taskRevision = s.run.config?.taskRevision;
   if (!calendar || !operations || !taskId || !taskRevision) return noteUnauthorized(s, "Calendar reads require a saved task with an explicit account grant.");
   const grant = calendar.taskGrants(taskId).find(item => item.grantId === plan.sourceRequest.grantId && item.taskRevision === taskRevision);
-  if (!grant) return noteUnauthorized(s, "That Calendar account is not granted to this task revision.");
+  if (!grant || s.run.config?.calendarGrantIds && !s.run.config.calendarGrantIds.includes(grant.grantId))
+    return noteUnauthorized(s, "That Calendar account is not granted to this Skill run.");
   if (hasNewSteer(s)) return "continue";
   const signal = actionSignal(s);
   if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
