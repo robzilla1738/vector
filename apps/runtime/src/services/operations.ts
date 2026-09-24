@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AuxError, type Observation, type Predicate, type Program, type ProgramResult, type Step } from "@aux/contracts";
+import { AuxError, type CalendarTaskEventsQuery, type Observation, type Predicate, type Program, type ProgramResult, type Step } from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
@@ -8,6 +8,7 @@ import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
+import type { CalendarConnectionService } from "./calendar-connections.js";
 
 export interface OperationRow {
   operationId: string;
@@ -50,6 +51,10 @@ const KIND_COST: Record<string, number> = {
 const STATE_RANK: Record<string, number> = { validated: 0, candidate: 1, shadow: 2, quarantined: 9 };
 const MAX_REQUEST_RESPONSE_BYTES=1024*1024;
 const SECRET_HEADER=/^(authorization|proxy-authorization|cookie|set-cookie)$/i;
+const CONNECTOR_SITE = "aux.connector.google-calendar";
+const CONNECTOR_NAME = "events.list";
+const CONNECTOR_OPERATION_ID = "aux-connector-google-calendar-events-list";
+const CONNECTOR_IMPL_ID = "aux-connector-google-calendar-readonly";
 
 /**
  * Error codes that mean the impl never got to act — nothing was dispatched,
@@ -72,10 +77,9 @@ function isPreDispatchError(e: unknown): boolean {
 }
 
 /**
- * The operation registry (§9) + route selection (§10). An operation is a
- * named, validated way to do something on a site — created from a proven
- * program, promoted through candidate→validated, and invoked with zero
- * model involvement. Every invoke records the route it took and why.
+ * Operation registry and execution broker. Site routes can be learned from
+ * proven programs; sealed connector routes retain their provider authority.
+ * Every invocation records the chosen route and its outcome.
  */
 export class OperationService {
   constructor(
@@ -90,8 +94,51 @@ export class OperationService {
       /** User-started invokes; defaults to USER_RUN_GRANTS like runs.start. */
       grants?: GrantSource;
       durableWrites?: DurableWriteLedger;
+      calendar?: CalendarConnectionService;
     },
   ) {}
+
+  private connectorOperation() {
+    const existing = this.deps.repo.getOperation(CONNECTOR_SITE, CONNECTOR_NAME);
+    if (existing && existing.operationId !== CONNECTOR_OPERATION_ID)
+      throw new AuxError("conflict", "The reserved Calendar operation key is already in use.");
+    if (!existing) this.deps.repo.saveOperation({ operationId: CONNECTOR_OPERATION_ID, siteKey: CONNECTOR_SITE,
+      name: CONNECTOR_NAME, description: "Read events from one task-granted Google Calendar account", effectClass: "read" });
+    if (!this.deps.repo.listImplementations(CONNECTOR_OPERATION_ID).some(impl => impl.implId === CONNECTOR_IMPL_ID))
+      this.deps.repo.saveImplementation({ implId: CONNECTOR_IMPL_ID, operationId: CONNECTOR_OPERATION_ID,
+        kind: "connector-read", executable: JSON.stringify({ provider: "google-calendar", method: "events.list" }), state: "validated" });
+  }
+
+  /** A sealed provider route. Task authority is rechecked immediately before and after the network read. */
+  async invokeCalendarTaskEvents(input: CalendarTaskEventsQuery, opts: { runId?: string; signal?: AbortSignal } = {}) {
+    const calendar = this.deps.calendar;
+    if (!calendar) throw new AuxError("backend_unavailable", "Calendar connector is unavailable.");
+    const run = opts.runId ? this.deps.repo.getRun(opts.runId) : undefined;
+    if (opts.runId && (!run || !["planning", "running"].includes(run.status) || run.config?.taskId !== input.taskId))
+      throw new AuxError("permission_denied", "This run cannot read Calendar events for that task.");
+    const grant = calendar.taskGrants(input.taskId).find(item => item.grantId === input.grantId &&
+      (!run || item.taskRevision === run.config?.taskRevision));
+    if (!grant) throw new AuxError("permission_denied", "That Calendar account is not granted to this task revision.");
+    if (opts.signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+    this.connectorOperation();
+    const invocationId = newId("inv"), startedAt = Date.now();
+    const record = (status: string, error?: string, effectOutcome = "not-applicable", endedAt?: number) =>
+      this.deps.repo.saveInvocation({ invocationId, operationId: CONNECTOR_OPERATION_ID, implId: CONNECTOR_IMPL_ID,
+        runId: opts.runId, inputs: input, status, effectOutcome, routeReason: "task-granted Google Calendar read", startedAt, endedAt, error });
+    record("running");
+    try {
+      const result = await calendar.taskEvents(input, opts.signal);
+      if (opts.signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+      record("completed", undefined, "observed", Date.now());
+      this.deps.events.emit("operation.invoked", { invocationId, operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`, kind: "connector-read", status: "completed" });
+      return { invocationId, result };
+    } catch (error) {
+      const safe = error instanceof AuxError ? error : new AuxError("backend_unavailable", "Calendar read failed.");
+      record(safe.code === "cancelled" ? "interrupted" : "failed", safe.message, "not-applicable", Date.now());
+      this.deps.events.emit("operation.invoked", { invocationId, operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`, kind: "connector-read", status: "failed", error: safe.message });
+      throw safe;
+    }
+  }
 
   // ---------- registry ----------
 
@@ -107,6 +154,7 @@ export class OperationService {
     effectClass?: "read" | "write" | "destructive";
     guards?: Record<string, unknown>;
   }) {
+    if (opts.siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Connector operations are managed by Aux.");
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
     this.deps.repo.saveOperation({
@@ -155,6 +203,7 @@ export class OperationService {
     guards?: Record<string, unknown>;
     validated?: boolean;
   }) {
+    if (opts.siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Connector operations are managed by Aux.");
     let destination:URL;try{destination=new URL(opts.url);}catch{throw new AuxError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
     if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new AuxError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
     if(destination.host!==opts.siteKey)throw new AuxError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
@@ -238,7 +287,15 @@ export class OperationService {
     return { ...op, implementations: this.deps.repo.listImplementations(op.operationId) };
   }
 
+  forget(siteKey: string, name: string) {
+    if (siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Connector operations are managed by Aux.");
+    const op = this.get(siteKey, name);
+    this.deps.repo.deleteOperation(op.operationId);
+    return { ok: true as const };
+  }
+
   setImplState(implId: string, state: "candidate" | "validated" | "shadow" | "quarantined") {
+    if (implId === CONNECTOR_IMPL_ID) throw new AuxError("permission_denied", "Connector implementations are managed by Aux.");
     this.deps.repo.setImplState(implId, state);
     return { ok: true };
   }
@@ -313,6 +370,9 @@ export class OperationService {
           else if(host!==op.siteKey){eligible=false;why=`session page is on ${host}, not ${op.siteKey}`;}
           else why='live same-site browser session available';
         }
+      } else if (impl.kind === "connector-read") {
+        eligible = false;
+        why = "task grant required; use the connector read route";
       } else {
         eligible = false;
         why = `unknown impl kind ${impl.kind}`;
@@ -376,6 +436,7 @@ export class OperationService {
     implId?: string; // explicit override — bypasses route selection
     requestKey?: string; // §16.4 idempotency key
   }): Promise<{ invocationId: string; status: string; route: RouteDecision; result?: ProgramResult | unknown; error?: string; deduplicated?: boolean }> {
+    if (opts.siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Use a task grant to read Calendar events.");
     const op = this.deps.repo.getOperation(opts.siteKey, opts.name);
     if (!op) throw new AuxError("not_found", `no operation ${opts.siteKey}/${opts.name}`);
 

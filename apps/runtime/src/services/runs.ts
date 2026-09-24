@@ -456,6 +456,7 @@ export class RunService {
     nativeAvailable: () => boolean;
     vault?: import("./vault.js").VaultService;
     calendar?: import("./calendar-connections.js").CalendarConnectionService;
+    operations?: import("./operations.js").OperationService;
     durableWrites?: DurableWriteLedger;
     tracer?: {
       start(
@@ -508,6 +509,7 @@ export class RunService {
       durableWrites,
       vault: deps.vault,
       calendar: deps.calendar,
+      operations: deps.operations,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,

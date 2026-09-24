@@ -515,8 +515,8 @@ export function isPlanFailure(attempt: PlanAttempt | PlanFailure): attempt is Pl
 
 /** A provider read is a separate, read-only decision. It never enters the page executor. */
 export async function dispatchSourcePlan(s: TurnState, plan: Extract<TaskPlanChunk, { status: "source" }>): Promise<"return" | "continue"> {
-  const calendar = s.self.deps.calendar, taskId = s.run.config?.taskId, taskRevision = s.run.config?.taskRevision;
-  if (!calendar || !taskId || !taskRevision) return noteUnauthorized(s, "Calendar reads require a saved task with an explicit account grant.");
+  const calendar = s.self.deps.calendar, operations = s.self.deps.operations, taskId = s.run.config?.taskId, taskRevision = s.run.config?.taskRevision;
+  if (!calendar || !operations || !taskId || !taskRevision) return noteUnauthorized(s, "Calendar reads require a saved task with an explicit account grant.");
   const grant = calendar.taskGrants(taskId).find(item => item.grantId === plan.sourceRequest.grantId && item.taskRevision === taskRevision);
   if (!grant) return noteUnauthorized(s, "That Calendar account is not granted to this task revision.");
   if (hasNewSteer(s)) return "continue";
@@ -526,9 +526,9 @@ export async function dispatchSourcePlan(s: TurnState, plan: Extract<TaskPlanChu
   const { kind: _kind, ...sourceFields } = plan.sourceRequest;
   const request = { taskId, ...sourceFields };
   s.stepsRun++;
-  let result: Awaited<ReturnType<typeof calendar.taskEvents>>;
+  let delivered: Awaited<ReturnType<typeof operations.invokeCalendarTaskEvents>>;
   try {
-    result = await calendar.taskEvents(request, signal);
+    delivered = await operations.invokeCalendarTaskEvents(request, { runId: s.runId, signal });
   } catch (error) {
     if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
     if (hasNewSteer(s)) return "continue";
@@ -543,12 +543,13 @@ export async function dispatchSourcePlan(s: TurnState, plan: Extract<TaskPlanChu
   }
   if (hasNewSteer(s)) return "continue";
   if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+  const { result, invocationId } = delivered;
   const outcome: StepOutcome = { stepId, op: "calendar.events.list", status: "ok", startedAt, durationMs: Date.now() - startedAt,
     detail: `${result.events.length} events from ${grant.accountKey}; fetched ${new Date(result.fetchedAt).toISOString()}`,
     extracted: { events: result.events.map(event => ({ eventId: event.eventId, title: event.title.slice(0, 200), start: event.start, end: event.end,
       ...(event.url ? { url: event.url } : {}), source: event.source })), ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}), fetchedAt: result.fetchedAt } };
   s.outcomes.push(outcome);
-  s.self.deps.repo.saveStep({ stepId, runId: s.runId, op: outcome.op, inputs: request, outcome, startedAt });
+  s.self.deps.repo.saveStep({ stepId, runId: s.runId, op: outcome.op, inputs: { ...request, invocationId }, outcome, startedAt });
   s.self.deps.events.emit(EventTypes.StepFinished, { runId: s.runId, stepId, op: outcome.op, status: "ok", durationMs: outcome.durationMs }, s.runId);
   s.lastActionFailed = false; s.lastError = undefined; s.self.persistCheckpoint(s.self.get(s.runId));
   return "continue";

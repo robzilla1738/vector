@@ -243,8 +243,8 @@ export function makeInvoker(s: Services) {
         return s.calendar.revokeTaskGrant(params.taskId, params.grantId);
       case "calendar.taskEvents.list":
         if (client.external && !scope) throw new AuxError("permission_denied", "Calendar task reads require a scoped connection.");
-        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
-        return s.calendar.taskEvents(params);
+        if (!s.operations) throw new AuxError("backend_unavailable", "Calendar operations are unavailable.");
+        return (await s.operations.invokeCalendarTaskEvents(params)).result;
       case "agentConnections.list":
         if (client.external) throw new AuxError("permission_denied", "Connections can only be managed in Aux Settings");
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
@@ -1050,9 +1050,7 @@ export function makeInvoker(s: Services) {
       case "operations.forget": {
         if (!s.operations) throw new AuxError("backend_unavailable", "operation registry not wired");
         const p = params as { siteKey: string; name: string };
-        const op = s.operations.get(p.siteKey, p.name);
-        s.repo.deleteOperation(op.operationId);
-        return { ok: true };
+        return s.operations.forget(p.siteKey, p.name);
       }
       case "operations.compile": {
         if (!s.operations) throw new AuxError("backend_unavailable", "operation registry not wired");

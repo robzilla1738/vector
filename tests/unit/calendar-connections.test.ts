@@ -6,6 +6,7 @@ import { EventBus } from "../../apps/runtime/src/events.js";
 import { TaskService } from "../../apps/runtime/src/services/tasks.js";
 import { makeInvoker, type Services } from "../../apps/runtime/src/api/handlers.js";
 import { RunCoordinator } from "../../apps/runtime/src/agent/coordinator.js";
+import { OperationService } from "../../apps/runtime/src/services/operations.js";
 import type { ModelClient } from "../../apps/runtime/src/agent/model-client.js";
 import type { Observation } from "@aux/contracts";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
@@ -48,7 +49,8 @@ function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: b
     throw new Error(`Unexpected request ${url}`);
   };
   const service = new CalendarConnectionService({ repo, native, clientId: "desktop-client", profileId: "profile-fixture", fetch: http, endpoints });
-  return { db, repo, events, tasks, secrets, calls, service };
+  const operations = new OperationService({ repo, events, pages: {} as never, calendar: service });
+  return { db, repo, events, tasks, secrets, calls, service, operations };
 }
 
 async function connect(service: CalendarConnectionService, account: string) {
@@ -191,7 +193,7 @@ describe("outbound Google Calendar connection", () => {
   it("stops a task-scoped event read when its grant is revoked", async () => {
     let reading!: () => void;
     const begun = new Promise<void>(resolve => { reading = resolve; });
-    const { service, tasks } = fixture({ onEvents: async signal => {
+    const { service, operations, tasks, db } = fixture({ onEvents: async signal => {
       reading();
       return new Promise<Response>((_resolve, reject) => signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
     } });
@@ -201,10 +203,11 @@ describe("outbound Google Calendar connection", () => {
       const task = makeTask(tasks, space.workspaceId, "First meeting");
       const grant = service.grantTask(task.taskId, task.revision, service.list().connections[0]!.connectionId);
       const query = { taskId: task.taskId, grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 25 };
-      const pending = service.taskEvents(query);
+      const pending = operations.invokeCalendarTaskEvents(query);
       await begun;
       service.revokeTaskGrant(task.taskId, grant.grantId);
       await expect(pending).rejects.toThrow(/cancelled/);
+      expect(db.prepare("SELECT status,effect_outcome FROM operation_invocations").get()).toMatchObject({ status: "interrupted", effect_outcome: "not-applicable" });
     } finally { await service.close(); }
   });
 
@@ -217,11 +220,12 @@ describe("outbound Google Calendar connection", () => {
       const other = makeTask(setup.tasks, space.workspaceId, "Unrelated meeting");
       const account = setup.service.list().connections.find(item => item.accountKey === "alice@example.test")!;
       const grant = setup.service.grantTask(task.taskId, task.revision, account.connectionId);
-      const invoke = makeInvoker({ repo: setup.repo, events: setup.events, calendar: setup.service, pages: {} } as Services);
+      const invoke = makeInvoker({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations, pages: {} } as Services);
       const client = { external: true, connectionId: "external-client", scope: { kind: "task" as const, workspaceId: space.workspaceId, taskId: task.taskId } };
       expect(await invoke("calendar.taskGrants.list", { taskId: task.taskId }, client)).toEqual([grant]);
       const query = { taskId: task.taskId, grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 25 };
       expect((await invoke("calendar.taskEvents.list", query, client) as { events: { source: { accountKey: string } }[] }).events[0]?.source.accountKey).toBe("alice@example.test");
+      expect(setup.db.prepare("SELECT status,effect_outcome FROM operation_invocations WHERE run_id IS NULL").get()).toMatchObject({ status: "completed", effect_outcome: "observed" });
       await expect(invoke("calendar.taskEvents.list", { ...query, taskId: other.taskId }, client)).rejects.toMatchObject({ code: "permission_denied" });
       await expect(invoke("calendar.events.list", { connectionId: account.connectionId, timeMin: query.timeMin, timeMax: query.timeMax, limit: 25 }, client)).rejects.toMatchObject({ code: "permission_denied" });
       await expect(invoke("calendar.taskGrants.create", { taskId: task.taskId, expectedRevision: 1, connectionId: setup.service.list().connections.find(item => item.accountKey === "bob@example.test")!.connectionId }, client)).rejects.toMatchObject({ code: "permission_denied" });
@@ -250,7 +254,7 @@ describe("outbound Google Calendar connection", () => {
           : { status: "done", message: "Brief ready", result: { report: `- Meeting alice [source](${eventUrl})` } };
         return { object: options.schema.parse(object), durationMs: 1 };
       }, generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
-      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service,
+      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
         pages: { observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Prepare a sourced meeting brief", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
@@ -263,6 +267,8 @@ describe("outbound Google Calendar connection", () => {
       expect(prompts[1]).toContain("Meeting alice");
       expect(prompts.join(" ")).not.toContain("Meeting bob");
       expect(setup.repo.listSteps(run.runId).map(step => step.op)).toContain("calendar.events.list");
+      expect(setup.db.prepare("SELECT status,effect_outcome FROM operation_invocations WHERE run_id=?").get(run.runId)).toMatchObject({ status: "completed", effect_outcome: "observed" });
+      expect(() => setup.operations.forget("aux.connector.google-calendar", "events.list")).toThrow(/managed by Aux/);
     } finally { await setup.service.close(); }
   });
 
@@ -286,7 +292,7 @@ describe("outbound Google Calendar connection", () => {
       const model: ModelClient = { generateStructured: async options => ({ object: options.schema.parse({ status: "source", message: "Reading Calendar",
         sourceRequest: { kind: "calendar.events.list", grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z" } }), durationMs: 1 }),
         generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
-      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service,
+      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
         pages: { observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Read Calendar", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });

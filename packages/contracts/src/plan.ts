@@ -82,6 +82,7 @@ export const OperationImplKindSchema = z.enum([
   "session-request",
   "observed-data",
   "site-tool",
+  "connector-read",
   "visual-program",
 ]);
 export type OperationImplKind = z.infer<typeof OperationImplKindSchema>;

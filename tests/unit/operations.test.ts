@@ -64,6 +64,13 @@ const program = (): Omit<Program, "pageId"> & { pageId?: string } => ({
 });
 
 describe("OperationService", () => {
+  it("keeps the built-in connector route sealed from generic operation calls", async () => {
+    const s = svc();
+    expect(() => s.saveFromProgram({ siteKey: "aux.connector.google-calendar", name: "events.list", program: program() })).toThrow(/managed by Aux/);
+    expect(() => s.saveRequestImpl({ siteKey: "aux.connector.google-calendar", name: "events.list", url: "https://calendar.google.com/api" })).toThrow(/managed by Aux/);
+    await expect(s.invoke({ siteKey: "aux.connector.google-calendar", name: "events.list" })).rejects.toMatchObject({ code: "permission_denied" });
+  });
+
   it("routes to the cheapest eligible implementation", async () => {
     const s = svc();
     s.saveRequestImpl({ siteKey: "app.test", name: "read", url: "http://app.test/api/state", validated: true });
