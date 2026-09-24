@@ -29,7 +29,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled
     if(!result||!draft||contextDisabled||pending.current||!valid||sourceChanged)return;
     pending.current=true;setAttaching(true);setDraftError("");
     try {
-      await call("conversations.attachments.add",{chatId,filename:editedName.slice(0,255),content});
+      await call("conversations.attachments.add",{chatId,filename:editedName.slice(0,255),content,sourceArtifactId:artifactId});
       setAttached(content);toast("Edited copy attached to this conversation");
     } catch(reason){setDraftError(reason instanceof Error?reason.message:String(reason));}
     finally{pending.current=false;setAttaching(false);}

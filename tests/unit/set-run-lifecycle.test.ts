@@ -213,6 +213,9 @@ describe("conversation turn retry", () => {
     expect(available.artifacts[0]).toMatchObject({ artifactId: "report-artifact", filename: "comparison.md", turnGoal: "Prepare the comparison", included: false });
     expect(available.artifacts[0]).not.toHaveProperty("path");
     h.runs.toggleConversationArtifact({ chatId: "artifact-chat", artifactId: "report-artifact", included: true });
+    const edited = h.runs.addAttachment({chatId:"artifact-chat",filename:"edited-comparison.md",content:"Revised comparison",sourceArtifactId:"report-artifact"});
+    expect(edited.attachments[0]?.sourceArtifactId).toBe("report-artifact");
+    expect(() => h.runs.addAttachment({chatId:"other-chat",filename:"stolen.md",content:"Copy",sourceArtifactId:"report-artifact"})).toThrow("source result is unavailable");
 
     const run = await h.runs.start({ goal: "Use the generated comparison", pageIds: ["p1"], chatId: "artifact-chat" });
     expect(run.config?.contextArtifactIds).toEqual(["report-artifact"]);

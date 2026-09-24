@@ -106,6 +106,8 @@ try {
   assert.deepEqual(firstRun.pageIds,selectedIds);
   assert.equal(firstRun.config.contextAttachmentIds.length,1);
   assert.match(firstRun.result.report,/Brief recommends Beta/);
+  const originalReport=await page.evaluate(chatId=>window.aux.invoke("conversations.artifacts.get",{chatId}).then(value=>value.artifacts.find(item=>item.runId)),firstRun.config.chatId);
+  assert.ok(originalReport?.artifactId);
   const reports=page.locator('.composer-documents[aria-label="Generated reports and results"]');
   await reports.getByRole("button",{name:"report.md",exact:true}).click();
   const preview=page.getByRole("region",{name:"Saved result preview"});
@@ -113,6 +115,8 @@ try {
   await preview.getByRole("textbox",{name:"Edit result copy"}).fill("# Report\nEdited note.");
   await preview.getByRole("button",{name:"Attach edited copy"}).click();
   await page.locator('.composer-documents[aria-label="Attached documents"]').getByRole("button",{name:"edited-report.md",exact:true}).waitFor();
+  const editedCopy=await page.evaluate(chatId=>window.aux.invoke("conversations.attachments.get",{chatId}).then(value=>value.attachments.find(item=>item.filename==="edited-report.md")),firstRun.config.chatId);
+  assert.equal(editedCopy.sourceArtifactId,originalReport.artifactId);
   await preview.getByRole("button",{name:"Close result preview"}).click();
   const secondGoal="Revise the report using my edited copy";
   await page.getByRole("textbox",{name:"Reply to conversation"}).fill(secondGoal);

@@ -145,10 +145,10 @@ export class RunService {
     };
   }
 
-  private attachmentRecords(chatId: string): { attachmentId: string; filename: string; content: string; byteLength: number; createdAt: number; included: boolean; sourceUrl?: string; sourceTruncated?: boolean }[] {
+  private attachmentRecords(chatId: string): { attachmentId: string; filename: string; content: string; byteLength: number; createdAt: number; included: boolean; sourceUrl?: string; sourceTruncated?: boolean; sourceArtifactId?: string }[] {
     const saved = this.deps.repo.getSetting<unknown>(`conversationAttachments:${chatId}`);
     if (!Array.isArray(saved)) return [];
-    return saved.filter((item): item is { attachmentId: string; filename: string; content: string; byteLength: number; createdAt: number; included: boolean; sourceUrl?: string; sourceTruncated?: boolean } => {
+    return saved.filter((item): item is { attachmentId: string; filename: string; content: string; byteLength: number; createdAt: number; included: boolean; sourceUrl?: string; sourceTruncated?: boolean; sourceArtifactId?: string } => {
       if (!item || typeof item !== "object") return false;
       const record = item as Record<string, unknown>;
       return typeof record.attachmentId === "string" && typeof record.filename === "string" && typeof record.content === "string" && typeof record.createdAt === "number";
@@ -156,7 +156,7 @@ export class RunService {
   }
 
   attachments(chatId: string): { chatId: string; attachments: ConversationAttachment[] } {
-    return { chatId, attachments: this.attachmentRecords(chatId).map(item => ({ attachmentId: item.attachmentId, filename: item.filename, sourceUrl: item.sourceUrl, sourceTruncated: item.sourceTruncated, excerpt: documentSnapshotExcerpt(item.filename, item.content), byteLength: item.byteLength, createdAt: item.createdAt, included: item.included })) };
+    return { chatId, attachments: this.attachmentRecords(chatId).map(item => ({ attachmentId: item.attachmentId, filename: item.filename, sourceUrl: item.sourceUrl, sourceTruncated: item.sourceTruncated, sourceArtifactId: item.sourceArtifactId, excerpt: documentSnapshotExcerpt(item.filename, item.content), byteLength: item.byteLength, createdAt: item.createdAt, included: item.included })) };
   }
 
   private documentContext(chatId: string) {
@@ -172,14 +172,20 @@ export class RunService {
     return { attachment: this.attachments(opts.chatId).attachments.find(item => item.attachmentId === opts.attachmentId)!, content: record.content, contextCharacters: record.text.length, contextText: record.text, contextTotalCharacters: record.contextTotalCharacters };
   }
 
-  addAttachment(opts: { chatId: string; filename: string; content: string; sourceUrl?: string; sourceTruncated?: boolean }) {
+  addAttachment(opts: { chatId: string; filename: string; content: string; sourceUrl?: string; sourceTruncated?: boolean; sourceArtifactId?: string }) {
     if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before changing its context.");
+    if (opts.sourceArtifactId) {
+      const source = this.deps.repo.getArtifact(opts.sourceArtifactId);
+      const sourceRun = source?.runId ? this.deps.repo.getRun(source.runId) : undefined;
+      if (!source || !isTextResult(source) || (sourceRun?.config?.chatId ?? sourceRun?.runId) !== opts.chatId)
+        throw new AuxError("not_found", "The source result is unavailable in this conversation.");
+    }
     const records = this.attachmentRecords(opts.chatId);
     if (records.length >= 5) throw new AuxError("conflict", "A conversation can include up to five document or page snapshots.");
     const content = opts.content;
     const byteLength = new TextEncoder().encode(content).length;
     if (byteLength > 512 * 1024) throw new AuxError("invalid_params", "Use a UTF-8 text document up to 512 KB.");
-    records.push({ attachmentId: newStepId(), filename: opts.filename, sourceUrl: opts.sourceUrl, sourceTruncated: opts.sourceTruncated, content, byteLength, createdAt: Date.now(), included: true });
+    records.push({ attachmentId: newStepId(), filename: opts.filename, sourceUrl: opts.sourceUrl, sourceTruncated: opts.sourceTruncated, sourceArtifactId: opts.sourceArtifactId, content, byteLength, createdAt: Date.now(), included: true });
     this.deps.repo.setSetting(`conversationAttachments:${opts.chatId}`, records);
     this.deps.events.emit("conversation.context.changed", {chatId:opts.chatId});
     return this.attachments(opts.chatId);

@@ -273,6 +273,7 @@ export const ConversationDeleteParams = z.object({ chatId: id });
 export const ConversationAttachmentSchema = z.object({
   sourceUrl: z.string().optional(),
   sourceTruncated: z.boolean().optional(),
+  sourceArtifactId: id.optional(),
   attachmentId: id,
   filename: z.string().min(1).max(255),
   excerpt: z.string().max(1000),
@@ -284,6 +285,7 @@ export type ConversationAttachment = z.infer<typeof ConversationAttachmentSchema
 export const ConversationAttachmentsSchema = z.object({ chatId: id, attachments: z.array(ConversationAttachmentSchema) });
 export const ConversationAttachmentAddParams = z.object({
   chatId: id,
+  sourceArtifactId: id.optional(),
   filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
   content: z.string().max(512 * 1024).refine(value => !value.includes("\0") && new TextEncoder().encode(value).length <= 512 * 1024, "Use a UTF-8 text document up to 512 KB"),
 });
