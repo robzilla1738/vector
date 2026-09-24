@@ -41,6 +41,7 @@ it("omits protected article content and grants from portable backups and strips 
   expect(JSON.parse(readFileSync(join(backup.path, "manifest.json"), "utf8")).artifacts).toEqual([]);
   // Simulate a valid older portable backup that carried protected rows.
   add(saved);
+  saved.exec("CREATE TABLE observations(observation_id TEXT PRIMARY KEY,json TEXT NOT NULL); INSERT INTO observations VALUES('legacy','ordinary private page text')");
   saved.prepare("UPDATE runs SET result=?,status='completed' WHERE run_id='run-memory'").run(JSON.stringify({ answer: "Derived private answer" }));
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
   saved.close();
@@ -54,6 +55,7 @@ it("omits protected article content and grants from portable backups and strips 
   const staged = new DatabaseSync(join(dir, "pending-runtime-restore.sqlite"), { readOnly: true });
   try {
     expect(staged.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
+    expect(staged.prepare("SELECT name FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
     expect(staged.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
     expect(staged.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
     expect(db.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 1 });
@@ -64,6 +66,7 @@ it("omits protected article content and grants from portable backups and strips 
   const recovery = new DatabaseSync(join(last.recoveryDirectory, "state.sqlite"), { readOnly: true });
   try {
     expect(recovery.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
+    expect(recovery.prepare("SELECT name FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
     expect(recovery.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
     expect(recovery.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
   } finally { recovery.close(); }

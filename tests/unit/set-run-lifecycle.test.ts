@@ -266,6 +266,22 @@ describe("conversation turn retry", () => {
     expect(snapshot.content).not.toContain("/other");
   });
 
+  it("deletes an unsent page-and-image draft with its saved data", async () => {
+    const h = harness();
+    const page = await h.pages.open({ url: "https://reference.test/article", background: true, ownedByRuntime: true });
+    await h.runs.attachPage({ chatId: "unsent-chat", pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch });
+    const image = h.runs.images.add({ chatId: "unsent-chat", filename: "Region.png",
+      dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==" }).images[0]!;
+    expect(h.repo.preparedConversations().map(item => item.chatId)).toContain("unsent-chat");
+    expect(h.runs.deleteConversation("unsent-chat")).toEqual({ ok: true, deletedRuns: 0 });
+    expect(h.repo.getSetting("conversationAttachments:unsent-chat")).toBeUndefined();
+    expect(h.repo.getSetting("conversationImages:unsent-chat")).toBeUndefined();
+    expect(h.repo.getArtifact(image.artifactId)).toBeUndefined();
+    expect(h.removedArtifacts).toContain(`/synthetic/${image.artifactId}`);
+    expect(h.repo.preparedConversations()).toEqual([]);
+    expect(() => h.runs.deleteConversation("unsent-chat")).toThrow("not found");
+  });
+
   it("prepares compact workbook references and exposes exactly the text sent to the next turn", async () => {
     const h = harness();
     const content = JSON.stringify({ format: "aux.workbook.v1", sheets: [

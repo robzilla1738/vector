@@ -11,6 +11,8 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
   const [discarded, setDiscarded] = useState<{ id: string | null; text: string } | null>(null);
   const [prepared, setPrepared] = useState<PreparedConversation[]>([]);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -31,6 +33,18 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
   }, [refresh]);
   const entries = conversationDraftEntries(drafts, runs, prepared).filter(item => !exclude.includes(item.id ?? "") && `${item.title} ${item.text}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const shown = limit ? entries.slice(0, limit) : entries;
+  const deletePrepared = async (chatId: string) => {
+    if (busy) return;
+    setBusy(true); setError("");
+    try {
+      await call("conversations.delete", { chatId });
+      useStore.getState().setConversationDraft(chatId, "");
+      useStore.getState().setConversationContext(chatId, "");
+      setPrepared(items => items.filter(item => item.chatId !== chatId));
+      setDeleting(null);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(false); }
+  };
   if (!shown.length && !discarded && !error) return null;
   const setDraft = (id: string | null, text: string) => id ? useStore.getState().setConversationDraft(id, text) : useStore.getState().setAgentDraft(text);
   return <section className={`conversation-drafts${compact ? " compact-drafts" : ""}`} aria-label="Unsent drafts">
@@ -39,6 +53,8 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
     {shown.map(item => <div className="draft-row" key={item.key}>
       <button className="draft-open" onClick={() => useStore.getState().openConversationDraft(item.id)}><strong>{item.title}</strong><span>{compact && item.text.trimStart().startsWith(item.title) ? item.text.trimStart().slice(item.title.length).trim() || "Continue editing" : item.text || `${item.count} saved ${item.count === 1 ? "attachment" : "attachments"} · Add a message to continue`}</span>{!compact && <small>Continue editing {I.right}</small>}</button>
       {!!item.text.trim() && <button className="icon-btn sm" aria-label={`Discard draft text: ${item.title}`} title="Discard draft text" onClick={() => { setDraft(item.id, ""); setDiscarded({ id: item.id, text: item.text }); }}>{I.close}</button>}
+      {item.id && item.count > 0 && <button className="icon-btn sm" disabled={busy} aria-label={`Delete saved draft and attachments: ${item.title}`} title="Delete saved draft and attachments" onClick={() => setDeleting(deleting === item.id ? null : item.id)}>{I.trash}</button>}
+      {item.id && deleting === item.id && <div className="draft-undo" role="group" aria-label={`Delete saved draft and attachments: ${item.title}?`}><span>Delete this unsent draft and its saved attachments?</span><button className="btn sm danger" disabled={busy} onClick={() => void deletePrepared(item.id!)}>Delete permanently</button><button className="btn sm ghost" disabled={busy} onClick={() => setDeleting(null)}>Cancel</button></div>}
     </div>)}
     {limit && entries.length > limit && <button className="btn sm ghost" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>View all {entries.length} drafts</button>}
     {discarded && <div className="draft-undo" role="status"><span>Draft text discarded. Saved messages and attachments are kept.</span><button className="btn sm" onClick={() => {

@@ -23,6 +23,9 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
       }
     }
     if (has("content_memory")) db.prepare("DELETE FROM content_memory").run();
+    // Older profiles saved every page observation, including ordinary browsing.
+    // It is no longer part of the portable state contract.
+    if (has("observations")) db.exec("DROP TABLE observations");
     if (has("kv")) db.prepare("DELETE FROM kv WHERE key LIKE 'setting:contentMemoryPolicy:%'").run();
     db.exec("COMMIT");
     return artifactIds;

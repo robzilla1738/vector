@@ -528,7 +528,6 @@ export class Repo {
   deleteConversation(chatId: string): { deletedRuns: number; artifactPaths: string[] } {
     const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=?`;
     const runIds = (this.q(owned).all(chatId) as {run_id:string}[]).map(row => row.run_id);
-    if (!runIds.length) return { deletedRuns: 0, artifactPaths: [] };
     const artifactPaths = (this.q(`SELECT path FROM artifacts WHERE run_id IN (${owned})`).all(chatId) as { path: string }[]).map(row => row.path);
     const images = this.getSetting<{artifactId:string}[]>(`conversationImages:${chatId}`) ?? [];
     for (const image of images) { const artifact=this.getArtifact(image.artifactId); if(artifact)artifactPaths.push(artifact.path); }

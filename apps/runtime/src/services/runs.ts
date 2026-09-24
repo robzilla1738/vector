@@ -441,7 +441,8 @@ export class RunService {
 
   deleteConversation(chatId: string) {
     const runs = this.deps.repo.conversationRuns(chatId);
-    if (!runs.length) throw new AuxError("not_found", "Conversation not found.");
+    if (!runs.length && !this.deps.repo.preparedConversations().some(draft => draft.chatId === chatId))
+      throw new AuxError("not_found", "Conversation not found.");
     if (runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "Stop or wait for this conversation before deleting it.");
     if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new AuxError("conflict", "This conversation belongs to a saved task. Delete or archive it from the task workflow.");
     const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=?`;
