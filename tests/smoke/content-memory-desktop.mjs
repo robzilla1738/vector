@@ -33,19 +33,24 @@ try {
   await editor.getByPlaceholder("Name").fill("Recall fixture Space");
   await editor.getByRole("button", { name: "Create", exact: true }).click();
   await shell.getByRole("button", { name: "Switch space, current: Recall fixture Space" }).waitFor();
-  const workspaceId = await shell.evaluate(async () => (await window.aux.invoke("workspaces.list", {})).find(item => item.name === "Recall fixture Space")?.workspaceId);
+  const space = await shell.evaluate(async () => (await window.aux.invoke("spaces.list", {})).find(item => item.name === "Recall fixture Space"));
+  const workspaceId = space?.workspaceId;
   assert.ok(workspaceId);
-  const open = async path => {
+  const open = async (path, bind = true) => {
     const url = `${origin}${path}`;
     const page = await shell.evaluate(value => window.aux.invoke("pages.open", { url: value, activate: true }), url);
     await poll(shell, async pageId => {
       const current = (await window.aux.invoke("pages.list", {})).find(item => item.pageId === pageId);
       return current?.url.startsWith("https://localhost:") && !current.loading;
     }, page.pageId);
+    if (bind) await shell.evaluate(({pageId,spaceId}) => window.aux.bindTabSpace(pageId,spaceId), {pageId:page.pageId,spaceId:space.id});
     return await shell.evaluate(pageId => window.aux.invoke("pages.list", {}).then(pages => pages.find(item => item.pageId === pageId)), page.pageId);
   };
-  const page = await open("/article");
+  const page = await open("/article", false);
   assert.equal(page.url, `${origin}/article`);
+  await assert.rejects(shell.evaluate(({ workspaceId, page }) => window.aux.invoke("workspaces.contentMemory.capture", {
+    workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch, expectedUrl: page.url,
+  }), { workspaceId, page }), /Space changed/i);
   await shell.locator(".horizontal-tab-select[data-active=true]").click({ button: "right" });
   await shell.getByRole("menuitem", { name: "Remember article in Recall fixture Space…" }).click();
   await shell.getByRole("menuitem", { name: "Remember this article" }).click();
@@ -62,6 +67,13 @@ try {
   const hits = await shell.evaluate(workspaceId => window.aux.invoke("workspaces.contentMemory.search", { workspaceId, query: "editorial" }), workspaceId);
   assert.equal(hits.length, 1);
   assert.equal(hits[0].url, `${origin}/article`);
+  const other = (await shell.evaluate(() => window.aux.invoke("spaces.create", { name: "Other Space", color: "green" }))).find(item => item.name === "Other Space");
+  await shell.evaluate(({ workspaceId, origin }) => window.aux.invoke("workspaces.contentMemory.setPolicy", {
+    workspaceId, policy: { enabled: true, retentionDays: 30, allowedOrigins: [origin] },
+  }), { workspaceId: other.workspaceId, origin });
+  await assert.rejects(shell.evaluate(({ workspaceId, page }) => window.aux.invoke("workspaces.contentMemory.capture", {
+    workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch, expectedUrl: page.url,
+  }), { workspaceId: other.workspaceId, page }), /Space changed/i);
   const noStore = await open("/no-store");
   await assert.rejects(capture(noStore), /not eligible|no-store/i);
   const sensitive = await open("/sensitive");

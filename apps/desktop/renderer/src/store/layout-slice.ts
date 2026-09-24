@@ -69,10 +69,11 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       ? tabsInSpace(layout, state.pages, layout.activeSpaceId)[0]?.pageId ?? null : state.activePageId;
     persistLayout(layout);
     set({ layout, activePageId, splitPageId: splitForPage(layout, state.pages, activePageId) });
+    if (!bridge.privateMode) for (const page of targets) void bridge.bindTabSpace(page.pageId, spaceId).catch(errToast);
     if (activePageId && activePageId !== state.activePageId) void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
     if (beforeId !== undefined) syncCatalogOrder(layout.order, state.pages, state.catalogVersion);
   },
-  moveTabToSpace: (pageId, spaceId) =>
+  moveTabToSpace: (pageId, spaceId) => {
     set((s) => {
       const layout = assignSpace(s.layout, pageId, spaceId);
       persistLayout(layout);
@@ -80,7 +81,9 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
         ? tabsInSpace(layout, s.pages, layout.activeSpaceId)[0]?.pageId ?? null : s.activePageId;
       if (activePageId && activePageId !== s.activePageId) void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
       return { layout, activePageId, splitPageId: splitForPage(layout, s.pages, activePageId) };
-    }),
+    });
+    if (!bridge.privateMode) void bridge.bindTabSpace(pageId, spaceId).catch(errToast);
+  },
   syncBrowserSpaces: (spaces) => {
     const previous = get().layout.activeSpaceId;
     const layout = reconcileSpaces(get().layout, spaces);

@@ -1,14 +1,16 @@
 import type { RpcChannel } from "@aux/contracts";
 import { registry } from "../../app/services.js";
+import { tabCatalog } from "../../tabs/store.js";
 import { captureReadablePage } from "../../content-capture.js";
 import { stateForEntry } from "../../windows/registry.js";
 import { onNative } from "./validate.js";
 
 export function registerContentMemoryMethods(ch: RpcChannel) {
-  onNative(ch, "native.captureReadablePage", async ({ pageId, expectedUrl }) => {
+  onNative(ch, "native.captureReadablePage", async ({ pageId, workspaceId, expectedUrl }) => {
     const entry = registry.get(pageId);
     const state = stateForEntry(entry);
     const available = () => !!entry && !!state && registry.get(pageId) === entry && !entry.popup && !entry.runtimeOwned
+      && tabCatalog.tab(pageId)?.workspaceId === workspaceId
       && state.win.isFocused() && !state.overlayOpen && state.stagePageId === pageId
       && state.focusedPageId === pageId && entry.view.getVisible();
     if (!entry || !available()) throw new Error("Select the visible tab before remembering its content.");

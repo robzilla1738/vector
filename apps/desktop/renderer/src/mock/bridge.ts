@@ -745,6 +745,11 @@ export function installMockBridge(q: URLSearchParams) {
         default:return{commandId:"",status:"rejected" as const,catalogVersion:0,error:{code:"unknown",message:"Unknown mock command."}};
       }
     },
+    bindTabSpace:async(_pageId,spaceId)=>{
+      const space=spaces.find(item=>item.id===spaceId&&!item.archived);
+      if(!space?.workspaceId)throw new Error("Choose an active Space.");
+      return{spaceId,workspaceId:space.workspaceId};
+    },
     tabsSnapshot:async()=>({version:1,tabs:pages.map(p=>({pageId:p.pageId,windowId:"main",url:p.url,title:p.title,favicon:p.favicon,loading:!!p.loading,muted:false,audible:false,canGoBack:!!p.canGoBack,canGoForward:!!p.canGoForward,popup:false,crashed:p.viewStatus==="crashed",runtimeOwned:p.ownedByRuntime,generation:0,createdAt:p.createdAt,lastActiveAt:p.lastActiveAt})),windows:[{windowId:"main",order:pages.map(p=>p.pageId),activePageId}]}),
     tabsSince:async()=>({kind:"snapshot" as const,snapshot:await bridge.tabsSnapshot()}),
     onTabsPatch:()=>()=>{},

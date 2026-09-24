@@ -25,7 +25,7 @@ export interface NativeBridge {
   /** Persist a secret via Electron safeStorage (plan A22). */
   storeSecret(name: string, value: string): Promise<{ ok: true }>;
   readSecret(name: string): Promise<{ value?: string }>;
-  captureReadablePage?(pageId: string, expectedUrl: string): Promise<{ url: string; title: string; text: string }>;
+  captureReadablePage?(pageId: string, workspaceId: string, expectedUrl: string): Promise<{ url: string; title: string; text: string }>;
   developmentProjects?(projectIds:string[]):Promise<LocalProject[]>;
   inspectProject?(projectId:string):Promise<ProjectInspection>;
   githubProject?(projectId:string):Promise<{owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string}>;
@@ -96,8 +96,8 @@ export class ChannelNativeBridge implements NativeBridge {
   readSecret(name: string) {
     return this.channel.call<{ value?: string }>("native.readSecret", { name });
   }
-  captureReadablePage(pageId: string, expectedUrl: string) {
-    return this.channel.call<{ url: string; title: string; text: string }>("native.captureReadablePage", { pageId, expectedUrl }, 15_000);
+  captureReadablePage(pageId: string, workspaceId: string, expectedUrl: string) {
+    return this.channel.call<{ url: string; title: string; text: string }>("native.captureReadablePage", { pageId, workspaceId, expectedUrl }, 15_000);
   }
   developmentProjects(projectIds:string[]){return this.channel.call<LocalProject[]>("native.developmentProjects",{projectIds});}
   inspectProject(projectId:string){return this.channel.call<ProjectInspection>("native.inspectProject",{projectId});}

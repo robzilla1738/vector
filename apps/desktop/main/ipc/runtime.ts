@@ -2,6 +2,7 @@ import { EvidenceCommandSelectionParams, MethodSchemas } from "@aux/contracts";
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 import { projectCommands, registry } from "../app/services.js";
 import { liveDownloads } from "../downloads/controller.js";
+import { tabCatalog } from "../tabs/store.js";
 import { rendererMayInvoke } from "../renderer-methods.js";
 import { requireRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 import { type RegularWindowState, handleShell } from "../windows/registry.js";
@@ -42,6 +43,8 @@ export function wireRuntimeIpc() {
         if (method === "workspaces.contentMemory.capture") throw new Error("Select the visible tab before remembering its content.");
         return { recorded: false };
       }
+      if (method === "workspaces.contentMemory.capture" && tabCatalog.tab(requestedPageId as string)?.workspaceId !== (params as { workspaceId?: string }).workspaceId)
+        throw new Error("The tab's Space changed. Select its current Space and try again.");
     }
     if (method === "downloads.remove") {
       const selection = MethodSchemas["downloads.remove"].parse(params);

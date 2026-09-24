@@ -80,6 +80,7 @@ const aux = {
   setTabMuted:(pageId:string,muted:boolean)=>ipcRenderer.invoke('ui.setTabMuted',pageId,muted) as Promise<void>,
   /** typed human tab commands (§7.2) — main-owned, deduplicated, ack'd */
   tabCommand:(command:import("@aux/contracts").TabCommand,catalogVersion?:number)=>ipcRenderer.invoke("ui.tabCommand",{commandId:`cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,windowId,...(catalogVersion!==undefined?{catalogVersion}:{}) ,command}) as Promise<import("@aux/contracts").TabCommandAck>,
+  bindTabSpace:(pageId:string,spaceId:string)=>ipcRenderer.invoke("ui.bindTabSpace",pageId,spaceId) as Promise<{spaceId:string;workspaceId:string}>,
   tabsSnapshot:()=>ipcRenderer.invoke("ui.tabsSnapshot") as Promise<import("@aux/contracts").TabCatalogSnapshot>,
   tabsSince:(version:number)=>ipcRenderer.invoke("ui.tabsSince",version) as Promise<{kind:"patches";patches:import("@aux/contracts").TabPatch[]}|{kind:"snapshot";snapshot:import("@aux/contracts").TabCatalogSnapshot}>,
   onTabsPatch:(cb:(patch:import("@aux/contracts").TabPatch)=>void)=>{const listener=(_event:unknown,patch:import("@aux/contracts").TabPatch)=>cb(patch);ipcRenderer.on("tabs.patch",listener);return()=>ipcRenderer.removeListener("tabs.patch",listener);},

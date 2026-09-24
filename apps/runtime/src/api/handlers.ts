@@ -395,6 +395,8 @@ export function makeInvoker(s: Services) {
           return { forgotten };
         }
         const page = s.pages.get(params.pageId);
+        if (!spaces.list().some(space => space.workspaceId === params.workspaceId && !space.archived))
+          throw new AuxError("permission_denied", "Choose an active Space for this article.");
         if (!s.native?.captureReadablePage || page.backend !== "aux" || page.ownedByRuntime
           || page.documentEpoch !== params.expectedDocumentEpoch || page.url !== params.expectedUrl)
           throw new AuxError("conflict", "The selected document changed. Select the current page and retry.");
@@ -402,7 +404,7 @@ export function makeInvoker(s: Services) {
         const origin = new URL(params.expectedUrl).origin;
         if (!policy.enabled || !policy.allowedOrigins.includes(origin))
           throw new AuxError("permission_denied", "Allow this site for page-content recall in the selected Space first.");
-        const captured = await s.native.captureReadablePage(page.pageId, params.expectedUrl);
+        const captured = await s.native.captureReadablePage(page.pageId, params.workspaceId, params.expectedUrl);
         const current = s.pages.get(page.pageId);
         if (current.documentEpoch !== page.documentEpoch || current.sessionId !== page.sessionId
           || current.url !== page.url || current.backend !== "aux" || current.ownedByRuntime)

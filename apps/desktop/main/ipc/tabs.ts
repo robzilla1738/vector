@@ -1,4 +1,5 @@
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
+import type { BrowserSpace } from "@aux/contracts";
 import { registry, siteZoom } from "../app/services.js";
 import { translator } from "../features/translate.js";
 import { showNavigationMenu } from "../navigation-menu.js";
@@ -6,11 +7,29 @@ import { printPage, savePagePdf } from "../page-output.js";
 import { readArticle } from "../read-article.js";
 import { tabController } from "../tabs/ports.js";
 import { flushTabPatches } from "../tabs/publish.js";
+import { noteTab } from "../tabs/publish.js";
+import { runtimeInvoke } from "../runtime/supervisor.js";
 import { tabCatalog } from "../tabs/store.js";
 import { viewHooks } from "../views/hooks.js";
 import { broadcastToShells, handleShell, requireOwnedEntry } from "../windows/registry.js";
 
 export function wireTabsIpc() {
+  const bindingVersions = new Map<string, number>();
+  handleShell("ui.bindTabSpace", async (state, pageId: unknown, spaceId: unknown) => {
+    if (typeof pageId !== "string" || typeof spaceId !== "string") throw new Error("Choose a tab and Space.");
+    const tab = tabCatalog.tab(pageId);
+    if (!tab || tab.windowId !== state.id || tab.popup || tab.runtimeOwned) throw new Error("That tab is unavailable for Space memory.");
+    const version = (bindingVersions.get(pageId) ?? 0) + 1;
+    bindingVersions.set(pageId, version);
+    const spaces = await runtimeInvoke("spaces.list", {}) as BrowserSpace[];
+    const space = spaces.find(item => item.id === spaceId && !item.archived && !!item.workspaceId);
+    const current = tabCatalog.tab(pageId);
+    if (!space || !current || current.windowId !== state.id || current.generation !== tab.generation || bindingVersions.get(pageId) !== version)
+      throw new Error("The tab or Space changed. Select it again.");
+    noteTab(pageId, { spaceId: space.id, workspaceId: space.workspaceId });
+    flushTabPatches();
+    return { spaceId: space.id, workspaceId: space.workspaceId };
+  });
   handleShell('ui.tabAudio', state => Object.fromEntries(registry.all().filter(entry=>(entry.windowId??PRIMARY_WINDOW_ID)===state.id&&!entry.view.webContents.isDestroyed()).map(entry=>[entry.pageId,{muted:entry.view.webContents.isAudioMuted(),audible:entry.view.webContents.isCurrentlyAudible()}])));
 
   // Typed human tab commands (§7.2) — actuated in main; no runtime round trip.

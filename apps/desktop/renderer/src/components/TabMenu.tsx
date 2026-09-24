@@ -111,6 +111,8 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   async function rememberPage() {
     const workspaceId = space?.workspaceId;
     if (!workspaceId) return;
+    const bound = await bridge.bindTabSpace(page.pageId, spaceId);
+    if (bound.workspaceId !== workspaceId) throw new Error("The selected Space changed. Open the tab menu and try again.");
     const origin = new URL(page.url).origin;
     const policy = await call("workspaces.contentMemory.policy", { workspaceId });
     if (!policy.enabled || !policy.allowedOrigins.includes(origin)) {

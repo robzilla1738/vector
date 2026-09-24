@@ -250,6 +250,8 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         });
         if (url === "about:blank" && get().activePageId === confirmed) get().focusCommandBar("hero");
       }
+      if (!bridge.privateMode && get().pages.some(page => page.pageId === confirmed))
+        void bridge.bindTabSpace(confirmed, get().layout.tabSpace[confirmed] ?? get().layout.activeSpaceId).catch(errToast);
       return get().pages.find(page => page.pageId === confirmed) ?? null;
     } catch (e) {
       dropPlaceholder();
@@ -279,6 +281,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         persistLayout(layout);
         return { pages, layout };
       });
+      if (!bridge.privateMode) await bridge.bindTabSpace(pageId, get().layout.tabSpace[pageId] ?? spaceId);
       return get().pages.find(item => item.pageId === pageId) ?? stub;
     } finally { unsubscribe(); }
   },

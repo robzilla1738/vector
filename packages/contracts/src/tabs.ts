@@ -99,6 +99,9 @@ export type TabCommandAck = z.infer<typeof TabCommandAckSchema>;
 export const TabRecordSchema = z.object({
   pageId: id,
   windowId: id,
+  /** Main-owned destination for page-derived memory; set only after Space validation. */
+  spaceId: z.string().min(1).max(200).optional(),
+  workspaceId: z.string().min(1).max(200).optional(),
   url: z.string(),
   title: z.string(),
   favicon: z.string().optional(),
