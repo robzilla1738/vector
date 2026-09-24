@@ -1,0 +1,21 @@
+{
+  "at": "2026-09-24T15:37:22.257Z",
+  "scope": "Playwright-bundled Chromium 153.0.8010.12 reference only; NOT Aux candidate",
+  "journey": "Web Store listing -> Add to Chrome -> native permission confirmation -> process restart -> Store page Remove from Chrome and extension toolbar icon",
+  "extensionId": "ddkjiahejlhfcafbddmgiahcphecmpfh",
+  "versions": [
+    "2026.920.1710_0"
+  ],
+  "securePreferences": {
+    "location": 1,
+    "from_webstore": true,
+    "disableReasons": [],
+    "manifestVersion": "2026.920.1710",
+    "updateUrl": "https://clients2.google.com/service/update2/crx"
+  },
+  "uiAfterRestart": {
+    "removeFromChrome": true,
+    "toolbarIcon": true
+  },
+  "candidatePassed": false
+}

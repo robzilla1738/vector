@@ -24,13 +24,21 @@ function state() { return JSON.parse(readFileSync(statePath, 'utf8')); }
 function extensionRecord() {
   const versionsDir = join(profile, 'Default', 'Extensions', extensionId);
   const versions = existsSync(versionsDir) ? readdirSync(versionsDir).filter(v => existsSync(join(versionsDir, v, 'manifest.json'))) : [];
-  const preferencesPath = join(profile, 'Default', 'Preferences');
+  // Chromium protects installed-extension records in Secure Preferences.
+  // Ordinary Preferences only stores adjacent UI state such as toolbar pins.
+  const preferencesPath = join(profile, 'Default', 'Secure Preferences');
   const preferences = existsSync(preferencesPath) ? JSON.parse(readFileSync(preferencesPath, 'utf8')) : {};
   const setting = preferences.extensions?.settings?.[extensionId] ?? null;
   return { extensionId, versions, setting: setting && {
     state: setting.state, location: setting.location, from_webstore: setting.from_webstore,
+    disableReasons: setting.disable_reasons ?? [],
     manifestVersion: setting.manifest?.version, updateUrl: setting.manifest?.update_url ?? null,
   } };
+}
+function storeInstalled(record) {
+  return record.versions.some(version => version.startsWith(`${record.setting?.manifestVersion}_`)) &&
+    record.setting?.from_webstore === true && record.setting.disableReasons.length === 0 &&
+    record.setting.state !== 2;
 }
 async function endpoint() {
   const portPath = join(profile, 'DevToolsActivePort');
@@ -97,8 +105,7 @@ async function inspect() {
     const workers = browser.contexts()[0]?.serviceWorkers().map(worker => worker.url()) ?? [];
     // MV3 workers may sleep. Installation and restart persistence are profile
     // facts; worker execution is a separate API test.
-    const installed = record.versions.length > 0 && record.setting?.state === 1 &&
-      record.setting?.from_webstore === true;
+    const installed = storeInstalled(record);
     const report = { at: new Date().toISOString(), scope: 'Aux //chrome candidate only; live Store install and persistent profile',
       binary, profile, storeUrl, browser: metadata.Browser, phase: prior.phase, installed,
       restartPersisted: installed && prior.phase === 'restarted',
@@ -114,7 +121,16 @@ async function stop() {
   assert.equal(prior.profile, profile);
   process.kill(prior.pid, 'SIGTERM');
   for (let i = 0; i < 60; i++) {
-    try { process.kill(prior.pid, 0); } catch { console.log(`Stopped candidate ${prior.pid}`); return; }
+    try { process.kill(prior.pid, 0); }
+    catch {
+      const record = extensionRecord();
+      const installed = storeInstalled(record);
+      saveState({ ...prior, phase: installed ? 'installed' : prior.phase,
+        installedAt: installed ? new Date().toISOString() : prior.installedAt });
+      console.log(JSON.stringify({ phase: 'stopped', pid: prior.pid, installed, record }, null, 2));
+      assert.ok(installed, 'Candidate exited without a persisted Store-origin extension');
+      return;
+    }
     await delay(500);
   }
   throw new Error(`Candidate ${prior.pid} did not exit within 30 seconds`);
