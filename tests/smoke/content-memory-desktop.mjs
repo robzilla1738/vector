@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:https";
 import { createServer as createHttpServer } from "node:http";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { closeAux, launchApp, shellWindow } from "./launch.mjs";
@@ -199,6 +199,11 @@ try {
   assert.equal(redactedRun.run.result, undefined);
   assert.equal(redactedRun.run.config.contextMemoryRevoked, true);
   assert.equal((await shell.evaluate(runId => window.aux.invoke("artifacts.list", { runId }), run.runId)).length, 0);
+  const walPath = join(dir, "data", "aux-state.sqlite-wal");
+  const checkpointDeadline = Date.now() + 10_000;
+  while (Date.now() < checkpointDeadline && statSync(walPath).size > 0)
+    await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(statSync(walPath).size, 0, "Forget checkpointed the live Profile WAL");
   const oldTab = await open("/legacy-startup", false);
   assert.equal((await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)?.workspaceId), oldTab.pageId)), undefined);
   await closeAux(app); app = undefined;
