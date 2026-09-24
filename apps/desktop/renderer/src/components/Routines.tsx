@@ -137,13 +137,26 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       {!selected.runs.length && <p className="hint">This Skill has not run yet.</p>}
       {selected.runs.map(run => <div className="routine-run hint" key={run.routineRunId}>
         {run.status.replaceAll("_", " ")}{run.reason ? ` · ${run.reason}` : ""} · {new Date(run.createdAt).toLocaleString()}
-        {(run.status === "needs_review" || run.status === "uncertain") && <>
-          <button className="btn sm" disabled={busy} onClick={() => void action(async () => { await call("routines.reconcile", { routineRunId: run.routineRunId, outcome: "applied", note: "Reviewed in Aux." }); await refresh(selected.routine.routineId); })}>Mark reviewed</button>
-          <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => { await call("routines.reconcile", { routineRunId: run.routineRunId, outcome: "not_applied", note: "Skipped this occurrence in Aux." }); await refresh(selected.routine.routineId); })}>Skip occurrence</button>
-        </>}
+        {(run.status === "needs_review" || run.status === "uncertain") && <RoutineRunReview run={run} busy={busy} onResolve={(outcome, note) => void action(async () => {
+          await call("routines.reconcile", { routineRunId: run.routineRunId, outcome, note });
+          await refresh(selected.routine.routineId);
+        })} />}
       </div>)}
     </div>}
   </section>;
+}
+
+function RoutineRunReview({ run, busy, onResolve }: { run: RoutineRun; busy: boolean; onResolve: (outcome: "applied" | "not_applied", note: string) => void }) {
+  const [note, setNote] = useState("");
+  const uncertain = run.status === "uncertain";
+  return <div className="field">
+    <label>{uncertain ? "What did you verify happened?" : "Review note"}<textarea value={note} maxLength={1000} disabled={busy} onChange={event => setNote(event.target.value)} /></label>
+    {uncertain && <span className="hint">Check the destination before choosing an outcome. Aux will not retry this run automatically.</span>}
+    <div className="row">
+      <button className="btn sm" disabled={busy || !note.trim()} onClick={() => onResolve("applied", note.trim())}>{uncertain ? "Confirmed applied" : "Approve and run"}</button>
+      <button className="btn sm ghost" disabled={busy || !note.trim()} onClick={() => onResolve("not_applied", note.trim())}>{uncertain ? "Confirmed not applied" : "Skip occurrence"}</button>
+    </div>
+  </div>;
 }
 
 function RoutineDefinitionEditor({ routine, disabled, onSave }: {

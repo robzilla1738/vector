@@ -592,7 +592,7 @@ export const MethodSchemas = {
   "routines.archive": z.object({routineId:id,expectedRevision:z.number().int().positive(),archived:z.boolean()}),
   "routines.run": RoutineRunParams,
   "routines.runs": z.object({routineId:id,limit:z.number().int().min(1).max(100).default(30)}),
-  "routines.reconcile": z.object({routineRunId:id,outcome:z.enum(["applied","not_applied"]),note:z.string().min(1).max(4000)}).strict(),
+  "routines.reconcile": z.object({routineRunId:id,outcome:z.enum(["applied","not_applied"]),note:z.string().trim().min(1).max(1000)}).strict(),
   "routines.due": z.object({now:z.number().optional()}),
   "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
   "routines.compare": z.object({leftRunId:id,rightRunId:id}).strict(),

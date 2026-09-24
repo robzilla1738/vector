@@ -78,11 +78,15 @@ export function previousScheduledTime(trigger: Extract<RoutineTrigger, { kind: "
 }
 
 export class RoutineService {
+  /** Only records present when this service starts can be abandoned dispatches. */
+  private readonly orphanedDispatches: Set<string>;
   constructor(
     private repo: Repo,
     private events: EventBus,
     private startWork?: (routine: Routine, parameters: Record<string, string>) => Promise<{ chatId?: string; runId?: string } | { chatId?: string; runId?: string }> | { chatId?: string; runId?: string },
-  ) {}
+  ) {
+    this.orphanedDispatches = new Set((this.repo.db.prepare("SELECT routine_run_id FROM routine_runs WHERE run_id IS NULL AND status IN ('queued','running')").all() as { routine_run_id: string }[]).map(row => row.routine_run_id));
+  }
 
   list(opts: { workspaceId?: string; query?: string; includeArchived?: boolean; limit?: number } = {}): Routine[] {
     const limit = opts.limit ?? 50;
@@ -280,18 +284,20 @@ export class RoutineService {
   }
 
   async reconcile(routineRunId: string, outcome: "applied" | "not_applied", note: string): Promise<RoutineRun> {
+    const reviewNote = note.trim();
+    if (!reviewNote || reviewNote.length > 1000) throw new AuxError("invalid_params", "Add a review note up to 1,000 characters.");
     this.sync();
     const record = this.runById(routineRunId);
     if (record.status !== "uncertain" && record.status !== "needs_review") throw new AuxError("conflict", "Only uncertain or waiting runs can be reconciled.");
     const routine = this.routine(record.routineId);
     if (outcome === "not_applied") {
-      const next = { ...record, status: "cancelled" as const, reason: note, endedAt: Date.now() };
+      const next = { ...record, status: "cancelled" as const, reason: reviewNote, endedAt: Date.now() };
       this.updateRun(next);
       this.events.emit("routine.updated", { routine, run: next });
       return next;
     }
-    if (record.status === "needs_review") return this.dispatch({ ...record, reason: note }, routine);
-    const next = { ...record, status: "completed" as const, reason: note, endedAt: Date.now() };
+    if (record.status === "needs_review") return this.dispatch({ ...record, reason: reviewNote }, routine);
+    const next = { ...record, status: "completed" as const, reason: reviewNote, endedAt: Date.now() };
     this.updateRun(next);
     this.events.emit("routine.updated", { routine, run: next });
     return next;
@@ -415,6 +421,16 @@ export class RoutineService {
 
   /** Syncs each dispatched routine run with the underlying run's current status. */
   private sync(): void {
+    for (const routineRunId of this.orphanedDispatches) {
+      const row = this.repo.db.prepare("SELECT * FROM routine_runs WHERE routine_run_id=? AND run_id IS NULL AND status IN ('queued','running')").get(routineRunId) as Record<string, unknown> | undefined;
+      if (row) {
+        const record = parseRun(row);
+        const next: RoutineRun = { ...record, status: "uncertain", reason: "Aux restarted before this Skill dispatch was linked to an agent run. Check whether work occurred before reconciling; Aux will not retry it automatically.", endedAt: Date.now() };
+        this.updateRun(next);
+        this.events.emit("routine.updated", { routine: this.routine(record.routineId), run: next });
+      }
+      this.orphanedDispatches.delete(routineRunId);
+    }
     const open = this.repo.db.prepare("SELECT * FROM routine_runs WHERE run_id IS NOT NULL AND status IN ('queued','running','waiting_input')").all() as Record<string, unknown>[];
     for (const row of open) {
       const record = parseRun(row);

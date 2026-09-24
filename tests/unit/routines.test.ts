@@ -72,6 +72,34 @@ it("rejects a source run from another saved task", () => {
   expect(() => f.routines.fromResult({ taskId: f.task.taskId, runId: "other-task-run" })).toThrow(/this saved task/);
 });
 
+it("holds a Skill dispatch orphaned by restart until a person reconciles it", async () => {
+  let calls = 0;
+  const f = fixture(async () => { calls += 1; return { runId: "new-run" }; });
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Restart boundary" });
+  f.repo.db.prepare("INSERT INTO routine_runs(routine_run_id,routine_id,revision,status,parameters,created_at) VALUES(?,?,?,?,?,?)")
+    .run("orphaned-dispatch", skill.routineId, skill.revision, "queued", "{}", Date.now());
+  const restarted = new RoutineService(f.repo, f.events, async () => { calls += 1; return { runId: "new-run" }; });
+  const recovered = restarted.runs(skill.routineId)[0]!;
+  expect(recovered.status).toBe("uncertain");
+  expect(recovered.reason).toMatch(/will not retry/i);
+  expect(calls).toBe(0);
+  await expect(restarted.run({ routineId: skill.routineId, expectedRevision: skill.revision })).rejects.toThrow(/reconcile/i);
+  await expect(restarted.reconcile(recovered.routineRunId, "not_applied", " ")).rejects.toThrow(/review note/i);
+  await restarted.reconcile(recovered.routineRunId, "not_applied", "Confirmed no work was sent.");
+  expect((await restarted.run({ routineId: skill.routineId, expectedRevision: skill.revision })).status).toBe("running");
+  expect(calls).toBe(1);
+});
+
+it("does not mark a dispatch in progress in this service as orphaned", async () => {
+  let finish!: (value: { runId: string }) => void;
+  const f = fixture(() => new Promise(resolve => { finish = resolve; }));
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Active dispatch" });
+  const pending = f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision });
+  expect(f.routines.runs(skill.routineId)[0]?.status).toBe("queued");
+  finish({ runId: "live-run" });
+  expect((await pending).status).toBe("running");
+});
+
 it("does not dispatch a reviewed schedule after its task scope changes", async () => {
   let calls = 0;
   const f = fixture(async () => { calls += 1; return { runId: "unexpected" }; });
