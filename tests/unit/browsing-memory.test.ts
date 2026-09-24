@@ -30,7 +30,7 @@ it("is opt-in, Space-scoped, and excludes agent/hidden/stale pages and query str
   } finally { f.db.close(); }
 });
 
-it("applies site exclusions at recording and retrieval, and pause preserves saved records", () => {
+it("erases excluded sites at policy change, rejects new visits, and preserves paused records", () => {
   const f = fixture();
   try {
     f.service.setPolicy(f.space.workspaceId, { enabled: true, retentionDays: 7 });
@@ -38,10 +38,24 @@ it("applies site exclusions at recording and retrieval, and pause preserves save
     f.tasks.setWorkspaceMemory(f.space.workspaceId, 0, "", true, undefined, ["https://example.com"]);
     expect(f.service.context(f.space.workspaceId)).toBe("");
     expect(f.service.record(f.space.workspaceId, page(), 1).recorded).toBe(false);
-    expect(f.service.get(f.space.workspaceId).pages).toHaveLength(1);
+    expect(f.repo.getSetting(`browsingMemoryPages:${f.space.workspaceId}`)).toEqual([]);
+    expect(f.service.get(f.space.workspaceId).pages).toHaveLength(0);
+    f.tasks.setWorkspaceMemory(f.space.workspaceId, 1, "", true, undefined, []);
+    f.service.record(f.space.workspaceId, page(), 1);
     f.service.setPolicy(f.space.workspaceId, { enabled: false, retentionDays: 7 });
     expect(f.service.get(f.space.workspaceId).pages).toHaveLength(1);
     expect(f.service.context(f.space.workspaceId)).toBe("");
+  } finally { f.db.close(); }
+});
+
+it("prunes excluded records restored from an older snapshot before retrieval", () => {
+  const f = fixture();
+  try {
+    f.service.setPolicy(f.space.workspaceId, { enabled: true, retentionDays: 7 });
+    f.tasks.setWorkspaceMemory(f.space.workspaceId, 0, "", true, undefined, ["https://example.com"]);
+    f.repo.setSetting(`browsingMemoryPages:${f.space.workspaceId}`, [{ memoryId: "old", url: "https://example.com/article", title: "Old", firstVisitedAt: 1_000_000, lastVisitedAt: 1_000_000 }]);
+    expect(f.service.context(f.space.workspaceId)).toBe("");
+    expect(f.repo.getSetting(`browsingMemoryPages:${f.space.workspaceId}`)).toEqual([]);
   } finally { f.db.close(); }
 });
 

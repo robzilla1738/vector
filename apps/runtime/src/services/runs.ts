@@ -673,6 +673,7 @@ export class RunService {
     contextPageRefs?: PageContextRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
+    contextBrowsingMemory?: boolean;
     /** Internal retry path: preserve the exact original context snapshot. */
     contextSnapshot?: boolean;
     chatId?: string;
@@ -729,6 +730,7 @@ export class RunService {
     const contextImageArtifactIds = opts.contextSnapshot ? opts.contextImageArtifactIds : opts.chatId ? this.images.selected(opts.chatId) : [];
     const contextWorkspaceId = opts.contextSnapshot ? opts.contextWorkspaceId : inherited?.workspaceId ?? opts.contextWorkspaceId;
     const contextWorkspaceRevision = opts.contextSnapshot ? opts.contextWorkspaceRevision : inherited?.workspaceRevision ?? opts.contextWorkspaceRevision;
+    const contextBrowsingMemory = opts.contextSnapshot ? opts.contextBrowsingMemory : !!inherited?.browsing;
     const pageIds = opts.pageIds ?? (opts.pageId ? [opts.pageId] : []);
     if (!pageIds.length && !opts.setId) {
       throw new AuxError("invalid_params", "runs.start needs a pageId, pageIds, or setId scope");
@@ -780,6 +782,7 @@ export class RunService {
       contextPageRefs: opts.contextPageRefs,
       contextWorkspaceId,
       contextWorkspaceRevision,
+      contextBrowsingMemory,
       accountLabels: opts.accountLabels,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
     });
@@ -835,6 +838,7 @@ export class RunService {
       contextImageArtifactIds: prior.config?.contextImageArtifactIds,
       contextWorkspaceId: prior.config?.contextWorkspaceId,
       contextWorkspaceRevision: prior.config?.contextWorkspaceRevision,
+      contextBrowsingMemory: prior.config?.contextBrowsingMemory,
       contextSnapshot: true,
       chatId,
       retryOfRunId: prior.runId,
@@ -928,12 +932,12 @@ export class RunService {
     return this.coordinator.resume(runId);
   }
 
-  cancel(runId: string): Run {
+  cancel(runId: string, reason?: string): Run {
     const run = this.deps.repo.getRun(runId);
     if (run?.config?.chatId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) this.messages.cancelForChat(run.config.chatId);
     const sc = this.setRunControls.get(runId);
     if (sc) sc.cancel();
-    return this.coordinator.cancel(runId);
+    return this.coordinator.cancel(runId, reason);
   }
 
   /** Test/diagnostic hook: is this set run currently gated? */

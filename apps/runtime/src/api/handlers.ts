@@ -1,5 +1,5 @@
 import { SavedResults } from "../services/saved-results.js";
-import { BrowsingMemory } from "../services/browsing-memory.js";
+import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
 import { EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
@@ -81,6 +81,18 @@ export function makeInvoker(s: Services) {
   const tasks = new TaskService(s.repo, s.events);
   const browsingMemory = new BrowsingMemory(s.repo);
   browsingMemory.prune();
+  const revokeWorkspaceContext = (workspaceId: string, browsingOnly: boolean) => {
+    const rows = s.repo.db.prepare(`SELECT run_id AS runId, config FROM runs
+      WHERE status IN ('queued','planning','running','paused','needs_input')
+      AND json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId')=?`)
+      .all(workspaceId) as { runId: string; config: string | null }[];
+    for (const row of rows) {
+      const config = row.config ? JSON.parse(row.config) as { context?: string; contextBrowsingMemory?: boolean } : {};
+      // Older run snapshots predate the structured provenance flag.
+      if (!browsingOnly || config.contextBrowsingMemory || (config.contextBrowsingMemory === undefined && config.context?.includes(BROWSING_CONTEXT_MARKER)))
+        s.runs.cancel(row.runId, "Workspace context changed before this turn finished. Review and retry with current sources.");
+    }
+  };
   const spaces = new SpaceService(s.repo, s.events);
   const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages);
   const cloudEnvironments=new CloudEnvironmentService(s.repo,s.settings);
@@ -315,16 +327,29 @@ export function makeInvoker(s: Services) {
       case "workspaces.browsingMemory.forget": {
         if (client.external) throw new AuxError("permission_denied", "Browsing memory is managed in Aux.");
         if (method === "workspaces.browsingMemory.get") return browsingMemory.get(params.workspaceId);
-        if (method === "workspaces.browsingMemory.set") { const result = browsingMemory.setPolicy(params.workspaceId, params.policy); s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId }); return result; }
+        if (method === "workspaces.browsingMemory.set") {
+          const prior = browsingMemory.policy(params.workspaceId);
+          const result = browsingMemory.setPolicy(params.workspaceId, params.policy);
+          if ((prior.enabled && !result.policy.enabled) || result.policy.retentionDays < prior.retentionDays)
+            revokeWorkspaceContext(params.workspaceId, true);
+          s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
+          return result;
+        }
         if (method === "workspaces.browsingMemory.record") return browsingMemory.record(params.workspaceId, s.pages.get(params.pageId), params.expectedDocumentEpoch);
-        const result = browsingMemory.forget(params.workspaceId, params.memoryId); s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId }); return result;
+        const result = browsingMemory.forget(params.workspaceId, params.memoryId);
+        revokeWorkspaceContext(params.workspaceId, true);
+        s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
+        return result;
       }
       case "workspaces.memory.get":
         if (client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
         return tasks.workspaceMemory(params.workspaceId);
-      case "workspaces.memory.set":
+      case "workspaces.memory.set": {
         if (client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
-        return tasks.setWorkspaceMemory(params.workspaceId, params.expectedRevision, params.content,params.enabled,params.items,params.excludedOrigins);
+        const memory = tasks.setWorkspaceMemory(params.workspaceId, params.expectedRevision, params.content,params.enabled,params.items,params.excludedOrigins);
+        revokeWorkspaceContext(params.workspaceId, false);
+        return memory;
+      }
       case "tasks.create":
         if (client.external && Array.isArray(params.resources) && params.resources.some((resource: { access?: string }) => resource.access === "write")) {
           throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");

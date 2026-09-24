@@ -142,6 +142,8 @@ export const RunSchema = z.object({
       /** explicitly selected workspace memory revision used for this turn */
       contextWorkspaceId: z.string().optional(),
       contextWorkspaceRevision: z.number().int().nonnegative().optional(),
+      /** This turn pinned opt-in browsing references from its Space. */
+      contextBrowsingMemory: z.boolean().optional(),
       /** how this run executes — shown as a badge on cards (§10 route label) */
       implementation: z.string().optional(),
       /** route-selection reason when an operation impl drove the run */

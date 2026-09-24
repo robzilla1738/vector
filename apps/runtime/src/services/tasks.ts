@@ -1,4 +1,5 @@
 import { readWorkspaceMemory } from "./workspace-memory.js";
+import { BrowsingMemory } from "./browsing-memory.js";
 import { memoryOrigin } from "@aux/contracts/memory-context";
 import { randomUUID } from "node:crypto";
 import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, AuxError, taskConversationId, taskMatchesQuery, type Task, type Workspace, type WorkspaceMemory } from "@aux/contracts";
@@ -50,7 +51,11 @@ export class TaskService {
       catch { throw new AuxError("invalid_params", "Use web addresses without credentials for excluded sites."); }
     }
     const next = { workspaceId, excludedOrigins: origins, items: items ?? prior.items ?? [], enabled:enabled??prior.enabled??true, content: content.slice(0, 16_000), revision: prior.revision + 1, updatedAt: Date.now() };
-    this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
+    this.repo.transaction(() => {
+      this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
+      // An excluded site must leave local browsing memory as well as future prompts.
+      new BrowsingMemory(this.repo).get(workspaceId);
+    });
     this.events.emit("workspace.memory.updated", { workspaceId, revision: next.revision });
     return next;
   }

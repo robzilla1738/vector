@@ -102,6 +102,31 @@ describe("handler results conform to ResultSchemas", () => {
     expect(read.content).toBe("shared workspace context");
   });
 
+  it("stops pending transmission of browsing context when its source is forgotten", async () => {
+    const workspace = await invoke("workspaces.create", { name: "Forget source" }) as { workspaceId: string };
+    const other = await invoke("workspaces.create", { name: "Other source" }) as { workspaceId: string };
+    await invoke("workspaces.browsingMemory.set", { workspaceId: workspace.workspaceId, policy: { enabled: true, retentionDays: 7 } }, { external: false });
+    const recorded = await invoke("workspaces.browsingMemory.record", { workspaceId: workspace.workspaceId, pageId: "p1", expectedDocumentEpoch: 0 }, { external: false }) as { recorded: boolean };
+    expect(recorded.recorded).toBe(true);
+    const marker = "RECENT BROWSING IN THIS SPACE";
+    repo.saveRun({ runId: "forget-active", goal: "Use saved source", status: "paused", pageIds: ["p1"], createdAt: Date.now(),
+      config: { contextWorkspaceId: workspace.workspaceId, contextBrowsingMemory: true, context: `${marker}\nhttp://x.test/` } });
+    repo.saveRun({ runId: "forget-other", goal: "Other Space", status: "paused", pageIds: ["p1"], createdAt: Date.now() + 1,
+      config: { contextWorkspaceId: other.workspaceId, context: marker } });
+    await invoke("workspaces.browsingMemory.forget", { workspaceId: workspace.workspaceId }, { external: false });
+    expect(repo.getRun("forget-active")?.status).toBe("cancelled");
+    expect(repo.getRun("forget-active")?.error).toMatch(/Workspace context changed/);
+    expect(repo.getRun("forget-other")?.status).toBe("paused");
+    expect(repo.getSetting(`browsingMemoryPages:${workspace.workspaceId}`)).toEqual([]);
+    await invoke("workspaces.browsingMemory.record", { workspaceId: workspace.workspaceId, pageId: "p1", expectedDocumentEpoch: 0 }, { external: false });
+    repo.saveRun({ runId: "exclude-active", goal: "Use saved source", status: "paused", pageIds: ["p1"], createdAt: Date.now() + 2,
+      config: { contextWorkspaceId: workspace.workspaceId, contextBrowsingMemory: true, context: marker } });
+    await invoke("workspaces.memory.set", { workspaceId: workspace.workspaceId, expectedRevision: 0, content: "", excludedOrigins: ["http://x.test"] }, { external: false });
+    expect(repo.getRun("exclude-active")?.status).toBe("cancelled");
+    expect(repo.getSetting(`browsingMemoryPages:${workspace.workspaceId}`)).toEqual([]);
+    expect(repo.getRun("forget-other")?.status).toBe("paused");
+  });
+
   it("workspaces/tasks persist revisions and bind a run before execution", async () => {
     const workspace = await call("workspaces.create", { name: "Test project" }) as { workspaceId: string };
     await call("workspaces.list");

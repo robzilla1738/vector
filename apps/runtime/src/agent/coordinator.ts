@@ -133,6 +133,7 @@ export class RunCoordinator {
     contextPageRefs?: import("@aux/contracts").PageContextRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
+    contextBrowsingMemory?: boolean;
     chatId?: string;
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
@@ -172,6 +173,7 @@ export class RunCoordinator {
         messageId: opts.messageId,
         contextWorkspaceId: opts.contextWorkspaceId,
         contextWorkspaceRevision: opts.contextWorkspaceRevision,
+        contextBrowsingMemory: opts.contextBrowsingMemory,
         chatId: opts.chatId,
         taskId: opts.taskId,
         taskRevision: opts.taskRevision,
@@ -223,7 +225,7 @@ export class RunCoordinator {
     return this.get(runId);
   }
 
-  cancel(runId: string): Run {
+  cancel(runId: string, reason = "Cancelled by user"): Run {
     const c = this.controls.get(runId);
     if (c) {
       c.abort.abort();
@@ -231,7 +233,7 @@ export class RunCoordinator {
     }
     const run = this.get(runId);
     if (!TERMINAL_STATUSES.has(run.status)) {
-      this.finish(runId, "cancelled", undefined, "Cancelled by user");
+      this.finish(runId, "cancelled", undefined, reason);
     }
     return this.get(runId);
   }
