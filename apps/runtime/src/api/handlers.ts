@@ -52,6 +52,7 @@ export interface Services {
   calendar?: CalendarConnectionService;
   native?:NativeBridge;
   contentMemory?: ContentMemoryStore;
+  checkpointDeletedData?: () => void;
   vault?: VaultService;
   routines?: RoutineService;
   responses?: ResponseStore;
@@ -401,6 +402,7 @@ export function makeInvoker(s: Services) {
           if (!result.enabled || result.retentionDays < prior.retentionDays
             || prior.allowedOrigins.some(origin => !result.allowedOrigins.includes(origin))) revokeArticleRuns(params.workspaceId);
           s.runs.redactForgottenArticleOutputs(params.workspaceId);
+          s.checkpointDeletedData?.();
           s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
           return result;
         }
@@ -415,6 +417,7 @@ export function makeInvoker(s: Services) {
           const forgotten = store.forget(params.workspaceId, params.memoryId);
           revokeArticleRuns(params.workspaceId, params.memoryId);
           s.runs.redactForgottenArticleOutputs(params.workspaceId);
+          s.checkpointDeletedData?.();
           s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
           return { forgotten };
         }
@@ -868,11 +871,19 @@ export function makeInvoker(s: Services) {
       case "conversations.images.add": return s.runs.images.add(params);
       case "conversations.images.read": return s.runs.images.read(params.chatId,params.imageId);
       case "conversations.images.toggle": return s.runs.images.toggle(params.chatId,params.imageId,params.included);
-      case "conversations.images.remove": return s.runs.images.remove(params.chatId,params.imageId);
+      case "conversations.images.remove": {
+        const removed = s.runs.images.remove(params.chatId,params.imageId);
+        s.checkpointDeletedData?.();
+        return removed;
+      }
       case "conversations.get": return s.runs.conversation(params.chatId);
       case "conversations.rename": return s.runs.renameConversation(params.chatId, params.title);
       case "conversations.archive": return s.runs.archiveConversation(params.chatId, params.archived);
-      case "conversations.delete": return s.runs.deleteConversation(params.chatId);
+      case "conversations.delete": {
+        const deleted = s.runs.deleteConversation(params.chatId);
+        s.checkpointDeletedData?.();
+        return deleted;
+      }
       case "conversations.attachments.read":
         if (client.external) throw new AuxError("permission_denied", "Inspect document snapshots in Aux.");
         return s.runs.readAttachment(params);
@@ -882,7 +893,11 @@ export function makeInvoker(s: Services) {
         return s.runs.attachPage(params);
       case "conversations.attachments.add": return s.runs.addAttachment(params);
       case "conversations.attachments.toggle": return s.runs.toggleAttachment(params);
-      case "conversations.attachments.remove": return s.runs.removeAttachment(params);
+      case "conversations.attachments.remove": {
+        const attachments = s.runs.removeAttachment(params);
+        s.checkpointDeletedData?.();
+        return attachments;
+      }
       case "results.search":
         if (client.external) throw new AuxError("permission_denied", "Search saved results in Aux.");
         return new SavedResults(s.repo, s.artifacts).search(params.query, params.limit);
@@ -1038,12 +1053,14 @@ export function makeInvoker(s: Services) {
       case "history.clear": {
         if (client.external) throw new AuxError("permission_denied", "Manage browsing history in Aux Library.");
         const removed = s.repo.clearHistory(params);
+        if (removed) s.checkpointDeletedData?.();
         s.events.emit("history.changed", {});
         return { ok: true, removed };
       }
       case "history.remove": {
         if (client.external) throw new AuxError("permission_denied", "Manage browsing history in Aux Library.");
         const removed = s.repo.removeHistory(params.url, params.visitedAt);
+        if (removed) s.checkpointDeletedData?.();
         s.events.emit("history.changed", {});
         return { removed };
       }
@@ -1116,6 +1133,7 @@ export function makeInvoker(s: Services) {
       }
       case "bookmarks.remove": {
         s.repo.removeBookmark((params as { url: string }).url);
+        s.checkpointDeletedData?.();
         s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
         return { ok: true };
       }
@@ -1123,6 +1141,7 @@ export function makeInvoker(s: Services) {
       case "downloads.remove": {
         if(client.external)throw new AuxError("permission_denied","Manage downloads in Aux.");
         const removed=s.repo.removeFinishedDownloads(params.ids);
+        if(removed.length)s.checkpointDeletedData?.();
         if(removed.length)s.events.emit(EventTypes.DownloadsRemoved,{ids:removed});
         return {removed};
       }

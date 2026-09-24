@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { applyMigrations, openDb, Repo } from "@aux/runtime";
+import { applyMigrations, openDb, PrivacyCheckpoint, Repo } from "@aux/runtime";
 
 const directories: string[] = [];
 const connections: DatabaseSync[] = [];
@@ -44,6 +44,52 @@ describe("schema versioning", () => {
     db.close();
     expect(readFileSync(path).includes(Buffer.from("private-answer-sentinel"))).toBe(false);
     expect(track(openDb(path)).prepare("PRAGMA secure_delete").get()).toEqual({ secure_delete: 1 });
+  });
+
+  it("truncates the live WAL after deletion without closing the active profile", async () => {
+    const { path } = fixture();
+    const db = track(openDb(path));
+    const secret = "forgotten-wal-sentinel-".repeat(500);
+    db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("forgotten", secret);
+    db.prepare("DELETE FROM kv WHERE key=?").run("forgotten");
+    const checkpoint = new PrivacyCheckpoint(path);
+    try {
+      expect(statSync(`${path}-wal`).size).toBeGreaterThan(0);
+      checkpoint.request();
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline && statSync(`${path}-wal`).size > 0) {
+        expect(db.prepare("SELECT count(*) AS count FROM kv").get()).toEqual({ count: 0 });
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      expect(statSync(`${path}-wal`).size).toBe(0);
+      expect(readFileSync(path).includes(Buffer.from("forgotten-wal-sentinel"))).toBe(false);
+    } finally {
+      await checkpoint.close();
+    }
+  });
+
+  it("retries a deletion checkpoint after another reader releases its snapshot", async () => {
+    const { path } = fixture();
+    const db = track(openDb(path));
+    db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("key", "old snapshot");
+    const reader = track(new DatabaseSync(path, { readOnly: true }));
+    reader.exec("BEGIN");
+    reader.prepare("SELECT value FROM kv WHERE key='key'").get();
+    db.prepare("DELETE FROM kv WHERE key='key'").run();
+    const checkpoint = new PrivacyCheckpoint(path);
+    try {
+      checkpoint.request();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      expect(statSync(`${path}-wal`).size).toBeGreaterThan(0);
+      reader.exec("COMMIT");
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline && statSync(`${path}-wal`).size > 0)
+        await new Promise(resolve => setTimeout(resolve, 20));
+      expect(statSync(`${path}-wal`).size).toBe(0);
+    } finally {
+      reader.close();
+      await checkpoint.close();
+    }
   });
 
   it("initializes a fresh profile with every table, indexes, and the Aux marker", () => {

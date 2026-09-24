@@ -1,6 +1,7 @@
 export { startRuntime, type RuntimeHandle } from "./main.js";
 export { Repo } from "./store/repo.js";
 export { openDb, applyMigrations } from "./store/db.js";
+export { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 export { TaskService } from "./services/tasks.js";
 export { VaultService } from "./services/vault.js";
 export { RoutineService, nextScheduledTime, previousScheduledTime } from "./services/routines.js";

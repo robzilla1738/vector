@@ -22,6 +22,7 @@ import {
 } from "@aux/chromium-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb } from "./store/db.js";
+import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
 import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
@@ -62,6 +63,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env = configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
+  const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, error =>
+    process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`));
   repo.pruneEvents();
   setTimeout(() => { try { repo.pruneRetention(); } catch { /* retried next start */ } }, 10_000).unref();
   const events = new EventBus(repo);
@@ -312,6 +315,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const invoke = makeInvoker({
     native,
     contentMemory,
+    checkpointDeletedData: () => privacyCheckpoint.request(),
     pages,
     sets,
     runs,
@@ -423,7 +427,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const browsingMemory = new BrowsingMemory(repo);
   const memoryExpiry = setInterval(() => { try { browsingMemory.prune(); } catch (error) { console.error("Browsing memory cleanup failed", error); } }, 60_000);
   const pruneContent = () => { try {
-    for (const workspaceId of contentMemory?.prune().workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
+    const pruned = contentMemory?.prune();
+    for (const workspaceId of pruned?.workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
+    if (pruned?.workspaceIds.length) privacyCheckpoint.request();
   } catch (error) { console.error("Page-content memory cleanup failed", error); } };
   pruneContent();
   const contentExpiry = setInterval(pruneContent, 60_000);
@@ -446,6 +452,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await api.close().catch(() => {});
     await calendar.close();
     tracer.close();
+    await privacyCheckpoint.close();
     repo.close();
   };
   process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));
