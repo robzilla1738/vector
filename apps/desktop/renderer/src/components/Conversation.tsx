@@ -423,7 +423,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     return () => { cancelled = true; };
   }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving]);
   useEffect(() => bridge.onEvent(event => {
-    if (event.type === "conversation.context.changed" && event.payload.chatId === id) setContextRefresh(value => value + 1);
+    if (event.type === "conversation.context.changed" && event.payload.chatId === id) { setConversationSources([]); setContextRefresh(value => value + 1); }
     if (["workspace.memory.updated", "workspace.browsingMemory.updated"].includes(event.type) && event.payload.workspaceId === workspaceContext.workspace?.workspaceId) setContextRefresh(value => value + 1);
   }), [id, workspaceContext.workspace?.workspaceId]);
   const ensureChatId = () => {

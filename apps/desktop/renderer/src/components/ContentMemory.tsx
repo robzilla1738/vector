@@ -7,6 +7,7 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
   const [policy, setPolicy] = useState<ContentMemoryPolicy | null>(null);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<ContentMemoryMatch[]>([]);
+  const [searching, setSearching] = useState(false);
   const [document, setDocument] = useState<ContentMemoryDocument | null>(null);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
@@ -14,8 +15,11 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [revision, setRevision] = useState(0);
   useEffect(() => bridge.onEvent(event => {
-    if (event.type === "workspace.contentMemory.updated" && event.payload.workspaceId === memory.workspaceId)
+    if (event.type === "workspace.contentMemory.updated" && event.payload.workspaceId === memory.workspaceId) {
+      setMatches([]);
+      setDocument(null);
       setRevision(value => value + 1);
+    }
   }), [memory.workspaceId]);
   useEffect(() => {
     let live = true;
@@ -27,11 +31,14 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
   useEffect(() => {
     let live = true;
     const term = query.trim();
-    if (!term || !policy?.enabled) { setMatches([]); return; }
+    if (!term || !policy?.enabled) { setMatches([]); setSearching(false); return; }
+    setMatches([]);
+    setSearching(true);
     const timer = setTimeout(() => {
       void call("workspaces.contentMemory.search", { workspaceId: memory.workspaceId, query: term })
         .then(value => { if (live) setMatches(value); })
-        .catch(reason => { if (live) setError(String(reason)); });
+        .catch(reason => { if (live) setError(String(reason)); })
+        .finally(() => { if (live) setSearching(false); });
     }, 180);
     return () => { live = false; clearTimeout(timer); };
   }, [memory.workspaceId, policy?.enabled, query, revision]);
@@ -83,7 +90,7 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
         {!policy.allowedOrigins.length && <p className="hint">No sites allowed yet. Confirm “Remember article” on an active tab to add one.</p>}
       </details>
       <input className="field-input" type="search" aria-label="Search remembered articles" placeholder="Search remembered articles…" value={query} onChange={event => setQuery(event.target.value)} disabled={!policy.enabled || memory.enabled === false}/>
-      {query.trim() && policy.enabled && !matches.length && <p className="hint">No matching remembered articles.</p>}
+      {query.trim() && policy.enabled && !matches.length && <p className="hint">{searching ? "Searching remembered articles…" : "No matching remembered articles."}</p>}
       <div className="browsing-memory-list">{matches.map(item => <article key={item.memoryId}>
         <button className="browsing-memory-page" title={item.url} onClick={() => { void useStore.getState().newTab(item.url).catch(errToast); }}><b>{item.title}</b><small>{item.url}</small><span>{item.snippet}</span></button>
         <span className="hint">{new Date(item.capturedAt).toLocaleDateString()}</span>
