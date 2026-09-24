@@ -42,6 +42,18 @@ async function jsonResponse(response: Response): Promise<Record<string, unknown>
   throw new AuxError("backend_unavailable", "Calendar returned invalid data.");
 }
 
+async function waitForToken(pending: Promise<Secret>, signal?: AbortSignal): Promise<Secret> {
+  if (!signal) return pending;
+  if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+  let onAbort!: () => void;
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(new AuxError("cancelled", "Calendar read was cancelled."));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try { return await Promise.race([pending, cancelled]); }
+  finally { signal.removeEventListener("abort", onAbort); }
+}
+
 /** Outbound Google Calendar authority. No browser cookies or inbound MCP tokens enter this service. */
 export class CalendarConnectionService {
   private pending = new Map<string, Pending>();
@@ -265,7 +277,7 @@ export class CalendarConnectionService {
     checkGrant();
     const row = this.row(query.connectionId);
     if (row.state !== "active") throw new AuxError("needs_input", "Reconnect this Calendar account before reading events.");
-    const secret = await this.token(row);
+    const secret = await waitForToken(this.token(row), signal);
     if (signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
     if (this.row(query.connectionId).secret_name !== row.secret_name) throw new AuxError("cancelled", "Calendar connection changed before the read.");
     checkGrant();

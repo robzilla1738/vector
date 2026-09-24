@@ -15,7 +15,7 @@ const endpoints = { auth: "https://provider.test/auth", token: "https://provider
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
 
-function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: boolean; offline?: boolean; onEvents?: (signal: AbortSignal | null | undefined) => Promise<Response> } = {}) {
+function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: boolean; offline?: boolean; onEvents?: (signal: AbortSignal | null | undefined) => Promise<Response>; onRefresh?: (signal: AbortSignal | null | undefined) => Promise<Response> } = {}) {
   const db = openDb(":memory:"); databases.push(db);
   const repo = new Repo(db);
   const events = new EventBus(repo);
@@ -28,7 +28,7 @@ function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: b
     if (options.offline) throw new TypeError("offline");
     if (url.pathname === "/token") {
       const body = new URLSearchParams(init?.body as URLSearchParams);
-      if (body.get("grant_type") === "refresh_token") return Response.json({ access_token: `renewed-${body.get("refresh_token")}`, expires_in: 3600 });
+      if (body.get("grant_type") === "refresh_token") return options.onRefresh?.(init?.signal) ?? Response.json({ access_token: `renewed-${body.get("refresh_token")}`, expires_in: 3600 });
       const account = body.get("code")!;
       return Response.json({ access_token: `access-${account}`, refresh_token: `refresh-${account}`, scope: options.partial ? "openid" : scope, expires_in: 3600 });
     }
@@ -92,6 +92,26 @@ describe("outbound Google Calendar connection", () => {
       await expect(service.events(query)).rejects.toThrow(/revoked/);
       expect(service.list().connections).toHaveLength(1);
     } finally { await service.close(); }
+  });
+
+  it("stops waiting for a shared token refresh when a task read is cancelled", async () => {
+    let refreshStarted!: () => void, finishRefresh!: (response: Response) => void;
+    const started = new Promise<void>(resolve => { refreshStarted = resolve; });
+    const setup = fixture({ onRefresh: async () => { refreshStarted(); return new Promise<Response>(resolve => { finishRefresh = resolve; }); } });
+    try {
+      await connect(setup.service, "alice");
+      const account = setup.service.list().connections[0]!;
+      const secretName = (setup.db.prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=?").get(account.connectionId) as { secret_name: string }).secret_name;
+      const secret = JSON.parse(setup.secrets.get(secretName)!) as { accessToken: string; refreshToken: string; expiresAt: number };
+      setup.secrets.set(secretName, JSON.stringify({ ...secret, expiresAt: 0 }));
+      const abort = new AbortController();
+      const read = setup.service.events({ connectionId: account.connectionId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 10 }, undefined, abort.signal);
+      await started;
+      abort.abort();
+      await expect(read).rejects.toMatchObject({ code: "cancelled" });
+      expect(setup.calls.filter(call => call.url.pathname === "/calendar/calendars/primary/events")).toHaveLength(0);
+      finishRefresh(Response.json({ access_token: "renewed-alice", expires_in: 3600 }));
+    } finally { await setup.service.close(); }
   });
 
   it("rejects partial grants and organization denial without persisting credentials", async () => {
