@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { z } from "zod";
 import {
   routineOccurrenceIdentity,
   AuxError,
@@ -6,6 +7,7 @@ import {
   type RoutineAlert,
   type RoutineCompare,
   RoutineShareSchema,
+  RoutineSchema,
   type RoutineRun,
   type RoutineShare,
   type RoutineTrigger,
@@ -16,7 +18,7 @@ import type { Repo } from "../store/repo.js";
 
 function parseRoutine(row: { json: string; revision: number; paused: number; archived_at: number | null; updated_at: number; routine_id: string; workspace_id: string }): Routine {
   const body = JSON.parse(row.json) as Omit<Routine, "routineId" | "revision" | "updatedAt" | "paused" | "archivedAt">;
-  return {
+  return RoutineSchema.parse({
     ...body,
     routineId: row.routine_id,
     workspaceId: row.workspace_id,
@@ -24,7 +26,7 @@ function parseRoutine(row: { json: string; revision: number; paused: number; arc
     paused: row.paused === 1,
     archivedAt: row.archived_at ?? undefined,
     updatedAt: row.updated_at,
-  };
+  });
 }
 
 function parseRun(row: Record<string, unknown>): RoutineRun {
@@ -94,15 +96,17 @@ export class RoutineService {
     return { routine: this.routine(routineId), runs: this.runs(routineId) };
   }
 
-  create(input: RoutineDefinition & { sourceTaskId?: string; sourceRunId?: string }): Routine {
+  create(input: Omit<RoutineDefinition, "successCriteria"> & { successCriteria?: Routine["successCriteria"] }): Routine {
     this.requireWorkspace(input.workspaceId);
-    if (input.sourceTaskId) this.requireSourceTask(input.sourceTaskId, input.workspaceId);
+    const source = input.sourceTaskId ? this.requireSourceTask(input.sourceTaskId, input.workspaceId) : undefined;
     const now = Date.now();
     const routine: Routine = {
       ...input,
+      sourceTaskRevision: source?.revision,
       parameters: input.parameters ?? [],
       siteOrigins: input.siteOrigins ?? [],
       accountLabels: input.accountLabels ?? [],
+      successCriteria: input.successCriteria ?? [],
       reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
       cloudCapable: input.cloudCapable ?? false,
       consecutive: input.consecutive ?? false,
@@ -121,13 +125,14 @@ export class RoutineService {
   fromResult(input: { taskId: string; runId?: string; title?: string; parameters?: Routine["parameters"]; trigger?: RoutineTrigger; reviewRequired?: boolean; cloudCapable?: boolean }): Routine {
     const taskRow = this.repo.db.prepare("SELECT json,workspace_id FROM tasks WHERE task_id=?").get(input.taskId) as { json: string; workspace_id: string } | undefined;
     if (!taskRow) throw new AuxError("not_found", "Save a task before turning it into a routine.");
-    const task = JSON.parse(taskRow.json) as { title: string; objective: string; resources?: { kind: string; locator: string }[] };
+    const task = JSON.parse(taskRow.json) as { title: string; objective: string; criteria: Routine["successCriteria"]; resources?: { kind: string; locator: string }[] };
     const run = input.runId
       ? this.repo.getRun(input.runId)
       : (() => {
           const row = this.repo.db.prepare("SELECT run_id FROM runs WHERE json_extract(config,'$.taskId')=? ORDER BY created_at DESC LIMIT 1").get(input.taskId) as { run_id: string } | undefined;
           return row ? this.repo.getRun(row.run_id) : undefined;
         })();
+    if (input.runId && (!run || run.config?.taskId !== input.taskId)) throw new AuxError("conflict", "Choose a run from this saved task before making a Skill.");
     const origins = [...new Set((task.resources ?? []).flatMap(resource => {
       try { return resource.kind === "url" ? [new URL(resource.locator).origin] : []; } catch { return []; }
     }))];
@@ -140,6 +145,7 @@ export class RoutineService {
       parameters: input.parameters ?? [],
       siteOrigins: origins.slice(0, 20),
       accountLabels: [],
+      successCriteria: task.criteria ?? [],
       consecutive: false,
       paused: false,
       trigger: input.trigger ?? { kind: "manual" },
@@ -157,13 +163,19 @@ export class RoutineService {
       parameters: input.parameters ?? current.parameters,
       siteOrigins: input.siteOrigins ?? current.siteOrigins,
       accountLabels: input.accountLabels ?? current.accountLabels,
+      successCriteria: input.successCriteria ?? current.successCriteria,
       sourceRunId: input.sourceRunId ?? (input.sourceTaskId && input.sourceTaskId !== current.sourceTaskId ? undefined : current.sourceRunId),
       trigger: input.trigger ?? current.trigger,
       revision: current.revision + 1,
       updatedAt: Date.now(),
     };
     this.requireWorkspace(next.workspaceId);
-    if (next.sourceTaskId) this.requireSourceTask(next.sourceTaskId, next.workspaceId, input.sourceTaskId !== undefined);
+    const source = next.sourceTaskId ? this.requireSourceTask(next.sourceTaskId, next.workspaceId, input.sourceTaskId !== undefined) : undefined;
+    if (input.sourceTaskRevision !== undefined && input.sourceTaskRevision !== source?.revision) throw new AuxError("conflict", "The source task changed. Refresh and review its scope again.");
+    if (input.sourceTaskId !== undefined || input.sourceTaskRevision !== undefined) {
+      next.sourceTaskRevision = source?.revision;
+      if (input.sourceTaskRevision !== undefined) this.requireCriteriaMatch(next);
+    }
     if (!next.sourceTaskId && !next.paused) throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
     this.persist(next);
     this.events.emit("routine.updated", { routine: next });
@@ -212,7 +224,7 @@ export class RoutineService {
    * target already holds one with the same title and objective — imports are
    * safe to repeat.
    */
-  importRoutines(routines: RoutineShare[], workspaceId?: string): { ok: true; imported: number; skipped: number; routineIds: string[] } {
+  importRoutines(routines: z.input<typeof RoutineShareSchema>[], workspaceId?: string): { ok: true; imported: number; skipped: number; routineIds: string[] } {
     const target = workspaceId ?? this.resolveWorkspace(routines[0]?.workspaceName);
     this.requireWorkspace(target);
     const existing = new Set(this.list({ workspaceId: target, includeArchived: true, limit: 500 }).map((r) => `${r.title}\n${r.objective}`));
@@ -237,7 +249,9 @@ export class RoutineService {
     if (routine.paused) throw new AuxError("conflict", "Resume this routine before running it.");
     if (routine.archivedAt) throw new AuxError("conflict", "Restore this routine before running it.");
     if (!routine.sourceTaskId) throw new AuxError("conflict", "Choose a saved task for this routine before running it.");
-    this.requireSourceTask(routine.sourceTaskId, routine.workspaceId);
+    const source = this.requireSourceTask(routine.sourceTaskId, routine.workspaceId);
+    if (source.revision !== routine.sourceTaskRevision) throw new AuxError("conflict", "The source task changed. Review and sync this Skill before running it.");
+    this.requireCriteriaMatch(routine);
     const uncertain = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status='uncertain' LIMIT 1").get(routine.routineId);
     if (uncertain) throw new AuxError("conflict", "Reconcile the previous uncertain write before running this routine again.");
     const active = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status IN ('queued','running','needs_review') LIMIT 1").get(routine.routineId);
@@ -367,6 +381,11 @@ export class RoutineService {
     let retried = false;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
+        if (record.revision !== routine.revision) throw new AuxError("conflict", "This Skill changed after the run was queued. Skip this occurrence and run the current revision.");
+        if (!routine.sourceTaskId) throw new AuxError("conflict", "Choose a saved task before running this Skill.");
+        const source = this.requireSourceTask(routine.sourceTaskId, routine.workspaceId);
+        if (source.revision !== routine.sourceTaskRevision) throw new AuxError("conflict", "The source task changed after this Skill was queued. Review and sync it before running again.");
+        this.requireCriteriaMatch(routine);
         const started = (await this.startWork?.(routine, record.parameters)) ?? {};
         const next: RoutineRun = { ...record, status: "running", chatId: started.chatId, runId: started.runId, startedAt: Date.now(), ...(retried ? { reason: "Dispatched after a transient read failure." } : {}) };
         this.updateRun(next);
@@ -472,9 +491,21 @@ export class RoutineService {
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new AuxError("not_found", "Choose a Space for this routine.");
   }
 
-  private requireSourceTask(taskId: string, workspaceId: string, requireOpen = true) {
-    const row = this.repo.db.prepare("SELECT workspace_id,state FROM tasks WHERE task_id=?").get(taskId) as { workspace_id: string; state: string } | undefined;
+  private requireSourceTask(taskId: string, workspaceId: string, requireOpen = true): { revision: number } {
+    const row = this.repo.db.prepare("SELECT workspace_id,state,revision FROM tasks WHERE task_id=?").get(taskId) as { workspace_id: string; state: string; revision: number } | undefined;
     if (!row || row.workspace_id !== workspaceId || (requireOpen && row.state !== "open")) throw new AuxError("conflict", "Choose an open saved task in this Space for the routine.");
+    return { revision: row.revision };
+  }
+
+  private requireCriteriaMatch(routine: Routine) {
+    if (!routine.successCriteria.length) return;
+    const row = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(routine.sourceTaskId!) as { json: string };
+    const task = JSON.parse(row.json) as { criteria: Routine["successCriteria"] };
+    if (task.criteria.length !== routine.successCriteria.length || task.criteria.some((item, index) => {
+      const expected = routine.successCriteria[index];
+      return !expected || item.criterionId !== expected.criterionId || item.description !== expected.description || item.verification !== expected.verification;
+    }))
+      throw new AuxError("conflict", "The source task's success criteria changed. Review and sync this Skill before running it.");
   }
 
   private insert(routine: Routine) {

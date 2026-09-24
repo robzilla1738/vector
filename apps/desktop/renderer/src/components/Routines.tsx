@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Routine, RoutineAlert, RoutineCompare, RoutineRun, Task, VaultItem } from "@aux/contracts";
+import type { Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, Task, VaultItem } from "@aux/contracts";
 import { call } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
@@ -13,7 +13,6 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState("");
-  const [parameter, setParameter] = useState("");
   const [status, setStatus] = useState<"all" | "ready" | "paused" | "archived">("all");
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
@@ -47,11 +46,11 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   }
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const visibleRoutines = routines.filter(item => (status === "all" || (status === "archived" ? !!item.archivedAt : !item.archivedAt && (status === "paused" ? item.paused : !item.paused))) && `${item.title} ${item.objective}`.toLowerCase().includes(query.toLowerCase()));
-  return <section className="routines-section" aria-label="Routines" aria-busy={loading || busy}>
-    <div className="routines-heading"><div><h4>Routines</h4><p className="hint">Your repeatable work, on a schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
-      const routine = await call("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: parameter ? [{ name: "topic", label: "Topic", value: parameter }] : [] });
-      setTitle(""); setParameter(""); await refresh(routine.routineId);
-    })}>Make routine from this task</button>}
+  return <section className="routines-section" aria-label="Skills" aria-busy={loading || busy}>
+    <div className="routines-heading"><div><h4>Skills</h4><p className="hint">Saved work you can revise, rerun, or schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
+      const routine = await call("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: [] });
+      setTitle(""); await refresh(routine.routineId);
+    })}>Save task as Skill</button>}
       <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
         const ids = routines.filter(item => !item.archivedAt).map(item => item.routineId);
         if (!ids.length) { setNotice("No active routines to export."); return; }
@@ -67,9 +66,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         await refresh();
       })}>Import…</button>
     </div></div>
-    <details className="routine-safety"><summary>How routines run safely</summary><p className="hint">Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until you reconcile an uncertain write.</p></details>
+    <details className="routine-safety"><summary>How Skills run safely</summary><p className="hint">Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until you reconcile an uncertain write.</p></details>
     {alerts.length > 0 && <section className="field" aria-label="Routine alerts"><strong>Alerts</strong><span className="hint">Local run records only. They do not prove a business outcome.</span>{alerts.map(alert => <div className="hint" key={alert.routineRunId}>{alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}{alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}</div>)}</section>}
-    {task && <div className="row"><input aria-label="Routine title" placeholder="Routine title" value={title} onChange={event => setTitle(event.target.value)} /><input aria-label="Topic parameter" placeholder="Optional topic parameter" value={parameter} onChange={event => setParameter(event.target.value)} /></div>}
+    {task && <div className="row"><input aria-label="Skill name" placeholder="Skill name" value={title} onChange={event => setTitle(event.target.value)} /></div>}
     {error && <p className="field-error" role="alert">{error}</p>}
     {notice && <p className="hint" role="status">{notice}</p>}
     {!selected && <>
@@ -86,13 +85,17 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     </>}
     {selected && <div className="routine-detail">
       <button className="btn ghost" disabled={busy} onClick={() => { setSelected(null); setComparison(null); }}>{I.back}All routines</button>
-      <h3>{selected.routine.title}</h3>
+      <h3>{selected.routine.title}</h3><span className="hint">Revision {selected.routine.revision}</span>
       <p className="hint">{selected.routine.objective}</p>
       <dl className="routine-overview"><div><dt>Status</dt><dd>{selected.routine.archivedAt ? "Archived" : selected.routine.paused ? "Paused" : "Ready"}</dd></div><div><dt>Trigger</dt><dd>{selected.routine.trigger.kind}</dd></div><div><dt>Runs</dt><dd>{selected.runs.length}</dd></div></dl>
       <span className="hint">{selected.routine.reviewRequired ? "Review required before writes." : "May run without extra review."} Timezone {selected.routine.trigger.kind === "manual" ? timezone : selected.routine.trigger.timezone}. Cloud {selected.routine.cloudCapable ? "can continue if configured" : "needs this Mac"}.</span>
       {!selected.routine.sourceTaskId && <p className="hint">This imported definition is inactive. Binding it to a saved task gives it that task's current page and grants. Review the task and Accounts below before resuming.</p>}
       <RoutineSourceTask key={`${selected.routine.routineId}-source:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={sourceTaskId => void action(async () => {
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, sourceTaskId });
+        await refresh(selected.routine.routineId);
+      })} />
+      <RoutineDefinitionEditor key={`${selected.routine.routineId}-definition:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={definition => void action(async () => {
+        await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, ...definition });
         await refresh(selected.routine.routineId);
       })} />
       <RoutineRunControls key={`${selected.routine.routineId}-run:${selected.routine.revision}`} routine={selected.routine} disabled={busy || selected.routine.paused || !!selected.routine.archivedAt || !selected.routine.sourceTaskId} onRun={parameters => void action(async () => {
@@ -124,6 +127,61 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       </div>)}
     </div>}
   </section>;
+}
+
+function RoutineDefinitionEditor({ routine, disabled, onSave }: {
+  routine: Routine;
+  disabled: boolean;
+  onSave: (definition: Pick<Routine, "title" | "objective" | "outputHint" | "parameters" | "successCriteria"> & { sourceTaskRevision?: number }) => void;
+}) {
+  const [title, setTitle] = useState(routine.title);
+  const [objective, setObjective] = useState(routine.objective);
+  const [outputHint, setOutputHint] = useState(routine.outputHint ?? "");
+  const [parameters, setParameters] = useState<RoutineParameter[]>(routine.parameters);
+  const [criteria, setCriteria] = useState(routine.successCriteria);
+  const [source, setSource] = useState<Task | null>(null);
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    if (!routine.sourceTaskId) return;
+    let live = true;
+    void call("tasks.get", { taskId: routine.sourceTaskId })
+      .then(result => { if (live) setSource(result.task); })
+      .catch(reason => { if (live) setLoadError(reason instanceof Error ? reason.message : String(reason)); });
+    return () => { live = false; };
+  }, [routine.sourceTaskId]);
+  const sourceMatches = !source || (criteria.length === source.criteria.length && criteria.every((item, index) => {
+    const current = source.criteria[index];
+    return current?.criterionId === item.criterionId && current.description === item.description && current.verification === item.verification;
+  }));
+  const validNames = parameters.every(item => /^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(item.name) && item.label.trim())
+    && new Set(parameters.map(item => item.name)).size === parameters.length;
+  const dirty = title !== routine.title || objective !== routine.objective || outputHint !== (routine.outputHint ?? "")
+    || (sourceMatches && source?.revision !== undefined && source.revision !== routine.sourceTaskRevision)
+    || JSON.stringify(parameters) !== JSON.stringify(routine.parameters) || JSON.stringify(criteria) !== JSON.stringify(routine.successCriteria);
+  const changeParameter = (index: number, patch: Partial<RoutineParameter>) => setParameters(items => items.map((item, at) => at === index ? { ...item, ...patch } : item));
+  return <details className="routine-accounts"><summary>Skill definition and outcome</summary>
+    <div className="field"><label>Skill name<input value={title} maxLength={200} disabled={disabled} onChange={event => setTitle(event.target.value)} /></label></div>
+    <div className="field"><label>Objective<textarea value={objective} maxLength={10000} disabled={disabled} onChange={event => setObjective(event.target.value)} /></label></div>
+    <div className="field"><label>Expected output<input value={outputHint} maxLength={400} disabled={disabled} onChange={event => setOutputHint(event.target.value)} /></label></div>
+    <div className="field"><strong>Parameters</strong><span className="hint">Use a parameter in the objective as {"{{name}}"}; enter its value when running the Skill.</span>{parameters.map((item, index) => <div className="row" key={index}>
+      <input aria-label={`Parameter ${index + 1} name`} placeholder="name" value={item.name} disabled={disabled} onChange={event => changeParameter(index, { name: event.target.value })} />
+      <input aria-label={`Parameter ${index + 1} label`} placeholder="Label" value={item.label} disabled={disabled} onChange={event => changeParameter(index, { label: event.target.value })} />
+      <input aria-label={`Parameter ${index + 1} default`} placeholder="Optional default" value={item.value ?? ""} disabled={disabled} onChange={event => changeParameter(index, { value: event.target.value })} />
+      <button className="btn sm ghost" disabled={disabled} onClick={() => setParameters(items => items.filter((_, at) => at !== index))}>Remove</button>
+    </div>)}<button className="btn sm ghost" disabled={disabled || parameters.length >= 20} onClick={() => setParameters(items => [...items, { name: "", label: "" }])}>Add parameter</button></div>
+    <div className="field"><strong>Success criteria</strong>
+      {criteria.length ? criteria.map(item => <span className="hint" key={item.criterionId}>{item.description} · {item.verification}</span>) : <span className="hint">The bound task's criteria will be used. Sync them to keep this Skill revision explicit.</span>}
+      {source && <><span className="hint">Source task: {source.title} · revision {source.revision}{source.revision !== routine.sourceTaskRevision ? " · changed since this Skill was reviewed" : ""}. Edit criteria in the task, then sync this Skill.</span>
+        {!sourceMatches && <span className="field-error">The source task criteria differ. Sync before running this Skill.</span>}
+        <button className="btn sm ghost" disabled={disabled || (sourceMatches && criteria.length > 0)} onClick={() => setCriteria(source.criteria)}>Use source task criteria</button></>}
+      {loadError && <span className="field-error">Source task could not be loaded. {loadError}</span>}
+    </div>
+    {source && <div className="field"><strong>Source task resources</strong>
+      {source.resources.length ? source.resources.map(item => <span className="hint" key={item.resourceId}>{item.label} · {item.kind} · {item.access ?? "task default"}</span>) : <span className="hint">No resources attached to this task.</span>}
+      <span className="hint">References do not grant access. Live pages and current grants are checked again when the Skill runs.</span>
+    </div>}
+    <button className="btn sm" disabled={disabled || !dirty || !title.trim() || !objective.trim() || !validNames} onClick={() => onSave({ title: title.trim(), objective: objective.trim(), outputHint: outputHint.trim(), parameters, successCriteria: criteria, ...(sourceMatches && source ? { sourceTaskRevision: source.revision } : {}) })}>Save Skill revision</button>
+  </details>;
 }
 
 function RoutineSourceTask({ routine, disabled, onSave }: { routine: Routine; disabled: boolean; onSave: (taskId: string) => void }) {

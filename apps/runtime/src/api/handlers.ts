@@ -94,7 +94,12 @@ export function makeInvoker(s: Services) {
     });
     if (!pageIds.length) throw new AuxError("conflict", "Attach an open browser tab to the source task before this routine can run.");
     const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);
-    const run = await s.runs.start({ ...prepared, goal: substituteRoutine(routine.objective, parameters), pageIds, accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined });
+    const run = await s.runs.start({
+      ...prepared,
+      goal: [substituteRoutine(routine.objective, parameters), routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined].filter(Boolean).join("\n\n"),
+      pageIds,
+      accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined,
+    });
     return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
   });
   const plugins = new PluginService(s.repo, routines);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AcceptanceCriterionSchema } from "./tasks.js";
 
 const text = z.string().trim().min(1);
 export const RoutineParameterSchema = z.object({
@@ -26,11 +27,13 @@ export const RoutineDefinitionSchema = z.object({
   objective: text.max(10000),
   workspaceId: text,
   sourceTaskId: text.optional(),
+  sourceTaskRevision: z.number().int().positive().optional(),
   sourceRunId: text.optional(),
   parameters: z.array(RoutineParameterSchema).max(20).default([]),
   siteOrigins: z.array(z.string().url()).max(20).default([]),
   accountLabels: z.array(z.string().min(1).max(120)).max(20).default([]),
   outputHint: z.string().max(400).optional(),
+  successCriteria: z.array(AcceptanceCriterionSchema).max(20).refine(items => new Set(items.map(item => item.criterionId)).size === items.length, "Criterion IDs must be unique").default([]),
   reviewRequired: z.boolean().default(true),
   cloudCapable: z.boolean().default(false),
   consecutive: z.boolean().default(false),
@@ -38,7 +41,7 @@ export const RoutineDefinitionSchema = z.object({
   paused: z.boolean().default(false),
 });
 /** Portable definition only: source tasks, grants, and schedules need local review. */
-export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: true, sourceTaskId: true, sourceRunId: true }).extend({
+export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: true, sourceTaskId: true, sourceTaskRevision: true, sourceRunId: true }).extend({
   workspaceName: text.optional(),
 });
 export const RoutineShareEnvelopeSchema = z.object({

@@ -33,11 +33,45 @@ it("builds parameterized routines from a saved task and versions edits", () => {
   expect(routine.sourceTaskId).toBe(f.task.taskId);
   expect(routine.siteOrigins).toContain("https://example.com");
   expect(routine.reviewRequired).toBe(true);
+  expect(routine.successCriteria).toEqual(f.task.criteria);
   const updated = f.routines.update({ routineId: routine.routineId, expectedRevision: 1, title: "Vendor check v2" });
   expect(updated.revision).toBe(2);
   expect(() => f.routines.update({ routineId: routine.routineId, expectedRevision: 1, title: "stale" })).toThrow(/changed/i);
   const paused = f.routines.pause(routine.routineId, 2, true);
   expect(paused.paused).toBe(true);
+});
+
+it("versions Skill outcome criteria and blocks reruns after the source task changes", async () => {
+  const f = fixture(async () => ({ runId: "skill-run" }));
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor Skill" });
+  const changed = f.tasks.update({ taskId: f.task.taskId, expectedRevision: f.task.revision,
+    criteria: [{ criterionId: "c", description: "Report saved with sources", verification: "artifact" }] });
+  await expect(f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision })).rejects.toThrow(/source task changed/);
+  const reviewed = f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision, successCriteria: changed.criteria, sourceTaskRevision: changed.revision, outputHint: "A sourced report" });
+  expect(reviewed.revision).toBe(2);
+  expect(reviewed.successCriteria).toEqual(changed.criteria);
+  expect((await f.routines.run({ routineId: skill.routineId, expectedRevision: reviewed.revision })).status).toBe("running");
+});
+
+it("rejects a source run from another saved task", () => {
+  const f = fixture();
+  f.repo.saveRun({ runId: "other-task-run", goal: "Other", status: "completed", pageIds: [], createdAt: Date.now(), config: { taskId: "another-task" } });
+  expect(() => f.routines.fromResult({ taskId: f.task.taskId, runId: "other-task-run" })).toThrow(/this saved task/);
+});
+
+it("does not dispatch a reviewed schedule after its task scope changes", async () => {
+  let calls = 0;
+  const f = fixture(async () => { calls += 1; return { runId: "unexpected" }; });
+  const skill = f.routines.fromResult({ taskId: f.task.taskId,
+    trigger: { kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] } });
+  const scheduledFor = nextScheduledTime(skill.trigger as Extract<typeof skill.trigger, { kind: "schedule" }>, Date.now());
+  const waiting = (await f.routines.due(scheduledFor))[0]!;
+  expect(waiting.status).toBe("needs_review");
+  f.tasks.update({ taskId: f.task.taskId, expectedRevision: f.task.revision, resources: [] });
+  const denied = await f.routines.reconcile(waiting.routineRunId, "applied", "Reviewed in Aux.");
+  expect(denied.status).toBe("failed");
+  expect(denied.reason).toMatch(/source task changed/i);
+  expect(calls).toBe(0);
 });
 
 it("blocks overlapping runs and uncertain writes, and holds scheduled writes for review", async () => {
@@ -168,6 +202,7 @@ it("round-trips routines through export and import without ids, deduping on repe
   expect(share.workspaceName).toBe("Research");
   expect(share.title).toBe("Vendor check");
   expect(share.siteOrigins).toContain("https://example.com");
+  expect(share.successCriteria).toEqual(f.task.criteria);
 
   // same workspace, same content → skipped as duplicate
   const again = f.routines.importRoutines([share], f.workspace.workspaceId);
@@ -196,7 +231,7 @@ it("imports an inactive definition without local task authority or its schedule"
   const foreign = f.tasks.create({ workspaceId: other.workspaceId, title: "Foreign", objective: "Foreign", criteria: [{ criterionId: "c", description: "Done", verification: "manual" }], resources: [] });
   const imported = f.routines.importRoutines([{
     title: "Shared", objective: "Check {{topic}}", sourceTaskId: f.task.taskId,
-    parameters: [{ name: "topic", label: "Topic", value: "default" }], siteOrigins: [], accountLabels: ["Private"],
+    parameters: [{ name: "topic", label: "Topic", value: "default" }], siteOrigins: [], accountLabels: ["Private"], successCriteria: [],
     reviewRequired: false, cloudCapable: true, consecutive: true,
     trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 5 }, paused: false,
   } as RoutineShare], f.workspace.workspaceId);
