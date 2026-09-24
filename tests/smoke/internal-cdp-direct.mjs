@@ -20,6 +20,7 @@ mkdirSync(dataDir);
 writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({ effectGrants: ['effect:read', 'effect:write'] }));
 let frameClicks = 0;
 let delayedClicks = 0;
+let modelClicks = 0;
 const fixture = createServer((request, response) => {
   if (request.url === '/posted' && request.method === 'POST') {
     let body = '';
@@ -32,6 +33,12 @@ const fixture = createServer((request, response) => {
   }
   if (request.url === '/frame-click') { frameClicks++; response.writeHead(204).end(); return; }
   if (request.url === '/delayed-click') { delayedClicks++; response.writeHead(204).end(); return; }
+  if (request.url === '/model-click') { modelClicks++; response.writeHead(204).end(); return; }
+  if (request.url === '/model-page') {
+    response.setHeader('Content-Type', 'text/html');
+    response.end('<title>Model broker task</title><button id="model-act" onclick="this.textContent=\'Model clicked\';fetch(\'/model-click\')">Model action</button>');
+    return;
+  }
   if (request.url === '/delayed-action') {
     response.setHeader('Content-Type', 'text/html');
     response.end('<title>Takeover during verification</title><button id="delayed-act" onclick="fetch(\'/delayed-click\');setTimeout(()=>document.querySelector(\'#done\').textContent=\'Done\',1200)">Act slowly</button><main id="done"></main>');
@@ -74,6 +81,22 @@ const fixture = createServer((request, response) => {
 });
 await new Promise(resolve => fixture.listen(0, resolve));
 const targetUrl = `http://127.0.0.1:${fixture.address().port}/page`;
+let modelStreams = 0;
+const provider = createServer(async (request, response) => {
+  if (request.method !== 'POST' || request.url !== '/v1/chat/completions') { response.writeHead(404).end(); return; }
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  assert.equal(body.model, 'aux-broker-fixture');
+  const plan = ++modelStreams === 1
+    ? '{"status":"continue","message":"Clicking the page action","steps":[{"id":"model-click","op":"click","target":"css:#model-act","expect":[{"kind":"textVisible","text":"Model clicked"}]}]}'
+    : '{"status":"done","message":"The page action completed","result":{"clicked":true}}';
+  response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
+  response.write(`data: ${JSON.stringify({ id: `chatcmpl_${modelStreams}`, object: 'chat.completion.chunk', created: 1, model: body.model, choices: [{ index: 0, delta: { content: plan }, finish_reason: null }] })}\n\n`);
+  response.write(`data: ${JSON.stringify({ id: `chatcmpl_${modelStreams}`, object: 'chat.completion.chunk', created: 1, model: body.model, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })}\n\n`);
+  response.end('data: [DONE]\n\n');
+});
+await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
 const app = spawn(electron, [join(root, 'apps/desktop'), '--use-mock-keychain'], {
   cwd: root,
   env: {
@@ -339,6 +362,19 @@ try {
   assert.equal((await rpc('pages.close', { pageId: popup.pageId })).ok, true, 'agent can close a native popup');
   assert.equal((await rpc('workspace.get')).pages.some(tab => tab.pageId === popup.pageId), false, 'closed popup leaves the runtime catalog');
   assert.equal((await rpc('pages.close', { pageId: postPopup.pageId })).ok, true, 'agent can close a POST popup');
+  await rpc('settings.set', { modelProvider: 'openai-compatible', compatibleEndpoint: `http://127.0.0.1:${provider.address().port}/v1`, plannerModel: 'aux-broker-fixture' });
+  const modelPage = await rpc('pages.open', { url: `http://127.0.0.1:${fixture.address().port}/model-page`, activate: true });
+  const modelRun = await rpc('runs.start', { goal: 'Click the model action once and verify it completed', pageIds: [modelPage.pageId], chatId: 'broker-model-proof' });
+  let completedModelRun;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const current = await rpc('runs.get', { runId: modelRun.runId });
+    if (['completed', 'failed', 'cancelled', 'needs_input'].includes(current.run.status)) { completedModelRun = current; break; }
+    await delay(100);
+  }
+  assert.equal(completedModelRun?.run.status, 'completed', JSON.stringify(completedModelRun));
+  assert.equal(modelClicks, 1, 'one model-planned browser action reached the site through the internal broker');
+  assert.match(JSON.stringify(await rpc('pages.observe', { pageId: modelPage.pageId })), /Model clicked/);
+  assert.ok(modelStreams >= 2, 'model planned an action and observed its result before finishing');
   const privateControl = action => new Promise((resolveControl, rejectControl) => {
     const requestId = `direct:${action}`;
     const timer = setTimeout(() => rejectControl(new Error(`Private ${action} timed out`)), 5000);
@@ -357,7 +393,7 @@ try {
   assert.equal(await privateControl('commit'), true);
   await privateExited;
   assert.equal(existsSync(privateReport.userData), false, 'private scratch profile is removed at clean exit');
-  console.log('Direct Aux launch: agent click, per-tab takeover, popup including POST, background tab, completed and interrupted downloads, cross-site frame action, isolated private process, raw port denial, and runtime reconnect pass.');
+  console.log('Direct Aux launch: model-planned click after reconnect, per-tab takeover, popup including POST, background tab, completed and interrupted downloads, cross-site frame action, isolated private process, and raw port denial pass.');
 } finally {
   if (privateApp?.exitCode === null) privateApp.kill('SIGTERM');
   if (app.exitCode === null) {
@@ -367,6 +403,7 @@ try {
     try { await exited; } finally { clearTimeout(timeout); }
   }
   fixture.closeAllConnections();
-  await new Promise(resolveClose => fixture.close(resolveClose));
+  provider.closeAllConnections();
+  await Promise.all([new Promise(resolveClose => fixture.close(resolveClose)), new Promise(resolveClose => provider.close(resolveClose))]);
   rmSync(dir, { recursive: true, force: true });
 }
