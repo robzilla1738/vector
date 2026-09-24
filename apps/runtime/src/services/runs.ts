@@ -333,6 +333,22 @@ export class RunService {
         !this.deps.repo.db.prepare("SELECT 1 FROM content_memory WHERE workspace_id=? AND memory_id=?").get(workspaceId, id))))
       .map(run => run.runId));
     const affected = derivedPageRecallRunIds(runs, seeds, owners);
+    const revokedArtifacts=new Set<string>(),affectedChats=new Set<string>();
+    for(const run of runs){
+      if(!affected.has(run.runId))continue;
+      affectedChats.add(run.config.chatId??run.runId);
+      for(const id of run.config.revokedArtifactIds??[])revokedArtifacts.add(id);
+      for(const artifact of this.deps.repo.listArtifacts({runId:run.runId}))revokedArtifacts.add(artifact.artifactId);
+    }
+    // Edited copies are durable conversation documents, not run artifacts.
+    // Remove only copies whose explicit source result is being revoked.
+    for(const chatId of affectedChats){
+      const records=this.attachmentRecords(chatId);
+      const kept=records.filter(item=>!item.sourceArtifactId||!revokedArtifacts.has(item.sourceArtifactId));
+      if(kept.length===records.length)continue;
+      this.deps.repo.setSetting(`conversationAttachments:${chatId}`,kept);
+      this.deps.events.emit("conversation.context.changed",{chatId});
+    }
     let redacted = 0;
     for (const runId of affected) {
       const current = this.deps.repo.getRun(runId);
@@ -353,6 +369,7 @@ export class RunService {
       });
       const updated = this.deps.repo.getRun(runId)!;
       this.deps.events.emit(EventTypes.RunUpdated, { run: updated }, runId);
+      if(artifacts.length)this.deps.events.emit("results.revoked",{artifactIds:artifacts.map(item=>item.artifactId)},runId);
       this.deps.events.emit("conversation.context.changed", { chatId: updated.config?.chatId ?? runId });
       redacted++;
     }

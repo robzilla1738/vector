@@ -50,6 +50,7 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
 export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
   const has = (table: string) => !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table);
   const artifactIds = new Set<string>();
+  const affectedChats = new Set<string>();
   db.exec("BEGIN");
   try {
     sanitizeOperationInputSamples(db);
@@ -74,6 +75,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
       const affected = derivedPageRecallRunIds(parsed, seeds, owners);
       for (const row of parsed) {
         if (!affected.has(row.runId)) continue;
+        affectedChats.add(row.config.chatId??row.runId);
         if (has("run_messages")) db.prepare(`UPDATE run_messages SET status='cancelled'
           WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')`).run(
           row.config.chatId ?? row.runId);
@@ -85,6 +87,21 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
         db.prepare("UPDATE runs SET status='cancelled',result=NULL,status_message=?,error=?,config=? WHERE run_id=?")
           .run("Saved article unavailable after restore — generated answer removed", "Protected article context is not portable.",
             JSON.stringify(redactedPageRecallConfig(row.config, owned)), row.runId);
+      }
+    }
+    if(has("kv")&&artifactIds.size){
+      const entries=db.prepare("SELECT key,value FROM kv WHERE key LIKE 'setting:conversationAttachments:%'")
+        .all() as {key:string;value:string}[];
+      for(const {key,value} of entries){
+        let records:unknown;
+        try{records=JSON.parse(value);}catch{
+          if(affectedChats.has(key.slice("setting:conversationAttachments:".length)))db.prepare("DELETE FROM kv WHERE key=?").run(key);
+          continue;
+        }
+        if(!Array.isArray(records))continue;
+        const kept=records.filter(item=>!item||typeof item!=="object"||
+          typeof item.sourceArtifactId!=="string"||!artifactIds.has(item.sourceArtifactId));
+        if(kept.length!==records.length)db.prepare("UPDATE kv SET value=? WHERE key=?").run(JSON.stringify(kept),key);
       }
     }
     if (has("content_memory")) db.prepare("DELETE FROM content_memory").run();

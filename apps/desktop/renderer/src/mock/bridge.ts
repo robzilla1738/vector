@@ -301,6 +301,7 @@ export function installMockBridge(q: URLSearchParams) {
     "results.read": async p => {
       if(scenario!=="results"||p.artifactId!==resultFixture.artifactId)throw new Error("Saved result is unavailable.");return {...resultFixture,content:resultContent};
     },
+    "results.available": async p => (p.drafts as {artifactId:string;chatId:string}[]).filter(item=>scenario==="results"&&item.artifactId===resultFixture.artifactId&&item.chatId===resultFixture.chatId).map(item=>item.artifactId),
     "conversations.artifacts.get": async p => {
       return {chatId:p.chatId,artifacts:[...(artifactChips.get(String(p.chatId)) ?? [])]};
     },

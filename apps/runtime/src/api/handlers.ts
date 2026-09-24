@@ -889,6 +889,9 @@ export function makeInvoker(s: Services) {
       case "results.read":
         if (client.external) throw new AuxError("permission_denied", "Preview saved results in Aux.");
         return new SavedResults(s.repo, s.artifacts).read(params.artifactId);
+      case "results.available":
+        if (client.external) throw new AuxError("permission_denied", "Inspect saved results in Aux.");
+        return new SavedResults(s.repo, s.artifacts).available(params.drafts);
       case "conversations.artifacts.get": return s.runs.conversationArtifacts(params.chatId);
       case "conversations.artifacts.toggle": return s.runs.toggleConversationArtifact(params);
       case "conversations.sources.get": {

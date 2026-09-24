@@ -115,6 +115,14 @@ try {
   assert.ok(!JSON.stringify(stored.run.config).includes("ordinary editorial prose"));
   const reports = await shell.evaluate(runId => window.aux.invoke("artifacts.list", { runId }), run.runId);
   assert.ok(reports.some(item => item.path.endsWith("report.md")));
+  const reportId=reports.find(item=>item.path.endsWith("report.md")).artifactId;
+  await shell.evaluate(({reportId})=>localStorage.setItem(`aux.result-draft.v1:other-window:${reportId}`,JSON.stringify({
+    chatId:"saved-article-fixture",content:"Private edited article answer",source:"Private article answer",
+  })),{reportId});
+  await shell.evaluate(reportId=>window.aux.invoke("conversations.attachments.add",{
+    chatId:"saved-article-fixture",filename:"edited-report.md",content:"Private edited article answer",sourceArtifactId:reportId,
+  }),reportId);
+  assert.deepEqual(await shell.evaluate(reportId=>window.aux.invoke("results.available",{drafts:[{artifactId:reportId,chatId:"saved-article-fixture"}]}),reportId),[reportId]);
   const sources = await shell.evaluate(() => window.aux.invoke("conversations.sources.get", { chatId: "saved-article-fixture" }));
   assert.ok(sources.sources.some(source => source.kind === "memory" && source.memoryId === hits[0].memoryId));
   const other = (await shell.evaluate(() => window.aux.invoke("spaces.create", { name: "Other Space", color: "green" }))).find(item => item.name === "Other Space");
@@ -163,6 +171,9 @@ try {
   while (providerPrompts.length < 2 && Date.now() < requestDeadline) await new Promise(resolve => setTimeout(resolve, 50));
   assert.ok(providerPrompts.length >= 2, "The protected article reached the pending provider request");
   await shell.evaluate(({ workspaceId, memoryId }) => window.aux.invoke("workspaces.contentMemory.forget", { workspaceId, memoryId }), { workspaceId, memoryId: hits[0].memoryId });
+  await poll(shell, async reportId=>localStorage.getItem(`aux.result-draft.v1:other-window:${reportId}`)===null,reportId,10_000);
+  assert.deepEqual(await shell.evaluate(reportId=>window.aux.invoke("results.available",{drafts:[{artifactId:reportId,chatId:"saved-article-fixture"}]}),reportId),[]);
+  assert.equal((await shell.evaluate(()=>window.aux.invoke("conversations.attachments.get",{chatId:"saved-article-fixture"}))).attachments.length,0);
   const cancelDeadline = Date.now() + 10_000;
   while (!heldProviderClosed && Date.now() < cancelDeadline) await new Promise(resolve => setTimeout(resolve, 50));
   assert.equal(heldProviderClosed, true, "Forgetting the article aborted the in-flight provider request");

@@ -12,11 +12,13 @@ it("finds saved text outputs by filename or conversation and excludes archived/i
     expect(results.search("travel")).toHaveLength(1);
     expect(results.search("travel")[0]).not.toHaveProperty("path");
     expect(results.read("report")).toMatchObject({content:"# Comparison",chatId:"chat",filename:"comparison.md"});
+    expect(results.available([{artifactId:"report",chatId:"chat"},{artifactId:"report",chatId:"wrong-chat"},{artifactId:"image",chatId:"chat"}])).toEqual(["report"]);
     expect(()=>results.read("observation")).toThrow("unavailable");
     expect(()=>results.read("image")).toThrow("unavailable");
     repo.archiveConversation("chat",true);
     expect(results.search("travel")).toEqual([]);
     repo.deleteConversation("chat");
+    expect(results.available([{artifactId:"report",chatId:"chat"}])).toEqual([]);
     expect(results.search("comparison")).toEqual([]);
     expect(()=>results.read("report")).toThrow();
   } finally {db.close();}

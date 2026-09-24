@@ -1,7 +1,7 @@
 import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Download, ModelCall, PageSet, PageTarget, ResultRecord, Run, SetMember, StepRecord } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { setDictationDraft } from "../dictation-drafts";
-import { clearResultDrafts } from "../result-drafts";
+import { clearResultDrafts, revokeResultDrafts } from "../result-drafts";
 import { writeRunAnswerDraft } from "../run-answer-drafts";
 import { assignFolder, assignSpace, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, tabsInSpace, withSyncedOrder, type Layout } from "../workspace";
 import { PENDING_CHAT_KEY, draftKey } from "../conversation-drafts";
@@ -153,6 +153,12 @@ export const reduceLibraryEvent: Reducer = (state, e) => {
  */
 export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Workspace) {
   switch (e.type) {
+    case "results.revoked": {
+      const ids=Array.isArray(e.payload.artifactIds)?e.payload.artifactIds.filter((id):id is string=>typeof id==="string"):[];
+      if(!revokeResultDrafts(ids))toast("A saved result draft could not be removed from this browser.","error");
+      if(s.resultPreview&&ids.includes(s.resultPreview))set({resultPreview:null});
+      break;
+    }
     case "conversation.deleted": {
       const chatId=e.payload.chatId;
       if(typeof chatId!=="string")break;

@@ -1,4 +1,4 @@
-import { readResultDraft, writeResultDraft } from "../result-drafts";
+import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
 import { StructuredResult } from "./StructuredResult";
 import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
@@ -36,7 +36,13 @@ export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled
   }
   useEffect(()=>{
     let active=true; setResult(null);setError("");
-    void call("results.read",{artifactId}).then(value=>{if(!active)return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active)setError(String(reason));});
+    void call("results.read",{artifactId}).then(value=>{if(!active)return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active){
+      if((reason as {code?:string})?.code==="not_found"){
+        if(!revokeResultDrafts([artifactId]))setDraftError("A saved draft could not be removed from this browser.");
+        setDraft(null);
+      }
+      setError(String(reason));
+    }});
     return()=>{active=false;};
   },[artifactId,chatId,retry]);
   async function save(excel=false) {

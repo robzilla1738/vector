@@ -1,4 +1,5 @@
 import { runAnswerEntry } from "./run-answer-drafts";
+import { reconcileResultDrafts } from "./result-drafts";
 import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
@@ -320,13 +321,24 @@ export function App() {
 
   // initial sync + event stream
   useEffect(() => {
-    void useStore.getState().refresh();
-    const offEvent = bridge.onEvent((e) => useStore.getState().applyEvent(e));
+    let active=true,checkingDrafts=false;
+    const reconcileDrafts=async()=>{
+      if(!active||checkingDrafts||!useStore.getState().connected)return;
+      checkingDrafts=true;
+      try { await reconcileResultDrafts(async drafts=>call("results.available",{drafts})); }
+      catch(reason) { if(String(reason).includes("could not be removed"))errToast(reason); }
+      finally { checkingDrafts=false; }
+    };
+    void useStore.getState().refresh().then(reconcileDrafts);
+    const offEvent = bridge.onEvent((e) => {
+      useStore.getState().applyEvent(e);
+      if(e.type==="workspace.contentMemory.updated")void reconcileDrafts();
+    });
     const offTabs = bridge.onTabsPatch(patch => useStore.getState().applyTabsPatch(patch));
     const offPlacement = bridge.onTabsPlacement(payload => useStore.getState().applyTabsPlacement(payload));
     const offRuntime = bridge.onRuntimeStatus(status => {
       useStore.setState({ connected: status.connected });
-      if (status.connected) void useStore.getState().refresh();
+      if (status.connected) void useStore.getState().refresh().then(reconcileDrafts);
     });
     const offLoading = bridge.onLoading(({ pageId, loading }) => patchPageFields(pageId, { loading }));
     let audioLive=true;
@@ -344,6 +356,7 @@ export function App() {
       s.setTranslation(payload.lang ? { pageId: payload.pageId, lang: payload.lang, count: payload.count ?? 0, truncated: !!payload.truncated } : null);
     });
     return () => {
+      active=false;
       offEvent();
       offTabs();
       offPlacement();

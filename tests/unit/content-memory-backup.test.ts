@@ -31,6 +31,9 @@ it("omits protected article content and grants from portable backups and strips 
     result: { answer: "Derived private answer" } });
   const report = new ArtifactStore(join(dir, "artifacts"), repo, events).save({ runId: "run-memory", label: "report.md",
     mediaType: "text/markdown", buffer: Buffer.from("Derived private report") });
+  const edited={attachmentId:"edited",filename:"edited-report.md",content:"Private edited report",createdAt:2,included:true,sourceArtifactId:report.artifactId};
+  const independent={attachmentId:"independent",filename:"note.md",content:"Human note",createdAt:2,included:true};
+  repo.setSetting("conversationAttachments:run-memory",[edited,independent]);
   repo.saveRun({ runId: "run-followup", goal: "Follow up", status: "completed", pageIds: [], createdAt: 2,
     config: { contextRunIds: ["run-memory"], context: "Derived private answer" }, result: { answer: "Followup private answer" } });
   repo.saveRun({ runId: "run-citation", goal: "Cite report", status: "completed", pageIds: [], createdAt: 3,
@@ -60,6 +63,9 @@ it("omits protected article content and grants from portable backups and strips 
     expect(JSON.parse(row.config).contextArtifactEvidence).toBeUndefined();
   }
   expect(saved.prepare("SELECT 1 FROM artifacts WHERE artifact_id=?").get(report.artifactId)).toBeUndefined();
+  expect(repo.getSetting(`conversationAttachments:run-memory`)).toEqual([edited,independent]);
+  expect(JSON.parse((saved.prepare("SELECT value FROM kv WHERE key='setting:conversationAttachments:run-memory'").get() as {value:string}).value))
+    .toEqual([independent]);
   expect(JSON.parse((saved.prepare("SELECT config FROM runs WHERE run_id='run-memory'").get() as { config: string }).config).revokedArtifactIds)
     .toContain(report.artifactId);
   expect(saved.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
@@ -89,6 +95,8 @@ it("omits protected article content and grants from portable backups and strips 
     .run(JSON.stringify({ taskId: "task-one", privateText: "article answer" }), "article answer");
   saved.prepare("UPDATE run_messages SET status='accepted' WHERE message_id='queued-memory'").run();
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
+  saved.prepare("UPDATE kv SET value=? WHERE key='setting:conversationAttachments:run-memory'")
+    .run(JSON.stringify([edited,independent]));
   saved.close();
   const manifestPath = join(backup.path, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -102,6 +110,8 @@ it("omits protected article content and grants from portable backups and strips 
     expect(staged.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
     expect(staged.prepare("SELECT name FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
     expect(staged.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
+    expect(JSON.parse((staged.prepare("SELECT value FROM kv WHERE key='setting:conversationAttachments:run-memory'").get() as {value:string}).value))
+      .toEqual([independent]);
     expect(staged.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-followup'").get()).toEqual({ result: null });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-citation'").get()).toEqual({ result: null });

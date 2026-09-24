@@ -141,6 +141,8 @@ it("forgets saved article answers through later turns, artifact citations, and r
   save("followup", { contextRunIds: ["article"], context: "private answer article", contextArtifactEvidence: "private excerpt" });
   h.repo.saveArtifact({ artifactId: "derived-report", runId: "followup", path: "/synthetic/derived-report",
     mediaType: "text/markdown", size: 20, status: "complete", createdAt: Date.now() });
+  h.runs.addAttachment({chatId:"forget-chat",filename:"edited-report.md",content:"private edited answer",sourceArtifactId:"derived-report"});
+  h.runs.addAttachment({chatId:"forget-chat",filename:"independent-note.md",content:"independent human note"});
   h.repo.db.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
     VALUES('protected-response','page','https://example.test/?answer=private','GET',1,'followup')`).run();
   h.repo.db.prepare(`INSERT INTO operations(operation_id,site_key,name,created_at,updated_at)
@@ -168,6 +170,8 @@ it("forgets saved article answers through later turns, artifact citations, and r
     expect(run.config?.contextArtifactEvidence).toBeUndefined();
   }
   expect(h.repo.getArtifact("derived-report")).toBeUndefined();
+  expect(h.runs.attachments("forget-chat").attachments.map(item=>item.filename)).toEqual(["independent-note.md"]);
+  expect(h.events.since(0).events.some(event=>event.type==="results.revoked"&&Array.isArray(event.payload.artifactIds)&&event.payload.artifactIds.includes("derived-report"))).toBe(true);
   expect(h.repo.getRun("followup")?.config?.revokedArtifactIds).toContain("derived-report");
   expect(h.repo.db.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
   expect(h.repo.getInvocation("settled-invocation")?.inputs).toEqual({ taskId: "task-one", projectId: "project-one" });

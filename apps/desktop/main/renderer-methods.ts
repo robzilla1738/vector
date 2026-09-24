@@ -128,6 +128,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "programs.list",
   "programs.run",
   "results.read",
+  "results.available",
   "results.search",
   "routines.alerts",
   "routines.compare",

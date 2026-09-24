@@ -30,6 +30,33 @@ try {
   }) : null;
   const input = shell.getByRole("combobox", { name: /Search or address/ });
   const runtimePendingAtFirstInput = await shell.getByText("Runtime reconnecting — tabs keep working").isVisible();
+  const measurePalette=async()=>{
+    await shell.keyboard.press("Meta+k");
+    const palette = shell.getByRole("combobox", { name: "Command palette" });
+    await palette.waitFor();
+    await shell.evaluate(() => {
+      const input = document.querySelector('input[role="combobox"][aria-label="Command palette"]');
+      if (!input) throw new Error("Palette input is missing");
+      let started;
+      window.__auxPalettePaint = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { observer.disconnect(); reject(new Error("Local palette result did not paint")); }, 5000);
+        const observer = new MutationObserver(() => {
+          if (started === undefined || ![...document.querySelectorAll(".pal-item .t")]
+            .some(node => node.textContent?.toLowerCase() === "needletopic0")) return;
+          observer.disconnect();
+          requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve(performance.now() - started); }));
+        });
+        observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+        input.addEventListener("input", () => { if (input.value.toLowerCase() === "needletopic0") started = performance.now(); }, { once: true });
+      });
+    });
+    await palette.fill("needletopic0");
+    const painted=await shell.evaluate(() => window.__auxPalettePaint);
+    await shell.keyboard.press("Escape");
+    return painted;
+  };
+  const paletteFirst=process.argv.includes("--palette-first");
+  const coldPalettePaintMs=paletteFirst?await measurePalette():null;
   const samples = [];
   for (let i = 0; i < 12; i++) {
     const query = `needletopic${i}`;
@@ -61,29 +88,9 @@ try {
   const p95 = sorted[Math.ceil(sorted.length * 0.95) - 1];
   assert.equal(samples.length, 12);
   await shell.keyboard.press("Escape");
-  await shell.keyboard.press("Meta+k");
-  const palette = shell.getByRole("combobox", { name: "Command palette" });
-  await palette.waitFor();
-  await shell.evaluate(() => {
-    const input = document.querySelector('input[role="combobox"][aria-label="Command palette"]');
-    if (!input) throw new Error("Palette input is missing");
-    let started;
-    window.__auxPalettePaint = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { observer.disconnect(); reject(new Error("Local palette result did not paint")); }, 5000);
-      const observer = new MutationObserver(() => {
-        if (started === undefined || ![...document.querySelectorAll(".pal-item .t")]
-          .some(node => node.textContent?.toLowerCase() === "needletopic0")) return;
-        observer.disconnect();
-        requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve(performance.now() - started); }));
-      });
-      observer.observe(document.body, { subtree: true, childList: true, characterData: true });
-      input.addEventListener("input", () => { if (input.value.toLowerCase() === "needletopic0") started = performance.now(); }, { once: true });
-    });
-  });
-  await palette.fill("needletopic0");
-  const palettePaintMs = await shell.evaluate(() => window.__auxPalettePaint);
+  const palettePaintMs = paletteFirst?coldPalettePaintMs:await measurePalette();
   console.log(JSON.stringify({ kind: "native-local-suggestion-input-to-paint", historyRows: 2012,
-    trials: samples.length, runtimePendingAtFirstInput,
+    trials: samples.length, runtimePendingAtFirstInput, coldPalettePaintMs:coldPalettePaintMs===null?null:Math.round(coldPalettePaintMs*10)/10,
     prewarmMs: prewarmMs === null ? null : Math.round(prewarmMs * 10) / 10,
     p50Ms: Math.round(p50 * 10) / 10, p95Ms: Math.round(p95 * 10) / 10,
     palettePaintMs: Math.round(palettePaintMs * 10) / 10,

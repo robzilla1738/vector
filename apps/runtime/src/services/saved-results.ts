@@ -5,6 +5,15 @@ import type { Repo } from "../store/repo.js";
 
 export class SavedResults {
   constructor(private repo: Repo, private artifacts: Pick<ArtifactStore, "read">) {}
+  /** Existence-only check for renderer drafts; never returns protected result text. */
+  available(drafts: {artifactId:string;chatId:string}[]): string[] {
+    return drafts.flatMap(({artifactId,chatId}) => {
+      const artifact=this.repo.getArtifact(artifactId);
+      if(!artifact?.runId||!isTextResult(artifact))return [];
+      const run=this.repo.getRun(artifact.runId);
+      return run && (run.config?.chatId??run.runId)===chatId ? [artifactId] : [];
+    });
+  }
   search(query: string, limit = 12) {
     const term = query.trim().toLocaleLowerCase();
     if (!term) return [];

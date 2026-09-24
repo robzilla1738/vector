@@ -1,5 +1,6 @@
 import { EvidenceCommandSelectionParams, MethodSchemas } from "@aux/contracts";
-import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
+import { DATA_DIR, PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
+import { quickHistory } from "../history-quick.js";
 import { projectCommands, registry } from "../app/services.js";
 import { liveDownloads } from "../downloads/controller.js";
 import { tabCatalog } from "../tabs/store.js";
@@ -22,8 +23,17 @@ export function scopeRuntimeResult(method: string, result: unknown, state: Regul
 
 export function wireRuntimeIpc() {
   handleShell("api.invoke", async (state, method: string, params: unknown) => {
-    requireRuntime("runtime not connected");
     if (!rendererMayInvoke(method)) throw new Error("This action is not available from the Aux window.");
+    // The human omnibox can recall local visits before the AI runtime connects.
+    // All other history use and failures still take the canonical runtime path.
+    if(method==="history.list"){
+      const selected=MethodSchemas["history.list"].parse(params);
+      if(selected.query&&selected.limit<=20&&selected.since===undefined&&selected.before===undefined){
+        const local=quickHistory(DATA_DIR,selected.query,selected.limit);
+        if(local)return local;
+      }
+    }
+    requireRuntime("runtime not connected");
     if (method === "pages.open" && params && typeof params === "object") params = { ...params, windowId: state.id };
     const requestedPageId = params && typeof params === "object" && "pageId" in params ? (params as { pageId?: unknown }).pageId : undefined;
     if (typeof requestedPageId === "string") {
