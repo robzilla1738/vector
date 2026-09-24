@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { call, errToast, toast } from "../store";
 import { AnswerMarkdown } from "./AnswerMarkdown";
-import { I } from "./icons";
+import { ViewerFrame } from "./ViewerFrame";
+import { ActionMenu } from "./ui";
 import { isolatedHtmlDocument } from "../isolated-html";
 
 type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number; revision?:number;parentArtifactId?:string };
@@ -79,10 +80,13 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
     if(!result||pending.current||!valid)return;pending.current=true;setSaving(true);
     try { if(await (excel?bridge.saveWorkbook(content,"csv"):bridge.saveFile(draft?editedName:result.filename,content)))toast("Result exported"); } catch(reason){errToast(reason);} finally{pending.current=false;setSaving(false);}
   }
-  return <section className="document-snapshot saved-result-preview" aria-label="Saved result preview">
-    <header><strong>{result?.filename??"Saved result"}</strong><button className="icon-btn xs" aria-label="Close result preview" onClick={onClose}>{I.close}</button></header>
+  return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview"
+    metadata={result && <>v{result.revision ?? 1} · {result.mediaType} · {new Date(result.createdAt).toLocaleString()}</>}
+    toolbar={result && <><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><ActionMenu label="Export result" children={saving ? "Exporting…" : "Export…"} actions={[
+      {label:"Export file…",disabled:saving||attaching||!valid,onSelect:()=>void save()},
+      ...(result.mediaType === "text/csv" ? [{label:"Export Excel…",disabled:saving||attaching||!valid,onSelect:()=>void save(true)}] : []),
+    ]}/></>}>
     {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<p className="hint" role="status">Loading saved result…</p>:<>
-      <div className="saved-result-actions"><span className="hint">Saved {new Date(result.createdAt).toLocaleString()}{result.revision?` · v${result.revision}`:""}</span><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm" disabled={saving||attaching||!valid} onClick={()=>void save()}>{saving?"Exporting…":"Export…"}</button>{result.mediaType==="text/csv"&&<button className="btn sm ghost" disabled={saving||attaching||!valid} onClick={()=>void save(true)}>Export Excel…</button>}</div>
       {result.mediaType==="text/csv"&&<p className="hint">Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
       {result.mediaType==="text/html"&&<p className="hint">Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
       {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button className="btn sm ghost" disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button className="btn sm" disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button className="btn sm ghost" disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
@@ -91,5 +95,5 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}
       {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className={`saved-result-content ${result.mediaType==="text/html"?"html-result":""}`} tabIndex={0}>{result.mediaType==="text/html"?<IsolatedHtmlResult html={content}/>:result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={onCitationOpen}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
     </>}
-  </section>;
+  </ViewerFrame>;
 }

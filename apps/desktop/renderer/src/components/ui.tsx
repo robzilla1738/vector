@@ -82,7 +82,7 @@ export function ActionMenu({ label, actions, children = I.more }: { label: strin
       moveMenuFocus(event);
     }}>{actions.map(action => <button key={action.label} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={() => { close(); action.onSelect(); }}>
       <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.shortcut && <kbd>{action.shortcut}</kbd>}
-    </button>)}</div>, document.body)}
+    </button>)}</div>, trigger.current?.closest("dialog") ?? document.body)}
   </>;
 }
 

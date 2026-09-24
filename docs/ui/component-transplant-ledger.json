@@ -814,7 +814,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -825,11 +825,13 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Shared ViewerFrame wired to existing source/version/export services; see third slice in docs/ui/COMPONENT-TRANSPLANT.md."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Complete full appearance, size, loading/error, accessibility and native-host matrix.",
+        "Verify native export, real runtime version saving and document-specific formats."
       ]
     },
     {
@@ -1899,7 +1901,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1909,12 +1911,18 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/result-viewer-light-1440.png",
+        "docs/ui/evidence/2026-09-24/result-table-overlay-dark-1280.png"
+      ],
+      "functionalEvidence": [
+        "Shared ViewerFrame wired to existing source/version/export services; see third slice in docs/ui/COMPONENT-TRANSPLANT.md.",
+        "apps/desktop/renderer/src/components/ResultViewer.test.tsx: focused result and table journeys passed."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Complete full appearance, size, loading/error, accessibility and native-host matrix.",
+        "Verify native export, real runtime version saving and document-specific formats."
       ]
     },
     {
@@ -2410,7 +2418,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolTableRow.CHOBgxwO.css"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -2420,12 +2428,18 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/result-viewer-light-1440.png",
+        "docs/ui/evidence/2026-09-24/result-table-overlay-dark-1280.png"
+      ],
+      "functionalEvidence": [
+        "Shared ViewerFrame wired to existing source/version/export services; see third slice in docs/ui/COMPONENT-TRANSPLANT.md.",
+        "apps/desktop/renderer/src/components/ResultViewer.test.tsx: focused result and table journeys passed."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Complete full appearance, size, loading/error, accessibility and native-host matrix.",
+        "Verify native export, real runtime version saving and document-specific formats."
       ]
     },
     {
@@ -3282,6 +3296,66 @@
         "Complete relevant native, appearance, accessibility and state matrix.",
         "Real Quick Ask / cross-window context handoff remains unqualified."
       ]
+    },
+    {
+      "id": "ViewerFrame",
+      "component": "apps/desktop/renderer/src/components/ViewerFrame.tsx",
+      "entryPoint": "Conversation saved result / supporting content",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/result-viewer-light-1440.png"
+      ],
+      "functionalEvidence": [
+        "apps/desktop/renderer/src/components/ResultViewer.test.tsx: passed"
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Roll shared family into remaining applicable consumers; home result cards still pending.",
+        "Complete full visual and host matrix."
+      ]
+    },
+    {
+      "id": "ResultCard",
+      "component": "apps/desktop/renderer/src/components/ResultCard.tsx",
+      "entryPoint": "Conversation saved result / supporting content",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/result-viewer-light-1440.png"
+      ],
+      "functionalEvidence": [
+        "apps/desktop/renderer/src/components/ResultViewer.test.tsx: passed"
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Roll shared family into remaining applicable consumers; home result cards still pending.",
+        "Complete full visual and host matrix."
+      ]
     }
   ],
   "referenceRoutes": [
@@ -3974,10 +4048,11 @@
   ],
   "verificationSummary": {
     "rendererTypecheck": "passed",
-    "focusedRendererChecks": 36,
+    "focusedRendererChecks": 41,
     "chromeStyleChecks": 25,
     "nativeCandidate": "not yet available; native checks pending",
     "fullMatrix": "incomplete",
-    "performanceComparison": "not run"
+    "performanceComparison": "not run",
+    "resultSlice": "5 new viewer/card checks; existing result drafts (3), CommandBar (9), supporting pane (1), menu (1) also passed."
   }
 }

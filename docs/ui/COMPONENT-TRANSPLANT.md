@@ -35,13 +35,24 @@ The user subsequently withdrew the request to maintain a live native preview whi
 
 [Minimal home input](evidence/2026-09-24/home-minimal-dark-1440.png) · [Home tool popover](evidence/2026-09-24/home-tools-dark-1440.png) · [Queued follow-up and question](evidence/2026-09-24/composer-queue-light-1280.png). The attachment screenshot from earlier in the slice predates the user's minimal-input correction. The final popover was observed with all tools, and Escape restored focus to its trigger.
 
+### Third implementation slice — saved output and inspection
+
+- Saved results and document snapshots share `ViewerFrame`: a sticky identity/toolbar, bounded reading content, and one close action in the supporting slot. Saved results use a single export menu with file and CSV-to-Excel actions; editing, version creation, source-change protection and isolated HTML rendering retain their existing service boundaries.
+- Generated results now have transcript cards with recorded filename, version, type, size and a bounded excerpt. CSV previews render a small table, Markdown uses the existing lazy renderer, and HTML shows an inert document placeholder rather than executing excerpts. Cards open the existing result viewer. Attachments retain their independent context-inclusion controls.
+- CSV inspection has sticky numbered columns (no inferred header semantics), selected rows, arrow/Home/End navigation and a row-detail section. Preview limits remain 201 rows/40 columns; export retains the full source.
+- Shared action menus now mount inside an enclosing HTML dialog when present, keeping exports reachable within the modal focus boundary.
+
+Verification: five new result-viewer/card tests plus three existing result-draft tests passed; the nine CommandBar checks and supporting-pane/menu tests passed again. Renderer TypeScript passed. The tests cover exact export content, saved-version provenance, changed-source and wrong-chat protection, row keyboard/selection reset, and inert HTML cards. Current mock journeys opened a Markdown card in the vertical/light/1440×900 pane and a CSV card in a horizontal/dark/1280×720 overlay (sidebar widened to cross the 960px conversation breakpoint). Row selection exposed its recorded values; the export menu remained inside the dialog and Escape closed only the menu. These are renderer/fixture checks, not native save-dialog or actual runtime delivery qualification.
+
+[Result card and reading pane](evidence/2026-09-24/result-viewer-light-1440.png) · [CSV row details in narrow overlay](evidence/2026-09-24/result-table-overlay-dark-1280.png).
+
 ## Remaining ordered batches
 
 | Batch | Required implementation and exit evidence |
 | --- | --- |
 | 1. Shared components and immediate defects | Finish the shared dialog/popover/tooltip/keycap family and both-layout consumption. Verify full sidebar keyboard, overflow, group navigation, short heights, all form controls. Current code covers the immediate defects, not every primitive consumer. |
 | 2. Every input presentation | Home Ask now lazily uses the composer with a minimal default and a plus tool popover. Attachments use one tray, browser context is searchable, and queues sit above the editor. Finish approval/model/scope coverage and verify every narrow state. Prove text **and attachments/context/run controls** across full, side and real Quick Ask windows. Current mock journeys prove text/document/inclusion full↔rail and home handoff; actual Quick Ask remains unproven. |
-| 3. Conversation and output | Complete compact activity/source grouping, persistent takeover/approval controls, all viewer chrome/result cards, image controls, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
+| 3. Conversation and output | Complete compact activity/source grouping, persistent takeover/approval controls, remaining viewer/card consumers, image controls, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
 | 4. Browser organization | Port suggestion rows/palette grouping, home result cards, tab slot geometry, overview/hover cards, Space/Profile pickers, tab groups, library and history to the shared family. Preserve current tab silhouette, drag membership, native bridge and keyboard routes. |
 | 5. Work management | Tasks/projects/routines/memory/files/diffs/console share list/detail structures; preserve filters, schedule/timezone validation, permission scopes, modified state, file saves and view-switch continuity. |
 | 6. Settings and remaining surfaces | Dedicated searchable preference subviews; model/service/vault/plugin connection flows; supported importer flow; optional resumable onboarding; downloads, translation, find/zoom, capture entry points, transient/error/recovery states, dialogs and about/update entry points. Do not manufacture unsupported reference capabilities. |
