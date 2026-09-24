@@ -30,6 +30,7 @@ import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
+import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
 import { CookieService } from "./services/cookies.js";
 import { SettingsService } from "./services/settings.js";
 import { ResponseStore } from "./services/responses.js";
@@ -67,6 +68,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
+  setTimeout(() => { void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch(error =>
+    process.stderr.write(`[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`)); }, 10_000).unref();
 
   // ---- channel to the desktop shell (fork IPC) ----
   let channel: RpcChannel | null = null;
