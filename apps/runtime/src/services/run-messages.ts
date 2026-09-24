@@ -53,6 +53,7 @@ export class RunMessageQueue {
       }
       const target = this.repo.getRun(input.runId);
       if (!target || target.config?.chatId !== input.chatId) throw new AuxError("not_found", "The conversation run was not found.");
+      if (target.config.contextMemoryRevoked) throw new AuxError("permission_denied", "This turn used a forgotten saved article. Start a new turn with current sources.");
       if (target.config?.taskId) {
         const tasks = new TaskService(this.repo, this.events);
         const task = tasks.get(target.config.taskId);

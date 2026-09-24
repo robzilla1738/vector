@@ -336,6 +336,7 @@ export class RunService {
     for (const runId of affected) {
       const current = this.deps.repo.getRun(runId);
       if (!current || current.config?.contextMemoryRevoked) continue;
+      if (current.config?.chatId) this.messages.cancelForChat(current.config.chatId);
       if (!TERMINAL_RUN_STATUSES.has(current.status)) this.cancel(runId, "A selected saved article was forgotten.");
       const run = this.deps.repo.getRun(runId)!;
       const artifacts = this.deps.repo.listArtifacts({ runId });
@@ -654,6 +655,7 @@ export class RunService {
   private async startQueuedMessage(message: RunMessage): Promise<Run> {
     const target = this.deps.repo.getRun(message.targetRunId);
     if (!target || target.config?.chatId !== message.chatId) throw new AuxError("conflict", "The original conversation run changed. Review this follow-up.");
+    if (target.config.contextMemoryRevoked) throw new AuxError("permission_denied", "This turn used a forgotten saved article. Start a new turn with current sources.");
     const taskId = target.config.taskId;
     const taskRevision = target.config.taskRevision;
     if (taskId && taskRevision === undefined) throw new AuxError("conflict", "The saved task revision is missing. Review this follow-up.");

@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 type RecallConfig = {
+  chatId?: string;
   contextMemoryIds?: string[]; contextMemoryRevoked?: boolean; contextRunIds?: string[];
   contextArtifactIds?: string[]; contextSourceArtifactIds?: string[]; contextImageArtifactIds?: string[];
   revokedArtifactIds?: string[];
@@ -70,6 +71,9 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
       const affected = derivedPageRecallRunIds(parsed, seeds, owners);
       for (const row of parsed) {
         if (!affected.has(row.runId)) continue;
+        if (has("run_messages")) db.prepare(`UPDATE run_messages SET status='cancelled'
+          WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')`).run(
+          row.config.chatId ?? row.runId);
         const owned = ownedArtifacts.get(row.runId) ?? [];
         for (const artifactId of owned) artifactIds.add(artifactId);
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])

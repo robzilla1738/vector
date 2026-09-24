@@ -146,7 +146,10 @@ it("forgets saved article answers through later turns, artifact citations, and r
   save("citation", { contextArtifactIds: ["derived-report"], context: "private answer followup" });
   save("retry", { retryOfRunId: "citation", context: "private answer citation" });
   save("unrelated", { context: "ordinary independent context" });
+  const pending = h.runs.messages.queue({ messageId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", runId: "article",
+    chatId: "forget-chat", text: "Continue the private answer", pageIds: ["page"], contextPageRefs: [], expectedRevision: 0 });
   expect(h.runs.redactForgottenArticleOutputs("space")).toBe(4);
+  expect(h.runs.messages.list("forget-chat").find(message => message.messageId === pending.messageId)?.status).toBe("cancelled");
   for (const id of ["article", "followup", "citation", "retry"]) {
     const run = h.repo.getRun(id)!;
     expect(run.status).toBe("cancelled");
@@ -161,6 +164,9 @@ it("forgets saved article answers through later turns, artifact citations, and r
   expect(h.removedArtifacts).toContain("/synthetic/derived-report");
   expect(h.repo.getRun("unrelated")?.result).toEqual({ answer: "private answer unrelated" });
   expect(h.runs.redactForgottenArticleOutputs("space")).toBe(0);
+  expect(() => h.runs.messages.queue({ messageId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", runId: "article",
+    chatId: "forget-chat", text: "Continue revoked article", pageIds: ["page"], contextPageRefs: [], expectedRevision: 0 }))
+    .toThrow(/forgotten saved article/);
   save("late-citation", { contextArtifactIds: ["derived-report"], context: "private answer from removed report" });
   expect(h.runs.redactForgottenArticleOutputs("space")).toBe(1);
   expect(h.repo.getRun("late-citation")?.result).toBeUndefined();
