@@ -165,7 +165,7 @@ export interface BrowserDriver {
    * the CDP target id. `hint.cdpTargetId` (the shell's ack for a tab it just
    * created) lets a marker-identified backend match the page directly.
    */
-  attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string }): Promise<DriverPage>;
+  attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string; initialDocumentEpoch?: number }): Promise<DriverPage>;
   /** Reattach a recovered renderer without reusing a crashed protocol handle. */
   recoverPage?(targetId: string, pageId: string, documentEpoch?: number): Promise<DriverPage>;
   /** Look up the registered element entry for an observation ref. */

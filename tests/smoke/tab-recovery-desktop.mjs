@@ -53,12 +53,14 @@ try {
  page=undefined;page = await shellWindow(app);
  await page.locator('.app-body').waitFor();
  await page.getByRole('group',{name:'Research folder',exact:true}).locator('.tab-title').getByText('Research',{exact:true}).waitFor();
- let after;for(let i=0;i<120&&!after;i++){
+ let after,lastAfter;for(let i=0;i<120&&!after;i++){
    const list=await page.evaluate(()=>window.aux.invoke('pages.list',{}));
+   lastAfter=list;
    if(Array.isArray(list)&&list.length===before.length&&before.every(p=>list.some(q=>q.pageId===p.pageId&&q.documentEpoch>p.documentEpoch)))after=list;
    else await new Promise(r=>setTimeout(r,500));
  }
- assert.ok(after,'restored pages must carry bumped document epochs');
+ const recovery=after?undefined:await page.evaluate(()=>window.aux.invoke('browser.recovery.list',{}));
+ assert.ok(after,`restored pages must carry bumped document epochs; before=${JSON.stringify(before.map(p=>({id:p.pageId,epoch:p.documentEpoch,url:p.url})))} after=${JSON.stringify(lastAfter?.map(p=>({id:p.pageId,epoch:p.documentEpoch,url:p.url})))} recovery=${JSON.stringify(recovery)}`);
  assert.deepEqual(after.map(p=>p.pageId).sort(),before.map(p=>p.pageId).sort());
  for(const prior of before)assert.ok(after.find(p=>p.pageId===prior.pageId).documentEpoch>prior.documentEpoch,'reopened documents must invalidate prior observations');
  await page.getByTitle('Switch space',{exact:true}).click();await page.getByRole('menuitemradio').filter({hasText:'Private'}).first().click();

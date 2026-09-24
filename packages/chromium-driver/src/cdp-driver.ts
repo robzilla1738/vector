@@ -252,12 +252,13 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     return out;
   }
 
-  private track(page: Page, targetId: string, pageId: string): PlaywrightDriverPage {
+  private track(page: Page, targetId: string, pageId: string, initialDocumentEpoch?: number): PlaywrightDriverPage {
     const dp = new PlaywrightDriverPage({
       page,
       context: this.context!,
       identity: { pageId, targetId, backend: this.backend },
       refs: this.refs,
+      initialDocumentEpoch,
     });
     page.on("close", () => this.pagesByTarget.delete(targetId));
     page.on("crash", () => this.pagesByTarget.delete(targetId));
@@ -265,13 +266,13 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     return dp;
   }
 
-  async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string }): Promise<DriverPage> {
+  async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string; initialDocumentEpoch?: number }): Promise<DriverPage> {
     const existing = this.pagesByTarget.get(targetId);
     if (existing?.isAttached()) return existing;
     // the shell named the tab's CDP target: match it directly, no marker scan
     if (hint?.cdpTargetId) {
       const page = await this.pageWithTargetId(hint.cdpTargetId, 10_000);
-      if (page) return this.track(page, targetId, pageId);
+      if (page) return this.track(page, targetId, pageId, hint.initialDocumentEpoch);
     }
 
     // Marker+CDP-target surfacing can take seconds on a busy shell (app boot,
@@ -282,7 +283,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
       for (const page of this.pages()) {
         if (page.isClosed()) continue;
         const id = await this.identityOfPage(page);
-        if (id === targetId) return this.track(page, targetId, pageId);
+        if (id === targetId) return this.track(page, targetId, pageId, hint?.initialDocumentEpoch);
         if (id) lastSeen.push(id);
       }
       // Fallback path: the shared CDP context may not surface every target

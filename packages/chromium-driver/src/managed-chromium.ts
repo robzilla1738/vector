@@ -43,13 +43,14 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
     return targets.filter(target => allowed.has(target.targetId));
   }
 
-  override async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string }): Promise<DriverPage> {
+  override async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string; initialDocumentEpoch?: number }): Promise<DriverPage> {
     if (this.trustedPages) {
       const page = await this.trusted(pageId, targetId);
       if (!page) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
       // A hint supplied by another process cannot redirect the attach to a
       // different native view. Main's registry is the source of target IDs.
-      hint = page.cdpTargetId ? { cdpTargetId: page.cdpTargetId } : undefined;
+      hint = { ...(page.cdpTargetId ? { cdpTargetId: page.cdpTargetId } : {}),
+        ...(hint?.initialDocumentEpoch !== undefined ? { initialDocumentEpoch: hint.initialDocumentEpoch } : {}) };
     }
     return super.attach(targetId, pageId, hint);
   }
@@ -61,6 +62,10 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
   async recoverPage(targetId: string, pageId: string, documentEpoch = 0) {
     const trusted = this.trustedPages ? await this.trusted(pageId, targetId) : undefined;
     if (this.trustedPages && !trusted) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
+    // The internal broker permits one runtime connection. Session restore
+    // already has a fresh connection, so attach the new native view there.
+    if (this.endpoint.includes("/aux-cdp/"))
+      return this.attach(targetId, pageId, { initialDocumentEpoch: documentEpoch });
     // Playwright retains the crashed flag on its old Page proxy. A fresh CDP
     // connection observes the recovered renderer without disturbing other tabs.
     const browser = await this.connectOverCDP(this.endpoint, { timeout: 15_000 }).catch(error => {

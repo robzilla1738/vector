@@ -74,6 +74,13 @@ export class PageNavigation {
 
   async back(pageId: string) {
     return this.lanes.enqueue(pageId, async () => {
+      const lp = this.pages.live.get(pageId);
+      if (lp?.target.navigationError && lp.target.backend === "aux" && this.pages.deps.native.available()) {
+        const ack = await this.pages.deps.native.tabCommand({ commandId: `agent-${newPageId()}`,
+          windowId: lp.target.windowId ?? "main", command: { kind: "back", pageId } });
+        if (ack.status === "rejected") throw new AuxError("target_detached", ack.error?.message ?? "The native tab is no longer available");
+        return this.pages.get(pageId);
+      }
       await this.pages.driverPageLenient(pageId).back();
       return this.pages.get(pageId);
     });
@@ -106,6 +113,11 @@ export class PageNavigation {
         lp.lastObservationId = undefined;
         lp.history = [];
         this.pages.wireDriverEvents(lp);
+      } else if (lp?.target.navigationError && lp.target.backend === "aux" && this.pages.deps.native.recoverPage) {
+        // A renderer can recover in Electron while Playwright retains its
+        // crashed Page flag. The native view owns retries for failed loads.
+        const recovered = await this.pages.deps.native.recoverPage(pageId, lp.target.url);
+        if (!recovered.ok) throw new AuxError("target_detached", "The native tab is no longer available");
       } else {
         const driver = lp?.target.viewStatus === "crashed" && lp.driver ? lp.driver : this.pages.driverPageLenient(pageId);
         await driver.reload();
