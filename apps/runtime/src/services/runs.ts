@@ -46,6 +46,7 @@ import { PageOwnership } from "../scheduler/page-ownership.js";
 import { canResumeAfterPageRelease } from "../agent/control-authority.js";
 import { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
 import { observationEvidence } from "./observation-evidence.js";
+import { derivedPageRecallRunIds, redactedPageRecallConfig } from "@aux/contracts/portable-page-recall";
 
 
 /**
@@ -319,17 +320,20 @@ export class RunService {
 
   /** Withdraw saved answers and run-owned artifacts when any selected article is deleted. */
   redactForgottenArticleOutputs(workspaceId: string): number {
-    const rows = this.deps.repo.db.prepare(`SELECT run_id AS runId FROM runs
-      WHERE json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId')=?
-      AND json_array_length(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextMemoryIds'))>0`)
-      .all(workspaceId) as { runId: string }[];
+    const rows = this.deps.repo.db.prepare("SELECT run_id AS runId,config FROM runs").all() as { runId: string; config: string | null }[];
+    const runs = rows.map(row => ({ runId: row.runId,
+      config: (row.config ? JSON.parse(row.config) : {}) as NonNullable<Run["config"]> }));
+    const owners = new Map((this.deps.repo.db.prepare("SELECT artifact_id AS artifactId,run_id AS runId FROM artifacts")
+      .all() as { artifactId: string; runId: string }[]).map(row => [row.artifactId, row.runId]));
+    const seeds = new Set(runs.filter(run => run.config.contextWorkspaceId === workspaceId && run.config.contextMemoryIds?.length &&
+      (run.config.contextMemoryRevoked || run.config.contextMemoryIds.some(id =>
+        !this.deps.repo.db.prepare("SELECT 1 FROM content_memory WHERE workspace_id=? AND memory_id=?").get(workspaceId, id))))
+      .map(run => run.runId));
+    const affected = derivedPageRecallRunIds(runs, seeds, owners);
     let redacted = 0;
-    for (const { runId } of rows) {
+    for (const runId of affected) {
       const current = this.deps.repo.getRun(runId);
-      const ids = current?.config?.contextMemoryIds;
-      if (!current || current.config?.contextMemoryRevoked || !ids?.length) continue;
-      const missing = ids.some(id => !this.deps.repo.db.prepare("SELECT 1 FROM content_memory WHERE workspace_id=? AND memory_id=?").get(workspaceId, id));
-      if (!missing) continue;
+      if (!current || current.config?.contextMemoryRevoked) continue;
       if (!TERMINAL_RUN_STATUSES.has(current.status)) this.cancel(runId, "A selected saved article was forgotten.");
       const run = this.deps.repo.getRun(runId)!;
       const paths = this.deps.repo.listArtifacts({ runId }).map(item => item.path);
@@ -340,7 +344,7 @@ export class RunService {
         this.deps.repo.db.prepare("UPDATE response_metadata SET body_artifact_id=NULL WHERE run_id=?").run(runId);
         this.deps.repo.saveRun({ ...run, status: "cancelled", statusMessage: "Saved article forgotten — generated answer removed",
           result: undefined, error: "A selected saved article was forgotten.",
-          config: { ...run.config, contextMemoryRevoked: true } });
+          config: redactedPageRecallConfig(run.config ?? {}) });
       });
       const updated = this.deps.repo.getRun(runId)!;
       this.deps.events.emit(EventTypes.RunUpdated, { run: updated }, runId);
@@ -919,6 +923,7 @@ export class RunService {
    */
   async retry(runId: string, replacementPageId?: string): Promise<Run> {
     const prior = this.coordinator.get(runId);
+    if (prior.config?.contextMemoryRevoked) throw new AuxError("permission_denied", "This turn used a forgotten saved article. Start a new turn with current sources.");
     if (!TERMINAL_RUN_STATUSES.has(prior.status)) throw new AuxError("conflict", "Stop or wait for this turn before retrying it.");
     if (prior.setId) throw new AuxError("invalid_params", "Retry this set from its set workflow.");
     if (prior.config?.taskId) throw new AuxError("conflict", "Continue this turn from its saved task to preserve the task revision.");

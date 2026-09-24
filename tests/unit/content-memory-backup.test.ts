@@ -27,22 +27,38 @@ it("omits protected article content and grants from portable backups and strips 
     VALUES (?,?,?,?,?,?,?,?)`).run("memory-one", "profile-one", workspace.workspaceId, "source-one", "https://example.com", 1, 2, "v1:opaque-test");
   add(db);
   repo.saveRun({ runId: "run-memory", goal: "Use saved article", status: "completed", pageIds: [], createdAt: 1,
-    config: { contextWorkspaceId: workspace.workspaceId, contextMemoryIds: ["memory-one"] },
+    config: { contextWorkspaceId: workspace.workspaceId, contextMemoryIds: ["memory-one"], context: "Private article excerpt" },
     result: { answer: "Derived private answer" } });
   const report = new ArtifactStore(join(dir, "artifacts"), repo, events).save({ runId: "run-memory", label: "report.md",
     mediaType: "text/markdown", buffer: Buffer.from("Derived private report") });
+  repo.saveRun({ runId: "run-followup", goal: "Follow up", status: "completed", pageIds: [], createdAt: 2,
+    config: { contextRunIds: ["run-memory"], context: "Derived private answer" }, result: { answer: "Followup private answer" } });
+  repo.saveRun({ runId: "run-citation", goal: "Cite report", status: "completed", pageIds: [], createdAt: 3,
+    config: { contextArtifactIds: [report.artifactId], contextArtifactEvidence: "Derived private report" },
+    result: { answer: "Cited private answer" } });
   const backup = await createRuntimeBackup(repo, dir);
   const backupPath = join(backup.path, "state.sqlite");
   const saved = new DatabaseSync(backupPath);
   expect(saved.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
   expect(saved.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
   expect(saved.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
+  for (const id of ["run-memory", "run-followup", "run-citation"]) {
+    const row = saved.prepare("SELECT result,status,config FROM runs WHERE run_id=?").get(id) as { result: string | null; status: string; config: string };
+    expect(row.result).toBeNull();
+    expect(row.status).toBe("cancelled");
+    expect(JSON.parse(row.config).context).toBeUndefined();
+    expect(JSON.parse(row.config).contextArtifactEvidence).toBeUndefined();
+  }
   expect(saved.prepare("SELECT 1 FROM artifacts WHERE artifact_id=?").get(report.artifactId)).toBeUndefined();
   expect(JSON.parse(readFileSync(join(backup.path, "manifest.json"), "utf8")).artifacts).toEqual([]);
   // Simulate a valid older portable backup that carried protected rows.
   add(saved);
   saved.exec("CREATE TABLE observations(observation_id TEXT PRIMARY KEY,json TEXT NOT NULL); INSERT INTO observations VALUES('legacy','ordinary private page text')");
   saved.prepare("UPDATE runs SET result=?,status='completed' WHERE run_id='run-memory'").run(JSON.stringify({ answer: "Derived private answer" }));
+  saved.prepare("UPDATE runs SET result=?,status='completed',config=? WHERE run_id='run-followup'")
+    .run(JSON.stringify({ answer: "Followup private answer" }), JSON.stringify({ contextRunIds: ["run-memory"], context: "Derived private answer" }));
+  saved.prepare("UPDATE runs SET result=?,status='completed',config=? WHERE run_id='run-citation'")
+    .run(JSON.stringify({ answer: "Cited private answer" }), JSON.stringify({ contextRunIds: ["run-followup"], contextArtifactEvidence: "Derived private report" }));
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
   saved.close();
   const manifestPath = join(backup.path, "manifest.json");
@@ -58,6 +74,8 @@ it("omits protected article content and grants from portable backups and strips 
     expect(staged.prepare("SELECT name FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
     expect(staged.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
     expect(staged.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
+    expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-followup'").get()).toEqual({ result: null });
+    expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-citation'").get()).toEqual({ result: null });
     expect(db.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 1 });
   } finally { staged.close(); }
   db.close(); open = false;

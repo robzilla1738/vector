@@ -137,10 +137,23 @@ try {
   const bound = await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)), legacy.pageId);
   assert.equal(bound.workspaceId, workspaceId);
   assert.equal((await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:other.id})).migrated, 0);
+  const assertCaptureDenied = async (page, reason) => {
+    const deadline = Date.now() + 5000;
+    while (true) {
+      try { await capture(page); }
+      catch (error) {
+        if (reason.test(String(error))) return;
+        if (!/Select the visible tab/i.test(String(error)) || Date.now() >= deadline) throw error;
+        await new Promise(resolve => setTimeout(resolve, 50));
+        continue;
+      }
+      throw new Error("Protected page unexpectedly entered saved article memory.");
+    }
+  };
   const noStore = await open("/no-store");
-  await assert.rejects(capture(noStore), /not eligible|no-store/i);
+  await assertCaptureDenied(noStore, /not eligible|no-store/i);
   const sensitive = await open("/sensitive");
-  await assert.rejects(capture(sensitive), /private fields|sensitive/i);
+  await assertCaptureDenied(sensitive, /private fields|sensitive/i);
   holdProvider = true;
   const pending = await shell.evaluate(({ workspaceId, memoryId, pageId }) => window.aux.invoke("runs.start", {
     goal: "Use this saved article while the provider is slow", pageIds: [pageId], defaultWorkspaceId: workspaceId,

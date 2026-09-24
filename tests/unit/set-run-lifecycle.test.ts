@@ -131,6 +131,35 @@ async function untilMembersSettled(repo: Repo, setId: string, timeoutMs = 3000) 
 const urls = (k: number) => Array.from({ length: k }, (_, i) => `http://o${i % 3}.test/m${i}`);
 const program = { steps: [{ id: "s1", op: "reload" as const }] };
 
+it("forgets saved article answers through later turns, artifact citations, and retries", async () => {
+  const h = harness();
+  const save = (runId: string, config: NonNullable<Run["config"]>) => h.repo.saveRun({
+    runId, goal: `Question ${runId}`, status: "completed", pageIds: [], createdAt: Date.now(),
+    config: { chatId: "forget-chat", ...config }, result: { answer: `private answer ${runId}` },
+  });
+  save("article", { contextWorkspaceId: "space", contextMemoryIds: ["forgotten"], context: "private article excerpt" });
+  save("followup", { contextRunIds: ["article"], context: "private answer article", contextArtifactEvidence: "private excerpt" });
+  h.repo.saveArtifact({ artifactId: "derived-report", runId: "followup", path: "/synthetic/derived-report",
+    mediaType: "text/markdown", size: 20, status: "complete", createdAt: Date.now() });
+  save("citation", { contextArtifactIds: ["derived-report"], context: "private answer followup" });
+  save("retry", { retryOfRunId: "citation", context: "private answer citation" });
+  save("unrelated", { context: "ordinary independent context" });
+  expect(h.runs.redactForgottenArticleOutputs("space")).toBe(4);
+  for (const id of ["article", "followup", "citation", "retry"]) {
+    const run = h.repo.getRun(id)!;
+    expect(run.status).toBe("cancelled");
+    expect(run.result).toBeUndefined();
+    expect(run.config?.contextMemoryRevoked).toBe(true);
+    expect(run.config?.context).toBeUndefined();
+    expect(run.config?.contextArtifactEvidence).toBeUndefined();
+  }
+  expect(h.repo.getArtifact("derived-report")).toBeUndefined();
+  expect(h.removedArtifacts).toContain("/synthetic/derived-report");
+  expect(h.repo.getRun("unrelated")?.result).toEqual({ answer: "private answer unrelated" });
+  expect(h.runs.redactForgottenArticleOutputs("space")).toBe(0);
+  await expect(h.runs.retry("retry")).rejects.toThrow(/forgotten saved article/);
+});
+
 describe("conversation turn retry", () => {
   it("sends immutable image references, retains removed images for retries, and deletes their records with the chat", async () => {
     const image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
