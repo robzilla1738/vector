@@ -21,7 +21,7 @@ const { InternalCdpBroker } = require(output);
 app.whenReady().then(async () => {
   const server = createServer((request, response) => {
     response.setHeader('Content-Type', 'text/html');
-    if (request.url === '/child') response.end('<title>Cross-site child</title><body>Cross-site frame text<button id="action" onclick="this.textContent=\'Frame clicked\'">Click frame</button><input id="entry" aria-label="Frame entry"></body>');
+    if (request.url === '/child') response.end('<title>Cross-site child</title><body>Cross-site frame text<button id="action" onclick="this.textContent=\'Frame clicked\'">Click frame</button><input id="entry" aria-label="Frame entry"><div style="height:2000px">Scrollable frame</div></body>');
     else response.end(`<title>Parent</title><iframe id="first" src="http://localhost:${server.address().port}/child"></iframe><iframe id="remote" style="transform:scale(1.1);transform-origin:top left" src="http://localhost:${server.address().port}/child"></iframe>`);
   });
   await new Promise(resolveListen => server.listen(0, resolveListen));
@@ -50,7 +50,14 @@ app.whenReady().then(async () => {
     await page.frameLocator('#remote').locator('#entry').fill('Aux in frame', { timeout: 5000 });
     const typed = await page.frameLocator('#remote').locator('#entry').inputValue({ timeout: 5000 });
     if (typed !== 'Aux in frame') throw new Error(`OOPIF text input did not land: ${typed}`);
-    console.log('Playwright reads, clicks, and types in the correct transformed OOPIF while a same-URL sibling remains untouched.');
+    const box = await page.locator('#remote').boundingBox();
+    if (!box) throw new Error('OOPIF has no visible box');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 450);
+    await page.waitForTimeout(150);
+    const scrollY = await page.frameLocator('#remote').locator('body').evaluate(() => window.scrollY);
+    if (scrollY < 100) throw new Error(`OOPIF wheel input did not land: ${scrollY}`);
+    console.log('Playwright reads, clicks, types, and scrolls the correct transformed OOPIF while a same-URL sibling remains untouched.');
   } finally {
     await browser?.close().catch(() => {});
     await broker?.close();
