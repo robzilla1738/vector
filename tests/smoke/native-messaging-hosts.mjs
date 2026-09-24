@@ -2,13 +2,18 @@
 import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { closeAux, launchAux } from './launch.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 const { chromium } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
+const candidateBinary = process.env.AUX_CANDIDATE_BIN;
+if (candidateBinary) {
+  assert.ok(existsSync(candidateBinary), `Aux candidate executable missing: ${candidateBinary}`);
+  assert.match(realpathSync(candidateBinary), /\/out\/AuxProof\//, 'Use the isolated AuxProof build, not a reference browser');
+}
 const dir = mkdtempSync(join(tmpdir(), 'aux-native-message-'));
 const extension = join(dir, 'extension');
 mkdirSync(extension);
@@ -41,6 +46,7 @@ const send = `new Promise(resolve=>{const timer=setTimeout(()=>resolve({response
 let aux, reference;
 const results = {};
 try {
+ if (!candidateBinary) {
   ({ app: aux } = await launchAux({ args: ['--use-mock-keychain'], env: {
     PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, 'aux-profile'),
     AUX_DATA_DIR: join(dir, 'aux-data'), AUX_LOAD_DOTENV: '0' } }));
@@ -58,9 +64,11 @@ try {
       return { extensionId: input.id, ...result };
     } finally { view.webContents.close(); profile.extensions.removeExtension(input.id); }
   }, { id: electronId, send });
+ }
 } catch (error) { results.electron = { error: String(error) }; }
 try {
   reference = await chromium.launchPersistentContext(join(dir, 'chromium-profile'), { headless: false,
+    ...(candidateBinary ? { executablePath: realpathSync(candidateBinary) } : {}),
     env: { PATH: process.env.PATH, HOME: dir, TMPDIR: dir },
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--use-mock-keychain', '--password-store=basic'] });
   const worker = reference.serviceWorkers()[0] ?? await reference.waitForEvent('serviceworker');
@@ -68,15 +76,16 @@ try {
   register(id);
   const page = await reference.newPage();
   await page.goto(`chrome-extension://${id}/probe.html`);
-  results.chromiumReference = { extensionId: id, ...await page.evaluate(send) };
-} catch (error) { results.chromiumReference = { error: String(error) }; }
+  results[candidateBinary ? 'candidate' : 'chromiumReference'] = { extensionId: id, ...await page.evaluate(send) };
+} catch (error) { results[candidateBinary ? 'candidate' : 'chromiumReference'] = { error: String(error) }; }
 finally {
   await reference?.close();
   if (aux) await closeAux(aux).catch(() => {});
-  writeFileSync(join(root, 'release/test-artifacts/aux-native-messaging-hosts.json'), `${JSON.stringify({ at: new Date().toISOString(), scope: 'Disposable synthetic native host; neither Store nor 1Password integration', ...results }, null, 2)}\n`);
+  writeFileSync(join(root, 'release/test-artifacts', candidateBinary ? 'aux-candidate-native-messaging.json' : 'aux-native-messaging-hosts.json'), `${JSON.stringify({ at: new Date().toISOString(), scope: candidateBinary ? 'Isolated Aux //chrome candidate executable and disposable synthetic native host; neither Store nor 1Password integration' : 'Disposable synthetic native host; neither Store nor 1Password integration', ...(candidateBinary ? { candidateBinary: realpathSync(candidateBinary) } : {}), ...results }, null, 2)}\n`);
   console.log(JSON.stringify(results, null, 2));
   rmSync(dir, { recursive: true, force: true });
-  assert.equal(results.chromiumReference?.response?.nonce, 'aux-fixture', 'Chromium reference must execute the native host');
-  assert.equal(results.chromiumReference.response.origin, `chrome-extension://${results.chromiumReference.extensionId}/`);
-  assert.equal(results.chromiumReference.error, null);
+  const installed = results[candidateBinary ? 'candidate' : 'chromiumReference'];
+  assert.equal(installed?.response?.nonce, 'aux-fixture', `${candidateBinary ? 'Aux candidate' : 'Chromium reference'} must execute the native host`);
+  assert.equal(installed.response.origin, `chrome-extension://${installed.extensionId}/`);
+  assert.equal(installed.error, null);
 }
