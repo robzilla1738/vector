@@ -74,3 +74,9 @@ it('opens the exact result and never executes HTML excerpts in cards',async()=>{
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open report.csv"]')!.click());
   expect(open).toHaveBeenCalledOnce();
 });
+
+it('preserves a truncated CSV excerpt without crashing the result card',async()=>{
+  await act(async()=>root.render(<ResultCard result={{...result,runId:'run',excerpt:'Name,Notes\nExample,"unfinished',byteLength:3000,turnGoal:'Report',included:true}} onOpen={()=>{}}/>));
+  expect(host.querySelector('pre')?.textContent).toBe('Name,Notes\nExample,"unfinished');
+  expect(host.querySelector('[aria-label="Open report.csv"]')).not.toBeNull();
+});

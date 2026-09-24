@@ -27,3 +27,26 @@ it("retains a created profile when its window fails, allowing Open without creat
     expect(host.textContent).toContain("Opening Work in a separate window");
   }finally{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();}
 });
+it("keeps Profile actions in one menu and requires a named confirmation before deletion",async()=>{
+  vi.stubGlobal('requestAnimationFrame',(fn:FrameRequestCallback)=>{fn(0);return 1;});
+  vi.stubGlobal('cancelAnimationFrame',()=>{});
+  const profiles=[{id:'default',name:'Personal',current:true,archived:false},{id:'work',name:'Work',current:false,archived:false}];
+  vi.spyOn(bridge,'browserProfiles').mockResolvedValue(profiles);
+  const remove=vi.spyOn(bridge,'deleteBrowserProfile').mockResolvedValue([profiles[0]!]);
+  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+  try{
+    await act(async()=>root.render(<BrowserProfiles/>));
+    expect(host.querySelectorAll('[aria-haspopup="menu"]')).toHaveLength(2);
+    await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Actions for Work Profile"]')!.click());
+    const item=[...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(node=>node.textContent==='Delete…')!;
+    await act(async()=>item.click());
+    expect(remove).not.toHaveBeenCalled();
+    const confirmation=host.querySelector('[aria-label="Delete Work Profile"]')!;
+    expect(confirmation.textContent).toContain('permanently removes');
+    await act(async()=>[...confirmation.querySelectorAll('button')].find(node=>node.textContent==='Keep Profile')!.click());
+    expect(host.querySelector('.browser-profile-confirmation')).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+    await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Actions for Personal Profile"]')!.click());
+    expect(document.querySelector('[role="menu"]')?.textContent).toBe('Rename');
+  }finally{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();}
+});

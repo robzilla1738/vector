@@ -11,5 +11,8 @@
 .result-card-preview td { padding:6px; border-bottom:1px solid var(--line); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .result-card-preview .answer-markdown { font-size:var(--fs-xs); }
 .result-card-html { display:flex; height:100%; gap:8px; align-items:center; justify-content:center; color:var(--ink-2); font-size:var(--fs-sm); }
+.home-card > .result-card-preview { flex:1; min-height:0; height:auto; margin:4px 0; }
+.home-result-open { position:relative; z-index:1; display:flex; align-items:center; gap:8px; margin-top:auto; padding:8px 0 0; font-size:var(--fs-xs); color:var(--ink-2); text-align:left; }
+.home-result-open > span:not(.ci) { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .result-card footer { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:var(--fs-xs); color:var(--ink-2); }
 }

@@ -40,7 +40,8 @@ interface PendingConflict {
  * stealing writes the rival's remaining bindings as its override, so the
  * chord only ever resolves to one command.
  */
-export function ShortcutsSetting({ value, onSave }: { value: ShortcutOverrides; onSave: (value: ShortcutOverrides) => Promise<boolean> }) {
+export function ShortcutsSetting({ value, onSave, active = true }: { value: ShortcutOverrides; active?:boolean; onSave: (value: ShortcutOverrides) => Promise<boolean> }) {
+  const [query,setQuery]=useState("");
   const [recording, setRecording] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingConflict | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +59,7 @@ export function ShortcutsSetting({ value, onSave }: { value: ShortcutOverrides; 
   };
 
   useEffect(() => {
-    if (!recording) return;
+    if (!active || !recording) return;
     const onKeydown = (event: KeyboardEvent) => {
       // Capture phase + preventDefault keeps the recorded chord from also
       // firing the browser command it would normally trigger.
@@ -80,6 +81,8 @@ export function ShortcutsSetting({ value, onSave }: { value: ShortcutOverrides; 
     return () => { window.removeEventListener("keydown", onKeydown, true); window.removeEventListener("blur", cancel); };
   });
 
+  useEffect(()=>{if(!active)setRecording(null);},[active]);
+
   const steal = (entry: PendingConflict) => {
     const next: ShortcutOverrides = { ...value, [entry.id]: [entry.binding] };
     const chord = bindingKey(entry.binding);
@@ -95,8 +98,9 @@ export function ShortcutsSetting({ value, onSave }: { value: ShortcutOverrides; 
   };
 
   return <div className="shortcuts-setting">
+    <input className="field-input" aria-label="Find keyboard shortcut" placeholder="Find a command or shortcut…" value={query} disabled={recording!==null} onChange={event=>setQuery(event.target.value)}/>
     <ul className="shortcut-list">
-      {defs.map(def => {
+      {defs.filter(def=>`${def.label} ${def.bindings.map(binding=>bindingLabel(binding,platform)).join(" ")}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(def => {
         const overridden = value[def.id] !== undefined;
         return <li key={def.id} className="shortcut-row">
           <span className="shortcut-label">{def.label}</span>
@@ -107,7 +111,7 @@ export function ShortcutsSetting({ value, onSave }: { value: ShortcutOverrides; 
           </span>
           {recording === def.id
             ? <output className="hint shortcut-recording">Press keys… Esc cancels</output>
-            : <button className="btn sm ghost" disabled={busy || recording !== null} onClick={() => { setPending(null); setRecording(def.id); }}>Change</button>}
+            : <button className="btn sm ghost" aria-label={`Change ${def.label} shortcut`} disabled={busy || recording !== null} onClick={() => { setPending(null); setRecording(def.id); }}>Change</button>}
           {overridden && <button className="btn sm ghost" disabled={busy} aria-label={`Reset ${def.label} shortcut`} onClick={() => reset(def.id)}>Reset</button>}
         </li>;
       })}

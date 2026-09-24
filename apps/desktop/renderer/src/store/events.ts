@@ -4,7 +4,7 @@ import { setDictationDraft } from "../dictation-drafts";
 import { clearResultDrafts, revokeResultDrafts } from "../result-drafts";
 import { writeRunAnswerDraft } from "../run-answer-drafts";
 import { assignFolder, assignSpace, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, tabsInSpace, withSyncedOrder, type Layout } from "../workspace";
-import { PENDING_CHAT_KEY, draftKey } from "../conversation-drafts";
+import { HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, draftKey } from "../conversation-drafts";
 import { persistLayout, storage } from "./persistence";
 import { emptyStats, modelAuxValue } from "./runs-slice";
 import { answerSeq, applyRemoval, closingOptimistic, forgetPreview, pageRevisions, patchPage, previewCache, sendTabCommand } from "./shared";
@@ -168,7 +168,7 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
       if(!clearResultDrafts(chatId))toast("An edited result draft could not be removed from this browser.","error");
       setDictationDraft(draftKey(chatId), "");
       for(const runId of removed)try { writeRunAnswerDraft(bridge.privateMode ? null : storage,runId,null); } catch { toast("A saved answer draft could not be removed from this browser.","error"); }
-      try { if(storage?.getItem(PENDING_CHAT_KEY)===chatId)storage.removeItem(PENDING_CHAT_KEY);if(storage?.getItem("aux.quick-ask.chat")===chatId)storage.removeItem("aux.quick-ask.chat"); } catch { /* The open view still discards the deleted identity. */ }
+      try { if(storage?.getItem(HOME_DRAFT_CHAT_KEY)===chatId)storage.removeItem(HOME_DRAFT_CHAT_KEY);if(storage?.getItem(PENDING_CHAT_KEY)===chatId)storage.removeItem(PENDING_CHAT_KEY);if(storage?.getItem("aux.quick-ask.chat")===chatId)storage.removeItem("aux.quick-ask.chat"); } catch { /* The open view still discards the deleted identity. */ }
       const active=s.conversationId===chatId;
       set(state=>({runs:state.runs.filter(run=>!removed.has(run.runId)),
         runAnswerDrafts:Object.fromEntries(Object.entries(state.runAnswerDrafts).filter(([id])=>!removed.has(id))),

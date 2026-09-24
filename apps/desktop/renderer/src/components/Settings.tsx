@@ -1,5 +1,5 @@
 import { LayoutChoice } from "./LayoutChoice";
-import { SettingsRow as Field, SettingsDisclosure, SettingsGroup, Switch } from "./ui";
+import { SettingsRow as Field, SettingsGroup, Switch } from "./ui";
 import { WebsiteSizes } from "./WebsiteSizes";
 import { QuickAskSetting } from "./QuickAskSetting";
 import { BrowserProfiles } from "./BrowserProfiles";
@@ -90,8 +90,11 @@ const connectionCategories = ["Models", "Connections", "External agents", "Vault
 export function Settings() {
   const initialCategory = useRef(useStore.getState().settingsCategory).current;
   const [category, setCategory] = useState(connectionCategories.includes(initialCategory) ? "Connections" : initialCategory);
-  const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : "Models");
+  const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : initialCategory === "Vault" ? "Vault" : "Models");
+  const [subview, setSubview] = useState<string | null>(null);
+  const subviewOrigin = useRef<HTMLButtonElement | null>(null);
   function openCategory(name: string) {
+    setSubview(null);
     setCategory(connectionCategories.includes(name) ? "Connections" : name);
     if (connectionCategories.includes(name)) setConnectionTab(name === "Models" ? "Models" : name === "External agents" ? "Agents" : name === "Vault" ? "Vault" : "Services");
   }
@@ -100,13 +103,17 @@ export function Settings() {
   const results = searchSettings(query);
   const visible = (name: string) => !searching && (connectionCategories.includes(name)
     ? category === "Connections" && connectionTab === (name === "Models" ? "Models" : name === "External agents" ? "Agents" : name === "Vault" ? "Vault" : "Services")
-    : category === name);
+    : category === name && !subview);
   const [destination, setDestination] = useState<SettingsDestination | null>(null);
   const [uiFont, setUiFont] = useState<UiFontSize>(readUiFontSize);
   const settings = useStore((s) => s.settings);
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const setOverlay = useStore((s) => s.setOverlay);
+  const openEditor = (name:string, origin:HTMLButtonElement) => {
+    subviewOrigin.current=origin;setSubview(name);
+    requestAnimationFrame(()=>scrollRef.current?.querySelector<HTMLElement>('.settings-editor-view:not([hidden])')?.focus({preventScroll:true}));
+  };
   const refresh = async () => {
     const previous = useStore.getState().settings;
     const latest = await call("settings.get");
@@ -176,7 +183,7 @@ export function Settings() {
 
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [category, query, connectionTab]);
+  }, [category, query, connectionTab, subview]);
 
   useLayoutEffect(() => {
     if (!destination || searching) return;
@@ -315,11 +322,12 @@ export function Settings() {
           }
         }}/>{query && <button className="icon-btn" aria-label="Clear settings search" onClick={() => { setQuery(""); dialogRef.current?.querySelector<HTMLInputElement>('[aria-label="Search settings"]')?.focus(); }}>{I.close}</button>}</div>
         <span>Preferences</span>
-        <div className="settings-category-list">{["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions"].map(name => <button key={name} data-category={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { setCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}</div>
+        <div className="settings-category-list">{["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions"].map(name => <button key={name} data-category={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { openCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}</div>
       </nav>
       <div className="settings-content">
         <div className="drawer-head">
-          <div className="settings-heading"><h3>{searching ? "Search settings" : category}</h3><p>{searching ? "Find a preference across all categories." : categoryDescriptions[category]}</p></div>
+          {subview && !searching && <button className="icon-btn" aria-label="Back to General settings" onClick={()=>{setSubview(null);requestAnimationFrame(()=>subviewOrigin.current?.focus());}}>{I.back}</button>}
+          <div className="settings-heading"><h3>{searching ? "Search settings" : subview ?? category}</h3><p>{searching ? "Find a preference across all categories." : subview ? "General settings" : categoryDescriptions[category]}</p></div>
           <span className="sp" />
           {saved && <output className="saved">{I.check} Saved</output>}
           <button className="icon-btn" title="Close (Esc)" aria-label="Close settings" onClick={() => setOverlay(null)}>{I.close}</button>
@@ -332,7 +340,7 @@ export function Settings() {
         {searching && <div className="settings-search-results">
           <output className="hint" data-block>{results.length ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}` : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}</output>
           <div onKeyDown={event => moveListFocus(event, "button")}>
-            {results.map(result => <button key={`${result.category}:${result.label}`} className="settings-search-result" onClick={() => { openCategory(result.category); setQuery(""); setDestination(result); }}>
+            {results.map(result => <button key={`${result.category}:${result.label}`} className="settings-search-result" onClick={() => { openCategory(result.category); setQuery(""); setSubview(result.category === "General" && ["Keyword engines","Keyboard shortcuts","Browser profiles","Task data backup"].includes(result.target ?? "") ? result.target! : null); setDestination(result); }}>
               <span className="settings-search-category">{connectionCategories.includes(result.category) ? `Connections · ${result.category === "Connections" ? "Services" : result.category === "External agents" ? "Agents" : result.category === "Vault" ? "Vault" : "Models"}` : result.category}</span><strong>{result.label}</strong><span>{result.description}</span>
             </button>)}
           </div>
@@ -524,9 +532,7 @@ export function Settings() {
           <Switch aria-label="Show search suggestions in the address bar" checked={Boolean(settings.searchSuggestions)} onChange={event => void set({ searchSuggestions: event.target.checked })}/>
         </Field>
 
-        <SettingsDisclosure label="Keyword engines" description="Manage shortcuts for searching individual sites."><Field label="Keyword engines" hint="Search a site directly by typing its keyword first.">
-          <SearchEnginesSetting value={(settings.searchEngines as EngineRow[]) ?? []} onSave={searchEngines => set({ searchEngines })} />
-        </Field></SettingsDisclosure>
+        <Field compact label="Keyword engines" hint="Manage shortcuts for searching individual sites."><button className="btn sm ghost" data-settings-editor="Keyword engines" onClick={event=>openEditor("Keyword engines",event.currentTarget)} aria-label="Manage keyword engines">Manage {I.right}</button></Field>
 
         <Field label="Import Chrome sign-ins" hint={cookieImport.result?.detail ?? "Import available sign-in cookies from Chrome. macOS may ask for keychain access; some sites may require you to sign in again."}>
           <div className="row">
@@ -552,20 +558,13 @@ export function Settings() {
         </Field>
 
         </SettingsGroup><SettingsGroup title="Workspace and shortcuts">
-        <SettingsDisclosure label="Keyboard shortcuts" description="Search and customize browser shortcuts."><Field label="Keyboard shortcuts" hint="Change any browser or app shortcut. Menus, web pages and the shell share one set — a chord that collides is explained before it is assigned.">
-          <ShortcutsSetting value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}} onSave={shortcutOverrides => set({ shortcutOverrides })} />
-        </Field></SettingsDisclosure>
+        <Field compact label="Keyboard shortcuts" hint="Search and customize browser shortcuts."><button className="btn sm ghost" data-settings-editor="Keyboard shortcuts" onClick={event=>openEditor("Keyboard shortcuts",event.currentTarget)} aria-label="Manage keyboard shortcuts">Manage {I.right}</button></Field>
 
         <Field label="Quick Ask"><QuickAskSetting /></Field>
-        <SettingsDisclosure label="Browser profiles" description="Manage separate browsing identities."><Field label="Browser profiles"><BrowserProfiles /></Field></SettingsDisclosure>
+        <Field compact label="Browser profiles" hint="Manage separate browsing identities."><button className="btn sm ghost" data-settings-editor="Browser profiles" onClick={event=>openEditor("Browser profiles",event.currentTarget)} aria-label="Manage browser profiles">Manage {I.right}</button></Field>
 
         </SettingsGroup><SettingsGroup title="Data and recovery">
-        <SettingsDisclosure label="Task data backup" description="Create, restore, and manage local backups."><Field label="Task data backup" hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants; older backups are scrubbed when restored but may retain earlier copies until you delete them. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores.">
-          <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>{setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.');return call("installation.listBackups", {});}).then(value=>{if(Array.isArray(value))setBackups(value as typeof backups);}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
-          <label>Keep complete backups<select aria-label="Backup retention" value={backupKeep} disabled={backupBusy} onChange={event=>{const keep=Number(event.target.value) as 3|5|10|20;setBackupBusy(true);void call("installation.setBackupRetention",{keep}).then(value=>setBackupKeep(value.keep as 3|5|10|20)).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{([3,5,10,20] as const).map(keep=><option key={keep} value={keep}>Keep {keep}</option>)}</select></label>
-          {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button>{deleteBackupName===item.name?<><span>Delete this local backup?</span><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.deleteBackup",{name:item.name,expectedSha256:item.sha256}).then(()=>call("installation.listBackups",{})).then(value=>{setBackups(value);setDeleteBackupName(null);setBackupMessage('Local backup deleted.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Delete backup</button><button className="btn sm ghost" disabled={backupBusy} onClick={()=>setDeleteBackupName(null)}>Cancel</button></>:<button className="btn sm ghost" disabled={backupBusy||restoreStatus.pending} onClick={()=>setDeleteBackupName(item.name)}>Delete…</button>}</div>)}</details>}
-          {restoreStatus.pending&&<output className="hint">A restore is staged for the next launch. Changes made before quitting will be replaced.</output>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<output className="hint">{backupMessage}</output>}
-        </Field></SettingsDisclosure>
+        <Field compact label="Task data backup" hint="Create, restore, and manage local backups."><button className="btn sm ghost" data-settings-editor="Task data backup" onClick={event=>openEditor("Task data backup",event.currentTarget)} aria-label="Manage task data backup">Manage {I.right}</button></Field>
 
 
         <details className="settings-advanced">
@@ -592,7 +591,16 @@ export function Settings() {
         <div className="drawer-foot" data-setting="clear-history" tabIndex={-1}>
           <ClearHistory />
         </div>
-      </SettingsGroup></section></div></div>
+      </SettingsGroup></section><section className="settings-editor-view" tabIndex={-1} aria-label="Keyword engines" hidden={searching || category!=="General" || subview!=="Keyword engines"}><Field label="Keyword engines" hint="Search a site directly by typing its keyword first.">
+          <SearchEnginesSetting value={(settings.searchEngines as EngineRow[]) ?? []} onSave={searchEngines => set({ searchEngines })} />
+        </Field></section><section className="settings-editor-view" tabIndex={-1} aria-label="Keyboard shortcuts" hidden={searching || category!=="General" || subview!=="Keyboard shortcuts"}><Field label="Keyboard shortcuts" hint="Change any browser or app shortcut. Menus, web pages and the shell share one set — a chord that collides is explained before it is assigned.">
+          <ShortcutsSetting active={!searching && category === "General" && subview === "Keyboard shortcuts"} value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}} onSave={shortcutOverrides => set({ shortcutOverrides })} />
+        </Field></section><section className="settings-editor-view" tabIndex={-1} aria-label="Browser profiles" hidden={searching || category!=="General" || subview!=="Browser profiles"}><Field label="Browser profiles"><BrowserProfiles /></Field></section><section className="settings-editor-view" tabIndex={-1} aria-label="Task data backup" hidden={searching || category!=="General" || subview!=="Task data backup"}><Field label="Task data backup" hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants; older backups are scrubbed when restored but may retain earlier copies until you delete them. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores.">
+          <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>{setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.');return call("installation.listBackups", {});}).then(value=>{if(Array.isArray(value))setBackups(value as typeof backups);}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
+          <label>Keep complete backups<select aria-label="Backup retention" value={backupKeep} disabled={backupBusy} onChange={event=>{const keep=Number(event.target.value) as 3|5|10|20;setBackupBusy(true);void call("installation.setBackupRetention",{keep}).then(value=>setBackupKeep(value.keep as 3|5|10|20)).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{([3,5,10,20] as const).map(keep=><option key={keep} value={keep}>Keep {keep}</option>)}</select></label>
+          {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button>{deleteBackupName===item.name?<><span>Delete this local backup?</span><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.deleteBackup",{name:item.name,expectedSha256:item.sha256}).then(()=>call("installation.listBackups",{})).then(value=>{setBackups(value);setDeleteBackupName(null);setBackupMessage('Local backup deleted.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Delete backup</button><button className="btn sm ghost" disabled={backupBusy} onClick={()=>setDeleteBackupName(null)}>Cancel</button></>:<button className="btn sm ghost" disabled={backupBusy||restoreStatus.pending} onClick={()=>setDeleteBackupName(item.name)}>Delete…</button>}</div>)}</details>}
+          {restoreStatus.pending&&<output className="hint">A restore is staged for the next launch. Changes made before quitting will be replaced.</output>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<output className="hint">{backupMessage}</output>}
+        </Field></section></div></div>
     </div>
   );
 }

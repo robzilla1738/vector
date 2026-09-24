@@ -2,6 +2,7 @@ export interface SettingsDestination { category: string; label: string; descript
 const entry = (category: string, label: string, description: string, target = label): SettingsDestination => ({ category, label, description, target });
 export const settingsDestinations: SettingsDestination[] = [
   entry("Appearance", "Website sizes", "Inspect, search and reset saved per-site page zoom."),
+  entry('General', 'Keyword engines', 'Manage site search keywords and shortcuts.'),
   entry('General', 'Search engine', 'Choose where web searches go.'),
   entry('General', 'Default browser', 'Open links in Aux by default.'),
   entry('General', 'Personal info', 'Fill addresses, email and phone fields from your stored profile.'),

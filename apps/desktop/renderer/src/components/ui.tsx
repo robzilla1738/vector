@@ -86,8 +86,8 @@ export function ActionMenu({ label, actions, children = I.more }: { label: strin
   </>;
 }
 
-export function ListRow({ title, description, leading, trailing, selected = false, onOpen }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; onOpen(): void }) {
-  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button type="button" className="ui-list-open" onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
+export function ListRow({ title, description, leading, trailing, selected = false, disabled = false, onOpen }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; disabled?: boolean; onOpen(): void }) {
+  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button type="button" className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
     {leading && <span className="ui-list-icon">{leading}</span>}<span className="ui-list-copy"><strong>{title}</strong>{description && <small>{description}</small>}</span>
   </button>{trailing && <div className="ui-list-actions">{trailing}</div>}</div>;
 }

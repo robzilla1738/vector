@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
+import { ImageViewer } from "./ImageViewer";
 import { I } from "./icons";
 
 function RunImage({artifact}:{artifact:Artifact}) {
@@ -16,7 +17,7 @@ function RunImage({artifact}:{artifact:Artifact}) {
   },[artifact.artifactId,artifact.mediaType,retry]);
   return <figure className="conversation-image">
     {error ? <p className="field-error" role="alert">Couldn’t load this image. {error} <button className="btn sm ghost" onClick={()=>setRetry(value=>value+1)}>Retry image</button></p>
-      : url ? <img src={url} alt="Saved image from this turn" onError={()=>setError("The saved image could not be displayed.")}/>
+      : url ? <ImageViewer src={url} alt="Saved image from this turn" onError={()=>setError("The saved image could not be displayed.")}/>
       : <p className="hint" role="status">Loading image…</p>}
     <figcaption>Saved {new Date(artifact.createdAt).toLocaleString()}</figcaption>
   </figure>;

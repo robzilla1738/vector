@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import type { ConversationImage } from "@aux/contracts";
 import { call } from "../store";
-import { I } from "./icons";
+import { ViewerFrame } from "./ViewerFrame";
+import { ImageViewer } from "./ImageViewer";
 
 export type SavedImageSnapshot = {image:ConversationImage;dataUrl:string};
 export function ImagePreview({snapshot,onClose}:{snapshot:SavedImageSnapshot;onClose():void}) {
-  return <section className="document-snapshot capture-preview" aria-label="Image snapshot">
-    <header><strong>{snapshot.image.filename}</strong><button className="icon-btn xs" aria-label="Close image preview" onClick={onClose}>{I.close}</button></header>
-    <p className="hint">{snapshot.image.width} × {snapshot.image.height} · Saved {new Date(snapshot.image.createdAt).toLocaleString()} · {snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}</p>
-    {snapshot.image.sourcePage && <p className="snapshot-source">Captured from {snapshot.image.sourcePage.url} at {new Date(snapshot.image.sourcePage.selectedAt ?? snapshot.image.createdAt).toLocaleString()}. This image remains a snapshot if the tab changes.</p>}
-    <img src={snapshot.dataUrl} alt={snapshot.image.filename}/>
-  </section>;
+  const [failed,setFailed]=useState(false);
+  useEffect(()=>setFailed(false),[snapshot.dataUrl]);
+  return <ViewerFrame label="Image snapshot" title={snapshot.image.filename} onClose={onClose} closeLabel="Close image preview" metadata={`${snapshot.image.width} × ${snapshot.image.height} · ${snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}`}>
+    {failed ? <p role="alert">This saved image could not be displayed.</p> : <ImageViewer src={snapshot.dataUrl} alt={snapshot.image.filename} onError={()=>setFailed(true)}/>}
+    <details className="image-viewer-metadata"><summary>Image details</summary><p>Saved {new Date(snapshot.image.createdAt).toLocaleString()}</p>
+    {snapshot.image.sourcePage && <p>Captured from {snapshot.image.sourcePage.url} at {new Date(snapshot.image.sourcePage.selectedAt ?? snapshot.image.createdAt).toLocaleString()}. This image remains a snapshot if the tab changes.</p>}</details>
+  </ViewerFrame>;
 }
 
 /** Read only the selected conversation-owned image; previews never send a model request. */
@@ -26,8 +28,7 @@ export function ImageSnapshot({chatId,imageId,onClose}:{chatId:string;imageId:st
     return()=>{live=false;};
   },[chatId,imageId,retry]);
   if(snapshot)return <ImagePreview snapshot={snapshot} onClose={onClose}/>;
-  return <section className="document-snapshot" aria-label="Image snapshot">
-    <header><strong>Image reference</strong><button className="icon-btn xs" aria-label="Close image preview" onClick={onClose}>{I.close}</button></header>
+  return <ViewerFrame label="Image snapshot" title="Image reference" onClose={onClose} closeLabel="Close image preview">
     {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:<p className="hint" role="status">Loading image…</p>}
-  </section>;
+  </ViewerFrame>;
 }

@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {HOME_DRAFT_CHAT_KEY,PENDING_CHAT_KEY} from "../conversation-drafts";
 import HomeAsk from "./HomeAsk";
 import { Conversation } from "./Conversation";
 import { BrowserContextPicker } from "./BrowserContextPicker";
@@ -88,4 +89,26 @@ it("keeps home context controls behind plus and preserves the draft while toggli
   expect(host.querySelector('[aria-label="Browser context"]')).toBeNull();
   expect(host.querySelector('textarea')).toBe(input);
   expect(input.value).toBe("A clean home draft");
+});
+
+it("does not adopt another conversation into home but restores a home-owned attachment draft",async()=>{
+  const data=new Map([[PENDING_CHAT_KEY,"old-result-chat"]]);
+  vi.stubGlobal("localStorage",{getItem:(key:string)=>data.get(key)??null,setItem:(key:string,value:string)=>data.set(key,value),removeItem:(key:string)=>data.delete(key)});
+  useStore.setState({agentDraft:"",railOpen:false,runs:[],conversationDrafts:{},pages:[],connected:true});
+  const invoke=vi.spyOn(bridge,"invoke").mockImplementation(async method=>{
+    if(method==="runs.list")return [];
+    if(method==="conversations.get")return {title:"Draft",archived:false};
+    if(method==="conversations.artifacts.get")return {artifacts:[]};
+    if(method==="conversations.images.get")return {images:[]};
+    if(method==="conversations.attachments.get")return {attachments:[]};
+    if(method==="conversations.sources.get")return {sources:[]};
+    if(method==="runs.messages.list")return [];
+    if(method==="runs.context.get")return {entries:[],historyEnabled:true};
+    return {workspace:null,memory:null};
+  });
+  await act(async()=>root.render(<HomeAsk onSearch={()=>{}}/>));
+  expect(invoke.mock.calls.some(([,params])=>(params as {chatId?:string})?.chatId==="old-result-chat")).toBe(false);
+  data.set(HOME_DRAFT_CHAT_KEY,"home-image-draft");
+  await act(async()=>root.render(<HomeAsk key="remount" onSearch={()=>{}}/>));
+  expect(invoke.mock.calls.some(([method,params])=>method==="conversations.images.get"&&(params as {chatId?:string})?.chatId==="home-image-draft")).toBe(true);
 });

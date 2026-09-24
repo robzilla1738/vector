@@ -3,10 +3,11 @@ import type { PreparedConversation, Run } from "@aux/contracts";
 export const DRAFTS_KEY = "aux.conversation-drafts.v1";
 export const CONTEXTS_KEY = "aux.conversation-contexts.v1";
 export const NEW_DRAFT_KEY = "new";
+export const HOME_DRAFT_CHAT_KEY = "aux.home-draft-conversation.v1";
 export const PENDING_CHAT_KEY = "aux.pending-conversation.v1";
 export const draftKey = (id: string) => `chat:${id}`;
-export function readPendingConversation(storage: Pick<Storage, "getItem"> | null): string | null {
-  const value = storage?.getItem(PENDING_CHAT_KEY) ?? "";
+export function readPendingConversation(storage: Pick<Storage, "getItem"> | null, key = PENDING_CHAT_KEY): string | null {
+  const value = storage?.getItem(key) ?? "";
   return value.length > 0 && value.length <= 200 && !/[\s/\\]/.test(value) ? value : null;
 }
 export function readConversationDrafts(storage: EntryStorage | null): Record<string, string> {

@@ -18,7 +18,7 @@ The starting code is `c34f3c2c`. Existing historical screenshots are not baselin
 - One supporting-content slot for page preview, source details, documents, images and saved results. At 960px of conversation width it becomes a 320px pane, keyboard/pointer resizable from 280–440px. Narrow conversations use a chip and native HTML dialog with focus restoration. Transcript and draft components remain mounted. Existing result editing, versions and isolated HTML behavior remain inside their original viewers.
 - Run duration/model-call details move into a disclosure; model/provider/cost provenance is preserved.
 
-These changes do **not** complete the six-batch plan. In particular, collapsed editors are an interim step before dedicated Settings subviews, the full primitive/menu/dialog rollout is unfinished.
+These changes do **not** complete the six-batch plan. In particular, dedicated Settings subviews are now implemented for four large editors; the full primitive/menu/dialog rollout is unfinished.
 
 ### Second implementation slice — input continuity and control
 
@@ -52,16 +52,35 @@ Work history now puts action, summary, outcome and disclosure on one compact row
 
 All 13 timeline tests passed (including a new receipt identity/disclosure test); renderer TypeScript and the 25 chrome/style checks passed. The current vertical/dark/1280×720 fixture showed compact rows, expanded observed-effect detail, visible failure status and persistent run controls. Scrolling upward exposed Jump to latest, preserving explicit transcript navigation. [Activity evidence](evidence/2026-09-24/activity-details-dark-1280.png). Real streamed runs and source-to-step grouping still require qualification/implementation.
 
+### Fifth implementation slice — Settings, image inspection and home results
+
+- Keyword engines, keyboard shortcuts, Profiles and backups now open dedicated Settings subviews. Back restores the originating control; search opens the exact editor. Editors remain mounted to preserve unsaved form fields. Keyword engines are now indexed by Settings search. Direct Vault navigation selects the Vault connection tab.
+- Keyboard shortcuts have command/chord search. Leaving the subview stops key recording so a hidden editor cannot capture keys. Existing collision handling remains authoritative.
+- Profiles use avatar/title/secondary-state rows, current-state indication, an Open action and one overflow menu. Current/default Profile restrictions remain; deletion still requires a second, named confirmation explaining affected data. Existing host services own isolation and switching.
+- Saved image references and run-image galleries share Fit, actual-size and bounded 25–400% zoom controls. Zoom scrolls inside the preview. Snapshot provenance and inclusion state remain visible; metadata is disclosed on demand. Existing lazy reads, count/size limits and error handling remain in place.
+- Home Recent Work uses real latest-turn artifact summaries for typed table/document/HTML-safe previews, fetching metadata for at most three cards. It never reads full artifact bytes merely to render a card. Draft text takes precedence; selecting the file opens its exact result. Truncated CSV excerpts fall back to literal text instead of crashing the card.
+- An observed bug caused the home composer to adopt whichever chat had last been opened through result inspection. Home drafts now have a distinct ownership marker, retained for home-created attachment drafts and removed on successful submission or conversation deletion. New-tab Ask stays clean after inspecting an older result.
+
+Verification: two image tests; two Profile tests and the shared menu test; one new shortcut visibility/search test plus 21 existing shortcut checks; one Recent Work test plus six result/card regressions; four composer integration checks and seven draft persistence checks passed. The 25 chrome/style checks and renderer TypeScript passed. These suite counts include reruns. Mock journeys verified unsaved keyword/name fields across Back and search, attachment→image inspection→125% zoom, and a clean new-tab composer alongside a real CSV excerpt card. DOM image measurement timed out in the browser tool; zoom was verified by component assertions and the rendered screenshot instead. Profile window behavior, actual native image rendering and the complete visual matrix remain unqualified.
+
+[Settings subview](evidence/2026-09-24/settings-subview-dark-1440.png) · [Image inspection](evidence/2026-09-24/image-inspection-dark-1440.png) · [Clean home and typed result card](evidence/2026-09-24/home-results-light-1440.png).
+
+### Coverage audit gate
+
+Run `node scripts/audit-ui-coverage.mjs` after adding or moving a surface. It checks every current top-level renderer component against the ledger, duplicate surface/route IDs, mapped route destinations, required record fields and local screenshot paths. It rejects unsupported qualification claims with missing evidence or remaining gates. The current audit has **125 surfaces, 84 reference routes, zero inventory errors**. Its statuses are **35 implemented-partial, 81 planned, 6 retained infrastructure, 3 native gates**. These are inventory statuses, not percentages of finished work. Normalizing older screenshot paths fixed the first audit's path errors; no evidence was invented.
+
+This integrity check does not assess visual correctness or replace requirement-by-requirement working journeys. No surface has been declared fully qualified. The entire requested design plan remains the completion scope.
+
 ## Remaining ordered batches
 
 | Batch | Required implementation and exit evidence |
 | --- | --- |
 | 1. Shared components and immediate defects | Finish the shared dialog/popover/tooltip/keycap family and both-layout consumption. Verify full sidebar keyboard, overflow, group navigation, short heights, all form controls. Current code covers the immediate defects, not every primitive consumer. |
 | 2. Every input presentation | Home Ask now lazily uses the composer with a minimal default and a plus tool popover. Attachments use one tray, browser context is searchable, and queues sit above the editor. Finish approval/model/scope coverage and verify every narrow state. Prove text **and attachments/context/run controls** across full, side and real Quick Ask windows. Current mock journeys prove text/document/inclusion full↔rail and home handoff; actual Quick Ask remains unproven. |
-| 3. Conversation and output | Finish source-to-step grouping and approval controls, remaining viewer/card consumers, image controls, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
-| 4. Browser organization | Port suggestion rows/palette grouping, home result cards, tab slot geometry, overview/hover cards, Space/Profile pickers, tab groups, library and history to the shared family. Preserve current tab silhouette, drag membership, native bridge and keyboard routes. |
+| 3. Conversation and output | Finish source-to-step grouping and approval controls, remaining viewer/card consumers, image qualification, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
+| 4. Browser organization | Port suggestion rows/palette grouping, remaining home result types, tab slot geometry, overview/hover cards, Space/Profile pickers, tab groups, library and history to the shared family. Preserve current tab silhouette, drag membership, native bridge and keyboard routes. |
 | 5. Work management | Tasks/projects/routines/memory/files/diffs/console share list/detail structures; preserve filters, schedule/timezone validation, permission scopes, modified state, file saves and view-switch continuity. |
-| 6. Settings and remaining surfaces | Dedicated searchable preference subviews; model/service/vault/plugin connection flows; supported importer flow; optional resumable onboarding; downloads, translation, find/zoom, capture entry points, transient/error/recovery states, dialogs and about/update entry points. Do not manufacture unsupported reference capabilities. |
+| 6. Settings and remaining surfaces | Finish other preference subviews; model/service/vault/plugin connection flows; supported importer flow; optional resumable onboarding; downloads, translation, find/zoom, capture entry points, transient/error/recovery states, dialogs and about/update entry points. Do not manufacture unsupported reference capabilities. |
 | Native host | Candidate Store install/restart first; then real shell/native pages, glass/overlays/focus/dragging/traffic lights, Profiles, agent control and native messaging. Provider/native dialogs remain provider-owned. No release before user testing. |
 
 ## Verification record — September 24

@@ -51,7 +51,7 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/rail-draft-light-1440.png"
+        "docs/ui/evidence/2026-09-24/rail-draft-light-1440.png"
       ],
       "functionalEvidence": [
         "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
@@ -208,7 +208,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -219,7 +219,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Shared avatar/title/status row and one action menu. Named destructive confirmation retained; current/default Profile protections preserved. browser-profiles.test.tsx: 2 passed including created-window failure retry and confirmation gating."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -326,8 +328,8 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+        "docs/ui/evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "docs/ui/evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
       ],
       "functionalEvidence": [
         "components/ChatSessions.test.tsx: compact rows, one action menu, destructive confirmation",
@@ -359,8 +361,8 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+        "docs/ui/evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "docs/ui/evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
       ],
       "functionalEvidence": [],
       "nativeHostVerification": "pending Chromium candidate",
@@ -551,10 +553,10 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/rail-draft-light-1440.png",
-        "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
-        "evidence/2026-09-24/composer-queue-light-1280.png"
+        "docs/ui/evidence/2026-09-24/rail-draft-light-1440.png",
+        "docs/ui/evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "docs/ui/evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
+        "docs/ui/evidence/2026-09-24/composer-queue-light-1280.png"
       ],
       "functionalEvidence": [
         "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
@@ -982,8 +984,8 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+        "docs/ui/evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "docs/ui/evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
       ],
       "functionalEvidence": [],
       "nativeHostVerification": "pending Chromium candidate",
@@ -1024,7 +1026,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1034,8 +1036,12 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/image-inspection-dark-1440.png"
+      ],
+      "functionalEvidence": [
+        "Shared viewer identity, local Fit/100%/25\u2013400% controls, metadata disclosure and decode error. Fixture image attached through normal controls and opened at 125%."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1114,7 +1120,7 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/appearance-light-1440.png"
+        "docs/ui/evidence/2026-09-24/appearance-light-1440.png"
       ],
       "functionalEvidence": [
         "Local mock UI: nested shortcut search opens and focuses editor; Light theme and layout selection controls present."
@@ -1658,7 +1664,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1668,8 +1674,12 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/home-results-light-1440.png"
+      ],
+      "functionalEvidence": [
+        "Reads summary metadata for at most three visible conversations. Uses latest-run artifact excerpts with typed table/document/HTML-safe presentation; draft text takes precedence. Exact artifact open and stale-run filtering verified in components/RecentWork.test.tsx."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1816,7 +1826,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/Surface.BU6PW9lK.css"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1827,7 +1837,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Uses shared ImageViewer after existing lazy image read; preserves size/count limits and retries. Gallery-specific native visual verification pending."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1853,9 +1865,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
-        "evidence/2026-09-24/composer-queue-light-1280.png"
+        "docs/ui/evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "docs/ui/evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
+        "docs/ui/evidence/2026-09-24/composer-queue-light-1280.png"
       ],
       "functionalEvidence": [
         "RunControls extracted with existing pause/stop supersession semantics; latest conversation controls stay above composer. Existing 4 run-control checks pass; native takeover journey remains open."
@@ -1961,7 +1973,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1971,8 +1983,12 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/settings-subview-dark-1440.png"
+      ],
+      "functionalEvidence": [
+        "Dedicated Settings subview; unsaved keyword/name preserved across Back and search."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -2049,10 +2065,13 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/appearance-light-1440.png"
+        "docs/ui/evidence/2026-09-24/appearance-light-1440.png",
+        "docs/ui/evidence/2026-09-24/settings-subview-dark-1440.png"
       ],
       "functionalEvidence": [
-        "Local mock UI: nested shortcut search opens and focuses editor; Light theme and layout selection controls present."
+        "Local mock UI: nested shortcut search opens and focuses editor; Light theme and layout selection controls present.",
+        "Dedicated keyword/shortcut/Profile/backup subviews replace disclosures. Editors remain mounted across navigation. Search routes to the exact editor; Back restores trigger focus.",
+        "Mock UI verified unsaved keyword/name across Back and search navigation; keyword engine added to settings search. Vault initial category now selects Vault tab."
       ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
@@ -2069,7 +2088,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -2080,7 +2099,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Searchable command/chord list retains collision handling. Hidden subview disables key recording. components/ShortcutsSetting.test.tsx passed; 21 existing shortcut checks passed."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -2465,9 +2486,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
-        "evidence/2026-09-24/supporting-overlay-dark-1280.png"
+        "docs/ui/evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "docs/ui/evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
+        "docs/ui/evidence/2026-09-24/supporting-overlay-dark-1280.png"
       ],
       "functionalEvidence": [
         "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
@@ -3206,11 +3227,13 @@
       ],
       "visualEvidence": [
         "docs/ui/evidence/2026-09-24/home-minimal-dark-1440.png",
-        "docs/ui/evidence/2026-09-24/home-tools-dark-1440.png"
+        "docs/ui/evidence/2026-09-24/home-tools-dark-1440.png",
+        "docs/ui/evidence/2026-09-24/home-results-light-1440.png"
       ],
       "functionalEvidence": [
         "components/Composer.integration.test.tsx: separate answer/follow-up drafts, queued edit preserves existing text, context search and explicit selection, home tools disclosure.",
-        "Renderer TypeScript passes; run-controls, run-answer and CommandBar regression checks pass."
+        "Renderer TypeScript passes; run-controls, run-answer and CommandBar regression checks pass.",
+        "Home-specific draft identity prevents adoption of a saved-result conversation; attachment-only home drafts still restore. Four Composer integration checks and seven draft persistence checks pass."
       ],
       "nativeHostVerification": "pending Chromium candidate; Electron visual baseline required",
       "remaining": [
@@ -3359,6 +3382,33 @@
       "remaining": [
         "Roll shared family into remaining applicable consumers; home result cards still pending.",
         "Complete full visual and host matrix."
+      ]
+    },
+    {
+      "id": "ImageViewer",
+      "component": "apps/desktop/renderer/src/components/ImageViewer.tsx",
+      "entryPoint": "Saved image and run gallery",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "fit",
+        "zoom",
+        "keyboard",
+        "overflow",
+        "error"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/image-inspection-dark-1440.png"
+      ],
+      "functionalEvidence": [
+        "components/ImageViewer.test.tsx: two checks passed; local pixel zoom, bounds/reset and error/provenance."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Full appearance/size matrix and native image inspection."
       ]
     }
   ],
@@ -4058,6 +4108,8 @@
     "fullMatrix": "incomplete",
     "performanceComparison": "not run",
     "resultSlice": "5 new viewer/card checks; existing result drafts (3), CommandBar (9), supporting pane (1), menu (1) also passed.",
-    "timelineSlice": "13 timeline tests passed; 25 style checks rerun passed."
+    "timelineSlice": "13 timeline tests passed; 25 style checks rerun passed.",
+    "latestSlice": "ImageViewer 2; BrowserProfiles 2; shared menu 1; ShortcutsSetting 1; shortcut logic 21; chrome/style 25; RecentWork 1; result viewer/card 6 passed. Counts include reruns.",
+    "coverageIntegrity": "node scripts/audit-ui-coverage.mjs: 125 surfaces / 84 routes, zero inventory errors; no visual/native completion implied."
   }
 }

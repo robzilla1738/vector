@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ActionMenu, ListRow, StatusBadge } from "./ui";
 import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
 
 export function BrowserProfiles() {
@@ -32,21 +33,28 @@ export function BrowserProfiles() {
     try{await work();}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
     finally{pending.current=false;setBusy(false);}
   }
+  const openProfile=(profile:BrowserProfile)=>void action(async()=>{
+    if(!await bridge.openBrowserProfile(profile.id))throw new Error("This profile could not be opened.");
+    setMessage(`Opening ${profile.name} in a separate window…`);
+  });
+  const profileRow=(profile:BrowserProfile)=><div className="browser-profile-item" key={profile.id}>
+    <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" aria-hidden="true">{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
+      {profile.current ? <StatusBadge label="Current"/> : !profile.archived && <button className="btn sm" disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
+      <ActionMenu label={`Actions for ${profile.name} Profile`} actions={[
+        {label:"Rename",disabled:busy,onSelect:()=>{setEditing(profile.id);setName(profile.name);}},
+        ...(!profile.current && profile.id!=="default" ? [
+          {label:profile.archived?"Restore":"Archive",disabled:busy,onSelect:()=>void action(async()=>{setProfiles(await bridge.archiveBrowserProfile(profile.id,!profile.archived));if(editing===profile.id)setEditing(null);setMessage(profile.archived?`${profile.name} restored.`:`${profile.name} archived. Its data and any open windows are kept.`);})},
+          {label:"Delete…",disabled:busy,danger:true,onSelect:()=>setConfirming(profile.id)},
+        ]:[]),
+      ]}/>
+    </>}/>
+    {confirming===profile.id && <section className="browser-profile-confirmation" aria-label={`Delete ${profile.name} Profile`}><strong>Delete “{profile.name}”?</strong><p>This permanently removes its sign-ins, tabs, history, chats, memory and connections on this Mac. This cannot be undone.</p><div className="row"><button className="btn sm danger" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.deleteBrowserProfile(profile.id));setConfirming(null);setMessage(`${profile.name} and its browsing data were deleted.`);})}>Delete permanently</button><button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(null)}>Keep Profile</button></div></section>}
+  </div>;
   if(!inNativeHost||bridge.privateMode)return null;
   return <div className="browser-profiles">
     <p className="hint">Profiles keep website sign-ins, tabs, history, chats, memory and connections separate. Spaces organize work inside a profile and share its sign-ins.</p>
     {loading&&<p className="hint" role="status">Loading profiles…</p>}
-    {profiles.filter(profile=>!profile.archived||profile.current).map(profile=><div className="browser-profile-row" key={profile.id}>
-      <span className="browser-profile-name">{profile.name}{profile.current&&<small>Current profile</small>}</span>
-      {!profile.current&&<button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{if(!await bridge.openBrowserProfile(profile.id))throw new Error("This profile could not be opened.");setMessage(`Opening ${profile.name} in a separate window…`);})}>Open</button>}
-      <button className="btn sm ghost" disabled={busy} onClick={()=>{setEditing(profile.id);setName(profile.name);}}>Rename</button>
-      {!profile.current&&profile.id!=="default"&&<button className="btn sm ghost" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.archiveBrowserProfile(profile.id,true));if(editing===profile.id)setEditing(null);setMessage(`${profile.name} archived. Its data and any open windows are kept.`);})}>Archive</button>}
-      {!profile.current&&profile.id!=="default"&&(confirming===profile.id
-        ?<><button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.deleteBrowserProfile(profile.id));setConfirming(null);setMessage(`${profile.name} and its browsing data were deleted.`);})}>Delete permanently</button>
-          <button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(null)}>Keep</button></>
-        :<button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(profile.id)}>Delete…</button>)}
-    </div>)}
-    {confirming&&<p className="hint err">Deleting removes the profile’s sign-ins, tabs, history, chats, memory and connections on this Mac. This cannot be undone.</p>}
+    {profiles.filter(profile=>!profile.archived||profile.current).map(profileRow)}
     {editing!==null?<form className="browser-profile-editor" onSubmit={event=>{event.preventDefault();void action(async()=>{
       if(editing==="new"){
         const profile=await bridge.createBrowserProfile(name);
@@ -67,14 +75,7 @@ export function BrowserProfiles() {
     {profiles.some(profile=>profile.archived&&!profile.current)&&<details className="browser-profile-archive">
       <summary>Archived profiles</summary>
       <p className="hint">Archiving hides a profile from this list. Browsing data stays on this Mac, and open windows keep working.</p>
-      {profiles.filter(profile=>profile.archived&&!profile.current).map(profile=><div className="browser-profile-row" key={profile.id}>
-        <span className="browser-profile-name">{profile.name}</span>
-        <button className="btn sm ghost" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.archiveBrowserProfile(profile.id,false));setMessage(`${profile.name} restored.`);})}>Restore</button>
-        {confirming===profile.id
-          ?<><button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.deleteBrowserProfile(profile.id));setConfirming(null);setMessage(`${profile.name} and its browsing data were deleted.`);})}>Delete permanently</button>
-            <button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(null)}>Keep</button></>
-          :<button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(profile.id)}>Delete…</button>}
-      </div>)}
+      {profiles.filter(profile=>profile.archived&&!profile.current).map(profileRow)}
     </details>}
     {error&&<div role="alert"><p className="hint err">{error}</p><button className="btn sm ghost" disabled={busy} onClick={()=>setRefresh(value=>value+1)}>Refresh profiles</button></div>}
     {message&&<p className="hint" role="status">{message}</p>}

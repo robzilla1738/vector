@@ -23,7 +23,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import { createPortal } from "react-dom";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
-import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
+import { draftKey, HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge, type BrowserProfile } from "../bridge";
 import { hostOf, previewSplit } from "../workspace";
@@ -560,7 +560,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         setText("");
         if (activeChat.current === id) scrolling.jumpToLatest();
         const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, pageIds, contextPageRefs, scope: selectedContext ? "page" : "new", presentation: embedded && !home ? "rail" : "conversation", ownsDraft: true });
-        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
+        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
         else if (!readText()) setText(text);
       }
     } catch (error) { setSendError(error instanceof Error ? error.message : String(error)); }
@@ -739,7 +739,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
 
       </ComposerFrame>
     </div></div>
-    </div>{supporting && <SupportingContent key={supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
+    </div>{supporting && <SupportingContent key={supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
     {calendarSourceChoice && createPortal(<div className="scrim-soft" onMouseDown={() => setCalendarSourceChoice(null)}>
       <div ref={calendarChoiceRef} className="sheet conversation-calendar-choice" role="dialog" aria-modal="true" aria-labelledby="calendar-source-choice-title"
         onMouseDown={event => event.stopPropagation()} onKeyDown={event => {
