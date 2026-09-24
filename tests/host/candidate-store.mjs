@@ -105,7 +105,7 @@ async function inspect() {
   try {
     const record = extensionRecord();
     const workers = browser.contexts()[0]?.serviceWorkers().map(worker => worker.url()) ?? [];
-    const page = browser.contexts()[0]?.pages().find(item => item.url().includes(extensionId));
+    const page = browser.contexts()[0]?.pages().find(item => item.url().startsWith('https://chromewebstore.google.com/detail/') && item.url().includes(extensionId));
     let storeUiInstalled = false;
     if (page) {
       try {
