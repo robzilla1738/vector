@@ -45,6 +45,7 @@ import { WorkerPool } from "../scheduler/pool.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
 import { canResumeAfterPageRelease } from "../agent/control-authority.js";
 import { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
+import { observationEvidence } from "./observation-evidence.js";
 
 
 /**
@@ -544,15 +545,15 @@ export class RunService {
       // step recording is unified in PageService.recordStep (wired in main.ts)
       // — every execution, agent or program, lands in the same step ledger
       // with pageId so operations.compile can rebuild the trace (§10.3)
-      // keep the observation the planner saw so the run's steps can be
-      // inspected against their historical page state
+      // Keep bounded page prose for historical source evidence without
+      // persisting interactive control values or selector details.
       saveObservation: (runId, obs) =>
         this.deps.artifacts.save({
           runId,
           pageId: obs.pageId,
           label: `observation-r${obs.revision}`,
           mediaType: "application/json",
-          buffer: Buffer.from(JSON.stringify(obs)),
+          buffer: Buffer.from(JSON.stringify(observationEvidence(obs))),
         }).artifactId,
       saveCompletedReport: (run, markdown) => {
         const buffer = Buffer.from(markdown, "utf8");

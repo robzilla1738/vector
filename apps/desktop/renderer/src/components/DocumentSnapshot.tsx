@@ -29,6 +29,7 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
       {includedOnly ? <pre tabIndex={0} aria-label="Included document text">{snapshot.contextText ?? snapshot.content.slice(0, snapshot.contextCharacters)}</pre> : <DocumentContent key={attachmentId} filename={snapshot.attachment.filename} content={snapshot.content} />}
       <details className="snapshot-details"><summary>About this snapshot</summary>
       <p className="hint">Saved {new Date(snapshot.attachment.createdAt).toLocaleString()}. Changes to the original {snapshot.attachment.sourceUrl ? "page" : "file"} are not synced.</p>
+      <p className="hint">Removing this snapshot stops its use in new turns. Earlier turns and retries keep the text they used until you delete the chat.</p>
       <DocumentExtractionNote filename={snapshot.attachment.filename} />
       {snapshot.attachment.sourceUrl && <p className="snapshot-source">{snapshot.attachment.sourceUrl}{snapshot.attachment.sourceTruncated && " · Partial page text"}</p>}
       </details>

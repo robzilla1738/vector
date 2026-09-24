@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { EventBus, NullNativeBridge, PageService, Repo, StateService, openDb } from "@aux/runtime";
 import { slimObservation, wireObservation } from "../../apps/runtime/src/services/observation-wire";
+import { observationEvidence } from "../../apps/runtime/src/services/observation-evidence";
+import { conversationSourceFromArtifact } from "../../apps/runtime/src/services/conversation-sources";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import type { ElementRef, Observation, ObservationContent } from "@aux/contracts";
 import { ObservationSchema } from "@aux/contracts";
@@ -18,6 +20,22 @@ const content = (elements: ElementRef[], text = "hello"): ObservationContent => 
 });
 
 describe("wire observation", () => {
+  it("retains source evidence without saving control values or selector details", () => {
+    const obs: Observation = {
+      observationId: "o", pageId: "p", documentEpoch: 3, revision: 4, observedAt: 5, scope: "full",
+      content: content([el("r9", { tag: "input", value: "private input", selector: { css: "#private-selector" } })], "Cited page prose"),
+    };
+    obs.content.formFields[0]!.value = "private input";
+    const saved = observationEvidence(obs);
+    const json = JSON.stringify(saved);
+    expect(json).toContain("Cited page prose");
+    expect(json).not.toContain("private input");
+    expect(json).not.toContain("private-selector");
+    expect(ObservationSchema.safeParse(saved).success).toBe(true);
+    expect(conversationSourceFromArtifact({ artifactId: "a", runId: "run", pageId: "p", mediaType: "application/json", status: "complete" } as never, json))
+      .toMatchObject({ pageId: "p", url: "https://a.test/", documentEpoch: 3, revision: 4 });
+  });
+
   it("drops selectors, rects, main-frame keys, links, console and duplicated field attributes, and still parses", () => {
     const obs: Observation = {
       observationId: "o", pageId: "p", documentEpoch: 0, revision: 1, observedAt: 1, scope: "full",
