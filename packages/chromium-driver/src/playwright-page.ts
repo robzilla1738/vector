@@ -756,8 +756,8 @@ export class PlaywrightDriverPage implements DriverPage {
         }
         case "urlMatches": {
           const p = condition.pattern;
-          const matcher = p.startsWith("/") && p.endsWith("/") ? new RegExp(p.slice(1, -1)) : `**/*${p}*`;
-          await this.page.waitForURL(matcher as never, { timeout });
+          const regex = p.startsWith("/") && p.endsWith("/") ? new RegExp(p.slice(1, -1)) : null;
+          await this.page.waitForURL(url => regex ? regex.test(url.href) : url.href.includes(p), { timeout });
           break;
         }
         case "navigationSettled":

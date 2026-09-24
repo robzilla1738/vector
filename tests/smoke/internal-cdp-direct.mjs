@@ -272,7 +272,7 @@ try {
   const navigatingPage = await rpc('pages.open', { url: targetUrl, activate: true });
   const navigatedAction = await rpc('pages.execute', { program: { pageId: navigatingPage.pageId, steps: [
     { id: 'cross-nav', op: 'click', target: 'css:#cross-nav' },
-    { id: 'foreign-arrived', op: 'waitFor', condition: { kind: 'textVisible', text: 'Foreign origin loaded' } },
+    { id: 'foreign-arrived', op: 'waitFor', condition: { kind: 'urlMatches', pattern: `http://localhost:${fixture.address().port}/page?foreign` } },
     { id: 'foreign-click', op: 'click', target: 'css:#act' },
   ] } }, 25_000);
   assert.equal(navigatedAction.status, 'failed', JSON.stringify(navigatedAction));
