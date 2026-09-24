@@ -160,9 +160,10 @@ export class TaskEvidenceService {
   reconcileOperation(input:unknown):{ok:true}{
     const p=TaskReconcileOperationParams.parse(input);this.current(p.taskId,p.expectedRevision,undefined,true);this.tasks.requireLocalAuthority(p.taskId,p.expectedRevision);
     const operation=this.repo.db.prepare(`SELECT i.invocation_id AS invocationId,i.run_id AS runId,o.effect_class AS effectClass
-      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id JOIN runs r ON r.run_id=i.run_id
-      WHERE i.invocation_id=? AND json_extract(r.config,'$.taskId')=? AND o.effect_class!='read'
-      AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown')`).get(p.invocationId,p.taskId) as {invocationId:string;runId:string;effectClass:string}|undefined;
+      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
+      WHERE i.invocation_id=? AND coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=?
+      AND coalesce(json_extract(r.config,'$.taskRevision'),json_extract(i.inputs,'$.taskRevision'))=? AND o.effect_class!='read'
+      AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown')`).get(p.invocationId,p.taskId,p.expectedRevision) as {invocationId:string;runId?:string;effectClass:string}|undefined;
     if(!operation)throw new AuxError('conflict','No unresolved operation with this ID belongs to the task');
     const evidence=this.evidence(p.taskId,p.expectedRevision).find(item=>item.record.evidenceId===p.evidenceId)?.record;
     if(!evidence)throw new AuxError('invalid_params','Reconciliation needs evidence from the current task revision');
@@ -236,11 +237,13 @@ export class TaskEvidenceService {
       FROM action_intents a JOIN runs r ON r.run_id=a.run_id WHERE json_extract(r.config,'$.taskId')=?
       AND json_extract(r.config,'$.taskRevision')<=?
       AND a.status IN ('pending','uncertain') ORDER BY a.created_at,a.id`).all(taskId, task.revision) as unknown as TaskReceipt["unresolvedActions"];
-    const unresolvedOperations=this.repo.db.prepare(`SELECT i.invocation_id AS invocationId,i.run_id AS runId,
+    const operationRows=this.repo.db.prepare(`SELECT i.invocation_id AS invocationId,i.run_id AS runId,
       o.site_key||'/'||o.name AS operation,o.effect_class AS effectClass,i.status,i.effect_outcome AS effectOutcome,i.started_at AS startedAt,i.error
-      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id JOIN runs r ON r.run_id=i.run_id
-      WHERE json_extract(r.config,'$.taskId')=? AND json_extract(r.config,'$.taskRevision')<=? AND o.effect_class!='read'
-      AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') ORDER BY i.started_at,i.invocation_id`).all(taskId,task.revision) as unknown as TaskReceipt['unresolvedOperations'];
+      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
+      WHERE coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=?
+      AND coalesce(json_extract(r.config,'$.taskRevision'),json_extract(i.inputs,'$.taskRevision'))<=? AND o.effect_class!='read'
+      AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') ORDER BY i.started_at,i.invocation_id`).all(taskId,task.revision) as (Omit<TaskReceipt['unresolvedOperations'][number],'runId'|'error'> & {runId:string|null;error:string|null})[];
+    const unresolvedOperations=operationRows.map(({runId,error,...row})=>({...row,...(runId?{runId}:{}),...(error?{error}:{})}));
     const criteria: TaskReceipt["criteria"] = task.criteria.map(criterion => {
       const rows = this.evidence(taskId, task.revision, criterion.criterionId);
       const evidence = rows.map(({ record }) => { const reason = this.staleReason(record); return { record, stale: !!reason, reason }; });

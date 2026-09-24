@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ArtifactStore, EventBus, makeInvoker, openDb, Repo, RunService, SetService, substituteParameters } from "@aux/runtime";
+import { ArtifactStore, EventBus, makeInvoker, openDb, OperationService, Repo, RunService, SetService, substituteParameters } from "@aux/runtime";
 import type { PageService, Services, SettingsService } from "@aux/runtime";
 import { MethodSchemas, ResultSchemas, RunsStartParams, type MethodName, type PageTarget, type Program } from "@aux/contracts";
 
@@ -62,11 +62,12 @@ beforeAll(() => {
   const services: Services = {
     pages, sets, runs, artifacts, settings, events, repo,
     native:{available:()=>true,tabCommand:async()=>({commandId:"",status:"applied" as const,catalogVersion:0}),focusPage:async()=>({ok:true}),stopPage:async()=>({ok:true}),acquireStage:async()=>({ok:true}),releaseStage:async()=>({ok:true}),findInPage:async()=>({matches:0}),stopFind:async()=>({ok:true}),setZoom:async()=>({level:0}),setCookies:async()=>({ok:true,count:0}),storeSecret:async()=>({ok:true}),readSecret:async()=>({}),
-      developmentProjects:async ids=>ids.includes(projectId)?[nativeProject]:[],inspectProject:async()=>({project:nativeProject,status:' M app.ts\n',inspectedAt:2,environment:{detectedAt:2,tools:[],unsupported:[]},changes:{patch:'diff',untracked:[]}}),githubProject:async()=>({owner:'aux',repository:'fixture',remoteUrl:'https://github.com/aux/fixture',branch:nativeProject.branch,baseCommit:nativeProject.baseCommit,headCommit:nativeProject.baseCommit}),recordGithubStatus:async(_id,status)=>status,writeIncidentReport:async input=>({projectId:input.projectId,generatedAt:2,path:'/incident.md',content:'# incident',page:input.page,consoleCount:input.console.length,networkCount:input.network.length}),listProjectFiles:async()=>['app.ts'],readProjectFile:async()=>({projectId,name:'app.ts',content:'one',sha256:'b'.repeat(64)}),writeProjectFile:async input=>({projectId,name:input.name,content:input.content,sha256:'c'.repeat(64),recoveryPath:'/recovery'}),createProjectFile:async input=>({projectId,name:input.name,content:input.content,sha256:'d'.repeat(64)}),renameProjectFile:async input=>({projectId,name:input.nextName,content:'one',sha256:input.expectedHash,recoveryPath:'/rename-recovery'}),deleteProjectFile:async input=>({name:input.name,recoveryPath:'/delete-recovery'}),projectCommands:async()=>[],runProjectCommand:async()=>null,approveProjectPreview:async input=>({url:input.url,checkedAt:2,state:'responding',statusCode:200,message:'Received a successful HTTP response.'}),stopProjectCommand:async()=>({commandId:'22222222-2222-4222-8222-222222222222',projectId,command:'true',mode:'command',cwd:nativeProject.path,startedAt:1,finishedAt:2,state:'succeeded',exitCode:0,output:'',truncated:false}),prepareProjectReview:async()=>({projectId,generatedAt:2,path:'/review.md',content:'# review',title:'Review',snapshotTree:'e'.repeat(40),readiness:{state:'ready',reasons:[]},patch:{path:'/changes.patch',content:'diff',sha256:'a'.repeat(64),byteLength:4,complete:true},draft:{path:'/draft.md',content:'# draft',sha256:'b'.repeat(64)},manifestPath:'/manifest.json',manifestSha256:'c'.repeat(64)}),commitProject:async()=>null},
+      developmentProjects:async ids=>ids.includes(projectId)?[nativeProject]:[],inspectProject:async()=>({project:nativeProject,status:' M app.ts\n',inspectedAt:2,environment:{detectedAt:2,tools:[],unsupported:[]},changes:{patch:'diff',untracked:[]}}),githubProject:async()=>({owner:'aux',repository:'fixture',remoteUrl:'https://github.com/aux/fixture',branch:nativeProject.branch,baseCommit:nativeProject.baseCommit,headCommit:nativeProject.baseCommit}),recordGithubStatus:async(_id,status)=>status,writeIncidentReport:async input=>({projectId:input.projectId,generatedAt:2,path:'/incident.md',content:'# incident',page:input.page,consoleCount:input.console.length,networkCount:input.network.length}),listProjectFiles:async()=>['app.ts'],readProjectFile:async()=>({projectId,name:'app.ts',content:'one',sha256:'b'.repeat(64)}),writeProjectFile:async input=>{await invoke('tasks.confirmProjectInvocation',{taskId:input.task.taskId,expectedRevision:input.task.taskRevision,projectId:input.projectId,invocationId:input.task.invocationId},{external:false});return{projectId,name:input.name,content:input.content,sha256:'c'.repeat(64),recoveryPath:'/recovery'};},createProjectFile:async input=>({projectId,name:input.name,content:input.content,sha256:'d'.repeat(64)}),renameProjectFile:async input=>({projectId,name:input.nextName,content:'one',sha256:input.expectedHash,recoveryPath:'/rename-recovery'}),deleteProjectFile:async input=>({name:input.name,recoveryPath:'/delete-recovery'}),projectCommands:async()=>[],runProjectCommand:async()=>null,approveProjectPreview:async input=>({url:input.url,checkedAt:2,state:'responding',statusCode:200,message:'Received a successful HTTP response.'}),stopProjectCommand:async()=>({commandId:'22222222-2222-4222-8222-222222222222',projectId,command:'true',mode:'command',cwd:nativeProject.path,startedAt:1,finishedAt:2,state:'succeeded',exitCode:0,output:'',truncated:false}),prepareProjectReview:async()=>({projectId,generatedAt:2,path:'/review.md',content:'# review',title:'Review',snapshotTree:'e'.repeat(40),readiness:{state:'ready',reasons:[]},patch:{path:'/changes.patch',content:'diff',sha256:'a'.repeat(64),byteLength:4,complete:true},draft:{path:'/draft.md',content:'# draft',sha256:'b'.repeat(64)},manifestPath:'/manifest.json',manifestSha256:'c'.repeat(64)}),commitProject:async()=>null},
     drivers: () => ({ aux: null, chrome: null }),
     chromeAttach: async () => ({}), chromeDetach: async () => ({ ok: true }), chromeTabs: async () => [],
     importCookies: async () => ({}), benchRun: async () => ({ reportPath: "" }),
   };
+  services.operations = new OperationService({ repo, events, pages });
   invoke = makeInvoker(services);
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -125,6 +126,20 @@ describe("handler results conform to ResultSchemas", () => {
     expect(repo.getRun("exclude-active")?.status).toBe("cancelled");
     expect(repo.getSetting(`browsingMemoryPages:${workspace.workspaceId}`)).toEqual([]);
     expect(repo.getRun("forget-other")?.status).toBe("paused");
+  });
+
+  it("routes a task file write through the sealed native project journal", async () => {
+    const workspace = await invoke("workspaces.create", { name: "Project journal" }) as { workspaceId: string };
+    const task = await invoke("tasks.create", { workspaceId: workspace.workspaceId, title: "Edit file", objective: "Save app.ts",
+      criteria: [{ criterionId: "file", description: "File saved", verification: "manual" }],
+      resources: [{ resourceId: "repo", kind: "repository", projectId, locator: "/managed/checkout", label: "Fixture checkout", access: "write" }] }, { external: false }) as { taskId: string };
+    const saved = await invoke("development.writeFile", { taskId: task.taskId, expectedRevision: 1, projectId,
+      name: "app.ts", expectedHash: "b".repeat(64), content: "private fixture body" }, { external: false }) as { content: string };
+    expect(saved.content).toBe("private fixture body");
+    const record = repo.db.prepare("SELECT o.site_key AS site,i.status,i.effect_outcome AS outcome,i.inputs FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id ORDER BY i.rowid DESC LIMIT 1").get() as {site:string;status:string;outcome:string;inputs:string};
+    expect(record).toMatchObject({ site: "aux.project", status: "completed", outcome: "observed" });
+    expect(record.inputs).toContain(task.taskId);
+    expect(record.inputs).not.toContain("private fixture body");
   });
 
   it("workspaces/tasks persist revisions and bind a run before execution", async () => {

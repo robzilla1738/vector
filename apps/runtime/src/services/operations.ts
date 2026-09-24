@@ -9,6 +9,7 @@ import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
+import { TaskService } from "./tasks.js";
 
 export interface OperationRow {
   operationId: string;
@@ -55,6 +56,20 @@ const CONNECTOR_SITE = "aux.connector.google-calendar";
 const CONNECTOR_NAME = "events.list";
 const CONNECTOR_OPERATION_ID = "aux-connector-google-calendar-events-list";
 const CONNECTOR_IMPL_ID = "aux-connector-google-calendar-readonly";
+const PROJECT_SITE = "aux.project";
+type ProjectMutation = "file.write" | "file.create" | "file.rename" | "file.delete" | "command.start" | "commit.create";
+const PROJECT_EFFECT: Record<ProjectMutation, "write" | "destructive"> = {
+  "file.write": "write", "file.create": "write", "file.rename": "write", "file.delete": "destructive",
+  "command.start": "destructive", "commit.create": "write",
+};
+const PROJECT_AUDIT_FIELDS: Record<ProjectMutation, readonly string[]> = {
+  "file.write": ["name", "expectedHash", "contentSha256", "contentBytes"],
+  "file.create": ["name", "contentSha256", "contentBytes"],
+  "file.rename": ["name", "nextName", "expectedHash"],
+  "file.delete": ["name", "expectedHash"],
+  "command.start": ["mode", "commandSha256", "commandBytes"],
+  "commit.create": ["expectedPatchHash", "expectedTree", "messageSha256"],
+};
 
 /**
  * Error codes that mean the impl never got to act — nothing was dispatched,
@@ -140,6 +155,50 @@ export class OperationService {
     }
   }
 
+  /** Native project effects have one sealed route and retain the desktop approval boundary. */
+  async invokeProjectMutation<T>(input: {
+    name: ProjectMutation; taskId: string; taskRevision: number; projectId: string;
+    audit: Record<string, string | number | boolean | undefined>; execute: (invocationId: string) => Promise<T | null>;
+  }): Promise<T | null> {
+    const tasks = new TaskService(this.deps.repo, this.deps.events);
+    if (input.name === "command.start") tasks.prepareLocalCommand(input.taskId, input.taskRevision, input.projectId);
+    else tasks.prepareProjectAccess(input.taskId, input.taskRevision, input.projectId, true);
+    const operationId = `aux-project-${input.name.replace(".", "-")}`;
+    const implId = `${operationId}-native`;
+    const existing = this.deps.repo.getOperation(PROJECT_SITE, input.name);
+    if (existing && (existing.operationId !== operationId || existing.effectClass !== PROJECT_EFFECT[input.name]))
+      throw new AuxError("conflict", "A reserved project operation key is in use.");
+    if (!existing) this.deps.repo.saveOperation({ operationId, siteKey: PROJECT_SITE, name: input.name,
+      description: "Human-approved native project operation", effectClass: PROJECT_EFFECT[input.name] });
+    const implementation = this.deps.repo.listImplementations(operationId).find(impl => impl.implId === implId);
+    if (implementation && (implementation.kind !== "native-project" || implementation.state !== "validated" || implementation.executable !== "{}"))
+      throw new AuxError("conflict", "The reserved native project route changed.");
+    if (!implementation)
+      this.deps.repo.saveImplementation({ implId, operationId, kind: "native-project", executable: "{}", state: "validated" });
+    const invocationId = newId("inv"), startedAt = Date.now();
+    const audit = Object.fromEntries(PROJECT_AUDIT_FIELDS[input.name].flatMap(key =>
+      input.audit[key] === undefined ? [] : [[key, input.audit[key]]]));
+    const inputs = { ...audit, taskId: input.taskId, taskRevision: input.taskRevision, projectId: input.projectId };
+    const record = (status: string, effectOutcome: string, error?: string) => this.deps.repo.saveInvocation({
+      invocationId, operationId, implId, inputs, status, effectOutcome, routeReason: "task-attached native project operation",
+      startedAt, endedAt: status === "running" ? undefined : Date.now(), error,
+    });
+    record("running", "unknown");
+    try {
+      const result = await input.execute(invocationId);
+      record(result === null ? "denied" : "completed", result === null ? "not-dispatched" : "observed");
+      this.deps.events.emit("operation.invoked", { invocationId, operation: `${PROJECT_SITE}/${input.name}`,
+        kind: "native-project", status: result === null ? "denied" : "completed" });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 1000) : "Native project operation failed.";
+      record("failed", "unknown", message);
+      this.deps.events.emit("operation.invoked", { invocationId, operation: `${PROJECT_SITE}/${input.name}`,
+        kind: "native-project", status: "failed", error: message });
+      throw error;
+    }
+  }
+
   // ---------- registry ----------
 
   /** Register an operation from a proven program (§9.1 saveProgram → operation). */
@@ -154,7 +213,7 @@ export class OperationService {
     effectClass?: "read" | "write" | "destructive";
     guards?: Record<string, unknown>;
   }) {
-    if (opts.siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Connector operations are managed by Aux.");
+    if (opts.siteKey === CONNECTOR_SITE || opts.siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "System operations are managed by Aux.");
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
     this.deps.repo.saveOperation({
@@ -203,7 +262,7 @@ export class OperationService {
     guards?: Record<string, unknown>;
     validated?: boolean;
   }) {
-    if (opts.siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Connector operations are managed by Aux.");
+    if (opts.siteKey === CONNECTOR_SITE || opts.siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "System operations are managed by Aux.");
     let destination:URL;try{destination=new URL(opts.url);}catch{throw new AuxError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
     if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new AuxError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
     if(destination.host!==opts.siteKey)throw new AuxError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
@@ -288,7 +347,7 @@ export class OperationService {
   }
 
   forget(siteKey: string, name: string) {
-    if (siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Connector operations are managed by Aux.");
+    if (siteKey === CONNECTOR_SITE || siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "System operations are managed by Aux.");
     const op = this.get(siteKey, name);
     this.deps.repo.deleteOperation(op.operationId);
     return { ok: true as const };
@@ -436,7 +495,7 @@ export class OperationService {
     implId?: string; // explicit override — bypasses route selection
     requestKey?: string; // §16.4 idempotency key
   }): Promise<{ invocationId: string; status: string; route: RouteDecision; result?: ProgramResult | unknown; error?: string; deduplicated?: boolean }> {
-    if (opts.siteKey === CONNECTOR_SITE) throw new AuxError("permission_denied", "Use a task grant to read Calendar events.");
+    if (opts.siteKey === CONNECTOR_SITE || opts.siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "Use the task-scoped system route for this operation.");
     const op = this.deps.repo.getOperation(opts.siteKey, opts.name);
     if (!op) throw new AuxError("not_found", `no operation ${opts.siteKey}/${opts.name}`);
 

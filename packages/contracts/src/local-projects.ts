@@ -29,7 +29,7 @@ export type ProjectEnvironmentSuggestion=z.infer<typeof ProjectEnvironmentSugges
 export const ProjectInspectionSchema=z.object({project:LocalProjectSchema,status:z.string(),inspectedAt:z.number(),environment:ProjectEnvironmentSchema,changes:z.object({patch:z.string(),untracked:z.array(z.string()),error:z.string().optional()})});
 export type ProjectInspection = z.infer<typeof ProjectInspectionSchema>;
 
-export const ProjectCommandTaskSchema=z.object({taskId:z.string().min(1),taskRevision:z.number().int().positive(),title:z.string(),workspaceId:z.string()});
+export const ProjectCommandTaskSchema=z.object({taskId:z.string().min(1),taskRevision:z.number().int().positive(),title:z.string(),workspaceId:z.string(),invocationId:z.string().optional()});
 export type ProjectCommandTask=z.infer<typeof ProjectCommandTaskSchema>;
 export const ProjectCommandContextSchema=z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive()}).strict();
 export type ProjectCommandContext=z.infer<typeof ProjectCommandContextSchema>;
@@ -38,7 +38,7 @@ export const ProjectServiceStackRequestSchema=z.object({
   commands:z.array(z.string().trim().min(1).max(8000)).min(2).max(4),
 }).strict().superRefine((value,ctx)=>{if(new Set(value.commands).size!==value.commands.length)ctx.addIssue({code:'custom',message:'Each service command must be unique.',path:['commands']});});
 export type ProjectServiceStackRequest=z.infer<typeof ProjectServiceStackRequestSchema>;
-export const ProjectReviewContextSchema=z.object({taskId:z.string().min(1),taskRevision:z.number().int().positive(),title:z.string(),objective:z.string().optional(),workspaceId:z.string()});
+export const ProjectReviewContextSchema=z.object({taskId:z.string().min(1),taskRevision:z.number().int().positive(),title:z.string(),objective:z.string().optional(),workspaceId:z.string(),invocationId:z.string().optional()});
 export type ProjectReviewContext=z.infer<typeof ProjectReviewContextSchema>;
 export const ProjectCommandSchema=z.object({
   commandId:z.string().uuid(),projectId:z.string().uuid(),command:z.string().min(1).max(8000),

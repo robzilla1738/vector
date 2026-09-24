@@ -126,7 +126,7 @@ export const TaskReceiptSchema = z.object({
     review: CriterionReviewSchema.optional(),
   })),
   unresolvedActions: z.array(z.object({ intentId: text, runId: text, pageId: text, status: z.enum(["pending", "uncertain"]) })),
-  unresolvedOperations: z.array(z.object({ invocationId:text,runId:text,operation:text,effectClass:z.enum(['write','destructive','egress']),status:text,effectOutcome:text,startedAt:z.number(),error:z.string().optional() })).default([]),
+  unresolvedOperations: z.array(z.object({ invocationId:text,runId:text.optional(),operation:text,effectClass:z.enum(['write','destructive','egress']),status:text,effectOutcome:text,startedAt:z.number(),error:z.string().optional() })).default([]),
   runs: z.array(z.object({ runId: text, status: text, taskRevision: z.number().int().positive(), currentRevision: z.boolean(), error: z.string().optional(), durationMs: z.number().optional() })),
   modelCalls: z.number().int().nonnegative(), knownCostUsd: z.number().nonnegative(), costComplete: z.boolean(),
   modelIds: z.array(z.string()).default([]), providers: z.array(z.string()).default([]), destinations: z.array(z.string()).default([]),

@@ -166,10 +166,10 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
       </button>)}</div>
       </>}
     </section>)}
-    {receipt.unresolvedOperations.length>0&&<h4>Uncertain connected operations</h4>}
+    {receipt.unresolvedOperations.length>0&&<h4>Uncertain operations</h4>}
     {receipt.unresolvedOperations.map(operation=><section key={operation.invocationId} className="field" aria-label={`Uncertain operation ${operation.invocationId}`}>
       <p><strong>{operation.operation}</strong> · {operation.effectClass} · {operation.status}</p>
-      <span className="hint">Aux cannot prove whether this connected operation took effect. Check independent service records before continuing; this decision never repeats the operation.</span>
+      <span className="hint">Aux cannot prove whether this operation took effect. Check the project checkout or service records before continuing; this decision never repeats the operation.</span>
       {operation.error&&<p className="hint">Last error: {operation.error}</p>}
       {editable&&<><select aria-label="Operation reconciliation evidence" value={operationEvidence[operation.invocationId]??''} onChange={event=>setOperationEvidence(previous=>({...previous,[operation.invocationId]:event.target.value}))}>
         <option value="">Select evidence</option>{usableEvidence.map(item=><option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}</select>

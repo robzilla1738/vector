@@ -51,9 +51,9 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
   lines.push("## Unresolved actions", "");
   if (!receipt.unresolvedActions.length) lines.push("No unresolved actions recorded in this receipt.", "");
   for (const action of receipt.unresolvedActions) lines.push(`- ${text(action.intentId)} — ${action.status}; run ${text(action.runId)}; page ${text(action.pageId)}`);
-  lines.push('', '## Unresolved connected operations', '');
-  if(!receipt.unresolvedOperations.length)lines.push('No unresolved connected operations recorded in this receipt.','');
-  for(const operation of receipt.unresolvedOperations)lines.push(`- ${text(operation.invocationId)} — ${text(operation.operation)}; ${operation.effectClass}; ${text(operation.status)} / ${text(operation.effectOutcome)}; run ${text(operation.runId)}; started ${time(operation.startedAt)}${operation.error?`; error ${text(operation.error)}`:''}`);
+  lines.push('', '## Unresolved operations', '');
+  if(!receipt.unresolvedOperations.length)lines.push('No unresolved operations recorded in this receipt.','');
+  for(const operation of receipt.unresolvedOperations)lines.push(`- ${text(operation.invocationId)} — ${text(operation.operation)}; ${operation.effectClass}; ${text(operation.status)} / ${text(operation.effectOutcome)}${operation.runId?`; run ${text(operation.runId)}`:''}; started ${time(operation.startedAt)}${operation.error?`; error ${text(operation.error)}`:''}`);
   lines.push('', '## Local criterion checks', '');
   if (!receipt.verifications.length) lines.push('No local criterion checks recorded in this receipt.', '');
   else lines.push('These local matches are not human acceptance and do not prove a business outcome.', '');

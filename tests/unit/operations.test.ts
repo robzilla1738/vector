@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { openDb, Repo, EventBus, OperationService } from "@aux/runtime";
-import type { PageTarget, Program } from "@aux/contracts";
+import { openDb, Repo, EventBus, OperationService, TaskEvidenceService, TaskService } from "@aux/runtime";
+import { TaskReceiptSchema, type PageTarget, type Program } from "@aux/contracts";
 
 const repo = () => new Repo(openDb(":memory:"));
 
@@ -69,6 +69,58 @@ describe("OperationService", () => {
     expect(() => s.saveFromProgram({ siteKey: "aux.connector.google-calendar", name: "events.list", program: program() })).toThrow(/managed by Aux/);
     expect(() => s.saveRequestImpl({ siteKey: "aux.connector.google-calendar", name: "events.list", url: "https://calendar.google.com/api" })).toThrow(/managed by Aux/);
     await expect(s.invoke({ siteKey: "aux.connector.google-calendar", name: "events.list" })).rejects.toMatchObject({ code: "permission_denied" });
+  });
+
+  it("journals task-scoped native project effects and requires evidence after an unknown outcome", async () => {
+    const r = repo(), events = new EventBus(r), pages = fakePages();
+    try {
+      const tasks = new TaskService(r, events), workspace = tasks.createWorkspace("Project");
+      const projectId = "11111111-1111-4111-8111-111111111111";
+      const task = tasks.create({ workspaceId: workspace.workspaceId, title: "Edit checkout", objective: "Save an edit",
+        criteria: [{ criterionId: "edit", description: "Edit verified", verification: "manual" }],
+        resources: [{ resourceId: "repo", kind: "repository", projectId, locator: "/managed/checkout", label: "Checkout", access: "write" }] });
+      const operations = new OperationService({ repo: r, events, pages });
+      const base = { name: "file.write" as const, taskId: task.taskId, taskRevision: task.revision, projectId,
+        audit: { name: "app.ts", contentSha256: "a".repeat(64), content: "secret file body" } };
+      let sawRunning = false;
+      const applied = await operations.invokeProjectMutation({ ...base, execute: async invocationId => {
+        sawRunning = (r.db.prepare("SELECT status FROM operation_invocations ORDER BY started_at DESC LIMIT 1").get() as {status:string}).status === "running";
+        expect(tasks.confirmProjectInvocation(task.taskId, task.revision, projectId, invocationId).taskId).toBe(task.taskId);
+        expect(() => tasks.confirmProjectInvocation(task.taskId, task.revision, "wrong-project", invocationId)).toThrow(/does not match/);
+        return { saved: true };
+      } });
+      expect(applied).toEqual({ saved: true });
+      expect(sawRunning).toBe(true);
+      const firstId=(r.db.prepare("SELECT invocation_id AS id FROM operation_invocations ORDER BY rowid LIMIT 1").get() as {id:string}).id;
+      expect(() => tasks.confirmProjectInvocation(task.taskId, task.revision, projectId, firstId)).toThrow(/does not match/);
+      const denied = await operations.invokeProjectMutation({ ...base, execute: async () => null });
+      expect(denied).toBeNull();
+      const settled = r.db.prepare("SELECT status,effect_outcome FROM operation_invocations ORDER BY rowid").all();
+      expect(settled).toEqual([{ status: "completed", effect_outcome: "observed" }, { status: "denied", effect_outcome: "not-dispatched" }]);
+      await expect(operations.invokeProjectMutation({ ...base, execute: async () => { throw new Error("Native response lost"); } })).rejects.toThrow("Native response lost");
+      const uncertain = r.db.prepare("SELECT invocation_id AS id,inputs,status,effect_outcome AS outcome FROM operation_invocations ORDER BY rowid DESC LIMIT 1").get() as {id:string;inputs:string;status:string;outcome:string};
+      expect(uncertain).toMatchObject({ status: "failed", outcome: "unknown" });
+      expect(JSON.parse(uncertain.inputs)).toMatchObject({ taskId: task.taskId, projectId });
+      expect(uncertain.inputs).not.toContain("secret file body");
+      expect(() => tasks.prepareProjectAccess(task.taskId, 1, projectId, true)).toThrow(/unresolved operation/);
+      const second = tasks.create({ workspaceId: workspace.workspaceId, title: "Second editor", objective: "Inspect the same checkout",
+        criteria: [{ criterionId: "check", description: "Checkout inspected", verification: "manual" }],
+        resources: [{ resourceId: "repo-2", kind: "repository", projectId, locator: "/managed/checkout", label: "Checkout", access: "write" }] });
+      expect(() => tasks.prepareProjectAccess(second.taskId, 1, projectId, true)).toThrow(/Another task has an unfinished/);
+      expect(() => tasks.update({ taskId: task.taskId, expectedRevision: 1, title: "Revised" })).toThrow(/unresolved operation/);
+      const evidence = new TaskEvidenceService(r, events);
+      const receipt = TaskReceiptSchema.parse(evidence.receipt(task.taskId));
+      expect(receipt.unresolvedOperations).toMatchObject([{ invocationId: uncertain.id, operation: "aux.project/file.write" }]);
+      expect(receipt.unresolvedOperations[0]?.runId).toBeUndefined();
+      const note = evidence.recordNote({ taskId: task.taskId, expectedRevision: 1, criterionId: "edit", summary: "I checked app.ts in the checkout" }, "desktop_user");
+      evidence.reconcileOperation({ taskId: task.taskId, expectedRevision: 1, invocationId: uncertain.id,
+        outcome: "applied", evidenceId: note.evidenceId, note: "The file contains the requested edit" });
+      expect(evidence.receipt(task.taskId).unresolvedOperations).toEqual([]);
+      expect(tasks.update({ taskId: task.taskId, expectedRevision: 1, title: "Revised" }).revision).toBe(2);
+      expect(tasks.prepareProjectAccess(second.taskId, 1, projectId, true).taskId).toBe(second.taskId);
+      expect(() => operations.saveFromProgram({ siteKey: "aux.project", name: "file.write", program: program() })).toThrow(/managed by Aux/);
+      await expect(operations.invoke({ siteKey: "aux.project", name: "file.write" })).rejects.toMatchObject({ code: "permission_denied" });
+    } finally { r.db.close(); }
   });
 
   it("routes to the cheapest eligible implementation", async () => {

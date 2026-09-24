@@ -9,6 +9,11 @@ import { requireRuntime, runtimeInvoke } from "../supervisor.js";
 import { onNative } from "./validate.js";
 
 export function registerProjectMethods(ch: RpcChannel) {
+  const confirmInvocation=async(task:ProjectCommandTask,projectId:string)=>{
+    if(!task.invocationId)throw new Error('The native project request has no broker invocation. Review it again in Aux.');
+    return TaskSchema.parse(await runtimeInvoke('tasks.confirmProjectInvocation',{
+      taskId:task.taskId,expectedRevision:task.taskRevision,projectId,invocationId:task.invocationId}));
+  };
   onNative(ch,'native.developmentProjects',async ({projectIds})=>{
     const ids=new Set(projectIds);
     return (await localProjects.list()).filter(project=>ids.has(project.projectId));
@@ -38,7 +43,7 @@ export function registerProjectMethods(ch: RpcChannel) {
       buttons:['Cancel',create?'Create file':'Save change'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;
     requireRuntime('Runtime not connected');
-    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
+    const current=await confirmInvocation(task,input.projectId);
     if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the request again.');
     return task;
   };
@@ -61,7 +66,7 @@ export function registerProjectMethods(ch: RpcChannel) {
       detail:`Task: ${task.title} · Revision ${task.taskRevision}\nProject: ${project.name}\nCheckout: ${project.path}\nExpected file: ${input.expectedHash}\n\nAux will preserve the current file in recovery history. This does not change the original checkout, commit, push, or publish.`,
       buttons:['Cancel',action==='rename'?'Rename file':'Delete file'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;requireRuntime('Runtime not connected');
-    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
+    const current=await confirmInvocation(task,input.projectId);
     if(current.revision!==task.taskRevision)throw new Error('Task revision changed; review the request again.');
     return task;
   };
@@ -84,7 +89,7 @@ export function registerProjectMethods(ch: RpcChannel) {
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:mode==='service'?'Start agent-requested service':'Run agent-requested command',message:mode==='service'?'Keep this task service running?':'Run this task command?',
       detail:`Task: ${task.title} · Revision ${task.taskRevision}\n\n${command}\n\nWorking directory: ${project.path}\n\nThis is not a sandbox. The command can change local files and access the network. Aux uses a separate HOME and does not supply model credentials. Output is saved locally.`,buttons:['Cancel',mode==='service'?'Start service':'Run command'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;requireRuntime('Runtime not connected');
-    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
+    const current=await confirmInvocation(task,input.projectId);
     if(savingProjects.has(input.projectId))throw new Error('Wait for the file change before starting a command.');
     return projectCommands.start(project,command,{taskId:current.taskId,taskRevision:current.revision,title:current.title,workspaceId:current.workspaceId},mode);
   });
@@ -118,7 +123,7 @@ export function registerProjectMethods(ch: RpcChannel) {
     const project=(await localProjects.inspect(input.projectId)).project;
     const answer=await dialog.showMessageBox(state.win,{type:'warning',title:'Create local commit',message:`Create a commit on ${project.branch}?`,detail:`Task: ${task.title} · Revision ${task.taskRevision}\n\n${request.message}\n\nAuthor: ${request.authorName} <${request.authorEmail}>\nPatch: ${request.expectedPatchHash}\n\nThis creates one local commit in Aux’s isolated checkout. It does not push, publish, or open a pull request. Repository hooks, commit signing, credential helpers, and network protocols are disabled.`,buttons:['Cancel','Create local commit'],defaultId:0,cancelId:0,noLink:true});
     if(answer.response!==1)return null;requireRuntime('Runtime not connected');
-    const current=TaskSchema.parse(await runtimeInvoke('tasks.prepareLocalCommand', {taskId:task.taskId,expectedRevision:task.taskRevision,projectId:input.projectId}));
+    const current=await confirmInvocation(task,input.projectId);
     if(current.revision!==task.taskRevision||!current.resources.some(resource=>resource.kind==='repository'&&resource.projectId===input.projectId))throw new Error('The task or checkout attachment changed. Review the commit again.');
     if(projectCommandsActive(input.projectId)||savingProjects.has(input.projectId))throw new Error('The checkout became busy. Review the commit again.');
     return localProjects.commit(input.projectId,request,projectCommands.list(input.projectId),task);

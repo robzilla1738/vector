@@ -187,6 +187,7 @@ export class TaskService {
       this.requireRevision(prior, expectedRevision);
       this.requireLocalAuthority(taskId,expectedRevision);
       this.requireIdle(taskId);
+      this.requireResolved(taskId);
       const next = TaskSchema.parse({ ...prior, ...patch, revision: prior.revision + 1, updatedAt: Date.now() });
       this.requireRetainedCloudProjects(prior,next);
       const result = this.repo.db.prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
@@ -226,7 +227,7 @@ export class TaskService {
     return this.prepareProjectAccess(taskId,expectedRevision,projectId,true);
   }
 
-  prepareProjectAccess(taskId:string,expectedRevision:number,projectId:string,write=false):Task{
+  prepareProjectAccess(taskId:string,expectedRevision:number,projectId:string,write=false,exceptInvocationId=""):Task{
     const task=this.get(taskId);this.requireRevision(task,expectedRevision);
     if(task.state==='archived')throw new AuxError('conflict','Restore this task before using its project');
     if(!task.resources.some(resource=>resource.kind==='repository'&&resource.projectId===projectId))throw new AuxError('permission_denied','Attach this project to the saved task before using it');
@@ -234,8 +235,19 @@ export class TaskService {
     const access=resource.access ?? "write";
     if(write && access !== "write")throw new AuxError('permission_denied', access === "read" ? "This checkout is attached for reading. Set write access in Aux before saving files or running mutating commands." : "This checkout is a reference only. Set write access in Aux before using it.");
     if(!write && access === "reference")throw new AuxError('permission_denied','This checkout is a reference only. Set read or write access in Aux before inspecting it.');
-    if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireProjectAvailable(projectId,taskId);}
+    if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireResolved(taskId,exceptInvocationId);this.requireProjectAvailable(projectId,taskId);}
     return task;
+  }
+  /** Native approval rechecks one exact broker invocation without blocking itself. */
+  confirmProjectInvocation(taskId:string,expectedRevision:number,projectId:string,invocationId:string):Task{
+    const row=this.repo.db.prepare(`SELECT i.status,i.effect_outcome AS outcome,i.inputs,o.site_key AS site
+      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id WHERE i.invocation_id=?`).get(invocationId) as
+      {status:string;outcome:string;inputs:string;site:string}|undefined;
+    const inputs=row?JSON.parse(row.inputs) as {taskId?:string;taskRevision?:number;projectId?:string}:undefined;
+    if(!row||row.site!=='aux.project'||row.status!=='running'||row.outcome!=='unknown'||inputs?.taskId!==taskId
+      ||inputs.taskRevision!==expectedRevision||inputs.projectId!==projectId)
+      throw new AuxError('permission_denied','This native approval does not match an active project invocation.');
+    return this.prepareProjectAccess(taskId,expectedRevision,projectId,true,invocationId);
   }
   prepareCloudMutation(taskId:string,expectedRevision:number,projectId:string,environmentId:string):Task{
     const task=this.prepareProjectAccess(taskId,expectedRevision,projectId);const authority=this.cloudAuthority(taskId,expectedRevision),projectAuthority=this.cloudProjectAuthority(projectId);
@@ -261,6 +273,10 @@ export class TaskService {
   }
   private requireProjectAvailable(projectId:string,taskId:string):void{
     const cloud=this.cloudProjectAuthority(projectId);if(cloud)throw new AuxError('conflict',`Cloud environment ${cloud.remoteName} owns this project through task ${cloud.taskId}. Stop and checkpoint it before running or writing locally.`);
+    const operation=this.repo.db.prepare(`SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id
+      WHERE o.site_key='aux.project' AND json_extract(i.inputs,'$.projectId')=? AND json_extract(i.inputs,'$.taskId')!=?
+      AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') LIMIT 1`).get(projectId,taskId);
+    if(operation)throw new AuxError('conflict','Another task has an unfinished or uncertain operation in this checkout. Resolve it before using the project.');
     const row=this.repo.db.prepare(`SELECT json_extract(r.config,'$.taskId') AS taskId FROM runs r JOIN tasks t ON t.task_id=json_extract(r.config,'$.taskId') WHERE r.status IN ${ACTIVE_RUNS} AND t.task_id!=? AND EXISTS (SELECT 1 FROM json_each(t.json,'$.resources') resource WHERE json_extract(resource.value,'$.kind')='repository' AND json_extract(resource.value,'$.projectId')=?) LIMIT 1`).get(taskId,projectId) as {taskId:string}|undefined;
     if(row)throw new AuxError('conflict',`Another task is actively using this project. Stop that task before starting a second coordinator on the same checkout.`);
   }
@@ -280,12 +296,13 @@ export class TaskService {
     }
   }
 
-  private requireResolved(taskId:string){
+  private requireResolved(taskId:string,exceptInvocationId=""){
     const unresolved=this.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id
       WHERE json_extract(r.config,'$.taskId')=? AND a.status IN ('pending','uncertain') LIMIT 1`).get(taskId);
     if(unresolved)throw new AuxError('conflict','This task has an unresolved action; reconcile its outcome before continuing or archiving it');
-    const operation=this.repo.db.prepare(`SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id JOIN runs r ON r.run_id=i.run_id
-      WHERE json_extract(r.config,'$.taskId')=? AND o.effect_class!='read' AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') LIMIT 1`).get(taskId);
+    const operation=this.repo.db.prepare(`SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
+      WHERE coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=? AND o.effect_class!='read'
+      AND i.invocation_id!=? AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') LIMIT 1`).get(taskId,exceptInvocationId);
     if(operation)throw new AuxError('conflict','This task has an unresolved operation; reconcile its outcome before continuing or archiving it');
   }
 
