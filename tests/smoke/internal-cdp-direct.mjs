@@ -20,6 +20,15 @@ mkdirSync(dataDir);
 writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({ effectGrants: ['effect:read', 'effect:write'] }));
 let frameClicks = 0;
 const fixture = createServer((request, response) => {
+  if (request.url === '/posted' && request.method === 'POST') {
+    let body = '';
+    request.on('data', chunk => { body += String(chunk); });
+    request.on('end', () => {
+      response.setHeader('Content-Type', 'text/html');
+      response.end(`<title>Aux POST popup</title><main>${body === 'proof=kept' ? 'Popup POST body kept' : 'Popup POST body lost'}</main>`);
+    });
+    return;
+  }
   if (request.url === '/frame-click') { frameClicks++; response.writeHead(204).end(); return; }
   if (request.url === '/frame-child') {
     response.setHeader('Content-Type', 'text/html');
@@ -36,6 +45,11 @@ const fixture = createServer((request, response) => {
     response.end('<title>Aux popup proof</title><main id="opener-state"></main><script>document.querySelector("#opener-state").textContent = window.opener && window.opener.location.pathname === "/page" ? "Popup kept its opener" : "Popup lost its opener"</script><button id="popup-act" onclick="this.textContent=\'Popup clicked\'">Click popup</button>');
     return;
   }
+  if (request.url === '/background') {
+    response.setHeader('Content-Type', 'text/html');
+    response.end('<title>Aux background proof</title><main>Background tab loaded</main>');
+    return;
+  }
   if (request.url === '/file') {
     response.setHeader('Content-Type', 'text/plain');
     response.setHeader('Content-Disposition', 'attachment; filename="broker-proof.txt"');
@@ -43,7 +57,7 @@ const fixture = createServer((request, response) => {
     return;
   }
   response.setHeader('Content-Type', 'text/html');
-  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><button id="open-popup" onclick="window.open(\'/popup\',\'aux-popup\',\'width=500,height=400\')">Open popup</button><a id="download" href="/file">Download</a>');
+  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><button id="open-popup" onclick="window.open(\'/popup\',\'aux-popup\',\'width=500,height=400\')">Open popup</button><form method="post" action="/posted" target="aux-post"><input type="hidden" name="proof" value="kept"><button id="post-popup">POST popup</button></form><a id="background" href="/background">Background tab</a><a id="download" href="/file">Download</a>');
 });
 await new Promise(resolve => fixture.listen(0, resolve));
 const targetUrl = `http://127.0.0.1:${fixture.address().port}/page`;
@@ -137,6 +151,28 @@ try {
   assert.equal(popupClick.status, 'completed', JSON.stringify(popupClick));
   assert.match(JSON.stringify(await rpc('pages.observe', { pageId: popup.pageId })), /Popup clicked/);
 
+  const postAction = await rpc('pages.execute', { program: { pageId: page.pageId, steps: [{ id: 'post-popup', op: 'click', target: 'css:#post-popup' }] } });
+  assert.equal(postAction.status, 'completed', JSON.stringify(postAction));
+  let postPopup;
+  for (let attempt = 0; attempt < 40 && !postPopup; attempt++) {
+    postPopup = (await rpc('workspace.get')).pages.find(item => item.url.endsWith('/posted'));
+    if (!postPopup) await delay(100);
+  }
+  assert.ok(postPopup?.pageId, 'POST popup should register as an Aux page');
+  assert.match(JSON.stringify(await rpc('pages.observe', { pageId: postPopup.pageId })), /Popup POST body kept/);
+
+  await rpc('pages.activate', { pageId: page.pageId });
+  const backgroundAction = await rpc('pages.execute', { program: { pageId: page.pageId, steps: [{ id: 'background-tab', op: 'click', target: 'css:#background', button: 'middle' }] } });
+  assert.equal(backgroundAction.status, 'completed', JSON.stringify(backgroundAction));
+  let background;
+  for (let attempt = 0; attempt < 40 && !background; attempt++) {
+    background = (await rpc('workspace.get')).pages.find(item => item.url.endsWith('/background'));
+    if (!background) await delay(100);
+  }
+  assert.ok(background?.pageId, 'middle click should register a background Aux tab');
+  assert.match(JSON.stringify(await rpc('pages.observe', { pageId: background.pageId })), /Background tab loaded/);
+  assert.equal((await rpc('workspace.get')).activePageId, page.pageId, 'middle click should leave the opener active');
+
   const framePage = await rpc('pages.open', { url: `http://127.0.0.1:${fixture.address().port}/frame-parent`, activate: true });
   let frameOverview;
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -173,12 +209,15 @@ try {
   assert.ok(restarted.pages.some(tab => tab.pageId === second.pageId), 'second tab survives runtime restart');
   assert.ok(restarted.pages.some(tab => tab.pageId === framePage.pageId), 'cross-site frame tab survives runtime restart');
   assert.ok(restarted.pages.some(tab => tab.pageId === popup.pageId), 'native popup survives runtime restart');
+  assert.ok(restarted.pages.some(tab => tab.pageId === postPopup.pageId), 'POST popup survives runtime restart');
+  assert.ok(restarted.pages.some(tab => tab.pageId === background.pageId), 'background tab survives runtime restart');
   const afterRestart = await rpc('pages.observe', { pageId: page.pageId });
   assert.match(JSON.stringify(afterRestart), /Agent clicked and verified/);
   assert.ok((output.match(/internal CDP broker listening/g) ?? []).length >= 2, 'runtime generation receives a fresh broker');
   assert.equal((await rpc('pages.close', { pageId: popup.pageId })).ok, true, 'agent can close a native popup');
   assert.equal((await rpc('workspace.get')).pages.some(tab => tab.pageId === popup.pageId), false, 'closed popup leaves the runtime catalog');
-  console.log('Direct Aux launch: agent click, popup, download, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
+  assert.equal((await rpc('pages.close', { pageId: postPopup.pageId })).ok, true, 'agent can close a POST popup');
+  console.log('Direct Aux launch: agent click, popup including POST, background tab, download, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
 } finally {
   if (app.exitCode === null) {
     const exited = once(app, 'exit');
