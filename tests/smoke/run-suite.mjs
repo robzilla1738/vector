@@ -39,6 +39,7 @@ const RELEASE_SUITE = [
   "private-boundary-desktop",
   "authentication-navigation-desktop",
   "scoped-agent-connection-desktop",
+  "project-journal-desktop",
   "local-projects-desktop",
   "packaged",
 ];
