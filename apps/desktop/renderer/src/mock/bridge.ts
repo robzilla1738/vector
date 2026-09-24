@@ -737,6 +737,7 @@ export function installMockBridge(q: URLSearchParams) {
     onPageAction: () => () => {},
     retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
     tabAudio:async()=>({}),
+    tabsUnsavedWork:async(tabs:{pageId:string;url:string}[])=>Object.fromEntries(tabs.map(tab=>[tab.pageId,"clean" as const])),
     setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
     // Mock tab commands reuse the local page list — the real surface is the
     // main-owned catalog; visual dev only needs the pages themselves to move.

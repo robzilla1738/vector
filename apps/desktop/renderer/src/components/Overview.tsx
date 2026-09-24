@@ -32,6 +32,7 @@ export function Overview() {
   const pending = useRef(false);
   const stopClosing = useRef(false);
   const anchor = useRef<string | null>(null);
+  const duplicateSelection = useRef(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const grid = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState<string | null>(activePageId);
@@ -127,6 +128,7 @@ export function Overview() {
   }, [previewIds]);
 
   function select(pageId: string, extend: boolean) {
+    duplicateSelection.current=false;
     setSelected(previous => {
       const next = new Set(previous);
       const start = visible.findIndex(page => page.pageId === anchor.current);
@@ -163,12 +165,12 @@ export function Overview() {
       if (busy) { event.preventDefault(); event.stopPropagation(); stopClosing.current=true; return; }
       if (savingFolder) { event.preventDefault(); event.stopPropagation(); setSavingFolder(false); return; }
       event.preventDefault(); event.stopPropagation();
-      if (selection.length) setSelected(new Set());
+      if (selection.length) {duplicateSelection.current=false;setSelected(new Set());}
       else if (query) { setQuery(""); searchInput.current?.focus(); }
       else useStore.getState().setMode("focus");
     }
     if ((event.metaKey || event.ctrlKey) && event.key === "a" && !busy && !(event.target instanceof HTMLInputElement)) {
-      event.preventDefault(); setSelected(new Set(visible.map(page => page.pageId)));
+      event.preventDefault(); duplicateSelection.current=false;setSelected(new Set(visible.map(page => page.pageId)));
     }
   }}>
     <div className="ov-head">
@@ -182,13 +184,22 @@ export function Overview() {
       <select disabled={busy} aria-label="Filter tabs by space" value={spaceId} onChange={event => setSpaceId(event.target.value)}>
         <option value="">All spaces</option>{[...layout.spaces, ...(layout.archivedSpaces ?? [])].map(space => <option key={space.id} value={space.id}>{space.name}{layout.archivedSpaces?.some(item => item.id === space.id) ? " · Archived" : ""}</option>)}
       </select>
-      <button className="btn sm" disabled={busy || !visible.length} onClick={() => setSelected(new Set(visible.map(page => page.pageId)))}>Select all</button>
-      {duplicates.length > 0 && <button className="btn sm ghost" disabled={busy} title="Preview extra copies of the exact same address in each Space. Active, pinned, audible, and agent-controlled tabs are excluded." onClick={() => {
-        setSelected(new Set(duplicates)); anchor.current = duplicates[0] ?? null;
-        setSavingFolder(false); setError("");
-        setProgress(`Review ${duplicates.length} duplicate ${duplicates.length === 1 ? "tab" : "tabs"} below before closing. Active, pinned, and playing tabs stay open; site unsaved-work prompts can stop closing.`);
-        focusTab(duplicates[0]);
-      }}>Select duplicates · {duplicates.length}</button>}
+      <button className="btn sm" disabled={busy || !visible.length} onClick={() => {duplicateSelection.current=false;setSelected(new Set(visible.map(page => page.pageId)));}}>Select all</button>
+      {duplicates.length > 0 && <button className="btn sm ghost" disabled={busy} title="Check extra copies of the exact same address in each Space for unsaved edits before selecting them." onClick={() => void act(async () => {
+        const checked=await bridge.tabsUnsavedWork(duplicates.map(pageId=>{
+          const page=visible.find(item=>item.pageId===pageId)!;
+          return {pageId,url:page.url};
+        }));
+        const current=useStore.getState();
+        const eligible=visible.filter(page=>current.pages.some(item=>item.pageId===page.pageId&&item.url===page.url));
+        const protectedNow=protectedDuplicateIds(eligible,current.layout,current.tabAudio);
+        for(const page of eligible)if(!duplicates.includes(page.pageId)||checked[page.pageId]!=="clean")protectedNow.add(page.pageId);
+        const safe=duplicateTabs(eligible,current.layout,current.activePageId,protectedNow);
+        duplicateSelection.current=!!safe.length;setSelected(new Set(safe));anchor.current=safe[0]??null;setSavingFolder(false);
+        const held=duplicates.length-safe.length;
+        setProgress(safe.length ? `Review ${safe.length} duplicate ${safe.length===1?"tab":"tabs"} before closing.${held?` ${held} kept because of unsaved work, a changed tab, or an unavailable check.`:""}` : `No safe duplicates to select. ${held} ${held===1?"tab was":"tabs were"} kept because of unsaved work, a changed tab, or an unavailable check.`);
+        focusTab(safe[0]);
+      })}>Select duplicates · {duplicates.length}</button>}
     </div>
     {selection.length > 0 && <div className="ov-selection" role="region" aria-label="Selected tab actions" aria-busy={busy}>
       <strong>{selection.length} selected</strong>
@@ -229,6 +240,12 @@ export function Overview() {
       })}>{muteSelection ? "Mute tabs" : "Unmute tabs"}</button>}
       <button className="btn sm" disabled={busy || !selection.some(page => bookmarkWebUrl(page.url))} onClick={() => { setSavingFolder(value => value === "bookmarks" ? false : "bookmarks"); setFolderName(""); }}>Save bookmarks…</button>
       <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+        if(duplicateSelection.current){
+          const candidates=selection.map(page=>({pageId:page.pageId,url:page.url}));
+          const checked=await bridge.tabsUnsavedWork(candidates);
+          if(candidates.some(candidate=>checked[candidate.pageId]!=="clean"||!useStore.getState().pages.some(page=>page.pageId===candidate.pageId&&page.url===candidate.url)))
+            throw new Error("A selected duplicate has unsaved work or changed. Review the selection again before closing.");
+        }
         stopClosing.current=false;setClosing(true);
         let closed=0;
         try {
@@ -239,11 +256,12 @@ export function Overview() {
               setSelected(previous => { const next = new Set(previous); next.delete(pageId); return next; });
             },
           });
+          duplicateSelection.current=false;
           setProgress(`${closed} ${closed === 1 ? "tab" : "tabs"} closed.${completed ? (key("reopen-closed-tab") ? ` Reopen with ${key("reopen-closed-tab")}.` : "") : " Closing stopped."}`);
         } finally { setClosing(false); }
       })}>Close tabs</button>
       {closing && <button className="btn sm ghost" onClick={() => { stopClosing.current=true; setProgress("Stopping after the current tab…"); }}>Stop</button>}
-      <span className="sp" /><button className="icon-btn" disabled={busy} aria-label="Clear tab selection" onClick={() => {setSelected(new Set());setSavingFolder(false);}}>{I.close}</button>
+      <span className="sp" /><button className="icon-btn" disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{I.close}</button>
     </div>}
     {savingFolder && selection.length > 0 && <form className="ov-save-folder" onSubmit={event => {
       event.preventDefault(); void act(async () => {

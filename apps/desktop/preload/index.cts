@@ -77,6 +77,7 @@ const aux = {
   },
   retryDownload: (id:string) => ipcRenderer.invoke("ui.retryDownload",id) as Promise<void>,
   tabAudio:()=>ipcRenderer.invoke('ui.tabAudio') as Promise<Record<string,{muted:boolean;audible:boolean}>>,
+  tabsUnsavedWork:(tabs:{pageId:string;url:string}[])=>ipcRenderer.invoke('ui.tabsUnsavedWork',tabs) as Promise<Record<string,"clean"|"dirty"|"unknown">>,
   setTabMuted:(pageId:string,muted:boolean)=>ipcRenderer.invoke('ui.setTabMuted',pageId,muted) as Promise<void>,
   /** typed human tab commands (§7.2) — main-owned, deduplicated, ack'd */
   tabCommand:(command:import("@aux/contracts").TabCommand,catalogVersion?:number)=>ipcRenderer.invoke("ui.tabCommand",{commandId:`cmd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`,windowId,...(catalogVersion!==undefined?{catalogVersion}:{}) ,command}) as Promise<import("@aux/contracts").TabCommandAck>,

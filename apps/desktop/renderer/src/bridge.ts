@@ -76,6 +76,7 @@ export interface AuxBridge {
   onDownload(cb: (d: unknown) => void): () => void;
   retryDownload(id:string):Promise<void>;
   tabAudio():Promise<Record<string,{muted:boolean;audible:boolean}>>;
+  tabsUnsavedWork(tabs:{pageId:string;url:string}[]):Promise<Record<string,"clean"|"dirty"|"unknown">>;
   setTabMuted(pageId:string,muted:boolean):Promise<void>;
   /** typed human tab commands (§7.2) — actuated in main, no runtime round trip */
   tabCommand(command:TabCommand,catalogVersion?:number):Promise<TabCommandAck>;
@@ -244,6 +245,7 @@ const stub: AuxBridge = {
   onLoading: noop,
   retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
   tabAudio:async()=>({}),
+  tabsUnsavedWork:async()=>({}),
   setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
   tabCommand:async()=>({commandId:"",status:"rejected",catalogVersion:0,error:{code:"no_bridge",message:"Tab commands require Aux desktop"}}),
   bindTabSpace:async()=>{throw new Error("Space binding requires Aux desktop");},

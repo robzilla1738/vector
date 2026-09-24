@@ -10,6 +10,7 @@ import { flushTabPatches, noteTab, publishTabPatch } from "../tabs/publish.js";
 import { runtimeInvoke } from "../runtime/supervisor.js";
 import { tabCatalog } from "../tabs/store.js";
 import { viewHooks } from "../views/hooks.js";
+import { unsavedWorkScript } from "../tabs/unsaved-work.js";
 import { broadcastToShells, handleShell, requireOwnedEntry } from "../windows/registry.js";
 
 export function wireTabsIpc() {
@@ -46,6 +47,25 @@ export function wireTabsIpc() {
     return { migrated: ops.length };
   });
   handleShell('ui.tabAudio', state => Object.fromEntries(registry.all().filter(entry=>(entry.windowId??PRIMARY_WINDOW_ID)===state.id&&!entry.view.webContents.isDestroyed()).map(entry=>[entry.pageId,{muted:entry.view.webContents.isAudioMuted(),audible:entry.view.webContents.isCurrentlyAudible()}])));
+  handleShell("ui.tabsUnsavedWork", async (state, input: unknown) => {
+    if (!Array.isArray(input) || input.length > 100 || input.some(item => !item || typeof item.pageId !== "string" || typeof item.url !== "string"))
+      throw new Error("Choose up to 100 tabs to check for unsaved work.");
+    const result: Record<string, "clean" | "dirty" | "unknown"> = {};
+    for (const { pageId, url } of input as { pageId: string; url: string }[]) {
+      try {
+        const entry = requireOwnedEntry(state, pageId);
+        const contents = entry.view.webContents;
+        if (contents.isLoading() || contents.getURL() !== url || !/^https?:/.test(url)) { result[pageId] = "unknown"; continue; }
+        const frames = contents.mainFrame.framesInSubtree;
+        let dirty = false;
+        for (const frame of frames) {
+          if (await frame.executeJavaScript(unsavedWorkScript) === true) { dirty = true; break; }
+        }
+        result[pageId] = contents.isDestroyed() || contents.isLoading() || contents.getURL() !== url ? "unknown" : dirty ? "dirty" : "clean";
+      } catch { result[pageId] = "unknown"; }
+    }
+    return result;
+  });
 
   // Typed human tab commands (§7.2) — actuated in main; no runtime round trip.
   handleShell("ui.tabCommand", async (state, envelope: unknown) => {
