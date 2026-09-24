@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { EventBus, makeInvoker, openDb, Repo, TaskService, type PageService, type Services } from "@aux/runtime";
+import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => cleanup.splice(0).forEach(fn => fn()));
@@ -13,8 +14,9 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     resources: [{ resourceId: "page", kind: "page", locator: "p1", label: "Tab" }] });
   const seen: { allowEval?: boolean; taskId?: string; taskRevision?: number }[] = [];
   const pages = { execute: async (_program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; } } as unknown as PageService;
-  const invoke = makeInvoker({ repo, events, pages } as Services);
-  return { invoke, seen, tasks, task, workspace, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
+  const pageOwnership = new PageOwnership();
+  const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership } } as Services);
+  return { invoke, seen, tasks, task, workspace, pageOwnership, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
 }
 
 const program = { program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] } };
@@ -24,6 +26,19 @@ it("never lets a task-scoped connection run page script through pages.execute", 
   await f.invoke("pages.execute", { ...program, taskId:f.task.taskId, expectedRevision:1 }, { external: true, connectionId: "c1", scope: f.scope });
   expect(f.seen.at(-1)?.allowEval).toBe(false);
   expect(f.seen.at(-1)).toMatchObject({taskId:f.task.taskId,taskRevision:1});
+});
+
+it("rejects an external page program while a set member owns its tab", async () => {
+  const f = fixture();
+  const release = f.pageOwnership.tryAcquire({ pageId: "p1", actor: "set_member", runId: "set-run", memberId: "member" });
+  try {
+    await expect(f.invoke("pages.execute", { ...program, taskId: f.task.taskId, expectedRevision: 1 },
+      { external: true, connectionId: "c1", scope: f.scope })).rejects.toMatchObject({ code: "conflict" });
+    expect(f.seen).toHaveLength(0);
+  } finally { release(); }
+  await f.invoke("pages.execute", { ...program, taskId: f.task.taskId, expectedRevision: 1 },
+    { external: true, connectionId: "c1", scope: f.scope });
+  expect(f.seen).toHaveLength(1);
 });
 
 it("keeps evaluate available to the owner bearer token", async () => {

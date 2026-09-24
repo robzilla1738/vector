@@ -85,18 +85,6 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   };
   const maxSteps = run.config?.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
-  if (run.config?.deadlineMs) {
-    AbortSignal.timeout(run.config.deadlineMs).addEventListener(
-      "abort",
-      () => {
-        if (c.abort.signal.aborted) return;
-        c.deadlineHit = true;
-        c.abort.abort();
-        c.answerWaiter?.resolve("");
-      },
-      { once: true },
-    );
-  }
   const prior = run.config?.checkpoint as { unresolvedEffects?: string[] } | undefined;
   if (prior?.unresolvedEffects?.length) {
     const recovery = recoverAfterCrash({
@@ -196,7 +184,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     if (e instanceof ModelFailureError) giveUpRepair(s, e.failure.message, e.failure);
     else giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
-    if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
+    if (c.deadlineHit && self.ownsPages(runId) && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       const deadline = new AbortController();
       const timer = setTimeout(() => deadline.abort(), deadlineFinalMs(run.config?.deadlineMs));
       s.c = { ...c, abort: deadline, answerWaiter: undefined };

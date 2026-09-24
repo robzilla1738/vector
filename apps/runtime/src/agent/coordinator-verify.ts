@@ -260,6 +260,7 @@ export interface CoordinatorLoopHost {
   finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]): void;
   waitIfPaused(c: { abort: AbortController; paused: boolean }, runId: string): Promise<void>;
   waitForAnswer(c: { answerWaiter?: { resolve: (answer: string) => void } }, runId: string): Promise<string>;
+  ownsPages(runId: string): boolean;
   tryVisionPlan(args: Parameters<typeof tryVisionPlan>[1]): ReturnType<typeof tryVisionPlan>;
   assertTargetAlive(obs: Observation): void;
 }

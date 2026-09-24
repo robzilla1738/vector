@@ -238,6 +238,14 @@ export function makeInvoker(s: Services) {
       if (method === "tasks.start" && Array.isArray(params.pageIds)) for (const pageId of params.pageIds) requireScopedPage(scope, pageId,client.connectionId);
     }
 
+    const withExternalPage = async <T>(pageId: string, action: () => Promise<T>, taskId?: string): Promise<T> => {
+      const release = client.external ? s.runs.pageOwnership.tryAcquire({
+        pageId, actor: "external", taskId, connectionId: client.connectionId,
+      }) : undefined;
+      try { return await action(); }
+      finally { release?.(); }
+    };
+
     switch (method as MethodName) {
       case "calendar.connections.list":
         if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
@@ -619,7 +627,7 @@ export function makeInvoker(s: Services) {
       // pages
       case "pages.list": return scope ? s.pages.list(params as never).filter(page => scopedPageIds(scope,client.connectionId).has(page.pageId)) : s.pages.list(params as never);
       case "pages.open": return s.pages.open(params as never);
-      case "pages.close": return s.pages.close(params.pageId);
+      case "pages.close": return withExternalPage(params.pageId, () => s.pages.close(params.pageId));
       case "pages.moveToWindow": {
         if (client.external) throw new AuxError("permission_denied", "Move tabs through the Aux browser interface.");
         const space = spaces.list().find(space => space.id === params.spaceId && !space.archived);
@@ -636,12 +644,12 @@ export function makeInvoker(s: Services) {
         for (const intent of pending) ledger.reconcile(intent.id, params.outcome, note);
         return { reconciled: pending.map(intent => intent.id) };
       }
-      case "pages.activate": return s.pages.activate(params.pageId);
-      case "pages.navigate": return s.pages.navigate(params.pageId, params["url" as never]);
-      case "pages.back": return s.pages.back(params.pageId);
-      case "pages.forward": return s.pages.forward(params.pageId);
-      case "pages.reload": return s.pages.reload(params.pageId);
-      case "pages.stop": return s.pages.stop(params.pageId);
+      case "pages.activate": return withExternalPage(params.pageId, () => s.pages.activate(params.pageId));
+      case "pages.navigate": return withExternalPage(params.pageId, () => s.pages.navigate(params.pageId, params["url" as never]));
+      case "pages.back": return withExternalPage(params.pageId, () => s.pages.back(params.pageId));
+      case "pages.forward": return withExternalPage(params.pageId, () => s.pages.forward(params.pageId));
+      case "pages.reload": return withExternalPage(params.pageId, () => s.pages.reload(params.pageId));
+      case "pages.stop": return withExternalPage(params.pageId, () => s.pages.stop(params.pageId));
       case "pages.observe": {
         const { format, ...req } = params as { format?: "full" | "compact" } & Record<string, unknown>;
         return wireObservation(await s.pages.observe(params.pageId, req as never), format);
@@ -669,10 +677,10 @@ export function makeInvoker(s: Services) {
         // the same round trip via a same-lane follow-up observe
         // (PageService.execute).
         const { format, ...req } = p.returnObservation ?? {};
-        const { observation, ...result } = await s.pages.execute(p.program, { allowEval: !scope, taskId:p.taskId,taskRevision:p.expectedRevision,
-          beforeJournal:validateBeforeJournal,checkValid:validateDuringExecution }, {
-          returnObservation: p.returnObservation ? (req as never) : undefined,
-        });
+        const { observation, ...result } = await withExternalPage(p.program.pageId, () => s.pages.execute(p.program,
+          { allowEval: !scope, taskId:p.taskId,taskRevision:p.expectedRevision,
+            beforeJournal:validateBeforeJournal,checkValid:validateDuringExecution },
+          { returnObservation: p.returnObservation ? (req as never) : undefined }), p.taskId);
         if (!p.returnObservation) return result;
         const wire = observation ? wireObservation(observation, format as "full" | "compact" | undefined) : undefined;
         return { ...result, observation: wire && "observation" in wire ? wire.observation : wire };
@@ -691,7 +699,9 @@ export function makeInvoker(s: Services) {
       }
       case "pages.dialog": {
         const p = params as { pageId: string; action?: "list" | "accept" | "dismiss"; promptText?: string };
-        return s.pages.dialog(p.pageId, p.action ?? "list", p.promptText);
+        return p.action && p.action !== "list"
+          ? withExternalPage(p.pageId, () => s.pages.dialog(p.pageId, p.action!, p.promptText))
+          : s.pages.dialog(p.pageId, "list", p.promptText);
       }
       case "pages.network": {
         const p = params as { pageId: string; since?: number; urlIncludes?: string; limit?: number };
@@ -703,15 +713,15 @@ export function makeInvoker(s: Services) {
       case "pages.capture": return s.pages.capture(params.pageId, params as never);
       case "pages.find": {
         const p = params as { pageId: string; text: string; forward: boolean; findNext: boolean };
-        return s.pages.find(p.pageId, p.text, p.forward, p.findNext);
+        return withExternalPage(p.pageId, () => s.pages.find(p.pageId, p.text, p.forward, p.findNext));
       }
       case "pages.stopFind": {
         const p = params as { pageId: string; action: "clear" | "keep" };
-        return s.pages.stopFind(p.pageId, p.action);
+        return withExternalPage(p.pageId, () => s.pages.stopFind(p.pageId, p.action));
       }
       case "pages.zoom": {
         const p = params as { pageId: string; level?: number; delta?: number; reset?: boolean; direction?: "in" | "out" };
-        return s.pages.zoom(p.pageId, p.level, p.delta, p.reset, p.direction);
+        return withExternalPage(p.pageId, () => s.pages.zoom(p.pageId, p.level, p.delta, p.reset, p.direction));
       }
       case "pages.takeover": return s.pages.takeover(params.pageId);
       case "pages.pickElement": {
@@ -720,17 +730,19 @@ export function makeInvoker(s: Services) {
       }
       case "pages.resume": return s.pages.resume(params.pageId);
       case "pages.openLive": {
-        const page = s.pages.get(params.pageId);
-        const chrome = s.drivers().chrome;
-        if (page.backend === "chrome" && chrome?.activateTarget) {
-          await chrome.activateTarget(page.targetId);
-          return { ok: true };
-        }
-        if (page.backend === "aux") {
-          await s.pages.activate(page.pageId);
-          return { ok: true };
-        }
-        throw new AuxError("capability_unsupported", `cannot focus a ${page.backend} page's native surface`);
+        return withExternalPage(params.pageId, async () => {
+          const page = s.pages.get(params.pageId);
+          const chrome = s.drivers().chrome;
+          if (page.backend === "chrome" && chrome?.activateTarget) {
+            await chrome.activateTarget(page.targetId);
+            return { ok: true };
+          }
+          if (page.backend === "aux") {
+            await s.pages.activate(page.pageId);
+            return { ok: true };
+          }
+          throw new AuxError("capability_unsupported", `cannot focus a ${page.backend} page's native surface`);
+        });
       }
 
       // sets

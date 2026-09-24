@@ -40,6 +40,7 @@ import { modelCallCost } from "../agent/model-client.js";
 import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
+import { PageOwnership } from "../scheduler/page-ownership.js";
 import { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
 
 
@@ -133,6 +134,7 @@ export function budgetSections(sections: { text?: string; priority: number }[], 
 }
 
 export class RunService {
+  readonly pageOwnership = new PageOwnership();
   readonly coordinator: RunCoordinator;
   readonly images: ConversationImages;
   readonly messages: RunMessageQueue;
@@ -471,7 +473,7 @@ export class RunService {
     };
   }) {
     this.images = new ConversationImages(deps.repo, deps.artifacts, chatId => deps.events.emit("conversation.context.changed", {chatId}));
-    this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() });
+    this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() }, this.pageOwnership);
     const durableWrites = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
     this.coordinator = new RunCoordinator({
       repo: deps.repo,
@@ -514,6 +516,7 @@ export class RunService {
       vault: deps.vault,
       calendar: deps.calendar,
       operations: deps.operations,
+      pageOwnership: this.pageOwnership,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,

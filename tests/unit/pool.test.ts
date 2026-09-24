@@ -46,9 +46,9 @@ describe("WorkerPool", () => {
 
   it("owns a page for one set member through its full pool lease", async () => {
     const pool = new WorkerPool({ maxWorkers: 3, perOrigin: 3 });
-    const first = await pool.acquire("http://a.test/one", undefined, { pageId: "tab", runId: "run-a", memberId: "member-a" });
+    const first = await pool.acquire("http://a.test/one", undefined, { pageId: "tab", actor: "set_member", runId: "run-a", memberId: "member-a" });
     let secondStarted = false;
-    const pending = pool.acquire("http://a.test/one", undefined, { pageId: "tab", runId: "run-b", memberId: "member-b" })
+    const pending = pool.acquire("http://a.test/one", undefined, { pageId: "tab", actor: "set_member", runId: "run-b", memberId: "member-b" })
       .then(release => { secondStarted = true; return release; });
     expect(pool.stats().pageOwners.tab).toMatchObject({ runId: "run-a", memberId: "member-a" });
     await Promise.resolve();

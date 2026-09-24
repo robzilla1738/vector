@@ -188,7 +188,7 @@ export class SetRunner {
       let releaseSem: (() => void) | undefined;
       let release: (() => void) | undefined;
       let workerPageId: string | undefined;
-      const owner = m.pageId ? { pageId: m.pageId, runId: opts.runId, memberId: m.memberId } : undefined;
+      const owner = m.pageId ? { pageId: m.pageId, actor: "set_member" as const, runId: opts.runId, memberId: m.memberId } : undefined;
       try {
         releaseSem = await sem.acquire(signal);
         // pause may have arrived while this member waited for capacity —

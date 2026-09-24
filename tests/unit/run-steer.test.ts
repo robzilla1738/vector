@@ -3,6 +3,7 @@ import type { ModelClient } from "@aux/runtime";
 import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import type { Observation, PlanStep } from "@aux/contracts";
 import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
+import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
@@ -19,14 +20,16 @@ function harness(model: ModelClient, execute = vi.fn(async () => ({ status: "com
   const db = openDb(":memory:"); databases.push(db);
   const repo = new Repo(db);
   const events = new EventBus(repo);
+  const pageOwnership = new PageOwnership();
   const coordinator = new RunCoordinator({ repo, events,
     pages: { observe: vi.fn(async () => observation()), execute, livePageIds: () => ["page"], get: () => ({ viewStatus: "visible" }) } as never,
     model: () => model, defaultModel: () => "fixture", recoveryModel: () => undefined, recordModelCall: () => {},
     grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
+    pageOwnership,
   });
   const messages = new RunMessageQueue(repo, events, async () => { throw new Error("unexpected queue delivery"); },
     runId => coordinator.controls.has(runId), runId => coordinator.steer(runId));
-  return { repo, coordinator, messages };
+  return { repo, coordinator, messages, pageOwnership };
 }
 
 const refs = [{ pageId: "page", url: "https://example.test/", documentEpoch: 1 }];
@@ -34,6 +37,82 @@ const steer = (runId: string) => ({ messageId: "11111111-1111-4111-8111-11111111
   text: "Use the updated requirement", pageIds: ["page"], contextPageRefs: refs, expectedRevision: 0 });
 
 describe("run steering", () => {
+  it("releases a paused coordinator page after its active plan settles", async () => {
+    let releasePlan!: () => void;
+    const planGate = new Promise<void>(resolve => { releasePlan = resolve; });
+    let calls = 0;
+    const model: ModelClient = {
+      generateStructured: async options => {
+        calls++;
+        if (calls === 1) await planGate;
+        return { object: options.schema.parse(calls === 1
+          ? { status: "continue", message: "Looking again", observationRequest: { scope: "full" } }
+          : { status: "done", message: "Done", result: { answer: "Example result" } }), durationMs: 1 };
+      },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const { repo, coordinator, messages, pageOwnership } = harness(model);
+    const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"] });
+    await vi.waitFor(() => expect(calls).toBe(1));
+    expect(pageOwnership.snapshot().page).toMatchObject({ runId: run.runId });
+    coordinator.pause(run.runId);
+    releasePlan();
+    await vi.waitFor(() => expect(pageOwnership.snapshot().page).toBeUndefined());
+    const releaseExternal = pageOwnership.tryAcquire({ pageId: "page", actor: "external" });
+    coordinator.resume(run.runId);
+    await new Promise(resolve => setTimeout(resolve, 140));
+    expect(calls).toBe(1);
+    releaseExternal();
+    await vi.waitFor(() => expect(pageOwnership.snapshot().page).toMatchObject({ actor: "coordinator" }));
+    await vi.waitFor(() => expect(calls).toBeGreaterThan(1));
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
+    expect(pageOwnership.snapshot().page).toBeUndefined();
+    await messages.stop();
+  });
+
+  it("counts page wait against the run deadline without starting a model call", async () => {
+    let calls = 0;
+    const model: ModelClient = {
+      generateStructured: async options => { calls++; return { object: options.schema.parse({ status: "done", result: { answer: "Example result" } }), durationMs: 1 }; },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const { repo, coordinator, messages, pageOwnership } = harness(model);
+    const release = pageOwnership.tryAcquire({ pageId: "page", actor: "set_member", runId: "set-run" });
+    const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"], deadlineMs: 40 });
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("failed"));
+    expect(repo.getRun(run.runId)?.error).toMatch(/deadline exceeded/);
+    expect(calls).toBe(0);
+    release();
+    expect(pageOwnership.snapshot().page).toBeUndefined();
+    await messages.stop();
+  });
+
+  it("releases a page while awaiting input and reacquires it before continuing", async () => {
+    let calls = 0;
+    const model: ModelClient = {
+      generateStructured: async options => ({ object: options.schema.parse(++calls === 1
+        ? { status: "needs_input", message: "Need detail", question: "Which version?" }
+        : { status: "done", message: "Done", result: { answer: "Example result" } }), durationMs: 1 }),
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const { repo, coordinator, messages, pageOwnership } = harness(model);
+    const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"] });
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
+    expect(pageOwnership.snapshot().page).toBeUndefined();
+    const releaseExternal = pageOwnership.tryAcquire({ pageId: "page", actor: "external" });
+    coordinator.answer(run.runId, "Latest");
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(calls).toBe(1);
+    releaseExternal();
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
+    expect(calls).toBe(2);
+    expect(pageOwnership.snapshot().page).toBeUndefined();
+    await messages.stop();
+  });
+
   it("wakes needs-input without treating the correction as an answer", async () => {
     const prompts: string[] = [];
     const model: ModelClient = {

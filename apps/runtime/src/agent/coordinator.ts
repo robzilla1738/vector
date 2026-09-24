@@ -15,6 +15,7 @@ import type { ModelClient } from "./model-client.js";
 import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
+import { PageOwnership } from "../scheduler/page-ownership.js";
 import type { CompiledSkill } from "./skills.js";
 import {
   DEFAULT_MAX_MODEL_CALLS,
@@ -32,6 +33,7 @@ export interface RunControl {
   dispatchAbort?: AbortController;
   interruptPlanning?: () => void;
   deadlineHit?: boolean;
+  deadlineTimer?: ReturnType<typeof setTimeout>;
   answerWaiter?: { resolve: (answer: string) => void };
   span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
 }
@@ -71,6 +73,7 @@ export interface CoordinatorDeps {
   vault?: import("../services/vault.js").VaultService;
   calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
   operations?: import("../services/operations.js").OperationService;
+  pageOwnership?: PageOwnership;
 }
 
 /** Run lifecycle and control; the agent loop itself lives in `runCoordinatorLoop`. */
@@ -84,11 +87,14 @@ export class RunCoordinator {
   private leases: CoordinatorLease;
   private leaseOwner = coordinatorOwnerId();
   private heldLeases = new Set<string>();
+  private readonly pageOwnership: PageOwnership;
+  private pageReleases = new Map<string, () => void>();
 
   constructor(deps: CoordinatorDeps) {
     this.deps = deps;
     this.durable = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
     this.leases = new CoordinatorLease(deps.repo.db);
+    this.pageOwnership = deps.pageOwnership ?? new PageOwnership();
   }
 
   seedSkills(skills: CompiledSkill[]) {
@@ -188,17 +194,26 @@ export class RunCoordinator {
     const runLease = `run:${run.runId}`;
     this.leases.acquire(runLease, this.leaseOwner);
     this.heldLeases.add(runLease);
-    this.controls.set(run.runId, {
+    const control: RunControl = {
       abort: new AbortController(),
       paused: false,
       span: this.deps.tracer?.start("run", {
         runId: run.runId,
         attrs: { goal: opts.goal.slice(0, 120), pages: opts.pageIds.length, modelId: opts.modelId },
       }),
-    });
+    };
+    if (run.config?.deadlineMs) control.deadlineTimer = setTimeout(() => {
+      if (control.abort.signal.aborted) return;
+      control.deadlineHit = true;
+      control.abort.abort();
+      control.answerWaiter?.resolve("");
+    }, run.config.deadlineMs);
+    this.controls.set(run.runId, control);
     this.deps.tracer?.incr("run.started");
     void this.loop(run.runId).catch((e) => {
-      this.finish(run.runId, "failed", undefined, e instanceof Error ? e.message : String(e), e instanceof Error ? e.message : String(e));
+      const error = control.deadlineHit ? `run deadline exceeded (${run.config?.deadlineMs}ms)` : e instanceof Error ? e.message : String(e);
+      this.finish(run.runId, "failed", undefined, error, error);
+      this.controls.delete(run.runId);
     });
     return run;
   }
@@ -216,9 +231,9 @@ export class RunCoordinator {
   resume(runId: string): Run {
     const c = this.controls.get(runId);
     const run = this.get(runId);
-    if (c && run.status === "paused") {
+    if (c?.paused) {
       c.paused = false;
-      this.setStatus(runId, "running", "Resumed");
+      if (run.status === "paused") this.setStatus(runId, "running", "Resumed");
     } else if (run.status === "needs_input") {
       this.setStatus(runId, "needs_input", run.statusMessage);
     }
@@ -258,6 +273,10 @@ export class RunCoordinator {
 
   setStatus(runId: string, status: Run["status"], message?: string) {
     const run = this.get(runId);
+    if (this.controls.get(runId)?.paused && (status === "running" || status === "planning")) {
+      status = "paused";
+      message = "Paused — active work is finishing";
+    }
     run.status = status;
     if (message !== undefined) run.statusMessage = message;
     this.deps.repo.saveRun(run);
@@ -318,6 +337,8 @@ export class RunCoordinator {
     this.deps.events.emit(EventTypes.RunStatus, { runId, status, error }, runId);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
     const span = this.controls.get(runId)?.span;
+    const timer = this.controls.get(runId)?.deadlineTimer;
+    if (timer) clearTimeout(timer);
     if (span) {
       span.end(
         status === "completed" ? "ok" : status === "cancelled" || status === "interrupted" ? "cancelled" : "failed",
@@ -333,11 +354,13 @@ export class RunCoordinator {
     if (this.heldLeases.has(runKey)) { this.leases.release(runKey, this.leaseOwner); this.heldLeases.delete(runKey); }
   }
 
-  async waitIfPaused(c: RunControl, _runId: string) {
+  async waitIfPaused(c: RunControl, runId: string) {
+    if (c.paused) this.releasePages(runId);
     while (c.paused && !c.abort.signal.aborted) {
       await new Promise((r) => setTimeout(r, 120));
     }
     if (c.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled");
+    await this.acquirePages(runId);
   }
 
   async waitForAnswer(c: RunControl, runId: string): Promise<string> {
@@ -346,9 +369,12 @@ export class RunCoordinator {
       this.answers.delete(runId);
       return existing;
     }
-    return new Promise<string>((resolve) => {
+    this.releasePages(runId);
+    const answer = await new Promise<string>((resolve) => {
       c.answerWaiter = { resolve: answer => { c.answerWaiter = undefined; resolve(answer); } };
     });
+    if (!c.abort.signal.aborted) await this.acquirePages(runId);
+    return answer;
   }
 
   async tryVisionPlan(args: {
@@ -374,8 +400,34 @@ export class RunCoordinator {
 
   /** observe → plan → authorize → dispatch → verify, until a terminal status. */
   private async loop(runId: string) {
-    await runCoordinatorLoop(this, runId);
+    try {
+      await this.acquirePages(runId);
+      await runCoordinatorLoop(this, runId);
+    } finally {
+      this.releasePages(runId);
+    }
   }
+
+  private async acquirePages(runId: string): Promise<void> {
+    if (this.pageReleases.has(runId)) return;
+    const control = this.controls.get(runId);
+    if (!control) throw new AuxError("cancelled", "run has ended");
+    const release = await this.pageOwnership.acquireMany(this.get(runId).pageIds,
+      { actor: "coordinator", runId }, control.abort.signal);
+    if (control.abort.signal.aborted) {
+      release();
+      throw new AuxError("cancelled", "run cancelled while waiting for a page");
+    }
+    this.pageReleases.set(runId, release);
+  }
+
+  private releasePages(runId: string): void {
+    const release = this.pageReleases.get(runId);
+    this.pageReleases.delete(runId);
+    release?.();
+  }
+
+  ownsPages(runId: string): boolean { return this.pageReleases.has(runId); }
 
   failActive(reason: string): string[] {
     const failed: string[] = [];
