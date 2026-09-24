@@ -42,8 +42,9 @@ About icon. The separate monochrome UI mark is `renderer/public/arch-mark.svg`.
 
 At launch, `main/runtime-proc.ts` resolves
 `process.resourcesPath/runtime/dist/main.js` and forks it under
-`ELECTRON_RUN_AS_NODE=1` with `AUX_IPC=1`, `AUX_ELECTRON_CDP` (the
-auto-assigned remote-debugging port), and `AUX_DATA_DIR`.
+`ELECTRON_RUN_AS_NODE=1` with `AUX_IPC=1`, `AUX_INTERNAL_CDP=1`, and
+`AUX_DATA_DIR`. The authenticated main-process broker carries CDP; packaged
+builds cannot select the legacy raw debugging port through the environment.
 
 ## Verify a packaged build
 

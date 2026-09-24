@@ -1,4 +1,4 @@
-// Runtime crash and synthetic wake recovery must preserve live native browsing state.
+// Native browsing must work while the runtime is stopped and survive crash/wake recovery.
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
@@ -28,9 +28,33 @@ try{
   await shell.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),url);
   let website;for(let i=0;i<100;i++){website=app.windows().find(page=>page.url()===url);if(website)break;await new Promise(resolve=>setTimeout(resolve,50));}assert.ok(website);await website.getByRole('heading',{name:'Runtime recovery'}).waitFor();
   await website.getByLabel('Unsaved draft').fill('Keep this live document through runtime recovery');
-  const before=await shell.evaluate(()=>window.aux.invoke('workspace.get',{}));
   const mainPid=app.process().pid;
   let runtimePid;for(let i=0;i<100;i++){runtimePid=childRuntimePid(mainPid);if(runtimePid)break;await new Promise(resolve=>setTimeout(resolve,50));}assert.ok(runtimePid,'runtime child must be discoverable below the isolated Electron main process');
+  const originalCatalog=await shell.evaluate(()=>window.aux.tabsSnapshot());
+  const secondUrl=url.replace('/work','/second');
+  process.kill(runtimePid,'SIGSTOP');
+  try{
+    await shell.bringToFront();
+    await shell.keyboard.press('Meta+t');
+    for(let i=0;i<100;i++){if((await shell.evaluate(()=>window.aux.tabsSnapshot())).tabs.length===originalCatalog.tabs.length+1)break;await new Promise(resolve=>setTimeout(resolve,50));}
+    const address=shell.getByRole('combobox',{name:/Search or address/});
+    await address.fill(secondUrl);
+    assert.equal(await address.inputValue(),secondUrl);
+    await shell.locator('.cmdbar.hero [role=option]').first().waitFor();
+    await address.press('Enter');
+    let second;for(let i=0;i<100;i++){second=app.windows().find(page=>page.url()===secondUrl);if(second)break;await new Promise(resolve=>setTimeout(resolve,50));}
+    assert.ok(second,'human navigation must load a native page while the AI runtime is stopped');
+    await second.getByRole('heading',{name:'Runtime recovery'}).waitFor();
+    const offlineCatalog=await shell.evaluate(()=>window.aux.tabsSnapshot());
+    assert.equal(offlineCatalog.tabs.length,originalCatalog.tabs.length+1,'native tab creation must not wait for the runtime');
+    assert.ok(offlineCatalog.tabs.some(tab=>tab.url===secondUrl),'native navigation must commit while the runtime is stopped');
+    assert.equal(childRuntimePid(mainPid),runtimePid,'the runtime must remain stopped during the browsing proof');
+    assert.equal(await website.getByLabel('Unsaved draft').inputValue(),'Keep this live document through runtime recovery');
+  }finally{
+    process.kill(runtimePid,'SIGCONT');
+  }
+  let before;for(let i=0;i<100;i++){before=await shell.evaluate(()=>window.aux.invoke('workspace.get',{}));if(before.pages.some(page=>page.url===secondUrl))break;await new Promise(resolve=>setTimeout(resolve,50));}
+  assert.ok(before.pages.some(page=>page.url===secondUrl),'the resumed runtime must discover the tab opened while it was stopped');
   process.kill(runtimePid,'SIGKILL');
   await shell.getByText(/Runtime reconnecting/).waitFor();
   await shell.screenshot({path:join(root,'release/test-artifacts/aux-runtime-reconnecting.png')});
@@ -44,7 +68,7 @@ try{
   const afterWake=await shell.evaluate(()=>window.aux.invoke('workspace.get',{}));
   assert.deepEqual(afterWake.pages.map(page=>page.pageId),before.pages.map(page=>page.pageId),'wake health check must not duplicate or replace tabs');
   assert.equal(await website.getByLabel('Unsaved draft').inputValue(),'Keep this live document through runtime recovery');
-  console.log('Aux reconnects after runtime loss and synthetic wake without replacing live tabs, changing selection, or losing an unsaved page draft.');
+  console.log('Aux opens and navigates a native tab while its AI runtime is stopped, then reconnects after runtime loss and synthetic wake without replacing live tabs, changing selection, or losing an unsaved page draft.');
 }finally{
   await app?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});
 }

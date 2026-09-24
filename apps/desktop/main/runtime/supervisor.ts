@@ -2,7 +2,7 @@ import { RpcChannel, type Transport } from "@aux/contracts";
 import type { ChildProcess } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CDP_PORT_FILE, DATA_DIR, PRIMARY_WINDOW_ID, desktopEnv, log } from "../app/bootstrap.js";
+import { CDP_PORT_FILE, DATA_DIR, PRIMARY_WINDOW_ID, USE_INTERNAL_CDP, log } from "../app/bootstrap.js";
 import { exitApproved } from "../app/exit.js";
 import { flushExternalUrls } from "../app/external-urls.js";
 import { browserProfiles, registry } from "../app/services.js";
@@ -26,7 +26,7 @@ export let runtimeCdpPort = 0;
 let internalBroker: InternalCdpBroker | null = null;
 let brokerClosing: Promise<void> | null = null;
 let brokerStarting = false;
-const useInternalCdp = desktopEnv.AUX_INTERNAL_CDP === "1";
+const useInternalCdp = USE_INTERNAL_CDP;
 
 function closeInternalBroker(): Promise<void> {
   const broker = internalBroker;

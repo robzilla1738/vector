@@ -102,7 +102,7 @@ const app = spawn(electron, [join(root, 'apps/desktop'), '--use-mock-keychain'],
   env: {
     ...process.env, ELECTRON_RUN_AS_NODE: undefined,
     HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: profileDir, AUX_DATA_DIR: dataDir,
-    AUX_LOAD_DOTENV: '0', AUX_INTERNAL_CDP: '1',
+    AUX_LOAD_DOTENV: '0',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -154,7 +154,7 @@ try {
   privateApp = spawn(electron, [join(root, 'apps/desktop'), '--aux-private'], {
     cwd: root,
     env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined, HOME: dir, TMPDIR: dir,
-      AUX_PROFILE_DIR: profileDir, AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: '0', AUX_INTERNAL_CDP: '1',
+      AUX_PROFILE_DIR: profileDir, AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: '0',
       AUX_PRIVATE_TEST_REPORT: privateReportPath, AUX_PRIVATE_TEST_INITIAL_URL: `http://127.0.0.1:${fixture.address().port}/private-secret` },
     stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
   });
