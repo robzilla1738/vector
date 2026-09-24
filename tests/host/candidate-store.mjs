@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -63,6 +63,7 @@ async function connect() {
 }
 async function launch() {
   assert.ok(binary && existsSync(binary), 'Set AUX_CANDIDATE_BIN to the built Aux //chrome executable');
+  assert.match(realpathSync(binary), /\/out\/AuxProof\//, 'Use the isolated AuxProof build, not a reference browser');
   const prior = existsSync(statePath) ? state() : null;
   assert.ok(!prior || prior.profile === profile && prior.binary === binary,
     'Existing proof state points at a different profile or executable');
@@ -89,7 +90,8 @@ async function launch() {
       pid: child.pid, binary, profile, storeUrl, extensionId,
       browser: metadata.Browser, userAgent: metadata['User-Agent'],
       page: { url: page.url(), title: await page.title(), navigationError,
-        addButtonCount: await page.getByRole('button', { name: /add to (chrome|chromium)/i }).count() },
+        addButtonCount: await page.getByRole('button', { name: /add to (chrome|chromium)/i }).count(),
+        removeButtonCount: await page.getByRole('button', { name: /remove from (chrome|chromium)/i }).count() },
     };
     saveState({ ...result, phase: result.phase });
     console.log(JSON.stringify(result, null, 2));
@@ -103,17 +105,26 @@ async function inspect() {
   try {
     const record = extensionRecord();
     const workers = browser.contexts()[0]?.serviceWorkers().map(worker => worker.url()) ?? [];
+    const page = browser.contexts()[0]?.pages().find(item => item.url().includes(extensionId));
+    let storeUiInstalled = false;
+    if (page) {
+      try {
+        await page.getByRole('button', { name: /remove from (chrome|chromium)/i }).waitFor({ timeout: 15000 });
+        storeUiInstalled = true;
+      } catch { /* Keep profile evidence separate from Store UI availability. */ }
+    }
     // MV3 workers may sleep. Installation and restart persistence are profile
     // facts; worker execution is a separate API test.
     const installed = storeInstalled(record);
     const report = { at: new Date().toISOString(), scope: 'Aux //chrome candidate only; live Store install and persistent profile',
       binary, profile, storeUrl, browser: metadata.Browser, phase: prior.phase, installed,
-      restartPersisted: installed && prior.phase === 'restarted',
+      storeUiInstalled, restartPersisted: installed && storeUiInstalled && prior.phase === 'restarted',
       record, workers: workers.filter(url => url.startsWith(`chrome-extension://${extensionId}/`)) };
     writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
     if (installed) saveState({ ...prior, phase: 'installed', installedAt: report.at });
     console.log(JSON.stringify(report, null, 2));
-    assert.ok(installed, 'No active Store-origin extension and worker found in the candidate');
+    assert.ok(installed, 'No active Store-origin extension found in the candidate profile');
+    if (prior.phase === 'restarted') assert.ok(storeUiInstalled, 'Store UI did not confirm the extension after candidate restart');
   } finally { await browser.close(); }
 }
 async function stop() {

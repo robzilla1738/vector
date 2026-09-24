@@ -1,13 +1,18 @@
 // Chrome for Testing reference evidence, NOT proof that Aux/CEF implements these capabilities.
 // Uses the existing Playwright browser and a disposable profile; no native hosts.
 import {createRequire} from 'node:module';
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,existsSync,realpathSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const root=resolve(import.meta.dirname,'../..');
 const {chromium}=createRequire(join(root,'packages/chromium-driver/package.json'))('playwright-core');
+const candidateBinary=process.env.AUX_CANDIDATE_BIN;
+if(candidateBinary) {
+ assert.ok(existsSync(candidateBinary),`Aux candidate executable missing: ${candidateBinary}`);
+ assert.match(realpathSync(candidateBinary),/\/out\/AuxProof\//,'Use the isolated AuxProof build, not a reference browser');
+}
 const dir=mkdtempSync(join(tmpdir(),'aux-chromium-baseline-'));const extension=join(dir,'extension');mkdirSync(extension);
 writeFileSync(join(extension,'manifest.json'),JSON.stringify({manifest_version:3,name:'Aux synthetic capability baseline',version:'1.0',permissions:['storage','tabs','nativeMessaging','scripting','contextMenus','downloads','cookies'],host_permissions:['http://localhost/*'],background:{service_worker:'worker.js'}}));
 writeFileSync(join(extension,'worker.js'),'chrome.runtime.onInstalled.addListener(()=>{});');
@@ -16,7 +21,7 @@ const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://localhost:${server.address().port}`;
 let context;
 try{
- context=await chromium.launchPersistentContext(join(dir,'profile'),{headless:false,env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir},args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--use-mock-keychain','--password-store=basic'],downloadsPath:join(dir,'downloads'),acceptDownloads:true});
+ context=await chromium.launchPersistentContext(join(dir,'profile'),{headless:false,...(candidateBinary?{executablePath:realpathSync(candidateBinary)}:{}),env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir},args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,'--use-mock-keychain','--password-store=basic'],downloadsPath:join(dir,'downloads'),acceptDownloads:true});
  const worker=context.serviceWorkers()[0]??await context.waitForEvent('serviceworker');const id=new URL(worker.url()).host;
  const page=await context.newPage();await page.goto(`chrome-extension://${id}/probe.html`);
  const result=await page.evaluate(async base=>{
@@ -31,6 +36,6 @@ try{
   return {extensionApis,storage,injected:injection[0].result,cookie:cookie.value,tabClosed:!(await chrome.tabs.query({})).some(t=>t.id===tab.id),contextMenuLifecycle:true};
  },base);
  assert.equal(result.storage,'synthetic');assert.equal(result.injected,'Extension baseline');assert.equal(result.cookie,'fixture');assert.equal(result.tabClosed,true);
- const evidence={at:new Date().toISOString(),browser:context.browser().version(),scope:'Google Chrome for Testing reference only, not Aux/CEF qualification; no native hosts, accounts, passkeys or Web Store invoked.',...result};
- const output=join(root,'release/test-artifacts/aux-chromium-extension-baseline.json');mkdirSync(join(root,'release/test-artifacts'),{recursive:true});writeFileSync(output,JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
+ const evidence={at:new Date().toISOString(),browser:context.browser().version(),scope:candidateBinary?'Isolated Aux //chrome candidate executable; synthetic unpacked extension APIs only, not Store, native hosts, accounts, passkeys or Aux-shell integration.':'Google Chrome for Testing reference only, not Aux/CEF qualification; no native hosts, accounts, passkeys or Web Store invoked.',...(candidateBinary?{candidateBinary:realpathSync(candidateBinary)}:{}),...result};
+ const output=join(root,'release/test-artifacts',candidateBinary?'aux-candidate-extension-apis.json':'aux-chromium-extension-baseline.json');mkdirSync(join(root,'release/test-artifacts'),{recursive:true});writeFileSync(output,JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
 }finally{await context?.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}
