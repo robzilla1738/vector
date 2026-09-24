@@ -20,6 +20,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
   const activePageId = useStore(state => state.activePageId);
   const [busyPageId, setBusyPageId] = useState<string | null>(null);
   const primaryPage = conversationPage(pages, primary, activePageId, linkedPageId);
+  const additionalSources = sources.filter(source => source.pageId !== primaryPage?.pageId);
   const available = pages.filter(page => !page.ownedByRuntime && !page.loading
     && !["crashed", "detached"].includes(page.viewStatus ?? "") && page.url.length <= 8192
     && page.pageId !== primaryPage?.pageId);
@@ -43,7 +44,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
       onSources(sources.filter(source => source.pageId !== pageId));
       return;
     }
-    if (sources.length >= 8) { errToast(new Error("Choose up to eight additional tabs.")); return; }
+    if (additionalSources.length >= 8) { errToast(new Error("Choose up to eight additional tabs.")); return; }
     const page = available.find(item => item.pageId === pageId);
     if (!page) return;
     setBusyPageId(pageId);
@@ -52,7 +53,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     finally { setBusyPageId(null); }
   };
   const refresh = async (pageId: string) => {
-    const page = available.find(item => item.pageId === pageId);
+    const page = pages.find(item => item.pageId === pageId);
     if (!page || disabled || busyPageId) return;
     setBusyPageId(pageId);
     try {
@@ -73,10 +74,10 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
       <details ref={picker} className="conversation-browser-add" onKeyDown={event => {
         if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); picker.current!.open = false; picker.current?.querySelector("summary")?.focus(); }
       }}>
-        <summary aria-disabled={disabled || !!busyPageId} onClick={event => { if (disabled || busyPageId) event.preventDefault(); }}>{busyPageId ? "Loading tab…" : `Add tabs${sources.length ? ` · ${sources.length}` : ""}`}</summary>
+        <summary aria-disabled={disabled || !!busyPageId} onClick={event => { if (disabled || busyPageId) event.preventDefault(); }}>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</summary>
         <div role="group" aria-label="Additional browser tabs">
           {available.length ? available.map(page => <label key={page.pageId}>
-            <input type="checkbox" checked={sources.some(source => source.pageId === page.pageId)} disabled={disabled || !!busyPageId || (sources.length >= 8 && !sources.some(source => source.pageId === page.pageId))} onChange={() => void toggle(page.pageId)} />
+            <input type="checkbox" checked={sources.some(source => source.pageId === page.pageId)} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !sources.some(source => source.pageId === page.pageId))} onChange={() => void toggle(page.pageId)} />
             <span title={page.url}>{page.title || hostOf(page.url)}<small>{hostOf(page.url)}</small></span>
           </label>) : <p>No other available browser tabs.</p>}
         </div>
@@ -88,10 +89,10 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
         const status = sourceStatus(source, pages);
         const label = status === "missing" ? hostOf(source.url) : page?.title || hostOf(source.url);
         return <span key={source.pageId} className={status === "current" ? "" : "stale"}>
-          {I.globe}<span title={source.url}>{label}</span>
+          {I.globe}<span title={source.url}>{source.pageId === primaryPage?.pageId ? `Captured source · ${label}` : label}</span>
           {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
           {status === "changed" && <button type="button" disabled={disabled || !!busyPageId || !!page?.loading} aria-label={`Use current ${label}`} title="Use this tab's current page" onClick={() => void refresh(source.pageId)}>{I.reload}</button>}
-          <button type="button" disabled={disabled || !!busyPageId} aria-label={`Remove ${label}`} onClick={() => onSources(sources.filter(item => item.pageId !== source.pageId))}>{I.close}</button>
+          <button type="button" disabled={disabled || !!busyPageId} aria-label={`Remove ${label}`} onClick={() => { onSources(sources.filter(item => item.pageId !== source.pageId)); if (source.pageId === primaryPage?.pageId) onPrimary("none"); }}>{I.close}</button>
         </span>;
       })}
     </div>}

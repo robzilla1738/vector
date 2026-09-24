@@ -34,6 +34,7 @@ const RELEASE_SUITE = [
   "conversation-lifecycle-desktop",
   "conversation-context-desktop",
   "conversation-multi-tab-desktop",
+  "page-action-context-desktop",
   "conversation-queue-desktop",
   "private-boundary-desktop",
   "authentication-navigation-desktop",

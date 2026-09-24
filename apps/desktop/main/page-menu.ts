@@ -27,7 +27,7 @@ export function showPageMenu(wc: WebContents, p: Electron.ContextMenuParams, hoo
   const t: MenuItemConstructorOptions[] = [];
   if (hooks.onPageAction && !p.isEditable) {
     const selected = p.selectionText.trim();
-    const source = { url: p.frameURL || wc.getURL(), title: wc.getTitle(), selection: selected.slice(0, 12000), truncated: selected.length > 12000 };
+    const source = { url: p.frameURL || wc.getURL(), topUrl: wc.getURL(), capturedAt: Date.now(), title: wc.getTitle(), selection: selected.slice(0, 12000), truncated: selected.length > 12000 };
     t.push({ label: selected ? "Ask Aux about selection…" : "Summarize page with Aux…", click: () => hooks.onPageAction?.({ ...source, action: selected ? "ask" : "summarize" }) });
     if (selected) t.push(
       { label: "Explain selection with Aux…", click: () => hooks.onPageAction?.({ ...source, action: "explain" }) },

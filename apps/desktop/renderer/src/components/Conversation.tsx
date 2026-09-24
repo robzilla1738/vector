@@ -421,7 +421,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
           useStore.getState().setConversationBrowserSources(chatId, browserSources);
         }
         const pageIds = selectedPageIds;
-        const contextPageRefs = [...(primaryForRun ? [sourceRef(primaryForRun)] : []), ...browserSources.filter(source => source.pageId !== primaryForRun?.pageId)];
+        const contextPageRefs = [...(primaryForRun ? [browserSources.find(source => source.pageId === primaryForRun.pageId) ?? sourceRef(primaryForRun)] : []), ...browserSources.filter(source => source.pageId !== primaryForRun?.pageId)];
         setSendingChat(chatId);
         setText("");
         if (activeChat.current === id) scrolling.jumpToLatest();

@@ -57,6 +57,7 @@ export const PageContextRefSchema = z.object({
   url: z.string().min(1).max(8192),
   documentEpoch: z.number().int().nonnegative(),
   sessionId: z.string().max(200).optional(),
+  selectedAt: z.number().int().nonnegative().optional(),
 }).strict();
 export type PageContextRef = z.infer<typeof PageContextRefSchema>;
 
@@ -359,6 +360,9 @@ export type Download = z.infer<typeof DownloadSchema>;
 
 export const PageQuickActionSchema = z.object({
   pageId: z.string(), url: z.string(), title: z.string(),
+  /** Main-frame URL at the moment the browser menu captured the selection. */
+  topUrl: z.string().optional(),
+  capturedAt: z.number().int().nonnegative().optional(),
   action: z.enum(["ask", "explain", "summarize", "remember", "image"]),
   selection: z.string().max(12000), truncated: z.boolean(),
   /** Present only for image actions — a PNG snapshot captured from the page, or a capture error. */

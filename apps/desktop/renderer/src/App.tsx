@@ -3,6 +3,7 @@ import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { browserSourcesEntryChange } from "./browser-context-sources";
+import { pageActionSource } from "./page-action-context";
 import { BrowsingMemoryWatch } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
 import type { ShortcutOverrides } from "@aux/contracts";
@@ -114,12 +115,15 @@ export function App() {
       return;
     }
     const id = crypto.randomUUID();
+    const state = useStore.getState();
+    const selectedSource = pageActionSource(action, state.pages);
+    state.setConversationContext(id, selectedSource?.pageId ?? "");
+    state.setConversationBrowserSources(id, selectedSource ? [selectedSource] : []);
+    if (!selectedSource) toast("Aux couldn't attach this page as live context. Choose a current tab before sending.");
     if (action.action === "image") {
-      const state = useStore.getState();
       const alt = action.image?.altText ? `\nAlt text: "${action.image.altText}"` : "";
       const src = action.image?.srcURL ? `\nImage: ${action.image.srcURL}` : "";
       state.setConversationDraft(id, `Help me understand this image.\n\nSource: ${action.title || action.url}\n${action.url}${src}${alt}`);
-      state.setConversationContext(id, action.pageId);
       const open = () => {
         state.openConversationDraft(id);
         requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(".conversation-input textarea")?.focus());
@@ -139,9 +143,7 @@ export function App() {
       : action.action === "summarize" ? action.selection ? "Summarize this selected text." : "Summarize this page and its key points."
       : "Help me understand this selected text.";
     const quote = action.selection ? `\n\nSelected text${action.truncated ? " (first 12,000 characters)" : ""}:\n${action.selection.split("\n").map(line => `> ${line}`).join("\n")}` : "";
-    const state = useStore.getState();
     state.setConversationDraft(id, `${instruction}\n\nSource: ${action.title || action.url}\n${action.url}${quote}`);
-    state.setConversationContext(id, action.pageId);
     state.openConversationDraft(id);
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(".conversation-input textarea")?.focus());
   }), []);

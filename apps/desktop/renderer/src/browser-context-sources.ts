@@ -2,7 +2,8 @@ import type { PageContextRef, PageTarget } from "@aux/contracts";
 import { draftKey } from "./conversation-drafts";
 
 export const BROWSER_SOURCES_PREFIX = "aux.conversation-browser-sources.v1:";
-const MAX_EXTRA_PAGES = 8;
+// Eight additional pages plus a pinned primary source from a page action.
+const MAX_SELECTED_PAGES = 9;
 type EntryStorage = Pick<Storage, "getItem" | "setItem" | "removeItem"> & Partial<Pick<Storage, "length" | "key">>;
 
 const validKey = (key: string) => key === "new" || (key.startsWith("chat:") && key.length <= 210);
@@ -11,11 +12,12 @@ export const browserSourcesKey = (chatId: string | null) => chatId ? draftKey(ch
 function validSource(value: unknown): value is PageContextRef {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const source = value as Record<string, unknown>;
-  return Object.keys(source).every(key => ["pageId", "url", "documentEpoch", "sessionId"].includes(key))
+  return Object.keys(source).every(key => ["pageId", "url", "documentEpoch", "sessionId", "selectedAt"].includes(key))
     && typeof source.pageId === "string" && source.pageId.length > 0 && source.pageId.length <= 200
     && typeof source.url === "string" && source.url.length > 0 && source.url.length <= 8192
     && typeof source.documentEpoch === "number" && Number.isSafeInteger(source.documentEpoch) && source.documentEpoch >= 0
-    && (source.sessionId === undefined || typeof source.sessionId === "string" && source.sessionId.length <= 200);
+    && (source.sessionId === undefined || typeof source.sessionId === "string" && source.sessionId.length <= 200)
+    && (source.selectedAt === undefined || typeof source.selectedAt === "number" && Number.isSafeInteger(source.selectedAt) && source.selectedAt >= 0);
 }
 
 function parseSources(value: string | null): PageContextRef[] | null {
@@ -24,7 +26,7 @@ function parseSources(value: string | null): PageContextRef[] | null {
     const entry: unknown = JSON.parse(value);
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
     const record = entry as Record<string, unknown>;
-    if (record.version !== 1 || !Array.isArray(record.sources) || record.sources.length > MAX_EXTRA_PAGES) return null;
+    if (record.version !== 1 || !Array.isArray(record.sources) || record.sources.length > MAX_SELECTED_PAGES) return null;
     if (!record.sources.every(validSource)) return null;
     const sources: PageContextRef[] = record.sources;
     if (new Set(sources.map(source => source.pageId)).size !== sources.length) return null;
@@ -51,7 +53,7 @@ export function readBrowserSources(storage: EntryStorage | null): Record<string,
 
 export function writeBrowserSources(storage: EntryStorage | null, key: string, sources: PageContextRef[]): void {
   if (!validKey(key)) throw new Error("Invalid conversation context key.");
-  if (sources.length > MAX_EXTRA_PAGES || !sources.every(validSource)) throw new Error("Selected browser context is invalid.");
+  if (sources.length > MAX_SELECTED_PAGES || !sources.every(validSource)) throw new Error("Selected browser context is invalid.");
   if (new Set(sources.map(source => source.pageId)).size !== sources.length) throw new Error("A browser tab can be selected only once.");
   if (!storage) return;
   const name = `${BROWSER_SOURCES_PREFIX}${key}`;
@@ -67,8 +69,8 @@ export function browserSourcesEntryChange(name: string | null, value: string | n
   return sources ? { key, sources } : null;
 }
 
-export function sourceRef(page: PageTarget): PageContextRef {
-  const ref = { pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId };
+export function sourceRef(page: PageTarget, selectedAt = Date.now()): PageContextRef {
+  const ref = { pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId, selectedAt };
   if (!validSource(ref)) throw new Error("This browser tab cannot be added to context.");
   return ref;
 }
