@@ -29,6 +29,13 @@ export function wireRuntimeIpc() {
       const entry = registry.get(requestedPageId);
       if (entry && (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) throw new Error("That tab belongs to another Aux window.");
     }
+    if (method === "runs.queue" || method === "runs.steer") {
+      const selected = MethodSchemas["runs.queue"].parse(params);
+      for (const pageId of selected.pageIds) {
+        const entry = registry.get(pageId);
+        if (entry && (entry.windowId ?? PRIMARY_WINDOW_ID) !== state.id) throw new Error("That tab belongs to another Aux window.");
+      }
+    }
     if (method === "workspaces.browsingMemory.record") {
       const entry = typeof requestedPageId === "string" ? registry.get(requestedPageId) : undefined;
       if (!entry || entry.popup || entry.runtimeOwned || !state.win.isFocused() || state.overlayOpen || state.stagePageId !== requestedPageId || !entry.view.getVisible()) return { recorded: false };

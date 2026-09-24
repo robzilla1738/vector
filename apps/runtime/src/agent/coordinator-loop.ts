@@ -13,6 +13,7 @@ import {
   awaitHumanAnswer,
   dispatchPlan,
   giveUpRepair,
+  hasNewSteer,
   handlePlannerFailure,
   isPlanFailure,
   noteObservationProgress,
@@ -77,6 +78,8 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     visionUsed: false,
     lastActionFailed: false,
     doneChallenged: false,
+    appliedRevision: run.config?.messageRevision ?? 0,
+    steers: self.deps.repo.listRunSteers(runId).map(message => message.text),
   };
   const maxSteps = run.config?.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
@@ -112,45 +115,78 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
 
   try {
     while (true) {
-      await self.waitIfPaused(c, runId);
-      if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) {
-        if (await finalBeforeFailing(s, "model call budget exhausted")) return;
-        throw new AuxError("step_failed", "model call budget exhausted");
-      }
-      if (s.stepsRun >= maxSteps) {
-        if (await finalBeforeFailing(s, "step budget exhausted")) return;
-        throw new AuxError("step_failed", "step budget exhausted");
-      }
-      if (!s.activePageId) throw new AuxError("invalid_params", "run has no target page");
-
-      const obs = await observeActivePage(s);
-      const obsArtifactId = self.deps.saveObservation?.(runId, obs);
-      self.assertTargetAlive(obs);
-      if (noteObservationProgress(s, obs)) {
-        const verdict = await tryFinalDecision(s, "page state stopped changing", obs);
-        if (verdict === "done") return;
-        if (verdict === "input") {
+      try {
+        const latest = self.get(runId);
+        const revision = latest.config?.messageRevision ?? 0;
+        if (revision !== s.appliedRevision) {
+          const unresolved = self.durable.unresolved(runId);
+          if (unresolved.length) {
+            self.finish(runId, "interrupted", undefined,
+              `The correction arrived while an action's outcome was uncertain (${unresolved.map(intent => intent.id).join(", ")}). Review it before continuing.`,
+              "Stopped to avoid repeating an uncertain action");
+            return;
+          }
+          s.appliedRevision = revision;
+          s.steers = self.deps.repo.listRunSteers(runId).map(message => message.text);
+          s.notes = undefined;
+          s.carriedObs = undefined;
+          s.pendingObs = undefined;
           resetGuards(s);
+        }
+        s.run = latest;
+        await self.waitIfPaused(c, runId);
+        if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) {
+          if (await finalBeforeFailing(s, "model call budget exhausted")) return;
+          throw new AuxError("step_failed", "model call budget exhausted");
+        }
+        if (s.stepsRun >= maxSteps) {
+          if (await finalBeforeFailing(s, "step budget exhausted")) return;
+          throw new AuxError("step_failed", "step budget exhausted");
+        }
+        if (!s.activePageId) throw new AuxError("invalid_params", "run has no target page");
+
+        const obs = await observeActivePage(s);
+        if (hasNewSteer(s)) continue;
+        const obsArtifactId = self.deps.saveObservation?.(runId, obs);
+        self.assertTargetAlive(obs);
+        if (noteObservationProgress(s, obs)) {
+          const verdict = await tryFinalDecision(s, "page state stopped changing", obs);
+          if (verdict === "done") return;
+          if (verdict === "input") {
+            resetGuards(s);
+            continue;
+          }
+          throw new AuxError("step_failed", "no progress — same page state repeatedly");
+        }
+
+        self.setStatus(runId, "planning", "Thinking…");
+        const attempt = await planTurn(s, obs, obsArtifactId);
+        if (hasNewSteer(s)) {
+          if (attempt.early) {
+            attempt.early.discardPending();
+            const settled = await attempt.early.finish([]);
+            s.stepsRun += settled.steps.length;
+          }
           continue;
         }
-        throw new AuxError("step_failed", "no progress — same page state repeatedly");
-      }
-
-      self.setStatus(runId, "planning", "Thinking…");
-      const attempt = await planTurn(s, obs, obsArtifactId);
-      if (isPlanFailure(attempt)) {
-        const next = await handlePlannerFailure(s, obs, attempt.early, attempt.error);
+        if (isPlanFailure(attempt)) {
+          const next = await handlePlannerFailure(s, obs, attempt.early, attempt.error);
+          if (next === "return") return;
+          continue;
+        }
+        if (attempt.early && (attempt.plan.status !== "continue" || (attempt.plan.pageId && attempt.plan.pageId !== s.activePageId) || !attempt.plan.steps?.length)) {
+          attempt.early.discardPending();
+          const partial = await attempt.early.finish([]);
+          s.stepsRun += partial.steps.length;
+          attempt.early = undefined;
+        }
+        const next = await applyPlan(s, obs, attempt);
+        if (hasNewSteer(s) && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         if (next === "return") return;
-        continue;
+      } catch (error) {
+        if (hasNewSteer(s) && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
+        throw error;
       }
-      if (attempt.early && (attempt.plan.status !== "continue" || (attempt.plan.pageId && attempt.plan.pageId !== s.activePageId) || !attempt.plan.steps?.length)) {
-        attempt.early.halt();
-        const partial = await attempt.early.finish([]);
-        s.stepsRun += partial.steps.length;
-        attempt.early = undefined;
-      }
-      const next = await applyPlan(s, obs, attempt);
-      if (next === "return") return;
     }
   } catch (e) {
     if (e instanceof AuxError && e.code === "cancelled") return;

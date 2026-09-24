@@ -191,17 +191,17 @@ const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, 
 /*  Space switcher                                                      */
 /* ------------------------------------------------------------------ */
 
-function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelete, onCollapse, onHistory, onDownloads, onSettings, onClose: finishClose, archivedSpaces, onRestore }: {
+export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelete, onCollapse, onHistory, onDownloads, onSettings, onClose: finishClose, archivedSpaces, onRestore }: {
   archivedSpaces: Space[];
   onRestore: (id: string) => void;
   spaces: Space[];
   active: string;
   onPick: (id: string) => void;
   onNew: () => void;
-  onNewFolder: () => void;
+  onNewFolder?: () => void;
   onEdit: (s: Space) => void;
   onDelete: (id: string) => void;
-  onCollapse: () => void;
+  onCollapse?: () => void;
   onHistory: () => void;
   onDownloads: () => void;
   onSettings: () => void;
@@ -227,14 +227,16 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
     return () => document.removeEventListener("mousedown", outside);
   }, []);
   useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
-  const choose = (action: () => void) => { action(); onClose(); };
+  // Choosing an item changes the underlying view immediately. Remove the menu
+  // in the same turn so a new dialog or Space never inherits its closing layer.
+  const choose = (action: () => void) => { action(); finishClose(); };
   const actions = [
     { label: "New space", icon: I.plusSm, run: onNew },
-    { label: "New folder", icon: I.folderClosed, run: onNewFolder },
+    ...(onNewFolder ? [{ label: "New folder", icon: I.folderClosed, run: onNewFolder }] : []),
     { label: "History", icon: I.clockSm, run: onHistory, key: key("history"), separator: true },
     { label: "Downloads", icon: I.downloadSm, run: onDownloads, key: key("downloads") },
     ...(!bridge.privateMode ? [{ label: "Settings", icon: I.gearSm, run: onSettings, key: key("settings") }] : []),
-    { label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: key("sidebar"), separator: true },
+    ...(onCollapse ? [{ label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: key("sidebar"), separator: true }] : []),
   ];
   return (
     <div className="menu space-menu" role="menu" aria-label="Spaces and browser controls" ref={ref}
@@ -272,7 +274,7 @@ function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelet
   );
 }
 
-function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: (name: string, color: SpaceColor) => Promise<void>; onClose: () => void }) {
+export function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: (name: string, color: SpaceColor) => Promise<void>; onClose: () => void }) {
   const [name, setName] = useState(space?.name ?? "");
   const [color, setColor] = useState<SpaceColor>(space?.color ?? "violet");
   const [saving, setSaving] = useState(false);
@@ -289,7 +291,7 @@ function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: 
     void bridge.overlay(true);
     return () => {
       void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
-      const target = previous.current?.isConnected ? previous.current : document.querySelector<HTMLElement>('.space-switch');
+      const target = previous.current?.isConnected ? previous.current : document.querySelector<HTMLElement>('.space-switch, .horizontal-profile');
       target?.focus();
     };
   }, []);

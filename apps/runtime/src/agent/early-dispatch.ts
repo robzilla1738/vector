@@ -29,6 +29,7 @@ export class EarlyDispatcher {
   private running: Promise<void> | null = null;
   private accepted = 0;
   private halted = false;
+  private discarded = false;
   private first = true;
   private readonly outcomes: ProgramResult["steps"] = [];
   private extracted: Record<string, unknown> | undefined;
@@ -72,13 +73,20 @@ export class EarlyDispatcher {
     this.halted = true;
   }
 
+  /** Revoke steps that have not started, while allowing the current batch to settle. */
+  discardPending(): void {
+    this.halted = true;
+    this.discarded = true;
+    this.queue.length = 0;
+  }
+
   /**
    * The plan is complete: run any step the stream did not deliver (index ≥
    * accepted), wait for everything, and return one combined ProgramResult.
    */
   async finish(steps: PlanStep[]): Promise<ProgramResult> {
     this.finishing = true;
-    if (this.status === "completed") {
+    if (this.status === "completed" && !this.discarded) {
       for (const step of steps.slice(this.accepted)) {
         this.accepted++;
         this.queue.push(step);
@@ -95,7 +103,7 @@ export class EarlyDispatcher {
   }
 
   private kick(): void {
-    if (this.running || this.status !== "completed" || !this.queue.length) return;
+    if (this.running || this.discarded || this.status !== "completed" || !this.queue.length) return;
     const batch = this.queue.splice(0);
     const first = this.first;
     this.first = false;

@@ -32,6 +32,19 @@ try {
  await page.screenshot({path:join(out,'tab-groups.png')});
  await renamed.click({button:'right'});await page.getByRole('menuitem',{name:'Ungroup tabs',exact:true}).click();
  await renamed.waitFor({state:'hidden'});assert.equal(await page.locator('.horizontal-tab-select').count(),3);
+ const spaceSwitch=page.locator('.horizontal-profile');
+ await spaceSwitch.click();
+ await page.screenshot({path:join(out,'horizontal-spaces.png')});
+ await page.getByRole('menuitem',{name:'New space',exact:true}).click();
+ const editor=page.getByRole('dialog',{name:'New space',exact:true});
+ await editor.getByPlaceholder('Name').fill('Research space');
+ await editor.getByRole('button',{name:'Create',exact:true}).click();
+ await page.getByRole('button',{name:'Switch space, current: Research space'}).waitFor();
+ assert.equal(await page.locator('.horizontal-tab-select').count(),0);
+ await spaceSwitch.click();
+ await page.getByRole('menuitemradio',{name:'Personal'}).click();
+ await page.getByRole('button',{name:'Switch space, current: Personal'}).waitFor();
+ assert.equal(await page.locator('.horizontal-tab-select').count(),3);
  await page.evaluate(()=>window.aux.invoke('pages.open',{url:'data:text/html,<title>Preview test</title><h1>Preview capture</h1>',activate:true}));
  await page.locator('.main-col.has-page').waitFor();
  await page.locator('.horizontal-tab-title').filter({hasText:'Preview test'}).waitFor();
@@ -51,5 +64,5 @@ try {
  await page.getByRole('tooltip').locator('img').waitFor();
  await page.keyboard.press('Escape');
  await page.getByRole('tooltip').waitFor({state:'hidden'});
- console.log('PASS create/rename/collapse/active visibility/drag membership/persistence/ungroup, delayed previews and real page capture.');
+ console.log('PASS horizontal Space create/switch, tab groups, delayed previews and real page capture.');
 } finally {await closeAux(app);}

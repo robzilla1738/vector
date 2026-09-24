@@ -5,6 +5,7 @@ import { BrowsingMemory } from "./browsing-memory.js";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";
 import { documentSnapshotExcerpt, textContextShares } from "@aux/contracts";
 import { ConversationImages } from "./conversation-images.js";
+import { RunMessageQueue } from "./run-messages.js";
 import { randomUUID } from "node:crypto";
 import {
   EventTypes,
@@ -19,6 +20,7 @@ import {
   type ConversationArtifact,
   type ConversationSource,
   type ModelCall,
+  type PageContextRef,
   type Run,
   type SavedProgram,
   type SetMember,
@@ -126,6 +128,7 @@ export function budgetSections(sections: { text?: string; priority: number }[], 
 export class RunService {
   readonly coordinator: RunCoordinator;
   readonly images: ConversationImages;
+  readonly messages: RunMessageQueue;
   private setRunner: SetRunner;
   private pool: WorkerPool;
   private setRunControls = new Map<string, SetRunControl>();
@@ -364,6 +367,7 @@ export class RunService {
     if (!runs.length) throw new AuxError("not_found", "Conversation not found.");
     if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new AuxError("conflict", "Archive or restore this conversation from its saved task.");
     if (archived && runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "Stop or wait for this conversation before archiving it.");
+    if (archived && this.deps.repo.pendingRunMessageCount(chatId)) throw new AuxError("conflict", "Remove queued follow-ups before archiving this conversation.");
     const conversation = this.deps.repo.archiveConversation(chatId, archived);
     if (!conversation) throw new AuxError("not_found", "Conversation not found.");
     this.deps.events.emit("conversation.changed", {chatId, title:conversation.title, archived:conversation.archived});
@@ -534,6 +538,14 @@ export class RunService {
         });
       },
     });
+    this.messages = new RunMessageQueue(deps.repo, deps.events, message => this.start({
+      deliveryRunId: message.deliveryRunId,
+      queuedMessageId: message.messageId,
+      goal: message.text,
+      chatId: message.chatId,
+      pageIds: message.pageIds,
+      contextPageRefs: message.contextPageRefs,
+    }), runId => this.coordinator.controls.has(runId), runId => this.coordinator.steer(runId));
   }
 
   private recordModelCall(input: {
@@ -600,6 +612,9 @@ export class RunService {
   }
 
   async start(opts: {
+    /** Stable delivery identity for a durable queued message; internal only. */
+    deliveryRunId?: string;
+    queuedMessageId?: string;
     goal: string;
     defaultWorkspaceId?: string;
     taskId?: string;
@@ -618,6 +633,7 @@ export class RunService {
     contextAttachmentIds?: string[];
     contextArtifactIds?: string[];
     contextImageArtifactIds?: string[];
+    contextPageRefs?: PageContextRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
     /** Internal retry path: preserve the exact original context snapshot. */
@@ -673,6 +689,19 @@ export class RunService {
     if (!pageIds.length && !opts.setId) {
       throw new AuxError("invalid_params", "runs.start needs a pageId, pageIds, or setId scope");
     }
+    if (opts.contextPageRefs?.length) {
+      const allowed = new Set(pageIds);
+      const seen = new Set<string>();
+      for (const ref of opts.contextPageRefs) {
+        if (!allowed.has(ref.pageId) || seen.has(ref.pageId)) throw new AuxError("invalid_params", "Selected browser context must contain distinct run pages.");
+        seen.add(ref.pageId);
+        const page = this.deps.pages.get(ref.pageId);
+        if (page.ownedByRuntime || page.viewStatus === "detached" || page.viewStatus === "crashed"
+          || page.documentEpoch !== ref.documentEpoch || page.url !== ref.url || page.sessionId !== ref.sessionId) {
+          throw new AuxError("conflict", "A selected browser tab changed. Review its context before sending.");
+        }
+      }
+    }
     if (opts.setId) {
       if (contextImageArtifactIds?.length) throw new AuxError("capability_unsupported", "Image references currently belong to a single conversation run, not a set run.");
       // a set-scoped goal runs through the map scheduler
@@ -692,6 +721,8 @@ export class RunService {
     }
     return this.coordinator.start({
       ...opts,
+      runId: opts.deliveryRunId,
+      messageId: opts.queuedMessageId,
       pageIds,
       context,
       instructions,
@@ -699,6 +730,7 @@ export class RunService {
       contextAttachmentIds,
       contextArtifactIds,
       contextImageArtifactIds,
+      contextPageRefs: opts.contextPageRefs,
       contextWorkspaceId,
       contextWorkspaceRevision,
       accountLabels: opts.accountLabels,
@@ -847,6 +879,8 @@ export class RunService {
   }
 
   cancel(runId: string): Run {
+    const run = this.deps.repo.getRun(runId);
+    if (run?.config?.chatId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) this.messages.cancelForChat(run.config.chatId);
     const sc = this.setRunControls.get(runId);
     if (sc) sc.cancel();
     return this.coordinator.cancel(runId);

@@ -51,6 +51,15 @@ export const PageTargetSchema = z.object({
 });
 export type PageTarget = z.infer<typeof PageTargetSchema>;
 
+/** A user-selected live page at the moment it was attached to a conversation. */
+export const PageContextRefSchema = z.object({
+  pageId: z.string().min(1).max(200),
+  url: z.string().min(1).max(8192),
+  documentEpoch: z.number().int().nonnegative(),
+  sessionId: z.string().max(200).optional(),
+}).strict();
+export type PageContextRef = z.infer<typeof PageContextRefSchema>;
+
 /** Metadata captured for one completed page response. Response bodies stay in the artifact store. */
 export const ResponseRecordSchema = z.object({
   requestId: z.string(),
@@ -117,6 +126,12 @@ export const RunSchema = z.object({
       contextArtifactIds: z.array(z.string()).optional(),
       /** Immutable image snapshots explicitly included in this run. */
       contextImageArtifactIds: z.array(z.string()).max(4).optional(),
+      /** Live pages explicitly selected for this turn; their identity was checked before launch. */
+      contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
+      /** Accepted human steering revision for this run. */
+      messageRevision: z.number().int().nonnegative().optional(),
+      /** Queued user message that started this run, if any. */
+      messageId: z.string().optional(),
       /** explicitly selected workspace memory revision used for this turn */
       contextWorkspaceId: z.string().optional(),
       contextWorkspaceRevision: z.number().int().nonnegative().optional(),
@@ -159,6 +174,23 @@ export const RunSchema = z.object({
   createdAt: z.number(),
 });
 export type Run = z.infer<typeof RunSchema>;
+
+export const RunMessageSchema = z.object({
+  messageId: z.string().min(1),
+  chatId: z.string().min(1),
+  targetRunId: z.string().min(1),
+  deliveryRunId: z.string().min(1),
+  mode: z.enum(["queue", "steer"]),
+  status: z.enum(["accepted", "delivering", "delivered", "needs_attention", "cancelled"]),
+  text: z.string().min(1).max(20_000),
+  pageIds: z.array(z.string().min(1)).max(9),
+  contextPageRefs: z.array(PageContextRefSchema).max(9),
+  expectedRevision: z.number().int().nonnegative(),
+  error: z.string().optional(),
+  createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+}).strict();
+export type RunMessage = z.infer<typeof RunMessageSchema>;
 
 export const ConversationSummarySchema = z.object({
   chatId: z.string(),

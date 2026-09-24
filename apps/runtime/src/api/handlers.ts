@@ -688,6 +688,18 @@ export function makeInvoker(s: Services) {
         const p = params as { runId: string; answer: string };
         return s.runs.coordinator.answer(p.runId, p.answer);
       }
+      case "runs.queue":
+        if (client.external) throw new AuxError("permission_denied", "Queue conversation messages in Aux.");
+        return s.runs.messages.queue(params);
+      case "runs.steer":
+        if (client.external) throw new AuxError("permission_denied", "Steer conversation runs in Aux.");
+        return s.runs.messages.steer(params);
+      case "runs.messages.list":
+        if (client.external) throw new AuxError("permission_denied", "Conversation messages are available in Aux.");
+        return s.runs.messages.list(params.chatId);
+      case "runs.message.cancel":
+        if (client.external) throw new AuxError("permission_denied", "Cancel queued messages in Aux.");
+        return s.runs.messages.cancel(params.messageId);
       case "runs.events":
       case "events.since": {
         const p = params as { runId?: string; sinceSeq: number; limit: number };

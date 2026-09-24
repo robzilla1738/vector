@@ -416,6 +416,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     closed = true;
     process.off("unhandledRejection", onUnhandledRejection);
     process.off("uncaughtException", onUncaughtException);
+    await runs.messages.stop();
     runs.coordinator.markInterrupted();
     try { markCloudDesktopClosed(repo); } catch { /* local records only */ }
     await drivers.aux?.disconnect().catch(() => {});
@@ -464,6 +465,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // bring back the tabs that were open when the app last quit
   await pages.restoreTabs().catch(() => {});
+  runs.messages.resumePending();
 
   channel?.notify("runtime.ready", { port });
   return {

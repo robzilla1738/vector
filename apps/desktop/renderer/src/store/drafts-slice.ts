@@ -1,4 +1,5 @@
 import { bridge } from "../bridge";
+import { browserSourcesKey, readBrowserSources, writeBrowserSources } from "../browser-context-sources";
 import { NEW_DRAFT_KEY, draftKey, readConversationContexts, readConversationDrafts, writeConversationEntry } from "../conversation-drafts";
 import { readRunAnswerDrafts, writeRunAnswerDraft } from "../run-answer-drafts";
 import { draftWriter, storage, warnDraftStorage } from "./persistence";
@@ -6,11 +7,23 @@ import type { DraftKeys, Slice } from "./types";
 
 export const createDraftsSlice: Slice<DraftKeys> = (set, get) => ({
   conversationContexts: readConversationContexts(storage),
+  conversationBrowserSources: readBrowserSources(bridge.privateMode ? null : storage),
   setConversationContext: (id,pageId) => {
     const contexts={...get().conversationContexts};const key=id?draftKey(id):"new";
     if(pageId)contexts[key]=pageId;else delete contexts[key];set({conversationContexts:contexts});
     try{writeConversationEntry(storage,"context",key,pageId??"");}
     catch{warnDraftStorage("Your composer context is kept in this window, but could not be saved for restart.")}
+  },
+  setConversationBrowserSources: (id,sources) => {
+    const key = browserSourcesKey(id);
+    set(state => {
+      const selected = { ...state.conversationBrowserSources };
+      if (sources.length) selected[key] = sources;
+      else delete selected[key];
+      return { conversationBrowserSources: selected };
+    });
+    try { writeBrowserSources(bridge.privateMode ? null : storage, key, sources); }
+    catch { warnDraftStorage("Your selected tabs are kept in this window, but could not be saved for restart."); }
   },
   runAnswerDrafts: readRunAnswerDrafts(bridge.privateMode ? null : storage),
   setRunAnswerDraft: (runId,question,text) => {

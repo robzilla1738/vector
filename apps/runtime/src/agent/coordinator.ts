@@ -29,6 +29,8 @@ export { verifyDoneAgainstObservation } from "./coordinator-loop.js";
 export interface RunControl {
   abort: AbortController;
   paused: boolean;
+  dispatchAbort?: AbortController;
+  interruptPlanning?: () => void;
   deadlineHit?: boolean;
   answerWaiter?: { resolve: (answer: string) => void };
   span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
@@ -105,6 +107,8 @@ export class RunCoordinator {
   }
 
   async start(opts: {
+    runId?: string;
+    messageId?: string;
     goal: string;
     taskId?: string;
     taskRevision?: number;
@@ -120,6 +124,7 @@ export class RunCoordinator {
     contextAttachmentIds?: string[];
     contextArtifactIds?: string[];
     contextImageArtifactIds?: string[];
+    contextPageRefs?: import("@aux/contracts").PageContextRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
     chatId?: string;
@@ -132,8 +137,12 @@ export class RunCoordinator {
       this.leases.acquire(leaseKey, this.leaseOwner);
       this.heldLeases.add(leaseKey);
     }
+    if (opts.runId) {
+      const existing = this.deps.repo.getRun(opts.runId);
+      if (existing) return existing;
+    }
     const run: Run = {
-      runId: newRunId(),
+      runId: opts.runId ?? newRunId(),
       goal: opts.goal,
       status: "queued",
       pageIds: opts.pageIds,
@@ -149,6 +158,9 @@ export class RunCoordinator {
         contextAttachmentIds: opts.contextAttachmentIds,
         contextArtifactIds: opts.contextArtifactIds,
         contextImageArtifactIds: opts.contextImageArtifactIds,
+        contextPageRefs: opts.contextPageRefs,
+        messageRevision: 0,
+        messageId: opts.messageId,
         contextWorkspaceId: opts.contextWorkspaceId,
         contextWorkspaceRevision: opts.contextWorkspaceRevision,
         chatId: opts.chatId,
@@ -213,6 +225,15 @@ export class RunCoordinator {
       this.finish(runId, "cancelled", undefined, "Cancelled by user");
     }
     return this.get(runId);
+  }
+
+  /** An acknowledged correction revokes the current plan without cancelling the run. */
+  steer(runId: string): void {
+    const c = this.controls.get(runId);
+    if (!c || c.abort.signal.aborted) return;
+    c.interruptPlanning?.();
+    c.dispatchAbort?.abort();
+    c.answerWaiter?.resolve("");
   }
 
   answer(runId: string, answer: string): Run {
@@ -304,7 +325,7 @@ export class RunCoordinator {
       return existing;
     }
     return new Promise<string>((resolve) => {
-      c.answerWaiter = { resolve };
+      c.answerWaiter = { resolve: answer => { c.answerWaiter = undefined; resolve(answer); } };
     });
   }
 

@@ -158,7 +158,7 @@ export function eventEffects(e: AuxEvent, s: Workspace, set: Set, get: () => Wor
       if(typeof chatId!=="string")break;
       const removed=new Set(s.runs.filter(run=>(run.config?.chatId??run.runId)===chatId).map(run=>run.runId));
       for(const [runId,draft] of Object.entries(s.runAnswerDrafts))if(draft.chatId===chatId)removed.add(runId);
-      get().setConversationDraft(chatId,"");get().setConversationContext(chatId,"");
+      get().setConversationDraft(chatId,"");get().setConversationContext(chatId,"");get().setConversationBrowserSources(chatId,[]);
       if(!clearResultDrafts(chatId))toast("An edited result draft could not be removed from this browser.","error");
       setDictationDraft(draftKey(chatId), "");
       for(const runId of removed)try { writeRunAnswerDraft(bridge.privateMode ? null : storage,runId,null); } catch { toast("A saved answer draft could not be removed from this browser.","error"); }

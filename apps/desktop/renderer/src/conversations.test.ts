@@ -22,6 +22,14 @@ it("continues the same saved conversation while leaving context assembly to the 
 it("keeps legacy runs separate and never merges unrelated page history into an explicit chat", () => {
   expect(recentConversations([first, { ...first, runId: "legacy", config: undefined }])).toHaveLength(2);
 });
+it("passes selected browser tabs and their identities to the existing run API", async () => {
+  const next = { ...first, runId: "multi", pageIds: ["page", "other"], status: "queued" as const };
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue(next as never);
+  useStore.setState({ runs: [], activePageId: "page", settings: { modelConfigured: true }, mode: "conversation", conversationId: "multi-chat" });
+  const extra = { pageId: "other", url: "https://example.test/other", documentEpoch: 2 };
+  await useStore.getState().startRun("Compare both", { chatId: "multi-chat", pageId: "page", pageIds: ["page", "other"], contextPageRefs: [extra], scope: "page" });
+  expect(invoke).toHaveBeenCalledWith("runs.start", expect.objectContaining({ pageIds: ["page", "other"], contextPageRefs: [extra] }));
+});
 it("keeps unrelated drafts intact through setup failure and successful submission", async () => {
   useStore.setState({ runs: [first], settings: { modelConfigured: false }, agentDraft: "New chat draft", conversationDrafts: {}, railView: { kind: "run", runId: first.runId } });
   useStore.getState().setConversationDraft("other", "Other reply");

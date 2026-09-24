@@ -2,6 +2,7 @@ import { runAnswerEntry } from "./run-answer-drafts";
 import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
+import { browserSourcesEntryChange } from "./browser-context-sources";
 import { BrowsingMemoryWatch } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
 import type { ShortcutOverrides } from "@aux/contracts";
@@ -59,6 +60,16 @@ export function App() {
       const answer=runAnswerEntry(event.key,event.newValue);
       if(answer) {
         useStore.setState(state=>{const drafts={...state.runAnswerDrafts};if(answer.draft)drafts[answer.runId]=answer.draft;else delete drafts[answer.runId];return {runAnswerDrafts:drafts};});
+        return;
+      }
+      const browserSources = browserSourcesEntryChange(event.key, event.newValue);
+      if (browserSources) {
+        useStore.setState(state => {
+          const selected = { ...state.conversationBrowserSources };
+          if (browserSources.sources.length) selected[browserSources.key] = browserSources.sources;
+          else delete selected[browserSources.key];
+          return { conversationBrowserSources: selected };
+        });
         return;
       }
       const change=conversationEntryChange(event.key,event.newValue);

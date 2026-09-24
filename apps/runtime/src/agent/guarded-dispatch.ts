@@ -26,6 +26,8 @@ export type GuardedDispatchOpts = {
   guards?: SkillGuard[];
   taskId?: string;
   taskRevision?: number;
+  /** Recheck the run's message revision at the synchronous dispatch boundary. */
+  isCurrent?: () => boolean;
   /** overrides the compiled program (e.g. drop documentEpoch on later streamed batches) */
   program?: Partial<Program>;
   exec: ExecContext;
@@ -40,6 +42,7 @@ export type GuardedDispatch =
 
 /** compile → authorize → persist write intent → execute → settle: the one dispatch path for model-authored steps. */
 export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDispatchOpts): Promise<GuardedDispatch> {
+  if (opts.isCurrent && !opts.isCurrent()) return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
   const prepared = compileAndAuthorize({
     pageId: opts.pageId,
     documentEpoch: opts.documentEpoch,
@@ -52,6 +55,7 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
   });
   if ("rejected" in prepared) return { kind: "rejected", reason: prepared.rejected };
   if ("denied" in prepared) return { kind: "denied", reason: prepared.denied };
+  if (opts.isCurrent && !opts.isCurrent()) return { kind: "rejected", reason: "The user corrected this run; re-plan before acting." };
   const program = { ...prepared.program, ...opts.program };
   const write = beginConsequentialWrite(deps.durable, {
     runId: opts.runId,

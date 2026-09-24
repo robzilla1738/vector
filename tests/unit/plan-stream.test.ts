@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import { EarlyDispatcher, PlanStreamParser } from "@aux/runtime";
+import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
 import type { ModelClient } from "@aux/runtime";
 import type { Observation, PlanStep, ProgramResult } from "@aux/contracts";
 
@@ -102,6 +103,25 @@ describe("EarlyDispatcher (A5)", () => {
     await d.finish([]);
     expect(ran).toEqual([]);
   });
+
+  it("discards pending streamed steps while the running batch settles", async () => {
+    const ran: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const d = new EarlyDispatcher(async steps => {
+      ran.push(...steps.map(step => step.id));
+      await gate;
+      return ok(steps);
+    });
+    d.offer({ id: "started", op: "reload" });
+    d.offer({ id: "stale", op: "reload" });
+    d.discardPending();
+    d.offer({ id: "later", op: "reload" });
+    release();
+    const result = await d.finish([{ id: "started", op: "reload" }, { id: "stale", op: "reload" }, { id: "later", op: "reload" }] as PlanStep[]);
+    expect(ran).toEqual(["started"]);
+    expect(result.steps.map(step => step.stepId)).toEqual(["started"]);
+  });
 });
 
 const obs = (): Observation =>
@@ -166,5 +186,60 @@ describe("RunCoordinator streams plans (A5)", () => {
     // every step of the plan ran exactly once, in order
     const ran = execute.mock.calls.flatMap((c) => (c[0] as { steps: PlanStep[] }).steps.map((s) => s.id));
     expect(ran).toEqual(["s1", "s2"]);
+  });
+
+  it("applies a durable correction without dispatching waiting steps from the old stream", async () => {
+    const repo = memRepo();
+    const events = new EventBus(repo);
+    const refs = [{ pageId: "p1", url: "http://x.test/", documentEpoch: 1 }];
+    let plannerCalls = 0;
+    let releaseFirst!: () => void;
+    const firstBatch = new Promise<void>(resolve => { releaseFirst = resolve; });
+    const ran: string[] = [];
+    const prompts: string[] = [];
+    const model: ModelClient = {
+      generateStructured: async options => ({ object: options.schema.parse({ status: "done", result: { ok: true } }), durationMs: 1 }),
+      streamStructured: async options => {
+        plannerCalls++;
+        prompts.push(options.prompt);
+        if (plannerCalls === 1) {
+          options.onText('{"status":"continue","steps":[{"id":"s1","op":"reload"},');
+          options.onText('{"id":"s2","op":"reload"}]}');
+          if (!options.signal) throw new Error("planner signal missing");
+          await new Promise<never>((_resolve, reject) => options.signal!.addEventListener("abort", () => reject(new Error("steered")), { once: true }));
+        }
+        const done = { status: "done", message: "Done", result: { ok: true } };
+        options.onText(JSON.stringify(done));
+        return { object: options.schema.parse(done), durationMs: 1 };
+      },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const execute = vi.fn(async (program: { steps: PlanStep[] }, ctx: { onStep?: (outcome: unknown, step: unknown) => void }) => {
+      ran.push(...program.steps.map(step => step.id));
+      if (program.steps.some(step => step.id === "s1")) await firstBatch;
+      const steps = program.steps.map(step => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1 }));
+      steps.forEach((outcome, index) => ctx.onStep?.(outcome, program.steps[index]));
+      return { status: "completed" as const, steps };
+    });
+    const coordinator = new RunCoordinator({ repo, events,
+      pages: { observe: vi.fn(async () => obs()), execute, capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
+      model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
+      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
+    });
+    const messages = new RunMessageQueue(repo, events, async () => { throw new Error("not queued"); },
+      runId => coordinator.controls.has(runId), runId => coordinator.steer(runId));
+    const run = await coordinator.start({ goal: "Read the page", chatId: "chat-steer", pageIds: ["p1"], contextPageRefs: refs });
+    await vi.waitFor(() => expect(ran).toEqual(["s1"]));
+    messages.steer({ messageId: "11111111-1111-4111-8111-111111111111", runId: run.runId, chatId: "chat-steer",
+      text: "Use the latest figures", pageIds: ["p1"], contextPageRefs: refs, expectedRevision: 0 });
+    releaseFirst();
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
+    expect(ran).toEqual(["s1"]);
+    expect(plannerCalls).toBe(2);
+    expect(prompts[1]).toContain("Use the latest figures");
+    expect(repo.getRun(run.runId)?.config?.messageRevision).toBe(1);
+    await messages.stop();
+    repo.db.close();
   });
 });

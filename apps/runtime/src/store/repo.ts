@@ -9,7 +9,7 @@ import type {
   PageSet,
   PageTarget,
   ResultRecord,
-  Run, ConversationSummary,
+  Run, RunMessage, ConversationSummary,
   SavedProgram,
   SetMember,
   StepRecord,
@@ -349,6 +349,11 @@ export class Repo {
     const r = this.q("SELECT * FROM runs WHERE run_id=?").get(runId) as any;
     return r ? this.rowToRun(r) : undefined;
   }
+  activeConversationRun(chatId: string): Run | undefined {
+    const row = this.q(`SELECT * FROM runs WHERE json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId')=?
+      AND status IN ('queued','planning','running','paused','needs_input') ORDER BY created_at DESC,run_id DESC LIMIT 1`).get(chatId) as Record<string, unknown> | undefined;
+    return row ? this.rowToRun(row) : undefined;
+  }
   listRuns(limit = 50, options: { before?: { createdAt: number; runId: string }; chatId?: string; query?: string; groupByChat?: boolean; includeArchived?: boolean } = {}): Run[] {
     const where: string[] = [];
     const values: (string | number)[] = [];
@@ -370,6 +375,76 @@ export class Repo {
     ) SELECT * FROM ${options.groupByChat ? "ranked" : "keyed"}
       ${where.length ? "WHERE " + where.join(" AND ") : ""}
       ORDER BY created_at DESC, run_id DESC LIMIT ?`).all(...values, limit) as any[]).map(r => this.rowToRun(r));
+  }
+
+  private rowToRunMessage(row: Record<string, unknown>): RunMessage {
+    return {
+      messageId: row.message_id as string,
+      chatId: row.chat_id as string,
+      targetRunId: row.target_run_id as string,
+      deliveryRunId: row.delivery_run_id as string,
+      mode: row.mode as RunMessage["mode"],
+      status: row.status as RunMessage["status"],
+      text: row.text as string,
+      pageIds: P(row.page_ids as string, [] as string[]),
+      contextPageRefs: P(row.context_page_refs as string, [] as RunMessage["contextPageRefs"]),
+      expectedRevision: row.expected_revision as number,
+      ...(row.error ? { error: row.error as string } : {}),
+      createdAt: row.created_at as number,
+      updatedAt: row.updated_at as number,
+    };
+  }
+
+  insertRunMessage(message: RunMessage): RunMessage {
+    this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,expected_revision,error,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
+      message.mode, message.status, message.text, J(message.pageIds), J(message.contextPageRefs), message.expectedRevision,
+      message.error ?? null, message.createdAt, message.updatedAt);
+    return this.getRunMessage(message.messageId)!;
+  }
+
+  getRunMessage(messageId: string): RunMessage | undefined {
+    const row = this.q("SELECT * FROM run_messages WHERE message_id=?").get(messageId) as Record<string, unknown> | undefined;
+    return row ? this.rowToRunMessage(row) : undefined;
+  }
+
+  listRunMessages(chatId: string): RunMessage[] {
+    return (this.q("SELECT * FROM run_messages WHERE chat_id=? ORDER BY created_at,message_id").all(chatId) as Record<string, unknown>[])
+      .map(row => this.rowToRunMessage(row));
+  }
+
+  listRunSteers(runId: string): RunMessage[] {
+    return (this.q("SELECT * FROM run_messages WHERE target_run_id=? AND mode='steer' AND status='delivered' ORDER BY created_at,message_id").all(runId) as Record<string, unknown>[])
+      .map(row => this.rowToRunMessage(row));
+  }
+
+  pendingRunMessageChats(): string[] {
+    return (this.q("SELECT DISTINCT chat_id FROM run_messages WHERE status IN ('accepted','delivering','needs_attention')").all() as { chat_id: string }[])
+      .map(row => row.chat_id);
+  }
+
+  pendingRunMessageCount(chatId: string): number {
+    return (this.q("SELECT count(*) AS count FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')")
+      .get(chatId) as { count: number }).count;
+  }
+
+  cancelPendingRunMessages(chatId: string): RunMessage[] {
+    return (this.q(`UPDATE run_messages SET status='cancelled',error=NULL,updated_at=?
+      WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention')
+      AND delivery_run_id NOT IN (SELECT run_id FROM runs) RETURNING *`).all(now(), chatId) as Record<string, unknown>[])
+      .map(row => this.rowToRunMessage(row));
+  }
+
+  nextRunMessage(chatId: string): RunMessage | undefined {
+    const row = this.q("SELECT * FROM run_messages WHERE chat_id=? AND status IN ('accepted','delivering','needs_attention') ORDER BY created_at,message_id LIMIT 1").get(chatId) as Record<string, unknown> | undefined;
+    return row ? this.rowToRunMessage(row) : undefined;
+  }
+
+  updateRunMessage(messageId: string, status: RunMessage["status"], error?: string): RunMessage {
+    this.q("UPDATE run_messages SET status=?,error=?,updated_at=? WHERE message_id=?").run(status, error ?? null, now(), messageId);
+    const message = this.getRunMessage(messageId);
+    if (!message) throw new AuxError("not_found", "Conversation message not found.");
+    return message;
   }
 
   listConversations(limit = 40, options: { workspaceId?: string; before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {

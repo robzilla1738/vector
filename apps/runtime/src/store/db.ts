@@ -55,6 +55,17 @@ CREATE TABLE runs(
   run_id TEXT PRIMARY KEY, goal TEXT NOT NULL, status TEXT NOT NULL,
   page_ids TEXT NOT NULL DEFAULT '[]', set_id TEXT REFERENCES page_sets(set_id), config TEXT, status_message TEXT,
   result TEXT, error TEXT, failure TEXT, started_at REAL, ended_at REAL, created_at REAL NOT NULL);
+CREATE TABLE run_messages(
+  message_id TEXT PRIMARY KEY, chat_id TEXT NOT NULL,
+  target_run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+  delivery_run_id TEXT NOT NULL UNIQUE,
+  mode TEXT NOT NULL CHECK(mode IN ('queue','steer')),
+  status TEXT NOT NULL CHECK(status IN ('accepted','delivering','delivered','needs_attention','cancelled')),
+  text TEXT NOT NULL, page_ids TEXT NOT NULL DEFAULT '[]', context_page_refs TEXT NOT NULL DEFAULT '[]',
+  expected_revision INTEGER NOT NULL DEFAULT 0,
+  error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX idx_run_messages_chat ON run_messages(chat_id,created_at,message_id);
+CREATE INDEX idx_run_messages_status ON run_messages(status,created_at,message_id);
 CREATE TABLE conversations(
   chat_id TEXT PRIMARY KEY, title TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0,
   created_at REAL NOT NULL, updated_at REAL NOT NULL);
@@ -231,7 +242,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -271,6 +282,20 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   // v4 → v5: indexes for per-run/per-page lookups and retention deletes.
   4: (db) =>
     HOT_PATH_INDEXES.filter((sql) => db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(/ ON (\w+)\(/.exec(sql)![1]!)),
+  // v5 → v6: ordered, crash-recoverable conversation messages.
+  5: [
+    `CREATE TABLE run_messages(
+      message_id TEXT PRIMARY KEY, chat_id TEXT NOT NULL,
+      target_run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+      delivery_run_id TEXT NOT NULL UNIQUE,
+      mode TEXT NOT NULL CHECK(mode IN ('queue','steer')),
+      status TEXT NOT NULL CHECK(status IN ('accepted','delivering','delivered','needs_attention','cancelled')),
+      text TEXT NOT NULL, page_ids TEXT NOT NULL DEFAULT '[]', context_page_refs TEXT NOT NULL DEFAULT '[]',
+      expected_revision INTEGER NOT NULL DEFAULT 0,
+      error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    `CREATE INDEX idx_run_messages_chat ON run_messages(chat_id,created_at,message_id)`,
+    `CREATE INDEX idx_run_messages_status ON run_messages(status,created_at,message_id)`,
+  ],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

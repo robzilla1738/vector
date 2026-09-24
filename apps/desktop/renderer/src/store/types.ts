@@ -1,6 +1,7 @@
 import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Download, PageSet, PageTarget, ResultRecord, Run, SavedProgram, SetMember, StepRecord, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
 import type { StateCreator } from "zustand";
 import type { ClosedTab } from "../closed-tabs";
+import type { PageContextRef } from "@aux/contracts";
 import type { RunAnswerDraft } from "../run-answer-drafts";
 import type { SidebarMode } from "../sidebar-mode";
 import type { Layout, Pin, SpaceColor } from "../workspace";
@@ -39,6 +40,8 @@ export interface Workspace {
   conversationId: string | null;
   conversationContexts: Record<string, string>;
   setConversationContext(id: string | null, pageId: string): void;
+  conversationBrowserSources: Record<string, PageContextRef[]>;
+  setConversationBrowserSources(id: string | null, sources: PageContextRef[]): void;
   openConversation(runId: string | null): void;
   openConversationDraft(chatId: string | null): void;
   showConversationInRail(chatId: string | null): void;
@@ -130,7 +133,7 @@ export interface Workspace {
   closeTabs(pageIds: string[], options?: { shouldStop?(): boolean; onClosed?(pageId: string, count: number): void }): Promise<boolean>;
   reopenClosedTab(pageId?: string, group?: boolean): Promise<void>;
   /** `ownsDraft`: the caller already cleared its composer and restores it on failure. */
-  startRun(goal: string, opts?: { pageId?: string | null; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean }): Promise<Run | null>;
+  startRun(goal: string, opts?: { pageId?: string | null; pageIds?: string[]; contextPageRefs?: PageContextRef[]; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean }): Promise<Run | null>;
   /** Messages shown in the thread while their run is still being created. */
   pendingTurns: { id: string; chatId: string | null; goal: string; createdAt: number }[];
   /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */
@@ -185,7 +188,7 @@ export interface Workspace {
 }
 
 export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
-export type DraftKeys = "conversationContexts" | "setConversationContext" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
+export type DraftKeys = "conversationContexts" | "setConversationContext" | "conversationBrowserSources" | "setConversationBrowserSources" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
 export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
 export type LayoutKeys = "layout" | "splitPageId" | "setSplitPage" | "setSplitRatio" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";
 export type TabKeys = "pages" | "activePageId" | "closedTabs" | "reopeningTab" | "tabAudio" | "catalogVersion" | "applyTabsPatch" | "syncTabsSnapshot" | "applyTabsPlacement" | "resyncTabs" | "activate" | "navigatePage" | "newTab" | "openBackgroundTab" | "reopenClosedTab" | "duplicateTab" | "closingTabs" | "closeTabs" | "closeTab" | "moveTabToWindow" | "moveTabsToWindow" | "previewVersion" | "restoringTabs" | "pendingRestoreIds";

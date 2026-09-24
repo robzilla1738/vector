@@ -80,14 +80,16 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     set(state => ({ pendingTurns: [...state.pendingTurns, pending] }));
     const settle = (runs?: (state: Workspace) => Run[]) => set(state => ({ pendingTurns: state.pendingTurns.filter(turn => turn !== pending), ...(runs ? { runs: runs(state) } : {}) }));
     try {
-      let pageId = opts.pageId === undefined ? before.activePageId : opts.pageId;
+      let pageId = opts.pageId === undefined ? opts.pageIds?.[0] ?? before.activePageId : opts.pageId;
       if (opts.scope === "new" || !pageId) {
         const page = await get().openBackgroundTab("about:blank", before.layout.activeSpaceId, false);
         pageId = page.pageId;
       }
       const n = Number(before.settings.maxModelCalls);
       const budget = n === 0 ? 0 : Math.min(256, Math.max(1, Number.isFinite(n) ? n : 8));
-      const run = await call("runs.start", { goal: g, pageIds: pageId ? [pageId] : undefined,
+      const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
+      const run = await call("runs.start", { goal: g, pageIds: pageIds.length ? pageIds : undefined,
+        contextPageRefs: opts.contextPageRefs,
         maxModelCalls: budget, chatId: opts.chatId,
         defaultWorkspaceId: bridge.privateMode ? undefined : before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
       const reveal = stayed();

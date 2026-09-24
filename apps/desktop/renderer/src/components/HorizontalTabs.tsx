@@ -3,7 +3,7 @@ import type { PageTarget } from "@aux/contracts";
 import { errToast, useStore } from "../store";
 import { groupedTabs, tabsInSpace } from "../workspace";
 import { moveListFocus } from "../keyboard-list";
-import { FolderContextMenu } from "./Sidebar";
+import { FolderContextMenu, SpaceEditor, SpaceMenu } from "./Sidebar";
 import { TabPreview } from "./TabPreview";
 import { HorizontalPins } from "./HorizontalPins";
 import { AuxMark } from "./AuxMark";
@@ -28,6 +28,8 @@ export function HorizontalTabs() {
   const tabs = ordered.filter(page => !folders.find(folder => folder.id === layout.tabFolder[page.pageId])?.collapsed || page.pageId === activePageId);
   const [groupMenu, setGroupMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [spaceMenuOpen, setSpaceMenuOpen] = useState(false);
+  const [editingSpace, setEditingSpace] = useState<typeof layout.spaces[number] | "new" | null>(null);
   const [preview, setPreview] = useState<{ page: PageTarget; x: number; y: number } | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hidePreview = () => { if (previewTimer.current) clearTimeout(previewTimer.current); previewTimer.current = null; setPreview(null); };
@@ -103,8 +105,28 @@ export function HorizontalTabs() {
         <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} onClick={() => void useStore.getState().newTab().catch(errToast)}>{I.plus}</button>
       </div>
       <div className="horizontal-tabs-spacer" />
-      <button className="horizontal-profile" aria-label={`Current space: ${space?.name ?? "Personal"}`} title={space?.name ?? "Personal"} onClick={() => useStore.getState().setSidebar("expanded")}>{I.person}{I.down}</button>
+      <div className="horizontal-space" data-space={space?.color}>
+        <button className="horizontal-profile" aria-label={`Switch space, current: ${space?.name ?? "Personal"}`} aria-haspopup="menu" aria-expanded={spaceMenuOpen} title="Switch space" onClick={() => setSpaceMenuOpen(open => !open)}>
+          {I.person}<span className="horizontal-space-name">{space?.name ?? "Personal"}</span>{I.down}
+        </button>
+        {spaceMenuOpen && <SpaceMenu
+          spaces={layout.spaces}
+          archivedSpaces={layout.archivedSpaces ?? []}
+          active={layout.activeSpaceId}
+          onPick={id => useStore.getState().switchSpace(id)}
+          onNew={() => setEditingSpace("new")}
+          onEdit={setEditingSpace}
+          onDelete={id => void useStore.getState().deleteSpace(id).catch(errToast)}
+          onRestore={id => void useStore.getState().restoreSpace(id).catch(errToast)}
+          onHistory={() => useStore.getState().setOverlay("history")}
+          onDownloads={() => useStore.getState().setOverlay("downloads")}
+          onSettings={() => useStore.getState().setOverlay("settings")}
+          onClose={() => setSpaceMenuOpen(false)}
+        />}
+      </div>
     </div>
+    {editingSpace && <SpaceEditor space={editingSpace === "new" ? null : editingSpace} onClose={() => setEditingSpace(null)}
+      onSave={(name, color) => editingSpace === "new" ? useStore.getState().addSpace(name, color) : useStore.getState().editSpace(editingSpace.id, name, color)} />}
     {groupMenu && folders.some(folder => folder.id === groupMenu.id) && <FolderContextMenu group folder={folders.find(folder => folder.id === groupMenu.id)!} x={groupMenu.x} y={groupMenu.y} onClose={() => setGroupMenu(null)} onRename={() => setRenaming(groupMenu.id)} onDelete={() => { useStore.getState().deleteFolder(groupMenu.id); setGroupMenu(null); }} />}
     {preview && !groupMenu && !menu && pages.some(page => page.pageId === preview.page.pageId) && <TabPreview {...preview} page={pages.find(page => page.pageId === preview.page.pageId)!} />}
     {menu && <TabMenu selectedPages={selection.pagesFor(menu.page)} onSelectionDone={selection.clear} page={menu.page} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}

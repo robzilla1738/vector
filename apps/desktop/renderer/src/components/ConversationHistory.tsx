@@ -126,6 +126,8 @@ export function ConversationHistory() {
         await call("conversations.delete", { chatId: item.chatId });
         useStore.getState().setConversationDraft(item.chatId, "");
         useStore.getState().setConversationContext(item.chatId, "");
+        useStore.getState().setConversationBrowserSources(item.chatId, []);
+        try { localStorage.removeItem(`aux.pending-queue-message.v1:${item.chatId}`); } catch { /* Storage is optional. */ }
         useStore.setState(state => ({ runs: state.runs.filter(run => (run.config?.chatId ?? run.runId) !== item.chatId) }));
         if (view.current === origin) setRows(old => old.filter(row => row.chatId !== item.chatId));
         setDeleting(null);

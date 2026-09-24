@@ -1,5 +1,5 @@
 import { ConversationContext } from "./ConversationContext";
-import { BrowserContextPicker } from "./BrowserContextPicker";
+import { BrowserContextTray } from "./BrowserContextTray";
 import { RunImages } from "./RunImages";
 import { Dictation } from "./Dictation";
 import { ImageSnapshot } from "./ImageSnapshot";
@@ -10,9 +10,10 @@ import { AuxMark } from "./AuxMark";
 import { ConversationTask } from "./ConversationTask";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
+import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-sources";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationSource, Run, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
@@ -23,8 +24,21 @@ import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
 import { I } from "./icons";
 import { useDismissable } from "../use-dismissable";
+import "./Conversation.css";
 
 type DraftState = ReturnType<typeof useStore.getState>;
+const QUEUE_ATTEMPT_PREFIX = "aux.pending-queue-message.v1:";
+type QueueAttempt = { messageId: string; runId: string; text: string; mode: "queue" | "steer" };
+function queueAttempt(chatId: string, runId: string, text: string, mode: QueueAttempt["mode"], inWindow: QueueAttempt | null): QueueAttempt {
+  if (inWindow?.runId === runId && inWindow.text === text && inWindow.mode === mode) return inWindow;
+  try {
+    const saved = JSON.parse(localStorage.getItem(`${QUEUE_ATTEMPT_PREFIX}${chatId}`) ?? "null") as QueueAttempt | null;
+    if (saved?.runId === runId && saved.text === text && (saved.mode ?? "queue") === mode && /^[\da-f-]{36}$/i.test(saved.messageId)) return { ...saved, mode };
+  } catch { /* The composer still keeps its in-window attempt. */ }
+  const attempt = { messageId: crypto.randomUUID(), runId, text, mode };
+  try { localStorage.setItem(`${QUEUE_ATTEMPT_PREFIX}${chatId}`, JSON.stringify(attempt)); } catch { /* Optional persistence. */ }
+  return attempt;
+}
 /** The text a conversation's composer edits: the pending question's answer, the chat draft, or the new-chat draft. */
 const draftText = (s: DraftState, id: string | null | undefined, answerRunId?: string, answerQuestion?: string) => {
   if (answerRunId) { const draft = s.runAnswerDrafts[answerRunId]; return draft?.question === answerQuestion ? draft?.text ?? "" : ""; }
@@ -195,12 +209,30 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const contexts = useStore(s => s.conversationContexts);
   const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "active");
   const setContextPage = (pageId: string) => useStore.getState().setConversationContext(id,pageId);
+  const selectedBrowserSources = useStore(s => s.conversationBrowserSources[browserSourcesKey(id)]);
+  const browserSources = selectedBrowserSources ?? [];
+  const setBrowserSources = (sources: typeof browserSources) => useStore.getState().setConversationBrowserSources(id,sources);
   const [reopening, setReopening] = useState(false);
   const turns = useMemo(() => runs.filter(r => (r.config?.chatId ?? r.runId) === id).sort((a,b) => a.createdAt - b.createdAt), [runs, id]);
   const last = turns.at(-1);
   const answering = last?.status === "needs_input";
   const answerRunId = answering ? last?.runId : undefined, answerQuestion = last?.statusMessage;
   const [sendingChat, setSendingChat] = useState<string | null>(null);
+  const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
+  const queueAttemptRef = useRef<QueueAttempt | null>(null);
+  const [liveSendMode, setLiveSendMode] = useState<"answer" | "steer" | "queue">("answer");
+  useEffect(() => setLiveSendMode("answer"), [last?.runId, answering]);
+  const effectiveLiveMode = answering ? liveSendMode : liveSendMode === "answer" ? "steer" : liveSendMode;
+  useEffect(() => {
+    setQueuedMessages([]);
+    queueAttemptRef.current = null;
+    if (!id || id === "history") return;
+    let current = true;
+    const refresh = () => void call("runs.messages.list", { chatId: id }).then(messages => { if (current) setQueuedMessages(messages); }).catch(() => {});
+    refresh();
+    const unsubscribe = bridge.onEvent(event => { if (event.type === "conversation.messages.changed" && event.payload.chatId === id) refresh(); });
+    return () => { current = false; unsubscribe(); };
+  }, [id]);
   const pendingTurns = useStore(useShallow(s => s.pendingTurns.filter(turn => turn.chatId === (id ?? sendingChat))));
   const answerPending = useStore(s=>!!last && !!s.runAnswerPending[last.runId]);
   const [sendError,setSendError]=useState("");
@@ -222,6 +254,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const missingContext = !["active", "linked", "none"].includes(contextPage) && !selectedContext;
+  const changedBrowserSources = browserSources.filter(source => sourceStatus(source, pages) !== "current");
   const observations = useStore(s => s.observations);
   const lastObservation = [...turns].reverse().map(run => observations[run.runId]).find(observation => observation && answerUrl(observation.url));
   const recoverUrl = lastObservation ? answerUrl(lastObservation.url) : "";
@@ -290,6 +323,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     const text = readText();
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
+    useStore.getState().setConversationBrowserSources(chatId, browserSources);
     useStore.getState().setAgentDraft("");
     try { localStorage.setItem(PENDING_CHAT_KEY, chatId); } catch { /* in-window state still works */ }
     if (onChatCreated) onChatCreated(chatId);
@@ -344,22 +378,55 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const send = async () => {
     const text = readText();
     if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
-    if (!answering && (attachmentSaving || historySaving || missingContext || historyLoading || historyError || contextLoading || contextError || (live && last?.status !== "needs_input") || (taskBound && last?.status !== "needs_input"))) return;
+    if (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length)) || historyLoading || historyError || contextLoading || contextError || (taskBound && last?.status !== "needs_input"))) return;
     sendPending.current = true;
     setSending(true); setSendError("");
     try {
-      if (last?.status === "needs_input") {
+      if (last?.status === "needs_input" && effectiveLiveMode === "answer") {
         await useStore.getState().answerRun(last.runId,text.trim());
         scrolling.jumpToLatest();
+      } else if (live && last && id) {
+        const mode = effectiveLiveMode === "answer" ? "steer" : effectiveLiveMode;
+        const attempt = queueAttempt(id, last.runId, text.trim(), mode, queueAttemptRef.current);
+        queueAttemptRef.current = attempt;
+        const message = await call(mode === "steer" ? "runs.steer" : "runs.queue", { messageId: attempt.messageId, runId: last.runId, chatId: id,
+          text: attempt.text, pageIds: last.pageIds, contextPageRefs: last.config?.contextPageRefs ?? [],
+          expectedRevision: last.config?.messageRevision ?? 0 });
+        setQueuedMessages(items => items.some(item => item.messageId === message.messageId) ? items : [...items, message]);
+        if (readText() === text) setText("");
+        queueAttemptRef.current = null;
+        try { localStorage.removeItem(`${QUEUE_ATTEMPT_PREFIX}${id}`); } catch { /* Already acknowledged in runtime. */ }
+        scrolling.jumpToLatest();
       } else {
+        const selectedPageIds = [...new Set([...(selectedContext ? [selectedContext.pageId] : []), ...browserSources.map(source => source.pageId)])];
+        let primaryForRun = selectedContext;
+        if (selectedPageIds.length) {
+          const pending = (await call("browser.recovery.list", {})).filter(tab => selectedPageIds.includes(tab.pageId));
+          for (const tab of pending) await call("browser.recovery.retry", { pageId: tab.pageId });
+          if (pending.length) {
+            const restored = await call("pages.list", {});
+            if (browserSources.some(source => sourceStatus(source, restored) !== "current")) {
+              setSendError("A selected tab was restored and its page changed. Update or remove it before sending.");
+              return;
+            }
+            if (selectedContext) primaryForRun = restored.find(page => page.pageId === selectedContext.pageId);
+          }
+        }
+        if (selectedContext && !primaryForRun) { setSendError("The selected tab is unavailable. Open it or choose another tab."); return; }
         // Optimistic: the message leaves the composer and joins the thread now;
         // a failed start puts it back unless something new was typed meanwhile.
         const chatId = id ?? crypto.randomUUID();
+        if (!id) {
+          useStore.getState().setConversationContext(chatId, contextPage);
+          useStore.getState().setConversationBrowserSources(chatId, browserSources);
+        }
+        const pageIds = selectedPageIds;
+        const contextPageRefs = [...(primaryForRun ? [sourceRef(primaryForRun)] : []), ...browserSources.filter(source => source.pageId !== primaryForRun?.pageId)];
         setSendingChat(chatId);
         setText("");
         if (activeChat.current === id) scrolling.jumpToLatest();
-        const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, scope: selectedContext ? "page" : "new", presentation: embedded ? "rail" : "conversation", ownsDraft: true });
-        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); } catch { /* storage is optional */ } if (activeChat.current === id) scrolling.jumpToLatest(); }
+        const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, pageIds, contextPageRefs, scope: selectedContext ? "page" : "new", presentation: embedded ? "rail" : "conversation", ownsDraft: true });
+        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
         else if (!readText()) setText(text);
       }
     } catch (error) { setSendError(error instanceof Error ? error.message : String(error)); }
@@ -374,6 +441,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       if (page) { setContextPage(page.pageId); useStore.getState().openConversation(last.runId); }
     } catch (error) { errToast(error); }
     finally { setReopening(false); }
+  };
+  const cancelQueued = async (message: RunMessage, edit = false) => {
+    try {
+      const cancelled = await call("runs.message.cancel", { messageId: message.messageId });
+      setQueuedMessages(items => items.map(item => item.messageId === cancelled.messageId ? cancelled : item));
+      if (edit) setText(message.text);
+    } catch (error) { errToast(error); }
   };
   const contextLocked = !connected || archived || live || contextLoading || !!contextError;
   const receiveImage = (files: File[]) => {
@@ -399,7 +473,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
   const imageTray = <ConversationImages incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
   if (id === "history") return <ConversationHistory/>;
-  const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending || (live && last?.status !== "needs_input")} onInsert={words => {
+  const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} onInsert={words => {
         const state = useStore.getState();
         const current = answering && last ? state.runAnswerDrafts[last.runId]?.text ?? "" : id ? state.conversationDrafts[draftKey(id)] ?? "" : state.agentDraft;
         setText(current ? `${current}\n${words}` : words);
@@ -442,8 +516,9 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div><RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
+      {queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status)).map(message => <article className="conversation-turn queued-message" key={message.messageId} data-message-id={message.messageId}><time dateTime={new Date(message.createdAt).toISOString()}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{message.text}</div><div className="queued-message-state"><span>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" onClick={() => void cancelQueued(message)}>Remove</button></>}</div></article>)}
     </div></div>
     {scrolling.awayFromLatest && <div className="conversation-jump"><button className="icon-btn" aria-label="Jump to latest" title="Jump to latest" onClick={scrolling.jumpToLatest}>{I.arrowDown}</button></div>}
     <div className="conversation-compose"><div className="conversation-compose-content">
@@ -468,9 +543,11 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={last?.status === "needs_input" ? "Answer Aux’s question…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || missingContext || historyLoading || !!historyError || contextLoading || !!contextError || live))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
+      {changedBrowserSources.length > 0 && !closedPage && <p className="field-error" role="status">A selected tab changed or closed. Update or remove it before sending.</p>}
+      {live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{answering && <button type="button" className={effectiveLiveMode === "answer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "answer"} onClick={() => setLiveSendMode("answer")}>Answer question</button>}<button type="button" className={effectiveLiveMode === "steer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "steer"} onClick={() => setLiveSendMode("steer")}>Steer now</button><button type="button" className={effectiveLiveMode === "queue" ? "selected" : ""} aria-pressed={effectiveLiveMode === "queue"} onClick={() => setLiveSendMode("queue")}>Queue next</button></div>}
+      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
       </>}
-      {newChat && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add image or capture" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextPicker value={contextPage} onChange={setContextPage} linkedPageId={linked?.pageId} disabled={contextLocked}/></div>}
+      {!taskBound && !answering && <div className="new-chat-options">{newChat && <button className="new-chat-attach" aria-label="Add image or capture" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button>}<BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>}
     </div></div>
     </div>{browserPreview}</div>
   </section>;
