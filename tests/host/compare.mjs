@@ -17,6 +17,7 @@ const commands = [
   ['electron.restore-20-tabs', 'tests/smoke/restore-tabs-desktop.mjs', 120_000, { AUX_RUNS: '3', AUX_TABS: '20' }],
   ['electron.restore-100-tabs', 'tests/smoke/restore-tabs-desktop.mjs', 180_000, { AUX_RUNS: '3', AUX_TABS: '100' }],
   ['chromium-reference.synthetic-extension-apis', 'tests/smoke/chromium-extension-baseline.mjs', 90_000],
+  ['extension.synthetic-native-messaging', 'tests/smoke/native-messaging-hosts.mjs', 90_000],
 ];
 const startedAt = new Date().toISOString();
 const sha = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
@@ -49,6 +50,7 @@ const report = { schema: 1, startedAt, completedAt: new Date().toISOString(), so
   probes: {
     electron: readArtifact('aux-browser-compatibility.json'),
     chromiumReference: readArtifact('aux-chromium-extension-baseline.json'),
+    nativeMessaging: readArtifact('aux-native-messaging-hosts.json'),
   },
   candidateAvailability: {
     cefChromeLayer: { executable: existsSync('/tmp/aux-host-dev/Aux Host Candidate.app/Contents/MacOS/Aux Host Candidate'),
