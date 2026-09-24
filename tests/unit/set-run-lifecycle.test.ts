@@ -441,6 +441,25 @@ describe("conversation turn retry", () => {
 });
 
 describe("set-run lifecycle (P0-2 / P1-3)", () => {
+  it("claims a set before model discovery and rejects a competing map", async () => {
+    const h = harness({ execMs: 5 });
+    const set = await h.sets.create({ name: "exclusive", source: "urls", urls: urls(1) });
+    let finishDiscovery!: () => void;
+    const discovery = new Promise<void>(resolve => { finishDiscovery = resolve; });
+    h.settings.listModels = async () => {
+      await discovery;
+      return { models: [{ id: "mock/planner", source: "catalog", inputUsdPerMTok: 1, outputUsdPerMTok: 2 }], source: "gateway" };
+    };
+    const first = h.runs.start({ setId: set.setId, goal: "Read", maxCostUsd: 1 });
+    await expect(h.runs.mapSet({ setId: set.setId, program })).rejects.toMatchObject({ code: "conflict" });
+    finishDiscovery();
+    const { runId } = await first;
+    await untilTerminal(h.repo, runId);
+    const next = await h.runs.mapSet({ setId: set.setId, program });
+    expect((await untilTerminal(h.repo, next.runId)).status).toBe("completed");
+    expect(h.repo.listRuns(10).filter(run => run.setId === set.setId)).toHaveLength(2);
+  });
+
   it("serializes concurrent set runs that share a human tab", async () => {
     const h = harness({ execMs: 50, maxWorkers: 2 });
     const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });

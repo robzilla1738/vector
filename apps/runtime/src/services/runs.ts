@@ -139,6 +139,7 @@ export class RunService {
   private setRunner: SetRunner;
   private pool: WorkerPool;
   private setRunControls = new Map<string, SetRunControl>();
+  private activeSetClaims = new Map<string, string>();
 
   private contextPreference(chatId: string): { historyEnabled: boolean; excludedRunIds: string[] } {
     const saved = this.deps.repo.getSetting<{ historyEnabled?: boolean; excludedRunIds?: string[] }>(`conversationContext:${chatId}`);
@@ -631,7 +632,14 @@ export class RunService {
     return maxCostUsd===undefined?undefined:(await this.deps.settings.listModels()).models;
   }
 
-  private launchSetRun(run: Run, mapOpts: Omit<Parameters<SetRunner["map"]>[0], "runId" | "signal" | "waitIfPaused">) {
+  private claimSet(setId: string, runId: string): () => void {
+    const activeRunId = this.activeSetClaims.get(setId);
+    if (activeRunId) throw new AuxError("conflict", `Set ${setId} is already being mapped by run ${activeRunId}`);
+    this.activeSetClaims.set(setId, runId);
+    return () => { if (this.activeSetClaims.get(setId) === runId) this.activeSetClaims.delete(setId); };
+  }
+
+  private launchSetRun(run: Run, mapOpts: Omit<Parameters<SetRunner["map"]>[0], "runId" | "signal" | "waitIfPaused">, releaseClaim: () => void) {
     this.deps.repo.saveRun(run);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
     const control = new SetRunControl();
@@ -655,7 +663,7 @@ export class RunService {
           this.deps.events.emit(EventTypes.RunUpdated, { run: r }, run.runId);
         }
       })
-      .finally(() => this.setRunControls.delete(run.runId));
+      .finally(() => { this.setRunControls.delete(run.runId); releaseClaim(); });
   }
 
   async start(opts: {
@@ -766,21 +774,28 @@ export class RunService {
     if (opts.setId) {
       if (contextImageArtifactIds?.length) throw new AuxError("capability_unsupported", "Image references currently belong to a single conversation run, not a set run.");
       // a set-scoped goal runs through the map scheduler
-      const researchLimits=this.researchLimits(opts);
-      const run: Run = {
-        runId: newRunId(),
-        goal: opts.goal,
-        status: "running",
-        pageIds: [],
-        setId: opts.setId,
-        config: { modelId: opts.modelId,...researchLimits },
-        createdAt: Date.now(),
-        startedAt: Date.now(),
-        statusMessage: "Mapping over set",
-      };
-      const researchModels=await this.researchModels(researchLimits.maxCostUsd);
-      this.launchSetRun(run, { setId: opts.setId, goal: opts.goal,modelId:opts.modelId,researchLimits,researchModels });
-      return run;
+      const runId = newRunId();
+      const releaseClaim = this.claimSet(opts.setId, runId);
+      try {
+        const researchLimits = this.researchLimits(opts);
+        const run: Run = {
+          runId,
+          goal: opts.goal,
+          status: "running",
+          pageIds: [],
+          setId: opts.setId,
+          config: { modelId: opts.modelId, ...researchLimits },
+          createdAt: Date.now(),
+          startedAt: Date.now(),
+          statusMessage: "Mapping over set",
+        };
+        const researchModels = await this.researchModels(researchLimits.maxCostUsd);
+        this.launchSetRun(run, { setId: opts.setId, goal: opts.goal, modelId: opts.modelId, researchLimits, researchModels }, releaseClaim);
+        return run;
+      } catch (error) {
+        releaseClaim();
+        throw error;
+      }
     }
     return this.coordinator.start({
       ...opts,
@@ -899,33 +914,44 @@ export class RunService {
     deadlineMs?: number;
     maxCostUsd?: number;
   }): Promise<{ runId: string }> {
-    const researchLimits=this.researchLimits(opts);
-    const researchModels=opts.goal?await this.researchModels(researchLimits.maxCostUsd):undefined;
-    const run: Run = {
-      runId: newRunId(),
-      goal: opts.goal ?? `map ${opts.programId ?? "program"} over ${opts.setId}`,
-      status: "running",
-      pageIds: [],
-      setId: opts.setId,
-      createdAt: Date.now(),
-      startedAt: Date.now(),
-      statusMessage: "Mapping over set",
-      config:opts.goal?{modelId:opts.modelId,maxModelCalls:researchLimits.maxModelCalls,
-        maxTokens:researchLimits.maxTokens,deadlineMs:researchLimits.deadlineMs,
-        ...(researchLimits.maxCostUsd!==undefined?{maxCostUsd:researchLimits.maxCostUsd}:{})}:undefined,
-    };
-    this.launchSetRun(run, {
-      setId: opts.setId,
-      program: opts.program,
-      programId: opts.programId,
-      goal: opts.goal,
-      modelId:opts.modelId,
-      concurrency: opts.concurrency,
-      memberIds: opts.memberIds,
-      researchLimits:opts.goal?researchLimits:undefined,
-      researchModels,
-    });
-    return { runId: run.runId };
+    const runId = newRunId();
+    const releaseClaim = this.claimSet(opts.setId, runId);
+    try {
+      const researchLimits = this.researchLimits(opts);
+      const researchModels = opts.goal ? await this.researchModels(researchLimits.maxCostUsd) : undefined;
+      const run: Run = {
+        runId,
+        goal: opts.goal ?? `map ${opts.programId ?? "program"} over ${opts.setId}`,
+        status: "running",
+        pageIds: [],
+        setId: opts.setId,
+        createdAt: Date.now(),
+        startedAt: Date.now(),
+        statusMessage: "Mapping over set",
+        config: opts.goal ? {
+          modelId: opts.modelId,
+          maxModelCalls: researchLimits.maxModelCalls,
+          maxTokens: researchLimits.maxTokens,
+          deadlineMs: researchLimits.deadlineMs,
+          ...(researchLimits.maxCostUsd !== undefined ? { maxCostUsd: researchLimits.maxCostUsd } : {}),
+        } : undefined,
+      };
+      this.launchSetRun(run, {
+        setId: opts.setId,
+        program: opts.program,
+        programId: opts.programId,
+        goal: opts.goal,
+        modelId: opts.modelId,
+        concurrency: opts.concurrency,
+        memberIds: opts.memberIds,
+        researchLimits: opts.goal ? researchLimits : undefined,
+        researchModels,
+      }, releaseClaim);
+      return { runId: run.runId };
+    } catch (error) {
+      releaseClaim();
+      throw error;
+    }
   }
 
   pause(runId: string): Run {
