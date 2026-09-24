@@ -4,7 +4,7 @@ import { TabPreview, useSidebarTabPreview } from "./TabPreview";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
 import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
 
@@ -215,7 +215,7 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
   const [profileName, setProfileName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   useEffect(() => {
-    if (!inElectron || bridge.privateMode) return;
+    if (!inNativeHost || bridge.privateMode) return;
     let live = true;
     void bridge.browserProfiles().then(items => { if (live) setProfileName(items.find(item => item.current)?.name ?? ""); }).catch(() => {});
     return () => { live = false; };
@@ -673,7 +673,7 @@ export const Sidebar = memo(function Sidebar() {
 
   const full = (
     <>
-      <div className={`sb-head ${inElectron ? "electron" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
+      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
           {visiblePins.map((b) => {

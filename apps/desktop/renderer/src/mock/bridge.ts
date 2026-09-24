@@ -17,7 +17,8 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   ?scenario=set           a set mapping over 12 members
  *   ?scenario=many          45 tabs
  *   ?scenario=disconnected  runtime unreachable → degraded banner
- *   &theme=dark|light  &sidebar=expanded|rail  &live=1 (stream new steps)
+ *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
+ *   &live=1 (stream new steps)
  */
 import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
 import type { BrowserExtension, AuxBridge } from "../bridge";
@@ -127,6 +128,7 @@ export function installMockBridge(q: URLSearchParams) {
   let steps: Record<string, StepRecord[]> = {};
   const settings: Record<string, unknown> = {
     theme,
+    tabLayout: q.get("layout") === "vertical" ? "vertical" : "horizontal",
     searchEngine: DEFAULT_SEARCH_ENGINE,
     plannerModel: "alibaba/qwen3.8-27b",
     maxWorkers: 4,

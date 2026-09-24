@@ -5,7 +5,7 @@ import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
 import { forwardRef, memo, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
-import { bridge, inElectron, inMock } from "../bridge";
+import { bridge, inNativeHost, inMock } from "../bridge";
 import { useStore, call, errToast, tabCommand } from "../store";
 
 import { TranslationBar } from "./TranslationBar";
@@ -104,8 +104,8 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
         )}
         {mode === "focus" && page?.viewStatus === "crashed" && <PageRecovery key={page.pageId} page={page} />}
         {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
-        {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inElectron && inMock && !splitVisible && <MockPage page={page} />}
-        {splitVisible && <SplitDivider preview={!inElectron && inMock ? [page!, companion!] : undefined} />}
+        {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inNativeHost && inMock && !splitVisible && <MockPage page={page} />}
+        {splitVisible && <SplitDivider preview={!inNativeHost && inMock ? [page!, companion!] : undefined} />}
         {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation /></PaneBoundary>}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}

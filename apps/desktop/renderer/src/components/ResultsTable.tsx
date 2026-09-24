@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../store";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { hostOf } from "../workspace";
 import type { ResultRecord } from "@aux/contracts";
 import { I } from "./icons";
@@ -17,7 +17,7 @@ function toCsv(results: ResultRecord[], keys: string[]): string {
 }
 
 async function exportFile(name: string, content: string, type: string) {
-  if (inElectron) {
+  if (inNativeHost) {
     await bridge.saveFile(name, content);
     return;
   }

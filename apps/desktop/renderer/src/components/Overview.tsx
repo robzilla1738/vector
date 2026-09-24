@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../store";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { hostOf, isPinned } from "../workspace";
 import { FavIcon } from "./SiteTile";
@@ -52,7 +52,7 @@ export function Overview() {
   const visibleKey = JSON.stringify(visible.map(page => page.pageId));
   const focusedId = visible.some(page => page.pageId === focused) ? focused : visible[0]?.pageId;
   const selection = pages.filter(page => selected.has(page.pageId));
-  const canMoveWindow = inElectron && !bridge.privateMode;
+  const canMoveWindow = inNativeHost && !bridge.privateMode;
   const audioSelection = selection.filter(page => audio[page.pageId] && page.controller !== "agent" && page.controller !== "external");
   const muteSelection = audioSelection.some(page => !audio[page.pageId]!.muted);
   const hasSelection = selection.length > 0;
@@ -106,7 +106,7 @@ export function Overview() {
   }
 
   useEffect(() => {
-    if (!inElectron) return;
+    if (!inNativeHost) return;
     let cancelled = false;
     void (async () => {
       for (const pageId of previewIds.split(",").filter(Boolean)) {

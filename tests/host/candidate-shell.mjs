@@ -103,13 +103,15 @@ try {
   await shell.waitForSelector('.app.tabs-horizontal .horizontal-chrome', { timeout: 10000 });
   const horizontal = await shell.evaluate(() => ({ className: document.querySelector('.app')?.className,
     stage: document.querySelector('.stage-card')?.getBoundingClientRect().toJSON() }));
-  record('current Aux horizontal layout', !!horizontal.stage?.width && horizontal.className?.includes('tabs-horizontal'), JSON.stringify(horizontal));
+  record('current Aux horizontal native layout', !!horizontal.stage?.width &&
+    horizontal.className?.includes('tabs-horizontal') && horizontal.className?.includes('native-host'), JSON.stringify(horizontal));
 
   await shell.evaluate(() => window.aux.invoke('settings.set', { tabLayout: 'vertical' }));
   await shell.waitForSelector('.app.tabs-vertical', { timeout: 10000 });
   const vertical = await shell.evaluate(() => ({ className: document.querySelector('.app')?.className,
     stage: document.querySelector('.stage-card')?.getBoundingClientRect().toJSON() }));
-  record('current Aux vertical layout', !!vertical.stage?.width && vertical.className?.includes('tabs-vertical'), JSON.stringify(vertical));
+  record('current Aux vertical native layout', !!vertical.stage?.width &&
+    vertical.className?.includes('tabs-vertical') && vertical.className?.includes('native-host'), JSON.stringify(vertical));
 
   const activate = await shell.evaluate(pageId => window.aux.tabCommand({ kind: 'activate', pageId }), a.pageId);
   const selected = await shell.evaluate(() => window.aux.tabsSnapshot());

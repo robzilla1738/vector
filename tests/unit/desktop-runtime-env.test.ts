@@ -23,10 +23,12 @@ describe("desktop runtime env", () => {
       dataDir: "/tmp/aux-data",
       profileId: "work-profile",
       cdpPort: 1,
-      env: { AUX_DATA_DIR: "/elsewhere", AUX_BROWSER_PROFILE_ID: "wrong-profile", AUX_API_TOKEN: "tok", VECTOR_DATA_DIR: "/legacy" },
+      env: { AUX_DATA_DIR: "/elsewhere", AUX_BROWSER_PROFILE_ID: "wrong-profile", AUX_API_TOKEN: "tok", VECTOR_DATA_DIR: "/legacy", AUX_HOST_SOCKET: "/tmp/other.sock", AUX_HOST_TOKEN: "a".repeat(64) },
     });
     expect(env.AUX_DATA_DIR).toBe("/tmp/aux-data");
     expect(env.AUX_BROWSER_PROFILE_ID).toBe("work-profile");
     expect(env.AUX_API_TOKEN).toBe("tok");
+    expect(env.AUX_HOST_SOCKET).toBeUndefined();
+    expect(env.AUX_HOST_TOKEN).toBeUndefined();
   });
 });

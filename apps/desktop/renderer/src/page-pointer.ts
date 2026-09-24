@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { pointerHitsPage } from "../../main/page-pointer";
-import { bridge, inElectron } from "./bridge";
+import { bridge, inNativeHost } from "./bridge";
 
 function buttonOf(event: { button: number; buttons: number }): "left" | "middle" | "right" {
   if (event.button === 1 || (event.buttons & 4) !== 0) return "middle";
@@ -11,7 +11,7 @@ function buttonOf(event: { button: number; buttons: number }): "left" | "middle"
 /** While the address bar floats above a native page, the shell receives the pointer. Hand the page region back to that page. */
 export function usePagePointerForward(active: boolean) {
   useEffect(() => {
-    if (!active || !inElectron) return;
+    if (!active || !inNativeHost) return;
     const stage = () => document.querySelector<HTMLElement>(".stage-card.has-page");
     const hits = (event: { target: EventTarget | null; clientX: number; clientY: number }) => {
       const card = stage();

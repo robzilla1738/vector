@@ -1,7 +1,7 @@
 import { useWindowDrag } from "../use-window-drag";
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { NavigationButtons } from "./NavigationButtons";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
@@ -36,7 +36,7 @@ export const Toolbar = memo(function Toolbar() {
   };
 
   return (
-    <header className={`toolbar ${inElectron && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}>
+    <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}>
       <div className="tb-left">
         {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} onClick={() => setSidebar(sidebar === "expanded" ? "hidden" : "expanded")}>{I.sidebarOpen}</button>}
         <div className="nav-btns">

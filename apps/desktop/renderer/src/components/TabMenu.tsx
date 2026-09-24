@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { requestStageReport } from "../stage-obstruction";
 import { call, errToast, tabCommand, toast, useStore } from "../store";
 import { canSplitPage, groupedTabs, hostOf, isPinned, tabsInSpace } from "../workspace";
@@ -31,7 +31,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const moveButton = useRef<HTMLButtonElement>(null);
   const [windows, setWindows] = useState<Awaited<ReturnType<typeof bridge.windows>>>([]);
   useEffect(() => {
-    if (!inElectron || bridge.privateMode) return;
+    if (!inNativeHost || bridge.privateMode) return;
     let live = true;
     void bridge.windows().then(windows => { if (live) setWindows(windows); }).catch(errToast);
     return () => { live = false; };
@@ -39,7 +39,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const previous = useRef(document.activeElement as HTMLElement | null);
   const spaceId = layout.tabSpace[page.pageId] ?? layout.activeSpaceId;
   const space = layout.spaces.find(item => item.id === spaceId);
-  const rememberable = !bulk && inElectron && !bridge.privateMode && page.backend === "aux"
+  const rememberable = !bulk && inNativeHost && !bridge.privateMode && page.backend === "aux"
     && !page.ownedByRuntime && page.pageId === activePageId && !!space?.workspaceId
     && page.url.startsWith("https://");
   const rawTabs = tabsInSpace(layout, pages, spaceId);
@@ -54,7 +54,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const otherFolders = folders.filter(folder => (bulk || folder.id !== currentFolder) && matches(folder.name));
   const otherSpaces = layout.spaces.filter(space => space.id !== spaceId && matches(space.name));
   const otherWindows = windows.filter(window => matches(window.title));
-  const canMoveWindow = inElectron && !bridge.privateMode;
+  const canMoveWindow = inNativeHost && !bridge.privateMode;
   const canMove = folders.some(folder => folder.id !== currentFolder) || hasFolder || layout.spaces.length > 1 || canMoveWindow;
   useEffect(() => {
     if (remembering) ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();

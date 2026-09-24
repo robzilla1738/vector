@@ -27,8 +27,13 @@ async function boot() {
   booting = true;
   root.render(<div className="boot-status" role="status">Opening Aux…</div>);
   try {
+    const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
+    if (chromiumShell) {
+      const { installChromiumBridge } = await import("./chromium-bridge");
+      if (!installChromiumBridge()) throw new Error("Aux's Chromium host bridge is unavailable.");
+    }
     // Keep the scripted preview bridge out of the native production bundle.
-    if (import.meta.env.MODE === "mock" || import.meta.env.VITE_AUX_MOCK === "1") {
+    if (!chromiumShell && (import.meta.env.MODE === "mock" || import.meta.env.VITE_AUX_MOCK === "1")) {
       const { installMockBridge } = await import("./mock/bridge");
       installMockBridge(new URLSearchParams(location.search));
     }

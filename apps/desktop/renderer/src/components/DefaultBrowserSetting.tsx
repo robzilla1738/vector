@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 
 /** Registers Aux as the http/https handler; reports the measured OS state. */
 export function DefaultBrowserSetting() {
@@ -7,7 +7,7 @@ export function DefaultBrowserSetting() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    if (!inElectron || bridge.privateMode) return;
+    if (!inNativeHost || bridge.privateMode) return;
     let live = true;
     const read = () => void bridge.defaultBrowser()
       .then(state => { if (live) { setIsDefault(state.isDefault); setError(""); } })
@@ -17,7 +17,7 @@ export function DefaultBrowserSetting() {
     window.addEventListener("focus", read);
     return () => { live = false; window.removeEventListener("focus", read); };
   }, []);
-  if (!inElectron || bridge.privateMode) return null;
+  if (!inNativeHost || bridge.privateMode) return null;
   return <div className="row">
     {isDefault
       ? <span className="hint ok">Aux is your default browser — links open here, in your most recently used profile.</span>

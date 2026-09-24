@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("./bridge", async importOriginal => ({ ...await importOriginal<typeof import("./bridge")>(), inElectron: true }));
+vi.mock("./bridge", async importOriginal => ({ ...await importOriginal<typeof import("./bridge")>(), inNativeHost: true }));
 import { bridge } from "./bridge";
 import { CommandBar } from "./components/CommandBar";
 import { useStore } from "./store";

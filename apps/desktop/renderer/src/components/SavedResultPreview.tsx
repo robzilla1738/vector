@@ -1,7 +1,7 @@
 import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
 import { StructuredResult } from "./StructuredResult";
 import { useEffect, useRef, useState } from "react";
-import { bridge, inElectron } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { call, errToast, toast } from "../store";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 import { I } from "./icons";
@@ -11,7 +11,7 @@ type Result = { artifactId: string; chatId: string; filename: string; mediaType:
 function IsolatedHtmlResult({html}:{html:string}) {
   const [url,setUrl]=useState<string|null>(null),[error,setError]=useState("");
   useEffect(()=>{
-    if(!inElectron)return;
+    if(!inNativeHost)return;
     let live=true,registered:string|undefined;
     setUrl(null);setError("");
     void bridge.createResultPreview(html).then(value=>{
@@ -22,7 +22,7 @@ function IsolatedHtmlResult({html}:{html:string}) {
     return()=>{live=false;if(registered)void bridge.releaseResultPreview(registered);};
   },[html]);
   if(error)return <p role="alert" className="field-error">{error}</p>;
-  if(!inElectron)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
+  if(!inNativeHost)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
   return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<p role="status" className="hint">Preparing isolated preview…</p>;
 }
 export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;onVersionSaved?:(artifactId:string)=>void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {

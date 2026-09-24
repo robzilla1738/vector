@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { bridge, inElectron, type BrowserProfile } from "../bridge";
+import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
 
 export function BrowserProfiles() {
   const [profiles,setProfiles]=useState<BrowserProfile[]>([]);
@@ -14,7 +14,7 @@ export function BrowserProfiles() {
   const listRequest=useRef(0);
   const [refresh,setRefresh]=useState(0);
   useEffect(()=>{
-    if(!inElectron||bridge.privateMode)return;
+    if(!inNativeHost||bridge.privateMode)return;
     let live=true;
     const load=()=>{
       if(pending.current)return;
@@ -32,7 +32,7 @@ export function BrowserProfiles() {
     try{await work();}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
     finally{pending.current=false;setBusy(false);}
   }
-  if(!inElectron||bridge.privateMode)return null;
+  if(!inNativeHost||bridge.privateMode)return null;
   return <div className="browser-profiles">
     <p className="hint">Profiles keep website sign-ins, tabs, history, chats, memory and connections separate. Spaces organize work inside a profile and share its sign-ins.</p>
     {loading&&<p className="hint" role="status">Loading profiles…</p>}

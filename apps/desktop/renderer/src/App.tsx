@@ -15,7 +15,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
-import { bridge, inElectron, inMock } from "./bridge";
+import { bridge, inNativeHost, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
@@ -160,7 +160,7 @@ export function App() {
   const activePageId = useStore((s) => s.activePageId);
   const activePageLoading = useStore(s => s.pages.find(p => p.pageId === s.activePageId)?.loading);
   const activePage = useStore(useShallow((s) => placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined)));
-  const pageChrome = inElectron && !horizontal && !quickAsk && !!activePage && activePage.backend !== "chrome"
+  const pageChrome = inNativeHost && !horizontal && !quickAsk && !!activePage && activePage.backend !== "chrome"
     && activePage.viewStatus !== "crashed" && !activePage.navigationError
     && (!!activePage.showBlankDocument || (!!activePage.url && activePage.url !== "about:blank"));
   const toolbarReveal = useToolbarReveal(pageChrome, sidebarPeek);
@@ -191,7 +191,7 @@ export function App() {
   // Raise the shell over the native page before the bar animates, and lower it only after the bar has left.
   const toolbarTicket = useRef(0);
   useEffect(() => {
-    if (!inElectron) return;
+    if (!inNativeHost) return;
     const ticket = ++toolbarTicket.current;
     const current = () => toolbarTicket.current === ticket;
     if (toolbarReveal.covering || tabPreviewOpen || sidebarCovering) {
@@ -213,11 +213,11 @@ export function App() {
   }, [toolbarReveal.covering, tabPreviewOpen, sidebarCovering]);
 
   useEffect(() => {
-    if (inElectron) void bridge.toolbarGlass(toolbarReveal.revealed && toolbarReady).catch(() => {});
+    if (inNativeHost) void bridge.toolbarGlass(toolbarReveal.revealed && toolbarReady).catch(() => {});
   }, [toolbarReveal.revealed, toolbarReady]);
 
   useEffect(() => {
-    if (!inElectron || !toolbarReveal.covering || activePageLoading) return;
+    if (!inNativeHost || !toolbarReveal.covering || activePageLoading) return;
     let current = true;
     void bridge.toolbarTone().then(tone => {
       if (current) document.documentElement.dataset.toolbarTone = tone;
@@ -226,9 +226,9 @@ export function App() {
   }, [toolbarReveal.covering, activePageId, activePageLoading]);
 
   // The page stays flush. While the address bar is away, the window buttons would sit on that page, so they leave with the bar.
-  const hideTrafficLights = inElectron && !horizontal && sidebar !== "expanded" && !sidebarPeek && nativeShowing && !(toolbarReveal.covering && toolbarReady);
+  const hideTrafficLights = inNativeHost && !horizontal && sidebar !== "expanded" && !sidebarPeek && nativeShowing && !(toolbarReveal.covering && toolbarReady);
   useEffect(() => {
-    if (!inElectron) return;
+    if (!inNativeHost) return;
     void bridge.trafficLights(!hideTrafficLights).catch(() => {});
   }, [hideTrafficLights]);
 
@@ -247,7 +247,7 @@ export function App() {
   }, [floatingSidebar]);
 
   useEffect(() => {
-    if (!inElectron || !floatingSidebar || !nativeShowing) return;
+    if (!inNativeHost || !floatingSidebar || !nativeShowing) return;
     const panel = document.querySelector<HTMLElement>(".sidebar.peek");
     if (!panel) return;
     const reduced = matchMedia("(prefers-reduced-transparency: reduce)");
@@ -374,7 +374,7 @@ export function App() {
   // layout changes, never per animation frame
   useEffect(() => {
     const el = stageRef.current;
-    if (!el || !inElectron) return;
+    if (!el || !inNativeHost) return;
     let raf = 0;
     const report = () => {
       cancelAnimationFrame(raf);
@@ -534,14 +534,14 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (inElectron && (toolbarReveal.covering || tabPreviewOpen || sidebarCovering) && !toolbarHole) setToolbarHole(true);
+  if (inNativeHost && (toolbarReveal.covering || tabPreviewOpen || sidebarCovering) && !toolbarHole) setToolbarHole(true);
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (
     <div
-      className={`app tabs-${horizontal ? "horizontal" : "vertical"} ${inElectron ? "electron" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+      className={`app tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
       data-overlay={overlay ?? undefined}
       onContextMenu={(e) => {
-        if (!inElectron) return;
+        if (!inNativeHost) return;
         const el = e.target as HTMLElement;
         if (el.closest(".sidebar, .rail, .menu")) return; // those own their menus
         e.preventDefault();

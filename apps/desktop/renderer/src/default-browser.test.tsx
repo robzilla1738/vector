@@ -2,7 +2,7 @@
 import {act} from "react";
 import {createRoot} from "react-dom/client";
 import {expect,it,vi} from "vitest";
-vi.mock("./bridge",async importOriginal=>({...await importOriginal<typeof import("./bridge")>(),inElectron:true}));
+vi.mock("./bridge",async importOriginal=>({...await importOriginal<typeof import("./bridge")>(),inNativeHost:true}));
 import {bridge} from "./bridge";
 import {DefaultBrowserSetting} from "./components/DefaultBrowserSetting";
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;

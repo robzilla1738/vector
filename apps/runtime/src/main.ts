@@ -3,10 +3,9 @@ import { ContentMemoryStore } from "./services/content-memory.js";
 /**
  * Aux runtime entry point.
  *
- * Spawned by the Electron main process via child_process.fork with
- * ELECTRON_RUN_AS_NODE=1, or run standalone (`node dist/main.js`) for
- * tests/external-only use. Speaks JSON-RPC over fork IPC to the shell and
- * serves the versioned loopback API for external agents.
+ * Spawned by the Electron main process via child_process.fork, connected to
+ * the Chromium host over an authenticated local socket, or run standalone.
+ * The same runtime and versioned agent API serve each native host.
  */
 import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
@@ -48,6 +47,7 @@ import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
 import { DurableWriteLedger } from "./agent/durable.js";
 import { markCloudDesktopClosed } from "./services/cloud-environments.js";
+import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
 
 export interface RuntimeHandle {
   port: number;
@@ -74,9 +74,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   setTimeout(() => { void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch(error =>
     process.stderr.write(`[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`)); }, 10_000).unref();
 
-  // ---- channel to the desktop shell (fork IPC) ----
+  // ---- channel to the native browser host ----
   let channel: RpcChannel | null = null;
-  if (env.AUX_IPC === "1" && typeof process.send === "function") {
+  let hostSocket: HostSocketTransport | null = null;
+  if (env.AUX_HOST_SOCKET) {
+    hostSocket = await connectHostSocket(env.AUX_HOST_SOCKET, env.AUX_HOST_TOKEN ?? "");
+    channel = new RpcChannel(hostSocket, "runtime->chromium-host");
+  } else if (env.AUX_IPC === "1" && typeof process.send === "function") {
     const transport: Transport = {
       send: (m) => {
         try {
@@ -120,11 +124,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       events.emit("session.changed", { backend: d.backend, status: "connected" });
     };
   };
-  const electronCdp = env.AUX_INTERNAL_CDP === "1" && channel
+  const hostCdp = env.AUX_INTERNAL_CDP === "1" && channel
     ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
-    : config.electronCdp;
-  if (electronCdp) {
-    const d = new ManagedChromiumDriver(electronCdp, {
+    : config.hostCdp;
+  if (hostCdp) {
+    const d = new ManagedChromiumDriver(hostCdp, {
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
     });
     watchDriver(d, "aux", "Aux");
@@ -141,8 +145,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
       });
     }
-  } else if (env.AUX_IPC !== "1" && env.AUX_STANDALONE !== "0") {
-    // No Electron shell — drive a headless system Chrome so the full API still works.
+  } else if (!channel && env.AUX_STANDALONE !== "0") {
+    // No native shell — drive a headless system Chrome so the full API still works.
     const d = new StandaloneDriver();
     watchDriver(d, "aux", "Aux (headless)");
     try {
@@ -451,6 +455,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await drivers.chrome?.disconnect().catch(() => {});
     await api.close().catch(() => {});
     await calendar.close();
+    hostSocket?.close();
     tracer.close();
     await privacyCheckpoint.close();
     repo.close();

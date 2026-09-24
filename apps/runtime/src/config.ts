@@ -73,14 +73,17 @@ export interface RuntimeConfig {
   benchmarksDir: string;
   dbPath: string;
   settingsPath: string;
-  /** CDP base URL of the hosting Electron app, e.g. http://127.0.0.1:9333 */
-  electronCdp: string | null;
+  /** Raw CDP is retained for Electron preview and bounded Chromium proof only. */
+  hostCdp: string | null;
   apiPort: number;
   apiToken: string;
 }
 
 export function loadConfig(source = process.env): RuntimeConfig {
   const env = normalizeAuxEnvironment(source);
+  if (env.AUX_HOST_CDP && env.AUX_HOST_PROOF !== "1") {
+    throw new Error("AUX_HOST_CDP requires AUX_HOST_PROOF=1; packaged hosts must use the internal broker");
+  }
   const dataDir = resolveDataDirectory(env);
   const dbPath = resolveDatabasePath(dataDir);
   const artifactsDir = join(dataDir, "artifacts");
@@ -103,7 +106,7 @@ export function loadConfig(source = process.env): RuntimeConfig {
     benchmarksDir,
     dbPath,
     settingsPath: join(dataDir, "settings.json"),
-    electronCdp: env.AUX_ELECTRON_CDP ?? null,
+    hostCdp: env.AUX_HOST_CDP ?? env.AUX_ELECTRON_CDP ?? null,
     apiPort: Number(env.AUX_API_PORT ?? 0),
     apiToken: env.AUX_API_TOKEN ?? "",
   };

@@ -1,6 +1,6 @@
 /**
- * Typed access to the preload bridge. In a plain browser (vite dev without
- * electron) we expose a stub so the UI renders for visual development; in
+ * Typed access to the native host bridge. In a plain browser (Vite preview)
+ * we expose a stub so the UI renders for visual development; in
  * `--mode mock` main.tsx installs a scripted bridge before this module reads
  * window.aux (see mock/bridge.ts).
  */
@@ -233,7 +233,7 @@ const stub: AuxBridge = {
   platform: "darwin",
   setShortcutOverrides: async () => ({}),
   invoke: async () => {
-    throw new Error("Aux bridge unavailable — running outside Electron");
+    throw new Error("Aux bridge unavailable — running outside the native host");
   },
   onEvent: noop,
   onRuntimeStatus: noop,
@@ -367,11 +367,14 @@ const stub: AuxBridge = {
   setAppearance: async () => true,
 };
 
-type W = Window & { aux?: AuxBridge; __auxMock?: boolean };
+type W = Window & { aux?: AuxBridge; auxHostProof?: { host?: string }; __auxMock?: boolean };
 const w = window as unknown as W;
 
 export const bridge: AuxBridge = w.aux ?? stub;
-/** true only inside the real Electron shell — native page views exist */
-export const inElectron = !!w.aux && !w.__auxMock;
+export const hostKind = w.__auxMock ? "mock" :
+  w.aux && w.auxHostProof?.host === "chromium-fork" && location.protocol === "chrome:" && location.hostname === "aux" ? "chromium" :
+  w.aux ? "electron" : "preview";
+/** Native pages are hosted by Electron today and Chromium in the candidate. */
+export const inNativeHost = hostKind === "electron" || hostKind === "chromium";
 /** scripted bridge for visual development and screenshots */
 export const inMock = !!w.__auxMock;

@@ -12,6 +12,12 @@ export function desktopRuntimeEnv(opts: {
 }): NodeJS.ProcessEnv {
   return {
     ...(opts.env ?? process.env),
+    // A Chromium candidate socket/capability must never override Electron's
+    // fork IPC when both hosts are developed on the same machine.
+    AUX_HOST_SOCKET: undefined,
+    AUX_HOST_TOKEN: undefined,
+    AUX_HOST_CDP: undefined,
+    AUX_HOST_PROOF: undefined,
     ELECTRON_RUN_AS_NODE: "1",
     AUX_DATA_DIR: opts.dataDir,
     AUX_BROWSER_PROFILE_ID: opts.profileId,
