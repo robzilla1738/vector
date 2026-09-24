@@ -7,7 +7,7 @@ import { AnswerMarkdown } from "./AnswerMarkdown";
 import { I } from "./icons";
 
 type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number };
-export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled=false}: {artifactId:string;chatId:string;onClose():void;contextDisabled?:boolean}) {
+export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {
   const [result,setResult]=useState<Result|null>(null), [error,setError]=useState(""), [retry,setRetry]=useState(0), [saving,setSaving]=useState(false);
   const [draft,setDraft]=useState(()=>readResultDraft(artifactId));
   const [editing,setEditing]=useState(!!draft);
@@ -52,7 +52,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled
       {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
       {draftError&&<p className="field-error" role="alert">{draftError}</p>}
       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}
-      {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className="saved-result-content" tabIndex={0}>{result.mediaType==="text/markdown"?<AnswerMarkdown text={content}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
+      {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className="saved-result-content" tabIndex={0}>{result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={onCitationOpen}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
     </>}
   </section>;
 }

@@ -56,12 +56,12 @@ const REMARK_PLUGINS = [remarkGfm, answerHeadings];
 const answerUrlTransform = (value: string) => value.startsWith("#") ? value : answerUrl(value);
 
 /** Parsing markdown is the costliest thing a conversation renders; only a new text re-parses. */
-export const AnswerMarkdown = memo(function AnswerMarkdown({ text }: { text: string }) {
+export const AnswerMarkdown = memo(function AnswerMarkdown({ text, onOpenLink }: { text: string; onOpenLink?: (url: string, background: boolean) => boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const components = useMemo<Components>(() => ({
       a: ({ href, children }) => {
         if (!href) return <span>{children}</span>;
-        return <a href={href} title={href} onAuxClick={event => { if (event.button === 1) { event.preventDefault(); void openBrowserLink(href, true).catch(errToast); } }} onClick={event => {
+        return <a href={href} title={href} onAuxClick={event => { if (event.button === 1) { event.preventDefault(); const url=answerUrl(href); if(url && !onOpenLink?.(url,true)) void openBrowserLink(url,true).catch(errToast); } }} onClick={event => {
           event.preventDefault();
           if (href.startsWith("#")) {
             const fragment = answerFragment(href);
@@ -72,7 +72,7 @@ export const AnswerMarkdown = memo(function AnswerMarkdown({ text }: { text: str
             return;
           }
           const url = answerUrl(href);
-          if (url) void openBrowserLink(url, backgroundLink(event)).catch(errToast);
+          if (url && !onOpenLink?.(url,backgroundLink(event))) void openBrowserLink(url, backgroundLink(event)).catch(errToast);
         }}>{children}</a>;
       },
       // Remote image markup must not make tracking requests from the trusted shell.
@@ -80,6 +80,6 @@ export const AnswerMarkdown = memo(function AnswerMarkdown({ text }: { text: str
       img: ({ alt }) => <span className="answer-image-note">{alt ? `Image: ${alt}` : "Image"}</span>,
       pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
       table: ({ children }) => <ResponseTable>{children}</ResponseTable>,
-    }), []);
+    }), [onOpenLink]);
   return <div className="answer-markdown" ref={root}><Markdown remarkPlugins={REMARK_PLUGINS} skipHtml urlTransform={answerUrlTransform} components={components}>{text}</Markdown></div>;
 });

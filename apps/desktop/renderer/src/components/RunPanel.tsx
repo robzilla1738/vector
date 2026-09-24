@@ -72,7 +72,9 @@ function chatReply(run: Run): string | null {
     return text && text.toLowerCase() !== goal ? text : "";
   };
   const answer = prose(run.result?.answer);
+  const report = prose(run.result?.report);
   const message = prose(run.statusMessage);
+  if (report && run.status === "completed") return report;
   if (answer && run.status !== "completed" && message) return `${message}\n\n${answer}`;
   if (answer) return answer;
   if (message) return message;
@@ -82,7 +84,7 @@ function chatReply(run: Run): string | null {
 }
 
 /** Final answer as prose — no status chrome, copy is an icon. */
-function Answer({ run, conversation = false, retry = null, stream }: { run: Run; conversation?: boolean; retry?: ReactNode; stream?: string }) {
+function Answer({ run, conversation = false, retry = null, stream, onCitationOpen }: { run: Run; conversation?: boolean; retry?: ReactNode; stream?: string; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
   const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const reply = conversation ? chatReply(run) : null;
@@ -106,7 +108,7 @@ function Answer({ run, conversation = false, retry = null, stream }: { run: Run;
     if (!reply && !retry && !(run.error && !run.failure)) return null;
     return (
       <section className="answer">
-        {reply && <AnswerMarkdown text={reply} />}
+        {reply && <AnswerMarkdown text={reply} onOpenLink={onCitationOpen ? (url,background)=>onCitationOpen(url,background,run.runId) : undefined}/>}
         {(reply || retry) && <span className="answer-tools">{reply && <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>{copied ? I.check : I.copy}</button>}{retry}</span>}
         {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
       </section>
@@ -131,7 +133,7 @@ function Answer({ run, conversation = false, retry = null, stream }: { run: Run;
 }
 
 /** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
-export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest }: { runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean }) {
+export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen }: { runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
   const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
   const stream = useStore((s) => s.answerStreams[runId]);
@@ -319,7 +321,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
         </div>
       )}
 
-      <Answer run={run} conversation={conversation} stream={stream} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
+      <Answer run={run} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
 
       {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
         <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>

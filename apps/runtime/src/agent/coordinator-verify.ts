@@ -96,17 +96,19 @@ function collectClaims(result: unknown): Claim[] {
 }
 
 /** Keep report formatting out of evidence matching while checking every factual line. */
-function reportClaims(report: string, allowedSourceText: string): Claim[] {
+function reportClaims(report: string, allowedSourceText: string, citedSources: {url:string;text:string}[]): Claim[] {
   const claims: Claim[] = [];
   for (const line of report.split(/\r?\n/)) {
-    for (const match of line.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
-      const url = match[1]?.trim();
-      if (url && (!/^https?:\/\//i.test(url) || !allowedSourceText.includes(url.toLowerCase()))) claims.push({text:url,numeric:false,strict:true,invalid:true});
-    }
+    const citations = [...line.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)].map(match => match[1]!.trim().toLowerCase());
     const content = line
       .replace(/\[([^\]]+)\]\([^)]+\)/g, (_link, label: string) => /^(?:source|citation|link|\d+)$/i.test(label.trim()) ? "" : label)
       .replace(/^\s*(?:#{1,6}\s*|[-*+]\s*|\d+\.\s*)/, "")
       .replace(/[*_`~]/g, "").trim().replace(/[.!?]+$/, "");
+    for (const url of citations) {
+      const matching = citedSources.filter(source => source.url === url);
+      if (!/^https?:\/\//.test(url) || !allowedSourceText.includes(url) || !matching.length || (content && !matching.some(source => source.text.includes(content.toLowerCase()))))
+        claims.push({text:url,numeric:false,strict:true,invalid:true});
+    }
     if (!content || /^(?:report|summary|sources|references)$/i.test(content)) continue;
     claims.push({text:content,numeric:NUMERIC_CLAIM.test(content),strict:true});
   }
@@ -146,10 +148,15 @@ export function verifyDoneAgainstObservation(
   );
   const observations = Array.isArray(obs) ? obs : [obs];
   const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""} ${artifactEvidence?.toLowerCase() ?? ""}`;
+  const citedSources = observations.map(observation => ({url:observation.content.url.toLowerCase(),text:observationGroundText(observation)}));
+  for (const sourceText of [documentEvidence,artifactEvidence]) if (sourceText) {
+    const lower = sourceText.toLowerCase();
+    for (const match of lower.matchAll(/https?:\/\/[^\s)\]>]+/g)) citedSources.push({url:match[0],text:lower});
+  }
   const report = result && typeof result === "object" && !Array.isArray(result) && typeof (result as Record<string, unknown>).report === "string"
     ? (result as Record<string, string>).report : undefined;
   const claims = report
-    ? [...collectClaims(Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text)]
+    ? [...collectClaims(Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text, citedSources)]
     : collectClaims(result);
   const numbers = claims.some((c) => c.numeric) ? groundNumbers(text, outcomes) : new Set<number>();
   const ungrounded = claims.filter((c) =>

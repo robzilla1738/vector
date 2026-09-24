@@ -48,6 +48,8 @@ describe("verifyDoneAgainstObservation", () => {
     expect(verifyDoneAgainstObservation({report}, obs(), []).ok).toBe(true);
     expect(verifyDoneAgainstObservation({report:report.replace("visible page heading", "fabricated page heading")}, obs(), []).ok).toBe(false);
     expect(verifyDoneAgainstObservation({report:report.replace("http://x.test/", "http://elsewhere.test/")}, obs(), []).ok).toBe(false);
+    const other={...obs("Beta detail"),pageId:"p2",content:{...obs("Beta detail").content,url:"http://beta.test/",headings:["Beta detail"]}};
+    expect(verifyDoneAgainstObservation({report:report.replace("http://x.test/", "http://beta.test/")},[obs(),other],[]).ok).toBe(false);
     expect(verifyDoneAgainstObservation({report:"# Report\n[False claim](http://x.test/)"}, obs(), []).ok).toBe(false);
     expect(verifyDoneAgainstObservation({report:"# Report\n[Source](javascript:alert(1))"}, obs(), []).ok).toBe(false);
   });

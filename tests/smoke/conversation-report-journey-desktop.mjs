@@ -106,6 +106,7 @@ try {
   assert.deepEqual(firstRun.pageIds,selectedIds);
   assert.equal(firstRun.config.contextAttachmentIds.length,1);
   assert.match(firstRun.result.report,/Brief recommends Beta/);
+  await page.locator(`[data-turn-id="${firstRun.runId}"] .answer-markdown`).getByText("Alpha detail.",{exact:false}).waitFor();
   const originalReport=await page.evaluate(chatId=>window.aux.invoke("conversations.artifacts.get",{chatId}).then(value=>value.artifacts.find(item=>item.runId)),firstRun.config.chatId);
   assert.ok(originalReport?.artifactId);
   const reports=page.locator('.composer-documents[aria-label="Generated reports and results"]');
@@ -131,6 +132,13 @@ try {
   await page.locator(".history-conversation").filter({hasText:firstGoal}).click();
   await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md",exact:true}).first().click();
   await page.getByRole("region",{name:"Saved result preview"}).getByText("Edited note.").waitFor();
+  await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();
+  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md",exact:true}).last().click();
+  await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Discard edits",exact:true}).click();
+  const beforeSource=await page.evaluate(()=>window.aux.invoke("pages.list",{}).then(items=>items.length));
+  await page.getByRole("region",{name:"Saved result preview"}).getByRole("link",{name:"Source"}).first().click();
+  const afterSource=await page.evaluate(()=>window.aux.invoke("pages.list",{}).then(items=>items.length));
+  assert.equal(afterSource,beforeSource,"a citation should return to its observed tab instead of opening a duplicate");
   console.log("Three tabs and a document produced a cited editable report; the edited copy was revised in the same chat and reopened after restart.");
 } finally {
   await app?.close().catch(()=>{});

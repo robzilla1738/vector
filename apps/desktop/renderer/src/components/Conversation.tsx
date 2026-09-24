@@ -11,7 +11,7 @@ import { ConversationTask } from "./ConversationTask";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-sources";
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
@@ -261,7 +261,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     else if(id)useStore.getState().setConversationDraft(id,value);
     else useStore.getState().setAgentDraft(value);
   };
-  const openSource = async (source: ConversationSource) => {
+  const openSource = useCallback(async (source: ConversationSource, background=false) => {
     try {
       if (source.profileId) {
         const profiles = await bridge.browserProfiles();
@@ -274,10 +274,19 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       const existing = useStore.getState().pages.find(page => page.pageId === source.pageId && page.url === source.url
         && page.documentEpoch === source.documentEpoch && !page.ownedByRuntime
         && !["crashed", "detached"].includes(page.viewStatus ?? ""));
-      if (existing) await useStore.getState().activate(existing.pageId);
+      if (existing) { if (!background) await useStore.getState().activate(existing.pageId); }
+      else if (background) await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
       else await useStore.getState().newTab(source.url);
     } catch (error) { errToast(error); }
-  };
+  },[]);
+  const openCitation = useCallback((url:string,background:boolean,runId?:string):boolean => {
+    const matching=conversationSources.filter(source=>answerUrl(source.url)===url && (!runId || source.runId===runId));
+    if (!matching.length) return false;
+    const distinct=new Map(matching.map(source=>[`${source.profileId??""}\0${source.pageId}\0${source.documentEpoch}\0${source.url}`,source]));
+    if (distinct.size!==1) { toast("This link has multiple observed tabs. Choose the exact tab and Profile from Sources."); return true; }
+    void openSource([...distinct.values()][0]!,background);
+    return true;
+  },[conversationSources,openSource]);
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const missingContext = !["active", "linked", "none"].includes(contextPage) && !selectedContext;
@@ -557,7 +566,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} profileNames={sourceProfileNames} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} onCitationOpen={openCitation}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} profileNames={sourceProfileNames} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
       {queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status)).map(message => <article className="conversation-turn queued-message" key={message.messageId} data-message-id={message.messageId}><time dateTime={new Date(message.createdAt).toISOString()}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{message.text}</div><div className="queued-message-state"><span>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" onClick={() => void cancelQueued(message)}>Remove</button></>}</div></article>)}
     </div></div>
@@ -565,7 +574,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     <div className="conversation-compose"><div className="conversation-compose-content">
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
       {archived && <div className="conversation-archive-notice" role="status"><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</div>}
-      {id && resultPreview && <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onClose={() => useStore.setState({resultPreview:null})}/> }
+      {id && resultPreview && <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})}/> }
       {id && imagePreview && images.some(image => image.imageId === imagePreview) && <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} onClose={() => setImagePreview(null)} />}
       {id && documentPreview && <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)} />}
       {attachments.length > 0 && <div className="composer-documents" aria-label="Attached documents">{attachments.map(item => <div key={item.attachmentId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setImagePreview(null); setDocumentPreview(item.attachmentId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button></div>)}</div>}
