@@ -170,11 +170,10 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
 
   // Remote suggestions — opt-in preference, never in private mode, and never
   // for probable private/intranet addresses or keyword-engine input.
-  const [remote, setRemote] = useState<string[]>([]);
+  const [remoteResult, setRemoteResult] = useState<{ query: string; items: string[] }>({ query: "", items: [] });
   const intentEngine = intent.kind === "search" ? intent.engine ?? null : null;
   useEffect(() => {
     let cancelled = false;
-    setRemote([]);
     const want = !bridge.privateMode && settings.searchSuggestions === true
       && typedSomething && intent.kind === "search" && !intent.engine
       && raw.length >= 3 && !isPrivateAddress(raw);
@@ -183,7 +182,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     const t = window.setTimeout(() => {
       void fetch(`${endpoint}${encodeURIComponent(raw)}`)
         .then(response => (response.ok ? response.json() : null))
-        .then(data => { if (!cancelled && data) setRemote(parseSuggestResponse(data)); })
+        .then(data => { if (!cancelled && data) setRemoteResult({ query: raw, items: parseSuggestResponse(data) }); })
         .catch(() => {});
     }, 160);
     return () => { cancelled = true; window.clearTimeout(t); };
@@ -272,7 +271,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     if (!rankQuery) return [];
     const q = rankQuery;
     const out: Suggestion[] = [];
-    for (const phrase of remote.filter(item => item.toLowerCase() !== q).slice(0, 4)) {
+    for (const phrase of (remoteResult.query.toLowerCase() === q ? remoteResult.items : []).filter(item => item.toLowerCase() !== q).slice(0, 4)) {
       out.push({ id: `sug-${phrase}`, section: "suggest", icon: I.search, title: phrase, detail: "Web suggestion", run: () => exec({ kind: "search", query: phrase, url: toUrl(phrase, searchEngine) }) });
     }
     const openUrls = new Set(useStore.getState().pages.map(page => page.url.replace(/\/$/, "")));
@@ -311,7 +310,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       out.push({ id: `run-${r.runId}`, section: "runs", icon: I.chats, title: r.goal, detail: isLive(r) ? "Open active conversation" : "Continue conversation", hint: "Open", run: () => useStore.getState().openConversation(r.runId) });
     }
     return out;
-  }, [rankQuery, remote, tabCandidates, bookmarkCandidates, closedCandidates, historyCandidates, programCandidates, runCandidates, recentChats, page, exec, activate, searchEngine]);
+  }, [rankQuery, remoteResult, tabCandidates, bookmarkCandidates, closedCandidates, historyCandidates, programCandidates, runCandidates, recentChats, page, exec, activate, searchEngine]);
   const suggestions = useMemo(() => typedSomething ? [...intentRows, ...(rankQuery === raw.toLowerCase() ? rankedRows : [])] : [], [typedSomething, intentRows, rankedRows, rankQuery, raw]);
 
   // Selection is identity-stable: a re-ordered list keeps the same row
