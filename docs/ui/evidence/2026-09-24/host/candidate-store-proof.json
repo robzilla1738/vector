@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-24T23:01:39.913736+00:00",
+  "candidateBinary": "/Users/rcourson/aux-chromium-proof/chromium/src/out/AuxProof/Aux Host Proof.app/Contents/MacOS/Aux Host Proof",
+  "upstreamRevision": "b151276ea2110e74b063c6964bd0a5c14dc42f52",
+  "profile": "/Users/rcourson/Documents/Vibe/web/release/test-artifacts/chromium-candidate-profile",
+  "storeUrl": "https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh",
+  "extensionId": "ddkjiahejlhfcafbddmgiahcphecmpfh",
+  "version": "2026.920.1710",
+  "fromWebstore": true,
+  "location": 1,
+  "disableReasons": [],
+  "updateUrl": "https://clients2.google.com/service/update2/crx",
+  "versionDirectories": [
+    "2026.920.1710_0"
+  ],
+  "oldPid": 75017,
+  "restartedPid": 76144,
+  "restartPersisted": true,
+  "uiEvidence": "Native candidate Store displayed Remove from Chrome after native menu Quit and relaunch; screenshot and AX text committed.",
+  "scope": "Identity-only Aux //chrome build, not yet Aux shell. No extension update, signed 1Password, native messaging, or performance claim.",
+  "launchCorrection": "Initial CUA path selection launched a second default-profile process. Test extension removed there; both test processes stopped. Relaunched through LaunchServices into the explicit proof Profile and repeated Store installation successfully."
+}

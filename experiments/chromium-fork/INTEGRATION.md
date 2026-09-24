@@ -63,3 +63,8 @@ Use the visible candidate, never the mock renderer or a separate stock Chromium 
 - **Split and overlays:** two distinct page targets occupy the reported stage at the selected ratio without covering the divider; palette, menus, tab preview and page-region capture take input above the native pages and restore focus afterward.
 - **Window behavior:** native full-screen entry/exit, minimize/restore, resize, popup and new-window flows retain the owning Profile and Aux layout. A web popup must not acquire the privileged shell bridge. Cmd+T and extension `tabs.create` must not create a stray stock browser window.
 - **Agent:** identify the visible tab by both Aux page ID and Chromium target ID, perform one bounded action, take over from the human shell, reject another Profile/private target, and reconnect after a runtime restart without a duplicate tab.
+
+
+### Build/Store checkpoint — 2026-09-24
+
+The identity binary completed and the candidate Store installation/restart passed; see the dated evidence in `docs/M1-HOST-COMPARISON.md`. Native patches may now be integrated into this same checkout for the narrow shell proof. Keep the baseline Store Profile and binary evidence. Use LaunchServices with explicit Profile arguments and then bind CUA by app name to avoid a second default-profile process. The next native integration will require restarting the candidate; React/CSS production staging alone cannot update native C++.

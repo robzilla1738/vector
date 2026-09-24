@@ -1,0 +1,212 @@
+Window: "uBlock Origin Lite - Chrome Web Store", App: Aux Host Proof.
+0 standard window uBlock Origin Lite - Chrome Web Store - Chromium, URL: chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh, Secondary Actions: Raise
+	1 container uBlock Origin Lite - Chrome Web Store - Chromium, URL: chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh
+		2 container
+			3 toolbar
+				4 scroll area
+					5 container chrome://webui-toolbar.top-chrome/
+						6 toolbar
+							7 button Back, Help: Click to go back, hold to see history
+							8 button (disabled) Forward, Help: Click to go forward, hold to see history
+							9 button Reload, Help: Reload this page
+				10 container
+					11 pop up button View site information
+					12 text field (settable) Address and search bar, Value: chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh, Placeholder: Ask Google or type a URL
+					13 button Bookmark this tab
+				14 container
+					15 pop up button uBlock Origin Lite
+					16 pop up button Extensions not allowed on this site. Select to open menu
+				17 button You
+				18 pop up button Chromium
+			19 container
+				20 scroll area
+					21 HTML content uBlock Origin Lite - Chrome Web Store, URL: chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh
+						22 container
+							23 link Skip to main content
+								24 text Skip to main content
+							25 link Chrome Web Store logo chrome web store, Value: chromewebstore.google.com/
+							26 container Sitewide
+								27 combo box (settable) Search Chrome Web Store, Placeholder: Search extensions and themes
+							28 pop up button More options menu
+							29 container
+								30 button Google apps
+								31 link Sign in, Value: accounts.google.com/ServiceLogin?passive=1209600&osid=1&continue=https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh&followup=https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh&ec=GAZApQM
+							32 tab group
+								33 tab (settable, integer) Discover, Value: 0
+								34 tab (selected) Extensions, Value: 1
+								35 tab (settable, integer) Themes, Value: 0
+							36 container Switch to Chrome?
+								37 container
+									38 heading Switch to Chrome?, Value: 2
+										39 text Switch to Chrome?
+									40 text Google recommends using Chrome when using extensions and themes.
+									41 button No thanks
+									42 container
+										43 link Yes, Value: google.com/chrome/?brand=GGRF&utm_source=google.com&utm_medium=material-callout&utm_campaign=cws&utm_keyword=GGRF
+							44 container
+								45 container Info
+									46 image
+									47 text Switch to Chrome to install extensions and themes
+									48 button Switch to Chrome to install extensions and themes Install Chrome
+								49 container
+									50 image Item logo image for uBlock Origin Lite
+									51 heading uBlock Origin Lite, Value: 1
+										52 text uBlock Origin Lite
+									53 container
+										54 link Follows recommended practices for Chrome extensions. Learn more., Value: support.google.com/chrome_webstore/?hl=en-US&p=cws_badges
+									55 text Featured 4.5
+									56 image
+									57 text (
+									58 link 3.6K ratings, Value: chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh/reviews
+									59 text )
+									60 button Ratings are updated daily and may not reflect the most recent reviews.
+									61 button Share
+									62 link Extension, Value: chromewebstore.google.com/category/extensions
+									63 link Privacy & Security, Value: chromewebstore.google.com/category/extensions/make_chrome_yours/privacy
+									64 text 21,000,000 users
+									65 button Remove from Chrome
+								66 container Media carousel
+									67 button Previous slide
+									68 container
+										69 button Item media 1 (screenshot) for uBlock Origin Lite
+										70 button Item media 2 (screenshot) for uBlock Origin Lite
+									71 button Next slide
+								72 button Preview slide 1 for uBlock Origin Lite
+								73 button Preview slide 2 for uBlock Origin Lite
+								74 button Preview slide 3 for uBlock Origin Lite
+								75 heading Overview, Value: 2
+									76 text Overview
+								77 container
+									78 text An efficient content blocker. Blocks ads, trackers, miners, and more immediately upon installation. uBO Lite (uBOL) is an efficient MV3-based content blocker.
+
+The default ruleset corresponds to uBlock Origin's default filterset:
+
+- uBlock Origin's built-in filter lists
+- EasyList
+- EasyPrivacy
+- Peter Lowe’s Ad and tracking server list
+
+You can enable more rulesets by visiting the options page -- click the _Cogs_ icon in the popup panel.
+
+uBOL is entirely declarative, meaning there is no need for a permanent uBOL process for the filtering to occur, and CSS/JS injection-based content filtering is performe
+								79 button See more
+								80 heading 4.5 out of 5 4.5 out of 5 stars 3.6K ratings• Learn more about results and reviews., Value: 2
+									81 text 4.5  out of 5
+									82 image 4.5 out of 5 stars
+									83 text 3.6K ratings •
+									84 link Learn more about results and reviews., Value: support.google.com/chrome_webstore/answer/12225786?p=cws_reviews_results
+								85 container
+									86 link See all reviews, Value: chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh/reviews
+								87 heading Details, Value: 2
+									88 text Details
+								89 content list
+									90 container
+										91 text Version 2026.920.1710
+									92 container
+										93 text Updated September 21, 2026
+									94 link Flag concern, Value: chromewebstore.google.com/detail/ddkjiahejlhfcafbddmgiahcphecmpfh/report
+									95 container
+										96 text Offered by Raymond Hill (gorhill)
+									97 container
+										98 text Size 9.25MiB
+									99 container
+										100 text Languages 60  languages
+										101 button Show more languages
+									102 container
+										103 text Developer
+										104 disclosure triangle Email
+											105 image
+											106 text Email
+											107 image
+									108 container
+										109 text Non-trader This developer has not identified itself as a trader. For consumers in the European Union, please note that consumer rights do not apply to contracts between you and this developer.
+								110 heading Privacy, Value: 2
+									111 text Privacy
+								112 image
+								113 text The developer has disclosed that it will not collect or use your data. To learn more, see the developer’s 
+								114 link privacy policy, Value: github.com/gorhill/uBlock/wiki/Privacy-policy
+								115 text .
+								116 heading This developer declares that your data is, Value: 2
+									117 text This developer declares that your data is
+								118 content list
+									119 container
+										120 AXListMarker • 
+										121 text Not being sold to third parties, outside of the 
+										122 link approved use cases, Value: developer.chrome.com/docs/webstore/program-policies/limited-use/
+									123 container
+										124 AXListMarker • 
+										125 text Not being used or transferred for purposes that are unrelated to the item's core functionality
+									126 container
+										127 AXListMarker • 
+										128 text Not being used or transferred to determine creditworthiness or for lending purposes
+								129 heading Support, Value: 2
+									130 text Support
+								131 link Visit support hub, Value: chromewebstore.google.com/detail/ddkjiahejlhfcafbddmgiahcphecmpfh/support
+								132 heading Related, Value: 2
+									133 text Related
+								134 container Related items carousel
+									135 button Previous slide
+									136 container Related item slides
+										137 container
+											138 link SponsorBlock for YouTube - Skip Sponsorships, Value: chromewebstore.google.com/detail/sponsorblock-for-youtube/mnjggcdmjocbbbhaepdhchncahnbgone
+											139 heading SponsorBlock for YouTube - Skip Sponsorships, Value: 3
+												140 text SponsorBlock for YouTube - Skip Sponsorships
+											141 image Average rating 4.6 out of 5 stars.
+											142 link Learn more about results and reviews "SponsorBlock for YouTube - Skip Sponsorships"., Value: support.google.com/chrome_webstore/answer/12225786?p=cws_reviews_results&hl=en-US
+											143 text Skip sponsorships, subscription begging and more on YouTube videos. Report sponsors on videos you watch to save others' time.
+										144 container
+											145 link Privacy Badger, Value: chromewebstore.google.com/detail/privacy-badger/pkehgijcmpdhfbdbbnkijodmdjhbjlgp
+											146 heading Privacy Badger, Value: 3
+												147 text Privacy Badger
+											148 image Average rating 4.5 out of 5 stars.
+											149 link Learn more about results and reviews "Privacy Badger"., Value: support.google.com/chrome_webstore/answer/12225786?p=cws_reviews_results&hl=en-US
+											150 text Automatically learns to block hidden trackers. Made by leading digital rights nonprofit EFF to stop companies from spying on you.
+										151 container
+											152 link uBlock, Value: chromewebstore.google.com/detail/ublock/epcnnfbjfcgphgdmggkamkmgojdagdnn
+											153 heading uBlock, Value: 3
+												154 text uBlock
+											155 image Average rating 3.4 out of 5 stars.
+											156 link Learn more about results and reviews "uBlock"., Value: support.google.com/chrome_webstore/answer/12225786?p=cws_reviews_results&hl=en-US
+											157 text A no-nonsense ad blocker
+										158 container
+											159 link Twitch Adblock, Value: chromewebstore.google.com/detail/twitch-adblock/hmaahgcbijnfogbgmnnjmlbfjoncneff
+											160 heading Twitch Adblock, Value: 3
+												161 text Twitch Adblock
+											162 image Average rating 3.8 out of 5 stars.
+											163 link Learn more about results and reviews "Twitch Adblock"., Value: support.google.com/chrome_webstore/answer/12225786?p=cws_reviews_results&hl=en-US
+											164 text Deletes Advertisings from Twitch. Enjoy Ads-Free Twitch. Our Blocker is a light-weight and effective Ads Blocking one-stop solution
+									165 button Next slide
+							166 content list
+								167 container
+									168 link About Chrome Web Store, Value: support.google.com/chrome_webstore/answer/1047776?hl=en-US
+									169 text •
+								170 container
+									171 link Developer Dashboard, Value: chrome.google.com/webstore/devconsole/
+									172 text •
+								173 container
+									174 link Privacy Policy, Value: myaccount.google.com/privacypolicy?hl=en-US
+									175 text •
+								176 container
+									177 link Terms of Service, Value: ssl.gstatic.com/chrome/webstore/intl/en-US/gallery_tos.html
+									178 text •
+								179 link Help, Value: support.google.com/chrome_webstore?hl=en-US
+			180 pop up button Tab search
+			181 container
+				182 tab group
+					183 tab (selected, settable, boolean) uBlock Origin Lite - Chrome Web Store, Value: on
+						184 button Close
+			185 button New Tab
+	186 menu button Window sharing
+187 menu bar
+	188 Aux Host Proof
+	189 File
+	190 Edit
+	191 View
+	192 History
+	193 Bookmarks
+	194 Profiles
+	195 Tab
+	196 Window
+	197 Help
+
+The focused UI element is 27 combo box (settable) Search Chrome Web Store, Placeholder: Search extensions and themes
