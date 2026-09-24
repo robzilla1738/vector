@@ -64,7 +64,7 @@ describe("Chromium host runtime channel", () => {
       expect((result.result as { version?: number }).version).toBe(1);
     } finally {
       await runtime?.close();
-      peer?.destroy();
+      (peer as Socket | null)?.destroy();
       await new Promise<void>(resolve => server.close(() => resolve()));
       rmSync(dir, { recursive: true, force: true });
     }
