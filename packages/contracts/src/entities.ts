@@ -114,6 +114,8 @@ export const RunSchema = z.object({
       modelId: z.string().optional(),
       maxSteps: z.number().optional(),
       maxModelCalls: z.number().optional(),
+      maxTokens: z.number().optional(),
+      maxCostUsd: z.number().optional(),
       deadlineMs: z.number().optional(),
       /** prior-turn context for conversational runs — prompt-only, never shown */
       context: z.string().optional(),

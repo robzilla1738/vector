@@ -190,8 +190,14 @@ export const SetsMapParams = z.object({
     .optional(),
   programId: z.string().optional(),
   goal: z.string().optional(),
+  modelId: z.string().optional(),
   concurrency: z.number().int().min(1).max(16).optional(),
   memberIds: z.array(z.string()).optional(),
+  /** Shared across every model-driven member, including concurrent pilots. */
+  maxModelCalls: z.number().int().min(1).max(256).optional(),
+  maxTokens: z.number().int().min(8192).max(2_000_000).optional(),
+  deadlineMs: z.number().int().min(1000).max(3_600_000).optional(),
+  maxCostUsd: z.number().positive().max(1000).optional(),
 });
 export const SetsResultsParams = z.object({ setId: id, status: z.enum(["ok", "partial", "error"]).optional() });
 
@@ -204,6 +210,8 @@ export const RunsStartParams = z.object({
   setId: z.string().optional(),
   modelId: z.string().optional(),
   maxSteps: z.number().int().positive().optional(),
+  maxTokens: z.number().int().min(8192).max(2_000_000).optional(),
+  maxCostUsd: z.number().positive().max(1000).optional(),
   /** `0` = no per-run cap. */
   maxModelCalls: z.number().int().min(0).optional(),
   deadlineMs: z.number().int().positive().optional(),

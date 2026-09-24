@@ -493,7 +493,7 @@ export class SettingsService {
       } finally { clearTimeout(timeout); }
     }
     const m = this.model();
-    let extra: { id: string; name?: string }[] = [];
+    let extra: { id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[] = [];
     let source: "gateway" | "static" = "static";
     if (m) {
       try {

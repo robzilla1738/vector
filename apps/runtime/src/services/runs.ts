@@ -35,6 +35,7 @@ import type { SettingsService } from "./settings.js";
 import { RunCoordinator } from "../agent/coordinator.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
+import type { ResearchBudget, ResearchLimits } from "../scheduler/research-budget.js";
 import { modelCallCost } from "../agent/model-client.js";
 import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
@@ -79,7 +80,7 @@ const TERMINAL_RUN_STATUSES: ReadonlySet<Run["status"]> = new Set([
 class SetRunControl {
   readonly abort = new AbortController();
   private paused = false;
-  private waiters: (() => void)[] = [];
+  private waiters = new Set<() => void>();
 
   pause() {
     this.paused = true;
@@ -96,14 +97,16 @@ class SetRunControl {
     return this.paused;
   }
   /** Resolves immediately unless paused; cancel also resolves so the member can observe the abort and skip. */
-  waitIfPaused(): Promise<void> {
-    if (!this.paused || this.abort.signal.aborted) return Promise.resolve();
-    return new Promise<void>((r) => this.waiters.push(r));
+  waitIfPaused(signal?:AbortSignal): Promise<void> {
+    if (!this.paused || this.abort.signal.aborted || signal?.aborted) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done=()=>{this.waiters.delete(done);signal?.removeEventListener('abort',done);resolve();};
+      this.waiters.add(done);
+      signal?.addEventListener('abort',done,{once:true});
+    });
   }
   private release() {
-    const ws = this.waiters;
-    this.waiters = [];
-    for (const w of ws) w();
+    for (const wake of [...this.waiters]) wake();
   }
 }
 
@@ -539,7 +542,7 @@ export class RunService {
         deps.repo.saveProgram(program);
         return program.programId;
       },
-      runAgentForMember: async (member: SetMember, pageId: string, goal: string, ctx: { runId: string; signal: AbortSignal }) => {
+      runAgentForMember: async (member: SetMember, pageId: string, goal: string, ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget;modelId?:string }) => {
         const model = deps.settings.model();
         if (!model)
           return {
@@ -555,7 +558,7 @@ export class RunService {
               error: "no model configured",
             },
           };
-        const modelId = deps.settings.plannerModel();
+        const modelId = ctx.modelId??deps.settings.plannerModel();
         return runMemberAgent({
           member,
           pageId,
@@ -566,6 +569,7 @@ export class RunService {
           modelId,
           // the set-run's own signal — runs.cancel stops member model calls
           signal: ctx.signal,
+          budget: ctx.budget,
           grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
           durable: durableWrites,
           recordModelCall: (c) => this.recordModelCall({ runId: ctx.runId, role: "planner", ...c }),
@@ -618,6 +622,15 @@ export class RunService {
   }
 
   /** Shared tail for set-scoped runs: schedule the map, then settle the run once. */
+  private researchLimits(opts:{maxModelCalls?:number;maxTokens?:number;deadlineMs?:number;maxCostUsd?:number}):ResearchLimits{
+    return {maxModelCalls:opts.maxModelCalls&&opts.maxModelCalls>0?opts.maxModelCalls:(this.deps.settings.maxModelCalls()||16),
+      maxTokens:opts.maxTokens??200_000,deadlineMs:opts.deadlineMs??300_000,
+      ...(opts.maxCostUsd!==undefined?{maxCostUsd:opts.maxCostUsd}:{})};
+  }
+  private async researchModels(maxCostUsd?:number){
+    return maxCostUsd===undefined?undefined:(await this.deps.settings.listModels()).models;
+  }
+
   private launchSetRun(run: Run, mapOpts: Omit<Parameters<SetRunner["map"]>[0], "runId" | "signal" | "waitIfPaused">) {
     this.deps.repo.saveRun(run);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
@@ -628,7 +641,7 @@ export class RunService {
         ...mapOpts,
         runId: run.runId,
         signal: control.abort.signal,
-        waitIfPaused: () => control.waitIfPaused(),
+        waitIfPaused: signal => control.waitIfPaused(signal),
         isPaused: () => control.isPaused(),
       })
       .then(() => this.finishSetRun(run.runId))
@@ -658,6 +671,8 @@ export class RunService {
     setId?: string;
     modelId?: string;
     maxSteps?: number;
+    maxTokens?: number;
+    maxCostUsd?: number;
     maxModelCalls?: number;
     deadlineMs?: number;
     context?: string;
@@ -751,18 +766,20 @@ export class RunService {
     if (opts.setId) {
       if (contextImageArtifactIds?.length) throw new AuxError("capability_unsupported", "Image references currently belong to a single conversation run, not a set run.");
       // a set-scoped goal runs through the map scheduler
+      const researchLimits=this.researchLimits(opts);
       const run: Run = {
         runId: newRunId(),
         goal: opts.goal,
         status: "running",
         pageIds: [],
         setId: opts.setId,
-        config: { modelId: opts.modelId },
+        config: { modelId: opts.modelId,...researchLimits },
         createdAt: Date.now(),
         startedAt: Date.now(),
         statusMessage: "Mapping over set",
       };
-      this.launchSetRun(run, { setId: opts.setId, goal: opts.goal });
+      const researchModels=await this.researchModels(researchLimits.maxCostUsd);
+      this.launchSetRun(run, { setId: opts.setId, goal: opts.goal,modelId:opts.modelId,researchLimits,researchModels });
       return run;
     }
     return this.coordinator.start({
@@ -825,6 +842,8 @@ export class RunService {
       pageIds: replacementPageId ? [replacementPageId] : prior.pageIds,
       modelId: prior.config?.modelId,
       maxSteps: prior.config?.maxSteps,
+      maxTokens: prior.config?.maxTokens,
+      maxCostUsd: prior.config?.maxCostUsd,
       maxModelCalls: prior.config?.maxModelCalls,
       deadlineMs: prior.config?.deadlineMs,
       context: prior.config?.context,
@@ -872,9 +891,16 @@ export class RunService {
     program?: { steps?: Step[]; nodes?: Program["nodes"] };
     programId?: string;
     goal?: string;
+    modelId?: string;
     concurrency?: number;
     memberIds?: string[];
+    maxModelCalls?: number;
+    maxTokens?: number;
+    deadlineMs?: number;
+    maxCostUsd?: number;
   }): Promise<{ runId: string }> {
+    const researchLimits=this.researchLimits(opts);
+    const researchModels=opts.goal?await this.researchModels(researchLimits.maxCostUsd):undefined;
     const run: Run = {
       runId: newRunId(),
       goal: opts.goal ?? `map ${opts.programId ?? "program"} over ${opts.setId}`,
@@ -884,14 +910,20 @@ export class RunService {
       createdAt: Date.now(),
       startedAt: Date.now(),
       statusMessage: "Mapping over set",
+      config:opts.goal?{modelId:opts.modelId,maxModelCalls:researchLimits.maxModelCalls,
+        maxTokens:researchLimits.maxTokens,deadlineMs:researchLimits.deadlineMs,
+        ...(researchLimits.maxCostUsd!==undefined?{maxCostUsd:researchLimits.maxCostUsd}:{})}:undefined,
     };
     this.launchSetRun(run, {
       setId: opts.setId,
       program: opts.program,
       programId: opts.programId,
       goal: opts.goal,
+      modelId:opts.modelId,
       concurrency: opts.concurrency,
       memberIds: opts.memberIds,
+      researchLimits:opts.goal?researchLimits:undefined,
+      researchModels,
     });
     return { runId: run.runId };
   }

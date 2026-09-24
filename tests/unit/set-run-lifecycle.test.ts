@@ -73,6 +73,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     maxModelCalls: () => 8,
     model: () => opts.model ?? null,
     plannerModel: () => "mock/planner",
+    listModels: async()=>({models:[{id:"mock/planner",source:"catalog",inputUsdPerMTok:1,outputUsdPerMTok:2}],source:"gateway"}),
     recoveryModel: () => undefined,
     visionModel: () => undefined,
     setMaxWorkers: (n: number) => { maxWorkers = n; },
@@ -440,6 +441,52 @@ describe("conversation turn retry", () => {
 });
 
 describe("set-run lifecycle (P0-2 / P1-3)", () => {
+  it("shares one model-call ceiling across concurrent research members",async()=>{
+    let calls=0;
+    const model:ModelClient={generateStructured:async opts=>{
+      calls++;
+      expect(opts.maxAttempts).toBe(1);
+      await sleep(30,opts.signal);
+      return {object:{status:"done",message:"ok",result:{source:"fixture"}} as never,durationMs:30,inputTokens:10,outputTokens:10};
+    },generateText:async()=>({text:"",durationMs:0}),listModels:async()=>[]};
+    const h=harness({model,maxWorkers:2});
+    const set=await h.sets.create({name:"bounded",source:"urls",urls:urls(2)});
+    const {runId}=await h.runs.mapSet({setId:set.setId,goal:"Compare",concurrency:2,maxModelCalls:1});
+    const run=await untilTerminal(h.repo,runId);
+    expect(calls).toBe(1);
+    expect(run.status).toBe("partially_completed");
+    expect(run.config?.maxModelCalls).toBe(1);
+    expect(h.repo.listResults({runId}).map(result=>result.status).sort()).toEqual(["ok","partial"]);
+  });
+
+  it("stops before a model call when the shared token or USD reservation cannot fit",async()=>{
+    let calls=0;
+    const model:ModelClient={generateStructured:async()=>{calls++;return {object:{status:"done",message:"ok"} as never,durationMs:1};},
+      generateText:async()=>({text:"",durationMs:0}),listModels:async()=>[]};
+    const h=harness({model});
+    const tokenSet=await h.sets.create({name:"token",source:"urls",urls:urls(1)});
+    const tokenRun=await h.runs.mapSet({setId:tokenSet.setId,goal:"Compare",maxTokens:8192});
+    expect((await untilTerminal(h.repo,tokenRun.runId)).status).toBe("failed");
+    expect(h.repo.listResults({runId:tokenRun.runId})[0]?.error).toContain("token budget");
+    const costSet=await h.sets.create({name:"cost",source:"urls",urls:urls(1)});
+    const costRun=await h.runs.mapSet({setId:costSet.setId,goal:"Compare",maxCostUsd:0.00001});
+    expect((await untilTerminal(h.repo,costRun.runId)).status).toBe("failed");
+    expect(h.repo.listResults({runId:costRun.runId})[0]?.error).toContain("USD budget");
+    expect(calls).toBe(0);
+  });
+
+  it("wakes a paused set run when its shared deadline expires",async()=>{
+    const model:ModelClient={generateStructured:async opts=>new Promise((_resolve,reject)=>{
+      opts.signal?.addEventListener("abort",()=>reject(new Error("deadline")),{once:true});
+    }),generateText:async()=>({text:"",durationMs:0}),listModels:async()=>[]};
+    const h=harness({maxWorkers:1,model});
+    const set=await h.sets.create({name:"timed",source:"urls",urls:urls(2)});
+    const {runId}=await h.runs.mapSet({setId:set.setId,goal:"Compare",deadlineMs:40});
+    h.runs.pause(runId);
+    const run=await untilTerminal(h.repo,runId);
+    expect(run.status).toBe("failed");
+    expect(h.repo.listMembers(set.setId).every(member=>member.status!=="running"&&member.status!=="queued")).toBe(true);
+  });
   it("journals consequential steps nested in a replay program",async()=>{
     const h=harness({execMs:5});
     const set=await h.sets.create({name:"nested",source:"urls",urls:urls(1)});

@@ -179,6 +179,7 @@ type CallOpts = {
   imageDataUrls?: string[];
   signal?: AbortSignal;
   maxOutputTokens?: number;
+  maxAttempts?: number;
 };
 
 const RETRY_SYSTEM = "\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.";
@@ -233,6 +234,7 @@ export class GatewayModelClient implements ModelClient {
         if (!isStructuredOutputError(e)) throw e;
         const usage = (e as { usage?: unknown }).usage;
         if (usage) retries.push({ ...attempt(started, { usage }), error: "structured output unusable" });
+        if(opts.maxAttempts===1)throw withAttempts(e,retries);
       }
     }
     return this.structuredFromText(opts, retries);
@@ -286,6 +288,7 @@ export class GatewayModelClient implements ModelClient {
       return { object: parse(text), ...stripText(first), ...(retries.length ? { retries } : {}) };
     } catch (e) {
       if (opts.signal?.aborted) throw withAttempts(e, [...retries, first]);
+      if(opts.maxAttempts===1)throw withAttempts(e,[...retries,{...stripText(first),error:"unparseable output"}]);
       const failed = [...retries, { ...stripText(first), error: `unparseable output: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}` }];
       const retry = await this.generateText({
         ...opts,
@@ -323,7 +326,12 @@ export class GatewayModelClient implements ModelClient {
   async listModels(): Promise<{ id: string; name?: string }[]> {
     if (!this.gateway) return [];
     const catalog = await this.gateway.getAvailableModels();
-    return catalog.models.map((m) => ({ id: m.id, name: m.name }));
+    return catalog.models.map((m) => {
+      const input=Number(m.pricing?.input),output=Number(m.pricing?.output);
+      return {id:m.id,name:m.name,
+        ...(m.pricing&&Number.isFinite(input)&&input>=0&&Number.isFinite(output)&&output>=0
+          ?{inputUsdPerMTok:input*1_000_000,outputUsdPerMTok:output*1_000_000}:{})};
+    });
   }
 }
 

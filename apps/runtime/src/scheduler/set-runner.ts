@@ -4,6 +4,7 @@ import {
   AuxError,
   type Program,
   type ResultRecord,
+  type ModelCapability,
   type SetMember,
   type Step,
 } from "@aux/contracts";
@@ -16,6 +17,7 @@ import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "../age
 import { collectProgramSteps } from "../services/pages/executor.js";
 import type { GrantSource } from "../agent/permissions.js";
 import { WorkerPool } from "./pool.js";
+import { ResearchBudget, type ResearchLimits } from "./research-budget.js";
 
 export interface SetRunnerDeps {
   repo: Repo;
@@ -32,7 +34,7 @@ export interface SetRunnerDeps {
     member: SetMember,
     pageId: string,
     goal: string,
-    ctx: { runId: string; signal: AbortSignal },
+    ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?: string },
   ) => Promise<{ result: ResultRecord; executedSteps?: Step[] }>;
   /** look up a saved program to replay */
   getProgram: (programId: string) => { stepsJson: string; siteKey: string } | undefined;
@@ -82,8 +84,17 @@ class Semaphore {
   private queue: (() => void)[] = [];
   private active = 0;
   constructor(private readonly limit: number) {}
-  async acquire(): Promise<() => void> {
-    if (this.active >= this.limit) await new Promise<void>((r) => this.queue.push(r));
+  async acquire(signal?:AbortSignal): Promise<() => void> {
+    while(this.active>=this.limit){
+      if(signal?.aborted)throw new AuxError('cancelled','research budget or run stopped while waiting for capacity');
+      await new Promise<void>(resolve=>{
+        const wake=()=>{signal?.removeEventListener('abort',onAbort);resolve();};
+        const onAbort=()=>{this.queue=this.queue.filter(item=>item!==wake);wake();};
+        this.queue.push(wake);
+        signal?.addEventListener('abort',onAbort,{once:true});
+      });
+    }
+    if(signal?.aborted)throw new AuxError('cancelled','research budget or run stopped while waiting for capacity');
     this.active++;
     let released = false;
     return () => {
@@ -109,15 +120,22 @@ export class SetRunner {
     program?: { steps?: Step[]; nodes?: Program["nodes"] };
     programId?: string;
     goal?: string;
+    modelId?: string;
     /** per-map cap, applied on top of the global WorkerPool limits */
     concurrency?: number;
     memberIds?: string[];
+    researchLimits?: ResearchLimits;
+    researchModels?: ModelCapability[];
     signal: AbortSignal;
     /** pause gate — resolves immediately unless the owning run is paused */
-    waitIfPaused?: () => Promise<void>;
+    waitIfPaused?: (signal?:AbortSignal) => Promise<void>;
     /** synchronous view of the gate, re-checked after waiting for capacity */
     isPaused?: () => boolean;
   }): Promise<void> {
+    const budget=opts.goal&&opts.researchLimits?new ResearchBudget(opts.researchLimits,opts.signal,opts.researchModels):undefined;
+    const signal=budget?.signal??opts.signal;
+    const skipReason=()=>budget?.reason()==="shared research deadline exhausted"?"research deadline exceeded":"cancelled";
+    try {
     const { set, members } = this.deps.sets.get(opts.setId);
     const target = members.filter(
       (m) => (!opts.memberIds || opts.memberIds.includes(m.memberId)) && m.status !== "completed",
@@ -150,9 +168,9 @@ export class SetRunner {
       // gate order: pause → per-map concurrency → global pool. A paused run
       // starts no new members; cancel while paused releases the gate (the
       // owner rejects/resolves it) and the member is skipped below.
-      await opts.waitIfPaused?.();
-      if (opts.signal.aborted) {
-        this.skip(m, opts.runId);
+      await opts.waitIfPaused?.(signal);
+      if (signal.aborted) {
+        this.skip(m, opts.runId,skipReason());
         return;
       }
       let url: string | undefined;
@@ -171,33 +189,33 @@ export class SetRunner {
       let release: (() => void) | undefined;
       let workerPageId: string | undefined;
       try {
-        releaseSem = await sem.acquire();
+        releaseSem = await sem.acquire(signal);
         // pause may have arrived while this member waited for capacity —
         // re-check, and never hold a global pool slot while gated (other
         // runs share the pool)
-        await opts.waitIfPaused?.();
-        release = await this.deps.pool.acquire(url ?? "unknown", opts.signal);
-        while (!opts.signal.aborted && opts.isPaused?.()) {
+        await opts.waitIfPaused?.(signal);
+        release = await this.deps.pool.acquire(url ?? "unknown", signal);
+        while (!signal.aborted && opts.isPaused?.()) {
           release();
           release = undefined;
-          await opts.waitIfPaused?.();
-          release = await this.deps.pool.acquire(url ?? "unknown", opts.signal);
+          await opts.waitIfPaused?.(signal);
+          release = await this.deps.pool.acquire(url ?? "unknown", signal);
         }
-        if (opts.signal.aborted) {
-          this.skip(m, opts.runId);
+        if (signal.aborted) {
+          this.skip(m, opts.runId,skipReason());
           return;
         }
         m.status = "running";
         this.deps.sets.updateMember(m);
-        const outcome = await this.processMember(m, url!, opts, learnedFor(url!), (id) => (workerPageId = id));
-        if (opts.signal.aborted) {
-          this.skip(m, opts.runId);
+        const outcome = await this.processMember(m, url!, {...opts,signal,budget}, learnedFor(url!), (id) => (workerPageId = id));
+        if (signal.aborted) {
+          this.skip(m, opts.runId,skipReason());
           return;
         }
         const { result } = outcome;
         result.runId ??= opts.runId;
         this.deps.repo.saveResult(result);
-        m.status = result.status === "error" ? "failed" : "completed";
+        m.status = result.status === "ok" ? "completed" : "failed";
         m.resultId = result.resultId;
         if (result.error) m.error = result.error;
         this.deps.sets.updateMember(m);
@@ -219,9 +237,9 @@ export class SetRunner {
           }
         }
       } catch (e) {
-        if (opts.signal.aborted) {
+        if (signal.aborted) {
           // cancelled mid-flight: the member never finished — never leave it "running"
-          this.skip(m, opts.runId);
+          this.skip(m, opts.runId,skipReason());
           return;
         }
         this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
@@ -262,21 +280,23 @@ export class SetRunner {
         opts.runId,
       );
       await Promise.all(pilots.map((i) => jobs[i]!()));
-      if (opts.signal.aborted) {
-        for (const i of rest) this.skip(target[i]!, opts.runId);
+      if (signal.aborted) {
+        for (const i of rest) this.skip(target[i]!, opts.runId,skipReason());
       } else {
         await Promise.all(rest.map((i) => jobs[i]!()));
       }
     } else {
       await Promise.all(jobs.map((j) => j()));
     }
-    this.deps.events.emit(EventTypes.SetUpdated, { setId: opts.setId, done: true }, opts.runId);
+    this.deps.events.emit(EventTypes.SetUpdated, { setId: opts.setId, done: true,
+      ...(budget?{researchBudget:budget.snapshot()}:{}) }, opts.runId);
+    } finally { budget?.close(); }
   }
 
   private async processMember(
     m: SetMember,
     url: string,
-    opts: { goal?: string; runId: string; signal: AbortSignal },
+    opts: { goal?: string; runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?:string },
     learned: Learned | undefined,
     setWorker: (id: string) => void,
   ): Promise<{ result: ResultRecord; executedSteps?: Step[] }> {
@@ -311,7 +331,7 @@ export class SetRunner {
       }
     }
     if (opts.goal) {
-      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal });
+      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal,budget:opts.budget,modelId:opts.modelId });
       return { result: agentRes.result, executedSteps: agentRes.executedSteps };
     }
     if (learned) {
@@ -417,10 +437,10 @@ export class SetRunner {
   }
 
   /** Cancelled before/while running: not a failure, not completed — skipped, re-runnable. */
-  private skip(m: SetMember, runId: string) {
+  private skip(m: SetMember, runId: string, reason = "cancelled") {
     if (m.status === "completed" || m.status === "failed") return;
     m.status = "skipped";
-    m.error = `cancelled (run ${runId})`;
+    m.error = `${reason} (run ${runId})`;
     this.deps.sets.updateMember(m);
   }
 

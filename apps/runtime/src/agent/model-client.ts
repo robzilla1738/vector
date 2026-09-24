@@ -73,6 +73,8 @@ export interface ModelClient {
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    /** Bound provider attempts for shared-budget callers; 1 disables corrective retries. */
+    maxAttempts?: number;
   }): Promise<StructuredCallResult<T>>;
 
   /**
@@ -104,7 +106,7 @@ export interface ModelClient {
     maxOutputTokens?: number;
   }): Promise<TextCallResult>;
 
-  listModels(): Promise<{ id: string; name?: string }[]>;
+  listModels(): Promise<{ id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[]>;
 }
 
 /** Static fallback list used until the Gateway catalog is reachable. */
