@@ -25,13 +25,24 @@ type RecordBody = {
   capturedAt: number;
 };
 type Row = { memory_id: string; source_key: string; origin: string; captured_at: number; expires_at: number; ciphertext: string };
-type Index = { revision: number; expiresAt: number; rows: Map<string, RecordBody>; tokens: Map<string, Set<string>> };
+type Index = { revision: number; expiresAt: number; rows: Map<string, RecordBody>; searchable: Map<string, { title: string; text: string }> };
 
 const policyKey = (workspaceId: string) => `contentMemoryPolicy:${workspaceId}`;
 const STOPWORDS = new Set(["a", "an", "and", "are", "at", "be", "by", "did", "do", "does", "for", "from", "how", "in", "is", "it", "of", "on", "or", "the", "to", "was", "were", "what", "when", "where", "which", "who", "why", "with"]);
 const terms = (text: string) => [...new Set([...new Intl.Segmenter(undefined, { granularity: "word" }).segment(text)]
   .filter(part => part.isWordLike).map(part => part.segment.toLocaleLowerCase())
   .filter(part => part.length > 1 && !STOPWORDS.has(part)))];
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+function termPosition(text: string, token: string): number {
+  let at = text.indexOf(token);
+  if (CJK.test(token)) return at;
+  while (at >= 0) {
+    if ((!at || !WORD_CHAR.test(text[at - 1]!)) && (at + token.length === text.length || !WORD_CHAR.test(text[at + token.length]!))) return at;
+    at = text.indexOf(token, at + token.length);
+  }
+  return -1;
+}
 
 /** Page text is encrypted before SQLite sees it. Search structures exist only in bounded process memory. */
 export class ContentMemoryStore {
@@ -181,11 +192,11 @@ export class ContentMemoryStore {
     const key = await this.key();
     const policy = this.policy(workspaceId);
     if (!policy.enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false)
-      return { revision, expiresAt: this.now(), rows: new Map(), tokens: new Map() };
+      return { revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() };
     const rows = this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory
       WHERE profile_id=? AND workspace_id=? AND expires_at>? AND captured_at>? ORDER BY captured_at DESC LIMIT ?`)
       .all(this.profileId, workspaceId, this.now(), this.now() - policy.retentionDays * DAY, MAX_PAGES_PER_SPACE) as Row[];
-    const index: Index = { revision, expiresAt: Infinity, rows: new Map(), tokens: new Map() };
+    const index: Index = { revision, expiresAt: Infinity, rows: new Map(), searchable: new Map() };
     for (const row of rows) {
       if (!policy.allowedOrigins.includes(row.origin) || memory?.excludedOrigins?.includes(row.origin)) continue;
       index.expiresAt = Math.min(index.expiresAt, row.expires_at);
@@ -195,11 +206,7 @@ export class ContentMemoryStore {
         || new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || sourceKey !== row.source_key)
         throw new Error("Protected page-memory provenance does not match its storage record.");
       index.rows.set(row.memory_id, body);
-      for (const token of terms(`${body.title}\n${body.text}`)) {
-        let ids = index.tokens.get(token);
-        if (!ids) index.tokens.set(token, ids = new Set());
-        ids.add(row.memory_id);
-      }
+      index.searchable.set(row.memory_id, { title: body.title.toLocaleLowerCase(), text: body.text.toLocaleLowerCase() });
     }
     this.indexes.delete(workspaceId);
     this.indexes.set(workspaceId, index);
@@ -220,22 +227,24 @@ export class ContentMemoryStore {
     if (!tokens.length) return [];
     const index = await this.index(workspaceId);
     if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return [];
-    const candidates = new Set(tokens.flatMap(token => [...(index.tokens.get(token) ?? [])]));
-    const ranked = [...candidates].map(id => {
-      const body = index.rows.get(id)!;
-      const titleTokens = new Set(terms(body.title));
-      const hits = tokens.filter(token => index.tokens.get(token)?.has(id));
+    const frequencies = new Map(tokens.map(token => [token, 0]));
+    const candidates = [...index.rows].flatMap(([id, body]) => {
+      const haystack = index.searchable.get(id)!;
+      const hits = tokens.filter(token => termPosition(haystack.title, token) >= 0 || termPosition(haystack.text, token) >= 0);
+      for (const token of hits) frequencies.set(token, frequencies.get(token)! + 1);
+      return hits.length ? [{ body, haystack, hits }] : [];
+    });
+    const ranked = candidates.map(({ body, haystack, hits }) => {
       const score = hits.reduce((sum, token) => {
-        const frequency = index.tokens.get(token)?.size ?? 1;
+        const frequency = frequencies.get(token) ?? 1;
         const rarity = Math.log(1 + (index.rows.size + 1) / frequency);
-        return sum + rarity * (titleTokens.has(token) ? 3 : 1);
+        return sum + rarity * (termPosition(haystack.title, token) >= 0 ? 3 : 1);
       }, 0) * (0.5 + hits.length / tokens.length);
-      return { body, score, hits };
+      return { body, haystack, score, hits };
     }).sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt);
     return ranked.filter(({ body }) => this.readable(body)).slice(0, Math.max(1, Math.min(limit, 20)))
-      .map(({ body, hits }) => {
-        const lower = body.text.toLocaleLowerCase();
-        const at = Math.max(0, lower.indexOf(hits.find(token => lower.includes(token)) ?? hits[0]!));
+      .map(({ body, haystack, hits }) => {
+        const at = Math.max(0, termPosition(haystack.text, hits.find(token => termPosition(haystack.text, token) >= 0) ?? hits[0]!));
         const start = Math.max(0, at - 70), end = Math.min(body.text.length, start + 240);
         return { memoryId: body.memoryId, profileId: body.profileId, workspaceId: body.workspaceId,
           url: body.url, title: body.title, capturedAt: body.capturedAt, pageId: body.pageId,

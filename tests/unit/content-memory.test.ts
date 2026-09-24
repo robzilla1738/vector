@@ -86,6 +86,22 @@ it("ranks source-linked answers to natural questions without requiring every que
   expect(matches[0]?.snippet).toContain("October");
   expect(matches[0]?.workspaceId).toBe(space);
   expect(await f.memory.search(space, "unrelated nonexistent subject")).toEqual([]);
+  expect(await f.memory.search(space, "art")).toEqual([]);
+});
+
+it("retrieves Spanish and Japanese article terms within their exact Space", async () => {
+  const f = fixture();
+  const space = f.workspace.workspaceId;
+  f.memory.setPolicy(space, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });
+  await f.memory.saveEligible({ workspaceId: space, pageId: "spanish", documentEpoch: 1,
+    url: "https://example.test/cafe", title: "La cosecha de café", text: "La cosecha de café empieza en octubre." });
+  await f.memory.saveEligible({ workspaceId: space, pageId: "japanese", documentEpoch: 1,
+    url: "https://example.test/coffee-jp", title: "コーヒーの収穫", text: "コーヒーの収穫は十月に始まる。" });
+  expect((await f.memory.search(space, "¿Cuándo empieza la cosecha de café?"))[0]?.pageId).toBe("spanish");
+  expect((await f.memory.search(space, "コーヒーの収穫はいつ始まる？"))[0]?.pageId).toBe("japanese");
+  const other = f.tasks.createWorkspace("Other");
+  f.memory.setPolicy(other.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });
+  expect(await f.memory.search(other.workspaceId, "cosecha café")).toEqual([]);
 });
 
 it("does not return decrypted content after policy revocation during key access", async () => {
