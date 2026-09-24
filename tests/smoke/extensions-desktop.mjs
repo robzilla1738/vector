@@ -6,7 +6,7 @@ import { createServer } from "node:http";
 import assert from "node:assert/strict";
 import { sidebarAction } from "./sidebar-action.mjs";
 import { poll } from "./poll.mjs";
-import { launchApp, shellWindow } from "./launch.mjs";
+import { closeAux, launchApp, shellWindow } from "./launch.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const temporary = mkdtempSync(join(tmpdir(), "aux-extensions-"));
@@ -110,8 +110,8 @@ try {
 
   console.log("Aux installs a chosen unpacked extension, persists enable/disable across restart, excludes private browsing, and removes the managed copy cleanly.");
 } finally {
-  await privateApp?.close().catch(() => {});
-  await app?.close().catch(() => {});
+  if (privateApp) await closeAux(privateApp).catch(() => {});
+  if (app) await closeAux(app).catch(() => {});
   fixture.closeAllConnections();
   await new Promise(resolve => fixture.close(resolve));
   rmSync(temporary, { recursive: true, force: true });

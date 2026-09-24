@@ -29,7 +29,8 @@
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs",
     "preview": "node scripts/preview.mjs",
     "lint": "oxlint apps packages tests scripts --max-warnings=390",
-    "smoke:design": "node tests/smoke/run-suite.mjs design"
+    "smoke:design": "node tests/smoke/run-suite.mjs design",
+    "host:compare": "node tests/host/compare.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",

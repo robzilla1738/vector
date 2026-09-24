@@ -184,7 +184,7 @@ try {
   assert.equal((await rpc('pages.takeover', { pageId: page.pageId })).controller, 'human');
   await assert.rejects(
     rpc('pages.execute', { program: { pageId: page.pageId, steps: [{ id: 'blocked-click', op: 'click', target: 'css:#act' }] } }),
-    /human control/i,
+    /a person controls this tab|human control/i,
   );
   const otherTabAction = await rpc('pages.execute', { program: { pageId: second.pageId, steps: [{ id: 'other-tab-click', op: 'click', target: 'css:#act' }] } });
   assert.equal(otherTabAction.status, 'completed', JSON.stringify(otherTabAction));
@@ -346,7 +346,9 @@ try {
     const current = JSON.parse(readFileSync(runtimeFile, 'utf8'));
     if (current.pid === firstRuntimePid) continue;
     const state = await rpc('workspace.get').catch(() => null);
-    if (state?.sessions?.find(session => session.sessionId === 'aux')?.status === 'connected') restarted = state;
+    const expectedPageIds = [page.pageId, second.pageId, framePage.pageId, popup.pageId, postPopup.pageId, background.pageId];
+    if (state?.sessions?.find(session => session.sessionId === 'aux')?.status === 'connected'
+      && expectedPageIds.every(pageId => state.pages.some(tab => tab.pageId === pageId))) restarted = state;
   }
   assert.ok(restarted, `Broker/runtime did not recover: ${output}`);
   assert.ok(restarted.pages.some(tab => tab.pageId === page.pageId), 'first tab survives runtime restart');
