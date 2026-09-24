@@ -23,7 +23,7 @@ describe("schema versioning", () => {
   it("initializes a fresh profile with every table, indexes, and the Aux marker", () => {
     const { directory, path } = fixture();
     const db = track(openDb(path));
-    expect(version(db)).toBe(6);
+    expect(version(db)).toBe(7);
     expect((db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value: string }).value).toBe("aux");
     const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all() as { name: string }[];
     for (const table of [
@@ -33,7 +33,7 @@ describe("schema versioning", () => {
       "datasets", "operations", "operation_implementations", "operation_invocations",
       "operation_reconciliations", "action_intents", "action_transitions", "workspaces",
       "tasks", "task_revisions", "task_evidence", "criterion_reviews", "agent_connections",
-      "vault_items", "vault_grants", "vault_access", "routines", "routine_revisions",
+      "vault_items", "vault_grants", "vault_access", "routines", "routine_revisions", "calendar_connections",
       "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts", "plugins",
     ]) {
       expect(tables.map(row => row.name)).toContain(table);
@@ -85,9 +85,9 @@ describe("schema versioning", () => {
   it("refuses newer Aux schemas without modifying them", () => {
     const { directory, path } = fixture();
     const newer = track(openDb(path));
-    newer.exec("PRAGMA user_version=7; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')");
-    expect(() => openDb(path)).toThrow(/schema 7.*newer/);
-    expect(version(newer)).toBe(7);
+    newer.exec("PRAGMA user_version=8; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')");
+    expect(() => openDb(path)).toThrow(/schema 8.*newer/);
+    expect(version(newer)).toBe(8);
     expect((newer.prepare("SELECT value FROM future").get() as { value: string }).value).toBe("keep");
     expect(readdirSync(directory).filter(name => name !== "state.sqlite" && !name.startsWith("state.sqlite-"))).toEqual([]);
   });
@@ -107,22 +107,23 @@ describe("schema versioning", () => {
     const db = track(openDb(path));
     new Repo(db).addBookmark("https://kept.test/", "Kept");
     // Simulates a future upgrade path: statements + version stamp commit together.
-    applyMigrations(db, ["ALTER TABLE kv ADD COLUMN note TEXT", "PRAGMA user_version = 7"]);
-    expect(version(db)).toBe(7);
+    applyMigrations(db, ["ALTER TABLE kv ADD COLUMN note TEXT", "PRAGMA user_version = 8"]);
+    expect(version(db)).toBe(8);
     expect(new Repo(db).listBookmarks()).toMatchObject([{ url: "https://kept.test/", title: "Kept" }]);
     expect(() => applyMigrations(db, ["THIS IS NOT SQL"])).toThrow();
-    expect(version(db)).toBe(7);
+    expect(version(db)).toBe(8);
   });
 
   it("upgrades existing v5 profiles with the durable message table", () => {
     const { path } = fixture();
     const old = track(openDb(path));
     old.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("saved", "kept");
-    old.exec("DROP TABLE run_messages; PRAGMA user_version=5");
+    old.exec("DROP TABLE run_messages; DROP TABLE calendar_connections; PRAGMA user_version=5");
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(6);
+    expect(version(upgraded)).toBe(7);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='run_messages'").get()).toBeDefined();
+    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_connections'").get()).toBeDefined();
     expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value).toBe("kept");
   });
 
@@ -141,7 +142,7 @@ describe("schema versioning", () => {
     `);
     legacy.close();
     const db = track(openDb(path));
-    expect(version(db)).toBe(6);
+    expect(version(db)).toBe(7);
     expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugins'").get()).toBeDefined();
     const repo = new Repo(db);
     expect(repo.listHistory()).toHaveLength(2);

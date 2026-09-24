@@ -26,6 +26,7 @@ import { SpaceService } from "../services/spaces.js";
 import { TaskEvidenceService } from "../services/task-evidence.js";
 import { summarizeModelUsage } from "../services/model-usage.js";
 import type { AgentConnectionService } from "../services/agent-connections.js";
+import type { CalendarConnectionService } from "../services/calendar-connections.js";
 import type { AgentConnectionScope } from "@aux/contracts";
 import type {NativeBridge} from '../native.js';
 import {CloudEnvironmentService} from '../services/cloud-environments.js';
@@ -46,6 +47,7 @@ export interface Services {
   events: EventBus;
   repo: Repo;
   agentConnections?: AgentConnectionService;
+  calendar?: CalendarConnectionService;
   native?:NativeBridge;
   vault?: VaultService;
   routines?: RoutineService;
@@ -209,6 +211,22 @@ export function makeInvoker(s: Services) {
     }
 
     switch (method as MethodName) {
+      case "calendar.connections.list":
+        if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.list();
+      case "calendar.auth.start":
+        if (client.external) throw new AuxError("permission_denied", "Calendar accounts are connected in Aux.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.start();
+      case "calendar.connections.revoke":
+        if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.revoke(params.connectionId);
+      case "calendar.events.list":
+        if (client.external) throw new AuxError("permission_denied", "Calendar reads require an Aux account grant.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.events(params);
       case "agentConnections.list":
         if (client.external) throw new AuxError("permission_denied", "Connections can only be managed in Aux Settings");
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");

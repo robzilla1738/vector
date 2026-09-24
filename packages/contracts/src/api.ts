@@ -31,6 +31,7 @@ import { StateQuerySchema } from "./state.js";
 import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
+import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema } from "./calendar.js";
 import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
@@ -615,6 +616,10 @@ export const MethodSchemas = {
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
+  "calendar.connections.list": z.object({}),
+  "calendar.auth.start": z.object({}),
+  "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
+  "calendar.events.list": CalendarEventsQuerySchema,
   "pages.list": PagesListParams,
   "pages.open": PagesOpenParams,
   "pages.close": PagesCloseParams,
@@ -977,6 +982,10 @@ export const ResultSchemas = {
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
   "agentConnections.revoke": AgentConnectionSchema,
+  "calendar.connections.list": z.object({ available: z.boolean(), reason: z.string().optional(), connections: z.array(CalendarConnectionSchema) }),
+  "calendar.auth.start": z.object({ url: z.string().url(), expiresAt: z.number().int().nonnegative() }),
+  "calendar.connections.revoke": z.object({ ok: z.literal(true), providerRevocation: z.enum(["confirmed", "pending"]) }),
+  "calendar.events.list": z.object({ events: z.array(CalendarEventSchema), nextPageToken: z.string().optional(), fetchedAt: z.number().int().nonnegative() }),
   "pages.list": z.array(PageTargetSchema),
   "pages.open": PageTargetSchema,
   "pages.close": z.object({ ok: z.boolean() }),

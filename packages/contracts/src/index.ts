@@ -10,6 +10,7 @@ export * from "./entities.js";
 export * from "./tasks.js";
 export * from "./spaces.js";
 export * from "./agent-connections.js";
+export * from "./calendar.js";
 export * from "./vault.js";
 export * from "./routines.js";
 export * from "./identity.js";

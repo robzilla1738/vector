@@ -37,6 +37,7 @@ import { Tracer } from "./services/tracing.js";
 import { makeInvoker } from "./api/handlers.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
+import { CalendarConnectionService } from "./services/calendar-connections.js";
 import { canResumeAfterPageRelease } from "./agent/control-authority.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
@@ -302,6 +303,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
   const cookies = new CookieService({ drivers: () => drivers, native });
   const agentConnections = new AgentConnectionService(repo);
+  const calendar = new CalendarConnectionService({ repo, native, clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+    onChange: () => events.emit("settings.changed", { category: "calendar" }) });
 
   const invoke = makeInvoker({
     native,
@@ -313,6 +316,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     repo,
     agentConnections,
+    calendar,
     responses,
     operations,
     state,
@@ -428,6 +432,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await drivers.aux?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
     await api.close().catch(() => {});
+    await calendar.close();
     tracer.close();
     repo.close();
   };
