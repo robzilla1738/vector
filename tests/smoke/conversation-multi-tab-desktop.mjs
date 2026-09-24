@@ -81,8 +81,9 @@ try {
   await page.locator('.conversation-browser-sources[aria-label="Selected browser tabs"]').getByText("Changed", { exact: true }).waitFor({ state: "detached" });
   await page.getByLabel("Reply to conversation", { exact: true }).fill("Compare these two pages");
   await page.getByRole("button", { name: "Send message", exact: true }).click();
-  await page.waitForFunction(async () => (await window.aux.invoke("runs.list", { limit: 10, includeArchived: true })).some(run => run.goal === "Compare these two pages"));
-  const run = await page.evaluate(async () => (await window.aux.invoke("runs.list", { limit: 10, includeArchived: true })).find(item => item.goal === "Compare these two pages"));
+  const runHandle = await page.waitForFunction(async () =>
+    (await window.aux.invoke("runs.list", { limit: 10, includeArchived: true })).find(item => item.goal === "Compare these two pages"));
+  const run = await runHandle.jsonValue();
   assert.ok(run, "composer should create a run");
   assert.deepEqual(run.pageIds, [first.pageId, second.pageId]);
   assert.deepEqual(run.config.contextPageRefs.map(item => item.pageId), [first.pageId, second.pageId]);
