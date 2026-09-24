@@ -116,6 +116,8 @@ server.registerTool(
   },
   async ({ pageId, taskId, expectedRevision, steps, documentEpoch, returnObservation }) => {
     try {
+      if(scopedKind&&(!taskId||expectedRevision===undefined))
+        throw new AuxError("invalid_params","Scoped aux_page_execute requires taskId and expectedRevision");
       const parsed = parseMcpSteps(steps);
       if ("error" in parsed) throw new AuxError("invalid_params", parsed.error);
       const ro = returnObservation ? { ...returnObservation, format: returnObservation.format ?? "compact" } : undefined;
