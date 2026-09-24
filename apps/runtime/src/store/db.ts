@@ -157,9 +157,11 @@ CREATE TABLE operation_reconciliations(
 CREATE TABLE action_intents(
   id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE,
   run_id TEXT NOT NULL, page_id TEXT NOT NULL, document_epoch INTEGER NOT NULL,
+  task_id TEXT, task_revision INTEGER,
   status TEXT NOT NULL CHECK(status IN ('pending','confirmed','uncertain','not_applied')),
   created_at INTEGER NOT NULL, evidence TEXT);
 CREATE INDEX idx_action_intents_unresolved ON action_intents(run_id, page_id, status);
+CREATE INDEX idx_action_intents_task_unresolved ON action_intents(task_id,task_revision,status);
 CREATE TABLE action_transitions(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, intent_id TEXT NOT NULL REFERENCES action_intents(id) ON DELETE CASCADE,
   status TEXT NOT NULL, recorded_at INTEGER NOT NULL, evidence TEXT);
@@ -253,7 +255,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -324,6 +326,17 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       created_at INTEGER NOT NULL, revoked_at INTEGER)`,
     `CREATE UNIQUE INDEX idx_calendar_task_grant_active ON calendar_task_grants(task_id,task_revision,connection_id) WHERE revoked_at IS NULL`,
   ],
+  // v8 → v9: direct browser effects belong to an exact saved task revision.
+  8: (db) => {
+    if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='action_intents'").get())return [];
+    const columns=db.prepare("PRAGMA table_info(action_intents)").all() as {name:string}[];
+    const names=new Set(columns.map(column=>column.name));
+    return [
+      ...(!names.has('task_id')?[`ALTER TABLE action_intents ADD COLUMN task_id TEXT`]:[]),
+      ...(!names.has('task_revision')?[`ALTER TABLE action_intents ADD COLUMN task_revision INTEGER`]:[]),
+      `CREATE INDEX IF NOT EXISTS idx_action_intents_task_unresolved ON action_intents(task_id,task_revision,status)`,
+    ];
+  },
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

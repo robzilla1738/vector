@@ -22,6 +22,7 @@ import type { DriverSet } from "../services/pages.js";
 
 import { TaskService } from "../services/tasks.js";
 import { DurableWriteLedger } from "../agent/durable.js";
+import { programContainsOperationCalls, programHasConsequentialSteps } from "../services/pages/executor.js";
 import { SpaceService } from "../services/spaces.js";
 import { TaskEvidenceService } from "../services/task-evidence.js";
 import { summarizeModelUsage } from "../services/model-usage.js";
@@ -147,7 +148,7 @@ export function makeInvoker(s: Services) {
     await preserveCloudResult(record,task,result);
     return'preserved';
   });
-  const previewPageGrants=new Map<string,Set<string>>();
+  const previewPageGrants=new Map<string,Map<string,string>>();
   const scopedTasks = (scope: AgentConnectionScope) => scope.kind === "task"
     ? tasks.descendants(scope.taskId)
     : tasks.list({ workspaceId: scope.workspaceId, includeArchived: true, limit: 500 });
@@ -176,7 +177,7 @@ export function makeInvoker(s: Services) {
       taskPages.set(key, cached);
     }
     const preview = connectionId ? previewPageGrants.get(connectionId) : undefined;
-    return preview?.size ? new Set([...cached.pages, ...preview]) : cached.pages;
+    return preview?.size ? new Set([...cached.pages, ...preview.keys()]) : cached.pages;
   };
   const requireScopedPage = (scope: AgentConnectionScope, pageId: string,connectionId?:string) => {
     if (!scopedPageIds(scope,connectionId).has(pageId)) throw new AuxError("permission_denied", "Attach this page to the authorized task before using it");
@@ -193,6 +194,9 @@ export function makeInvoker(s: Services) {
       throw new AuxError("permission_denied", "Browser spaces are managed in Aux.");
     }
     if (scope) {
+      if (["pages.close","pages.moveToWindow","pages.navigate","pages.back","pages.forward","pages.reload","pages.stop","pages.takeover","pages.resume"].includes(method)
+        || method === "pages.dialog" && params.action && params.action !== "list")
+        throw new AuxError("permission_denied", "Use a task-bound pages.execute program for browser actions");
       if (method === "workspaces.create" || method === "pages.open" || method === "runs.start") {
         throw new AuxError("permission_denied", "This scoped connection cannot expand its own authority");
       }
@@ -219,6 +223,11 @@ export function makeInvoker(s: Services) {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
         requireScopedPage(scope, pageId,client.connectionId);
+        if(method==="pages.execute"){
+          if(typeof params.taskId!=="string"||typeof params.expectedRevision!=="number")
+            throw new AuxError("invalid_params", "Scoped page programs require taskId and expectedRevision");
+          requireScopedTask(scope,params.taskId);
+        }
       } else if (method.startsWith("runs.") && method !== "runs.list") {
         const run = typeof params.runId === "string" ? s.repo.getRun(params.runId) : undefined;
         if (!run?.config?.taskId) throw new AuxError("permission_denied", "This connection can only access runs belonging to its task scope");
@@ -446,7 +455,7 @@ export function makeInvoker(s: Services) {
             const check=await developmentNative().approveProjectPreview({projectId:params.projectId,url:params.url,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}});
             if(!check)return null;if(check.state!=='responding')return {check};
             const page=await s.pages.open({url:check.url,background:false,ownedByRuntime:false,activate:true});
-            if(scope&&client.connectionId){const granted=previewPageGrants.get(client.connectionId)??new Set<string>();granted.add(page.pageId);previewPageGrants.set(client.connectionId,granted);}
+            if(scope&&client.connectionId){const granted=previewPageGrants.get(client.connectionId)??new Map<string,string>();granted.set(page.pageId,task.taskId);previewPageGrants.set(client.connectionId,granted);}
             return {check,page};
           }});
       }
@@ -621,7 +630,7 @@ export function makeInvoker(s: Services) {
       case "pages.reconcileWrite": {
         if (scope) throw new AuxError("permission_denied", "Only the Aux owner can reconcile an uncertain action");
         const ledger = new DurableWriteLedger(s.repo.db);
-        const pending = ledger.unresolved(`direct:${params.pageId}`).filter(intent => !params.intentId || intent.id === params.intentId);
+        const pending = ledger.unresolved(`direct:${params.pageId}`).filter(intent => !intent.taskId && (!params.intentId || intent.id === params.intentId));
         if (!pending.length) throw new AuxError("conflict", "No unresolved direct action on this page");
         const note = JSON.stringify({ actor: client.external ? "owner_token" : "desktop_user", evidence: params.evidence, recordedAt: Date.now() });
         for (const intent of pending) ledger.reconcile(intent.id, params.outcome, note);
@@ -643,12 +652,25 @@ export function makeInvoker(s: Services) {
         // The owner bearer token (CLI, desktop) authors programs directly and may
         // run page script. A scoped agent connection is limited to its task and
         // never gets evaluate/eval: page access is not code-execution authority.
-        const p = params as { program: { pageId: string }; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown> };
+        const p = params as { program: Parameters<PageService["execute"]>[0]; taskId?: string; expectedRevision?: number; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown> };
+        if(scope&&programContainsOperationCalls(p.program))throw new AuxError("permission_denied","Use the task-scoped operation API for operation calls");
+        const consequential=programHasConsequentialSteps(p.program);
+        const previewGranted=!!client.connectionId&&previewPageGrants.get(client.connectionId)?.get(p.program.pageId)===p.taskId;
+        let validateBeforeJournal: (()=>void)|undefined;
+        let validateDuringExecution: (()=>void)|undefined;
+        if(p.taskId){
+          if(p.expectedRevision===undefined)throw new AuxError("invalid_params","Task-bound page programs require expectedRevision");
+          tasks.preparePageAccess(p.taskId,p.expectedRevision,p.program.pageId,consequential,previewGranted);
+          const taskId=p.taskId,revision=p.expectedRevision;
+          validateBeforeJournal=()=>{tasks.preparePageAccess(taskId,revision,p.program.pageId,consequential,previewGranted);};
+          validateDuringExecution=()=>{tasks.confirmPageExecution(taskId,revision,consequential);};
+        }else if(p.expectedRevision!==undefined)throw new AuxError("invalid_params","expectedRevision requires taskId");
         // act-and-observe (speed P0-2): the caller sees the resulting state in
         // the same round trip via a same-lane follow-up observe
         // (PageService.execute).
         const { format, ...req } = p.returnObservation ?? {};
-        const { observation, ...result } = await s.pages.execute(p.program as never, { allowEval: !scope }, {
+        const { observation, ...result } = await s.pages.execute(p.program, { allowEval: !scope, taskId:p.taskId,taskRevision:p.expectedRevision,
+          beforeJournal:validateBeforeJournal,checkValid:validateDuringExecution }, {
           returnObservation: p.returnObservation ? (req as never) : undefined,
         });
         if (!p.returnObservation) return result;

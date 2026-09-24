@@ -84,6 +84,8 @@ export const ReturnObservationSchema = z.object({
 export type ReturnObservation = z.infer<typeof ReturnObservationSchema>;
 export const PagesExecuteParams = z.object({
   program: ProgramSchema,
+  taskId: z.string().min(1).optional(),
+  expectedRevision: z.number().int().positive().optional(),
   returnObservation: ReturnObservationSchema.optional(),
 });
 /**

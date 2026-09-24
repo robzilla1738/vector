@@ -35,7 +35,10 @@ it("lists the runtime methods the renderer uses that the mock bridge does not im
 
 const UNMOCKED = [
   "artifacts.list", "bookmarks.folders.remove", "bookmarks.folders.rename", "bookmarks.markRead",
-  "bookmarks.offline.get", "bookmarks.offline.set", "bookmarks.readingList", "chrome.attach",
+  "bookmarks.offline.get", "bookmarks.offline.set", "bookmarks.readingList", "calendar.auth.start",
+  "calendar.connections.list", "calendar.connections.revoke", "calendar.events.list",
+  "calendar.taskEvents.list", "calendar.taskGrants.create", "calendar.taskGrants.list",
+  "calendar.taskGrants.revoke", "chrome.attach",
   "chrome.detach", "chrome.tabs", "cloud.cleanupOrphan", "cloud.commands", "cloud.create", "cloud.delete",
   "cloud.downloadResultArtifact", "cloud.environments", "cloud.exportWorkspace", "cloud.files",
   "cloud.forgetMissing", "cloud.handoff", "cloud.handoffAndStart", "cloud.importTaskResult",

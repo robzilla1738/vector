@@ -95,6 +95,7 @@ export class ProgramExecutor {
           catch { break; }
         } else if (classifyStep(step.op) !== "read") break;
       }
+      ctx.beforeJournal?.();
       const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
       const journal = ctx.journaled ? { skip: false as const, intentId: undefined as string | undefined } : beginConsequentialWrite(this.pages.deps.durableWrites, {
         runId: ctx.runId ?? `direct:${pageId}`,
@@ -103,7 +104,7 @@ export class ProgramExecutor {
         revision: lp.target.lastRevision,
         steps: allSteps,
         taskId: ctx.taskId ?? run?.config?.taskId,
-        taskRevision: run?.config?.taskRevision,
+        taskRevision: ctx.taskRevision ?? run?.config?.taskRevision,
       });
       if (journal.skip) throw new AuxError("conflict", journal.reason!);
       ctx = { ...ctx, journaled: true };
@@ -174,6 +175,7 @@ export class ProgramExecutor {
           checkValid: () => {
             if (lp.target.controllerEpoch !== expectedEpoch)
               throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
+            ctx.checkValid?.();
           },
           authorizeStep: step => authorize(step),
           checkpoint: ctx.checkpoint ?? ((name, env) => this.pages.deps.repo.saveCheckpoint(pageId, name, env)),
@@ -263,6 +265,17 @@ function stepInputsOf(s: { op: string } & Record<string, unknown>): Record<strin
 }
 
 /** Every browser step inside a program — flat or nested in control flow. */
+export function programHasConsequentialSteps(program: Program): boolean {
+  return collectSteps(program).some(step => classifyStep(step.op) !== "read");
+}
+
+export function programContainsOperationCalls(program: Program): boolean {
+  const walk=(nodes:readonly ProgramNode[]):boolean=>nodes.some(node=>node.kind==='call'
+    ||node.kind==='if'&&(walk(node.then)||!!node.else&&walk(node.else))
+    ||(node.kind==='forEach'||node.kind==='until')&&walk(node.body));
+  return !!program.nodes&&walk(program.nodes);
+}
+
 function collectSteps(program: Program): Step[] {
   const out: Step[] = [...(program.steps ?? [])];
   const walk = (nodes: readonly ProgramNode[]) => {

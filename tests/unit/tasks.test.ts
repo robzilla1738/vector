@@ -137,9 +137,9 @@ it("searches title, criteria and resource labels without matching locators", () 
 it("blocks a new task run on unresolved effects from an older run and revision", () => {
   const f = fixture();
   f.repo.saveRun({ runId: "r1", goal: f.task.objective, pageIds: ["p1"], status: "interrupted", config: { taskId: f.task.taskId, taskRevision: 1 }, createdAt: Date.now() });
+  f.service.update({ taskId: f.task.taskId, expectedRevision: 1, title: "Follow-up" });
   const ledger = new DurableWriteLedger(f.db);
   ledger.begin({ runId: "r1", pageId: "p1", documentEpoch: 1, signature: "submit" });
-  f.service.update({ taskId: f.task.taskId, expectedRevision: 1, title: "Follow-up" });
   expect(() => f.service.prepareRun(f.task.taskId, 2)).toThrow("unresolved action");
   expect(() => f.service.archive(f.task.taskId, 2, true)).toThrow("unresolved action");
   expect(f.service.details(f.task.taskId).runs[0]?.currentRevision).toBe(false);

@@ -96,10 +96,12 @@ server.registerTool(
       "scroll{direction,amount?,target?} dragTo{target,to} clickPoint{x,y} upload{target,files} waitFor{condition} extract{fields:[{name,selector?,attribute?,all?}],as?} " +
       "screenshot{fullPage?} expectDownload dialog{action} collectScroll{item,container?,key?,fields?,limit?} evaluate{expression,as?}. " +
       "Conditions (waitFor/expect): {kind:'textVisible',text} {kind:'selector',selector,state?} {kind:'urlMatches',pattern} {kind:'navigationSettled'} {kind:'settled'} {kind:'response',urlIncludes} {kind:'refReady',ref} {kind:'expression',expression}. " +
-      "Pass returnObservation to get the resulting page state in the same call (saves a round trip). Example: " +
-      "{pageId, steps:[{id:'s1',op:'fill',target:'r4',value:'hello'},{id:'s2',op:'press',key:'Enter',target:'r4',expect:[{kind:'textVisible',text:'Results'}]}], returnObservation:{format:'compact'}}",
+      "Scoped connections must pass taskId and expectedRevision from the saved Aux task. Pass returnObservation to get the resulting page state in the same call (saves a round trip). Example: " +
+      "{pageId, taskId, expectedRevision, steps:[{id:'s1',op:'fill',target:'r4',value:'hello'},{id:'s2',op:'press',key:'Enter',target:'r4',expect:[{kind:'textVisible',text:'Results'}]}], returnObservation:{format:'compact'}}",
     inputSchema: {
       pageId: z.string(),
+      taskId: z.string().optional().describe("Saved Aux task ID; required for scoped connections"),
+      expectedRevision: z.number().int().positive().optional().describe("Current saved task revision; required for scoped connections"),
       steps: z.array(McpStepInputSchema).describe("step objects, e.g. {id:'s1', op:'click', target:'r3'}"),
       documentEpoch: z.number().int().nonnegative().optional().describe("epoch the refs were observed in; the program fails fast if the page navigated since"),
       returnObservation: z
@@ -112,12 +114,12 @@ server.registerTool(
         .describe("observe the page after the program and return it with the result"),
     },
   },
-  async ({ pageId, steps, documentEpoch, returnObservation }) => {
+  async ({ pageId, taskId, expectedRevision, steps, documentEpoch, returnObservation }) => {
     try {
       const parsed = parseMcpSteps(steps);
       if ("error" in parsed) throw new AuxError("invalid_params", parsed.error);
       const ro = returnObservation ? { ...returnObservation, format: returnObservation.format ?? "compact" } : undefined;
-      const res = (await rpc("pages.execute", { program: { pageId, documentEpoch, steps: parsed.steps }, returnObservation: ro })) as Parameters<typeof summarizeExecute>[0] & {
+      const res = (await rpc("pages.execute", { program: { pageId, documentEpoch, steps: parsed.steps }, taskId, expectedRevision, returnObservation: ro })) as Parameters<typeof summarizeExecute>[0] & {
         observation?: { text?: string };
       };
       const observed = res.observation ? (typeof res.observation.text === "string" ? res.observation.text : JSON.stringify(res.observation)) : undefined;
@@ -289,7 +291,7 @@ server.registerTool(
   "aux_dialog",
   {
     annotations: WRITE,
-    description: "List or accept/dismiss the current page dialog (alert/confirm/prompt).",
+    description: "List the current page dialog (alert/confirm/prompt). Scoped connections accept or dismiss through a task-bound aux_page_execute dialog step.",
     inputSchema: {
       pageId: z.string(),
       action: z.enum(["list", "accept", "dismiss"]).optional(),

@@ -37,10 +37,14 @@ export interface ExecContext {
   allowEval?: boolean;
   /** abort if the page controller changed mid-program */
   checkValid?: () => void;
+  /** Recheck task authority after lane waits, immediately before journaling and dispatch. */
+  beforeJournal?: () => void;
   /** Recheck live target origin and current grants immediately before dispatch. */
   authorizeStep?: (step: Step) => Promise<void>;
   /** saved task that authorized this run, used to scope vault grants */
   taskId?: string;
+  /** Saved task revision that authorized this direct program. */
+  taskRevision?: number;
   /**
    * True when the caller already persisted a DurableWriteLedger intent for
    * this program. Direct API/CLI/terminal execute leaves this unset so

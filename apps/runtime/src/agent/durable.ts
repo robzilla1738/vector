@@ -10,11 +10,14 @@ export interface WriteIntent {
   pageId: string;
   documentEpoch: number;
   idempotencyKey: string;
+  taskId?: string;
+  taskRevision?: number;
   status: "pending" | "confirmed" | "uncertain" | "not_applied";
 }
 
 const SELECT = `SELECT id, run_id AS runId, page_id AS pageId,
-  document_epoch AS documentEpoch, idempotency_key AS idempotencyKey, status FROM action_intents`;
+  document_epoch AS documentEpoch, idempotency_key AS idempotencyKey, task_id AS taskId,
+  task_revision AS taskRevision, status FROM action_intents`;
 
 export class DurableWriteLedger {
   private readonly db: DatabaseSync;
@@ -34,6 +37,7 @@ export class DurableWriteLedger {
   begin(opts: {
     runId: string; pageId: string; documentEpoch: number;
     signature: string; revision?: number; logicalActionId?: string;
+    taskId?: string; taskRevision?: number;
   }): { intent: WriteIntent; duplicate: boolean } {
     const idempotencyKey = opts.logicalActionId
       ? createHash("sha256").update(JSON.stringify(["logical-action", opts.logicalActionId])).digest("hex")
@@ -43,15 +47,16 @@ export class DurableWriteLedger {
       // A new observation, target ref, or repair plan cannot bypass an unresolved
       // effect. Reads can still establish what happened before another write.
       const existing = this.db.prepare(`${SELECT} WHERE idempotency_key=? OR
-        (run_id=? AND page_id=? AND status IN ('pending','uncertain'))
+        (run_id=? AND page_id=? AND status IN ('pending','uncertain')) OR
+        (task_id=? AND status IN ('pending','uncertain'))
         ORDER BY CASE WHEN status IN ('pending','uncertain') THEN 0 ELSE 1 END LIMIT 1`)
-        .get(idempotencyKey, opts.runId, opts.pageId) as unknown as WriteIntent | undefined;
+        .get(idempotencyKey, opts.runId, opts.pageId,opts.taskId??null) as unknown as WriteIntent | undefined;
       if (existing) {
         this.db.exec("COMMIT");
         return { intent: existing, duplicate: true };
       }
       const intent: WriteIntent = { id: randomUUID(), runId: opts.runId, pageId: opts.pageId,
-        documentEpoch: opts.documentEpoch, idempotencyKey, status: "pending" };
+        documentEpoch: opts.documentEpoch, idempotencyKey, taskId: opts.taskId, taskRevision: opts.taskRevision, status: "pending" };
       this.insert(intent);
       this.db.exec("COMMIT");
       return { intent, duplicate: false };
@@ -85,8 +90,8 @@ export class DurableWriteLedger {
 
   private insert(intent: WriteIntent): void {
     const now = Date.now();
-    this.db.prepare(`INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,status,created_at)
-      VALUES(?,?,?,?,?,?,?)`).run(intent.id, intent.idempotencyKey, intent.runId, intent.pageId, intent.documentEpoch, intent.status, now);
+    this.db.prepare(`INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,task_id,task_revision,status,created_at)
+      VALUES(?,?,?,?,?,?,?,?,?)`).run(intent.id, intent.idempotencyKey, intent.runId, intent.pageId, intent.documentEpoch, intent.taskId ?? null, intent.taskRevision ?? null, intent.status, now);
     this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)").run(intent.id, intent.status, now);
   }
 
@@ -147,6 +152,8 @@ export function beginConsequentialWrite(
     revision: opts.revision,
     signature,
     logicalActionId,
+    taskId: opts.taskId,
+    taskRevision: opts.taskRevision,
   });
   if (began.duplicate) return { skip: true, reason: `Action ${began.intent.id} is ${began.intent.status}; reconcile its outcome before dispatch. No new action was executed.` };
   return { skip: false, intentId: began.intent.id };

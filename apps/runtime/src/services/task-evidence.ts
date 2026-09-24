@@ -145,8 +145,9 @@ export class TaskEvidenceService {
   reconcile(input: unknown): { ok: true } {
     const p = TaskReconcileParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);this.tasks.requireLocalAuthority(p.taskId,p.expectedRevision);
-    const action = this.repo.db.prepare(`SELECT a.id,a.status FROM action_intents a JOIN runs r ON r.run_id=a.run_id
-      WHERE a.id=? AND json_extract(r.config,'$.taskId')=?`).get(p.intentId, p.taskId) as { id: string; status: string } | undefined;
+    const action = this.repo.db.prepare(`SELECT a.id,a.status FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id
+      WHERE a.id=? AND coalesce(a.task_id,json_extract(r.config,'$.taskId'))=?
+      AND coalesce(a.task_revision,json_extract(r.config,'$.taskRevision'))=?`).get(p.intentId, p.taskId,p.expectedRevision) as { id: string; status: string } | undefined;
     if (!action || !["pending", "uncertain"].includes(action.status)) throw new AuxError("conflict", "No unresolved action with this ID belongs to the task");
     const evidence = this.evidence(p.taskId, p.expectedRevision).find(item => item.record.evidenceId === p.evidenceId)?.record;
     if (!evidence) throw new AuxError("invalid_params", "Reconciliation needs evidence from the current task revision");
@@ -234,8 +235,8 @@ export class TaskEvidenceService {
     if (!task) throw new AuxError("not_found", "This task revision does not exist");
     const runs = details.runs.filter(({ run }) => run.config!.taskRevision! <= task.revision);
     const unresolvedActions = this.repo.db.prepare(`SELECT a.id AS intentId,a.run_id AS runId,a.page_id AS pageId,a.status
-      FROM action_intents a JOIN runs r ON r.run_id=a.run_id WHERE json_extract(r.config,'$.taskId')=?
-      AND json_extract(r.config,'$.taskRevision')<=?
+      FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id WHERE coalesce(a.task_id,json_extract(r.config,'$.taskId'))=?
+      AND coalesce(a.task_revision,json_extract(r.config,'$.taskRevision'))<=?
       AND a.status IN ('pending','uncertain') ORDER BY a.created_at,a.id`).all(taskId, task.revision) as unknown as TaskReceipt["unresolvedActions"];
     const operationRows=this.repo.db.prepare(`SELECT i.invocation_id AS invocationId,i.run_id AS runId,
       o.site_key||'/'||o.name AS operation,o.effect_class AS effectClass,i.status,i.effect_outcome AS effectOutcome,i.started_at AS startedAt,i.error

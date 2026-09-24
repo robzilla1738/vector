@@ -239,6 +239,20 @@ export class TaskService {
     if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireResolved(taskId,exceptInvocationId);this.requireProjectAvailable(projectId,taskId);}
     return task;
   }
+  preparePageAccess(taskId:string,expectedRevision:number,pageId:string,write=false,previewGranted=false):Task{
+    const task=this.get(taskId);this.requireRevision(task,expectedRevision);
+    if(task.state==='archived')throw new AuxError('conflict','Restore this task before using its page');
+    const attached=task.resources.some(resource=>resource.kind==='page'&&resource.locator===pageId)
+      ||this.details(taskId).runs.some(({run,currentRevision})=>currentRevision&&run.pageIds.includes(pageId));
+    if(!attached&&!previewGranted)throw new AuxError('permission_denied','Attach this page to the saved task before using it');
+    if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireResolved(taskId);}
+    return task;
+  }
+  confirmPageExecution(taskId:string,expectedRevision:number,write:boolean):void{
+    const task=this.get(taskId);this.requireRevision(task,expectedRevision);
+    if(task.state==='archived')throw new AuxError('conflict','Restore this task before using its page');
+    if(write)this.requireLocalAuthority(taskId,expectedRevision);
+  }
   /** Native dispatch rechecks one exact broker invocation without blocking itself. */
   confirmProjectInvocation(taskId:string,expectedRevision:number,projectId:string,invocationId:string,name:ProjectEffectName):Task{
     const row=this.repo.db.prepare(`SELECT i.status,i.effect_outcome AS outcome,i.inputs,o.site_key AS site,o.name
@@ -298,8 +312,8 @@ export class TaskService {
   }
 
   private requireResolved(taskId:string,exceptInvocationId=""){
-    const unresolved=this.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id
-      WHERE json_extract(r.config,'$.taskId')=? AND a.status IN ('pending','uncertain') LIMIT 1`).get(taskId);
+    const unresolved=this.repo.db.prepare(`SELECT a.id FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id
+      WHERE coalesce(a.task_id,json_extract(r.config,'$.taskId'))=? AND a.status IN ('pending','uncertain') LIMIT 1`).get(taskId);
     if(unresolved)throw new AuxError('conflict','This task has an unresolved action; reconcile its outcome before continuing or archiving it');
     const operation=this.repo.db.prepare(`SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
       WHERE coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=? AND o.effect_class!='read'

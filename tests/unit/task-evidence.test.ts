@@ -110,6 +110,19 @@ it("keeps uncertain actions blocking until desktop reconciliation with current e
   expect(ledger.unresolved("r1")).toEqual([]);
 });
 
+it("keeps direct task-bound browser writes in the receipt and requires task evidence to reconcile", async () => {
+  const f=fixture(),ledger=new DurableWriteLedger(f.db);
+  const action=ledger.begin({runId:"direct:p1",pageId:"p1",documentEpoch:1,signature:"submit",taskId:f.task.taskId,taskRevision:1});
+  const competing=ledger.begin({runId:"direct:p2",pageId:"p2",documentEpoch:1,signature:"another",taskId:f.task.taskId,taskRevision:1});
+  expect(competing).toMatchObject({duplicate:true,intent:{id:action.intent.id}});
+  expect(f.evidence.receipt(f.task.taskId).unresolvedActions).toMatchObject([{intentId:action.intent.id}]);
+  expect(()=>f.tasks.preparePageAccess(f.task.taskId,1,"p1",true)).toThrow("unresolved action");
+  await expect(f.invoke("pages.reconcileWrite",{pageId:"p1",outcome:"applied",evidence:"Looked at the page"})).rejects.toMatchObject({code:"conflict"});
+  const evidenceId=f.note().evidenceId;
+  await f.invoke("tasks.reconcileAction",{taskId:f.task.taskId,expectedRevision:1,intentId:action.intent.id,evidenceId,outcome:"applied",note:"Order confirmed"},{external:false});
+  expect(f.evidence.receipt(f.task.taskId).unresolvedActions).toEqual([]);
+});
+
 it('keeps uncertain connected writes blocking until desktop reconciliation with current evidence',async()=>{
   const f=fixture();f.run();
   f.repo.saveOperation({operationId:'op-write',siteKey:'fixture.test',name:'submit-order',effectClass:'write'});
