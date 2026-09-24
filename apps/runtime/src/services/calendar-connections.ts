@@ -248,13 +248,15 @@ export class CalendarConnectionService {
     }
     return secret;
   }
-  async taskEvents(input: CalendarTaskEventsQuery): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
+  async taskEvents(input: CalendarTaskEventsQuery, signal?: AbortSignal): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
     const query = CalendarTaskEventsQuerySchema.parse(input);
     const grant = this.grantRow(query.taskId, query.grantId);
     return this.events({ connectionId: grant.connection_id, timeMin: query.timeMin, timeMax: query.timeMax,
-      limit: query.limit, ...(query.pageToken ? { pageToken: query.pageToken } : {}) }, { taskId: query.taskId, grantId: query.grantId, connectionId: grant.connection_id });
+      limit: query.limit, ...(query.pageToken ? { pageToken: query.pageToken } : {}) }, { taskId: query.taskId, grantId: query.grantId, connectionId: grant.connection_id }, signal);
   }
-  async events(input: CalendarEventsQuery, grant?: { taskId: string; grantId: string; connectionId: string }): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
+  async events(input: CalendarEventsQuery, grant?: { taskId: string; grantId: string; connectionId: string }, signal?: AbortSignal): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
+    this.requireConfigured();
+    if (signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
     const query = CalendarEventsQuerySchema.parse(input);
     const checkGrant = () => {
       if (grant && this.grantRow(grant.taskId, grant.grantId).connection_id !== grant.connectionId)
@@ -264,9 +266,13 @@ export class CalendarConnectionService {
     const row = this.row(query.connectionId);
     if (row.state !== "active") throw new AuxError("needs_input", "Reconnect this Calendar account before reading events.");
     const secret = await this.token(row);
+    if (signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
     if (this.row(query.connectionId).secret_name !== row.secret_name) throw new AuxError("cancelled", "Calendar connection changed before the read.");
     checkGrant();
     const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) controller.abort();
     const active = this.activeReads.get(query.connectionId) ?? new Set<AbortController>();
     active.add(controller); this.activeReads.set(query.connectionId, active);
     if (grant) { const granted = this.grantReads.get(grant.grantId) ?? new Set<AbortController>(); granted.add(controller); this.grantReads.set(grant.grantId, granted); }
@@ -290,7 +296,12 @@ export class CalendarConnectionService {
         const last = typeof end.dateTime === "string" ? end.dateTime : typeof end.date === "string" ? end.date : "";
         if (!eventId || !first || !last) return [];
         let eventUrl: string | undefined;
-        if (typeof item.htmlLink === "string") try { const parsed = new URL(item.htmlLink); if (parsed.protocol === "https:" && !parsed.username && !parsed.password) eventUrl = parsed.href.slice(0, 8192); } catch { /* no link */ }
+        if (typeof item.htmlLink === "string") try {
+          const parsed = new URL(item.htmlLink);
+          if (parsed.protocol === "https:" && !parsed.username && !parsed.password &&
+            (parsed.hostname === "calendar.google.com" || (parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/calendar/"))))
+            eventUrl = parsed.href.slice(0, 8192);
+        } catch { /* no link */ }
         return [{ eventId, title: typeof item.summary === "string" ? item.summary.slice(0, 1000) : "Untitled event", start: first.slice(0, 100), end: last.slice(0, 100), url: eventUrl,
           source: { connectionId: query.connectionId, accountKey: row.account_key, calendarId: row.account_key, fetchedAt } }];
       });
@@ -304,7 +315,7 @@ export class CalendarConnectionService {
       }
       throw error;
     } finally {
-      clearTimeout(timeout); active.delete(controller); if (!active.size) this.activeReads.delete(query.connectionId);
+      clearTimeout(timeout); signal?.removeEventListener("abort", onAbort); active.delete(controller); if (!active.size) this.activeReads.delete(query.connectionId);
       if (grant) { const granted = this.grantReads.get(grant.grantId); granted?.delete(controller); if (!granted?.size) this.grantReads.delete(grant.grantId); }
     }
   }

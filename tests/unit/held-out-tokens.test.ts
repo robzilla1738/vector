@@ -33,7 +33,7 @@ const obs: Observation = {
 };
 
 const done = (stepId: string, op: string): StepOutcome => ({
-  stepId, op, status: "ok", startedAt: Date.now(), durationMs: 1,
+  stepId, op, status: "ok", startedAt: Date.now(), durationMs: 1, ...(op === "click" ? { effect: "observed" as const } : {}),
 });
 
 function harness(model: MockModelClient) {

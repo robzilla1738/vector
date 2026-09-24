@@ -12,7 +12,7 @@ import {
 } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
-import { AuxError } from "@aux/contracts";
+import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
 import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { extractJson } from "./json-text.js";
 import { usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
@@ -117,6 +117,11 @@ continue: "steps" — 1-8 ops. Each step needs "id" (s1, s2, …) and "op".
     navigationSettled settled downloadCompleted response{urlIncludes}
 done: "result" object; optional read-only steps (extract/collectScroll/waitFor) whose values fill result via "{{name}}".
 needs_input: "question". Optional "notes" (≤600 chars): your running scratchpad, echoed back next turn.`;
+
+export const TASK_PLAN_JSON_HINT = `${PLAN_JSON_HINT.replace('("continue"|"done"|"needs_input")', '("continue"|"done"|"needs_input"|"source")')}
+For a saved task with a listed CALENDAR GRANT, status may also be "source" with a single sourceRequest:
+  {"kind":"calendar.events.list","grantId":"listed UUID","timeMin":"ISO timestamp with offset","timeMax":"ISO timestamp with offset","limit":1..10,"pageToken":"optional"}.
+Use source with no browser steps; its result is returned before the next decision.`;
 
 /**
  * Vercel AI Gateway client. One explicit retry owner: the app sets
@@ -337,6 +342,6 @@ function stripText(a: ModelAttempt & { text?: string }): ModelAttempt {
 
 function schemaHint(schema: z.ZodType): string {
   return schemaNeedsJsonFallback(schema)
-    ? `\n\n${PLAN_JSON_HINT}`
+    ? `\n\n${schema === TaskPlanChunkSchema ? TASK_PLAN_JSON_HINT : PLAN_JSON_HINT}`
     : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(schema))}`;
 }

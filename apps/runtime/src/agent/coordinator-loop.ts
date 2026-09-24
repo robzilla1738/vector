@@ -11,6 +11,7 @@ import {
 } from "./coordinator-verify.js";
 import {
   awaitHumanAnswer,
+  dispatchSourcePlan,
   dispatchPlan,
   giveUpRepair,
   hasNewSteer,
@@ -218,6 +219,10 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
 
 async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): Promise<"return" | "continue"> {
   const { plan } = attempt;
+  if (plan.status === "source") {
+    s.self.setStatus(s.runId, "running", plan.message);
+    return dispatchSourcePlan(s, plan);
+  }
   if (plan.status === "done" && !plan.steps?.some((step) => isConsequential(step.op))) return settleDonePlan(s, plan, obs, attempt);
   if (plan.status === "needs_input") {
     return (await awaitHumanAnswer(s, plan.question ?? "Needs input")) ? "continue" : "return";

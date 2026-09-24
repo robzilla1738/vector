@@ -13,7 +13,7 @@
  * whole buffer while a `<think>` is open) is ignored, matching the
  * non-streaming `extractJson` behaviour.
  */
-export type PlanStatus = "continue" | "done" | "needs_input";
+export type PlanStatus = "continue" | "done" | "needs_input" | "source";
 
 export class PlanStreamParser {
   private buf = "";
@@ -41,7 +41,7 @@ export class PlanStreamParser {
     const body = this.jsonBody();
     if (body === null) return [];
     if (!this.status) {
-      const m = /"status"\s*:\s*"(continue|done|needs_input)"/.exec(body);
+      const m = /"status"\s*:\s*"(continue|done|needs_input|source)"/.exec(body);
       if (m) this.status = m[1] as PlanStatus;
     }
     if (this.pageId === undefined) {

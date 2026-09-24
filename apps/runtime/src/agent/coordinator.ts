@@ -69,6 +69,7 @@ export interface CoordinatorDeps {
   grants?: GrantSource;
   durableWrites?: DurableWriteLedger;
   vault?: import("../services/vault.js").VaultService;
+  calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
 }
 
 /** Run lifecycle and control; the agent loop itself lives in `runCoordinatorLoop`. */

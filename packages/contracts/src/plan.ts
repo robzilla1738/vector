@@ -40,6 +40,26 @@ export const PlanChunkSchema = z.object({
 });
 export type PlanChunk = z.infer<typeof PlanChunkSchema>;
 
+/** Built-in task runs may request one authorized provider read per turn. */
+export const TaskSourcePlanSchema = z.object({
+  status: z.literal("source"),
+  message: z.string().max(280),
+  notes: z.string().max(600).optional(),
+  sourceRequest: z.object({
+    kind: z.literal("calendar.events.list"),
+    grantId: z.string().uuid(),
+    timeMin: z.string().datetime({ offset: true }),
+    timeMax: z.string().datetime({ offset: true }),
+    limit: z.number().int().min(1).max(10).default(10),
+    pageToken: z.string().min(1).max(2048).optional(),
+  }).strict(),
+  steps: z.never().optional(),
+  pageId: z.never().optional(),
+  observationRequest: z.never().optional(),
+}).strict();
+export const TaskPlanChunkSchema = z.union([PlanChunkSchema, TaskSourcePlanSchema]);
+export type TaskPlanChunk = z.infer<typeof TaskPlanChunkSchema>;
+
 /**
  * The end-of-run decision: emitted when a guard (repeat/no-progress/budget)
  * stops the action loop. No steps — the model can only report what it

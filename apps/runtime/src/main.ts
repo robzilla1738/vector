@@ -244,6 +244,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         .filter(Boolean),
   });
   const state = new StateService({ repo, pages, operations });
+  const calendar = new CalendarConnectionService({ repo, native, clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+    onChange: () => events.emit("settings.changed", { category: "calendar" }) });
 
   const runs = new RunService({
     repo,
@@ -256,6 +258,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     nativeAvailable: () => native.available(),
     tracer,
     vault,
+    calendar,
     durableWrites,
   });
 
@@ -303,8 +306,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
   const cookies = new CookieService({ drivers: () => drivers, native });
   const agentConnections = new AgentConnectionService(repo);
-  const calendar = new CalendarConnectionService({ repo, native, clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
-    onChange: () => events.emit("settings.changed", { category: "calendar" }) });
 
   const invoke = makeInvoker({
     native,

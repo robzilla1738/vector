@@ -452,6 +452,7 @@ export class RunService {
     translateSteps: (pageId: string, steps: Step[]) => Step[];
     nativeAvailable: () => boolean;
     vault?: import("./vault.js").VaultService;
+    calendar?: import("./calendar-connections.js").CalendarConnectionService;
     durableWrites?: DurableWriteLedger;
     tracer?: {
       start(
@@ -503,6 +504,7 @@ export class RunService {
       grants: () => deps.settings.effectGrantsForRun(),
       durableWrites,
       vault: deps.vault,
+      calendar: deps.calendar,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,

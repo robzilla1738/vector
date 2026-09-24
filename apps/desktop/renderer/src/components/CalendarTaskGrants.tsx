@@ -63,7 +63,7 @@ export function CalendarTaskGrants({ task, onOpenSettings }: { task: Task; onOpe
 
   return <section className="field" aria-label="Task Calendar access">
     <h4>Calendar access</h4>
-    <p className="hint">Grant one connected account to this saved task revision. Changing or archiving the task revokes its grants. An external agent sees only accounts granted to its task scope; tokens are never shared.</p>
+    <p className="hint">Grant one connected account to this saved task revision. When this task runs, Aux may send event details it reads to your chosen AI model. Scoped external agents can read the same granted events; neither receives provider tokens. Changing or archiving the task revokes its grants.</p>
     {!available && <p className="hint">Calendar is unavailable in this desktop profile. Configure a Google OAuth desktop client to connect an account.</p>}
     {!accounts.length && <div className="row"><span className="hint">No Calendar accounts connected.</span><button className="btn sm" onClick={onOpenSettings}>Open Connections</button></div>}
     {!!selectable.length && task.state === "open" && <div className="row"><select className="grow" aria-label="Grant Calendar account" value={selectedAccount} onChange={event => setChosen(event.target.value)}>{selectable.map(account => <option key={account.connectionId} value={account.connectionId}>{account.label} · {account.accountKey}</option>)}</select><button className="btn sm" disabled={busy} onClick={() => void grant()}>Grant to task</button></div>}

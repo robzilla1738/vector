@@ -165,8 +165,8 @@ describe("RunCoordinator streams plans (A5)", () => {
     };
     const execute = vi.fn(async (program: { steps: PlanStep[] }, ctx: { onStep?: (o: unknown, s: unknown) => void }) => {
       executeStarts.push(Date.now());
-      for (const s of program.steps) ctx.onStep?.({ stepId: s.id, op: s.op, status: "ok", startedAt: Date.now(), durationMs: 1 }, s);
-      return { status: "completed", steps: program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok", startedAt: 0, durationMs: 1 })) };
+      for (const s of program.steps) ctx.onStep?.({ stepId: s.id, op: s.op, status: "ok", startedAt: Date.now(), durationMs: 1, effect: "observed" }, s);
+      return { status: "completed", steps: program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok", startedAt: 0, durationMs: 1, effect: "observed" })) };
     });
     const coordinator = new RunCoordinator({
       repo, events,
@@ -218,7 +218,7 @@ describe("RunCoordinator streams plans (A5)", () => {
     const execute = vi.fn(async (program: { steps: PlanStep[] }, ctx: { onStep?: (outcome: unknown, step: unknown) => void }) => {
       ran.push(...program.steps.map(step => step.id));
       if (program.steps.some(step => step.id === "s1")) await firstBatch;
-      const steps = program.steps.map(step => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1 }));
+      const steps = program.steps.map(step => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1, effect: "observed" as const }));
       steps.forEach((outcome, index) => ctx.onStep?.(outcome, program.steps[index]));
       return { status: "completed" as const, steps };
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { PlanChunkSchema, AuxError } from "@aux/contracts";
+import { PlanChunkSchema, TaskPlanChunkSchema, AuxError } from "@aux/contracts";
 import {
   assignMissingStepIds,
   extractJson,
@@ -46,6 +46,7 @@ describe("schemaNeedsJsonFallback", () => {
   });
   it("is true for PlanChunk (discriminated unions → oneOf)", () => {
     expect(schemaNeedsJsonFallback(PlanChunkSchema)).toBe(true);
+    expect(schemaNeedsJsonFallback(TaskPlanChunkSchema)).toBe(true);
   });
 });
 

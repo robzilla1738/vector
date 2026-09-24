@@ -149,6 +149,18 @@ export function verifyDoneAgainstObservation(
   const observations = Array.isArray(obs) ? obs : [obs];
   const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""} ${artifactEvidence?.toLowerCase() ?? ""}`;
   const citedSources = observations.map(observation => ({url:observation.content.url.toLowerCase(),text:observationGroundText(observation)}));
+  for (const outcome of outcomes) {
+    if (outcome.op !== "calendar.events.list" || outcome.status !== "ok") continue;
+    const events = outcome.extracted?.events;
+    if (!Array.isArray(events)) continue;
+    for (const item of events) {
+      if (!item || typeof item !== "object") continue;
+      const event = item as { url?: unknown; title?: unknown; start?: unknown; end?: unknown; source?: { accountKey?: unknown } };
+      if (typeof event.url !== "string" || typeof event.title !== "string") continue;
+      citedSources.push({ url: event.url.toLowerCase(), text: [event.title, event.start, event.end, event.source?.accountKey]
+        .filter(value => typeof value === "string").join(" ").toLowerCase() });
+    }
+  }
   for (const sourceText of [documentEvidence,artifactEvidence]) if (sourceText) {
     const lower = sourceText.toLowerCase();
     for (const match of lower.matchAll(/https?:\/\/[^\s)\]>]+/g)) citedSources.push({url:match[0],text:lower});

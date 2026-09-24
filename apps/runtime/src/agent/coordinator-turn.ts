@@ -1,13 +1,15 @@
 import {
   EventTypes,
   FinalDecisionSchema,
-  PlanChunkSchema,
+  newStepId,
+  TaskPlanChunkSchema,
   RepairChunkSchema,
   AuxError,
   originOfAddress,
   type FinalDecision,
   type Observation,
   type PlanChunk,
+  type TaskPlanChunk,
   type RepairChunk,
   type Run,
   type Step,
@@ -17,7 +19,7 @@ import type { z } from "zod";
 import { attemptsOf, type ModelAttempt, type ModelClient } from "./model-client.js";
 import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
-import { buildFinalAnswerPrompt, buildPlannerPrompt, FINAL_ANSWER_SYSTEM, newFenceToken, PLANNER_SYSTEM } from "./planner.js";
+import { buildFinalAnswerPrompt, buildPlannerPrompt, FINAL_ANSWER_SYSTEM, newFenceToken, PLANNER_SYSTEM, TASK_SOURCE_SYSTEM } from "./planner.js";
 import { compileSkill, markSkillFailed, portableSkillSteps, tryReuseSkill, verifySkillPostconditions } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { compileAndAuthorize } from "./action-compiler.js";
@@ -320,7 +322,7 @@ export function planSignature(url: string, steps: Step[]): string {
 }
 
 export type PlanAttempt = {
-  plan: PlanChunk;
+  plan: TaskPlanChunk;
   visionPlanned: boolean;
   early?: EarlyDispatcher;
   reuse: ReturnType<typeof tryReuseSkill>;
@@ -333,6 +335,16 @@ function credentialGrantsFor(s: TurnState, url: string) {
   return origin && s.self.deps.vault
     ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin, accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
     : undefined;
+}
+
+function calendarGrantsFor(s: TurnState) {
+  const calendar = s.self.deps.calendar, taskId = s.run.config?.taskId, revision = s.run.config?.taskRevision;
+  if (!calendar || !taskId || !revision) return [];
+  const listed = calendar.list();
+  if (!listed.available) return [];
+  const active = new Set(listed.connections.filter(connection => connection.state === "active").map(connection => connection.connectionId));
+  return calendar.taskGrants(taskId).filter(grant => grant.taskRevision === revision && active.has(grant.connectionId))
+    .map(grant => ({ grantId: grant.grantId, accountKey: grant.accountKey, label: grant.label }));
 }
 
 function plannerPrompt(s: TurnState, obs: Observation): string {
@@ -349,6 +361,7 @@ function plannerPrompt(s: TurnState, obs: Observation): string {
     notes: s.notes,
     budget: { tokens: 3000 },
     credentialGrants: credentialGrantsFor(s, obs.content.url),
+    calendarGrants: calendarGrantsFor(s),
   });
 }
 
@@ -398,9 +411,9 @@ export async function planTurn(
     return r;
   };
   const canStream = typeof s.model.streamStructured === "function" && s.run.pageIds.length <= 1;
-  const plannerCall = async (): Promise<PlanChunk> => {
-    const args = { modelId: s.modelId, system: PLANNER_SYSTEM, prompt: plannerPrompt(s, obs), schema: PlanChunkSchema, maxOutputTokens: 8192 };
-    if (!canStream) return (await structuredCall<PlanChunk>(s, "planner", args, undefined, planSignal)).object;
+  const plannerCall = async (): Promise<TaskPlanChunk> => {
+    const args = { modelId: s.modelId, system: `${PLANNER_SYSTEM}${calendarGrantsFor(s).length ? TASK_SOURCE_SYSTEM : ""}`, prompt: plannerPrompt(s, obs), schema: TaskPlanChunkSchema, maxOutputTokens: 8192 };
+    if (!canStream) return (await structuredCall<TaskPlanChunk>(s, "planner", args, undefined, planSignal)).object;
     const parser = new PlanStreamParser();
     const epoch = obs.documentEpoch;
     const dispatcher = new EarlyDispatcher(async (steps, { first, last }) => {
@@ -419,7 +432,7 @@ export async function planTurn(
     }, 24);
     early = dispatcher;
     const answer = new AnswerDeltaEmitter(s.self.deps.events, s.runId);
-    const call = await structuredCall<PlanChunk>(s, "planner", args, {
+    const call = await structuredCall<TaskPlanChunk>(s, "planner", args, {
       onText: (delta) => {
         for (const step of parser.push(delta)) {
           if (parser.status === "continue" && (parser.pageId === undefined || parser.pageId === s.activePageId)) dispatcher.offer(step);
@@ -448,7 +461,7 @@ export async function planTurn(
   const reusable = s.self.skills.filter((k) => !k.id.startsWith(`${s.runId}:`));
   const reuse = s.run.config?.contextImageArtifactIds?.length ? {skipped:"Image references require a fresh plan"} : tryReuseSkill(reusable, s.run.goal, obs.content, obs.content.url, obs.documentEpoch);
   try {
-    let plan: PlanChunk;
+    let plan: TaskPlanChunk;
     if ("skill" in reuse && !s.lastError && !s.visionPending && !thinObs) {
       plan = {
         status: "continue",
@@ -498,6 +511,47 @@ export async function planTurn(
 
 export function isPlanFailure(attempt: PlanAttempt | PlanFailure): attempt is PlanFailure {
   return "error" in attempt;
+}
+
+/** A provider read is a separate, read-only decision. It never enters the page executor. */
+export async function dispatchSourcePlan(s: TurnState, plan: Extract<TaskPlanChunk, { status: "source" }>): Promise<"return" | "continue"> {
+  const calendar = s.self.deps.calendar, taskId = s.run.config?.taskId, taskRevision = s.run.config?.taskRevision;
+  if (!calendar || !taskId || !taskRevision) return noteUnauthorized(s, "Calendar reads require a saved task with an explicit account grant.");
+  const grant = calendar.taskGrants(taskId).find(item => item.grantId === plan.sourceRequest.grantId && item.taskRevision === taskRevision);
+  if (!grant) return noteUnauthorized(s, "That Calendar account is not granted to this task revision.");
+  if (hasNewSteer(s)) return "continue";
+  const signal = actionSignal(s);
+  if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+  const startedAt = Date.now(), stepId = newStepId();
+  const { kind: _kind, ...sourceFields } = plan.sourceRequest;
+  const request = { taskId, ...sourceFields };
+  s.stepsRun++;
+  let result: Awaited<ReturnType<typeof calendar.taskEvents>>;
+  try {
+    result = await calendar.taskEvents(request, signal);
+  } catch (error) {
+    if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+    if (hasNewSteer(s)) return "continue";
+    const safe = error instanceof AuxError ? error : new AuxError("backend_unavailable", "Calendar read failed.");
+    const outcome: StepOutcome = { stepId, op: "calendar.events.list", status: "failed", startedAt, durationMs: Date.now() - startedAt,
+      error: { code: safe.code, message: safe.message } };
+    s.outcomes.push(outcome);
+    s.self.deps.repo.saveStep({ stepId, runId: s.runId, op: outcome.op, inputs: request, outcome, startedAt });
+    s.self.deps.events.emit(EventTypes.StepFinished, { runId: s.runId, stepId, op: outcome.op, status: "failed", durationMs: outcome.durationMs, error: outcome.error }, s.runId);
+    if (safe.code === "needs_input") return (await awaitHumanAnswer(s, `${safe.message} Reconnect the account in Aux Connections, then continue.`)) ? "continue" : "return";
+    return noteUnauthorized(s, safe.message);
+  }
+  if (hasNewSteer(s)) return "continue";
+  if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+  const outcome: StepOutcome = { stepId, op: "calendar.events.list", status: "ok", startedAt, durationMs: Date.now() - startedAt,
+    detail: `${result.events.length} events from ${grant.accountKey}; fetched ${new Date(result.fetchedAt).toISOString()}`,
+    extracted: { events: result.events.map(event => ({ title: event.title.slice(0, 200), start: event.start, end: event.end,
+      ...(event.url ? { url: event.url } : {}), source: event.source })), ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}), fetchedAt: result.fetchedAt } };
+  s.outcomes.push(outcome);
+  s.self.deps.repo.saveStep({ stepId, runId: s.runId, op: outcome.op, inputs: request, outcome, startedAt });
+  s.self.deps.events.emit(EventTypes.StepFinished, { runId: s.runId, stepId, op: outcome.op, status: "ok", durationMs: outcome.durationMs }, s.runId);
+  s.lastActionFailed = false; s.lastError = undefined; s.self.persistCheckpoint(s.self.get(s.runId));
+  return "continue";
 }
 
 export type PlanFailure = { error: unknown; early?: EarlyDispatcher };
