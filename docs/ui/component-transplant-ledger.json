@@ -4052,7 +4052,7 @@
   ],
   "verificationSummary": {
     "rendererTypecheck": "passed",
-    "focusedRendererChecks": 54,
+    "focusedRendererChecks": "Passed; see per-slice suite counts in docs/ui/COMPONENT-TRANSPLANT.md (reruns are not additive).",
     "chromeStyleChecks": 25,
     "nativeCandidate": "not yet available; native checks pending",
     "fullMatrix": "incomplete",
