@@ -14,6 +14,7 @@ const zoomRequests = new Map<string,symbol>();
 export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   mode: "focus",
   overlay: null,
+  skillSelection: null,
   readerFindOpen: false,
   settingsCategory: "General",
   memoryWorkspaceId: null,

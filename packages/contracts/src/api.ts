@@ -583,7 +583,7 @@ export const MethodSchemas = {
   "vault.import": VaultImportParams,
   "vault.update": VaultUpdateParams,
   "vault.secretMatches": VaultSecretMatchParams,
-  "routines.list": z.object({workspaceId:id.optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
+  "routines.list": z.object({workspaceId:id.optional(),query:z.string().trim().max(200).optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
   "routines.get": z.object({routineId:id}),
   "routines.create": RoutineCreateParams,
   "routines.fromResult": RoutineFromResultParams,

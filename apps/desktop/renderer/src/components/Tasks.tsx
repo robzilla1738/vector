@@ -44,6 +44,7 @@ export function Tasks() {
 
   useEffect(() => {
     let live = true;
+    const openingSkill = useStore.getState().skillSelection?.workspaceId === workspaceId;
     setTasks([]); setSelected(null); setReceipt(null); setShowHistory(false); setTaskQuery("");
     if (!workspaceId) return;
     setBusy(true);
@@ -56,7 +57,8 @@ export function Tasks() {
         const [details, receipt] = await Promise.all([call("tasks.get", {taskId: remembered}), call("tasks.receipt", {taskId: remembered})]);
         if (!live) return;
         edit(details); setReceipt(receipt);
-      } else { reset(); setCreating(false); }
+      } else if (openingSkill) { setCreating(false); setSelected(null); }
+      else { reset(); setCreating(false); }
     })().catch(error => { if (live) setError(String(error)); }).finally(() => { if (live) setBusy(false); });
     return () => { live = false; };
   }, [workspaceId]);

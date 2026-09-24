@@ -46,6 +46,7 @@ export interface Workspace {
   openConversationDraft(chatId: string | null): void;
   showConversationInRail(chatId: string | null): void;
   overlay: Overlay;
+  skillSelection: { routineId: string; workspaceId: string } | null;
   readerFindOpen: boolean;
   settingsCategory: string;
   memoryWorkspaceId: string | null;
@@ -187,7 +188,7 @@ export interface Workspace {
   refreshResults(setId: string): Promise<void>;
 }
 
-export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
+export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
 export type DraftKeys = "conversationContexts" | "setConversationContext" | "conversationBrowserSources" | "setConversationBrowserSources" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
 export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
 export type LayoutKeys = "layout" | "splitPageId" | "setSplitPage" | "setSplitRatio" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";

@@ -84,11 +84,12 @@ export class RoutineService {
     private startWork?: (routine: Routine, parameters: Record<string, string>) => Promise<{ chatId?: string; runId?: string } | { chatId?: string; runId?: string }> | { chatId?: string; runId?: string },
   ) {}
 
-  list(opts: { workspaceId?: string; includeArchived?: boolean; limit?: number } = {}): Routine[] {
+  list(opts: { workspaceId?: string; query?: string; includeArchived?: boolean; limit?: number } = {}): Routine[] {
     const limit = opts.limit ?? 50;
-    const rows = (opts.workspaceId
-      ? this.repo.db.prepare("SELECT * FROM routines WHERE workspace_id=? AND (?=1 OR archived_at IS NULL) ORDER BY updated_at DESC LIMIT ?").all(opts.workspaceId, opts.includeArchived ? 1 : 0, limit)
-      : this.repo.db.prepare("SELECT * FROM routines WHERE (?=1 OR archived_at IS NULL) ORDER BY updated_at DESC LIMIT ?").all(opts.includeArchived ? 1 : 0, limit)) as Parameters<typeof parseRoutine>[0][];
+    const rows = this.repo.db.prepare(`SELECT * FROM routines
+      WHERE (? IS NULL OR workspace_id=?) AND (?=1 OR archived_at IS NULL)
+      AND (?='' OR instr(lower(coalesce(json_extract(json,'$.title'),'') || ' ' || coalesce(json_extract(json,'$.objective'),'') || ' ' || coalesce(json_extract(json,'$.outputHint'),'')), lower(?))>0)
+      ORDER BY updated_at DESC LIMIT ?`).all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0, opts.query?.trim() ?? "", opts.query?.trim() ?? "", limit) as Parameters<typeof parseRoutine>[0][];
     return rows.map(parseRoutine);
   }
 

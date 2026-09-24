@@ -23,6 +23,19 @@ function fixture(startWork?: (routine: { title: string }, parameters: Record<str
   return { repo, events, tasks, workspace, task, routines };
 }
 
+it("searches Skills by name, objective, and output within their Space", () => {
+  const f = fixture();
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check" });
+  const revised = f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision, outputHint: "Sourced matrix" });
+  const other = f.tasks.createWorkspace("Other");
+  f.routines.importRoutines(f.routines.exportRoutines([skill.routineId]).routines, other.workspaceId);
+  for (const query of ["VENDOR", "compare", "MATRIX"]) {
+    expect(f.routines.list({ workspaceId: f.workspace.workspaceId, query }).map(item => item.routineId)).toEqual([revised.routineId]);
+  }
+  expect(f.routines.list({ workspaceId: other.workspaceId, query: "matrix" })).toHaveLength(1);
+  expect(f.routines.list({ workspaceId: f.workspace.workspaceId, query: "missing" })).toEqual([]);
+});
+
 it("builds parameterized routines from a saved task and versions edits", () => {
   const f = fixture();
   const routine = f.routines.fromResult({

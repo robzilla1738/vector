@@ -1,6 +1,6 @@
 import { conversationDraftEntries } from "../conversation-drafts";
-import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEntry, Task } from "@aux/contracts";
-import { openSavedTask } from "../task-navigation";
+import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEntry, Task, Routine } from "@aux/contracts";
+import { openSavedTask, openSavedSkill } from "../task-navigation";
 import { savePagePdf, printCurrentPage } from "../page-export";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShortcutLabels } from "../use-shortcut-label";
@@ -14,7 +14,7 @@ import { openLocalFile } from "../open-local-file";
 
 interface Cmd {
   id: string;
-  section: "go" | "tabs" | "agent" | "window" | "chrome" | "sets" | "bookmarks" | "spaces" | "chats" | "tasks" | "history" | "memory" | "results";
+  section: "go" | "tabs" | "agent" | "window" | "chrome" | "sets" | "bookmarks" | "spaces" | "chats" | "tasks" | "skills" | "history" | "memory" | "results";
   k?: string;
   t: string;
   d?: string;
@@ -36,7 +36,7 @@ const SECTION: Record<Cmd["section"], string> = {
   sets: "Sets",
   bookmarks: "Bookmarks",
   spaces: "Spaces",
-  chats:"Chats", tasks:"Tasks", history:"History", memory:"Saved notes", results:"Saved results",
+  chats:"Chats", tasks:"Tasks", skills:"Skills", history:"History", memory:"Saved notes", results:"Saved results",
 };
 
 /** ⌘K — commands, tabs, sets, bookmarks, and the same intent routing as the command bar. */
@@ -70,7 +70,7 @@ export function Palette() {
   const [searching,setSearching]=useState(false);
   const [searchError,setSearchError]=useState(false);
   const [searchRefresh,setSearchRefresh]=useState(0);
-  const [matches,setMatches]=useState<{query:string;results:SavedResult[];chats:ConversationSummary[];tasks:Task[];history:HistoryEntry[];memory:{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]}>({query:"",results:[],chats:[],tasks:[],history:[],memory:[]});
+  const [matches,setMatches]=useState<{query:string;results:SavedResult[];chats:ConversationSummary[];tasks:Task[];skills:Routine[];history:HistoryEntry[];memory:{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]}>({query:"",results:[],chats:[],tasks:[],skills:[],history:[],memory:[]});
   // Prepared conversations don't depend on the query — one fetch per open.
   const [prepared,setPrepared]=useState<PreparedConversation[]>([]);
   useEffect(()=>{
@@ -110,10 +110,11 @@ export function Palette() {
         history?call("history.list",{query,limit:20}):Promise.resolve([]),
         work?call("workspaces.memory.search",{query}):Promise.resolve([]),
         work?call("results.search",{query,limit:12}):Promise.resolve([]),
-      ]).then(([chats,tasks,history,memory,results])=>{
+        work?call("routines.list",{query,limit:12}):Promise.resolve([]),
+      ]).then(([chats,tasks,history,memory,results,skills])=>{
         if(!live)return;
-        setMatches({query,results:results.status==="fulfilled"?results.value:[],chats:chats.status==="fulfilled"?chats.value:[],tasks:tasks.status==="fulfilled"?tasks.value:[],history:history.status==="fulfilled"?history.value:[],memory:memory.status==="fulfilled"?memory.value.slice(0,8):[]});
-        setSearchError([chats,tasks,history,memory,results].some(result=>result.status==="rejected"));setSearching(false);
+        setMatches({query,results:results.status==="fulfilled"?results.value:[],chats:chats.status==="fulfilled"?chats.value:[],tasks:tasks.status==="fulfilled"?tasks.value:[],skills:skills.status==="fulfilled"?skills.value:[],history:history.status==="fulfilled"?history.value:[],memory:memory.status==="fulfilled"?memory.value.slice(0,8):[]});
+        setSearchError([chats,tasks,history,memory,results,skills].some(result=>result.status==="rejected"));setSearching(false);
       });
     },160);
     return()=>{live=false;window.clearTimeout(timer);};
@@ -282,6 +283,7 @@ export function Palette() {
         }});
       }
       for(const task of matches.tasks)saved.push({id:`task-${task.taskId}`,section:"tasks",t:task.title,d:task.objective,icon:I.layersSm,run:()=>openSavedTask(task.taskId)});
+      for(const skill of matches.skills)saved.push({id:`skill-${skill.routineId}`,section:"skills",t:skill.title,d:`${skill.paused?"Paused · ":""}${skill.objective}`,icon:I.layersSm,run:()=>openSavedSkill(skill)});
       for (const result of matches.results) saved.push({id:`result-${result.artifactId}`,section:"results",t:result.filename,d:`${result.conversationTitle} · ${Math.max(1,Math.ceil(result.byteLength/1024))} KB`,icon:I.result,run:()=>{useStore.getState().openConversationDraft(result.chatId);useStore.setState({resultPreview:result.artifactId});}});
       const seen=new Set([...(filter==="pages"?[]:matchingTabs.map(page=>page.url)),...bookmarks.filter(page=>match(`${page.title} ${hostOf(page.url)}`)).map(page=>page.url)]);
       for(const visit of matches.history){if(seen.has(visit.url)||!/^https?:\/\//i.test(visit.url))continue;seen.add(visit.url);saved.push({id:`history-${visit.url}`,section:"history",t:visit.title||hostOf(visit.url),d:hostOf(visit.url),icon:I.clockSm,run:()=>newTab(visit.url)});}
@@ -301,7 +303,7 @@ export function Palette() {
     const rest = (v ? w.filter((c) => match(`${c.t} ${c.d ?? ""} ${c.aliases?.join(" ") ?? ""}`)) : w).sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section));
     const exact = rest.filter(c => [c.t.replace(/[…]+$/g, ""), ...(c.aliases ?? [])].some(label => label.toLocaleLowerCase() === term.toLocaleLowerCase()));
     const combined=[...exact,...out,...saved,...rest.filter(c=>!exact.includes(c))];
-    return combined.filter(command=>filter==="all"||commandOnly||(filter==="tabs"?command.section==="tabs":filter==="work"?["chats","tasks","memory","results"].includes(command.section):["bookmarks","history"].includes(command.section)));
+    return combined.filter(command=>filter==="all"||commandOnly||(filter==="tabs"?command.section==="tabs":filter==="work"?["chats","tasks","skills","memory","results"].includes(command.section):["bookmarks","history"].includes(command.section)));
   }, [q, filter, matches, prepared, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, key, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
 
   useEffect(() => setSel(0), [q, filter, chromeTabs, vaultItems, splitPick]);
@@ -342,7 +344,7 @@ export function Palette() {
             aria-controls="palette-list"
             aria-activedescendant={shown[sel] ? `pal-${shown[sel]!.id}` : undefined}
             aria-label="Command palette"
-            placeholder={chromeTabs ? "Pick a Chrome tab to borrow…" : vaultItems ? "Pick a credential to fill…" : splitPick ? "Pick a page for split view…" : "Search tabs, chats, tasks, pages… / for commands"}
+            placeholder={chromeTabs ? "Pick a Chrome tab to borrow…" : vaultItems ? "Pick a credential to fill…" : splitPick ? "Pick a page for split view…" : "Search tabs, chats, tasks, Skills, pages… / for commands"}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
