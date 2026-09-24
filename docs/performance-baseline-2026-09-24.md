@@ -19,4 +19,8 @@ An earlier five-launch fresh-profile batch immediately after the build had paint
 
 The current bundle budget passed: startup JS 468 KB against 490 KB, startup CSS 220 KB against 225 KB, total JS 1709 KB against 1800 KB. These byte counts are guards, not a proxy for paint or input latency.
 
+## Local history suggestion paint
+
+The same unsigned native build opened a disposable profile with 50,000 indexed history visits and 20 unique matching entries. `tests/smoke/omnibox-paint-desktop.mjs` measured each input event through the exact matching suggestion's DOM update and two animation frames. Twenty distinct queries returned p50 **43.5 ms** and p95 **44.5 ms**: 31.5, 38.3, 41.8, 42.8, 42.5, 43.5, 42.3, 43.3, 43.6, 43.7, 43.8, 43.5, 44.5, 44.1, 43.6, 43.9, 44.5, 42.1, 46.2, 44.0 ms. This covers local IPC, ranking, React render, and an approximate paint boundary. It does not cover actual pixel capture, a cold OS/index, 100 open tabs, or a foreground agent. The two-frame method adds its own frame interval and should be kept identical when comparing changes.
+
 Next measurements required by the roadmap: signed release build on this and the oldest supported Mac; cold OS and warm app launch; 20/100-tab restore and whole-process memory; input-to-visible-paint for tab activation and local command-bar history; and browsing during fixed agent work. Keep raw samples, p50/p95, long stalls, and hardware/workload conditions. Do not use this local fixture to claim release speed.
