@@ -85,7 +85,7 @@ describe("handler results conform to ResultSchemas", () => {
     repo.saveStep({ stepId: "calendar-source-step", runId: "calendar-source-turn", op: "calendar.events.list", startedAt: 21,
       outcome: { stepId: "calendar-source-step", op: "calendar.events.list", status: "ok", startedAt: 21, durationMs: 2,
         extracted: { events: [{ eventId: "event-1", title: "Meeting", start: "2026-09-25T10:00:00Z", end: "2026-09-25T11:00:00Z",
-          url: "https://calendar.google.com/calendar/event?eid=one", source: { connectionId: "account-1", accountKey: "alice@example.test", fetchedAt: 22 } }] } } });
+          url: "https://calendar.google.com/calendar/event?eid=one", source: { connectionId: "account-1", profileId: "profile-fixture", accountKey: "alice@example.test", fetchedAt: 22 } }] } } });
     const result = await invoke("conversations.sources.get", { chatId: "calendar-source-chat" }, { external: false }) as { sources: { kind?: string; accountKey?: string }[] };
     expect(ResultSchemas["conversations.sources.get"].safeParse(result).success).toBe(true);
     expect(result.sources).toMatchObject([{ kind: "calendar", accountKey: "alice@example.test" }]);

@@ -37,13 +37,13 @@ it("keeps Calendar event and account provenance separate from browser pages", ()
     stepId: "source-1", op: "calendar.events.list", status: "ok" as const, startedAt: 20, durationMs: 3,
     extracted: { events: [
       { eventId: "event-1", title: "Meeting", start: "2026-09-25T10:00:00Z", end: "2026-09-25T11:00:00Z",
-        url: "https://calendar.google.com/calendar/event?eid=one", source: { connectionId: "account-1", accountKey: "alice@example.test", fetchedAt: 21 } },
+        url: "https://calendar.google.com/calendar/event?eid=one", source: { connectionId: "account-1", profileId: "profile-fixture", accountKey: "alice@example.test", fetchedAt: 21 } },
       { eventId: "event-2", title: "Wrong link", start: "2026-09-25T12:00:00Z", end: "2026-09-25T13:00:00Z",
         url: "https://outside.example.test/event", source: { connectionId: "account-2", accountKey: "bob@example.test", fetchedAt: 21 } },
     ] },
   } };
   const sources = calendarConversationSourcesFromStep(step);
-  expect(sources).toEqual([{ kind: "calendar", sourceId: "source-1:event-1", runId: "run-1", connectionId: "account-1",
+  expect(sources).toEqual([{ kind: "calendar", sourceId: "source-1:event-1", runId: "run-1", connectionId: "account-1", profileId: "profile-fixture",
     accountKey: "alice@example.test", eventId: "event-1", url: "https://calendar.google.com/calendar/event?eid=one",
     title: "Meeting", start: "2026-09-25T10:00:00Z", end: "2026-09-25T11:00:00Z", observedAt: 21 }]);
   expect(dedupeConversationSources([...sources, conversationSourceFromArtifact(artifact, observation())!])).toHaveLength(2);

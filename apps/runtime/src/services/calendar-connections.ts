@@ -62,7 +62,7 @@ export class CalendarConnectionService {
   private refreshing = new Map<string, Promise<Secret>>();
   private closed = false;
 
-  constructor(private deps: { repo: Repo; native: NativeBridge; clientId?: string; fetch?: typeof fetch; endpoints?: Endpoints; onChange?: () => void }) {}
+  constructor(private deps: { repo: Repo; native: NativeBridge; clientId?: string; profileId?: string; fetch?: typeof fetch; endpoints?: Endpoints; onChange?: () => void }) {}
 
   private get http() { return this.deps.fetch ?? fetch; }
   private get urls() { return this.deps.endpoints ?? google; }
@@ -315,7 +315,8 @@ export class CalendarConnectionService {
             eventUrl = parsed.href.slice(0, 8192);
         } catch { /* no link */ }
         return [{ eventId, title: typeof item.summary === "string" ? item.summary.slice(0, 1000) : "Untitled event", start: first.slice(0, 100), end: last.slice(0, 100), url: eventUrl,
-          source: { connectionId: query.connectionId, accountKey: row.account_key, calendarId: row.account_key, fetchedAt } }];
+          source: { connectionId: query.connectionId, ...(this.deps.profileId ? { profileId: this.deps.profileId } : {}),
+            accountKey: row.account_key, calendarId: row.account_key, fetchedAt } }];
       });
       const nextPageToken = typeof response.nextPageToken === "string" ? response.nextPageToken.slice(0, 2048) : undefined;
       return { events, ...(nextPageToken ? { nextPageToken } : {}), fetchedAt };

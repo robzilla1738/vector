@@ -47,7 +47,8 @@ export function calendarConversationSourcesFromStep(step: StepRecord): Conversat
     if (url.href.length > 4000) return [];
     const eventId = typeof event.eventId === "string" && event.eventId ? event.eventId : undefined;
     return [{ kind: "calendar", sourceId: `${step.stepId}:${eventId ?? index}`, runId: step.runId,
-      connectionId: origin.connectionId, accountKey: origin.accountKey.slice(0, 1000), ...(eventId ? { eventId } : {}),
+      connectionId: origin.connectionId, ...(typeof origin.profileId === "string" && origin.profileId ? { profileId: origin.profileId } : {}),
+      accountKey: origin.accountKey.slice(0, 1000), ...(eventId ? { eventId } : {}),
       url: url.href, title: event.title.slice(0, 1000), start: event.start.slice(0, 100), end: event.end.slice(0, 100), observedAt: origin.fetchedAt }];
   });
 }

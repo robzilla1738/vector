@@ -244,7 +244,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         .filter(Boolean),
   });
   const state = new StateService({ repo, pages, operations });
-  const calendar = new CalendarConnectionService({ repo, native, clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+  const calendar = new CalendarConnectionService({ repo, native, clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID, profileId: env.AUX_BROWSER_PROFILE_ID,
     onChange: () => events.emit("settings.changed", { category: "calendar" }) });
 
   const runs = new RunService({

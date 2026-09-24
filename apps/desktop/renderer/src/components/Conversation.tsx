@@ -105,7 +105,7 @@ function RunSources({ sources, profileNames, onOpen }: { sources: ConversationSo
   return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
     {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
       <span><b>{source.title}</b><small>{source.kind === "calendar"
-        ? `Google Calendar · ${source.accountKey} · ${source.start} · fetched ${new Date(source.observedAt).toLocaleString()}`
+        ? `Google Calendar · ${source.accountKey}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · ${source.start} · fetched ${new Date(source.observedAt).toLocaleString()}`
         : `${hostOf(source.url)}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · observed ${new Date(source.observedAt).toLocaleString()}`}</small></span>{I.open}
     </button>)}
     <p>Sources record what Aux read; verify external outcomes in the source account.</p>
@@ -196,7 +196,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   }, [!!calendarSourceChoice]);
   const [sourceProfileNames, setSourceProfileNames] = useState<Record<string, string>>({});
   useEffect(() => {
-    if (!conversationSources.some(source => source.kind !== "calendar" && source.profileId)) return;
+    if (!conversationSources.some(source => source.profileId)) return;
     let active = true;
     void bridge.browserProfiles().then(profiles => {
       if (active) setSourceProfileNames(Object.fromEntries(profiles.map(profile => [profile.id, profile.name])));
@@ -307,6 +307,15 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       if (source.kind === "calendar") {
         const profiles = (await bridge.browserProfiles()).filter(profile => !profile.archived);
         if (!profiles.length) throw new Error("No browser Profile is available to open this Calendar event.");
+        if (source.profileId) {
+          const owner = profiles.find(profile => profile.id === source.profileId);
+          if (!owner) throw new Error("The Profile that read this Calendar event is unavailable. Restore it before opening the source.");
+          if (owner.current) {
+            if (background) await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
+            else await useStore.getState().newTab(source.url);
+          } else if (!await bridge.openBrowserProfileUrl(owner.id, source.url)) throw new Error("The source Profile could not open this Calendar event.");
+          return;
+        }
         setCalendarSourceChoice({ source, profiles, background });
         return;
       }

@@ -32,6 +32,7 @@ export const CalendarEventSchema = z.object({
   url: z.string().url().max(8192).optional(),
   source: z.object({
     connectionId: z.string().uuid(),
+    profileId: z.string().min(1).optional(),
     accountKey: z.string().min(1),
     calendarId: z.string().min(1),
     fetchedAt: z.number().int().nonnegative(),

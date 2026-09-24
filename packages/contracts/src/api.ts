@@ -333,6 +333,7 @@ export const CalendarConversationSourceSchema = z.object({
   sourceId: id,
   runId: id,
   connectionId: id,
+  profileId: id.optional(),
   accountKey: z.string().min(1).max(1000),
   eventId: id.optional(),
   url: z.string().url().max(4000),

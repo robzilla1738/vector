@@ -47,7 +47,7 @@ function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: b
     if (url.pathname === "/revoke") return Response.json({});
     throw new Error(`Unexpected request ${url}`);
   };
-  const service = new CalendarConnectionService({ repo, native, clientId: "desktop-client", fetch: http, endpoints });
+  const service = new CalendarConnectionService({ repo, native, clientId: "desktop-client", profileId: "profile-fixture", fetch: http, endpoints });
   return { db, repo, events, tasks, secrets, calls, service };
 }
 
@@ -79,6 +79,7 @@ describe("outbound Google Calendar connection", () => {
       const first = await service.events(query);
       expect(first.events[0]?.title).toBe("Meeting alice");
       expect(first.events[0]?.source.accountKey).toBe("alice@example.test");
+      expect(first.events[0]?.source.profileId).toBe("profile-fixture");
       expect(first.nextPageToken).toBe("next");
       expect((await service.events({ ...query, pageToken: first.nextPageToken })).nextPageToken).toBeUndefined();
       expect(calls.find(call => call.url.searchParams.get("pageToken") === "next")).toBeTruthy();
