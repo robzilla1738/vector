@@ -51,6 +51,7 @@ bundle("main", {
   outfile: join(here, "dist/main/index.js"),
   format: "esm",
   external: ["electron"],
+  banner: { js: 'import { createRequire as auxCreateRequire } from "node:module"; const require = auxCreateRequire(import.meta.url);' },
 });
 
 bundle("preload", {

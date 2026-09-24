@@ -49,7 +49,13 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   async connect(): Promise<void> {
     const endpoint = this.endpoint;
     // connectOverCDP accepts either the http(s) base or a ws URL.
-    const browser = await this.connectOverCDP(endpoint, { timeout: 15_000 });
+    const browser = await this.connectOverCDP(endpoint, { timeout: 15_000 }).catch(error => {
+      // The internal broker's URL carries a generation capability. Playwright
+      // includes its endpoint in connection errors, which can be persisted by
+      // the runtime or shown in the UI; do not let that token escape IPC.
+      if (endpoint.includes("/aux-cdp/")) throw new AuxError("backend_unavailable", "Internal browser connection failed");
+      throw error;
+    });
     this.browser = browser;
     this.browserSession = null;
     const contexts = browser.contexts();

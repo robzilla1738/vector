@@ -17,11 +17,15 @@ rmSync(DEVTOOLS_PORT_FILE, { force: true });
 export const DATA_DIR = resolveDataDirectory(desktopEnv);
 mkdirSync(DATA_DIR, { recursive: true });
 applyPendingRuntimeRestore(DATA_DIR);
+if (desktopEnv.AUX_INTERNAL_CDP === "1") rmSync(join(DATA_DIR, CDP_PORT_FILE), { force: true });
 
-// CDP must be enabled before app ready. Port 0 → OS picks; the real port is
-// written to <userData>/DevToolsActivePort. Bind loopback only (plan A22).
-app.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
-app.commandLine.appendSwitch("remote-debugging-port", "0");
+// The internal broker uses webContents.debugger and exposes no raw Chromium
+// endpoint. Keep the old port only for the current default transport while
+// its full agent/reconnect/download qualification is completed.
+if (desktopEnv.AUX_INTERNAL_CDP !== "1") {
+  app.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
+  app.commandLine.appendSwitch("remote-debugging-port", "0");
+}
 
 export function log(...args: unknown[]) {
   process.stdout.write(`[main] ${args.join(" ")}\n`);

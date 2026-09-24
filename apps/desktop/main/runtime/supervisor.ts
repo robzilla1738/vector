@@ -2,15 +2,17 @@ import { RpcChannel, type Transport } from "@aux/contracts";
 import type { ChildProcess } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CDP_PORT_FILE, DATA_DIR, log } from "../app/bootstrap.js";
+import { CDP_PORT_FILE, DATA_DIR, PRIMARY_WINDOW_ID, desktopEnv, log } from "../app/bootstrap.js";
 import { exitApproved } from "../app/exit.js";
 import { flushExternalUrls } from "../app/external-urls.js";
 import { registry } from "../app/services.js";
+import { profileSession } from "../native-views.js";
 import { spawnRuntime } from "../runtime-proc.js";
 import { pausedAgent, scheduleIdleFreeze, wakePage } from "../tabs/lifecycle-controller.js";
 import { runtimeLiveTabs, runtimeTabWindow } from "../tabs/publish.js";
 import { pageWindowOwners, regularWindows } from "../windows/registry.js";
 import { waitForCdpPort } from "./cdp-port.js";
+import { InternalCdpBroker } from "./internal-cdp.js";
 import { registerNativeHandlers } from "./native/index.js";
 
 export let runtimeReady = false;
@@ -21,6 +23,20 @@ export let runtimeGeneration = 0;
 export let runtimeRestartAttempt = 0;
 export let runtimeRestartTimer: NodeJS.Timeout | null = null;
 export let runtimeCdpPort = 0;
+let internalBroker: InternalCdpBroker | null = null;
+let brokerClosing: Promise<void> | null = null;
+let brokerStarting = false;
+const useInternalCdp = desktopEnv.AUX_INTERNAL_CDP === "1";
+
+function closeInternalBroker(): Promise<void> {
+  const broker = internalBroker;
+  internalBroker = null;
+  if (!broker) return brokerClosing ?? Promise.resolve();
+  const closing = broker.close().catch(error => { log("internal CDP broker close failed", String(error)); });
+  brokerClosing = closing;
+  void closing.finally(() => { if (brokerClosing === closing) brokerClosing = null; });
+  return closing;
+}
 
 export function reportRuntimeStatus(connected: boolean, detail?: string) {
   for (const state of regularWindows.values()) state.shellView.webContents.send("runtime-status", { connected, detail });
@@ -52,8 +68,12 @@ export function scheduleRuntimeRestart(delayMs?: number) {
   }, delay);
 }
 
-/** The runtime forks once Chromium publishes its DevTools port and the primary window (its native-page host) exists. */
+/** Start after the primary native-page host exists; the legacy path also waits for Chromium's port. */
 export function startRuntimeWhenReady(primaryWindow: Promise<void>) {
+  if (useInternalCdp) {
+    void primaryWindow.then(() => startRuntimeProcess()).catch(error => log("runtime not started:", String(error)));
+    return;
+  }
   void Promise.all([waitForCdpPort(), primaryWindow]).then(([cdpPort]) => {
     runtimeCdpPort = cdpPort;
     log("cdp port", cdpPort);
@@ -68,7 +88,34 @@ export function startRuntimeWhenReady(primaryWindow: Promise<void>) {
 }
 
 export function startRuntimeProcess() {
+  if (useInternalCdp) { void startInternalRuntimeProcess(); return; }
   if (exitApproved || runtimeProcess || !runtimeCdpPort) return;
+  launchRuntimeProcess();
+}
+
+async function startInternalRuntimeProcess() {
+  if (exitApproved || runtimeProcess || brokerStarting) return;
+  brokerStarting = true;
+  try {
+    if (brokerClosing) await brokerClosing;
+    const root = regularWindows.get(PRIMARY_WINDOW_ID)?.shellView.webContents;
+    if (!root || root.isDestroyed()) throw new Error("Primary Aux shell is unavailable");
+    const broker = await InternalCdpBroker.start(root, registry, profileSession());
+    if (exitApproved || runtimeProcess) { await broker.close(); return; }
+    internalBroker = broker;
+    log("internal CDP broker listening", broker.port());
+    launchRuntimeProcess();
+  } catch (error) {
+    await closeInternalBroker();
+    log("internal CDP broker failed", String(error));
+    scheduleRuntimeRestart();
+  } finally {
+    brokerStarting = false;
+  }
+}
+
+function launchRuntimeProcess() {
+  if (exitApproved || runtimeProcess || (!useInternalCdp && !runtimeCdpPort)) return;
   runtimeLiveTabs.clear();
   runtimeTabWindow.clear();
   const generation = ++runtimeGeneration;
@@ -77,6 +124,7 @@ export function startRuntimeProcess() {
   const runtime = spawnRuntime({
     dataDir: DATA_DIR,
     cdpPort: runtimeCdpPort,
+    internalCdp: useInternalCdp,
     onExit: code => {
       if (generation !== runtimeGeneration) return;
       runtimeProcess = null;
@@ -84,10 +132,15 @@ export function startRuntimeProcess() {
       channel = null;
       log("runtime exited", code);
       reportRuntimeStatus(false, "The Aux runtime stopped. Browsing remains available while it reconnects.");
-      scheduleRuntimeRestart();
+      void closeInternalBroker().finally(() => scheduleRuntimeRestart());
     },
   });
   runtimeProcess = runtime.proc;
+  if (useInternalCdp) runtime.proc.once("disconnect", () => {
+    if (generation !== runtimeGeneration) return;
+    void closeInternalBroker();
+    if (runtime.proc.exitCode === null) runtime.proc.kill("SIGTERM");
+  });
   const transport: Transport = {
     send: message => {
       if (!runtime.proc.connected) throw new Error("runtime IPC disconnected");
@@ -103,6 +156,10 @@ export function startRuntimeProcess() {
   };
   const next = new RpcChannel(transport, "shell->runtime");
   channel = next;
+  if (useInternalCdp) next.onMethod("cdp.capability", () => {
+    if (generation !== runtimeGeneration || !internalBroker) throw new Error("Runtime capability expired");
+    return internalBroker.endpoint();
+  });
   registerNativeHandlers(next);
   next.onNotify((type, payload) => {
     if (generation !== runtimeGeneration) return;

@@ -20,3 +20,15 @@ test('managed CDP rejects foreign markers and revoked native tabs before connect
   await assert.rejects(driver.recoverPage('atab-aux-page', 'aux-page'), /no longer owned by Aux/);
   assert.equal(connections, 0);
 });
+
+test('internal broker capability is removed from connection failures', async () => {
+  const secret = 'one-time-generation-capability';
+  const driver = new ManagedChromiumDriver(`ws://127.0.0.1:1/aux-cdp/${secret}`, {
+    connectOverCDP: async endpoint => { throw new Error(`Failed to connect to ${endpoint}`); },
+  });
+  await assert.rejects(driver.connect(), error => {
+    assert.match(error.message, /Internal browser connection failed/);
+    assert.equal(error.message.includes(secret), false);
+    return true;
+  });
+});

@@ -30,6 +30,7 @@ export interface RuntimeProc {
 export function spawnRuntime(opts: {
   dataDir: string;
   cdpPort: number;
+  internalCdp?: boolean;
   onExit: (code: number | null) => void;
 }): RuntimeProc {
   const entry = runtimeEntry();
@@ -40,6 +41,7 @@ export function spawnRuntime(opts: {
     env: desktopRuntimeEnv({
       dataDir: opts.dataDir,
       cdpPort: opts.cdpPort,
+      internalCdp: opts.internalCdp,
       electronVersion: String(process.versions.electron ?? "dev"),
     }),
   });

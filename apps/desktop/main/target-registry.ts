@@ -23,6 +23,12 @@ export class TargetRegistry {
   private byPageId = new Map<string, ViewEntry>();
   private byMarker = new Map<string, ViewEntry>();
   private byWcId = new Map<number, ViewEntry>();
+  private listeners = new Set<() => void>();
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
 
   add(entry: ViewEntry) {
     const prev = this.byPageId.get(entry.pageId);
@@ -36,6 +42,7 @@ export class TargetRegistry {
     this.byPageId.set(entry.pageId, entry);
     this.byMarker.set(entry.marker, entry);
     this.byWcId.set(entry.view.webContents.id, entry);
+    for (const listener of this.listeners) listener();
   }
   get(pageId: string) {
     return this.byPageId.get(pageId);
@@ -55,6 +62,7 @@ export class TargetRegistry {
     for (const [id, entry] of this.byWcId) {
       if (entry === e) this.byWcId.delete(id);
     }
+    for (const listener of this.listeners) listener();
   }
   all() {
     return [...this.byPageId.values()];

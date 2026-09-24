@@ -112,8 +112,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       events.emit("session.changed", { backend: d.backend, status: "connected" });
     };
   };
-  if (config.electronCdp) {
-    const d = new ManagedChromiumDriver(config.electronCdp, {
+  const electronCdp = env.AUX_INTERNAL_CDP === "1" && channel
+    ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
+    : config.electronCdp;
+  if (electronCdp) {
+    const d = new ManagedChromiumDriver(electronCdp, {
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
     });
     watchDriver(d, "aux", "Aux");
@@ -130,7 +133,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
       });
     }
-  } else if (env.AUX_STANDALONE !== "0") {
+  } else if (env.AUX_IPC !== "1" && env.AUX_STANDALONE !== "0") {
     // No Electron shell — drive a headless system Chrome so the full API still works.
     const d = new StandaloneDriver();
     watchDriver(d, "aux", "Aux (headless)");
