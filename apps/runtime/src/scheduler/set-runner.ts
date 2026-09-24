@@ -188,18 +188,19 @@ export class SetRunner {
       let releaseSem: (() => void) | undefined;
       let release: (() => void) | undefined;
       let workerPageId: string | undefined;
+      const owner = m.pageId ? { pageId: m.pageId, runId: opts.runId, memberId: m.memberId } : undefined;
       try {
         releaseSem = await sem.acquire(signal);
         // pause may have arrived while this member waited for capacity —
         // re-check, and never hold a global pool slot while gated (other
         // runs share the pool)
         await opts.waitIfPaused?.(signal);
-        release = await this.deps.pool.acquire(url ?? "unknown", signal);
+        release = await this.deps.pool.acquire(url ?? "unknown", signal, owner);
         while (!signal.aborted && opts.isPaused?.()) {
           release();
           release = undefined;
           await opts.waitIfPaused?.(signal);
-          release = await this.deps.pool.acquire(url ?? "unknown", signal);
+          release = await this.deps.pool.acquire(url ?? "unknown", signal, owner);
         }
         if (signal.aborted) {
           this.skip(m, opts.runId,skipReason());
@@ -312,7 +313,7 @@ export class SetRunner {
       pageId = page.pageId;
       setWorker(pageId);
     } else if (m.url && this.deps.pages.get(pageId).url !== m.url) {
-      await this.deps.pages.navigate(pageId, m.url);
+      throw new AuxError("conflict", "Set member page changed since it was added; refresh the set before running it");
     }
 
     // replay a validated program when the member's site matches its key

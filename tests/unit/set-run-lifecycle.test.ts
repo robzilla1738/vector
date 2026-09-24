@@ -441,6 +441,31 @@ describe("conversation turn retry", () => {
 });
 
 describe("set-run lifecycle (P0-2 / P1-3)", () => {
+  it("serializes concurrent set runs that share a human tab", async () => {
+    const h = harness({ execMs: 50, maxWorkers: 2 });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    const a = await h.sets.create({ name: "first", source: "tabs", pageIds: [page.pageId] });
+    const b = await h.sets.create({ name: "second", source: "tabs", pageIds: [page.pageId] });
+    const first = await h.runs.mapSet({ setId: a.setId, program });
+    const second = await h.runs.mapSet({ setId: b.setId, program });
+    expect((await untilTerminal(h.repo, first.runId)).status).toBe("completed");
+    expect((await untilTerminal(h.repo, second.runId)).status).toBe("completed");
+    expect(h.state.peak).toBe(1);
+    expect(h.state.executed).toBe(2);
+  });
+
+  it("does not navigate a saved human tab that changed before its member ran", async () => {
+    const h = harness({ execMs: 5 });
+    const page = await h.pages.open({ url: "https://shared.test/old", background: false, ownedByRuntime: false });
+    const set = await h.sets.create({ name: "stale", source: "tabs", pageIds: [page.pageId] });
+    await h.pages.navigate(page.pageId, "https://shared.test/new");
+    const { runId } = await h.runs.mapSet({ setId: set.setId, program });
+    expect((await untilTerminal(h.repo, runId)).status).toBe("failed");
+    expect(h.repo.listMembers(set.setId)[0]?.error).toContain("page changed");
+    expect(h.pages.get(page.pageId).url).toBe("https://shared.test/new");
+    expect(h.state.executed).toBe(0);
+  });
+
   it("shares one model-call ceiling across concurrent research members",async()=>{
     let calls=0;
     const model:ModelClient={generateStructured:async opts=>{

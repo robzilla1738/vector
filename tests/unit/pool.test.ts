@@ -43,4 +43,28 @@ describe("WorkerPool", () => {
     ctl.abort();
     await expect(p).rejects.toMatchObject({ code: "cancelled" });
   });
+
+  it("owns a page for one set member through its full pool lease", async () => {
+    const pool = new WorkerPool({ maxWorkers: 3, perOrigin: 3 });
+    const first = await pool.acquire("http://a.test/one", undefined, { pageId: "tab", runId: "run-a", memberId: "member-a" });
+    let secondStarted = false;
+    const pending = pool.acquire("http://a.test/one", undefined, { pageId: "tab", runId: "run-b", memberId: "member-b" })
+      .then(release => { secondStarted = true; return release; });
+    expect(pool.stats().pageOwners.tab).toMatchObject({ runId: "run-a", memberId: "member-a" });
+    await Promise.resolve();
+    expect(secondStarted).toBe(false);
+    first();
+    const second = await pending;
+    expect(pool.stats().pageOwners.tab).toMatchObject({ runId: "run-b", memberId: "member-b" });
+    second();
+    expect(pool.stats().pageOwners.tab).toBeUndefined();
+  });
+
+  it("does not grant an available slot to an already aborted run", async () => {
+    const pool = new WorkerPool({ maxWorkers: 1, perOrigin: 1 });
+    const ctl = new AbortController();
+    ctl.abort();
+    await expect(pool.acquire("http://a.test", ctl.signal)).rejects.toMatchObject({ code: "cancelled" });
+    expect(pool.stats().active).toBe(0);
+  });
 });

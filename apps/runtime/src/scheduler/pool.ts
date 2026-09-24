@@ -1,8 +1,9 @@
 import { AuxError } from "@aux/contracts";
 
 /**
- * Bounded worker pool with per-origin limits. Workers are runtime-owned
- * pages; queued set members stay lightweight URLs until a slot frees.
+ * Bounded set-member pool with per-origin limits. Members backed by URLs
+ * open disposable workers after admission; members backed by existing tabs
+ * own the tab through observation, planning, and execution.
  */
 export interface PoolOptions {
   maxWorkers: number;
@@ -12,11 +13,19 @@ export interface PoolOptions {
 interface Waiter {
   resolve: () => void;
   origin: string;
+  pageId?: string;
+}
+
+export interface PageOwner {
+  pageId: string;
+  runId: string;
+  memberId: string;
 }
 
 export class WorkerPool {
   private active = 0;
   private perOriginCount = new Map<string, number>();
+  private pageOwners = new Map<string, PageOwner>();
   private waiters: Waiter[] = [];
 
   constructor(private opts: PoolOptions) {}
@@ -30,21 +39,24 @@ export class WorkerPool {
   }
 
   /** Acquire a slot for work against `origin`. Resolves when capacity frees. */
-  async acquire(url: string, signal?: AbortSignal): Promise<() => void> {
+  async acquire(url: string, signal?: AbortSignal, owner?: PageOwner): Promise<() => void> {
     const origin = WorkerPool.originOf(url);
     // Re-check after every wakeup: a resolved waiter races with other
     // continuations, so the capacity check and the increment must agree.
-    while (!this.canRun(origin)) {
-      await this.waitForSlot(origin, signal);
+    while (!this.canRun(origin, owner?.pageId)) {
+      await this.waitForSlot(origin, owner?.pageId, signal);
     }
+    if (signal?.aborted) throw new AuxError("cancelled", "pool acquire aborted");
     this.active++;
     this.perOriginCount.set(origin, (this.perOriginCount.get(origin) ?? 0) + 1);
+    if (owner) this.pageOwners.set(owner.pageId, owner);
     let released = false;
     return () => {
       if (released) return;
       released = true;
       this.active--;
       this.perOriginCount.set(origin, (this.perOriginCount.get(origin) ?? 1) - 1);
+      if (owner) this.pageOwners.delete(owner.pageId);
       this.pump();
     };
   }
@@ -60,7 +72,7 @@ export class WorkerPool {
     return { ...this.opts };
   }
 
-  private waitForSlot(origin: string, signal?: AbortSignal): Promise<void> {
+  private waitForSlot(origin: string, pageId?: string, signal?: AbortSignal): Promise<void> {
     if (signal?.aborted) return Promise.reject(new AuxError("cancelled", "pool acquire aborted"));
     return new Promise((resolve, reject) => {
       const onAbort = () => {
@@ -71,6 +83,7 @@ export class WorkerPool {
       // accumulate one closure per queued member
       const w: Waiter = {
         origin,
+        pageId,
         resolve: () => {
           signal?.removeEventListener("abort", onAbort);
           resolve();
@@ -81,10 +94,11 @@ export class WorkerPool {
     });
   }
 
-  private canRun(origin: string): boolean {
+  private canRun(origin: string, pageId?: string): boolean {
     return (
       this.active < this.opts.maxWorkers &&
-      (this.perOriginCount.get(origin) ?? 0) < this.opts.perOrigin
+      (this.perOriginCount.get(origin) ?? 0) < this.opts.perOrigin &&
+      (!pageId || !this.pageOwners.has(pageId))
     );
   }
 
@@ -94,7 +108,7 @@ export class WorkerPool {
     let i = 0;
     while (i < this.waiters.length) {
       const w = this.waiters[i]!;
-      if (this.canRun(w.origin)) {
+      if (this.canRun(w.origin, w.pageId)) {
         this.waiters.splice(i, 1);
         w.resolve();
       } else {
@@ -104,6 +118,7 @@ export class WorkerPool {
   }
 
   stats() {
-    return { active: this.active, queued: this.waiters.length, perOrigin: Object.fromEntries(this.perOriginCount) };
+    return { active: this.active, queued: this.waiters.length, perOrigin: Object.fromEntries(this.perOriginCount),
+      pageOwners: Object.fromEntries(this.pageOwners) };
   }
 }
