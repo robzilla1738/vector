@@ -1,5 +1,5 @@
 // Cold-launch timing: process spawn to shell window, painted home surface,
-// and first runtime-backed page open. Prints medians over AUX_RUNS launches.
+// and first runtime-backed page open. Prints p50/p95 and raw samples over AUX_RUNS launches.
 // AUX_SEED_FILTERS=1 starts from a profile holding a ~2.3 MB downloaded hosts
 // list (fresh, so no refetch) — the realistic returning-user startup.
 // AUX_ROOT points at another checkout to compare builds.
@@ -23,7 +23,10 @@ function seedFilters(filters) {
   writeFileSync(join(filters, `${id}.txt`), text);
   writeFileSync(join(filters, `${id}.meta.json`), JSON.stringify({ fetchedAt: Date.now(), hosts: 90_000, sha256: createHash('sha256').update(text).digest('hex') }));
 }
-const median = xs => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+const percentile = (xs, fraction) => {
+  const sorted=[...xs].sort((a,b)=>a-b);
+  return sorted[Math.min(sorted.length-1,Math.max(0,Math.ceil(sorted.length*fraction)-1))];
+};
 try {
   for (let i = 0; i < runs; i++) {
     const dir = mkdtempSync(join(tmpdir(), 'aux-timing-'));
@@ -45,5 +48,5 @@ try {
       rmSync(dir, { recursive: true, force: true });
     }
   }
-  for (const [k, xs] of Object.entries(samples)) console.log(`${k.padEnd(9)} median ${median(xs).toFixed(0)}ms  [${xs.map(x => x.toFixed(0)).join(', ')}]`);
+  for (const [k, xs] of Object.entries(samples)) console.log(`${k.padEnd(9)} p50 ${percentile(xs,.5).toFixed(0)}ms  p95 ${percentile(xs,.95).toFixed(0)}ms  [${xs.map(x => x.toFixed(0)).join(', ')}]`);
 } finally { server.close(); }
