@@ -121,6 +121,15 @@ describe("CommandBar keyboard contract", () => {
     expect(command.mock.calls.some(([c]) => c.kind === "navigate" && (c as { url?: string }).url === "https://github.com/search?q=aux%20browser")).toBe(true);
   });
 
+  it("requests indexed local history as soon as a usable query is typed", async () => {
+    const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "gi"));
+    expect(invoke).toHaveBeenCalledWith("history.list", { query: "gi", limit: 6 });
+  });
+
   it("remote suggestions honor the preference and privacy gate", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(["x", ["extra suggestion"]])));
     useStore.setState({ settings: { searchSuggestions: true, searchEngine: "https://duckduckgo.com/?q=%s" } } as never);

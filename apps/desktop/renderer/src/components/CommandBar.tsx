@@ -25,6 +25,8 @@ interface Suggestion {
   run: () => unknown | Promise<unknown>;
 }
 
+const EMPTY_HISTORY: HistoryEntry[] = [];
+
 /**
  * One field, three jobs: URL bar, search, and agent prompt. Intent is
  * detected as you type and shown as a chip; ↵ runs it, ⌘↵ opens a new tab /
@@ -64,7 +66,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   });
   const setEntryMode=(next:"search"|"ask")=>{setEntryModeState(next);if(!bridge.privateMode)try{localStorage.setItem("aux.home.entry-mode.v1",next);}catch{/* Mode remains available for this window. */}};
   const [scopeFlip, setScopeFlip] = useState(false);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({ query: "", items: [] });
   const inputRef = useRef<HTMLInputElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -152,20 +154,19 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [baseIntent, scopeFlip, hero, raw, entryMode, searchEngine]);
   const typedSomething = editing && raw.length > 0 && raw !== pageAddress;
 
-  // recent pages — debounced history query while typing
+  // The local indexed query is cheap; dispatch it immediately and only display
+  // a response that belongs to the exact text still in the field.
   useEffect(() => {
     let cancelled = false;
-    setHistory([]);
     if (!typedSomething || raw.length < 2 || intent.kind === "command") {
       return;
     }
-    const t = window.setTimeout(() => {
-      void call("history.list", { query: raw, limit: 6 })
-        .then((h) => { if (!cancelled) setHistory(h); })
-        .catch(() => { if (!cancelled) setHistory([]); });
-    }, 120);
-    return () => { cancelled = true; window.clearTimeout(t); };
+    void call("history.list", { query: raw, limit: 6 })
+      .then(items => { if (!cancelled) setHistoryResult({ query: raw, items }); })
+      .catch(() => { if (!cancelled) setHistoryResult({ query: raw, items: [] }); });
+    return () => { cancelled = true; };
   }, [raw, typedSomething, intent.kind]);
+  const history = historyResult.query === raw ? historyResult.items : EMPTY_HISTORY;
 
   // Remote suggestions — opt-in preference, never in private mode, and never
   // for probable private/intranet addresses or keyword-engine input.
