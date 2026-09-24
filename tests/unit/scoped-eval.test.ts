@@ -19,8 +19,10 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     execute: async (_program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; },
   } as unknown as PageService;
   const pageOwnership = new PageOwnership();
-  const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership } } as Services);
-  return { invoke, seen, tasks, task, workspace, page, pageOwnership, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
+  let operationCalls = 0;
+  const operations = { invoke: async () => { operationCalls++; return { status: "completed" }; } };
+  const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership }, operations } as unknown as Services);
+  return { invoke, seen, tasks, task, workspace, page, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
 }
 
 const program = { program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] } };
@@ -51,6 +53,22 @@ it("keeps a human-held tab out of external page programs", async () => {
   await expect(f.invoke("pages.execute", { ...program, taskId: f.task.taskId, expectedRevision: 1 },
     { external: true, connectionId: "c1", scope: f.scope })).rejects.toMatchObject({ code: "conflict" });
   expect(f.seen).toHaveLength(0);
+  expect(f.pageOwnership.snapshot().p1).toBeUndefined();
+});
+
+it("keeps direct operation calls off a tab owned by another agent or a person", async () => {
+  const f = fixture();
+  const call = () => f.invoke("operations.invoke", { siteKey: "example.test", name: "read", pageId: "p1" });
+  const release = f.pageOwnership.tryAcquire({ pageId: "p1", actor: "coordinator", runId: "active" });
+  await expect(call()).rejects.toMatchObject({ code: "conflict" });
+  await expect(f.invoke("operations.invoke", { siteKey: "example.test", name: "read", pageId: "p1" }, { external: false }))
+    .rejects.toMatchObject({ code: "conflict" });
+  release();
+  f.page.controller = "human";
+  await expect(call()).rejects.toMatchObject({ code: "conflict" });
+  f.page.controller = "none";
+  await call();
+  expect(f.operationCalls()).toBe(1);
   expect(f.pageOwnership.snapshot().p1).toBeUndefined();
 });
 

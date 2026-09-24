@@ -238,13 +238,14 @@ export function makeInvoker(s: Services) {
       if (method === "tasks.start" && Array.isArray(params.pageIds)) for (const pageId of params.pageIds) requireScopedPage(scope, pageId,client.connectionId);
     }
 
-    const withExternalPage = async <T>(pageId: string, action: () => Promise<T>, taskId?: string): Promise<T> => {
-      const release = client.external ? s.runs.pageOwnership.tryAcquire({
+    const withExternalPage = async <T>(pageId: string, action: () => Promise<T>, taskId?: string, internalAutomation = false): Promise<T> => {
+      const automated = client.external || internalAutomation;
+      const release = automated ? s.runs.pageOwnership.tryAcquire({
         pageId, actor: "external", taskId, connectionId: client.connectionId,
       }) : undefined;
       try {
-        if (client.external && s.pages.get(pageId).controller === "human")
-          throw new AuxError("conflict", "A person controls this tab; return control before an external action");
+        if (automated && s.pages.get(pageId).controller === "human")
+          throw new AuxError("conflict", "A person controls this tab; return control before an automated action");
         return await action();
       }
       finally { release?.(); }
@@ -1124,7 +1125,10 @@ export function makeInvoker(s: Services) {
       }
       case "operations.invoke": {
         if (!s.operations) throw new AuxError("backend_unavailable", "operation registry not wired");
-        return s.operations.invoke(params as never);
+        const p = params as { pageId?: string };
+        return p.pageId
+          ? withExternalPage(p.pageId, () => s.operations!.invoke(params as never), undefined, true)
+          : s.operations.invoke(params as never);
       }
       case "operations.explain": {
         if (!s.operations) throw new AuxError("backend_unavailable", "operation registry not wired");
