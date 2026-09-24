@@ -312,7 +312,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     }
     return out;
   }, [rankQuery, remote, tabCandidates, bookmarkCandidates, closedCandidates, historyCandidates, programCandidates, runCandidates, recentChats, page, exec, activate, searchEngine]);
-  const suggestions = useMemo(() => typedSomething ? [...intentRows, ...rankedRows] : [], [typedSomething, intentRows, rankedRows]);
+  const suggestions = useMemo(() => typedSomething ? [...intentRows, ...(rankQuery === raw.toLowerCase() ? rankedRows : [])] : [], [typedSomething, intentRows, rankedRows, rankQuery, raw]);
 
   // Selection is identity-stable: a re-ordered list keeps the same row
   // highlighted instead of the same index pointing at a different action.
