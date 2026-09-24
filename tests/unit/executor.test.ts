@@ -162,6 +162,24 @@ describe("executeProgram", () => {
     expect(calls).toContain("click:r8");
   });
 
+  it("cancels the download waiter when the trigger is denied", async () => {
+    const { page } = fakePage({ click: new AuxError("permission_denied", "permission denied for click (effect:write)") });
+    let cancelled = false;
+    page.waitForDownload = (_timeout, signal) => new Promise((_resolve, reject) => {
+      signal?.addEventListener("abort", () => {
+        cancelled = true;
+        reject(new AuxError("conflict", "Download wait was cancelled"));
+      }, { once: true });
+    });
+    const result = await executeProgram(page, { pageId: "p1", steps: [
+      { id: "download", op: "expectDownload" },
+      { id: "denied-trigger", op: "click", target: "r8" },
+    ] });
+    expect(result.status).toBe("failed");
+    expect(result.steps.map(step => step.op)).toEqual(["click"]);
+    expect(cancelled).toBe(true);
+  });
+
   it("expectDownload as the last step fails with a clear error", async () => {
     const { page } = fakePage();
     const res = await executeProgram(page, {

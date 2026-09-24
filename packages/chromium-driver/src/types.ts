@@ -90,7 +90,7 @@ export interface DriverPage {
   uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void>;
 
   waitFor(condition: Condition): Promise<WaitOutcome>;
-  waitForDownload(timeoutMs?: number): Promise<{ suggestedFilename: string; path?: string }>;
+  waitForDownload(timeoutMs?: number, signal?: AbortSignal): Promise<{ suggestedFilename: string; path?: string }>;
   /** Desktop profile downloads report terminal results through the native session. */
   setNativeDownloadAuthority?(): void;
   notifyDownloadStarted?(info: { id: string; startedAt: number }): void;

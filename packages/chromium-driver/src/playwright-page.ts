@@ -64,6 +64,7 @@ export class PlaywrightDriverPage implements DriverPage {
     timer: NodeJS.Timeout;
     startedAt: number;
     downloadId?: string;
+    cleanup?: () => void;
   }[] = [];
   private nativeDownloadAuthority = false;
   private attached = true;
@@ -182,7 +183,7 @@ export class PlaywrightDriverPage implements DriverPage {
       if (!this.nativeDownloadAuthority) {
         const waiters = this.externalDownloadWaiters.splice(0);
         for (const w of waiters) {
-          clearTimeout(w.timer);
+          w.cleanup?.();
           w.resolve(info);
         }
       }
@@ -285,7 +286,7 @@ export class PlaywrightDriverPage implements DriverPage {
     const waiters = this.externalDownloadWaiters.filter(w => w.downloadId === info.id || (!w.downloadId && info.startedAt >= w.startedAt));
     this.externalDownloadWaiters = this.externalDownloadWaiters.filter(w => !waiters.includes(w));
     for (const w of waiters) {
-      clearTimeout(w.timer);
+      w.cleanup?.();
       if (info.state === "completed") w.resolve(info);
       else w.reject(new Error(`Download ${info.suggestedFilename} ${info.state}`));
     }
@@ -791,13 +792,20 @@ export class PlaywrightDriverPage implements DriverPage {
     }
   }
 
-  waitForDownload(timeoutMs = 30_000): Promise<{ suggestedFilename: string; path?: string }> {
+  waitForDownload(timeoutMs = 30_000, signal?: AbortSignal): Promise<{ suggestedFilename: string; path?: string }> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.externalDownloadWaiters = this.externalDownloadWaiters.filter((w) => w.resolve !== resolve);
-        reject(new AuxError("condition_timeout", "Timed out waiting for download"));
-      }, timeoutMs);
-      this.externalDownloadWaiters.push({ resolve, reject, timer, startedAt: Date.now() });
+      if (signal?.aborted) { reject(new AuxError("conflict", "Download wait was cancelled")); return; }
+      const waiter = { resolve, reject, timer: undefined as unknown as NodeJS.Timeout, startedAt: Date.now(), cleanup: undefined as (() => void) | undefined };
+      const cleanup = () => {
+        clearTimeout(waiter.timer);
+        signal?.removeEventListener("abort", onAbort);
+        this.externalDownloadWaiters = this.externalDownloadWaiters.filter(w => w !== waiter);
+      };
+      const onAbort = () => { cleanup(); reject(new AuxError("conflict", "Download wait was cancelled")); };
+      waiter.cleanup = cleanup;
+      waiter.timer = setTimeout(() => { cleanup(); reject(new AuxError("condition_timeout", "Timed out waiting for download")); }, timeoutMs);
+      this.externalDownloadWaiters.push(waiter);
+      signal?.addEventListener("abort", onAbort, { once: true });
     });
   }
 
@@ -1056,7 +1064,7 @@ export class PlaywrightDriverPage implements DriverPage {
     // native tab manager or to Chrome. Detach this wrapper's listeners only.
     this.attached = false;
     for (const waiter of this.externalDownloadWaiters.splice(0)) {
-      clearTimeout(waiter.timer);
+      waiter.cleanup?.();
       waiter.reject(new AuxError("target_detached", "Page detached while waiting for download"));
     }
     for (const [event, fn] of this.listeners.splice(0)) this.page.off(event as never, fn as never);

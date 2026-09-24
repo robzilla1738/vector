@@ -258,38 +258,51 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     emit: (o: StepOutcome, s: Step) => void,
   ): Promise<{ early?: { status: ProgramResult["status"]; error?: string } }> => {
     const dlStarted = Date.now();
-    const dlWait = page.waitForDownload(dlStep.timeoutMs ?? 30_000);
-    const trigOutcome = await runOne(trigger);
-    emit(trigOutcome, trigger);
-    if (trigOutcome.status === "failed" && !trigger.optional) {
-      return { early: { status: ctx.signal?.aborted ? "cancelled" : "failed", error: trigOutcome.error?.message } };
-    }
-    let dlOutcome: StepOutcome;
+    const waiterAbort = new AbortController();
+    const cancelWait = () => waiterAbort.abort();
+    ctx.signal?.addEventListener("abort", cancelWait, { once: true });
+    if (ctx.signal?.aborted) cancelWait();
+    const dlWait = page.waitForDownload(dlStep.timeoutMs ?? 30_000, waiterAbort.signal);
+    // The trigger may take longer than the download wait. Observe rejection
+    // immediately so a failed trigger cannot leave an unhandled promise.
+    void dlWait.catch(() => {});
     try {
-      const res = await dlWait;
-      dlOutcome = {
-        stepId: dlStep.id,
-        op: dlStep.op,
-        status: "ok",
-        startedAt: dlStarted,
-        durationMs: Date.now() - dlStarted,
-        detail: `downloaded ${res.suggestedFilename}`,
-        extracted: await downloadExtract(res.suggestedFilename, res.path),
-      };
-    } catch (e) {
-      dlOutcome = {
-        stepId: dlStep.id,
-        op: dlStep.op,
-        status: "failed",
-        startedAt: dlStarted,
-        durationMs: Date.now() - dlStarted,
-        error: { code: e instanceof AuxError ? e.code : "step_failed", message: e instanceof Error ? e.message : String(e) },
-      };
+      const trigOutcome = await runOne(trigger);
+      emit(trigOutcome, trigger);
+      if (trigOutcome.status === "failed" && !trigger.optional) {
+        cancelWait();
+        return { early: { status: ctx.signal?.aborted ? "cancelled" : "failed", error: trigOutcome.error?.message } };
+      }
+      let dlOutcome: StepOutcome;
+      try {
+        const res = await dlWait;
+        dlOutcome = {
+          stepId: dlStep.id,
+          op: dlStep.op,
+          status: "ok",
+          startedAt: dlStarted,
+          durationMs: Date.now() - dlStarted,
+          detail: `downloaded ${res.suggestedFilename}`,
+          extracted: await downloadExtract(res.suggestedFilename, res.path),
+        };
+      } catch (e) {
+        dlOutcome = {
+          stepId: dlStep.id,
+          op: dlStep.op,
+          status: "failed",
+          startedAt: dlStarted,
+          durationMs: Date.now() - dlStarted,
+          error: { code: e instanceof AuxError ? e.code : "step_failed", message: e instanceof Error ? e.message : String(e) },
+        };
+      }
+      emit(dlOutcome, dlStep);
+      const early = failedUnlessOptional(dlOutcome, dlStep);
+      if (early) return { early: { status: early.status, error: early.error } };
+      return {};
+    } finally {
+      cancelWait();
+      ctx.signal?.removeEventListener("abort", cancelWait);
     }
-    emit(dlOutcome, dlStep);
-    const early = failedUnlessOptional(dlOutcome, dlStep);
-    if (early) return { early: { status: early.status, error: early.error } };
-    return {};
   };
 
   return { runOne, runDownloadPair, failedUnlessOptional, extracted, artifactIds };
