@@ -1,3 +1,4 @@
+import { TabCardCaption } from "./TabCardCaption";
 import { duplicateTabs, protectedDuplicateIds } from "../duplicate-tabs";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -294,8 +295,7 @@ export function Overview() {
         return <article key={page.pageId} className={`ov-card ${page.pageId === activePageId ? "active" : ""} ${selected.has(page.pageId) ? "selected" : ""}`}>
           <button className="ov-open" data-page-id={page.pageId} tabIndex={focusedId === page.pageId ? 0 : -1} onFocus={() => setFocused(page.pageId)} onKeyDown={event => navigateGrid(event, page.pageId)} aria-label={`Open ${title}`} title={`${title}\n${page.url}`} onClick={event => open(page, event)}>
             <div className="ov-shot">{shot ? <img src={shot} alt="" loading="lazy" /> : <span className="ov-fallback"><FavIcon url={page.url} src={page.favicon} className="ov-bigfav" /></span>}</div>
-            <div className="ov-meta"><FavIcon url={page.url} src={page.favicon} className="ov-fav" size="sm" /><span className="t">{title}</span>{owner && isPinned(layout, owner.id, page.url) && I.pin}</div>
-            <div className="ov-url">{hostOf(page.url)}{!spaceId && owner ? ` · ${owner.name}` : ""}</div>
+            <TabCardCaption page={page} space={!spaceId ? owner?.name : undefined} pinned={!!owner && isPinned(layout, owner.id, page.url)} />
           </button>
           <input className="ov-check" type="checkbox" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} checked={selected.has(page.pageId)} aria-label={`Select ${title}`} onChange={() => select(page.pageId, false)} />
           <button className="ov-close icon-btn sm" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} aria-label={`Close ${title}`} onClick={() => void useStore.getState().closeTab(page.pageId)}>{I.close}</button>

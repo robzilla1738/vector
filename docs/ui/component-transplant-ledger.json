@@ -496,9 +496,12 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/search-suggestions-light.png"
+      ],
       "functionalEvidence": [
-        "Home Ask lazily loads the real composer; default controls are Search/Ask, plus and Send. Plus opens an anchored tool panel without expanding the composer. Native visual verification pending in this record until captured."
+        "Home Ask lazily loads the real composer; default controls are Search/Ask, plus and Send. Plus opens an anchored tool panel without expanding the composer. Native visual verification pending in this record until captured.",
+        "Shared 36px-minimum SearchResultRow with literal query highlighting, aligned identity/detail/action slots. Existing keyboard and async privacy contracts preserved: CommandBar 9, palette search 1, chrome tokens 25 tests passed. Mock address Down/Down/Enter switched to the matching existing tab."
       ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
@@ -1372,10 +1375,11 @@
       "entryPoint": "shell",
       "referenceDonors": [
         "/Users/rcourson/06/assets/liquid-glass.css",
-        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tab-preview-DcPYW5oG.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1385,8 +1389,12 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/overview-captions-light.png"
+      ],
+      "functionalEvidence": [
+        "Shared TabCardCaption preserves recorded favicon/title/domain, optional Space/pin and crash-before-loading status. Capture timing and bounds unchanged. Shared presentation tests passed; mock overview arrow navigation and Space selection retained selected-tab actions."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1426,7 +1434,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1436,8 +1444,13 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/palette-match-light.png"
+      ],
+      "functionalEvidence": [
+        "Shared 36px-minimum SearchResultRow with literal query highlighting, aligned identity/detail/action slots. Existing keyboard and async privacy contracts preserved: CommandBar 9, palette search 1, chrome tokens 25 tests passed. Mock address Down/Down/Enter switched to the matching existing tab.",
+        "Mock /overview command highlights its match and Enter opens the overview with focus in Search tabs."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -2561,10 +2574,11 @@
       "entryPoint": "shell",
       "referenceDonors": [
         "/Users/rcourson/06/assets/liquid-glass.css",
-        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tab-preview-DcPYW5oG.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -2575,7 +2589,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Shared TabCardCaption preserves recorded favicon/title/domain, optional Space/pin and crash-before-loading status. Capture timing and bounds unchanged. Shared presentation tests passed; mock overview arrow navigation and Space selection retained selected-tab actions."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -3409,6 +3425,70 @@
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Full appearance/size matrix and native image inspection."
+      ]
+    },
+    {
+      "id": "SearchResultRow",
+      "component": "apps/desktop/renderer/src/components/SearchResultRow.tsx",
+      "entryPoint": "Shared presentation used by CommandBar and Palette",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/search-view-L-AR8vWd.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/search-suggestions-light.png"
+      ],
+      "functionalEvidence": [
+        "SearchResultRow.test.tsx: 2 tests passed covering literal source/query rendering and pointer callbacks, plus page identity and crash/loading priority."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix.",
+        "Check simplified home and tool popover in native Electron baseline, then Chromium candidate; complete home result-card and search ports."
+      ]
+    },
+    {
+      "id": "TabCardCaption",
+      "component": "apps/desktop/renderer/src/components/TabCardCaption.tsx",
+      "entryPoint": "Shared presentation used by Overview and TabPreview",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tab-preview-DcPYW5oG.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/overview-captions-light.png"
+      ],
+      "functionalEvidence": [
+        "SearchResultRow.test.tsx: 2 tests passed covering literal source/query rendering and pointer callbacks, plus page identity and crash/loading priority."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
       ]
     }
   ],

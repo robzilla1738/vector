@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
-import { hostOf } from "../workspace";
+import { TabCardCaption } from "./TabCardCaption";
 
 export function TabPreview({ page, x, y }: { page: PageTarget; x: number; y: number }) {
   const card = useRef<HTMLDivElement>(null);
@@ -31,9 +31,8 @@ export function TabPreview({ page, x, y }: { page: PageTarget; x: number; y: num
     return () => { live = false; };
   }, [page.pageId, page.url]);
   return createPortal(<div ref={card} className="menu tab-preview" role="tooltip" style={position}>
-    <div className="tab-preview-copy"><strong>{page.title || "New Tab"}</strong><span>{page.url === "about:blank" ? "New Tab" : hostOf(page.url)}</span>
-    {page.viewStatus === "crashed" ? <span>Page stopped responding</span> : page.loading ? <span>Loading…</span> : null}</div>
     {page.url !== "about:blank" && <div className="tab-preview-image">{image && <img src={image} alt="" />}</div>}
+    <TabCardCaption page={page} />
   </div>, document.body);
 }
 

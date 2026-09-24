@@ -1,3 +1,4 @@
+import { SearchResultRow } from "./SearchResultRow";
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { ConversationSummary, HistoryEntry, Routine, Run, SavedProgram, SavedResult } from "@aux/contracts";
@@ -517,23 +518,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             return (
               <div key={s.id}>
                 {first && s.section !== "intent" && <div className="cb-section">{SECTION[s.section]}</div>}
-                <div
-                  id={`${listId}-opt-${i}`}
-                  role="option"
-                  aria-selected={i === sel}
-                  className={`cb-opt ${i === sel ? "sel" : ""} ${s.section}`}
-                  onMouseMove={() => sel !== i && setSel(i)}
-                  onClick={() => {
-                    void submit(s.run);
-                  }}
-                >
-                  <span className="cb-opt-ico">{s.icon}</span>
-                  <span className="cb-opt-main">
-                    <span className="cb-opt-title">{s.title}</span>
-                    {s.detail && <span className="cb-opt-detail">{s.detail}</span>}
-                  </span>
-                  {s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null}
-                </div>
+                <SearchResultRow id={`${listId}-opt-${i}`} selected={i === sel}
+                  className={`cb-opt ${s.section}`} title={s.title} detail={s.detail} icon={s.icon} query={raw}
+                  onHover={() => sel !== i && setSel(i)} onSelect={() => { void submit(s.run); }}
+                  trailing={s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null}
+                />
               </div>
             );
           })}

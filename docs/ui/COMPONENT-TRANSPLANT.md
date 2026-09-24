@@ -104,3 +104,12 @@ Full qualification remains: both layouts × expanded/collapsed × light/dark × 
 ## Host/build boundary
 
 The existing Siso build was observed still running at nice 10, approximately 52,978 completed actions at 7h04m. The compiling source checkout and native patches were not changed. No additional Chromium compile was started. An empty Electron launcher opened during app identification was closed. The renderer preview is on port 5198; the existing isolated real Electron development app remains on port 5197. Candidate native glass and Store compatibility remain open in [M1 host comparison](../M1-HOST-COMPARISON.md).
+
+
+### Search and tab-card integration — 2026-09-24
+
+- Address suggestions and the command palette now use the same compact row: 36px minimum height, aligned icons, literal match emphasis, subdued destinations and contextual action hints. Existing selection controllers, async query freshness, source scopes and privacy gates remain in their owners. Superseded row CSS was removed.
+- Overview and hover previews share recorded favicon/title/domain, Space/pin identity and loading/crash captions. Hover previews now place the image above the caption, matching overview card anatomy. Capture delays, viewport clamping, bulk operations and grid keyboard logic remain intact.
+- Focused verification: CommandBar 9, palette search 1, chrome tokens 25 and shared search/caption 2 cases passed (single worker, no file parallelism); renderer typecheck passed. Mock UI confirmed literal query emphasis and Down/Down/Enter switching to the existing matching tab, command-only `/overview` matching and Enter execution, plus overview Right/Space selection and selected-tab actions. Screenshots: `evidence/2026-09-24/search-suggestions-light.png`, `evidence/2026-09-24/overview-captions-light.png`, `evidence/2026-09-24/palette-match-light.png`.
+- Evidence limits: screenshots cover the current horizontal/light preview only; hover capture against live pages, full appearance/viewport/text/accessibility matrix and Chromium native overlays remain open. This is another partial port, not qualification of Batch 4.
+- Inventory now includes 127 surfaces and 84 reference routes. The inventory gate checks coverage integrity, not implementation quality or completion.

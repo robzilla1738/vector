@@ -211,7 +211,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   it("uses tokenized rounded suggestions within the address popover", () => {
     expect(styles).toContain(".cmdbar, .cb-pop, .main-col");
     expect(styles).toMatch(/\.cb-pop\s*\{[^}]*border-radius:\s*var\(--r-xl\)/);
-    expect(styles).toMatch(/\.cb-opt\s*\{[^}]*border-radius:\s*var\(--r-lg\);/);
+    expect(readFileSync("apps/desktop/renderer/src/components/SearchResultRow.css", "utf8")).toMatch(/\.search-result-row\s*\{[^}]*border-radius:\s*var\(--r-lg\);/);
     expect(styles).toContain("--cb-radius: var(--r-xl)");
     expect(styles).toContain("--cb-radius: var(--r-2xl)");
   });

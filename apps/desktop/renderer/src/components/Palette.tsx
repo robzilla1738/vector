@@ -1,3 +1,4 @@
+import { SearchResultRow } from "./SearchResultRow";
 import { conversationDraftEntries } from "../conversation-drafts";
 import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEntry, Task, Routine } from "@aux/contracts";
 import { openSavedTask, openSavedSkill } from "../task-navigation";
@@ -370,12 +371,10 @@ export function Palette() {
             return (
               <div key={c.id}>
                 {first && SECTION[c.section] && <div className="pal-section">{SECTION[c.section]}</div>}
-                <div id={`pal-${c.id}`} role="option" aria-selected={i === sel} className={`pal-item ${i === sel ? "sel" : ""}`} onMouseMove={() => sel !== i && setSel(i)} onClick={() => exec(c)}>
-                  <span className="pal-ico">{c.icon ?? I.command}</span>
-                  <span className="t">{c.t}</span>
-                  {c.d && <span className="d">{c.d}</span>}
-                  {c.k && <kbd>{c.k}</kbd>}
-                </div>
+                <SearchResultRow id={`pal-${c.id}`} selected={i === sel} className={`pal-item ${c.section}`}
+                  title={c.t} detail={c.d} icon={c.icon ?? I.command} query={q}
+                  onHover={() => sel !== i && setSel(i)} onSelect={() => exec(c)}
+                  trailing={c.k ? <kbd>{c.k}</kbd> : i === sel ? <kbd aria-hidden="true">↵</kbd> : null} />
               </div>
             );
           })}
