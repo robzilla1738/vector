@@ -37,8 +37,8 @@ export const RoutineDefinitionSchema = z.object({
   trigger: RoutineTriggerSchema.default({ kind: "manual" }),
   paused: z.boolean().default(false),
 });
-/** Portable routine: everything needed to recreate it minus machine-local ids. */
-export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: true }).extend({
+/** Portable definition only: source tasks, grants, and schedules need local review. */
+export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: true, sourceTaskId: true, sourceRunId: true }).extend({
   workspaceName: text.optional(),
 });
 export const RoutineShareEnvelopeSchema = z.object({

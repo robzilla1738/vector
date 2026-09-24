@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { EventBus, openDb, Repo, RoutineService, TaskService, nextScheduledTime } from "@aux/runtime";
-import { AuxError } from "@aux/contracts";
+import { AuxError, type RoutineShare } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -80,6 +80,7 @@ it("records missed consequential schedules and coalesces missed monitors", async
     title: "Weekday write",
     objective: "Do the write",
     workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
     parameters: [],
     siteOrigins: [],
     accountLabels: [],
@@ -98,6 +99,7 @@ it("records missed consequential schedules and coalesces missed monitors", async
     title: "Read check",
     objective: "Check the page",
     workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
     parameters: [],
     siteOrigins: [],
     accountLabels: [],
@@ -137,6 +139,7 @@ it("records cloud-capable missed runs honestly when no cloud starter exists", as
     title: "Cloud check",
     objective: "Check while closed",
     workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId,
     parameters: [],
     siteOrigins: [],
     accountLabels: [],
@@ -160,6 +163,8 @@ it("round-trips routines through export and import without ids, deduping on repe
   const share = envelope.routines[0]!;
   expect(share).not.toHaveProperty("workspaceId");
   expect(share).not.toHaveProperty("routineId");
+  expect(share).not.toHaveProperty("sourceTaskId");
+  expect(share).not.toHaveProperty("sourceRunId");
   expect(share.workspaceName).toBe("Research");
   expect(share.title).toBe("Vendor check");
   expect(share.siteOrigins).toContain("https://example.com");
@@ -179,6 +184,35 @@ it("round-trips routines through export and import without ids, deduping on repe
   expect(clone.objective).toBe(routine.objective);
   expect(clone.workspaceId).toBe(other.workspaceId);
   expect(clone.parameters).toEqual(routine.parameters);
+  expect(clone.sourceTaskId).toBeUndefined();
+  expect(clone.paused).toBe(true);
+  expect(clone.trigger.kind).toBe("manual");
+});
+
+it("imports an inactive definition without local task authority or its schedule", async () => {
+  const started: string[] = [];
+  const f = fixture(async (_routine, parameters) => { started.push(parameters.topic ?? ""); return { runId: "r1" }; });
+  const other = f.tasks.createWorkspace("Other");
+  const foreign = f.tasks.create({ workspaceId: other.workspaceId, title: "Foreign", objective: "Foreign", criteria: [{ criterionId: "c", description: "Done", verification: "manual" }], resources: [] });
+  const imported = f.routines.importRoutines([{
+    title: "Shared", objective: "Check {{topic}}", sourceTaskId: f.task.taskId,
+    parameters: [{ name: "topic", label: "Topic", value: "default" }], siteOrigins: [], accountLabels: ["Private"],
+    reviewRequired: false, cloudCapable: true, consecutive: true,
+    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 5 }, paused: false,
+  } as RoutineShare], f.workspace.workspaceId);
+  const routine = f.routines.get(imported.routineIds[0]!).routine;
+  expect(routine.sourceTaskId).toBeUndefined();
+  expect(routine).toMatchObject({ accountLabels: [], reviewRequired: true, cloudCapable: false, paused: true, trigger: { kind: "manual" } });
+  expect(() => f.routines.pause(routine.routineId, routine.revision, false)).toThrow(/Choose a saved task/);
+  expect(() => f.routines.update({ routineId: routine.routineId, expectedRevision: routine.revision, paused: false })).toThrow(/Choose a saved task/);
+  expect(await f.routines.due()).toEqual([]);
+  expect(() => f.routines.update({ routineId: routine.routineId, expectedRevision: routine.revision, sourceTaskId: foreign.taskId })).toThrow(/this Space/i);
+  const bound = f.routines.update({ routineId: routine.routineId, expectedRevision: routine.revision, sourceTaskId: f.task.taskId });
+  const ready = f.routines.pause(bound.routineId, bound.revision, false);
+  await expect(f.routines.run({ routineId: ready.routineId, expectedRevision: ready.revision, parameters: { hidden: "x" } })).rejects.toThrow(/Unknown routine parameter/);
+  expect(started).toEqual([]);
+  await f.routines.run({ routineId: ready.routineId, expectedRevision: ready.revision, parameters: { topic: "hosting" } });
+  expect(started).toEqual(["hosting"]);
 });
 
 it("resolves a workspace by name or falls back, and rejects a named space that does not exist", () => {

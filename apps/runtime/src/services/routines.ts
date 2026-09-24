@@ -96,6 +96,7 @@ export class RoutineService {
 
   create(input: RoutineDefinition & { sourceTaskId?: string; sourceRunId?: string }): Routine {
     this.requireWorkspace(input.workspaceId);
+    if (input.sourceTaskId) this.requireSourceTask(input.sourceTaskId, input.workspaceId);
     const now = Date.now();
     const routine: Routine = {
       ...input,
@@ -106,7 +107,7 @@ export class RoutineService {
       cloudCapable: input.cloudCapable ?? false,
       consecutive: input.consecutive ?? false,
       trigger: input.trigger ?? { kind: "manual" },
-      paused: input.paused ?? false,
+      paused: input.sourceTaskId ? input.paused ?? false : true,
       routineId: randomUUID(),
       revision: 1,
       createdAt: now,
@@ -156,10 +157,14 @@ export class RoutineService {
       parameters: input.parameters ?? current.parameters,
       siteOrigins: input.siteOrigins ?? current.siteOrigins,
       accountLabels: input.accountLabels ?? current.accountLabels,
+      sourceRunId: input.sourceRunId ?? (input.sourceTaskId && input.sourceTaskId !== current.sourceTaskId ? undefined : current.sourceRunId),
       trigger: input.trigger ?? current.trigger,
       revision: current.revision + 1,
       updatedAt: Date.now(),
     };
+    this.requireWorkspace(next.workspaceId);
+    if (next.sourceTaskId) this.requireSourceTask(next.sourceTaskId, next.workspaceId, input.sourceTaskId !== undefined);
+    if (!next.sourceTaskId && !next.paused) throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
     this.persist(next);
     this.events.emit("routine.updated", { routine: next });
     return next;
@@ -216,8 +221,9 @@ export class RoutineService {
     for (const share of routines) {
       const key = `${share.title}\n${share.objective}`;
       if (existing.has(key)) { skipped += 1; continue; }
-      const { workspaceName: _ignored, ...definition } = share;
-      const created = this.create({ ...definition, workspaceId: target });
+      const { workspaceName: _ignored, ...definition } = RoutineShareSchema.parse(share);
+      // Shared definitions are inert until a local task is chosen in Aux.
+      const created = this.create({ ...definition, workspaceId: target, trigger: { kind: "manual" }, paused: true, reviewRequired: true, cloudCapable: false, accountLabels: [] });
       routineIds.push(created.routineId);
       existing.add(key);
     }
@@ -230,10 +236,14 @@ export class RoutineService {
     if (routine.revision !== input.expectedRevision) throw new AuxError("conflict", "This routine changed. Refresh and try again.");
     if (routine.paused) throw new AuxError("conflict", "Resume this routine before running it.");
     if (routine.archivedAt) throw new AuxError("conflict", "Restore this routine before running it.");
+    if (!routine.sourceTaskId) throw new AuxError("conflict", "Choose a saved task for this routine before running it.");
+    this.requireSourceTask(routine.sourceTaskId, routine.workspaceId);
     const uncertain = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status='uncertain' LIMIT 1").get(routine.routineId);
     if (uncertain) throw new AuxError("conflict", "Reconcile the previous uncertain write before running this routine again.");
     const active = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status IN ('queued','running','needs_review') LIMIT 1").get(routine.routineId);
     if (active && !routine.consecutive) throw new AuxError("conflict", "This routine is already in progress. Wait or review the open run.");
+    const declared = new Set(routine.parameters.map(item => item.name));
+    for (const name of Object.keys(input.parameters ?? {})) if (!declared.has(name)) throw new AuxError("invalid_params", `Unknown routine parameter: ${name}.`);
     const parameters = { ...Object.fromEntries(routine.parameters.map(item => [item.name, item.value ?? ""])), ...input.parameters };
     for (const item of routine.parameters) if (parameters[item.name] === undefined || parameters[item.name] === "") throw new AuxError("invalid_params", `Set the ${item.label} parameter.`);
     const now = Date.now();
@@ -460,6 +470,11 @@ export class RoutineService {
 
   private requireWorkspace(workspaceId: string) {
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId)) throw new AuxError("not_found", "Choose a Space for this routine.");
+  }
+
+  private requireSourceTask(taskId: string, workspaceId: string, requireOpen = true) {
+    const row = this.repo.db.prepare("SELECT workspace_id,state FROM tasks WHERE task_id=?").get(taskId) as { workspace_id: string; state: string } | undefined;
+    if (!row || row.workspace_id !== workspaceId || (requireOpen && row.state !== "open")) throw new AuxError("conflict", "Choose an open saved task in this Space for the routine.");
   }
 
   private insert(routine: Routine) {

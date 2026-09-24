@@ -63,7 +63,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         const path = await bridge.openFile();
         if (!path) return;
         const result = await call("routines.import", { path, workspaceId });
-        setNotice(`Imported ${result.imported} routine${result.imported === 1 ? "" : "s"}${result.skipped ? ` · ${result.skipped} duplicates skipped` : ""}.`);
+        setNotice(`Imported ${result.imported} inactive routine${result.imported === 1 ? "" : "s"}${result.skipped ? ` · ${result.skipped} duplicates skipped` : ""}. Bind each one to a saved task before use.`);
         await refresh();
       })}>Import…</button>
     </div></div>
@@ -90,9 +90,18 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       <p className="hint">{selected.routine.objective}</p>
       <dl className="routine-overview"><div><dt>Status</dt><dd>{selected.routine.archivedAt ? "Archived" : selected.routine.paused ? "Paused" : "Ready"}</dd></div><div><dt>Trigger</dt><dd>{selected.routine.trigger.kind}</dd></div><div><dt>Runs</dt><dd>{selected.runs.length}</dd></div></dl>
       <span className="hint">{selected.routine.reviewRequired ? "Review required before writes." : "May run without extra review."} Timezone {selected.routine.trigger.kind === "manual" ? timezone : selected.routine.trigger.timezone}. Cloud {selected.routine.cloudCapable ? "can continue if configured" : "needs this Mac"}.</span>
+      {!selected.routine.sourceTaskId && <p className="hint">This imported definition is inactive. Binding it to a saved task gives it that task's current page and grants. Review the task and Accounts below before resuming.</p>}
+      <RoutineSourceTask key={`${selected.routine.routineId}-source:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={sourceTaskId => void action(async () => {
+        await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, sourceTaskId });
+        await refresh(selected.routine.routineId);
+      })} />
+      <RoutineRunControls key={`${selected.routine.routineId}-run:${selected.routine.revision}`} routine={selected.routine} disabled={busy || selected.routine.paused || !!selected.routine.archivedAt || !selected.routine.sourceTaskId} onRun={parameters => void action(async () => {
+        const run = await call("routines.run", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, parameters });
+        await refresh(selected.routine.routineId);
+        if (run.reason) setError(run.reason);
+      })} />
       <div className="row">
-        <button className="btn sm" disabled={busy || selected.routine.paused || !!selected.routine.archivedAt} onClick={() => void action(async () => { const run = await call("routines.run", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, parameters: {} }); await refresh(selected.routine.routineId); if (run.reason) setError(run.reason); })}>Run now</button>
-        <button className="btn sm" disabled={busy} onClick={() => void action(async () => { await call("routines.pause", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, paused: !selected.routine.paused }); await refresh(selected.routine.routineId); })}>{selected.routine.paused ? "Resume" : "Pause"}</button>
+        <button className="btn sm" disabled={busy || (selected.routine.paused && !selected.routine.sourceTaskId)} onClick={() => void action(async () => { await call("routines.pause", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, paused: !selected.routine.paused }); await refresh(selected.routine.routineId); })}>{selected.routine.paused ? "Resume" : "Pause"}</button>
         {selected.runs.length >= 2 && <button className="btn sm" disabled={busy} onClick={() => void action(async () => { setComparison(await call("routines.compare", { leftRunId: selected.runs[1]!.routineRunId, rightRunId: selected.runs[0]!.routineRunId })); })}>Compare latest two runs</button>}
       </div>
       <RoutineSchedule key={`${selected.routine.routineId}:${selected.routine.revision}`} trigger={selected.routine.trigger} disabled={busy || !!selected.routine.archivedAt} onSave={trigger => void action(async () => {
@@ -115,6 +124,34 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       </div>)}
     </div>}
   </section>;
+}
+
+function RoutineSourceTask({ routine, disabled, onSave }: { routine: Routine; disabled: boolean; onSave: (taskId: string) => void }) {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [picked, setPicked] = useState(routine.sourceTaskId ?? "");
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    let live = true;
+    void call("tasks.list", { workspaceId: routine.workspaceId, limit: 500 })
+      .then(items => { if (live) setTasks(items); })
+      .catch(reason => { if (live) setLoadError(reason instanceof Error ? reason.message : String(reason)); });
+    return () => { live = false; };
+  }, [routine.workspaceId]);
+  return <div className="field"><label htmlFor={`routine-source-${routine.routineId}`}>Source task</label>
+    <div className="row"><select id={`routine-source-${routine.routineId}`} value={picked} disabled={disabled} onChange={event => setPicked(event.target.value)}>
+      <option value="">Choose a saved task…</option>
+      {tasks.map(task => <option key={task.taskId} value={task.taskId}>{task.title}</option>)}
+    </select><button className="btn sm" disabled={disabled || !picked || picked === routine.sourceTaskId} onClick={() => onSave(picked)}>Bind task</button></div>
+    {loadError && <span className="field-error">Tasks could not be loaded. {loadError}</span>}
+  </div>;
+}
+
+function RoutineRunControls({ routine, disabled, onRun }: { routine: Routine; disabled: boolean; onRun: (parameters: Record<string, string>) => void }) {
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(routine.parameters.map(item => [item.name, item.value ?? ""])));
+  return <div className="field">
+    {routine.parameters.map(item => <label key={item.name}>{item.label}<input value={values[item.name] ?? ""} disabled={disabled} onChange={event => setValues(current => ({ ...current, [item.name]: event.target.value }))} /></label>)}
+    <button className="btn sm" disabled={disabled || routine.parameters.some(item => !values[item.name]?.trim())} onClick={() => onRun(values)}>Run now</button>
+  </div>;
 }
 
 /** Choose which labeled vault accounts this routine may use — an empty selection stays unrestricted. */
