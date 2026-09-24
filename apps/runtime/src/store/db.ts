@@ -84,6 +84,12 @@ CREATE TABLE observations(
   observation_id TEXT PRIMARY KEY, page_id TEXT NOT NULL, epoch INTEGER NOT NULL,
   revision INTEGER NOT NULL, observed_at REAL NOT NULL, scope TEXT, json TEXT NOT NULL);
 CREATE INDEX idx_obs_page ON observations(page_id, revision);
+CREATE TABLE content_memory(
+  memory_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+  source_key TEXT NOT NULL, origin TEXT NOT NULL, captured_at INTEGER NOT NULL, expires_at INTEGER NOT NULL,
+  ciphertext TEXT NOT NULL, UNIQUE(profile_id,workspace_id,source_key));
+CREATE INDEX idx_content_memory_workspace ON content_memory(profile_id,workspace_id,captured_at DESC);
+CREATE INDEX idx_content_memory_expiry ON content_memory(expires_at);
 CREATE TABLE programs(
   program_id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, version INTEGER NOT NULL DEFAULT 1,
   site_key TEXT NOT NULL, parameters TEXT NOT NULL DEFAULT '[]', steps_json TEXT NOT NULL,
@@ -255,7 +261,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -337,6 +343,15 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       `CREATE INDEX IF NOT EXISTS idx_action_intents_task_unresolved ON action_intents(task_id,task_revision,status)`,
     ];
   },
+  // v9 → v10: encrypted, opt-in page-content recall. No text or search tokens are stored in SQLite.
+  9: [
+    `CREATE TABLE content_memory(
+      memory_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+      source_key TEXT NOT NULL, origin TEXT NOT NULL, captured_at INTEGER NOT NULL, expires_at INTEGER NOT NULL,
+      ciphertext TEXT NOT NULL, UNIQUE(profile_id,workspace_id,source_key))`,
+    `CREATE INDEX idx_content_memory_workspace ON content_memory(profile_id,workspace_id,captured_at DESC)`,
+    `CREATE INDEX idx_content_memory_expiry ON content_memory(expires_at)`,
+  ],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

@@ -56,6 +56,7 @@ export class TaskService {
       this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
       // An excluded site must leave local browsing memory as well as future prompts.
       new BrowsingMemory(this.repo).get(workspaceId);
+      for (const origin of origins) this.repo.db.prepare("DELETE FROM content_memory WHERE workspace_id=? AND origin=?").run(workspaceId, origin);
     });
     this.events.emit("workspace.memory.updated", { workspaceId, revision: next.revision });
     return next;
