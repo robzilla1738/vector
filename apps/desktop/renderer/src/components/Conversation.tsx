@@ -246,7 +246,9 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   };
   const openSource = async (source: ConversationSource) => {
     try {
-      const existing = pages.find(page => (page.pageId === source.pageId || page.url === source.url) && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? ""));
+      const existing = useStore.getState().pages.find(page => page.pageId === source.pageId && page.url === source.url
+        && page.documentEpoch === source.documentEpoch && !page.ownedByRuntime
+        && !["crashed", "detached"].includes(page.viewStatus ?? ""));
       if (existing) await useStore.getState().activate(existing.pageId);
       else await useStore.getState().newTab(source.url);
     } catch (error) { errToast(error); }

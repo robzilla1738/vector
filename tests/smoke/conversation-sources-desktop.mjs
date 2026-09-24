@@ -49,8 +49,8 @@ async function waitActiveUrl(page, url) {
   }
   throw new Error(`Aux did not activate ${url}`);
 }
-function observation({ id, pageId, url, title, observedAt, revision }) {
-  return { observationId: id, pageId, documentEpoch: 1, revision, observedAt, scope: "full", content: {
+function observation({ id, pageId, url, title, observedAt, revision, documentEpoch }) {
+  return { observationId: id, pageId, documentEpoch, revision, observedAt, scope: "full", content: {
     url, title, viewport: { width: 1000, height: 700, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 }, frames: [], text: `${title} PRIVATE_PAGE_BODY`, headings: [title], elements: [], formFields: [], tables: [], links: [], dialogs: [], truncated: false,
     stats: { elementsTotal: 0, elementsShown: 0, textChars: title.length, approxTokens: 4 },
   } };
@@ -62,6 +62,7 @@ try {
   const alpha = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/alpha`);
   const beta = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/beta`);
   await page.waitForFunction(ids => window.aux.invoke("pages.list", {}).then(pages => ids.every(id => pages.some(item => item.pageId === id && !item.loading))), [alpha.pageId, beta.pageId]);
+  const epochs = Object.fromEntries((await page.evaluate(() => window.aux.invoke("pages.list", {}))).map(item => [item.pageId, item.documentEpoch]));
   await app.close(); app = undefined;
 
   const repo = await openRepo();
@@ -70,10 +71,10 @@ try {
   const dir = join(dataDir, "artifacts", "source-run");
   mkdirSync(dir, { recursive: true });
   const records = [
-    ["source-alpha-old", observation({ id: "obs-alpha-old", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha old", observedAt: now + 1, revision: 1 })],
-    ["source-alpha-latest", observation({ id: "obs-alpha-latest", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha", observedAt: now + 3, revision: 2 })],
-    ["source-beta", observation({ id: "obs-beta", pageId: beta.pageId, url: `${base}/beta`, title: "Research Beta", observedAt: now + 2, revision: 1 })],
-    ["source-local", observation({ id: "obs-local", pageId: beta.pageId, url: "file:///Users/example/private.txt", title: "Private local path", observedAt: now + 4, revision: 2 })],
+    ["source-alpha-old", observation({ id: "obs-alpha-old", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha old", observedAt: now + 1, revision: 1, documentEpoch: epochs[alpha.pageId] })],
+    ["source-alpha-latest", observation({ id: "obs-alpha-latest", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha", observedAt: now + 3, revision: 2, documentEpoch: epochs[alpha.pageId] })],
+    ["source-beta", observation({ id: "obs-beta", pageId: beta.pageId, url: `${base}/beta`, title: "Research Beta", observedAt: now + 2, revision: 1, documentEpoch: epochs[beta.pageId] })],
+    ["source-local", observation({ id: "obs-local", pageId: beta.pageId, url: "file:///Users/example/private.txt", title: "Private local path", observedAt: now + 4, revision: 2, documentEpoch: epochs[beta.pageId] })],
   ];
   for (const [artifactId, record] of records) {
     const path = join(dir, `${artifactId}.json`);
@@ -100,14 +101,16 @@ try {
   await page.screenshot({ path: join(artifactsDir, "aux-conversation-sources.png") });
 
   await sourceList.getByRole("button", { name: /Research Alpha/ }).click();
-  assert.equal((await waitActiveUrl(page, `${base}/alpha`)).activePageId, alpha.pageId, "live source should open its original tab");
+  assert.notEqual((await waitActiveUrl(page, `${base}/alpha`)).activePageId, alpha.pageId, "restored page has a new document epoch and cannot stand in for the captured source");
   await page.evaluate(pageId => window.aux.invoke("pages.close", { pageId }), beta.pageId);
+  const unrelatedBeta = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/beta`);
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
   await page.locator(".conversation-sources summary").click();
   await page.locator(".conversation-sources").getByRole("button", { name: /Research Beta/ }).click();
   const reopened = await waitActiveUrl(page, `${base}/beta`);
   assert.notEqual(reopened.activePageId, beta.pageId, "closed source should receive a new page identity");
+  assert.notEqual(reopened.activePageId, unrelatedBeta.pageId, "same-URL tab is not the observed source identity");
   assert.equal(reopened.pages.find(item => item.pageId === reopened.activePageId)?.url, `${base}/beta`);
 
   await sidebarAction(page, "Chats");
@@ -122,7 +125,7 @@ try {
   assert.doesNotMatch(exported, /source-alpha-old/);
   assert.doesNotMatch(exported, /PRIVATE_PAGE_BODY/);
   assert.doesNotMatch(exported, new RegExp(temporary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  console.log("Conversation sources survive restart, deduplicate observations, open live or restored tabs, and export path-free provenance.");
+  console.log("Conversation sources survive restart, deduplicate observations, reject changed or same-URL tab identities, and export path-free provenance.");
 } finally {
   await app?.close().catch(() => {});
   fixture.closeAllConnections();
