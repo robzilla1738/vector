@@ -18,7 +18,7 @@ export { RunService, substituteParameters } from "./services/runs.js";
 export { makeInvoker, type Services } from "./api/handlers.js";
 export { SettingsService } from "./services/settings.js";
 export { ArtifactStore } from "./services/artifacts.js";
-export { conversationSourceFromArtifact, dedupeConversationSources, isObservationArtifactContent } from "./services/conversation-sources.js";
+export { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources, isObservationArtifactContent } from "./services/conversation-sources.js";
 export { summarizeModelUsage } from "./services/model-usage.js";
 export { CookieService, decryptValue, chromeEpochToUnix, mapSameSite } from "./services/cookies.js";
 export { BrowserImporter } from "./services/browser-import.js";

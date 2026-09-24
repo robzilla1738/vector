@@ -721,7 +721,10 @@ export function makeInvoker(s: Services) {
         return new SavedResults(s.repo, s.artifacts).read(params.artifactId);
       case "conversations.artifacts.get": return s.runs.conversationArtifacts(params.chatId);
       case "conversations.artifacts.toggle": return s.runs.toggleConversationArtifact(params);
-      case "conversations.sources.get": return s.runs.conversationSources(params.chatId);
+      case "conversations.sources.get": {
+        const result = s.runs.conversationSources(params.chatId);
+        return client.external ? { ...result, sources: result.sources.filter(source => source.kind !== "calendar") } : result;
+      }
       case "conversations.workspace.get": return s.runs.conversationWorkspace(params.chatId);
       case "conversations.workspace.set": return s.runs.setConversationWorkspace(params);
       case "runs.pause": return s.runs.pause(params.runId);

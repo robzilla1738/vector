@@ -39,7 +39,7 @@ import { modelCallCost } from "../agent/model-client.js";
 import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
-import { conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
+import { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
 
 
 /**
@@ -282,7 +282,10 @@ export class RunService {
 
   conversationSources(chatId: string): { chatId: string; sources: ConversationSource[] } {
     const sources: ConversationSource[] = [];
-    for (const run of this.deps.repo.listRuns(500, { chatId }).reverse()) {
+    const runs = this.deps.repo.listRuns(500, { chatId }).reverse();
+    for (const step of this.deps.repo.listStepsByOpForRuns(runs.map(run => run.runId), "calendar.events.list"))
+      sources.push(...calendarConversationSourcesFromStep(step));
+    for (const run of runs) {
       for (const artifact of this.deps.repo.listArtifacts({ runId: run.runId })) {
         if (artifact.mediaType !== "application/json" || artifact.status !== "complete" || artifact.size > 2 * 1024 * 1024) continue;
         try {

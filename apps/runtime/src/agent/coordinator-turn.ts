@@ -545,7 +545,7 @@ export async function dispatchSourcePlan(s: TurnState, plan: Extract<TaskPlanChu
   if (signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
   const outcome: StepOutcome = { stepId, op: "calendar.events.list", status: "ok", startedAt, durationMs: Date.now() - startedAt,
     detail: `${result.events.length} events from ${grant.accountKey}; fetched ${new Date(result.fetchedAt).toISOString()}`,
-    extracted: { events: result.events.map(event => ({ title: event.title.slice(0, 200), start: event.start, end: event.end,
+    extracted: { events: result.events.map(event => ({ eventId: event.eventId, title: event.title.slice(0, 200), start: event.start, end: event.end,
       ...(event.url ? { url: event.url } : {}), source: event.source })), ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}), fetchedAt: result.fetchedAt } };
   s.outcomes.push(outcome);
   s.self.deps.repo.saveStep({ stepId, runId: s.runId, op: outcome.op, inputs: request, outcome, startedAt });

@@ -565,13 +565,22 @@ export class Repo {
       )
       .run(s.stepId, s.runId, s.pageId ?? null, s.op, s.inputs ? J(s.inputs) : null, s.expected ?? null, s.outcome ? J(s.outcome) : null, s.startedAt);
   }
+  private stepFromRow(r: Record<string, unknown>): StepRecord {
+    return {
+      stepId: r.step_id as string, runId: r.run_id as string, pageId: (r.page_id as string | null) ?? undefined, op: r.op as string,
+      inputs: P(r.inputs as string | null, undefined as never), expected: (r.expected as string | null) ?? undefined,
+      outcome: P(r.outcome as string | null, undefined as never), startedAt: r.started_at as number,
+    };
+  }
   listSteps(runId: string): StepRecord[] {
     this.flush();
-    return (this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at").all(runId) as any[]).map((r) => ({
-      stepId: r.step_id, runId: r.run_id, pageId: r.page_id ?? undefined, op: r.op,
-      inputs: P(r.inputs, undefined as never), expected: r.expected ?? undefined,
-      outcome: P(r.outcome, undefined as never), startedAt: r.started_at,
-    }));
+    return (this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at").all(runId) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
+  }
+  listStepsByOpForRuns(runIds: readonly string[], op: string): StepRecord[] {
+    if (!runIds.length) return [];
+    this.flush();
+    return (this.q("SELECT * FROM steps WHERE op=? AND run_id IN (SELECT value FROM json_each(?)) ORDER BY started_at,step_id")
+      .all(op, J(runIds)) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
   }
   saveResult(r: ResultRecord) {
     this.q(

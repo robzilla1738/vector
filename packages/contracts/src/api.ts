@@ -316,7 +316,8 @@ export const SavedResultSchema = z.object({ artifactId:id,runId:id,chatId:id,fil
 export type SavedResult = z.infer<typeof SavedResultSchema>;
 export const ConversationArtifactsSchema = z.object({ chatId: id, artifacts: z.array(ConversationArtifactSchema) });
 export const ConversationArtifactToggleParams = z.object({ chatId: id, artifactId: id, included: z.boolean() });
-export const ConversationSourceSchema = z.object({
+export const BrowserConversationSourceSchema = z.object({
+  kind: z.literal("browser").optional(),
   sourceId: id,
   runId: id,
   pageId: id,
@@ -327,6 +328,20 @@ export const ConversationSourceSchema = z.object({
   documentEpoch: z.number(),
   revision: z.number(),
 });
+export const CalendarConversationSourceSchema = z.object({
+  kind: z.literal("calendar"),
+  sourceId: id,
+  runId: id,
+  connectionId: id,
+  accountKey: z.string().min(1).max(1000),
+  eventId: id.optional(),
+  url: z.string().url().max(4000),
+  title: z.string().max(1000),
+  start: z.string().max(100),
+  end: z.string().max(100),
+  observedAt: z.number(),
+});
+export const ConversationSourceSchema = z.union([BrowserConversationSourceSchema, CalendarConversationSourceSchema]);
 export type ConversationSource = z.infer<typeof ConversationSourceSchema>;
 export const ConversationSourcesSchema = z.object({ chatId: id, sources: z.array(ConversationSourceSchema).max(200) });
 export const ConversationWorkspaceSchema = z.object({ memoryPreview: z.string().optional(), browsingPreview: z.string().optional(), chatId: id, taskId: id.optional(), assigned: z.boolean().optional(), workspace: WorkspaceSchema.nullable(), memory: WorkspaceMemorySchema.nullable() });

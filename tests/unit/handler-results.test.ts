@@ -79,6 +79,20 @@ const call = async (method: MethodName, params: unknown = {}) => {
 };
 
 describe("handler results conform to ResultSchemas", () => {
+  it("returns account-scoped Calendar event provenance through conversation sources", async () => {
+    repo.saveRun({ runId: "calendar-source-turn", goal: "Meeting brief", status: "completed", pageIds: [], createdAt: 20,
+      config: { chatId: "calendar-source-chat" } });
+    repo.saveStep({ stepId: "calendar-source-step", runId: "calendar-source-turn", op: "calendar.events.list", startedAt: 21,
+      outcome: { stepId: "calendar-source-step", op: "calendar.events.list", status: "ok", startedAt: 21, durationMs: 2,
+        extracted: { events: [{ eventId: "event-1", title: "Meeting", start: "2026-09-25T10:00:00Z", end: "2026-09-25T11:00:00Z",
+          url: "https://calendar.google.com/calendar/event?eid=one", source: { connectionId: "account-1", accountKey: "alice@example.test", fetchedAt: 22 } }] } } });
+    const result = await invoke("conversations.sources.get", { chatId: "calendar-source-chat" }, { external: false }) as { sources: { kind?: string; accountKey?: string }[] };
+    expect(ResultSchemas["conversations.sources.get"].safeParse(result).success).toBe(true);
+    expect(result.sources).toMatchObject([{ kind: "calendar", accountKey: "alice@example.test" }]);
+    const external = await invoke("conversations.sources.get", { chatId: "calendar-source-chat" }, { external: true }) as { sources: unknown[] };
+    expect(external.sources).toEqual([]);
+  });
+
   it("keeps revisioned workspace memory desktop-managed", async () => {
     const workspace = await invoke("workspaces.create", { name: "Memory workspace" }) as { workspaceId: string };
     await expect(invoke("workspaces.memory.set", { workspaceId: workspace.workspaceId, expectedRevision: 0, content: "private workspace context" })).rejects.toThrow(/managed in Aux/i);

@@ -11,12 +11,14 @@ import { ConversationTask } from "./ConversationTask";
 import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-sources";
+import { isScrimOverlay } from "../chrome";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
-import { bridge } from "../bridge";
+import { bridge, type BrowserProfile } from "../bridge";
 import { hostOf, previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
@@ -102,10 +104,20 @@ function RunSources({ sources, profileNames, onOpen }: { sources: ConversationSo
   if (!sources.length) return null;
   return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
     {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
-      <span><b>{source.title}</b><small>{hostOf(source.url)}{source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
+      <span><b>{source.title}</b><small>{source.kind === "calendar"
+        ? `Google Calendar · ${source.accountKey} · ${source.start} · fetched ${new Date(source.observedAt).toLocaleString()}`
+        : `${hostOf(source.url)}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · observed ${new Date(source.observedAt).toLocaleString()}`}</small></span>{I.open}
     </button>)}
-    <p>Observed browser pages provide provenance, not independent proof of an external outcome.</p>
+    <p>Sources record what Aux read; verify external outcomes in the source account.</p>
   </div></details>;
+}
+
+function isCalendarCitation(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && (parsed.hostname === "calendar.google.com" ||
+      (parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/calendar/")));
+  } catch { return false; }
 }
 
 export function Conversation({ chatId, embedded = false, onChatCreated }: { chatId?: string | null; embedded?: boolean; onChatCreated?: (chatId: string) => void } = {}) {
@@ -163,9 +175,28 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     return Object.fromEntries(generated.map(item=>[item.artifactId,version(item,new Set())]));
   },[generated]);
   const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
+  const [calendarSourceChoice, setCalendarSourceChoice] = useState<{ source: Extract<ConversationSource, { kind: "calendar" }>; profiles: BrowserProfile[]; background: boolean } | null>(null);
+  const calendarChoiceRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!calendarSourceChoice) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const body = document.querySelector<HTMLElement>(".app-body");
+    const wasInert = body?.inert;
+    if (body) body.inert = true;
+    let live = true;
+    void bridge.overlay(true).then(() => live ? bridge.focusShell() : undefined).then(() => {
+      if (live) calendarChoiceRef.current?.querySelector<HTMLElement>("button")?.focus();
+    }).catch(() => {});
+    return () => {
+      live = false;
+      if (body) body.inert = !!wasInert;
+      void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [!!calendarSourceChoice]);
   const [sourceProfileNames, setSourceProfileNames] = useState<Record<string, string>>({});
   useEffect(() => {
-    if (!conversationSources.some(source => source.profileId)) return;
+    if (!conversationSources.some(source => source.kind !== "calendar" && source.profileId)) return;
     let active = true;
     void bridge.browserProfiles().then(profiles => {
       if (active) setSourceProfileNames(Object.fromEntries(profiles.map(profile => [profile.id, profile.name])));
@@ -273,6 +304,12 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   };
   const openSource = useCallback(async (source: ConversationSource, background=false) => {
     try {
+      if (source.kind === "calendar") {
+        const profiles = (await bridge.browserProfiles()).filter(profile => !profile.archived);
+        if (!profiles.length) throw new Error("No browser Profile is available to open this Calendar event.");
+        setCalendarSourceChoice({ source, profiles, background });
+        return;
+      }
       if (source.profileId) {
         const profiles = await bridge.browserProfiles();
         if (!profiles.some(profile => profile.id === source.profileId && profile.current)) {
@@ -291,12 +328,28 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   },[]);
   const openCitation = useCallback((url:string,background:boolean,runId?:string):boolean => {
     const matching=conversationSources.filter(source=>answerUrl(source.url)===url && (!runId || source.runId===runId));
-    if (!matching.length) return false;
-    const distinct=new Map(matching.map(source=>[`${source.profileId??""}\0${source.pageId}\0${source.documentEpoch}\0${source.url}`,source]));
-    if (distinct.size!==1) { toast("This link has multiple observed tabs. Choose the exact tab and Profile from Sources."); return true; }
+    if (!matching.length) {
+      if (isCalendarCitation(url)) { toast("This Calendar source is still loading or unavailable. Open it from Sources after it appears."); return true; }
+      return false;
+    }
+    const distinct=new Map(matching.map(source=>[source.kind === "calendar"
+      ? `calendar\0${source.connectionId}\0${source.url}`
+      : `browser\0${source.profileId??""}\0${source.pageId}\0${source.documentEpoch}\0${source.url}`,source]));
+    if (distinct.size!==1) { toast("This link has multiple sources. Choose the exact account or tab from Sources."); return true; }
     void openSource([...distinct.values()][0]!,background);
     return true;
   },[conversationSources,openSource]);
+  const openCalendarSourceInProfile = useCallback(async (profile: BrowserProfile) => {
+    const choice = calendarSourceChoice;
+    if (!choice) return;
+    setCalendarSourceChoice(null);
+    try {
+      if (profile.current) {
+        if (choice.background) await useStore.getState().openBackgroundTab(choice.source.url,useStore.getState().layout.activeSpaceId,false);
+        else await useStore.getState().newTab(choice.source.url);
+      } else if (!await bridge.openBrowserProfileUrl(profile.id, choice.source.url)) throw new Error("The selected Profile could not open this Calendar event.");
+    } catch (error) { errToast(error); }
+  }, [calendarSourceChoice]);
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const missingContext = !["active", "linked", "none"].includes(contextPage) && !selectedContext;
@@ -611,5 +664,24 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {!taskBound && !answering && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>}
     </div></div>
     </div>{browserPreview}</div>
+    {calendarSourceChoice && createPortal(<div className="scrim-soft" onMouseDown={() => setCalendarSourceChoice(null)}>
+      <div ref={calendarChoiceRef} className="sheet conversation-calendar-choice" role="dialog" aria-modal="true" aria-labelledby="calendar-source-choice-title"
+        onMouseDown={event => event.stopPropagation()} onKeyDown={event => {
+          event.stopPropagation();
+          if (event.key === "Escape") { event.preventDefault(); setCalendarSourceChoice(null); }
+          if (event.key === "Tab") {
+            const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)")];
+            const first = controls[0], last = controls.at(-1);
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+          }
+        }}>
+        <header><h3 id="calendar-source-choice-title">Open Calendar source</h3><button className="icon-btn" aria-label="Cancel" onClick={() => setCalendarSourceChoice(null)}>{I.close}</button></header>
+        <p><b>{calendarSourceChoice.source.title}</b><br/>Google account: {calendarSourceChoice.source.accountKey}</p>
+        <p>Choose the browser Profile signed in to this account.</p>
+        <div className="conversation-calendar-profiles">{calendarSourceChoice.profiles.map(profile => <button key={profile.id} className="btn sm"
+          onClick={() => void openCalendarSourceInProfile(profile)}>{profile.name}{profile.current ? " · current" : ""}</button>)}</div>
+      </div>
+    </div>, document.body)}
   </section>;
 }
