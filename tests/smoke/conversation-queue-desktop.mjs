@@ -1,4 +1,4 @@
-// A live conversation accepts a correction, then queues a follow-up that survives restart.
+// Ordinary and saved-task conversations deliver acknowledged follow-ups once after restart.
 import { createServer } from "node:http";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -98,6 +98,27 @@ try {
   assert.equal(accepted.length, 2);
   assert.equal(queued?.targetRunId, first.runId);
   assert.equal(queued?.status, "accepted");
+
+  const taskPage = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), pageUrl);
+  await page.waitForFunction(id => window.aux.invoke("pages.list", {}).then(pages => pages.some(item => item.pageId === id && !item.loading)), taskPage.pageId);
+  const workspace = await page.evaluate(() => window.aux.invoke("workspaces.create", { name: "Queue restart" }));
+  const task = await page.evaluate(({ workspaceId, pageId }) => window.aux.invoke("tasks.create", {
+    workspaceId, title: "Check fixture", objective: "Check the fixture source",
+    criteria: [{ criterionId: "source", description: "Cite the fixture", verification: "manual" }],
+    resources: [{ resourceId: "page", kind: "page", locator: pageId, label: "Fixture tab" }],
+  }), { workspaceId: workspace.workspaceId, pageId: taskPage.pageId });
+  const taskRun = await page.evaluate(({ taskId, pageId }) => window.aux.invoke("tasks.start", {
+    taskId, expectedRevision: 1, pageIds: [pageId],
+  }), { taskId: task.taskId, pageId: taskPage.pageId });
+  const taskChatId = `task:${task.taskId}`;
+  const taskQueued = await page.evaluate(({ runId, chatId, pageId }) => window.aux.invoke("runs.queue", {
+    messageId: "a8c3e55a-3190-42db-9898-47b018a59510", runId, chatId,
+    text: "Check the fixture citation too", pageIds: [pageId], contextPageRefs: [], expectedRevision: 0,
+  }), { runId: taskRun.runId, chatId: taskChatId, pageId: taskPage.pageId });
+  assert.equal(taskQueued.status, "accepted");
+  const streamDeadline = Date.now() + 20_000;
+  while (streams < 2 && Date.now() < streamDeadline) await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(streams, 2, "Both original turns must be in flight before restart");
   await app.close(); app = undefined;
 
   app = await launch(); page = await shell();
@@ -114,7 +135,21 @@ try {
   assert.equal(messages.find(message => message.mode === "steer")?.status, "delivered");
   assert.equal(turns.filter(run => run.runId === deliveredQueue.deliveryRunId).length, 1);
   assert.equal(turns.find(run => run.runId === deliveredQueue.deliveryRunId)?.goal, "Summarize what you found next");
-  console.log("Conversation correction is acknowledged, and the queued follow-up is delivered once after restart.");
+  let taskMessages = [];
+  const taskDeadline = Date.now() + 20_000;
+  while (Date.now() < taskDeadline) {
+    taskMessages = await page.evaluate(chatId => window.aux.invoke("runs.messages.list", { chatId }), taskChatId).catch(() => []);
+    if (taskMessages.some(message => message.messageId === taskQueued.messageId && ["delivered", "needs_attention"].includes(message.status))) break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  const deliveredTask = taskMessages.find(message => message.messageId === taskQueued.messageId);
+  assert.equal(deliveredTask?.status, "delivered", deliveredTask?.error);
+  const taskTurns = await page.evaluate(chatId => window.aux.invoke("runs.list", { chatId, limit: 10, includeArchived: true }), taskChatId);
+  assert.equal(taskTurns.filter(run => run.runId === taskQueued.deliveryRunId).length, 1);
+  assert.equal(taskTurns.find(run => run.runId === taskQueued.deliveryRunId)?.config?.taskId, task.taskId);
+  assert.equal(taskTurns.find(run => run.runId === taskQueued.deliveryRunId)?.config?.taskRevision, 1);
+  assert.deepEqual(taskTurns.find(run => run.runId === taskQueued.deliveryRunId)?.pageIds, [taskPage.pageId]);
+  console.log("Ordinary and saved-task queued follow-ups each delivered once after restart.");
 } catch (error) {
   const page = app ? await shellWindow(app).catch(() => null) : null;
   if (page) console.error((await page.locator("body").innerText().catch(() => "Shell unavailable")).slice(0, 3000));
