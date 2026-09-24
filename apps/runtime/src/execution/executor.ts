@@ -158,10 +158,13 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
 
   const runOne = async (step: Step): Promise<StepOutcome> => {
     const startedAt = Date.now();
+    let dispatched = false;
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
       await ctx.authorizeStep?.(step);
+      ctx.checkValid?.();
+      dispatched = true;
       const detail = await runStep(page, step, ctx);
       // verify post-conditions
       if (step.expect) {
@@ -171,6 +174,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
             throw new AuxError("condition_timeout", `expect ${cond.kind} failed: ${res.detail ?? ""}`);
         }
       }
+      ctx.checkValid?.();
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
       const mutating = isConsequential(step.op);
       const outcome: StepOutcome = {
@@ -220,6 +224,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       return outcome;
     } catch (e) {
       const code = e instanceof AuxError ? e.code : "step_failed";
+      const takenOver = dispatched && code === "conflict" && isConsequential(step.op);
       return {
         stepId: step.id,
         op: step.op,
@@ -227,6 +232,9 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         startedAt,
         durationMs: Date.now() - startedAt,
         error: { code, message: e instanceof Error ? e.message : String(e) },
+        ...(takenOver ? { effect: "uncertain" as const, receipt: {
+          remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true,
+        } } : {}),
       };
     }
   };

@@ -19,6 +19,7 @@ const dataDir = join(dir, 'data');
 mkdirSync(dataDir);
 writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({ effectGrants: ['effect:read', 'effect:write'] }));
 let frameClicks = 0;
+let delayedClicks = 0;
 const fixture = createServer((request, response) => {
   if (request.url === '/posted' && request.method === 'POST') {
     let body = '';
@@ -30,6 +31,12 @@ const fixture = createServer((request, response) => {
     return;
   }
   if (request.url === '/frame-click') { frameClicks++; response.writeHead(204).end(); return; }
+  if (request.url === '/delayed-click') { delayedClicks++; response.writeHead(204).end(); return; }
+  if (request.url === '/delayed-action') {
+    response.setHeader('Content-Type', 'text/html');
+    response.end('<title>Takeover during verification</title><button id="delayed-act" onclick="fetch(\'/delayed-click\');setTimeout(()=>document.querySelector(\'#done\').textContent=\'Done\',1200)">Act slowly</button><main id="done"></main>');
+    return;
+  }
   if (request.url === '/frame-child') {
     response.setHeader('Content-Type', 'text/html');
     response.end('<title>Cross-site child</title><button id="frame-act" onclick="this.textContent=\'Frame clicked\';fetch(\'/frame-click\')">Act inside frame</button>');
@@ -159,6 +166,17 @@ try {
   const otherTabAction = await rpc('pages.execute', { program: { pageId: second.pageId, steps: [{ id: 'other-tab-click', op: 'click', target: 'css:#act' }] } });
   assert.equal(otherTabAction.status, 'completed', JSON.stringify(otherTabAction));
   assert.equal((await rpc('pages.resume', { pageId: page.pageId })).controller, 'none');
+  const delayedPage = await rpc('pages.open', { url: `http://127.0.0.1:${fixture.address().port}/delayed-action`, activate: true });
+  const inFlight = rpc('pages.execute', { program: { pageId: delayedPage.pageId, steps: [
+    { id: 'click-then-verify', op: 'click', target: 'css:#delayed-act', expect: [{ kind: 'textVisible', text: 'Done' }] },
+  ] } }, 10_000);
+  for (let attempt = 0; attempt < 50 && !delayedClicks; attempt++) await delay(20);
+  assert.equal(delayedClicks, 1, 'agent input reached the site before human takeover');
+  assert.equal((await rpc('pages.takeover', { pageId: delayedPage.pageId })).controller, 'human');
+  const interruptedAction = await inFlight;
+  assert.equal(interruptedAction.status, 'failed', JSON.stringify(interruptedAction));
+  assert.equal(interruptedAction.steps[0]?.receipt?.dispatchedBeforeTakeover, true, JSON.stringify(interruptedAction));
+  assert.equal(interruptedAction.steps[0]?.effect, 'uncertain', JSON.stringify(interruptedAction));
   const download = await rpc('pages.execute', {
     program: { pageId: page.pageId, steps: [
       { id: 'wait-download', op: 'expectDownload' },
