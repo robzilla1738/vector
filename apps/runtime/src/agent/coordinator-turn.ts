@@ -55,6 +55,8 @@ export type TurnState = {
   imageDataUrls?: string[];
   modelId: string;
   outcomes: StepOutcome[];
+  /** Latest observation of each page this run actually read. */
+  observedPages: Map<string, Observation>;
   modelCalls: number;
   stepsRun: number;
   repairState: RepairState;
@@ -241,7 +243,8 @@ export async function tryFinalDecision(
     }
     const verifyObs = await s.self.deps.pages.observe(s.activePageId, { sinceRevision: obs.revision, format: "full" });
     if (hasNewSteer(s)) return "input";
-    const verified = verifyDoneAgainstObservation(d.result, verifyObs, s.outcomes);
+    s.observedPages.set(verifyObs.pageId, verifyObs);
+    const verified = verifyDoneAgainstObservation(d.result, observedEvidence(s, verifyObs), s.outcomes);
     if (!verified.ok) return "gave_up";
     s.self.finish(s.runId, "completed", d.result, undefined, d.message || "Done");
     return "done";
@@ -260,10 +263,13 @@ export async function observeActivePage(s: TurnState): Promise<Observation> {
     if (s.carriedObs && s.carriedObs.pageId === s.activePageId) {
       const obs = s.carriedObs;
       s.carriedObs = undefined;
+      s.observedPages.set(obs.pageId, obs);
       return obs;
     }
     s.carriedObs = undefined;
-    return await s.self.deps.pages.observe(s.activePageId!, obsReq);
+    const obs = await s.self.deps.pages.observe(s.activePageId!, obsReq);
+    s.observedPages.set(obs.pageId, obs);
+    return obs;
   } catch (e) {
     if (e instanceof AuxError && e.code === "target_detached") {
       const next = s.run.pageIds.find((p) => {
@@ -274,10 +280,20 @@ export async function observeActivePage(s: TurnState): Promise<Observation> {
       if (!next) throw e;
       s.activePageId = next;
       s.self.setStatus(s.runId, "planning", `Page detached — moved to ${next}`);
-      return await s.self.deps.pages.observe(next, obsReq);
+      const obs = await s.self.deps.pages.observe(next, obsReq);
+      s.observedPages.set(obs.pageId, obs);
+      return obs;
     }
     throw e;
   }
+}
+
+/** The fresh active page plus earlier pages observed within this run's scope. */
+function observedEvidence(s: TurnState, active: Observation): Observation[] {
+  return [active, ...s.run.pageIds.filter(pageId => pageId !== active.pageId).flatMap(pageId => {
+    const observed = s.observedPages.get(pageId);
+    return observed ? [observed] : [];
+  })];
 }
 
 export function observationSignature(obs: Observation): string {
@@ -614,15 +630,16 @@ export async function settleDonePlan(
   } catch {
     verifyObs = obs;
   }
-  const verified = verifyDoneAgainstObservation(plan.result, verifyObs, s.outcomes);
+  s.observedPages.set(verifyObs.pageId, verifyObs);
+  const verified = verifyDoneAgainstObservation(plan.result, observedEvidence(s, verifyObs), s.outcomes);
   if (hasNewSteer(s)) return "continue";
   if (!verified.ok && !s.doneChallenged) {
     s.doneChallenged = true;
-    s.lastError = `done was not verified against a fresh observation (${verified.reason}) — re-observe and only return done with values that appear on the page`;
+    s.lastError = `done was not verified against observed selected pages and recorded outcomes (${verified.reason}) — re-observe and only return done with supported values`;
     return "continue";
   }
   if (!verified.ok) {
-    s.self.finish(s.runId, "failed", plan.result, `done not verified: ${verified.reason}`, "Done was not grounded in the page");
+    s.self.finish(s.runId, "failed", plan.result, `done not verified: ${verified.reason}`, "Done was not grounded in observed sources");
     return "return";
   }
   s.self.finish(s.runId, "completed", plan.result, undefined, plan.message || "Done");

@@ -64,6 +64,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     model,
     modelId: run.config?.modelId ?? self.deps.defaultModel(),
     outcomes: [],
+    observedPages: new Map(),
     modelCalls: 0,
     stepsRun: 0,
     repairState: emptyRepairState(),

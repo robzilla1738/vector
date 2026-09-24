@@ -104,6 +104,36 @@ describe("lying model cannot complete a run", () => {
   });
 });
 
+it("verifies a comparison against both pages actually observed in the run", async () => {
+  const repo = new Repo(openDb(":memory:"));
+  const events = new EventBus(repo);
+  let plans = 0;
+  const model: ModelClient = {
+    generateStructured: async request => ({
+      object: request.schema.parse(++plans === 1
+        ? { status: "continue", pageId: "p2", message: "Read the second source", steps: [] }
+        : { status: "done", message: "Compared", result: { first: "Alpha evidence", second: "Beta evidence" } }),
+      durationMs: 1,
+    }),
+    generateText: async () => ({ text: "", durationMs: 0 }),
+    listModels: async () => [],
+  };
+  const coordinator = new RunCoordinator({
+    repo, events,
+    pages: {
+      observe: async (pageId: string) => ({ ...obs(pageId === "p1" ? "Alpha evidence" : "Beta evidence"), pageId }),
+      execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1", "p2"],
+      get: () => ({ viewStatus: "visible" }),
+    } as never,
+    model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
+  });
+  const run = await coordinator.start({ goal: "Compare both pages", pageIds: ["p1", "p2"] });
+  for (let i = 0; i < 200 && !["completed", "failed"].includes(repo.getRun(run.runId)!.status); i++) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  expect(repo.getRun(run.runId)).toMatchObject({ status: "completed", result: { first: "Alpha evidence", second: "Beta evidence" } });
+});
+
 describe("successful click repeats still dispatch", () => {
   it("clicks Increment three times when each plan is one click", async () => {
     const repo = new Repo(openDb(":memory:"));

@@ -117,14 +117,15 @@ function groundNumbers(text: string, outcomes: StepOutcome[]): Set<number> {
  */
 export function verifyDoneAgainstObservation(
   result: unknown,
-  obs: Observation,
+  obs: Observation | readonly Observation[],
   outcomes: StepOutcome[],
 ): { ok: boolean; reason: string } {
   const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op));
   const writesConfirmed = writeOutcomes.some(
     (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
   );
-  const text = `${observationGroundText(obs)} ${outcomeGroundText(outcomes)}`;
+  const observations = Array.isArray(obs) ? obs : [obs];
+  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)}`;
   const claims = collectClaims(result);
   const numbers = claims.some((c) => c.numeric) ? groundNumbers(text, outcomes) : new Set<number>();
   const ungrounded = claims.filter((c) =>
