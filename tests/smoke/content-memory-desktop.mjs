@@ -21,12 +21,15 @@ const server = createServer({ key: readFileSync(key), cert: readFileSync(cert) }
 await new Promise(resolve => server.listen(0, "localhost", resolve));
 const origin = `https://localhost:${server.address().port}`;
 const providerPrompts = [];
+let holdProvider = false;
+let heldProviderClosed = false;
 const provider = createHttpServer(async (request, response) => {
   if (request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   providerPrompts.push(JSON.stringify(body.messages));
+  if (holdProvider) { response.on("close", () => { heldProviderClosed = true; }); return; }
   const claim = "A protected article contains enough readable, ordinary editorial prose for Reader extraction.";
   const answer = JSON.stringify({ status: "done", message: "Found the saved article.", result: {
     answer: claim, report: `# Report\n${claim}\n[Source](${origin}/article)`,
@@ -138,7 +141,21 @@ try {
   await assert.rejects(capture(noStore), /not eligible|no-store/i);
   const sensitive = await open("/sensitive");
   await assert.rejects(capture(sensitive), /private fields|sensitive/i);
+  holdProvider = true;
+  const pending = await shell.evaluate(({ workspaceId, memoryId, pageId }) => window.aux.invoke("runs.start", {
+    goal: "Use this saved article while the provider is slow", pageIds: [pageId], defaultWorkspaceId: workspaceId,
+    chatId: "saved-article-pending-fixture", contextMemoryIds: [memoryId],
+  }), { workspaceId, memoryId: hits[0].memoryId, pageId: blank.pageId });
+  const requestDeadline = Date.now() + 20_000;
+  while (providerPrompts.length < 2 && Date.now() < requestDeadline) await new Promise(resolve => setTimeout(resolve, 50));
+  assert.ok(providerPrompts.length >= 2, "The protected article reached the pending provider request");
   await shell.evaluate(({ workspaceId, memoryId }) => window.aux.invoke("workspaces.contentMemory.forget", { workspaceId, memoryId }), { workspaceId, memoryId: hits[0].memoryId });
+  const cancelDeadline = Date.now() + 10_000;
+  while (!heldProviderClosed && Date.now() < cancelDeadline) await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(heldProviderClosed, true, "Forgetting the article aborted the in-flight provider request");
+  const cancelledPending = await shell.evaluate(runId => window.aux.invoke("runs.get", { runId }), pending.runId);
+  assert.equal(cancelledPending.run.status, "cancelled");
+  assert.equal(cancelledPending.run.result, undefined);
   await assert.rejects(shell.evaluate(({ workspaceId, memoryId, pageId }) => window.aux.invoke("runs.start", {
     goal: "Retry forgotten article", pageIds: [pageId], defaultWorkspaceId: workspaceId, chatId: "forgotten-article-fixture",
     contextMemoryIds: [memoryId],
