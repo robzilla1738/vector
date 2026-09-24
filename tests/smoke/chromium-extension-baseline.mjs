@@ -1,4 +1,4 @@
-// Reference-browser evidence, NOT proof that Aux/CEF implements these capabilities.
+// Chrome for Testing reference evidence, NOT proof that Aux/CEF implements these capabilities.
 // Uses the existing Playwright browser and a disposable profile; no native hosts.
 import {createRequire} from 'node:module';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
@@ -31,6 +31,6 @@ try{
   return {extensionApis,storage,injected:injection[0].result,cookie:cookie.value,tabClosed:!(await chrome.tabs.query({})).some(t=>t.id===tab.id),contextMenuLifecycle:true};
  },base);
  assert.equal(result.storage,'synthetic');assert.equal(result.injected,'Extension baseline');assert.equal(result.cookie,'fixture');assert.equal(result.tabClosed,true);
- const evidence={at:new Date().toISOString(),browser:context.browser().version(),scope:'Full Chromium reference only, not Aux/CEF qualification; no native hosts, accounts, passkeys or Web Store invoked.',...result};
+ const evidence={at:new Date().toISOString(),browser:context.browser().version(),scope:'Google Chrome for Testing reference only, not Aux/CEF qualification; no native hosts, accounts, passkeys or Web Store invoked.',...result};
  const output=join(root,'release/test-artifacts/aux-chromium-extension-baseline.json');mkdirSync(join(root,'release/test-artifacts'),{recursive:true});writeFileSync(output,JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
 }finally{await context?.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});}

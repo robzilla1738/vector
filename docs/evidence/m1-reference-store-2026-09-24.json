@@ -1,6 +1,6 @@
 {
   "at": "2026-09-24T15:37:22.257Z",
-  "scope": "Playwright-bundled Chromium 153.0.8010.12 reference only; NOT Aux candidate",
+  "scope": "Playwright-bundled Google Chrome for Testing 153.0.8010.12 reference only; NOT Aux candidate",
   "journey": "Web Store listing -> Add to Chrome -> native permission confirmation -> process restart -> Store page Remove from Chrome and extension toolbar icon",
   "extensionId": "ddkjiahejlhfcafbddmgiahcphecmpfh",
   "versions": [
