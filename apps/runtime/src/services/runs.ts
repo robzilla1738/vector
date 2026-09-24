@@ -316,6 +316,39 @@ export class RunService {
     return { chatId, sources: dedupeConversationSources(sources) };
   }
 
+  /** Withdraw saved answers and run-owned artifacts when any selected article is deleted. */
+  redactForgottenArticleOutputs(workspaceId: string): number {
+    const rows = this.deps.repo.db.prepare(`SELECT run_id AS runId FROM runs
+      WHERE json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId')=?
+      AND json_array_length(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextMemoryIds'))>0`)
+      .all(workspaceId) as { runId: string }[];
+    let redacted = 0;
+    for (const { runId } of rows) {
+      const current = this.deps.repo.getRun(runId);
+      const ids = current?.config?.contextMemoryIds;
+      if (!current || current.config?.contextMemoryRevoked || !ids?.length) continue;
+      const missing = ids.some(id => !this.deps.repo.db.prepare("SELECT 1 FROM content_memory WHERE workspace_id=? AND memory_id=?").get(workspaceId, id));
+      if (!missing) continue;
+      if (!TERMINAL_RUN_STATUSES.has(current.status)) this.cancel(runId, "A selected saved article was forgotten.");
+      const run = this.deps.repo.getRun(runId)!;
+      const paths = this.deps.repo.listArtifacts({ runId }).map(item => item.path);
+      this.deps.artifacts.removeFiles(paths);
+      this.deps.repo.transaction(() => {
+        for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans"])
+          this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
+        this.deps.repo.db.prepare("UPDATE response_metadata SET body_artifact_id=NULL WHERE run_id=?").run(runId);
+        this.deps.repo.saveRun({ ...run, status: "cancelled", statusMessage: "Saved article forgotten — generated answer removed",
+          result: undefined, error: "A selected saved article was forgotten.",
+          config: { ...run.config, contextMemoryRevoked: true } });
+      });
+      const updated = this.deps.repo.getRun(runId)!;
+      this.deps.events.emit(EventTypes.RunUpdated, { run: updated }, runId);
+      this.deps.events.emit("conversation.context.changed", { chatId: updated.config?.chatId ?? runId });
+      redacted++;
+    }
+    return redacted;
+  }
+
   conversationWorkspace(chatId: string) {
     const taskId = this.deps.repo.taskForConversation(chatId);
     const workspaceId = this.deps.repo.getSetting<unknown>(`conversationWorkspace:${chatId}`);

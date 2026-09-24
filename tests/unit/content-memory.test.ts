@@ -67,7 +67,7 @@ it("physically removes excluded and expired sources and rejects tampered ciphert
   await f.memory.saveEligible(input);
   f.advance(31 * 86_400_000);
   expect(await f.memory.search(f.workspace.workspaceId, "distinctive")).toEqual([]);
-  expect(f.memory.prune()).toBe(1);
+  expect(f.memory.prune()).toEqual({ removed: 1, workspaceIds: [f.workspace.workspaceId] });
 });
 
 it("ranks source-linked answers to natural questions without requiring every question word", async () => {

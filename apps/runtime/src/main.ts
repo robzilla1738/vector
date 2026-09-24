@@ -419,7 +419,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let closed = false;
   const browsingMemory = new BrowsingMemory(repo);
   const memoryExpiry = setInterval(() => { try { browsingMemory.prune(); } catch (error) { console.error("Browsing memory cleanup failed", error); } }, 60_000);
-  const contentExpiry = setInterval(() => { try { contentMemory?.prune(); } catch (error) { console.error("Page-content memory cleanup failed", error); } }, 60_000);
+  const pruneContent = () => { try {
+    for (const workspaceId of contentMemory?.prune().workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
+  } catch (error) { console.error("Page-content memory cleanup failed", error); } };
+  pruneContent();
+  const contentExpiry = setInterval(pruneContent, 60_000);
   memoryExpiry.unref();
   contentExpiry.unref();
   const shutdown = async () => {

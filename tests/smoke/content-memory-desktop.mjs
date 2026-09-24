@@ -27,7 +27,10 @@ const provider = createHttpServer(async (request, response) => {
   for await (const chunk of request) chunks.push(chunk);
   const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   providerPrompts.push(JSON.stringify(body.messages));
-  const answer = '{"status":"done","message":"Found the saved article.","result":{"answer":"A protected article contains enough readable, ordinary editorial prose for Reader extraction."}}';
+  const claim = "A protected article contains enough readable, ordinary editorial prose for Reader extraction.";
+  const answer = JSON.stringify({ status: "done", message: "Found the saved article.", result: {
+    answer: claim, report: `# Report\n${claim}\n[Source](${origin}/article)`,
+  } });
   if (!body.stream) {
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content: answer }, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 } }));
@@ -107,6 +110,8 @@ try {
   assert.deepEqual(stored.run.config.contextMemoryIds, [hits[0].memoryId]);
   assert.match(stored.run.result.answer, /ordinary editorial prose/);
   assert.ok(!JSON.stringify(stored.run.config).includes("ordinary editorial prose"));
+  const reports = await shell.evaluate(runId => window.aux.invoke("artifacts.list", { runId }), run.runId);
+  assert.ok(reports.some(item => item.path.endsWith("report.md")));
   const sources = await shell.evaluate(() => window.aux.invoke("conversations.sources.get", { chatId: "saved-article-fixture" }));
   assert.ok(sources.sources.some(source => source.kind === "memory" && source.memoryId === hits[0].memoryId));
   const other = (await shell.evaluate(() => window.aux.invoke("spaces.create", { name: "Other Space", color: "green" }))).find(item => item.name === "Other Space");
@@ -143,6 +148,11 @@ try {
   assert.equal(await shell.evaluate(({ workspaceId, memoryId }) => window.aux.invoke("workspaces.contentMemory.get", { workspaceId, memoryId }), { workspaceId, memoryId: hits[0].memoryId }), null);
   const revokedSources = await shell.evaluate(() => window.aux.invoke("conversations.sources.get", { chatId: "saved-article-fixture" }));
   assert.ok(!revokedSources.sources.some(source => source.kind === "memory"));
+  const redactedRun = await shell.evaluate(runId => window.aux.invoke("runs.get", { runId }), run.runId);
+  assert.equal(redactedRun.run.status, "cancelled");
+  assert.equal(redactedRun.run.result, undefined);
+  assert.equal(redactedRun.run.config.contextMemoryRevoked, true);
+  assert.equal((await shell.evaluate(runId => window.aux.invoke("artifacts.list", { runId }), run.runId)).length, 0);
   const oldTab = await open("/legacy-startup", false);
   assert.equal((await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)?.workspaceId), oldTab.pageId)), undefined);
   await closeAux(app); app = undefined;
@@ -151,7 +161,7 @@ try {
   await reopened.locator(".app").waitFor();
   await poll(reopened, async ({pageId,workspaceId}) => (await window.aux.tabsSnapshot()).tabs.find(tab => tab.pageId === pageId)?.workspaceId === workspaceId,
     {pageId:oldTab.pageId,workspaceId}, 30_000);
-  console.log("Native article capture, Space binding and restart migration, no-store and sensitive-page denial, search, and forget passed.");
+  console.log("Native article capture, Space binding, saved-text retrieval, grounded model answer/report, Forget redaction, and restart migration passed.");
 } finally {
   if (app) await closeAux(app);
   server.closeAllConnections();

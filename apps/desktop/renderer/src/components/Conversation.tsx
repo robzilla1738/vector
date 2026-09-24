@@ -106,6 +106,7 @@ function RunSources({ sources, profileNames, onOpen }: { sources: ConversationSo
     {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
       <span><b>{source.title}</b><small>{source.kind === "calendar"
         ? `Google Calendar · ${source.accountKey}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · ${source.start} · fetched ${new Date(source.observedAt).toLocaleString()}`
+        : source.kind === "memory" ? `Saved article · ${hostOf(source.url)} · ${profileNames[source.profileId] ?? "Unknown Profile"} · saved ${new Date(source.observedAt).toLocaleString()}`
         : `${hostOf(source.url)}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · observed ${new Date(source.observedAt).toLocaleString()}`}</small></span>{I.open}
     </button>)}
     <p>Sources record what Aux read; verify external outcomes in the source account.</p>
@@ -343,6 +344,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     }
     const distinct=new Map(matching.map(source=>[source.kind === "calendar"
       ? `calendar\0${source.connectionId}\0${source.url}`
+      : source.kind === "memory" ? `memory\0${source.memoryId}`
       : `browser\0${source.profileId??""}\0${source.pageId}\0${source.documentEpoch}\0${source.url}`,source]));
     if (distinct.size!==1) { toast("This link has multiple sources. Choose the exact account or tab from Sources."); return true; }
     void openSource([...distinct.values()][0]!,background);

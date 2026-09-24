@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, expect, it } from "vitest";
-import { createRuntimeBackup, EventBus, openDb, Repo, TaskService } from "@aux/runtime";
+import { ArtifactStore, createRuntimeBackup, EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 import { stageRuntimeRestore } from "../../apps/runtime/src/services/runtime-backup.js";
 import { applyPendingRuntimeRestore } from "../../apps/desktop/main/runtime-restore.js";
 
@@ -18,6 +18,7 @@ it("omits protected article content and grants from portable backups and strips 
   let open = true;
   cleanup.push(() => { if (open) db.close(); });
   const repo = new Repo(db);
+  const events = new EventBus(repo);
   const workspace = new TaskService(repo, new EventBus(repo)).createWorkspace("Research");
   const policyKey = `contentMemoryPolicy:${workspace.workspaceId}`;
   repo.setSetting(policyKey, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] });
@@ -25,13 +26,22 @@ it("omits protected article content and grants from portable backups and strips 
     (memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
     VALUES (?,?,?,?,?,?,?,?)`).run("memory-one", "profile-one", workspace.workspaceId, "source-one", "https://example.com", 1, 2, "v1:opaque-test");
   add(db);
+  repo.saveRun({ runId: "run-memory", goal: "Use saved article", status: "completed", pageIds: [], createdAt: 1,
+    config: { contextWorkspaceId: workspace.workspaceId, contextMemoryIds: ["memory-one"] },
+    result: { answer: "Derived private answer" } });
+  const report = new ArtifactStore(join(dir, "artifacts"), repo, events).save({ runId: "run-memory", label: "report.md",
+    mediaType: "text/markdown", buffer: Buffer.from("Derived private report") });
   const backup = await createRuntimeBackup(repo, dir);
   const backupPath = join(backup.path, "state.sqlite");
   const saved = new DatabaseSync(backupPath);
   expect(saved.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
   expect(saved.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
+  expect(saved.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
+  expect(saved.prepare("SELECT 1 FROM artifacts WHERE artifact_id=?").get(report.artifactId)).toBeUndefined();
+  expect(JSON.parse(readFileSync(join(backup.path, "manifest.json"), "utf8")).artifacts).toEqual([]);
   // Simulate a valid older portable backup that carried protected rows.
   add(saved);
+  saved.prepare("UPDATE runs SET result=?,status='completed' WHERE run_id='run-memory'").run(JSON.stringify({ answer: "Derived private answer" }));
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
   saved.close();
   const manifestPath = join(backup.path, "manifest.json");
@@ -45,6 +55,7 @@ it("omits protected article content and grants from portable backups and strips 
   try {
     expect(staged.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
     expect(staged.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
+    expect(staged.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
     expect(db.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 1 });
   } finally { staged.close(); }
   db.close(); open = false;
@@ -54,5 +65,6 @@ it("omits protected article content and grants from portable backups and strips 
   try {
     expect(recovery.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 0 });
     expect(recovery.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
+    expect(recovery.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
   } finally { recovery.close(); }
 });

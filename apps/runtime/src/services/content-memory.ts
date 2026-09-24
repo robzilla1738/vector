@@ -83,7 +83,8 @@ export class ContentMemoryStore {
       this.repo.setSetting(policyKey(workspaceId), next);
       this.repo.db.prepare(`UPDATE content_memory SET expires_at=min(expires_at,captured_at+?)
         WHERE profile_id=? AND workspace_id=?`).run(policy.retentionDays * DAY, this.profileId, workspaceId);
-      this.repo.db.prepare("DELETE FROM content_memory WHERE expires_at<=?").run(this.now());
+      this.repo.db.prepare("DELETE FROM content_memory WHERE profile_id=? AND workspace_id=? AND expires_at<=?")
+        .run(this.profileId, workspaceId, this.now());
       if (allowedOrigins.length) {
         const placeholders = allowedOrigins.map(() => "?").join(",");
         this.repo.db.prepare(`DELETE FROM content_memory WHERE profile_id=? AND workspace_id=? AND origin NOT IN (${placeholders})`)
@@ -257,9 +258,11 @@ export class ContentMemoryStore {
     return Number(result.changes);
   }
 
-  prune(): number {
-    const result = this.repo.db.prepare("DELETE FROM content_memory WHERE expires_at<=?").run(this.now());
+  prune(): { removed: number; workspaceIds: string[] } {
+    const workspaceIds = (this.repo.db.prepare("SELECT DISTINCT workspace_id AS workspaceId FROM content_memory WHERE profile_id=? AND expires_at<=?")
+      .all(this.profileId, this.now()) as { workspaceId: string }[]).map(row => row.workspaceId);
+    const result = this.repo.db.prepare("DELETE FROM content_memory WHERE profile_id=? AND expires_at<=?").run(this.profileId, this.now());
     if (result.changes) this.indexes.clear();
-    return Number(result.changes);
+    return { removed: Number(result.changes), workspaceIds };
   }
 }

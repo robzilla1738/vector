@@ -396,8 +396,11 @@ export function makeInvoker(s: Services) {
         if (!store) throw new AuxError("backend_unavailable", "Protected page-content memory requires the Aux desktop app.");
         if (method === "workspaces.contentMemory.policy") return store.policy(params.workspaceId);
         if (method === "workspaces.contentMemory.setPolicy") {
+          const prior = store.policy(params.workspaceId);
           const result = store.setPolicy(params.workspaceId, params.policy);
-          revokeArticleRuns(params.workspaceId);
+          if (!result.enabled || result.retentionDays < prior.retentionDays
+            || prior.allowedOrigins.some(origin => !result.allowedOrigins.includes(origin))) revokeArticleRuns(params.workspaceId);
+          s.runs.redactForgottenArticleOutputs(params.workspaceId);
           s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
           return result;
         }
@@ -411,6 +414,7 @@ export function makeInvoker(s: Services) {
         if (method === "workspaces.contentMemory.forget") {
           const forgotten = store.forget(params.workspaceId, params.memoryId);
           revokeArticleRuns(params.workspaceId, params.memoryId);
+          s.runs.redactForgottenArticleOutputs(params.workspaceId);
           s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
           return { forgotten };
         }
@@ -441,6 +445,7 @@ export function makeInvoker(s: Services) {
         if (client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
         const memory = tasks.setWorkspaceMemory(params.workspaceId, params.expectedRevision, params.content,params.enabled,params.items,params.excludedOrigins);
         revokeWorkspaceContext(params.workspaceId, false);
+        s.runs.redactForgottenArticleOutputs(params.workspaceId);
         return memory;
       }
       case "tasks.create":
