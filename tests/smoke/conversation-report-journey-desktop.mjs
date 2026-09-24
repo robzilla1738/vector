@@ -6,6 +6,7 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import { launchApp, shellWindow } from "./launch.mjs";
 import { sidebarAction } from "./sidebar-action.mjs";
+import { poll } from "./poll.mjs";
 
 const temporary = mkdtempSync(join(tmpdir(), "aux-report-journey-"));
 const documentPath = join(temporary, "brief.md");
@@ -136,8 +137,13 @@ try {
   assert.ok(secondRun.config.contextArtifactIds.includes(savedEdit.artifactId));
   await app.close();app=undefined;
   app=await launch();page=await shell();
-  await sidebarAction(page,"Chats");
-  await page.locator(".history-conversation").filter({hasText:firstGoal}).click();
+  await poll(page,async ids=>(await window.aux.invoke("pages.list",{})).filter(item=>ids.includes(item.pageId)&&!item.loading).length===3,selectedIds,30000);
+  await page.keyboard.press("Meta+l");
+  await page.locator(".cmdbar.compact input").fill("Gamma");
+  await page.locator(".cmdbar.compact .cb-opt.results").first().waitFor();
+  await page.locator(".cmdbar.compact .cb-opt.results").first().click();
+  await page.getByRole("region",{name:"Saved result preview"}).waitFor();
+  await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();
   await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md · v3",exact:true}).click();
   await page.getByRole("region",{name:"Saved result preview"}).getByText("Edited note.").waitFor();
   await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();

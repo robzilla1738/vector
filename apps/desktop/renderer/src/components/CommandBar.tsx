@@ -1,6 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { HistoryEntry, Run, SavedProgram } from "@aux/contracts";
+import type { ConversationSummary, HistoryEntry, Routine, Run, SavedProgram, SavedResult } from "@aux/contracts";
 import { toUrl } from "../chrome";
 import { detectIntent, intentLabel, type Intent } from "../intent";
 import { engineList, parseSuggestResponse, suggestEndpoint } from "../engines";
@@ -14,10 +14,11 @@ import { bridge } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+import { openSavedSkill } from "../task-navigation";
 
 interface Suggestion {
   id: string;
-  section: "intent" | "suggest" | "tabs" | "bookmarks" | "recent" | "programs" | "runs";
+  section: "intent" | "suggest" | "tabs" | "bookmarks" | "recent" | "programs" | "runs" | "results" | "skills" | "chats";
   icon: React.ReactNode;
   title: string;
   detail?: string;
@@ -67,6 +68,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const setEntryMode=(next:"search"|"ask")=>{setEntryModeState(next);if(!bridge.privateMode)try{localStorage.setItem("aux.home.entry-mode.v1",next);}catch{/* Mode remains available for this window. */}};
   const [scopeFlip, setScopeFlip] = useState(false);
   const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({ query: "", items: [] });
+  const [workResult, setWorkResult] = useState<{ query: string; results: SavedResult[]; skills: Routine[]; chats: ConversationSummary[] }>(
+    { query: "", results: [], skills: [], chats: [] });
   const inputRef = useRef<HTMLInputElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -167,6 +170,24 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     return () => { cancelled = true; };
   }, [raw, typedSomething, intent.kind]);
   const history = historyResult.query === raw ? historyResult.items : EMPTY_HISTORY;
+
+  // Saved work joins after immediate local matches. Old responses never paint
+  // a new query, and private browsing never queries the regular Profile.
+  useEffect(() => {
+    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || /^[\/@]/.test(raw)) return;
+    let live = true;
+    const timer = window.setTimeout(() => {
+      const update = (patch: Partial<Omit<typeof workResult, "query">>) => {
+        if (!live) return;
+        setWorkResult(current => ({ ...(current.query === raw ? current : { query: raw, results: [], skills: [], chats: [] }), ...patch }));
+      };
+      void call("results.search", { query: raw, limit: 3 }).then(results => update({ results })).catch(() => {});
+      void call("routines.list", { query: raw, limit: 3 }).then(skills => update({ skills })).catch(() => {});
+      void call("conversations.list", { query: raw, limit: 5, archived: false }).then(chats => update({ chats })).catch(() => {});
+    }, 100);
+    return () => { live = false; window.clearTimeout(timer); };
+  }, [raw, typedSomething]);
+  const savedWork = workResult.query === raw ? workResult : null;
 
   // Remote suggestions — opt-in preference, never in private mode, and never
   // for probable private/intranet addresses or keyword-engine input.
@@ -309,8 +330,19 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     for (const r of recentChats.filter(run => matchingChats.has(run.config?.chatId ?? run.runId)).slice(0, 3)) {
       out.push({ id: `run-${r.runId}`, section: "runs", icon: I.chats, title: r.goal, detail: isLive(r) ? "Open active conversation" : "Continue conversation", hint: "Open", run: () => useStore.getState().openConversation(r.runId) });
     }
+    for (const result of savedWork?.results ?? []) out.push({ id: `result-${result.artifactId}`, section: "results", icon: I.result,
+      title: result.filename, detail: result.conversationTitle, hint: "Open",
+      run: () => { useStore.getState().openConversationDraft(result.chatId); useStore.setState({ resultPreview: result.artifactId }); } });
+    for (const skill of savedWork?.skills ?? []) out.push({ id: `skill-${skill.routineId}`, section: "skills", icon: I.layersSm,
+      title: skill.title, detail: skill.objective, hint: "Open", run: () => openSavedSkill(skill) });
+    const listedChats = new Set(out.filter(item => item.section === "runs").map(item => item.id.slice(4)));
+    for (const chat of savedWork?.chats ?? []) {
+      if (listedChats.has(chat.latestRun.runId)) continue;
+      out.push({ id: `chat-${chat.chatId}`, section: "chats", icon: I.chats, title: chat.title,
+        detail: "Conversation", hint: "Open", run: () => useStore.getState().openConversation(chat.latestRun.runId) });
+    }
     return out;
-  }, [rankQuery, remoteResult, tabCandidates, bookmarkCandidates, closedCandidates, historyCandidates, programCandidates, runCandidates, recentChats, page, exec, activate, searchEngine]);
+  }, [rankQuery, remoteResult, tabCandidates, bookmarkCandidates, closedCandidates, historyCandidates, programCandidates, runCandidates, recentChats, savedWork, page, exec, activate, searchEngine]);
   const suggestions = useMemo(() => typedSomething ? [...intentRows, ...(rankQuery === raw.toLowerCase() ? rankedRows : [])] : [], [typedSomething, intentRows, rankedRows, rankQuery, raw]);
 
   // Selection is identity-stable: a re-ordered list keeps the same row
@@ -513,4 +545,7 @@ const SECTION: Record<Suggestion["section"], string> = {
   recent: "Recent",
   programs: "Saved programs",
   runs: "Conversations",
+  results: "Saved results",
+  skills: "Skills",
+  chats: "Conversations",
 };

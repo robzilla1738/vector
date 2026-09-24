@@ -165,4 +165,29 @@ describe("CommandBar keyboard contract", () => {
     await settle();
     expect(host.textContent).toContain("current suggestion");
   });
+
+  it("finds saved results from the address field and ignores an older work query", async () => {
+    let releaseOld: ((value: unknown) => void) | undefined;
+    vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
+      if (method === "results.search") {
+        const query = (params as { query: string }).query;
+        if (query === "old") return await new Promise<unknown>(resolve => { releaseOld = resolve; }) as never;
+        return [{ artifactId: "artifact-new", chatId: "chat-new", filename: "current-report.md", conversationTitle: "Research",
+          mediaType: "text/markdown", byteLength: 128, createdAt: Date.now(), runId: "run-new", turnGoal: "Research" }] as never;
+      }
+      return [] as never;
+    });
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "old"));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 130)));
+    await act(async () => type(input, "new"));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 130)));
+    expect(host.textContent).toContain("current-report.md");
+    await act(async () => releaseOld?.([{ artifactId: "artifact-old", filename: "stale-report.md" }]));
+    expect(host.textContent).not.toContain("stale-report.md");
+    await act(async () => host.querySelector<HTMLElement>(".cb-opt.results")!.click());
+    expect(useStore.getState().resultPreview).toBe("artifact-new");
+  });
 });
