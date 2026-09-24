@@ -48,6 +48,10 @@ try{
     const offlineCatalog=await shell.evaluate(()=>window.aux.tabsSnapshot());
     assert.equal(offlineCatalog.tabs.length,originalCatalog.tabs.length+1,'native tab creation must not wait for the runtime');
     assert.ok(offlineCatalog.tabs.some(tab=>tab.url===secondUrl),'native navigation must commit while the runtime is stopped');
+    await shell.keyboard.press('Control+Shift+Tab');
+    assert.equal((await shell.evaluate(()=>window.aux.tabsSnapshot())).windows[0].activePageId,originalCatalog.windows[0].activePageId,'the original tab must activate while the runtime is stopped');
+    await shell.keyboard.press('Control+Tab');
+    assert.equal((await shell.evaluate(()=>window.aux.tabsSnapshot())).windows[0].activePageId,offlineCatalog.windows[0].activePageId,'the new tab must reactivate while the runtime is stopped');
     assert.equal(childRuntimePid(mainPid),runtimePid,'the runtime must remain stopped during the browsing proof');
     assert.equal(await website.getByLabel('Unsaved draft').inputValue(),'Keep this live document through runtime recovery');
   }finally{
@@ -68,7 +72,7 @@ try{
   const afterWake=await shell.evaluate(()=>window.aux.invoke('workspace.get',{}));
   assert.deepEqual(afterWake.pages.map(page=>page.pageId),before.pages.map(page=>page.pageId),'wake health check must not duplicate or replace tabs');
   assert.equal(await website.getByLabel('Unsaved draft').inputValue(),'Keep this live document through runtime recovery');
-  console.log('Aux opens and navigates a native tab while its AI runtime is stopped, then reconnects after runtime loss and synthetic wake without replacing live tabs, changing selection, or losing an unsaved page draft.');
+  console.log('Aux opens, navigates, and switches native tabs while its AI runtime is stopped, then reconnects after runtime loss and synthetic wake without replacing live tabs, changing selection, or losing an unsaved page draft.');
 }finally{
   await app?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});
 }
