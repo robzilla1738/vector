@@ -223,6 +223,26 @@ it("records missed consequential schedules and coalesces missed monitors", async
   expect(monitorRun?.reason).toMatch(/Coalesced 2 missed/i);
 });
 
+it("records an overlapping occurrence and still starts other due Skills", async () => {
+  const started: string[] = [];
+  const f = fixture(async routine => { started.push(routine.title); return { runId: `run-${started.length}` }; });
+  const createMonitor = (title: string) => f.routines.create({
+    title, objective: `Check ${title}`, workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId, parameters: [], siteOrigins: [], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false,
+    trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 5 }, paused: false,
+  });
+  const blocked = createMonitor("Blocked");
+  const ready = createMonitor("Ready");
+  await f.routines.run({ routineId: blocked.routineId, expectedRevision: blocked.revision });
+  const now = Date.now();
+  const occurrences = await f.routines.due(now);
+  expect(occurrences.find(run => run.routineId === blocked.routineId)).toMatchObject({ status: "missed" });
+  expect(occurrences.find(run => run.routineId === ready.routineId)).toMatchObject({ status: "running" });
+  expect(started).toEqual(["Blocked", "Ready"]);
+  expect(await f.routines.due(now)).toEqual([]);
+});
+
 it("lists coalesced monitor alerts and compares runs without claiming a business outcome", async () => {
   const f = fixture();
   const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check", parameters: [] });

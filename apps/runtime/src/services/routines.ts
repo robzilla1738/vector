@@ -334,7 +334,7 @@ export class RoutineService {
         const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, scheduledFor);
         if (this.hasOccurrence(identity)) continue;
         if (Math.abs(now - scheduledFor) <= 90_000) {
-          created.push(await this.run({ routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} }, { occurrenceId: randomUUID(), identity, scheduledFor }));
+          created.push(await this.startOccurrence(routine, identity, scheduledFor));
         } else if (scheduledFor < now - 90_000) {
           created.push(this.recordMissed(routine, identity, "Missed scheduled run. Consequential work was not started automatically."));
         }
@@ -342,8 +342,8 @@ export class RoutineService {
         const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, Math.floor(now / (routine.trigger.intervalMinutes * 60_000)) * routine.trigger.intervalMinutes * 60_000);
         if (this.hasOccurrence(identity)) continue;
         const missed = this.recentMissedMonitors(routine.routineId);
-        const record = await this.run({ routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} }, { occurrenceId: randomUUID(), identity, scheduledFor: now });
-        if (missed > 0) {
+        const record = await this.startOccurrence(routine, identity, now);
+        if (missed > 0 && record.status !== "missed") {
           record.reason = `Coalesced ${missed + 1} missed read-only checks into one run.`;
           this.updateRun(record);
           this.events.emit("routine.updated", { routine, run: record });
@@ -352,6 +352,18 @@ export class RoutineService {
       }
     }
     return created;
+  }
+
+  private async startOccurrence(routine: Routine, identity: string, scheduledFor: number): Promise<RoutineRun> {
+    try {
+      return await this.run({ routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} },
+        { occurrenceId: randomUUID(), identity, scheduledFor });
+    } catch (error) {
+      if (!(error instanceof AuxError) || (error.code !== "conflict" && error.code !== "invalid_params")) throw error;
+      // A live or uncertain prior run, a changed task, or missing parameters
+      // cannot consume the next occurrence or stall unrelated Skills.
+      return this.recordMissed(routine, identity, `Skill occurrence skipped: ${error.message}`);
+    }
   }
 
   alerts(limit = 30): RoutineAlert[] {
