@@ -43,6 +43,12 @@ describe("verifyDoneAgainstObservation", () => {
     expect(v.ok).toBe(true);
   });
 
+  it("accepts a claim from the selected document excerpt actually included in the prompt", () => {
+    const claim = { answer: "Option B has offline support" };
+    expect(verifyDoneAgainstObservation(claim, obs(), []).ok).toBe(false);
+    expect(verifyDoneAgainstObservation(claim, obs(), [], "LOCAL DOCUMENT SNAPSHOT: Option B has offline support").ok).toBe(true);
+  });
+
   it("accepts a write only when observed or remoteConfirmed", () => {
     const click = {
       stepId: "c",
@@ -53,6 +59,7 @@ describe("verifyDoneAgainstObservation", () => {
     };
     const bare = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [click]);
     expect(bare).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
+    expect(verifyDoneAgainstObservation({ note: "visible page heading" }, obs(), [click])).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
     const observed = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [
       { ...click, receipt: { observed: "clicked", remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } },
     ]);
@@ -61,6 +68,10 @@ describe("verifyDoneAgainstObservation", () => {
       { ...click, receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false } },
     ]);
     expect(remote).toMatchObject({ ok: true, reason: "writes-confirmed" });
+    expect(verifyDoneAgainstObservation({ note: "visible page heading" }, obs(), [
+      { ...click, receipt: { observed: "first click", remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } },
+      { ...click, stepId: "other" },
+    ])).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
   });
 });
 
@@ -180,7 +191,8 @@ describe("successful click repeats still dispatch", () => {
               count += 1;
               clicks.push(s.id);
             }
-            const outcome = { stepId: s.id, op: s.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1 };
+            const outcome = { stepId: s.id, op: s.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1,
+              receipt: { observed: `Count ${count}`, remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } };
             ctx?.onStep?.(outcome, s);
             steps.push(outcome);
           }

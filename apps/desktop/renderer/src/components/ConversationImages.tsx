@@ -33,10 +33,10 @@ async function cropImage(dataUrl: string, region: Rect | null) {
 }
 
 /** Frozen page references stay separate from the agent's live browser view. */
-export function ConversationImages({ chatId, page, images, disabled, ensureChatId, onChange, onBusy, incomingFile, onFileConsumed }: {
+export function ConversationImages({ chatId, page, images, disabled, ensureChatId, onChange, onBusy, onDocument, incomingFile, onFileConsumed }: {
   chatId: string | null | undefined; page?: PageTarget; images: ConversationImage[]; disabled: boolean;
   incomingFile?: File | null; onFileConsumed?(file: File): void;
-  ensureChatId(): string; onChange(chatId: string, images: ConversationImage[]): void; onBusy(busy: boolean): void;
+  ensureChatId(): string; onChange(chatId: string, images: ConversationImage[]): void; onBusy(busy: boolean): void; onDocument(): void;
 }) {
   const [capture, setCapture] = useState<Capture | null>(null);
   const [region, setRegion] = useState<Rect | null>(null);
@@ -124,7 +124,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     : undefined;
   const showRest = images.length > 0 || !!error || busy || !!capture || !!preview;
   return <section className="conversation-captures" aria-label="Image references">
-    <div className="capture-triggers"><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture</button></div>
+    <div className="capture-triggers"><button className="btn sm" disabled={disabled || busy} onClick={onDocument}>Document</button><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture</button></div>
     {showRest && <div className="conversation-capture-rest">
     {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
     {error && <p className="field-error" role="alert">{error}</p>}

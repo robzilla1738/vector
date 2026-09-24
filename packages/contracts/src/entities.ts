@@ -123,6 +123,8 @@ export const RunSchema = z.object({
       contextRunIds: z.array(z.string()).optional(),
       /** exact user-selected local document snapshots used for this turn */
       contextAttachmentIds: z.array(z.string()).optional(),
+      /** Exact bounded document excerpt actually sent in this turn's prompt. */
+      contextDocumentEvidence: z.string().max(20_000).optional(),
       /** exact Aux-generated text artifacts used for this turn */
       contextArtifactIds: z.array(z.string()).optional(),
       /** Immutable image snapshots explicitly included in this run. */

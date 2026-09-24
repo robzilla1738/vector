@@ -2614,7 +2614,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
 .conversation-browser-sources svg { width: 13px; height: 13px; flex: none; }
 .conversation-browser-sources small { font-size: var(--fs-2xs); }
 .conversation-browser-sources button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--r-xs); flex: none; }
-.conversation-new.attachments-open .capture-triggers { display: flex; gap: var(--space-1-5); padding-bottom: var(--space-2); }
+.conversation.attachments-open .capture-triggers { display: flex; gap: var(--space-1-5); padding-bottom: var(--space-2); }
 
 /* Give AppKit a real, non-draggable hit surface while native chrome is raised.
    A fully transparent view can otherwise turn page gestures into window hits. */

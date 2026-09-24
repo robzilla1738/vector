@@ -244,7 +244,7 @@ export async function tryFinalDecision(
     const verifyObs = await s.self.deps.pages.observe(s.activePageId, { sinceRevision: obs.revision, format: "full" });
     if (hasNewSteer(s)) return "input";
     s.observedPages.set(verifyObs.pageId, verifyObs);
-    const verified = verifyDoneAgainstObservation(d.result, observedEvidence(s, verifyObs), s.outcomes);
+    const verified = verifyDoneAgainstObservation(d.result, observedEvidence(s, verifyObs), s.outcomes, s.run.config?.contextDocumentEvidence);
     if (!verified.ok) return "gave_up";
     s.self.finish(s.runId, "completed", d.result, undefined, d.message || "Done");
     return "done";
@@ -631,7 +631,7 @@ export async function settleDonePlan(
     verifyObs = obs;
   }
   s.observedPages.set(verifyObs.pageId, verifyObs);
-  const verified = verifyDoneAgainstObservation(plan.result, observedEvidence(s, verifyObs), s.outcomes);
+  const verified = verifyDoneAgainstObservation(plan.result, observedEvidence(s, verifyObs), s.outcomes, s.run.config?.contextDocumentEvidence);
   if (hasNewSteer(s)) return "continue";
   if (!verified.ok && !s.doneChallenged) {
     s.doneChallenged = true;

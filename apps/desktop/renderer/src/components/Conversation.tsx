@@ -489,8 +489,22 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     },
   };
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+  const attachDocument = async () => {
+    if (contextLocked || documentBusy.current || attachmentSaving) return;
+    documentBusy.current = true; setAttachmentSaving(true);
+    try {
+      const picked = await bridge.pickEvidenceDocument();
+      if (!picked) return;
+      if (activeChat.current !== id) return;
+      const target = ensureChatId();
+      activeChat.current = target;
+      const result = await call("conversations.attachments.add", { chatId: target, filename: picked.filename, content: picked.content });
+      if (activeChat.current === target) { setAttachments(result.attachments); setContextRefresh(value => value + 1); }
+    } catch (error) { errToast(error); }
+    finally { documentBusy.current = false; setAttachmentSaving(false); }
+  };
   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
-  const imageTray = <ConversationImages incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
+  const imageTray = <ConversationImages incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
   if (id === "history") return <ConversationHistory/>;
   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} onInsert={words => {
         const state = useStore.getState();
@@ -566,7 +580,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{answering && <button type="button" className={effectiveLiveMode === "answer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "answer"} onClick={() => setLiveSendMode("answer")}>Answer question</button>}<button type="button" className={effectiveLiveMode === "steer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "steer"} onClick={() => setLiveSendMode("steer")}>Steer now</button><button type="button" className={effectiveLiveMode === "queue" ? "selected" : ""} aria-pressed={effectiveLiveMode === "queue"} onClick={() => setLiveSendMode("queue")}>Queue next</button></div>}
       <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
       </>}
-      {!taskBound && !answering && <div className="new-chat-options">{newChat && <button className="new-chat-attach" aria-label="Add image or capture" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button>}<BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>}
+      {!taskBound && !answering && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>}
     </div></div>
     </div>{browserPreview}</div>
   </section>;

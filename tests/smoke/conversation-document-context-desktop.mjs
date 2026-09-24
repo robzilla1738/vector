@@ -58,12 +58,12 @@ try {
   app = await launch(); page = await shell();
   await sidebarAction(page, "Chats");
   await page.locator(".history-conversation").filter({ hasText: "Compare the travel options" }).click();
-  await page.getByRole("button", { name: "Context · 1", exact: true }).click();
+  await page.getByRole("button", { name: "Add context", exact: true }).click();
   await choose(documentPath);
-  await page.getByRole("button", { name: "Attach document", exact: true }).click();
-  await page.getByText("comparison-brief.md", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Context · 2", exact: true }).waitFor();
-  assert.equal(await page.getByText(/Option A costs less/).count(), 1);
+  await page.getByRole("button", { name: "Document", exact: true }).click();
+  const attached = page.locator('.composer-documents[aria-label="Attached documents"]');
+  await attached.getByRole("button", { name: "comparison-brief.md", exact: true }).click();
+  await page.getByText(/Option A costs less/).waitFor();
   await page.screenshot({ path: join(screenshots, "aux-conversation-document-context.png") });
   writeFileSync(documentPath, "The source changed after selection and must not replace the saved snapshot.");
   await app.close(); app = undefined;
@@ -71,7 +71,7 @@ try {
   app = await launch(); page = await shell();
   await sidebarAction(page, "Chats");
   await page.locator(".history-conversation").filter({ hasText: "Compare the travel options" }).click();
-  await page.getByRole("button", { name: "Context · 2", exact: true }).click();
+  await page.locator('.composer-documents[aria-label="Attached documents"]').getByRole("button", { name: "comparison-brief.md", exact: true }).click();
   await page.getByText(/Option A costs less/).waitFor();
   await page.getByRole("textbox", { name: "Reply to conversation" }).fill("Use the attached brief to make the choice.");
   // Start through the same runtime boundary without configuring a provider. The UI keeps
@@ -82,14 +82,14 @@ try {
   const next = runs[0];
   assert.equal(next.config.contextAttachmentIds.length, 1);
   assert.match(next.config.context, /Option A costs less/);
+  assert.match(next.config.contextDocumentEvidence, /Option A costs less/);
   assert.doesNotMatch(next.config.context, /source changed after selection/);
+  assert.doesNotMatch(next.config.contextDocumentEvidence, /source changed after selection/);
   assert.doesNotMatch(JSON.stringify(next), new RegExp(temporary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   const exposed = await page.evaluate(() => window.aux.invoke("conversations.attachments.get", { chatId: "document-chat" }));
   assert.equal("content" in exposed.attachments[0], false, "attachment API should expose only a bounded excerpt");
-  const contextButton = page.getByRole("button", { name: /^Context ·/ });
-  if ((await contextButton.getAttribute("aria-expanded")) !== "true") await contextButton.click();
   await page.getByRole("button", { name: "Remove comparison-brief.md", exact: true }).click();
-  await page.getByText("comparison-brief.md", { exact: true }).waitFor({ state: "detached" });
+  await page.locator('.composer-documents[aria-label="Attached documents"]').getByRole("button", { name: "comparison-brief.md", exact: true }).waitFor({ state: "detached" });
   assert.equal((await page.evaluate(() => window.aux.invoke("conversations.attachments.get", { chatId: "document-chat" }))).attachments.length, 0);
   console.log("Local document context survives restart, remains inspectable/removable, and stamps a bounded snapshot onto the next turn.");
 } finally {

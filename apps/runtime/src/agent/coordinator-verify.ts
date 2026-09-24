@@ -119,25 +119,23 @@ export function verifyDoneAgainstObservation(
   result: unknown,
   obs: Observation | readonly Observation[],
   outcomes: StepOutcome[],
+  documentEvidence?: string,
 ): { ok: boolean; reason: string } {
   const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op));
-  const writesConfirmed = writeOutcomes.some(
+  const writesConfirmed = writeOutcomes.every(
     (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
   );
   const observations = Array.isArray(obs) ? obs : [obs];
-  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)}`;
+  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""}`;
   const claims = collectClaims(result);
   const numbers = claims.some((c) => c.numeric) ? groundNumbers(text, outcomes) : new Set<number>();
   const ungrounded = claims.filter((c) =>
     c.numeric ? !numbers.has(toNumber(c.text)) && !text.includes(c.text.toLowerCase()) : c.text.length >= 8 && !text.includes(c.text.toLowerCase()),
   );
   if (ungrounded.length > 0) return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).map((c) => c.text).join(", ")}` };
+  if (writeOutcomes.length > 0 && !writesConfirmed) return { ok: false, reason: "write not observed or remoteConfirmed" };
   const checked = claims.filter((c) => c.numeric || c.text.length >= 8);
   if (checked.length > 0) return { ok: true, reason: "grounded" };
-  const shortGrounded = claims.some((c) => text.includes(c.text.toLowerCase()));
-  if (writeOutcomes.length > 0 && !writesConfirmed && claims.length > 0 && !shortGrounded) {
-    return { ok: false, reason: "write not observed or remoteConfirmed" };
-  }
   if (writeOutcomes.length > 0 && writesConfirmed) return { ok: true, reason: "writes-confirmed" };
   return { ok: true, reason: "grounded" };
 }

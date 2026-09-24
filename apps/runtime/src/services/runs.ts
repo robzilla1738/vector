@@ -112,8 +112,8 @@ class SetRunControl {
 export const CONTEXT_CHARS = 20_000;
 export const INSTRUCTION_CHARS = 8_000;
 
-/** Fit sections into `total` chars, lowest priority number first; the output keeps the given order. */
-export function budgetSections(sections: { text?: string; priority: number }[], total: number): string | undefined {
+/** Fit sections into `total` chars, lowest priority number first; retain section identity. */
+function budgetSectionParts(sections: { text?: string; priority: number }[], total: number): (string | undefined)[] {
   const kept = new Map<number, string>();
   let left = total;
   for (const { text, i } of sections.map((sec, i) => ({ ...sec, i })).filter((sec) => sec.text).sort((a, b) => a.priority - b.priority)) {
@@ -122,7 +122,11 @@ export function budgetSections(sections: { text?: string; priority: number }[], 
     kept.set(i, t);
     left -= t.length + 2;
   }
-  return sections.map((_, i) => kept.get(i)).filter(Boolean).join("\n\n") || undefined;
+  return sections.map((_, i) => kept.get(i));
+}
+
+export function budgetSections(sections: { text?: string; priority: number }[], total: number): string | undefined {
+  return budgetSectionParts(sections, total).filter(Boolean).join("\n\n") || undefined;
 }
 
 export class RunService {
@@ -631,6 +635,7 @@ export class RunService {
     instructions?: string;
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
+    contextDocumentEvidence?: string;
     contextArtifactIds?: string[];
     contextImageArtifactIds?: string[];
     contextPageRefs?: PageContextRef[];
@@ -667,7 +672,7 @@ export class RunService {
     const inherited = opts.chatId && !opts.contextSnapshot ? this.inheritedContext(opts.chatId) : undefined;
     const imageNotes = !opts.contextSnapshot && opts.chatId ? this.images.list(opts.chatId).images.filter(item=>item.included).map((item,index)=>`REFERENCE IMAGE ${index+1}: ${item.filename}; captured ${new Date(item.createdAt).toISOString()}${item.sourceUrl ? `; source ${item.sourceUrl}` : ""}. Historical reference, not a live page.`).join("\n") : undefined;
     // Truncate in reverse priority: the caller's explicit context survives, browsing history goes first.
-    const context = budgetSections([
+    const contextParts = budgetSectionParts([
       { text: imageNotes, priority: 1 },
       { text: inherited?.browsing, priority: 5 },
       { text: inherited?.turns, priority: 2 },
@@ -675,6 +680,8 @@ export class RunService {
       { text: inherited?.artifacts, priority: 4 },
       { text: opts.context, priority: 0 },
     ], CONTEXT_CHARS);
+    const context = contextParts.filter(Boolean).join("\n\n") || undefined;
+    const contextDocumentEvidence = opts.contextSnapshot ? opts.contextDocumentEvidence : contextParts[3];
     const instructions = budgetSections([
       { text: opts.instructions, priority: 0 },
       { text: inherited?.memory, priority: 1 },
@@ -728,6 +735,7 @@ export class RunService {
       instructions,
       contextRunIds,
       contextAttachmentIds,
+      contextDocumentEvidence,
       contextArtifactIds,
       contextImageArtifactIds,
       contextPageRefs: opts.contextPageRefs,
@@ -781,6 +789,7 @@ export class RunService {
       instructions: prior.config?.instructions,
       contextRunIds: prior.config?.contextRunIds,
       contextAttachmentIds: prior.config?.contextAttachmentIds,
+      contextDocumentEvidence: prior.config?.contextDocumentEvidence,
       contextArtifactIds: prior.config?.contextArtifactIds,
       contextImageArtifactIds: prior.config?.contextImageArtifactIds,
       contextWorkspaceId: prior.config?.contextWorkspaceId,
