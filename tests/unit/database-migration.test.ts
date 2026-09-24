@@ -20,6 +20,19 @@ afterEach(() => {
 });
 
 describe("schema versioning", () => {
+  it("scrubs legacy operation input samples when a Profile opens", () => {
+    const { path } = fixture();
+    const db = track(openDb(path));
+    db.prepare(`INSERT INTO operations(operation_id,site_key,name,created_at,updated_at) VALUES('op','app.test','read',1,1)`).run();
+    db.prepare(`INSERT INTO operation_implementations(impl_id,operation_id,kind,executable,stats,created_at,updated_at)
+      VALUES('impl','op','request','{}',?,1,1)`).run(JSON.stringify({ successInputs: ['{"private":"article answer"}'], successCount: 1 }));
+    db.close();
+    const reopened = track(openDb(path));
+    const row = reopened.prepare("SELECT stats FROM operation_implementations WHERE impl_id='impl'").get() as { stats: string };
+    expect(row.stats).not.toContain("article answer");
+    expect(JSON.parse(row.stats).successInputs).toEqual([expect.stringMatching(/^sha256:[a-f0-9]{64}$/)]);
+  });
+
   it("overwrites deleted plaintext cells before a checkpointed profile is persisted", () => {
     const { path } = fixture();
     const db = track(openDb(path));

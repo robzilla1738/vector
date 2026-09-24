@@ -216,6 +216,8 @@ describe("OperationService", () => {
     const impl = s.get("app.test", "echo").implementations.find((i) => i.implId === implId)!;
     expect(impl.state).toBe("validated");
     expect((impl.stats as { successInputs: string[] }).successInputs).toHaveLength(3);
+    expect((impl.stats as { successInputs: string[] }).successInputs.every(value => /^sha256:[a-f0-9]{64}$/.test(value))).toBe(true);
+    expect(JSON.stringify(impl.stats)).not.toContain('"a":');
   });
 
   it("invocation records carry the route reason", async () => {

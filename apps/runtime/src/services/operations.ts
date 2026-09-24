@@ -10,6 +10,7 @@ import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
 import { TaskService } from "./tasks.js";
+import { operationInputFingerprint } from "@aux/contracts/operation-input-stats";
 import { PROJECT_EFFECT_ACCESS } from "./project-effects.js";
 
 export interface OperationRow {
@@ -614,9 +615,9 @@ export class OperationService {
         const stats = { ...impl.stats } as Record<string, unknown>;
         let newState = impl.state;
         if (!failed && effectOutcome !== "unverified") {
-          const key = JSON.stringify(opts.inputs ?? {});
+          const key = operationInputFingerprint(JSON.stringify(opts.inputs ?? {}));
           const succ = new Set([...((stats.successInputs as string[]) ?? []), key]);
-          stats.successInputs = [...succ];
+          stats.successInputs = [...succ].slice(0, 3);
           stats.successCount = ((stats.successCount as number) ?? 0) + 1;
           stats.lastSuccessAt = Date.now();
           if (impl.state === "candidate" && succ.size >= 3) newState = "validated";

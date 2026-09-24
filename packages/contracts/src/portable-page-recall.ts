@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { sanitizeOperationInputSamples } from "./operation-input-stats.js";
 
 type RecallConfig = {
   chatId?: string;
@@ -50,6 +51,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
   const artifactIds = new Set<string>();
   db.exec("BEGIN");
   try {
+    sanitizeOperationInputSamples(db);
     if (has("runs")) {
       const rows = db.prepare("SELECT run_id AS runId, config FROM runs")
         .all() as { runId: string; config: string | null }[];

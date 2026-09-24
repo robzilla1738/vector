@@ -38,6 +38,9 @@ it("omits protected article content and grants from portable backups and strips 
     result: { answer: "Cited private answer" } });
   repo.db.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
     VALUES('protected-response','page','https://example.com/?answer=private','GET',1,'run-followup')`).run();
+  db.prepare(`INSERT INTO operations(operation_id,site_key,name,created_at,updated_at) VALUES('op','app.test','read',1,1)`).run();
+  db.prepare(`INSERT INTO operation_implementations(impl_id,operation_id,kind,executable,stats,created_at,updated_at)
+    VALUES('impl','op','request','{}',?,1,1)`).run(JSON.stringify({ successInputs: ['{"private":"article answer"}'] }));
   db.prepare(`INSERT INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,created_at,updated_at)
     VALUES('queued-memory','run-memory','run-memory','queued-delivery','queue','accepted','Continue',1,1)`).run();
   const backup = await createRuntimeBackup(repo, dir);
@@ -57,6 +60,8 @@ it("omits protected article content and grants from portable backups and strips 
   expect(JSON.parse((saved.prepare("SELECT config FROM runs WHERE run_id='run-memory'").get() as { config: string }).config).revokedArtifactIds)
     .toContain(report.artifactId);
   expect(saved.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
+  expect((saved.prepare("SELECT stats FROM operation_implementations WHERE impl_id='impl'").get() as { stats: string }).stats)
+    .not.toContain("article answer");
   expect(saved.prepare("SELECT status FROM run_messages WHERE message_id='queued-memory'").get()).toEqual({ status: "cancelled" });
   expect(JSON.parse(readFileSync(join(backup.path, "manifest.json"), "utf8")).artifacts).toEqual([]);
   // Simulate a valid older portable backup that carried protected rows.
@@ -73,6 +78,8 @@ it("omits protected article content and grants from portable backups and strips 
       JSON.stringify({ answer: "Late private answer" }), 4);
   saved.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
     VALUES('legacy-protected-response','page','https://example.com/?answer=private','GET',1,'run-followup')`).run();
+  saved.prepare("UPDATE operation_implementations SET stats=? WHERE impl_id='impl'")
+    .run(JSON.stringify({ successInputs: ['{"private":"article answer"}'] }));
   saved.prepare("UPDATE run_messages SET status='accepted' WHERE message_id='queued-memory'").run();
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
   saved.close();
@@ -93,6 +100,8 @@ it("omits protected article content and grants from portable backups and strips 
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-citation'").get()).toEqual({ result: null });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-late-citation'").get()).toEqual({ result: null });
     expect(staged.prepare("SELECT 1 FROM response_metadata WHERE request_id='legacy-protected-response'").get()).toBeUndefined();
+    expect((staged.prepare("SELECT stats FROM operation_implementations WHERE impl_id='impl'").get() as { stats: string }).stats)
+      .not.toContain("article answer");
     expect(staged.prepare("SELECT status FROM run_messages WHERE message_id='queued-memory'").get()).toEqual({ status: "cancelled" });
     expect(db.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 1 });
   } finally { staged.close(); }

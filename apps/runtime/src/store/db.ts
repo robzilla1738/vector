@@ -7,6 +7,7 @@ import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { sanitizeOperationInputSamples } from "@aux/contracts/operation-input-stats";
 
 /** Lookups by run/page that previously scanned their tables (schema v5). */
 const HOT_PATH_INDEXES = [
@@ -425,6 +426,7 @@ export function openDb(path: string): DatabaseSync {
       migrate(db, path, version);
     }
     db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;");
+    sanitizeOperationInputSamples(db);
     return db;
   } catch (error) {
     db.close();
