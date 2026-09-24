@@ -147,6 +147,14 @@ try {
   });
   assert.equal(action.status, 'completed', JSON.stringify(action));
   assert.match(JSON.stringify(action.observation), /Agent clicked and verified/);
+  assert.equal((await rpc('pages.takeover', { pageId: page.pageId })).controller, 'human');
+  await assert.rejects(
+    rpc('pages.execute', { program: { pageId: page.pageId, steps: [{ id: 'blocked-click', op: 'click', target: 'css:#act' }] } }),
+    /human control/i,
+  );
+  const otherTabAction = await rpc('pages.execute', { program: { pageId: second.pageId, steps: [{ id: 'other-tab-click', op: 'click', target: 'css:#act' }] } });
+  assert.equal(otherTabAction.status, 'completed', JSON.stringify(otherTabAction));
+  assert.equal((await rpc('pages.resume', { pageId: page.pageId })).controller, 'none');
   const download = await rpc('pages.execute', {
     program: { pageId: page.pageId, steps: [
       { id: 'wait-download', op: 'expectDownload' },
@@ -280,7 +288,7 @@ try {
   assert.equal(await privateControl('commit'), true);
   await privateExited;
   assert.equal(existsSync(privateReport.userData), false, 'private scratch profile is removed at clean exit');
-  console.log('Direct Aux launch: agent click, popup including POST, background tab, completed and interrupted downloads, cross-site frame action, isolated private process, raw port denial, and runtime reconnect pass.');
+  console.log('Direct Aux launch: agent click, per-tab takeover, popup including POST, background tab, completed and interrupted downloads, cross-site frame action, isolated private process, raw port denial, and runtime reconnect pass.');
 } finally {
   if (privateApp?.exitCode === null) privateApp.kill('SIGTERM');
   if (app.exitCode === null) {
