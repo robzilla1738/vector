@@ -1,8 +1,8 @@
 import { useWindowDrag } from "../use-window-drag";
-import { memo, useLayoutEffect, useState } from "react";
+import { memo, useLayoutEffect, useRef, useState } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inElectron } from "../bridge";
-import { useStore, errToast } from "../store";
+import { useStore, call, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
@@ -19,6 +19,14 @@ export const Toolbar = memo(function Toolbar() {
   const setSidebar = useStore((s) => s.setSidebar);
   const bookmarks = useStore((s) => s.bookmarks);
   const returnControl = useStore((s) => s.returnControl);
+  const takingControl = useRef(false);
+  const takeControl = async (pageId: string) => {
+    if (takingControl.current) return;
+    takingControl.current = true;
+    try { await call("pages.takeover", { pageId }); }
+    catch (error) { errToast(error); }
+    finally { takingControl.current = false; }
+  };
   const web = !!page && page.url.startsWith("http");
   const bookmarked = web && bookmarks.some((b) => b.url === page.url);
 
@@ -50,10 +58,11 @@ export const Toolbar = memo(function Toolbar() {
           </button>
         )}
         {page && (page.controller === "agent" || page.controller === "external") && (
-          <span className="ctl-chip agent" title="The agent is driving this page — click or type to take over">
+          <button type="button" className="ctl-chip agent" title="Take control of this page" aria-label="Take control of this page" onClick={() => void takeControl(page.pageId)}>
             {I.agentSm}
             <span className="ctl-chip-label">Agent</span>
-          </span>
+            <span className="ctl-take">Take over</span>
+          </button>
         )}
         <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
         {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} onClick={toggleBookmark}>

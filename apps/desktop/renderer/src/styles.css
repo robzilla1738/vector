@@ -189,6 +189,8 @@ kbd {
 .toolbar .ctl-chip { -webkit-app-region: no-drag; }
 .ctl-chip { display: inline-flex; align-items: center; gap: var(--space-1); height: var(--chip-h); padding: 0 var(--space-2) 0 var(--space-2); border-radius: var(--r-md); font-size: var(--fs-xs); font-weight: var(--fw-medium); flex: none; white-space: nowrap; }
 .ctl-chip.agent { color: var(--agent); background: var(--agent-soft); box-shadow: inset 0 0 0 1px var(--agent-line); }
+.ctl-chip.agent:hover { filter: brightness(1.08); }
+.ctl-take { margin-left: var(--space-0); padding: 1px var(--space-2); border-radius: var(--r-md); background: var(--agent); color: var(--bg-0); font-size: var(--fs-2xs); }
 .ctl-chip.human { color: var(--wait); background: var(--wait-soft); box-shadow: inset 0 0 0 1px var(--wait-line); transition: filter var(--t-fast) var(--ease-out); }
 .ctl-chip.human:hover { filter: brightness(1.08); }
 .ctl-return { margin-left: var(--space-0); padding: 1px var(--space-2); border-radius: var(--r-md); background: var(--wait); color: var(--wait-ink); font-size: var(--fs-2xs); }
