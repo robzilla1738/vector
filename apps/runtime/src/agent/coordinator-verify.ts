@@ -75,7 +75,7 @@ function outcomeGroundText(outcomes: StepOutcome[]): string {
     .toLowerCase();
 }
 
-type Claim = { text: string; numeric: boolean };
+type Claim = { text: string; numeric: boolean; strict?: boolean; invalid?: boolean };
 
 const NUMERIC_CLAIM = /^[-+]?[$€£¥]?\s?\d[\d,]*(?:\.\d+)?\s?%?$/;
 
@@ -93,6 +93,24 @@ function collectClaims(result: unknown): Claim[] {
   };
   walk(result);
   return out;
+}
+
+/** Keep report formatting out of evidence matching while checking every factual line. */
+function reportClaims(report: string, allowedSourceText: string): Claim[] {
+  const claims: Claim[] = [];
+  for (const line of report.split(/\r?\n/)) {
+    for (const match of line.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
+      const url = match[1]?.trim();
+      if (url && (!/^https?:\/\//i.test(url) || !allowedSourceText.includes(url.toLowerCase()))) claims.push({text:url,numeric:false,strict:true,invalid:true});
+    }
+    const content = line
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, (_link, label: string) => /^(?:source|citation|link|\d+)$/i.test(label.trim()) ? "" : label)
+      .replace(/^\s*(?:#{1,6}\s*|[-*+]\s*|\d+\.\s*)/, "")
+      .replace(/[*_`~]/g, "").trim().replace(/[.!?]+$/, "");
+    if (!content || /^(?:report|summary|sources|references)$/i.test(content)) continue;
+    claims.push({text:content,numeric:NUMERIC_CLAIM.test(content),strict:true});
+  }
+  return claims;
 }
 
 const toNumber = (s: string) => Number(s.replace(/[,$€£¥%\s+]/g, ""));
@@ -127,10 +145,14 @@ export function verifyDoneAgainstObservation(
   );
   const observations = Array.isArray(obs) ? obs : [obs];
   const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""}`;
-  const claims = collectClaims(result);
+  const report = result && typeof result === "object" && !Array.isArray(result) && typeof (result as Record<string, unknown>).report === "string"
+    ? (result as Record<string, string>).report : undefined;
+  const claims = report
+    ? [...collectClaims(Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text)]
+    : collectClaims(result);
   const numbers = claims.some((c) => c.numeric) ? groundNumbers(text, outcomes) : new Set<number>();
   const ungrounded = claims.filter((c) =>
-    c.numeric ? !numbers.has(toNumber(c.text)) && !text.includes(c.text.toLowerCase()) : c.text.length >= 8 && !text.includes(c.text.toLowerCase()),
+    c.invalid || (c.numeric ? !numbers.has(toNumber(c.text)) && !text.includes(c.text.toLowerCase()) : (c.strict || c.text.length >= 8) && !text.includes(c.text.toLowerCase())),
   );
   if (ungrounded.length > 0) return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).map((c) => c.text).join(", ")}` };
   if (writeOutcomes.length > 0 && !writesConfirmed) return { ok: false, reason: "write not observed or remoteConfirmed" };

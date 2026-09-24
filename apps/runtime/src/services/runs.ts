@@ -476,6 +476,18 @@ export class RunService {
           mediaType: "application/json",
           buffer: Buffer.from(JSON.stringify(obs)),
         }).artifactId,
+      saveCompletedReport: (run, markdown) => {
+        const buffer = Buffer.from(markdown, "utf8");
+        if (buffer.length > 256 * 1024 || markdown.includes("\0")) {
+          throw new AuxError("invalid_params", "The generated report exceeds the saved text result limit.");
+        }
+        this.deps.artifacts.save({
+          runId: run.runId,
+          label: "report.md",
+          mediaType: "text/markdown",
+          buffer,
+        });
+      },
       tracer: deps.tracer,
       grants: () => deps.settings.effectGrantsForRun(),
       durableWrites,

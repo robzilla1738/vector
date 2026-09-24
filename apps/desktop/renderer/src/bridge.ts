@@ -204,6 +204,7 @@ export interface AuxBridge {
 const noop = () => () => {};
 const stub: AuxBridge = {
   browserProfiles:async()=>[],
+  openBrowserProfileUrl:async()=>false,
   defaultBrowser:async()=>({isDefault:false}),
   autofill:async()=>0,
   vaultFill:async()=>false,

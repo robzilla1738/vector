@@ -13,7 +13,7 @@ import { conversationPage } from "../conversation-page";
 import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-sources";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge } from "../bridge";
@@ -151,6 +151,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [exporting, setExporting] = useState(false);
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
+  const [generated, setGenerated] = useState<ConversationArtifact[]>([]);
   const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
   const [sourceProfileNames, setSourceProfileNames] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -224,6 +225,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [reopening, setReopening] = useState(false);
   const turns = useMemo(() => runs.filter(r => (r.config?.chatId ?? r.runId) === id).sort((a,b) => a.createdAt - b.createdAt), [runs, id]);
   const last = turns.at(-1);
+  useEffect(() => {
+    setGenerated([]);
+    if (!id || id === "history") return;
+    let active = true;
+    void call("conversations.artifacts.get", {chatId:id}).then(value => { if(active) setGenerated(value.artifacts); }).catch(() => {});
+    return () => { active = false; };
+  }, [id, last?.status, last?.runId]);
   const answering = last?.status === "needs_input";
   const answerRunId = answering ? last?.runId : undefined, answerQuestion = last?.statusMessage;
   const [sendingChat, setSendingChat] = useState<string | null>(null);
@@ -561,6 +569,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {id && imagePreview && images.some(image => image.imageId === imagePreview) && <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} onClose={() => setImagePreview(null)} />}
       {id && documentPreview && <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)} />}
       {attachments.length > 0 && <div className="composer-documents" aria-label="Attached documents">{attachments.map(item => <div key={item.attachmentId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setImagePreview(null); setDocumentPreview(item.attachmentId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button></div>)}</div>}
+      {generated.length > 0 && <div className="composer-documents" aria-label="Generated reports and results">{generated.map(item => <div key={item.artifactId} className={item.included ? "" : "excluded"}><button title={`${item.filename} · ${item.turnGoal}`} onClick={() => { setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); }}>{I.result}<span>{item.filename}</span></button><label title="Include this saved result in the next turn"><input type="checkbox" aria-label={`Use ${item.filename} in next reply`} checked={item.included} disabled={contextLocked || archived} onChange={event => { void call("conversations.artifacts.toggle",{chatId:id!,artifactId:item.artifactId,included:event.target.checked}).then(value=>setGenerated(value.artifacts)).catch(errToast); }}/></label></div>)}</div>}
       {images.length > 0 && <div className="composer-documents" aria-label="Attached images">{images.map(item => <div key={item.imageId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setDocumentPreview(null); setImagePreview(item.imageId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void removeImage(item.imageId)}>{I.close}</button></div>)}</div>}
       {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
       {imageTray}
