@@ -1,9 +1,10 @@
 # Task-success benchmark
 
-`pnpm bench:tasks` measures whether an agent finishes a task, how long it
-takes, and what it costs in model calls and tokens. It is the number that
-matters for "best agentic browser"; `pnpm bench` measures the browser layer
-only.
+`pnpm bench:tasks` measures whether an agent finishes fixture tasks, how long
+it takes, and what it costs in model calls and tokens. This local suite is a
+regression harness. It does not establish real-site reliability or product
+superiority; the roadmap requires held-out sites, signed builds, and daily-use
+evidence for those claims.
 
 ```bash
 pnpm bench:tasks --validate                       # offline self-check (no API key); runs in CI
@@ -16,9 +17,11 @@ Needs `AI_GATEWAY_API_KEY` in `.env`. Reports: `tests/benchmarks/reports/tasks-*
 
 ## Suites
 
-- `local` — `manifest.json`, 8 tasks against the deterministic fixture sites
-  (started automatically, state reset before each adapter). Gold answers
-  follow from the seed in `fixtures/records-app/serve.ts`.
+- `local` — `manifest.json`, 15 tasks across records, forms, and an embedded
+  frame. Fixtures start automatically and mutable state resets before every
+  attempt. Write and download tasks require both the answer and an independent
+  server-side outcome check. Duplicate effects fail. The truth endpoint is not
+  linked from the site UI, but these deterministic tasks are not held out.
 - `assistantbench` — the 33-task AssistantBench validation split (live web,
   downloaded on first use through the Hugging Face datasets server).
 
@@ -31,10 +34,15 @@ Needs `AI_GATEWAY_API_KEY` in `.env`. Reports: `tests/benchmarks/reports/tasks-*
   its tool surface (the methodology Lightpanda used for its published
   comparison). Adapters whose binary is not on PATH report "not measured".
 
-Scoring is strict: normalized exact match for text, ±1 % for numbers, set
-equality for lists, key-wise match for objects. No LLM judge.
+Answer scoring is normalized exact match for text, ±1 % for numbers, set
+equality for lists, and key-wise match for objects. Write/download tasks also
+check fixture state. No LLM judge. `--validate` checks the scorer, oracle
+semantics, manifest minimum, and fixture reachability without an API key.
 
-## Baseline (2026-09-15, `alibaba/qwen3.8-27b` on Cerebras, local suite)
+## Historical baseline (2026-09-15, old 8-task suite)
+
+These results predate the 15-task corpus and independent effect oracles. They
+are retained for history and cannot be compared directly with a new run.
 
 | Adapter | Pass | p50 wall | Model calls (mean) | Tokens (mean) |
 |---|---:|---:|---:|---:|

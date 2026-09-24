@@ -37,7 +37,7 @@ function saveWrites(n: number) {
 
 const FORM_PAGE = page(
   "Intake form — fixture",
-  `<header><h1>Intake form</h1><a href="/">Form</a><a href="/api/state">State JSON</a><span class="muted" style="margin-left:auto">fixture :4811</span></header>
+  `<header><h1>Intake form</h1><a href="/">Form</a><span class="muted" style="margin-left:auto">fixture :4811</span></header>
 <main>
   <form class="card" method="post" action="/submit" enctype="multipart/form-data" id="intake">
     <label for="name">Full name</label>

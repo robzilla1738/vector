@@ -10,7 +10,7 @@ const state = { canvasDrags: [] as { from: [number, number]; to: [number, number
 
 const HOME = page(
   "Interaction lab — fixture",
-  `<header><h1>Interaction lab</h1><a href="/">Home</a><a href="/api/state">State JSON</a><span class="muted" style="margin-left:auto">fixture :4812</span></header>
+  `<header><h1>Interaction lab</h1><a href="/">Home</a><span class="muted" style="margin-left:auto">fixture :4812</span></header>
 <main>
   <div class="card"><h2>Iframe</h2>
     <iframe src="/frame-inner" style="width:100%;height:180px;border:1px solid #d9dde3;border-radius:6px"></iframe>

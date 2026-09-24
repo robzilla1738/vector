@@ -1,5 +1,5 @@
 {
-  "$comment": "Local task-success suite against the deterministic fixture sites (pnpm fixtures). Gold answers follow from the seed in fixtures/records-app/serve.ts: owner = OWNERS[i % 5], status = STATUSES[i % 5], title suffix = [Alpha,Bravo,Charlie,Delta,Echo][i % 5], attachments at i % 3 == 0 (notes) and i % 5 == 0 (csv). Scoring is strict: normalized exact match, numbers within 1 %.",
+  "$comment": "Deterministic local harness corpus. Answers come from fixture seeds; effects are checked against server state after each run. This is a regression baseline, not a held-out real-site reliability claim.",
   "suite": "local",
   "tasks": [
     {
@@ -9,7 +9,9 @@
       "expected": {
         "type": "text",
         "value": "Jordan Lee"
-      }
+      },
+      "family": "records",
+      "multiStep": false
     },
     {
       "id": "L02-status",
@@ -18,7 +20,9 @@
       "expected": {
         "type": "text",
         "value": "in review"
-      }
+      },
+      "family": "records",
+      "multiStep": false
     },
     {
       "id": "L03-count-approved",
@@ -27,7 +31,9 @@
       "expected": {
         "type": "number",
         "value": 6
-      }
+      },
+      "family": "records",
+      "multiStep": true
     },
     {
       "id": "L04-title",
@@ -36,7 +42,9 @@
       "expected": {
         "type": "text",
         "value": "Record 15 — Alpha project"
-      }
+      },
+      "family": "records",
+      "multiStep": false
     },
     {
       "id": "L05-attachment",
@@ -45,7 +53,9 @@
       "expected": {
         "type": "text",
         "value": "rec-09-notes.txt"
-      }
+      },
+      "family": "records",
+      "multiStep": false
     },
     {
       "id": "L07-owner-count",
@@ -54,7 +64,9 @@
       "expected": {
         "type": "number",
         "value": 6
-      }
+      },
+      "family": "records",
+      "multiStep": false
     },
     {
       "id": "L08-csv-metric",
@@ -63,7 +75,9 @@
       "expected": {
         "type": "number",
         "value": 70
-      }
+      },
+      "family": "records",
+      "multiStep": true
     },
     {
       "id": "L06-edit-status",
@@ -73,11 +87,159 @@
         "type": "text",
         "value": "approved"
       },
-      "write": true
+      "write": true,
+      "family": "records",
+      "multiStep": true,
+      "oracle": {
+        "kind": "record-edit",
+        "id": "rec-04",
+        "fields": {
+          "status": "approved"
+        }
+      }
+    },
+    {
+      "id": "L09-two-csv-metrics",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Download the CSV attachments for rec-05 and rec-10. Add their metric values and answer with the sum only.",
+      "expected": {
+        "type": "number",
+        "value": 155
+      },
+      "family": "records",
+      "multiStep": true,
+      "oracle": {
+        "kind": "downloads",
+        "files": [
+          {
+            "id": "rec-05",
+            "name": "rec-05-data.csv"
+          },
+          {
+            "id": "rec-10",
+            "name": "rec-10-data.csv"
+          }
+        ]
+      }
+    },
+    {
+      "id": "L10-modal-reference",
+      "url": "http://127.0.0.1:4810/records/rec-17",
+      "goal": "Open the Details dialog for this record and report its internal reference only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-17"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L11-submit-intake",
+      "url": "http://127.0.0.1:4811/",
+      "goal": "Submit an intake form for Avery Stone (avery@example.com), role Engineer, city Springfield. After submission, answer Submitted.",
+      "expected": {
+        "type": "text",
+        "value": "Submitted"
+      },
+      "family": "forms",
+      "multiStep": true,
+      "write": true,
+      "oracle": {
+        "kind": "form-submission",
+        "fields": {
+          "name": "Avery Stone",
+          "email": "avery@example.com",
+          "role": "Engineer",
+          "city": "Springfield"
+        }
+      }
+    },
+    {
+      "id": "L12-submit-rich-intake",
+      "url": "http://127.0.0.1:4811/",
+      "goal": "Submit an intake form for Morgan Vale (morgan@example.com), role Designer, department Virtual Design, email preference, Pro plan, bio \"Design systems for teams\", and start date 2026-10-15. After submission, answer Submitted.",
+      "expected": {
+        "type": "text",
+        "value": "Submitted"
+      },
+      "family": "forms",
+      "multiStep": true,
+      "write": true,
+      "oracle": {
+        "kind": "form-submission",
+        "fields": {
+          "name": "Morgan Vale",
+          "email": "morgan@example.com",
+          "role": "Designer",
+          "dept": "Virtual Design",
+          "pref": "email",
+          "plan": "pro",
+          "bio": "Design systems for teams",
+          "start": "2026-10-15"
+        }
+      }
+    },
+    {
+      "id": "L13-edit-owner-status",
+      "url": "http://127.0.0.1:4810/records/rec-14",
+      "goal": "Change this record owner to Alex Rivera and status to in progress, save, then answer with the saved status only.",
+      "expected": {
+        "type": "text",
+        "value": "in progress"
+      },
+      "family": "records",
+      "multiStep": true,
+      "write": true,
+      "oracle": {
+        "kind": "record-edit",
+        "id": "rec-14",
+        "fields": {
+          "owner": "Alex Rivera",
+          "status": "in progress"
+        }
+      }
+    },
+    {
+      "id": "L14-create-record",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Create one record titled \"Aux launch review\", owned by Priya Patel, with status in review. Report its new record ID only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-31"
+      },
+      "family": "records",
+      "multiStep": true,
+      "write": true,
+      "oracle": {
+        "kind": "record-create",
+        "id": "rec-31",
+        "fields": {
+          "title": "Aux launch review",
+          "owner": "Priya Patel",
+          "status": "in review"
+        }
+      }
+    },
+    {
+      "id": "L15-embedded-frame",
+      "url": "http://127.0.0.1:4812/",
+      "goal": "Read the text in the embedded iframe under Iframe and answer with that sentence only.",
+      "expected": {
+        "type": "text",
+        "value": "This text lives inside an iframe."
+      },
+      "family": "interaction",
+      "multiStep": false
     }
   ],
-  "reset": {
-    "method": "POST",
-    "url": "http://127.0.0.1:4810/api/reset"
-  }
+  "reset": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:4810/api/reset"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:4811/api/reset"
+    }
+  ]
 }

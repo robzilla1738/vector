@@ -67,7 +67,7 @@ const pill = (s: string) => `<span class="pill ${s.replace(" ", "")}">${esc(s)}<
 function header(active = "records") {
   return `<header><h1>Records</h1><a href="/records"${active === "records" ? ' style="font-weight:700"' : ""}>All records</a>
   <a href="/new">New record</a><a href="/popup-info" onclick="window.open('/popup-info','info','width=420,height=300');return false">Pop-up info</a>
-  <a href="/api/state">State JSON</a><span class="muted" style="margin-left:auto">fixture :4810</span></header>`;
+  <span class="muted" style="margin-left:auto">fixture :4810</span></header>`;
 }
 
 function listPage(url: URL) {

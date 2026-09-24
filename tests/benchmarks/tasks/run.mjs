@@ -16,9 +16,9 @@
  *                  model — so a row differs from another only by the
  *                  browser and its tool surface (Lightpanda's methodology)
  *
- * Scoring is strict: normalized exact match for text, ±1 % for numbers,
- * set equality for lists, key-wise strict match for objects. A task whose
- * run ends without an answer scores 0.
+ * Scoring combines the answer with an independent fixture-state oracle for
+ * tasks that change or download data. A correct claim without the effect
+ * scores 0, as does a duplicate effect.
  *
  *   node tests/benchmarks/tasks/run.mjs --suite local --adapter aux
  *   node tests/benchmarks/tasks/run.mjs --suite assistantbench --adapter aux,playwright-mcp --limit 10
@@ -80,16 +80,28 @@ if (has("validate")) {
   const ok = (name, cond) => checks.push([name, !!cond]);
   const manifest = JSON.parse(readFileSync(join(here, "manifest.json"), "utf8"));
   const types = new Set(["text", "number", "list", "object"]);
-  ok("manifest has tasks", Array.isArray(manifest.tasks) && manifest.tasks.length > 0);
+  ok("manifest has at least 15 tasks", Array.isArray(manifest.tasks) && manifest.tasks.length >= 15);
   ok("task ids unique", new Set(manifest.tasks.map((t) => t.id)).size === manifest.tasks.length);
   ok("expected types known", manifest.tasks.every((t) => types.has(t.expected?.type)));
+  ok("at least five multi-step tasks", manifest.tasks.filter((t) => t.multiStep === true).length >= 5);
+  ok("task families declared", manifest.tasks.every((t) => typeof t.family === "string" && t.family.length > 0));
+  ok("writes have outcome oracles", manifest.tasks.every((t) => !t.write || ["record-edit", "record-create", "form-submission"].includes(t.oracle?.kind)));
+  ok("oracle definitions valid", manifest.tasks.every((t) => !t.oracle || validOracle(t.oracle)));
   ok("scoring: exact text", scoreAnswer("Jordan Lee", { type: "text", value: "Jordan Lee" }) === 1);
   ok("scoring: normalization", scoreAnswer("  jordan   lee ", { type: "text", value: "Jordan Lee" }) === 1);
   ok("scoring: wrong text fails", scoreAnswer("Lee Jordan", { type: "text", value: "Jordan Lee" }) === 0);
+  ok("scoring: contradictory text fails", scoreAnswer("Jordan Lee is not the owner", { type: "text", value: "Jordan Lee" }) === 0);
   ok("scoring: number +/-1%", scoreAnswer("6.04", { type: "number", value: 6 }) === 1 && scoreAnswer("7", { type: "number", value: 6 }) === 0);
+  ok("scoring: numeric claim must stand alone", scoreAnswer("not 6", { type: "number", value: 6 }) === 0);
   ok("scoring: list set-equality", scoreAnswer("a,b", { type: "list", value: ["b", "a"] }) === 1 && scoreAnswer("a,b,c", { type: "list", value: ["a", "b"] }) === 0);
   ok("scoring: object key-wise", scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1);
   ok("extractAnswer unwraps", extractAnswer({ answer: "x" }) === "x" && extractAnswer("y") === "y");
+  ok("oracle: correct write required", evaluateOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } },
+    { records: [{ id: "rec-04", status: "approved" }], edits: [{ id: "rec-04", fields: { status: "approved" } }] }).pass);
+  ok("oracle: answer alone cannot pass", !evaluateOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } },
+    { records: [{ id: "rec-04", status: "draft" }], edits: [] }).pass);
+  ok("oracle: duplicate write fails", !evaluateOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } },
+    { records: [{ id: "rec-04", status: "approved" }], edits: [{ id: "rec-04" }, { id: "rec-04" }] }).pass);
   ok("aux-mcp mints a scoped connection", adaptersCfg["aux-mcp"]?.scoped === true && adaptersCfg["aux-mcp"]?.needsRuntime === true);
   if (existsSync(runtimeEntry)) {
     const rt = await import(pathToFileURL(runtimeEntry).href);
@@ -99,8 +111,8 @@ if (has("validate")) {
   const spawned = await fx.startFixturesIfNeeded();
   try {
     await fx.waitForFixtures();
-    const res = await fetch(manifest.tasks[0].url).catch(() => ({ ok: false }));
-    ok("fixtures respond", res.ok);
+    const responses = await Promise.all(manifest.tasks.map((task) => fetch(task.url).catch(() => ({ ok: false }))));
+    ok("all task start pages respond", responses.every((response) => response.ok));
   } finally {
     for (const proc of spawned ?? []) proc.kill?.();
   }
@@ -175,11 +187,13 @@ for (const name of adapterNames) {
         out = { answer: null, error: String(e?.message ?? e) };
       }
       const wallMs = Math.round(performance.now() - t0);
-      const score = out.answer == null ? 0 : scoreAnswer(out.answer, task.expected);
-      const row = { id: task.id, trial, score, wallMs, ...out };
+      const answerScore = out.answer == null ? 0 : scoreAnswer(out.answer, task.expected);
+      const oracle = task.oracle ? await checkTaskOracle(task.oracle) : null;
+      const score = answerScore && (oracle?.pass ?? true) ? 1 : 0;
+      const row = { id: task.id, family: task.family, trial, score, answerScore, oracle, wallMs, ...out };
       rows.push(row);
       console.log(
-        `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
+        `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${oracle && !oracle.pass ? `  oracle=${oracle.reason}` : ""}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
       );
     }
   } finally {
@@ -209,6 +223,16 @@ for (const name of adapterNames) {
     modelCallsMean: mean(rows.map((r) => r.modelCalls)),
     tokensMean: mean(rows.map((r) => r.tokens)),
     errors: rows.filter((r) => r.error).length,
+    oracleFailures: rows.filter((r) => r.oracle && !r.oracle.pass).length,
+    families: Object.fromEntries([...new Set(tasks.map((t) => t.family ?? "unclassified"))].map((family) => {
+      const familyRows = rows.filter((r) => r.family === family);
+      return [family, {
+        tasks: tasks.filter((t) => (t.family ?? "unclassified") === family).length,
+        attempts: familyRows.length,
+        passed: familyRows.filter((r) => r.score === 1).length,
+        passAt1: familyRows.length ? +(familyRows.filter((r) => r.score === 1).length / familyRows.length).toFixed(3) : 0,
+      }];
+    })),
   };
   report.adapters[name] = { summary, rows };
   console.log(`-- ${name}: pass@1 ${(summary.passAt1 * 100).toFixed(1)}% (per trial ${perTrial.join("/")} of ${tasks.length}, sd ${summary.passedStdDev}), pass@${trials} ${(summary.passAtK * 100).toFixed(1)}%, flaky [${summary.flaky.join(", ")}], p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
@@ -448,8 +472,8 @@ function norm(s) {
 
 function firstNumber(v) {
   if (typeof v === "number") return v;
-  const m = /-?\d[\d,]*(\.\d+)?/.exec(String(v));
-  return m ? Number(m[0].replace(/,/g, "")) : NaN;
+  const s = String(v).trim();
+  return /^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(s) ? Number(s.replace(/,/g, "")) : NaN;
 }
 
 export function scoreAnswer(answer, expected) {
@@ -482,18 +506,76 @@ export function scoreAnswer(answer, expected) {
     default: {
       const want = norm(expected.value);
       const got = norm(typeof answer === "object" ? JSON.stringify(answer) : answer);
-      return got === want || (want.length >= 4 && got.endsWith(want)) || (want.length >= 4 && got.startsWith(want)) ? 1 : 0;
+      return got === want ? 1 : 0;
     }
   }
 }
 
 // ---- utils ------------------------------------------------------------------
 
-/** Puts mutable fixture state back to its seed so write tasks on one adapter cannot change another adapter's gold answers. */
+function containsFields(actual, expected) {
+  return actual && Object.entries(expected).every(([key, value]) => actual[key] === value);
+}
+
+function validOracle(oracle) {
+  const hasFields = oracle.fields && typeof oracle.fields === "object" && !Array.isArray(oracle.fields) &&
+    Object.keys(oracle.fields).length > 0 && Object.values(oracle.fields).every((value) => typeof value === "string");
+  if (oracle.kind === "record-edit" || oracle.kind === "record-create") return typeof oracle.id === "string" && hasFields;
+  if (oracle.kind === "form-submission") return hasFields;
+  if (oracle.kind === "downloads") return Array.isArray(oracle.files) && oracle.files.length > 0 &&
+    oracle.files.every((file) => typeof file.id === "string" && typeof file.name === "string") &&
+    new Set(oracle.files.map((file) => `${file.id}/${file.name}`)).size === oracle.files.length;
+  return false;
+}
+
+function evaluateOracle(oracle, state) {
+  switch (oracle.kind) {
+    case "record-edit": {
+      const record = state.records?.find((r) => r.id === oracle.id);
+      const edits = state.edits ?? [];
+      const pass = edits.length === 1 && edits[0]?.id === oracle.id &&
+        containsFields(edits[0]?.fields, oracle.fields) && containsFields(record, oracle.fields);
+      return { pass: !!pass, reason: pass ? null : "expected one saved edit and matching record fields" };
+    }
+    case "record-create": {
+      const record = state.records?.find((r) => r.id === oracle.id);
+      const pass = state.records?.length === 31 && containsFields(record, oracle.fields) && (state.edits?.length ?? 0) === 0;
+      return { pass: !!pass, reason: pass ? null : "expected exactly one new record with matching fields" };
+    }
+    case "downloads": {
+      const got = state.downloads ?? [];
+      const pass = got.length === oracle.files.length && oracle.files.every((file) =>
+        got.filter((entry) => entry.id === file.id && entry.file === file.name).length === 1);
+      return { pass, reason: pass ? null : "expected each requested download exactly once" };
+    }
+    case "form-submission": {
+      const submissions = state.submissions ?? [];
+      const pass = submissions.length === 1 && containsFields(submissions[0]?.fields, oracle.fields) && (state.uploads?.length ?? 0) === 0;
+      return { pass: !!pass, reason: pass ? null : "expected one submission with matching fields and no upload" };
+    }
+    default:
+      return { pass: false, reason: `unknown oracle ${oracle.kind}` };
+  }
+}
+
+async function checkTaskOracle(oracle) {
+  const port = oracle.kind === "form-submission" ? 4811 : 4810;
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/state`);
+    if (!response.ok) return { pass: false, reason: `state endpoint returned ${response.status}` };
+    return evaluateOracle(oracle, await response.json());
+  } catch (error) {
+    return { pass: false, reason: `state endpoint failed: ${String(error)}` };
+  }
+}
+
+/** Puts mutable fixture state back to its seed so tasks and adapters cannot change each other's gold answers. */
 async function resetSuiteState(suite) {
   if (!suite.reset) return;
-  const res = await fetch(suite.reset.url, { method: suite.reset.method ?? "POST" }).catch((e) => ({ ok: false, statusText: String(e) }));
-  if (!res.ok) console.warn(`fixture reset failed: ${res.status ?? ""} ${res.statusText ?? ""}`);
+  for (const target of Array.isArray(suite.reset) ? suite.reset : [suite.reset]) {
+    const res = await fetch(target.url, { method: target.method ?? "POST" });
+    if (!res.ok) throw new Error(`fixture reset failed: ${target.url} ${res.status} ${res.statusText}`);
+  }
 }
 
 function mean(xs) {
