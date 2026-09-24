@@ -277,10 +277,6 @@ export class CalendarConnectionService {
     checkGrant();
     const row = this.row(query.connectionId);
     if (row.state !== "active") throw new AuxError("needs_input", "Reconnect this Calendar account before reading events.");
-    const secret = await waitForToken(this.token(row), signal);
-    if (signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
-    if (this.row(query.connectionId).secret_name !== row.secret_name) throw new AuxError("cancelled", "Calendar connection changed before the read.");
-    checkGrant();
     const controller = new AbortController();
     const onAbort = () => controller.abort();
     signal?.addEventListener("abort", onAbort, { once: true });
@@ -290,6 +286,10 @@ export class CalendarConnectionService {
     if (grant) { const granted = this.grantReads.get(grant.grantId) ?? new Set<AbortController>(); granted.add(controller); this.grantReads.set(grant.grantId, granted); }
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
+      const secret = await waitForToken(this.token(row), controller.signal);
+      if (controller.signal.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
+      if (this.row(query.connectionId).secret_name !== row.secret_name) throw new AuxError("cancelled", "Calendar connection changed before the read.");
+      checkGrant();
       const url = new URL("https://calendar.invalid/calendars/primary/events");
       for (const [key, value] of Object.entries({ timeMin: query.timeMin, timeMax: query.timeMax, maxResults: String(query.limit), singleEvents: "true", orderBy: "startTime" })) url.searchParams.set(key, value);
       if (query.pageToken) url.searchParams.set("pageToken", query.pageToken);

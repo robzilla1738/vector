@@ -117,6 +117,32 @@ describe("outbound Google Calendar connection", () => {
     } finally { await setup.service.close(); }
   });
 
+  it("revokes a brokered task read while its token refresh is pending", async () => {
+    let refreshStarted!: () => void, finishRefresh!: (response: Response) => void;
+    const started = new Promise<void>(resolve => { refreshStarted = resolve; });
+    const setup = fixture({ onRefresh: async () => { refreshStarted(); return new Promise<Response>(resolve => { finishRefresh = resolve; }); } });
+    try {
+      await connect(setup.service, "alice");
+      const account = setup.service.list().connections[0]!;
+      const space = setup.tasks.createWorkspace("Research");
+      const task = makeTask(setup.tasks, space.workspaceId, "Meeting brief");
+      const grant = setup.service.grantTask(task.taskId, task.revision, account.connectionId);
+      const secretName = (setup.db.prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=?").get(account.connectionId) as { secret_name: string }).secret_name;
+      const secret = JSON.parse(setup.secrets.get(secretName)!) as { accessToken: string; refreshToken: string; expiresAt: number };
+      setup.secrets.set(secretName, JSON.stringify({ ...secret, expiresAt: 0 }));
+      const read = setup.operations.invokeCalendarTaskEvents({ taskId: task.taskId, grantId: grant.grantId,
+        timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 10 });
+      await started;
+      setup.service.revokeTaskGrant(task.taskId, grant.grantId);
+      await expect(read).rejects.toMatchObject({ code: "cancelled" });
+      expect(setup.calls.filter(call => call.url.pathname === "/calendar/calendars/primary/events")).toHaveLength(0);
+      expect(setup.db.prepare("SELECT status FROM operation_invocations").get()).toMatchObject({ status: "interrupted" });
+      finishRefresh(Response.json({ access_token: "renewed-alice", expires_in: 3600 }));
+      for (let i = 0; i < 20 && !setup.secrets.get(secretName)?.includes("renewed-alice"); i++)
+        await new Promise(resolve => setTimeout(resolve, 5));
+    } finally { await setup.service.close(); }
+  });
+
   it("rejects partial grants and organization denial without persisting credentials", async () => {
     for (const options of [{ partial: true }, { denied: true }]) {
       const { service, secrets } = fixture(options);
