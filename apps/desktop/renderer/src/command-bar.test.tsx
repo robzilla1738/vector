@@ -145,4 +145,24 @@ describe("CommandBar keyboard contract", () => {
     await act(async () => new Promise(resolve => setTimeout(resolve, 300)));
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("duckduckgo.com/ac/"));
   });
+
+  it("never paints a late remote suggestion for an earlier query", async () => {
+    const replies:((response:Response)=>void)[]=[];
+    const fetchMock=vi.spyOn(globalThis,"fetch").mockImplementation(()=>new Promise(resolve=>replies.push(resolve)));
+    useStore.setState({settings:{searchSuggestions:true,searchEngine:"https://duckduckgo.com/?q=%s"}} as never);
+    await act(async()=>root.render(<CommandBar/>));
+    const input=host.querySelector("input")!;
+    await act(async()=>input.focus());
+    await act(async()=>type(input,"first query"));
+    await act(async()=>new Promise(resolve=>setTimeout(resolve,190)));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async()=>type(input,"second query"));
+    await act(async()=>new Promise(resolve=>setTimeout(resolve,190)));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await act(async()=>replies[0]!(new Response(JSON.stringify(["first query",["stale suggestion"]]))));
+    expect(host.textContent).not.toContain("stale suggestion");
+    await act(async()=>replies[1]!(new Response(JSON.stringify(["second query",["current suggestion"]]))));
+    await settle();
+    expect(host.textContent).toContain("current suggestion");
+  });
 });

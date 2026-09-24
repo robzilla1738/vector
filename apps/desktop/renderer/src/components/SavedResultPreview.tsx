@@ -6,8 +6,8 @@ import { call, errToast, toast } from "../store";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 import { I } from "./icons";
 
-type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number };
-export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {
+type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number; revision?:number;parentArtifactId?:string };
+export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;onVersionSaved?:(artifactId:string)=>void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {
   const [result,setResult]=useState<Result|null>(null), [error,setError]=useState(""), [retry,setRetry]=useState(0), [saving,setSaving]=useState(false);
   const [draft,setDraft]=useState(()=>readResultDraft(artifactId));
   const [editing,setEditing]=useState(!!draft);
@@ -34,6 +34,18 @@ export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled
     } catch(reason){setDraftError(reason instanceof Error?reason.message:String(reason));}
     finally{pending.current=false;setAttaching(false);}
   }
+  async function saveVersion(){
+    if(!result||!draft||contextDisabled||pending.current||!valid||sourceChanged)return;
+    pending.current=true;setAttaching(true);setDraftError("");
+    try{
+      const saved=await call("results.saveVersion",{chatId,sourceArtifactId:artifactId,content});
+      if(!writeResultDraft(artifactId,null))toast("Version saved, but the old local draft could not be removed.","error");
+      setDraft(null);setAttached(null);
+      onVersionSaved?.(saved.artifactId);
+      toast(`Saved ${saved.filename} · v${saved.revision}`);
+    }catch(reason){setDraftError(reason instanceof Error?reason.message:String(reason));}
+    finally{pending.current=false;setAttaching(false);}
+  }
   useEffect(()=>{
     let active=true; setResult(null);setError("");
     void call("results.read",{artifactId}).then(value=>{if(!active)return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active){
@@ -52,9 +64,9 @@ export function SavedResultPreview({artifactId, chatId, onClose, contextDisabled
   return <section className="document-snapshot saved-result-preview" aria-label="Saved result preview">
     <header><strong>{result?.filename??"Saved result"}</strong><button className="icon-btn xs" aria-label="Close result preview" onClick={onClose}>{I.close}</button></header>
     {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<p className="hint" role="status">Loading saved result…</p>:<>
-      <div className="saved-result-actions"><span className="hint">Saved {new Date(result.createdAt).toLocaleString()}</span><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm" disabled={saving||attaching||!valid} onClick={()=>void save()}>{saving?"Exporting…":"Export…"}</button>{result.mediaType==="text/csv"&&<button className="btn sm ghost" disabled={saving||attaching||!valid} onClick={()=>void save(true)}>Export Excel…</button>}</div>
+      <div className="saved-result-actions"><span className="hint">Saved {new Date(result.createdAt).toLocaleString()}{result.revision?` · v${result.revision}`:""}</span><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm" disabled={saving||attaching||!valid} onClick={()=>void save()}>{saving?"Exporting…":"Export…"}</button>{result.mediaType==="text/csv"&&<button className="btn sm ghost" disabled={saving||attaching||!valid} onClick={()=>void save(true)}>Export Excel…</button>}</div>
       {result.mediaType==="text/csv"&&<p className="hint">Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
-      {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button className="btn sm ghost" disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button className="btn sm" disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attaching?"Attaching…":attached===content?"Copy attached":"Attach edited copy"}</button></div>}
+      {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button className="btn sm ghost" disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button className="btn sm" disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button className="btn sm ghost" disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
       {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
       {draftError&&<p className="field-error" role="alert">{draftError}</p>}
       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}

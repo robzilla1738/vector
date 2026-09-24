@@ -1,5 +1,7 @@
 # Aux roadmap implementation handoff — September 24, 2026
 
+This is the paused snapshot from earlier on September 24. Implementation resumed afterward on the same branch; consult [ROADMAP.md](ROADMAP.md) for current evidence.
+
 ## Transfer state
 
 - Repository: `https://github.com/robzilla1738/vector`

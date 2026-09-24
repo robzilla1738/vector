@@ -45,11 +45,12 @@ export class ArtifactStore {
     };
   }
 
-  save(opts: ArtifactInput): Artifact {
+  save(opts: ArtifactInput, onSaved?: (artifact:Artifact)=>void): Artifact {
     const { artifact, dir } = this.place(opts);
     mkdirSync(dir, { recursive: true });
     writeFileSync(artifact.path, opts.buffer);
-    this.repo.saveArtifact(artifact);
+    try { this.repo.transaction(()=>{this.repo.saveArtifact(artifact);onSaved?.(artifact);}); }
+    catch(error){rmSync(artifact.path,{force:true});throw error;}
     this.events.emit(EventTypes.ArtifactAdded, { artifact }, opts.runId);
     return artifact;
   }

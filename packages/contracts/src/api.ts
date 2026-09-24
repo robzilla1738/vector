@@ -321,10 +321,11 @@ export const ConversationArtifactSchema = z.object({
   createdAt: z.number(),
   turnGoal: z.string().max(400),
   sourceArtifactIds: z.array(id).optional(),
+  revision: z.number().int().positive().optional(),
   included: z.boolean(),
 });
 export type ConversationArtifact = z.infer<typeof ConversationArtifactSchema>;
-export const SavedResultSchema = z.object({ artifactId:id,runId:id,chatId:id,filename:z.string(),mediaType:z.string(),byteLength:z.number(),createdAt:z.number(),conversationTitle:z.string(),turnGoal:z.string() });
+export const SavedResultSchema = z.object({ artifactId:id,runId:id,chatId:id,filename:z.string(),mediaType:z.string(),byteLength:z.number(),createdAt:z.number(),conversationTitle:z.string(),turnGoal:z.string(),revision:z.number().int().positive().optional() });
 export type SavedResult = z.infer<typeof SavedResultSchema>;
 export const ConversationArtifactsSchema = z.object({ chatId: id, artifacts: z.array(ConversationArtifactSchema) });
 export const ConversationArtifactToggleParams = z.object({ chatId: id, artifactId: id, included: z.boolean() });
@@ -723,6 +724,7 @@ export const MethodSchemas = {
   "results.search": z.object({query:z.string().trim().min(1).max(300),limit:z.number().int().min(1).max(30).default(12)}),
   "results.read": z.object({artifactId:id}),
   "results.available": z.object({drafts:z.array(z.object({artifactId:id,chatId:id})).max(100)}),
+  "results.saveVersion": z.object({chatId:id,sourceArtifactId:id,content:z.string().max(262144).refine(value=>!value.includes("\0")&&new TextEncoder().encode(value).length<=262144,"Use text without null characters, up to 256 KB")}),
   "conversations.artifacts.get": z.object({ chatId: id }),
   "conversations.artifacts.toggle": ConversationArtifactToggleParams,
   "conversations.sources.get": z.object({ chatId: id }),
@@ -1125,8 +1127,9 @@ export const ResultSchemas = {
   "conversations.attachments.toggle": ConversationAttachmentsSchema,
   "conversations.attachments.remove": ConversationAttachmentsSchema,
   "results.search": z.array(SavedResultSchema),
-  "results.read": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number()}),
+  "results.read": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number(),revision:z.number().int().positive().optional(),parentArtifactId:id.optional(),rootArtifactId:id.optional()}),
   "results.available": z.array(id),
+  "results.saveVersion": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number(),revision:z.number().int().positive(),parentArtifactId:id,rootArtifactId:id}),
   "conversations.artifacts.get": ConversationArtifactsSchema,
   "conversations.artifacts.toggle": ConversationArtifactsSchema,
   "conversations.sources.get": ConversationSourcesSchema,

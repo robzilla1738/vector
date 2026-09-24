@@ -109,6 +109,7 @@ export function installMockBridge(q: URLSearchParams) {
   const resultFormat = q.get("resultFormat") ?? "markdown";
   const resultFixture = {artifactId:"mock-report",runId:"mock-report-run",chatId:"mock-report-chat",filename:`comparison.${resultFormat === "csv" ? "csv" : resultFormat === "json" ? "json" : "md"}`,mediaType:resultFormat === "csv" ? "text/csv" : resultFormat === "json" ? "application/json" : "text/markdown",byteLength:180,createdAt:Date.now(),conversationTitle:"Compare browser choices",turnGoal:"Create a comparison report"};
   const resultContent = resultFormat === "csv" ? 'Area,Priority,Notes\nEveryday browsing,High,"Fast, calm navigation"\nHelpful assistance,High,"Clear answers"\n' : resultFormat === "json" ? JSON.stringify({priorities:[{area:"Everyday browsing",priority:"High"},{area:"Helpful assistance",priority:"High"}]}) : "# Browser comparison\n\nA saved report with clear next steps.\n\n| Area | Priority |\n| --- | --- |\n| Everyday browsing | High |\n| Helpful assistance | High |\n\nKeep the browsing experience calm and predictable.";
+  const mockResultVersions=new Map<string,typeof resultFixture & {content:string;revision:number;parentArtifactId:string;rootArtifactId:string}>();
   if (scenario === "results") runs.unshift(makeRun({runId:resultFixture.runId,goal:resultFixture.turnGoal,status:"completed",config:{chatId:resultFixture.chatId},result:{answer:"Saved comparison.md"}}));
   const chatMetadata = new Map<string,{title:string;archived:boolean;updatedAt:number}>();
   if(scenario==="results"&&q.get("archived")==="1")chatMetadata.set(resultFixture.chatId,{title:resultFixture.conversationTitle,archived:true,updatedAt:Date.now()});
@@ -296,12 +297,21 @@ export function installMockBridge(q: URLSearchParams) {
     "runs.context.get": async p => ({chatId:p.chatId,historyEnabled:true,entries:[]}),
     "runs.context.set": async p => ({chatId:p.chatId,historyEnabled:p.historyEnabled ?? true,entries:[]}),
     "results.search": async p => {
-      return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture] : [];
+      return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture,...mockResultVersions.values()] : [];
     },
     "results.read": async p => {
-      if(scenario!=="results"||p.artifactId!==resultFixture.artifactId)throw new Error("Saved result is unavailable.");return {...resultFixture,content:resultContent};
+      if(scenario!=="results")throw new Error("Saved result is unavailable.");
+      if(p.artifactId===resultFixture.artifactId)return {...resultFixture,content:resultContent};
+      const version=mockResultVersions.get(String(p.artifactId));
+      if(!version)throw new Error("Saved result is unavailable.");return version;
     },
-    "results.available": async p => (p.drafts as {artifactId:string;chatId:string}[]).filter(item=>scenario==="results"&&item.artifactId===resultFixture.artifactId&&item.chatId===resultFixture.chatId).map(item=>item.artifactId),
+    "results.available": async p => (p.drafts as {artifactId:string;chatId:string}[]).filter(item=>scenario==="results"&&item.chatId===resultFixture.chatId&&(item.artifactId===resultFixture.artifactId||mockResultVersions.has(item.artifactId))).map(item=>item.artifactId),
+    "results.saveVersion": async p => {
+      const parent=mockResultVersions.get(String(p.sourceArtifactId));
+      const revision=(parent?.revision??1)+1;
+      const saved={...resultFixture,artifactId:`edited-${crypto.randomUUID()}`,content:String(p.content),createdAt:Date.now(),revision,parentArtifactId:String(p.sourceArtifactId),rootArtifactId:parent?.rootArtifactId??String(p.sourceArtifactId)};
+      mockResultVersions.set(saved.artifactId,saved);emit("conversation.context.changed",{chatId:p.chatId});return saved;
+    },
     "conversations.artifacts.get": async p => {
       return {chatId:p.chatId,artifacts:[...(artifactChips.get(String(p.chatId)) ?? [])]};
     },

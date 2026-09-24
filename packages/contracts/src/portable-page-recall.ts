@@ -81,6 +81,9 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
           row.config.chatId ?? row.runId);
         const owned = ownedArtifacts.get(row.runId) ?? [];
         for (const artifactId of owned) artifactIds.add(artifactId);
+        if(has("result_versions"))for(const artifactId of owned)
+          db.prepare("DELETE FROM result_versions WHERE artifact_id=? OR root_artifact_id=? OR parent_artifact_id=?")
+            .run(artifactId,artifactId,artifactId);
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           if (has(table)) db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
         redactSettledRunInvocations(db, row.runId);

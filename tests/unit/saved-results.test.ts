@@ -1,5 +1,8 @@
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@aux/runtime";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { ArtifactStore, EventBus, openDb, Repo } from "@aux/runtime";
 import { SavedResults } from "../../apps/runtime/src/services/saved-results.js";
 
 it("finds saved text outputs by filename or conversation and excludes archived/internal/binary results", () => {
@@ -22,6 +25,35 @@ it("finds saved text outputs by filename or conversation and excludes archived/i
     expect(results.search("comparison")).toEqual([]);
     expect(()=>results.read("report")).toThrow();
   } finally {db.close();}
+});
+
+it("saves immutable edited result versions with durable parent lineage",()=>{
+  const dir=mkdtempSync(join(tmpdir(),"aux-result-versions-"));
+  const db=openDb(join(dir,"aux-state.sqlite")),repo=new Repo(db);
+  let open=true;
+  try{
+    repo.saveRun({runId:"report-run",goal:"Write report",status:"completed",pageIds:[],config:{chatId:"report-chat"},createdAt:1});
+    const files=new ArtifactStore(join(dir,"artifacts"),repo,new EventBus(repo));
+    const original=files.save({runId:"report-run",label:"report.md",mediaType:"text/markdown",buffer:Buffer.from("# Original")});
+    const results=new SavedResults(repo,files);
+    const v2=results.saveVersion({chatId:"report-chat",sourceArtifactId:original.artifactId,content:"# Human edit"});
+    expect(v2).toMatchObject({revision:2,parentArtifactId:original.artifactId,rootArtifactId:original.artifactId,content:"# Human edit"});
+    const v3=results.saveVersion({chatId:"report-chat",sourceArtifactId:v2.artifactId,content:"# Second edit"});
+    expect(v3).toMatchObject({revision:3,parentArtifactId:v2.artifactId,rootArtifactId:original.artifactId});
+    expect(results.read(original.artifactId).content).toBe("# Original");
+    expect(results.read(v2.artifactId).content).toBe("# Human edit");
+    expect(repo.getSetting(`conversationArtifacts:report-chat`)).toEqual([v3.artifactId]);
+    expect(()=>results.saveVersion({chatId:"other-chat",sourceArtifactId:v3.artifactId,content:"# Stolen"})).toThrow(/unavailable/);
+    db.close();open=false;
+    const reopened=openDb(join(dir,"aux-state.sqlite"));
+    try{
+      const reopenedRepo=new Repo(reopened);
+      const restored=new SavedResults(reopenedRepo,new ArtifactStore(join(dir,"artifacts"),reopenedRepo,new EventBus(reopenedRepo)));
+      expect(restored.read(v3.artifactId)).toMatchObject({revision:3,parentArtifactId:v2.artifactId,rootArtifactId:original.artifactId,content:"# Second edit"});
+      reopenedRepo.deleteConversation("report-chat");
+      expect(reopened.prepare("SELECT count(*) AS n FROM result_versions").get()).toEqual({n:0});
+    }finally{reopened.close();}
+  }finally{if(open)db.close();rmSync(dir,{recursive:true,force:true});}
 });
 
 it("includes JSON reports while filtering observations by content even with ordinary filenames", () => {

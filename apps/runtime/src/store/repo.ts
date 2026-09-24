@@ -535,6 +535,7 @@ export class Repo {
     this.transaction(() => {
       for (const image of images) this.q("DELETE FROM artifacts WHERE artifact_id=?").run(image.artifactId);
       this.q("DELETE FROM kv WHERE key=?").run(`setting:conversationImages:${chatId}`);
+      this.q(`DELETE FROM result_versions WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE run_id IN (${owned}))`).run(chatId);
       this.q(`DELETE FROM operation_reconciliations WHERE invocation_id IN (SELECT invocation_id FROM operation_invocations WHERE run_id IN (${owned}))`).run(chatId);
       for (const table of ["action_intents", "operation_invocations", "response_metadata", "datasets", "spans", "events", "model_calls", "artifacts", "results", "steps"])
         this.q(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId);

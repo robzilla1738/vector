@@ -259,6 +259,8 @@ export class RunService {
           const content = Buffer.from(this.deps.artifacts.read(artifact.artifactId).dataBase64, "base64").toString("utf8");
           if (!isTextResultContent(artifact.mediaType, content)) continue;
           const filename = resultFilename(artifact.artifactId, artifact.path);
+          const version=this.deps.repo.db.prepare("SELECT parent_artifact_id AS parentArtifactId,revision FROM result_versions WHERE artifact_id=?")
+            .get(artifact.artifactId) as {parentArtifactId:string;revision:number}|undefined;
           artifacts.push({
             artifactId: artifact.artifactId,
             runId: artifact.runId!,
@@ -268,7 +270,8 @@ export class RunService {
             byteLength: artifact.size,
             createdAt: artifact.createdAt,
             turnGoal: byRun.get(artifact.runId!)?.goal.slice(0, 400) ?? "Earlier turn",
-            sourceArtifactIds: [...new Set([...(run.config?.contextArtifactIds ?? []), ...(run.config?.contextSourceArtifactIds ?? [])])],
+            sourceArtifactIds: [...new Set([...(version?[version.parentArtifactId]:[]),...(run.config?.contextArtifactIds ?? []), ...(run.config?.contextSourceArtifactIds ?? [])])],
+            ...(version?{revision:version.revision}:{}),
             included: included.has(artifact.artifactId),
           });
         } catch { /* a missing artifact remains unavailable rather than widening context */ }
@@ -349,6 +352,9 @@ export class RunService {
       this.deps.repo.setSetting(`conversationAttachments:${chatId}`,kept);
       this.deps.events.emit("conversation.context.changed",{chatId});
     }
+    for(const artifactId of revokedArtifacts)this.deps.repo.db.prepare(
+      "DELETE FROM result_versions WHERE artifact_id=? OR root_artifact_id=? OR parent_artifact_id=?",
+    ).run(artifactId,artifactId,artifactId);
     let redacted = 0;
     for (const runId of affected) {
       const current = this.deps.repo.getRun(runId);
@@ -360,6 +366,7 @@ export class RunService {
       const paths = artifacts.map(item => item.path);
       this.deps.artifacts.removeFiles(paths);
       this.deps.repo.transaction(() => {
+        this.deps.repo.db.prepare("DELETE FROM result_versions WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE run_id=?)").run(runId);
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
         redactSettledRunInvocations(this.deps.repo.db, runId);

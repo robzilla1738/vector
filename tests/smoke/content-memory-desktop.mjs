@@ -116,6 +116,10 @@ try {
   const reports = await shell.evaluate(runId => window.aux.invoke("artifacts.list", { runId }), run.runId);
   assert.ok(reports.some(item => item.path.endsWith("report.md")));
   const reportId=reports.find(item=>item.path.endsWith("report.md")).artifactId;
+  const savedVersion=await shell.evaluate(reportId=>window.aux.invoke("results.saveVersion",{
+    chatId:"saved-article-fixture",sourceArtifactId:reportId,content:"# Edited protected answer",
+  }),reportId);
+  assert.equal(savedVersion.revision,2);
   await shell.evaluate(({reportId})=>localStorage.setItem(`aux.result-draft.v1:other-window:${reportId}`,JSON.stringify({
     chatId:"saved-article-fixture",content:"Private edited article answer",source:"Private article answer",
   })),{reportId});
@@ -173,6 +177,7 @@ try {
   await shell.evaluate(({ workspaceId, memoryId }) => window.aux.invoke("workspaces.contentMemory.forget", { workspaceId, memoryId }), { workspaceId, memoryId: hits[0].memoryId });
   await poll(shell, async reportId=>localStorage.getItem(`aux.result-draft.v1:other-window:${reportId}`)===null,reportId,10_000);
   assert.deepEqual(await shell.evaluate(reportId=>window.aux.invoke("results.available",{drafts:[{artifactId:reportId,chatId:"saved-article-fixture"}]}),reportId),[]);
+  assert.deepEqual(await shell.evaluate(artifactId=>window.aux.invoke("results.available",{drafts:[{artifactId,chatId:"saved-article-fixture"}]}),savedVersion.artifactId),[]);
   assert.equal((await shell.evaluate(()=>window.aux.invoke("conversations.attachments.get",{chatId:"saved-article-fixture"}))).attachments.length,0);
   const cancelDeadline = Date.now() + 10_000;
   while (!heldProviderClosed && Date.now() < cancelDeadline) await new Promise(resolve => setTimeout(resolve, 50));

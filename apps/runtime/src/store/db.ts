@@ -1,7 +1,8 @@
 /**
  * Single-writer SQLite store on node:sqlite (Node 22+ built-in).
- * The runtime process is the only writer; the renderer and external
- * clients read through the API/event stream.
+ * The runtime process is the only writer. The desktop main process also
+ * opens a short-lived read-only connection for human history suggestions;
+ * renderer and external clients cannot open the database directly.
  */
 import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -95,6 +96,12 @@ CREATE TABLE programs(
 CREATE TABLE artifacts(
   artifact_id TEXT PRIMARY KEY, run_id TEXT, page_id TEXT,
   path TEXT NOT NULL, media_type TEXT NOT NULL, size INTEGER NOT NULL, status TEXT NOT NULL, created_at REAL NOT NULL);
+CREATE TABLE result_versions(
+  artifact_id TEXT PRIMARY KEY REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+  root_artifact_id TEXT NOT NULL, parent_artifact_id TEXT NOT NULL,
+  chat_id TEXT NOT NULL, revision INTEGER NOT NULL, created_at REAL NOT NULL,
+  UNIQUE(root_artifact_id,revision));
+CREATE INDEX idx_result_versions_chat ON result_versions(chat_id,created_at DESC);
 CREATE TABLE model_calls(
   call_id TEXT PRIMARY KEY, run_id TEXT, role TEXT NOT NULL, model_id TEXT NOT NULL,
   provider_metadata TEXT, duration_ms REAL NOT NULL, input_tokens REAL, output_tokens REAL,
@@ -258,7 +265,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -351,6 +358,15 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   ],
   // v10 → v11: ambient page observations are transient. Explicit run-owned evidence remains separate.
   10: [`DROP TABLE IF EXISTS observations`],
+  // v11 → v12: edited result versions are durable artifacts with explicit lineage.
+  11: [
+    `CREATE TABLE result_versions(
+      artifact_id TEXT PRIMARY KEY REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+      root_artifact_id TEXT NOT NULL, parent_artifact_id TEXT NOT NULL,
+      chat_id TEXT NOT NULL, revision INTEGER NOT NULL, created_at REAL NOT NULL,
+      UNIQUE(root_artifact_id,revision))`,
+    `CREATE INDEX idx_result_versions_chat ON result_versions(chat_id,created_at DESC)`,
+  ],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */
