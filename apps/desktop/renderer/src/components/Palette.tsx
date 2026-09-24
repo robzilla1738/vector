@@ -26,6 +26,9 @@ interface Cmd {
 }
 
 interface ChromeTab { targetId?: string; id?: string; url: string; title?: string }
+type SearchMatches = { query: string; results: SavedResult[]; chats: ConversationSummary[]; tasks: Task[];
+  skills: Routine[]; history: HistoryEntry[]; memory: { workspaceId: string; name: string; excerpt: string; enabled: boolean }[] };
+const emptyMatches = (query: string): SearchMatches => ({ query, results: [], chats: [], tasks: [], skills: [], history: [], memory: [] });
 
 const SECTION: Record<Cmd["section"], string> = {
   go: "",
@@ -70,7 +73,7 @@ export function Palette() {
   const [searching,setSearching]=useState(false);
   const [searchError,setSearchError]=useState(false);
   const [searchRefresh,setSearchRefresh]=useState(0);
-  const [matches,setMatches]=useState<{query:string;results:SavedResult[];chats:ConversationSummary[];tasks:Task[];skills:Routine[];history:HistoryEntry[];memory:{workspaceId:string;name:string;excerpt:string;enabled:boolean}[]}>({query:"",results:[],chats:[],tasks:[],skills:[],history:[],memory:[]});
+  const [matches,setMatches]=useState<SearchMatches>(()=>emptyMatches(""));
   // Prepared conversations don't depend on the query — one fetch per open.
   const [prepared,setPrepared]=useState<PreparedConversation[]>([]);
   useEffect(()=>{
@@ -101,24 +104,26 @@ export function Palette() {
   useEffect(()=>{
     const query=q.trim();
     if(query.length<2||query.startsWith("/")||query.startsWith("@")||chromeTabs||vaultItems||splitPick||filter==="tabs") {setSearching(false);setSearchError(false);return;}
-    let live=true;setSearching(true);setSearchError(false);
+    let live=true;
+    const work=!bridge.privateMode&&filter!=="pages",history=filter!=="work";
+    let pending=(work?5:0)+(history?1:0);
+    setMatches(emptyMatches(query));setSearching(pending>0);setSearchError(false);
+    const finish=()=>{if(live&&--pending===0)setSearching(false);};
+    const accept=<K extends keyof Omit<SearchMatches,"query">>(key:K,promise:Promise<SearchMatches[K]>)=>{
+      void promise.then(value=>{if(live)setMatches(previous=>previous.query===query?{...previous,[key]:value}:previous);})
+        .catch(()=>{if(live)setSearchError(true);}).finally(finish);
+    };
+    if(history)accept("history",call("history.list",{query,limit:20}));
     const timer=window.setTimeout(()=>{
-      const work=!bridge.privateMode&&filter!=="pages",history=filter!=="work";
-      void Promise.allSettled([
-        work?call("conversations.list",{query,limit:12,archived:false}):Promise.resolve([]),
-        work?call("tasks.list",{query,limit:12}):Promise.resolve([]),
-        history?call("history.list",{query,limit:20}):Promise.resolve([]),
-        work?call("workspaces.memory.search",{query}):Promise.resolve([]),
-        work?call("results.search",{query,limit:12}):Promise.resolve([]),
-        work?call("routines.list",{query,limit:12}):Promise.resolve([]),
-      ]).then(([chats,tasks,history,memory,results,skills])=>{
-        if(!live)return;
-        setMatches({query,results:results.status==="fulfilled"?results.value:[],chats:chats.status==="fulfilled"?chats.value:[],tasks:tasks.status==="fulfilled"?tasks.value:[],skills:skills.status==="fulfilled"?skills.value:[],history:history.status==="fulfilled"?history.value:[],memory:memory.status==="fulfilled"?memory.value.slice(0,8):[]});
-        setSearchError([chats,tasks,history,memory,results,skills].some(result=>result.status==="rejected"));setSearching(false);
-      });
-    },160);
+      if(!live||!work)return;
+      accept("chats",call("conversations.list",{query,limit:12,archived:false}));
+      accept("tasks",call("tasks.list",{query,limit:12}));
+      accept("memory",call("workspaces.memory.search",{query}).then(value=>value.slice(0,8)));
+      accept("results",call("results.search",{query,limit:12}));
+      accept("skills",call("routines.list",{query,limit:12}));
+    },100);
     return()=>{live=false;window.clearTimeout(timer);};
-  },[q,filter,chromeTabs,splitPick,searchRefresh]);
+  },[q,filter,chromeTabs,vaultItems,splitPick,searchRefresh]);
 
   const cmds = useMemo<Cmd[]>(() => {
     const out: Cmd[] = [];

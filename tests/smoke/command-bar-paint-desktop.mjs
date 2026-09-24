@@ -23,6 +23,11 @@ try {
   app = launched.app;
   const shell = launched.page;
   await shell.locator(".aux-home").waitFor();
+  const prewarmMs = process.argv.includes("--prewarm") ? await shell.evaluate(async () => {
+    const start = performance.now();
+    await window.aux.invoke("history.list", { query: "reference", limit: 1 });
+    return performance.now() - start;
+  }) : null;
   const input = shell.getByRole("combobox", { name: /Search or address/ });
   const samples = [];
   for (let i = 0; i < 12; i++) {
@@ -54,8 +59,32 @@ try {
   const p50 = sorted[Math.ceil(sorted.length * 0.5) - 1];
   const p95 = sorted[Math.ceil(sorted.length * 0.95) - 1];
   assert.equal(samples.length, 12);
+  await shell.keyboard.press("Escape");
+  await shell.keyboard.press("Meta+k");
+  const palette = shell.getByRole("combobox", { name: "Command palette" });
+  await palette.waitFor();
+  await shell.evaluate(() => {
+    const input = document.querySelector('input[role="combobox"][aria-label="Command palette"]');
+    if (!input) throw new Error("Palette input is missing");
+    let started;
+    window.__auxPalettePaint = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { observer.disconnect(); reject(new Error("Local palette result did not paint")); }, 5000);
+      const observer = new MutationObserver(() => {
+        if (started === undefined || ![...document.querySelectorAll(".pal-item .t")]
+          .some(node => node.textContent?.toLowerCase() === "needletopic0")) return;
+        observer.disconnect();
+        requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve(performance.now() - started); }));
+      });
+      observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+      input.addEventListener("input", () => { if (input.value.toLowerCase() === "needletopic0") started = performance.now(); }, { once: true });
+    });
+  });
+  await palette.fill("needletopic0");
+  const palettePaintMs = await shell.evaluate(() => window.__auxPalettePaint);
   console.log(JSON.stringify({ kind: "native-local-suggestion-input-to-paint", historyRows: 2012,
-    trials: samples.length, p50Ms: Math.round(p50 * 10) / 10, p95Ms: Math.round(p95 * 10) / 10,
+    trials: samples.length, prewarmMs: prewarmMs === null ? null : Math.round(prewarmMs * 10) / 10,
+    p50Ms: Math.round(p50 * 10) / 10, p95Ms: Math.round(p95 * 10) / 10,
+    palettePaintMs: Math.round(palettePaintMs * 10) / 10,
     samplesMs: samples.map(value => Math.round(value * 10) / 10) }));
 } finally {
   if (app) await closeAux(app);
