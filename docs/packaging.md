@@ -70,6 +70,14 @@ curl -X POST http://127.0.0.1:<port>/rpc \
 - Isolated manual `electron-builder --dir` builds also require the runtime
   dependency injection in step 4; packaging alone does not include those dependencies.
 
+## Signed update qualification lane
+
+`pnpm package:signed` is an **opt-in local build**. It requires `CSC_NAME` for a Developer ID Application identity, `AUX_UPDATE_BASE_URL` for an HTTPS generic update directory, and either Apple ID or App Store Connect API-key notarization credentials. The script checks these before building. It uses the same Aux bundle ID and product name, produces a signed/notarized DMG, ZIP and update metadata, and explicitly sets `--publish never`; it does not upload or release artifacts. Credentials remain in the environment or signing keychain and must not be committed.
+
+After a credentialed build, run `pnpm verify:package:signed`. This verifies the bundle and native binaries with `codesign`, checks notarization stapling and Gatekeeper acceptance, and requires an HTTPS feed plus ZIP/DMG metadata. The app's update menu and periodic check use the packaged feed; a downloaded update waits for Aux's normal dirty-work-aware quit path. They do not call Electron's window-closing `quitAndInstall` path. The unsigned local build has no feed and reports that in the menu. [Electron requires signed macOS updates](https://www.electronjs.org/docs/latest/api/auto-updater); [electron-builder requires the macOS ZIP for its update metadata](https://www.electron.build/docs/features/auto-update/).
+
+**Still required before a release:** install the signed app in `/Applications`, place version N and N+1 artifacts in a private HTTPS test feed, check version N downloads N+1, cancel an exit with unsaved work, complete a later normal quit/update/relaunch, verify Team ID and Keychain continuity, then rehearse rollback and a security-patch build. This checkout has neither a Developer ID identity nor 1Password.app, so a signed journey has not run here. The feed must be supplied by the owner; `package:signed` deliberately does not publish it.
+
 ## September 23 shell checkpoint
 
 See [current shell behavior](ui/design-update-2026-09-23.md) and

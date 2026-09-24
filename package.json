@@ -25,6 +25,8 @@
     "budgets": "node scripts/check-budgets.mjs bundle",
     "package": "node scripts/package-local.mjs",
     "package:local": "node scripts/package-local.mjs",
+    "package:signed": "node scripts/package-local.mjs --signed",
+    "verify:package:signed": "node scripts/verify-signed-package.mjs",
     "cli": "node packages/cli/dist/main.js",
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs",
     "preview": "node scripts/preview.mjs",

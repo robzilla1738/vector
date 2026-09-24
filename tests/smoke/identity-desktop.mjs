@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { shellWindow } from './launch.mjs';
+import { closeAux, shellWindow } from './launch.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 const { _electron } = createRequire(join(root, 'packages/chromium-driver/package.json'))('playwright-core');
@@ -34,8 +34,15 @@ try {
       menu: Menu.getApplicationMenu().items[0].submenu.items.map(item => item.label),
     }));
     assert.equal(identity.name, '@aux/desktop', 'encryption identity remains unchanged');
-    for (const label of ['About Aux', 'Hide Aux', 'Quit Aux']) assert.ok(identity.menu.includes(label));
+    for (const label of ['About Aux', 'Check for Updates…', 'Hide Aux', 'Quit Aux']) assert.ok(identity.menu.includes(label));
     if (round === 0) {
+      const localUpdate = await app.evaluate(({ Menu, dialog }) => {
+        let shown;
+        dialog.showMessageBox = async options => { shown = options; return { response: 0 }; };
+        Menu.getApplicationMenu().items[0].submenu.items.find(item => item.label === 'Check for Updates…').click();
+        return shown;
+      });
+      assert.equal(localUpdate.title, 'Aux updates unavailable');
       encrypted = await app.evaluate(({ safeStorage }) => safeStorage.encryptString('aux-synthetic-restart-fixture').toString('base64'));
       await page.evaluate(() => localStorage.setItem('aux.identity.fixture', 'saved-before-restart'));
     } else {
@@ -44,7 +51,7 @@ try {
       assert.equal(await page.evaluate(() => localStorage.getItem('aux.identity.fixture')), 'saved-before-restart');
     }
     evidence.push({ round, ...identity });
-    await app.close(); app = undefined;
+    await closeAux(app); app = undefined;
   }
   const out = join(root, 'release/test-artifacts'); mkdirSync(out, { recursive: true });
   writeFileSync(join(out, 'aux-identity.json'), JSON.stringify({
@@ -52,4 +59,4 @@ try {
     evidence, restartContinuity: true, credentialStorage: 'synthetic mock only; real OS migration not qualified',
   }, null, 2));
   console.log('Aux bundle and menus verified; internal identity and synthetic restart data preserved.');
-} finally { await app?.close(); rmSync(dir, { recursive: true, force: true }); }
+} finally { if (app) await closeAux(app).catch(() => {}); rmSync(dir, { recursive: true, force: true }); }

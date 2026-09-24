@@ -9,6 +9,7 @@ import { log } from "./bootstrap.js";
 import { appMenuTemplate, shortcutFor } from "./menu-template.js";
 import { openPrivateWindow } from "./private-windows.js";
 import { registry } from "./services.js";
+import { checkForAuxUpdates } from "./updates.js";
 
 /** Person's saved binding overrides and the effective table they produce — one source feeds menus, page interception and renderer dispatch. */
 export let shortcutOverrides: ShortcutOverrides = {};
@@ -45,6 +46,7 @@ export function installMenu() {
       label: "Aux",
       submenu: [
         { role: "about", label: "About Aux" },
+        { label: "Check for Updates…", click: () => { void checkForAuxUpdates(true); } },
         { type: "separator" },
         { role: "hide", label: "Hide Aux" },
         { role: "hideOthers" },

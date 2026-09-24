@@ -16,6 +16,7 @@ import { PRIMARY_WINDOW_ID, desktopEnv, log } from "./bootstrap.js";
 import { markShellReady } from "./external-urls.js";
 import { installMenu } from "./menu.js";
 import { browserHealth, extensionManager, registry } from "./services.js";
+import { installUpdates } from "./updates.js";
 
 export async function loadProfileExtensions() {
   const configured = (desktopEnv.AUX_EXTENSION_PATHS ?? "")
@@ -37,6 +38,7 @@ export async function boot() {
   configurePagePermissions();
   configureCloudPreviewHeaders();
   installMenu();
+  installUpdates();
   // Extensions load beside window creation; only page loads wait for them.
   gatePageLoads(loadProfileExtensions().catch(error => log("extensions failed to load", String(error))));
   // The runtime forks once the primary native-page host exists; the optional

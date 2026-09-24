@@ -11,6 +11,18 @@ import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const signed = process.argv.includes('--signed');
+if (signed) {
+  if (process.platform !== 'darwin') throw new Error('Signed Aux qualification currently requires macOS.');
+  const feed = new URL(process.env.AUX_UPDATE_BASE_URL || 'https://invalid.example/');
+  if (feed.protocol !== 'https:' || feed.username || feed.password || feed.search || feed.hash || feed.hostname === 'invalid.example')
+    throw new Error('Set AUX_UPDATE_BASE_URL to the HTTPS directory that will host update metadata and packages.');
+  if (!process.env.CSC_NAME?.startsWith('Developer ID Application: '))
+    throw new Error('Set CSC_NAME to the Aux Developer ID Application identity.');
+  const appleIdCredentials = process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID;
+  const apiKeyCredentials = process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER;
+  if (!appleIdCredentials && !apiKeyCredentials) throw new Error('Notarization credentials are required (Apple ID or App Store Connect API key).');
+}
 const run = (cmd, args, opts = {}) => {
   const r = spawnSync(cmd, args, { cwd: root, stdio: "inherit", ...opts });
   if (r.status !== 0) {
@@ -100,9 +112,11 @@ writeFileSync(join(rtOut, "package.json"), JSON.stringify({
 }, null, 2));
 
 console.log("▸ electron-builder");
-run(join(desktopDir, "node_modules", ".bin", "electron-builder"), ["--config", "electron-builder.yml"], {
+run(join(desktopDir, "node_modules", ".bin", "electron-builder"), signed
+  ? ["--config", "electron-builder.signed.cjs", "--publish", "never"]
+  : ["--config", "electron-builder.yml"], {
   cwd: desktopDir,
-  env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: "false" },
+  env: signed ? { ...process.env } : { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: "false" },
 });
 
 const platformOutput = process.platform === "darwin"
@@ -110,4 +124,4 @@ const platformOutput = process.platform === "darwin"
   : `${process.platform === "win32" ? "win" : "linux"}${process.arch === "x64" ? "" : `-${process.arch}`}-unpacked`;
 const out = join(root, "release");
 console.log(`\n✓ packaged app in ${out}`);
-if (process.platform === "darwin") console.log(`  → ${join(out, platformOutput, "Aux Browser.app")}`);
+if (process.platform === "darwin") console.log(signed ? '  → signed DMG/ZIP and update metadata; no artifacts were published' : `  → ${join(out, platformOutput, "Aux Browser.app")}`);
