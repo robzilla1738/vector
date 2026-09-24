@@ -14,6 +14,7 @@ const profile = process.env.AUX_CANDIDATE_PROFILE ?? join(outputDir, 'chromium-c
 const binary = process.env.AUX_CANDIDATE_BIN;
 const extensionId = process.env.AUX_STORE_EXTENSION_ID ?? 'ddkjiahejlhfcafbddmgiahcphecmpfh';
 const storeUrl = process.env.AUX_STORE_URL ?? `https://chromewebstore.google.com/detail/ublock-origin-lite/${extensionId}`;
+const webStoreUpdateUrl = 'https://clients2.google.com/service/update2/crx';
 const statePath = join(outputDir, 'aux-candidate-store-state.json');
 const reportPath = join(outputDir, 'aux-candidate-store-proof.json');
 const action = process.argv[2];
@@ -37,8 +38,9 @@ function extensionRecord() {
 }
 function storeInstalled(record) {
   return record.versions.some(version => version.startsWith(`${record.setting?.manifestVersion}_`)) &&
-    record.setting?.from_webstore === true && record.setting.disableReasons.length === 0 &&
-    record.setting.state !== 2;
+    record.setting?.from_webstore === true && record.setting.location === 1 &&
+    record.setting.updateUrl === webStoreUpdateUrl &&
+    Array.isArray(record.setting.disableReasons) && record.setting.disableReasons.length === 0;
 }
 async function endpoint() {
   const portPath = join(profile, 'DevToolsActivePort');
