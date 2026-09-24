@@ -55,7 +55,7 @@ export class ObservationService {
       // Observation cache (plan A6): one small probe decides whether the
       // last observation is still exact. Same epoch, same request shape,
       // same fingerprint — nothing the walk could see has changed, so the
-      // renderer is not re-walked and nothing is re-persisted.
+      // renderer is not re-walked.
       let fingerprint: string | undefined;
       // An explicit subtree can read a child frame whose DOM is outside the
       // main-document fingerprint. Re-read it instead of returning stale refs.
@@ -90,7 +90,7 @@ export class ObservationService {
 
   /**
    * Stamp an `ObservationContent` with ids/revision/epoch, diff it against
-   * the previous one, persist and announce it.
+   * the previous one, retain it for this live page, and announce it.
    */
   recordObservation(pageId: string, content: ObservationContent, req: ObserveReq, fingerprint?: string): Observation {
     const lp = this.pages.live.get(pageId);
@@ -132,18 +132,7 @@ export class ObservationService {
       delta,
     };
     lp.lastObservationId = obs.observationId;
-    lp.lastObs = fingerprint ? { fingerprint, reqKey: observeReqKey(req), obs } : undefined;
-    this.pages.deps.repo.defer(`obs:${obs.observationId}`, () =>
-      this.pages.deps.repo.saveObservation({
-        observationId: obs.observationId,
-        pageId,
-        epoch: obs.documentEpoch,
-        revision,
-        observedAt: obs.observedAt,
-        scope: obs.scope,
-        json: JSON.stringify(obs),
-      }),
-    );
+    lp.lastObs = { fingerprint, reqKey: observeReqKey(req), obs };
     this.pages.persist(lp);
     this.pages.deps.events.emit(EventTypes.Observation, {
       pageId,

@@ -25,7 +25,7 @@ export interface LivePage {
   queue: Promise<unknown>;
   lastObservationId?: string;
   /** observation cache (plan A6): the last observation with the page fingerprint and request it answered */
-  lastObs?: { fingerprint: string; reqKey: string; obs: Observation };
+  lastObs?: { fingerprint?: string; reqKey: string; obs: Observation };
   /** recent observations by revision so `sinceRevision` can diff against the one the caller last saw */
   history: ObservedRevision[];
   consoleLines: { level: string; message: string; atMs?: number }[];

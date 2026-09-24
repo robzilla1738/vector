@@ -30,9 +30,9 @@ const project = (rows: Row[], select?: string[]): Row[] =>
   select?.length ? rows.map((r) => Object.fromEntries(select.map((f) => [f, r[f]]))) : rows;
 
 /**
- * The state index (§8.3): every queryable entity reads from persisted state
- * — captured responses, results, datasets, artifacts, live page controls —
- * so answering "what do we already know" never needs inference or re-work.
+ * The state index (§8.3): durable entities read from persisted state; controls
+ * read only the current in-process observation for their live page, so
+ * answering "what do we already know" never needs inference or re-work.
  */
 export class StateService {
   constructor(
@@ -83,13 +83,11 @@ export class StateService {
       case "controls": {
         const pageIds = q.scope?.pageIds ?? this.deps.pages.livePageIds();
         const rows = pageIds.flatMap((pid) => {
-          const last = this.deps.repo.latestObservation(pid);
-          if (!last) return [];
-          const c = JSON.parse(last.json) as { content?: { formFields?: Row[] }; formFields?: Row[] };
-          const fields = c.content?.formFields ?? c.formFields ?? [];
-          return fields.map((f) => ({ pageId: pid, revision: last.revision, ...f }));
+          const observation = this.deps.pages.currentObservation(pid);
+          if (!observation) return [];
+          return observation.content.formFields.map(field => ({ pageId: pid, revision: observation.revision, ...field }));
         });
-        return { rows, explain: "form controls from latest observations" };
+        return { rows, explain: "form controls from current in-process observations" };
       }
       case "artifacts": {
         const rows = this.deps.repo.listArtifacts({ runId: q.scope?.runId, pageId: q.scope?.pageIds?.[0] }) as unknown as Row[];

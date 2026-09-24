@@ -3,7 +3,7 @@
  * The runtime process is the only writer; the renderer and external
  * clients read through the API/event stream.
  */
-import { chmodSync, mkdtempSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -20,7 +20,7 @@ const HOT_PATH_INDEXES = [
 ];
 
 /**
- * Canonical schema v1 for Aux profiles. Declared as one unit with explicit
+ * Canonical schema for new Aux profiles. Declared as one unit with explicit
  * foreign keys; created atomically for a fresh database. Pre-versioning
  * development databases are incompatible and preserved untouched — openDb
  * refuses them with a recoverable message rather than resetting data.
@@ -80,10 +80,6 @@ CREATE TABLE results(
   observed_at REAL NOT NULL, status TEXT NOT NULL, error TEXT);
 CREATE INDEX idx_results_member ON results(member_id);
 CREATE INDEX idx_results_run ON results(run_id);
-CREATE TABLE observations(
-  observation_id TEXT PRIMARY KEY, page_id TEXT NOT NULL, epoch INTEGER NOT NULL,
-  revision INTEGER NOT NULL, observed_at REAL NOT NULL, scope TEXT, json TEXT NOT NULL);
-CREATE INDEX idx_obs_page ON observations(page_id, revision);
 CREATE TABLE content_memory(
   memory_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
   source_key TEXT NOT NULL, origin TEXT NOT NULL, captured_at INTEGER NOT NULL, expires_at INTEGER NOT NULL,
@@ -261,7 +257,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -352,6 +348,8 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
     `CREATE INDEX idx_content_memory_workspace ON content_memory(profile_id,workspace_id,captured_at DESC)`,
     `CREATE INDEX idx_content_memory_expiry ON content_memory(expires_at)`,
   ],
+  // v10 → v11: ambient page observations are transient. Explicit run-owned evidence remains separate.
+  10: [`DROP TABLE IF EXISTS observations`],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */
@@ -368,20 +366,30 @@ export function applyMigrations(db: DatabaseSync, statements: string[]): void {
 
 /** Step a supported older schema to SCHEMA_VERSION, backing up the file first. */
 function migrate(db: DatabaseSync, path: string, from: number): void {
-  if (path !== ":memory:") {
-    const backup = join(mkdtempSync(join(tmpdir(), "aux-db-backup-")), "aux-state.sqlite");
-    db.exec(`VACUUM INTO '${backup.replaceAll("'", "''")}'`);
-  }
-  for (let version = from; version < SCHEMA_VERSION; version += 1) {
-    const step = MIGRATIONS[version];
-    const statements = typeof step === "function" ? step(db) : step;
-    if (!statements) {
-      throw new Error(
-        `This Aux database is schema ${version} but no migration to ${version + 1} is defined. The file was preserved unchanged.`,
-      );
+  let backupDirectory: string | undefined;
+  try {
+    if (path !== ":memory:") {
+      backupDirectory = mkdtempSync(join(tmpdir(), "aux-db-backup-"));
+      const backup = join(backupDirectory, "aux-state.sqlite");
+      db.exec(`VACUUM INTO '${backup.replaceAll("'", "''")}'`);
+      chmodSync(backup, 0o600);
     }
-    applyMigrations(db, [...statements, `PRAGMA user_version = ${version + 1}`]);
+    for (let version = from; version < SCHEMA_VERSION; version += 1) {
+      const step = MIGRATIONS[version];
+      const statements = typeof step === "function" ? step(db) : step;
+      if (!statements) {
+        throw new Error(
+          `This Aux database is schema ${version} but no migration to ${version + 1} is defined. The file was preserved unchanged.`,
+        );
+      }
+      applyMigrations(db, [...statements, `PRAGMA user_version = ${version + 1}`]);
+    }
+    db.exec("VACUUM");
+  } catch (error) {
+    if (backupDirectory) throw new Error(`Database migration failed. The original snapshot is at ${join(backupDirectory, "aux-state.sqlite")}.`, { cause: error });
+    throw error;
   }
+  if (backupDirectory) rmSync(backupDirectory, { recursive: true, force: true });
 }
 
 export function openDb(path: string): DatabaseSync {

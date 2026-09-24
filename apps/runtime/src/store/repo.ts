@@ -55,7 +55,7 @@ export class Repo {
   }
 
   /**
-   * Queue a hot-path write (page rows, the tab strip, events, observations).
+   * Queue a hot-path write (page rows, the tab strip, events).
    * A later write with the same key replaces a pending one in place;
    * everything pending commits in queue order in one relaxed transaction on
    * the next tick, `late` writes after the rest (rows that reference them).
@@ -613,25 +613,6 @@ export class Repo {
       evidence: P(r.evidence, undefined as never), observedAt: r.observed_at, status: r.status,
       error: r.error ?? undefined,
     };
-  }
-
-  // ---- observations (bounded history per page) ----
-  saveObservation(o: { observationId: string; pageId: string; epoch: number; revision: number; observedAt: number; scope: string; json: string }) {
-    this.q("INSERT INTO observations(observation_id,page_id,epoch,revision,observed_at,scope,json) VALUES(?,?,?,?,?,?,?)")
-      .run(o.observationId, o.pageId, o.epoch, o.revision, o.observedAt, o.scope, o.json);
-    // revisions only grow per page: keep the last 20 with an index range delete
-    this.q("DELETE FROM observations WHERE page_id=? AND revision<=?").run(o.pageId, o.revision - 20);
-  }
-  latestObservation(pageId: string): { revision: number; epoch: number; json: string } | undefined {
-    this.flush();
-    return this.q("SELECT revision,epoch,json FROM observations WHERE page_id=? ORDER BY revision DESC LIMIT 1")
-      .get(pageId) as { revision: number; epoch: number; json: string } | undefined;
-  }
-  observationAt(pageId: string, revision: number): string | undefined {
-    this.flush();
-    const r = this.q("SELECT json FROM observations WHERE page_id=? AND revision<=? ORDER BY revision DESC LIMIT 1")
-      .get(pageId, revision) as { json: string } | undefined;
-    return r?.json;
   }
 
   // ---- programs ----

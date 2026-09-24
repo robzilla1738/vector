@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EventBus, NullNativeBridge, PageService, Repo, openDb } from "@aux/runtime";
+import { EventBus, NullNativeBridge, PageService, Repo, StateService, openDb } from "@aux/runtime";
 import { slimObservation, wireObservation } from "../../apps/runtime/src/services/observation-wire";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import type { ElementRef, Observation, ObservationContent } from "@aux/contracts";
@@ -48,8 +48,22 @@ describe("sinceRevision deltas", () => {
     const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
     const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(), drivers: () => ({ aux: driver, chrome: null }) });
-    return { pages, set: (c: ObservationContent) => { current = c; }, navigated: (epoch: number) => onNavigated?.("https://a.test/next", epoch) };
+    return { pages, repo, set: (c: ObservationContent) => { current = c; }, navigated: (epoch: number) => onNavigated?.("https://a.test/next", epoch) };
   }
+
+  it("serves current controls from a live observation and drops them when the page changes", async () => {
+    const h = harness();
+    const page = await h.pages.open({ url: "about:blank", background: true, ownedByRuntime: true });
+    const state = new StateService({ repo: h.repo, pages: h.pages });
+    const controls = () => state.query({ entity: "controls", scope: { pageIds: [page.pageId] }, freshness: "current-required", completeness: "partial-allowed" }).rows;
+    expect(controls()).toEqual([]);
+    await h.pages.observe(page.pageId, {});
+    expect(controls()).toMatchObject([{ pageId: page.pageId, label: "Title", value: "x" }]);
+    h.repo.flush();
+    expect(h.repo.db.prepare("SELECT name FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
+    h.navigated(page.documentEpoch + 1);
+    expect(controls()).toEqual([]);
+  });
 
   it("reports added, removed and changed refs plus text lines against the caller's revision", async () => {
     const h = harness();

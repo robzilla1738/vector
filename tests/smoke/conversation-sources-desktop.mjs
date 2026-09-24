@@ -70,6 +70,8 @@ try {
   await app.close(); app = undefined;
 
   const repo = await openRepo();
+  assert.equal(repo.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='observations'").get(), undefined,
+    "ordinary page observations must not be stored in the profile database");
   const now = Date.now();
   repo.saveRun({ runId: "source-run", goal: "Compare the two research sources", status: "completed", pageIds: [alpha.pageId, beta.pageId], config: { chatId: "source-chat" }, result: { answer: "Alpha and Beta were compared from observed pages." }, createdAt: now, endedAt: now + 5 });
   const dir = join(dataDir, "artifacts", "source-run");

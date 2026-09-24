@@ -10,6 +10,7 @@ import { PageOpener } from "./pages/opener.js";
 import { PageRegistry } from "./pages/registry.js";
 import { TabSessionRestore } from "./pages/session-restore.js";
 import type { PageServiceDeps } from "./pages/types.js";
+import type { Observation } from "@aux/contracts";
 
 export type { DriverSet, ExecuteResult, PageServiceDeps } from "./pages/types.js";
 
@@ -63,6 +64,12 @@ export class PageService {
   get: PageRegistry["get"] = (...args) => this.pages.get(...args);
   isAttached: PageRegistry["isAttached"] = (...args) => this.pages.isAttached(...args);
   livePageIds: PageRegistry["livePageIds"] = (...args) => this.pages.livePageIds(...args);
+
+  currentObservation(pageId: string): Observation | undefined {
+    const page = this.pages.live.get(pageId);
+    const obs = page?.lastObs?.obs;
+    return obs?.documentEpoch === page?.target.documentEpoch ? obs : undefined;
+  }
 
   open: PageOpener["open"] = (...args) => this.opener.open(...args);
   registerExternal: PageOpener["registerExternal"] = (...args) => this.opener.registerExternal(...args);

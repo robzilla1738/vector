@@ -29,6 +29,20 @@ const seedResponses = (r: Repo) => {
 };
 
 describe("StateService", () => {
+  it("reads live form controls without persisting page observations", () => {
+    const r = repo();
+    let live = true;
+    const pages = { livePageIds: () => ["p1"], currentObservation: () => live ? {
+      revision: 7, content: { formFields: [{ ref: "f1", label: "Email", value: "person@example.test" }] },
+    } : undefined } as never;
+    const state = new StateService({ repo: r, pages });
+    const query = { entity: "controls" as const, freshness: "current-required" as const, completeness: "partial-allowed" as const };
+    expect(state.query(query).rows).toMatchObject([{ pageId: "p1", revision: 7, label: "Email" }]);
+    expect(r.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
+    live = false;
+    expect(state.query(query).rows).toEqual([]);
+    r.db.close();
+  });
   it("queries captured responses with where-filters", () => {
     const { state, repo } = svc();
     seedResponses(repo);
