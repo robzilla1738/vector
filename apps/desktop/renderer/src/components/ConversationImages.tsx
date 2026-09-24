@@ -135,8 +135,13 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
       if (state.mode !== "focus" || state.activePageId !== page.pageId || state.splitPageId) throw new Error("The visible page changed. Show it and try again.");
       const size = await imageSize(result.dataUrl);
       if (version !== request.current) return;
+      const visible = useStore.getState();
+      const visiblePage = visible.pages.find(item => item.pageId === page.pageId);
+      if (visible.mode !== "focus" || visible.activePageId !== page.pageId || visible.splitPageId
+        || visiblePage?.url !== page.url || visiblePage.documentEpoch !== page.documentEpoch)
+        throw new Error("The visible page changed. Show it and try again.");
       setLasso({ bounds: stageBounds() ?? bounds!, ...size });
-      state.setOverlay("capture");
+      visible.setOverlay("capture");
     }
     setPreview(null); setRegion(null); setCapture({ dataUrl: result.dataUrl, sourceUrl: page.url, sourcePage: { pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId, selectedAt: Date.now() }, title: page.title || "Page" });
   });
