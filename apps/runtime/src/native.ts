@@ -40,7 +40,7 @@ export interface NativeBridge {
   projectCommands?(projectId:string):Promise<ProjectCommand[]>;
   runProjectCommand?(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask}):Promise<ProjectCommand|null>;
   approveProjectPreview?(input:{projectId:string;url:string;task:ProjectCommandTask}):Promise<LocalPreviewCheck|null>;
-  stopProjectCommand?(projectId:string,commandId:string):Promise<ProjectCommand>;
+  stopProjectCommand?(projectId:string,commandId:string,task:ProjectCommandTask):Promise<ProjectCommand>;
   prepareProjectReview?(projectId:string,task:ProjectReviewContext):Promise<ProjectReviewSummary>;
   commitProject?(projectId:string,request:ProjectCommitRequest,task:ProjectReviewContext):Promise<ProjectCommitResult|null>;
   approveCloudCommand?(input:{task:ProjectCommandTask;environment:{remoteName:string;runtime:string;region:string};executable:string;args:string[];mode:'command'|'service';timeoutMinutes?:number}):Promise<boolean>;
@@ -110,7 +110,7 @@ export class ChannelNativeBridge implements NativeBridge {
   projectCommands(projectId:string){return this.channel.call<ProjectCommand[]>("native.projectCommands",{projectId});}
   runProjectCommand(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask}){return this.channel.call<ProjectCommand|null>("native.runProjectCommand",input,120_000);}
   approveProjectPreview(input:{projectId:string;url:string;task:ProjectCommandTask}){return this.channel.call<LocalPreviewCheck|null>("native.approveProjectPreview",input,120_000);}
-  stopProjectCommand(projectId:string,commandId:string){return this.channel.call<ProjectCommand>("native.stopProjectCommand",{projectId,commandId});}
+  stopProjectCommand(projectId:string,commandId:string,task:ProjectCommandTask){return this.channel.call<ProjectCommand>("native.stopProjectCommand",{projectId,commandId,task});}
   prepareProjectReview(projectId:string,task:ProjectReviewContext){return this.channel.call<ProjectReviewSummary>("native.prepareProjectReview",{projectId,task});}
   commitProject(projectId:string,request:ProjectCommitRequest,task:ProjectReviewContext){return this.channel.call<ProjectCommitResult|null>("native.commitProject",{projectId,request,task},120_000);}
   approveCloudCommand(input:{task:ProjectCommandTask;environment:{remoteName:string;runtime:string;region:string};executable:string;args:string[];mode:'command'|'service';timeoutMinutes?:number}){return this.channel.call<boolean>('native.approveCloudCommand',input,120_000);}

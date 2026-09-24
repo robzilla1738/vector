@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AuxError, type CalendarTaskEventsQuery, type Observation, type Predicate, type Program, type ProgramResult, type Step } from "@aux/contracts";
+import { AuxError, type CalendarTaskEventsQuery, type Observation, type Predicate, type Program, type ProgramResult, type ProjectEffectName, type Step } from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
@@ -10,6 +10,7 @@ import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
 import { TaskService } from "./tasks.js";
+import { PROJECT_EFFECT_ACCESS } from "./project-effects.js";
 
 export interface OperationRow {
   operationId: string;
@@ -57,18 +58,21 @@ const CONNECTOR_NAME = "events.list";
 const CONNECTOR_OPERATION_ID = "aux-connector-google-calendar-events-list";
 const CONNECTOR_IMPL_ID = "aux-connector-google-calendar-readonly";
 const PROJECT_SITE = "aux.project";
-type ProjectMutation = "file.write" | "file.create" | "file.rename" | "file.delete" | "command.start" | "commit.create";
-const PROJECT_EFFECT: Record<ProjectMutation, "write" | "destructive"> = {
+const PROJECT_EFFECT: Record<ProjectEffectName, "write" | "destructive" | "egress"> = {
   "file.write": "write", "file.create": "write", "file.rename": "write", "file.delete": "destructive",
-  "command.start": "destructive", "commit.create": "write",
+  "command.start": "destructive", "command.stop": "destructive", "commit.create": "write",
+  "preview.open": "egress", "incident.report": "write",
 };
-const PROJECT_AUDIT_FIELDS: Record<ProjectMutation, readonly string[]> = {
+const PROJECT_AUDIT_FIELDS: Record<ProjectEffectName, readonly string[]> = {
   "file.write": ["name", "expectedHash", "contentSha256", "contentBytes"],
   "file.create": ["name", "contentSha256", "contentBytes"],
   "file.rename": ["name", "nextName", "expectedHash"],
   "file.delete": ["name", "expectedHash"],
   "command.start": ["mode", "commandSha256", "commandBytes"],
+  "command.stop": ["commandId"],
   "commit.create": ["expectedPatchHash", "expectedTree", "messageSha256"],
+  "preview.open": ["urlSha256"],
+  "incident.report": ["pageId", "pageUrlSha256", "consoleCount", "networkCount"],
 };
 
 /**
@@ -155,21 +159,22 @@ export class OperationService {
     }
   }
 
-  /** Native project effects have one sealed route and retain the desktop approval boundary. */
-  async invokeProjectMutation<T>(input: {
-    name: ProjectMutation; taskId: string; taskRevision: number; projectId: string;
+  /** Task-scoped native project effects use one sealed, durable dispatch route. */
+  async invokeProjectEffect<T>(input: {
+    name: ProjectEffectName; taskId: string; taskRevision: number; projectId: string;
     audit: Record<string, string | number | boolean | undefined>; execute: (invocationId: string) => Promise<T | null>;
   }): Promise<T | null> {
     const tasks = new TaskService(this.deps.repo, this.deps.events);
-    if (input.name === "command.start") tasks.prepareLocalCommand(input.taskId, input.taskRevision, input.projectId);
-    else tasks.prepareProjectAccess(input.taskId, input.taskRevision, input.projectId, true);
+    const access = PROJECT_EFFECT_ACCESS[input.name];
+    if (access === "command") tasks.prepareLocalCommand(input.taskId, input.taskRevision, input.projectId);
+    else tasks.prepareProjectAccess(input.taskId, input.taskRevision, input.projectId, access === "write");
     const operationId = `aux-project-${input.name.replace(".", "-")}`;
     const implId = `${operationId}-native`;
     const existing = this.deps.repo.getOperation(PROJECT_SITE, input.name);
     if (existing && (existing.operationId !== operationId || existing.effectClass !== PROJECT_EFFECT[input.name]))
       throw new AuxError("conflict", "A reserved project operation key is in use.");
     if (!existing) this.deps.repo.saveOperation({ operationId, siteKey: PROJECT_SITE, name: input.name,
-      description: "Human-approved native project operation", effectClass: PROJECT_EFFECT[input.name] });
+      description: "Task-scoped native project effect", effectClass: PROJECT_EFFECT[input.name] });
     const implementation = this.deps.repo.listImplementations(operationId).find(impl => impl.implId === implId);
     if (implementation && (implementation.kind !== "native-project" || implementation.state !== "validated" || implementation.executable !== "{}"))
       throw new AuxError("conflict", "The reserved native project route changed.");

@@ -31,6 +31,8 @@ export type ProjectInspection = z.infer<typeof ProjectInspectionSchema>;
 
 export const ProjectCommandTaskSchema=z.object({taskId:z.string().min(1),taskRevision:z.number().int().positive(),title:z.string(),workspaceId:z.string(),invocationId:z.string().optional()});
 export type ProjectCommandTask=z.infer<typeof ProjectCommandTaskSchema>;
+export const ProjectEffectNameSchema=z.enum(['file.write','file.create','file.rename','file.delete','command.start','command.stop','commit.create','preview.open','incident.report']);
+export type ProjectEffectName=z.infer<typeof ProjectEffectNameSchema>;
 export const ProjectCommandContextSchema=z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive()}).strict();
 export type ProjectCommandContext=z.infer<typeof ProjectCommandContextSchema>;
 export const ProjectServiceStackRequestSchema=z.object({

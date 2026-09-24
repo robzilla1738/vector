@@ -83,26 +83,35 @@ describe("OperationService", () => {
       const base = { name: "file.write" as const, taskId: task.taskId, taskRevision: task.revision, projectId,
         audit: { name: "app.ts", contentSha256: "a".repeat(64), content: "secret file body" } };
       let sawRunning = false;
-      const applied = await operations.invokeProjectMutation({ ...base, execute: async invocationId => {
+      const applied = await operations.invokeProjectEffect({ ...base, execute: async invocationId => {
         sawRunning = (r.db.prepare("SELECT status FROM operation_invocations ORDER BY started_at DESC LIMIT 1").get() as {status:string}).status === "running";
-        expect(tasks.confirmProjectInvocation(task.taskId, task.revision, projectId, invocationId).taskId).toBe(task.taskId);
-        expect(() => tasks.confirmProjectInvocation(task.taskId, task.revision, "wrong-project", invocationId)).toThrow(/does not match/);
+        expect(tasks.confirmProjectInvocation(task.taskId, task.revision, projectId, invocationId, "file.write").taskId).toBe(task.taskId);
+        expect(() => tasks.confirmProjectInvocation(task.taskId, task.revision, "wrong-project", invocationId, "file.write")).toThrow(/does not match/);
         return { saved: true };
       } });
       expect(applied).toEqual({ saved: true });
       expect(sawRunning).toBe(true);
       const firstId=(r.db.prepare("SELECT invocation_id AS id FROM operation_invocations ORDER BY rowid LIMIT 1").get() as {id:string}).id;
-      expect(() => tasks.confirmProjectInvocation(task.taskId, task.revision, projectId, firstId)).toThrow(/does not match/);
-      const denied = await operations.invokeProjectMutation({ ...base, execute: async () => null });
+      expect(() => tasks.confirmProjectInvocation(task.taskId, task.revision, projectId, firstId, "file.write")).toThrow(/does not match/);
+      const denied = await operations.invokeProjectEffect({ ...base, execute: async () => null });
       expect(denied).toBeNull();
       const settled = r.db.prepare("SELECT status,effect_outcome FROM operation_invocations ORDER BY rowid").all();
       expect(settled).toEqual([{ status: "completed", effect_outcome: "observed" }, { status: "denied", effect_outcome: "not-dispatched" }]);
-      await expect(operations.invokeProjectMutation({ ...base, execute: async () => { throw new Error("Native response lost"); } })).rejects.toThrow("Native response lost");
+      await expect(operations.invokeProjectEffect({ ...base, execute: async () => { throw new Error("Native response lost"); } })).rejects.toThrow("Native response lost");
       const uncertain = r.db.prepare("SELECT invocation_id AS id,inputs,status,effect_outcome AS outcome FROM operation_invocations ORDER BY rowid DESC LIMIT 1").get() as {id:string;inputs:string;status:string;outcome:string};
       expect(uncertain).toMatchObject({ status: "failed", outcome: "unknown" });
       expect(JSON.parse(uncertain.inputs)).toMatchObject({ taskId: task.taskId, projectId });
       expect(uncertain.inputs).not.toContain("secret file body");
       expect(() => tasks.prepareProjectAccess(task.taskId, 1, projectId, true)).toThrow(/unresolved operation/);
+      const stopped = await operations.invokeProjectEffect({name:'command.stop',taskId:task.taskId,taskRevision:1,projectId,
+        audit:{commandId:'22222222-2222-4222-8222-222222222222'},execute:async invocationId=>{
+          expect(tasks.confirmProjectInvocation(task.taskId,1,projectId,invocationId,'command.stop').taskId).toBe(task.taskId);
+          expect(()=>tasks.confirmProjectInvocation(task.taskId,1,projectId,invocationId,'file.write')).toThrow(/does not match/);
+          return {state:'stopping'};
+        }});
+      expect(stopped).toEqual({state:'stopping'});
+      const stopRow=r.db.prepare("SELECT i.status,i.effect_outcome AS outcome FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id WHERE o.name='command.stop'").get();
+      expect(stopRow).toEqual({status:'completed',outcome:'observed'});
       const second = tasks.create({ workspaceId: workspace.workspaceId, title: "Second editor", objective: "Inspect the same checkout",
         criteria: [{ criterionId: "check", description: "Checkout inspected", verification: "manual" }],
         resources: [{ resourceId: "repo-2", kind: "repository", projectId, locator: "/managed/checkout", label: "Checkout", access: "write" }] });

@@ -2,9 +2,10 @@ import { readWorkspaceMemory } from "./workspace-memory.js";
 import { BrowsingMemory } from "./browsing-memory.js";
 import { memoryOrigin } from "@aux/contracts/memory-context";
 import { randomUUID } from "node:crypto";
-import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, AuxError, taskConversationId, taskMatchesQuery, type Task, type Workspace, type WorkspaceMemory } from "@aux/contracts";
+import { TaskCreateParams, TaskPromoteParams, TaskSchema, TaskUpdateParams, WorkspaceMemoryItemSchema, AuxError, taskConversationId, taskMatchesQuery, type ProjectEffectName, type Task, type Workspace, type WorkspaceMemory } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
+import { PROJECT_EFFECT_ACCESS } from "./project-effects.js";
 
 const ACTIVE_RUNS = "('queued','planning','running','paused','needs_input')";
 
@@ -238,16 +239,16 @@ export class TaskService {
     if(write){this.requireLocalAuthority(taskId,expectedRevision);this.requireIdle(taskId);this.requireResolved(taskId,exceptInvocationId);this.requireProjectAvailable(projectId,taskId);}
     return task;
   }
-  /** Native approval rechecks one exact broker invocation without blocking itself. */
-  confirmProjectInvocation(taskId:string,expectedRevision:number,projectId:string,invocationId:string):Task{
-    const row=this.repo.db.prepare(`SELECT i.status,i.effect_outcome AS outcome,i.inputs,o.site_key AS site
+  /** Native dispatch rechecks one exact broker invocation without blocking itself. */
+  confirmProjectInvocation(taskId:string,expectedRevision:number,projectId:string,invocationId:string,name:ProjectEffectName):Task{
+    const row=this.repo.db.prepare(`SELECT i.status,i.effect_outcome AS outcome,i.inputs,o.site_key AS site,o.name
       FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id WHERE i.invocation_id=?`).get(invocationId) as
-      {status:string;outcome:string;inputs:string;site:string}|undefined;
+      {status:string;outcome:string;inputs:string;site:string;name:string}|undefined;
     const inputs=row?JSON.parse(row.inputs) as {taskId?:string;taskRevision?:number;projectId?:string}:undefined;
-    if(!row||row.site!=='aux.project'||row.status!=='running'||row.outcome!=='unknown'||inputs?.taskId!==taskId
+    if(!row||row.site!=='aux.project'||row.name!==name||row.status!=='running'||row.outcome!=='unknown'||inputs?.taskId!==taskId
       ||inputs.taskRevision!==expectedRevision||inputs.projectId!==projectId)
       throw new AuxError('permission_denied','This native approval does not match an active project invocation.');
-    return this.prepareProjectAccess(taskId,expectedRevision,projectId,true,invocationId);
+    return this.prepareProjectAccess(taskId,expectedRevision,projectId,PROJECT_EFFECT_ACCESS[name]!=='read',invocationId);
   }
   prepareCloudMutation(taskId:string,expectedRevision:number,projectId:string,environmentId:string):Task{
     const task=this.prepareProjectAccess(taskId,expectedRevision,projectId);const authority=this.cloudAuthority(taskId,expectedRevision),projectAuthority=this.cloudProjectAuthority(projectId);

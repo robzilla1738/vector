@@ -85,7 +85,7 @@ export const NativeMethods = {
   "native.projectCommands": ProjectParams,
   "native.runProjectCommand": ProjectParams.extend({ command: ProjectCommandSchema.shape.command, mode: ProjectCommandSchema.shape.mode, task: ProjectCommandTaskSchema }),
   "native.approveProjectPreview": ProjectParams.extend({ url: z.string(), task: ProjectCommandTaskSchema }),
-  "native.stopProjectCommand": ProjectParams.extend({ commandId: z.string() }),
+  "native.stopProjectCommand": ProjectParams.extend({ commandId: z.string(), task: ProjectCommandTaskSchema }),
   "native.prepareProjectReview": ProjectParams.extend({ task: ProjectReviewContextSchema }),
   "native.commitProject": ProjectParams.extend({ request: ProjectCommitRequestSchema, task: ProjectReviewContextSchema }),
   "native.approveCloudCommand": z.object({

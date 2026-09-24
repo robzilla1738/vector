@@ -41,7 +41,7 @@ import {
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
-import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema} from "./local-projects.js";
+import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema,ProjectEffectNameSchema} from "./local-projects.js";
 
 const id = z.string().min(1);
 
@@ -509,7 +509,7 @@ export const MethodSchemas = {
   "tasks.importDocumentEvidence": EvidenceDocumentParams,
   "tasks.importCommandEvidence": EvidenceCommandParams,
   "tasks.prepareLocalCommand": z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "tasks.confirmProjectInvocation": z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),invocationId:z.string().min(1)}).strict(),
+  "tasks.confirmProjectInvocation": z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),invocationId:z.string().min(1),name:ProjectEffectNameSchema}).strict(),
   "tasks.reviewCriterion": CriterionReviewParams,
   "tasks.reconcileAction": TaskReconcileParams,
   "tasks.reconcileOperation": TaskReconcileOperationParams,

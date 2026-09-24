@@ -152,6 +152,7 @@ try {
   assert.deepEqual((await ok('aux_development_projects',{taskId:development.taskId,expectedRevision:development.expectedRevision})).map(project=>project.projectId),[setup.project.projectId]);
   const inspected=await ok('aux_development_inspect',development);assert.equal(inspected.environment.javascript.manager,'npm');assert.ok(inspected.environment.javascript.suggestions.some(item=>item.command==="npm run 'check'"));assert.ok(inspected.environment.tools.some(item=>item.command==='node'&&item.available));
   const opened=await ok('aux_development_read_file',{...development,name:'app.ts'});assert.equal(opened.content,'export const value = 1;\n');
+  const incident=await ok('aux_development_incident_report',{...development,pageId:setup.authorizedPage.pageId});assert.equal(incident.projectId,development.projectId);assert.equal(existsSync(incident.path),true);
   await denied('aux_development_read_file',{...development,projectId:'33333333-3333-4333-8333-333333333333',name:'app.ts'});
   await app.evaluate(({dialog})=>{dialog.showMessageBox=async(_window,options)=>{globalThis.__auxDevelopmentApprovals=(globalThis.__auxDevelopmentApprovals??[]).concat({title:options.title,message:options.message,detail:options.detail});return {response:1,checkboxChecked:false};};});
   const saved=await ok('aux_development_write_file',{...development,name:'app.ts',expectedHash:opened.sha256,content:'export const value = 2;\n'});assert.equal(saved.content,'export const value = 2;\n');assert.equal(readFileSync(join(setup.project.path,'app.ts'),'utf8'),saved.content);

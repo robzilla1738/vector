@@ -303,7 +303,7 @@ export function makeInvoker(s: Services) {
         return tasks.prepareLocalCommand(params.taskId,params.expectedRevision,params.projectId);
       case "tasks.confirmProjectInvocation":
         if(client.external)throw new AuxError("permission_denied","Only Aux native project approval can confirm an in-flight operation.");
-        return tasks.confirmProjectInvocation(params.taskId,params.expectedRevision,params.projectId,params.invocationId);
+        return tasks.confirmProjectInvocation(params.taskId,params.expectedRevision,params.projectId,params.invocationId,params.name);
       case "tasks.importCommandEvidence":
         if (client.external) throw new AuxError("permission_denied", "Command evidence requires the Aux desktop interface");
         return taskEvidence.importCommand(params);
@@ -402,54 +402,64 @@ export function makeInvoker(s: Services) {
         const [consoleResult,networkResult]=await Promise.all([s.pages.console(params.pageId,{limit:100}),s.pages.network(params.pageId,{limit:100})]);
         const network=(Array.isArray(networkResult)?networkResult:[]).flatMap(value=>{if(!value||typeof value!=='object')return[];const item=value as Record<string,unknown>;return typeof item.method==='string'&&typeof item.url==='string'?[{method:item.method,url:item.url,...(typeof item.status==='number'?{status:item.status}:{}),...(typeof item.durationMs==='number'?{durationMs:item.durationMs}:{}),...(typeof item.startedAt==='number'?{startedAt:item.startedAt}:{})}]:[];});
         const operations=await s.settings.operationsStatus().then(status=>{const lines=[`Checked: ${new Date(status.checkedAt).toISOString()}`];if(status.vercel){const latest=status.vercel.deployments[0];lines.push(`Vercel: ${status.vercel.project.name}${latest?` · ${latest.state}${latest.target?` · ${latest.target}`:''} · ${latest.url}`:' · no recent deployment found'}`);}if(status.sentry){lines.push(`Sentry: ${status.sentry.organization}/${status.sentry.project.slug} · ${status.sentry.issues.length} recent unresolved issues`);for(const issue of status.sentry.issues.slice(0,10))lines.push(`- ${issue.shortId} · ${issue.level} · ${issue.title} · ${issue.count} events · last seen ${issue.lastSeen||'unknown'}`);}for(const message of status.unavailable)lines.push(`Unavailable: ${message}`);return lines.join('\n');}).catch(error=>`Operations status unavailable: ${error instanceof Error?error.message:String(error)}`);
-        tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().writeIncidentReport({projectId:params.projectId,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId},page:{pageId:page.pageId,url:page.url,title:page.title},console:consoleResult.lines,network,operations});
+        return projectBroker().invokeProjectEffect({name:'incident.report',taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+          audit:{pageId:page.pageId,pageUrlSha256:createHash('sha256').update(page.url).digest('hex'),consoleCount:consoleResult.lines.length,networkCount:network.length},
+          execute:(invocationId)=>developmentNative().writeIncidentReport({projectId:params.projectId,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId},page:{pageId:page.pageId,url:page.url,title:page.title},console:consoleResult.lines,network,operations})});
       }
       case 'development.files':tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().listProjectFiles(params.projectId);
       case 'development.readFile':tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().readProjectFile(params.projectId,params.name);
       case 'development.writeFile':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId,true);
-        return projectBroker().invokeProjectMutation({name:"file.write",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+        return projectBroker().invokeProjectEffect({name:"file.write",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{name:params.name,expectedHash:params.expectedHash,...contentAudit(params.content)},
           execute:(invocationId)=>developmentNative().writeProjectFile({projectId:params.projectId,name:params.name,expectedHash:params.expectedHash,content:params.content,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
       }
       case 'development.createFile':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId,true);
-        return projectBroker().invokeProjectMutation({name:"file.create",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+        return projectBroker().invokeProjectEffect({name:"file.create",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{name:params.name,...contentAudit(params.content)},
           execute:(invocationId)=>developmentNative().createProjectFile({projectId:params.projectId,name:params.name,content:params.content,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
       }
       case 'development.renameFile':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId,true);
-        return projectBroker().invokeProjectMutation({name:"file.rename",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+        return projectBroker().invokeProjectEffect({name:"file.rename",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{name:params.name,nextName:params.nextName,expectedHash:params.expectedHash},
           execute:(invocationId)=>developmentNative().renameProjectFile({projectId:params.projectId,name:params.name,nextName:params.nextName,expectedHash:params.expectedHash,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
       }
       case 'development.deleteFile':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId,true);
-        return projectBroker().invokeProjectMutation({name:"file.delete",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+        return projectBroker().invokeProjectEffect({name:"file.delete",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{name:params.name,expectedHash:params.expectedHash},
           execute:(invocationId)=>developmentNative().deleteProjectFile({projectId:params.projectId,name:params.name,expectedHash:params.expectedHash,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
       }
       case 'development.commands':tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().projectCommands(params.projectId);
       case 'development.runCommand':{
         const task=tasks.prepareLocalCommand(params.taskId,params.expectedRevision,params.projectId);
-        return projectBroker().invokeProjectMutation({name:"command.start",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+        return projectBroker().invokeProjectEffect({name:"command.start",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{mode:params.mode,commandSha256:createHash("sha256").update(params.command).digest("hex"),commandBytes:Buffer.byteLength(params.command)},
           execute:(invocationId)=>developmentNative().runProjectCommand({projectId:params.projectId,command:params.command,mode:params.mode,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
       }
       case 'development.openPreview':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);
-        const check=await developmentNative().approveProjectPreview({projectId:params.projectId,url:params.url,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId}});
-        if(!check)return null;if(check.state!=='responding')return {check};
-        const page=await s.pages.open({url:check.url,background:false,ownedByRuntime:false,activate:true});
-        if(scope&&client.connectionId){const granted=previewPageGrants.get(client.connectionId)??new Set<string>();granted.add(page.pageId);previewPageGrants.set(client.connectionId,granted);}
-        return {check,page};
+        return projectBroker().invokeProjectEffect({name:'preview.open',taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+          audit:{urlSha256:createHash('sha256').update(params.url).digest('hex')},execute:async invocationId=>{
+            const check=await developmentNative().approveProjectPreview({projectId:params.projectId,url:params.url,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}});
+            if(!check)return null;if(check.state!=='responding')return {check};
+            const page=await s.pages.open({url:check.url,background:false,ownedByRuntime:false,activate:true});
+            if(scope&&client.connectionId){const granted=previewPageGrants.get(client.connectionId)??new Set<string>();granted.add(page.pageId);previewPageGrants.set(client.connectionId,granted);}
+            return {check,page};
+          }});
       }
-      case 'development.stopCommand':tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().stopProjectCommand(params.projectId,params.commandId);
+      case 'development.stopCommand':{
+        const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);
+        return projectBroker().invokeProjectEffect({name:'command.stop',taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+          audit:{commandId:params.commandId},execute:(invocationId)=>developmentNative().stopProjectCommand(params.projectId,params.commandId,
+            {taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId})});
+      }
       case 'development.review':{const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().prepareProjectReview(params.projectId,{taskId:task.taskId,taskRevision:task.revision,title:task.title,objective:task.objective,workspaceId:task.workspaceId});}
       case 'development.commit':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId,true);
-        return projectBroker().invokeProjectMutation({name:"commit.create",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
+        return projectBroker().invokeProjectEffect({name:"commit.create",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{expectedPatchHash:params.expectedPatchHash,expectedTree:params.expectedTree,
             messageSha256:createHash("sha256").update(params.message).digest("hex")},
           execute:(invocationId)=>developmentNative().commitProject(params.projectId,{expectedPatchHash:params.expectedPatchHash,expectedTree:params.expectedTree,message:params.message,authorName:params.authorName,authorEmail:params.authorEmail},{taskId:task.taskId,taskRevision:task.revision,title:task.title,objective:task.objective,workspaceId:task.workspaceId,invocationId})});
