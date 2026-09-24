@@ -39,7 +39,7 @@ export function addressNavigate(input: string, searchEngine?: string): { action:
 
 /** Scrim overlays cover the stage and must hide WebContentsView. In-flow strips shrink the stage instead. */
 export function isScrimOverlay(overlay: string | null): boolean {
-  return overlay === "reader" || overlay === "bookmarks" || overlay === "palette" || overlay === "settings" || overlay === "history" || overlay === "clear-history" || overlay === "observe" || overlay === "tasks" || overlay === "site";
+  return overlay === "reader" || overlay === "bookmarks" || overlay === "palette" || overlay === "settings" || overlay === "history" || overlay === "clear-history" || overlay === "observe" || overlay === "tasks" || overlay === "site" || overlay === "capture";
 }
 
 export function isFlowOverlay(overlay: string | null): boolean {

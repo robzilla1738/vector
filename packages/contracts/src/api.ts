@@ -293,7 +293,7 @@ export const ConversationAttachmentControlParams = z.object({ chatId: id, attach
 export const ConversationAttachmentToggleParams = ConversationAttachmentControlParams.extend({ included: z.boolean() });
 export const ConversationImageSchema = z.object({
   imageId:id, artifactId:id, filename:z.string(), width:z.number().int().positive(), height:z.number().int().positive(),
-  byteLength:z.number().int().nonnegative(), sourceUrl:z.string().optional(), createdAt:z.number(), included:z.boolean(),
+  byteLength:z.number().int().nonnegative(), sourceUrl:z.string().optional(), sourcePage:PageContextRefSchema.optional(), createdAt:z.number(), included:z.boolean(),
 });
 export type ConversationImage = z.infer<typeof ConversationImageSchema>;
 const ConversationImagesSchema = z.object({chatId:id,images:z.array(ConversationImageSchema)});
@@ -660,7 +660,7 @@ export const MethodSchemas = {
   "conversations.archive": ConversationArchiveParams,
   "conversations.delete": ConversationDeleteParams,
   "conversations.images.get": z.object({chatId:id}),
-  "conversations.images.add": z.object({chatId:id,filename:z.string().trim().min(1).max(255).default("Page capture.png"),dataUrl:z.string().max(4_200_000),sourceUrl:z.string().max(8192).optional()}),
+  "conversations.images.add": z.object({chatId:id,filename:z.string().trim().min(1).max(255).default("Page capture.png"),dataUrl:z.string().max(4_200_000),sourceUrl:z.string().max(8192).optional(),sourcePage:PageContextRefSchema.optional()}),
   "conversations.images.read": ConversationImageControl,
   "conversations.images.toggle": ConversationImageControl.extend({included:z.boolean()}),
   "conversations.images.remove": ConversationImageControl,

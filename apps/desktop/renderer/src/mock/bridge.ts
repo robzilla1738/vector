@@ -318,7 +318,7 @@ export function installMockBridge(q: URLSearchParams) {
       const chatId=String(p.chatId), items=imageReferences.get(chatId)??[];
       if(items.length>=4)throw new Error("A conversation can hold four image references.");
       const bitmap=new Image();bitmap.src=String(p.dataUrl);await bitmap.decode();
-      const image: ConversationImage={imageId:crypto.randomUUID(),artifactId:crypto.randomUUID(),filename:String(p.filename),sourceUrl:p.sourceUrl as string|undefined,width:bitmap.naturalWidth,height:bitmap.naturalHeight,byteLength:Math.floor(String(p.dataUrl).length*.75),createdAt:Date.now(),included:true};
+      const image: ConversationImage={imageId:crypto.randomUUID(),artifactId:crypto.randomUUID(),filename:String(p.filename),sourceUrl:p.sourceUrl as string|undefined,sourcePage:p.sourcePage as ConversationImage["sourcePage"],width:bitmap.naturalWidth,height:bitmap.naturalHeight,byteLength:Math.floor(String(p.dataUrl).length*.75),createdAt:Date.now(),included:true};
       items.push({image,dataUrl:String(p.dataUrl)});imageReferences.set(chatId,items);return imageList(chatId);
     },
     "conversations.images.read": async p => {

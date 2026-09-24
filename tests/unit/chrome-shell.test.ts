@@ -39,8 +39,8 @@ describe("overlay → native-view visibility", () => {
   const page = "page-1";
   const url = "https://example.com";
 
-  it("hides the native page for palette, settings, history, and observe", () => {
-    for (const overlay of ["palette", "settings", "history", "observe"] as const) {
+  it("hides the native page for palette, settings, history, observe, and capture", () => {
+    for (const overlay of ["palette", "settings", "history", "observe", "capture"] as const) {
       expect(isScrimOverlay(overlay)).toBe(true);
       expect(isFlowOverlay(overlay)).toBe(false);
       expect(nativePageId({ mode: "focus", overlay, activePageId: page, url })).toBeNull();

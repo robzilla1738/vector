@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AuxError, type ConversationImage, type Run } from "@aux/contracts";
+import { AuxError, type ConversationImage, type PageContextRef, type Run } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { ArtifactStore } from "./artifacts.js";
 
@@ -21,7 +21,7 @@ export class ConversationImages {
   list(chatId:string) {
     return {chatId,images:this.records(chatId).filter(item=>!item.removed).map(({sha256,removed,...item})=>item)};
   }
-  add(opts:{chatId:string;filename:string;dataUrl:string;sourceUrl?:string}) {
+  add(opts:{chatId:string;filename:string;dataUrl:string;sourceUrl?:string;sourcePage?:PageContextRef}) {
     this.mutable(opts.chatId);
     const records=this.records(opts.chatId), visible=records.filter(item=>!item.removed);
     if(visible.length>=4)throw new AuxError("conflict","A conversation can include up to four image snapshots.");
@@ -37,8 +37,9 @@ export class ConversationImages {
       throw new AuxError("invalid_params","Conversation image snapshots can total up to 8 MB.");
     let sourceUrl:string|undefined;
     if(opts.sourceUrl){try{const url=new URL(opts.sourceUrl);if(!["http:","https:"].includes(url.protocol)||url.username||url.password)throw new Error();sourceUrl=url.href;}catch{throw new AuxError("invalid_params","Use a web page address without credentials for the image source.");}}
+    if(opts.sourcePage && (!sourceUrl || new URL(opts.sourcePage.url).href !== sourceUrl)) throw new AuxError("invalid_params","The image source page must match its captured address.");
     const artifact=this.artifacts.save({label:"conversation-image",buffer,mediaType:"image/png"});
-    const record:Record={imageId:randomUUID(),artifactId:artifact.artifactId,filename:opts.filename,width,height,byteLength:buffer.length,sourceUrl,createdAt:Date.now(),included:true,sha256:digest(buffer)};
+    const record:Record={imageId:randomUUID(),artifactId:artifact.artifactId,filename:opts.filename,width,height,byteLength:buffer.length,sourceUrl,sourcePage:opts.sourcePage,createdAt:Date.now(),included:true,sha256:digest(buffer)};
     try { this.repo.setSetting(key(opts.chatId),[...records,record]); }
     catch(error){this.repo.db.prepare("DELETE FROM artifacts WHERE artifact_id=?").run(artifact.artifactId);this.artifacts.removeFiles([artifact.path]);throw error;}
     this.onChanged(opts.chatId);

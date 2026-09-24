@@ -8,6 +8,7 @@ export function ImagePreview({snapshot,onClose}:{snapshot:SavedImageSnapshot;onC
   return <section className="document-snapshot capture-preview" aria-label="Image snapshot">
     <header><strong>{snapshot.image.filename}</strong><button className="icon-btn xs" aria-label="Close image preview" onClick={onClose}>{I.close}</button></header>
     <p className="hint">{snapshot.image.width} × {snapshot.image.height} · Saved {new Date(snapshot.image.createdAt).toLocaleString()} · {snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}</p>
+    {snapshot.image.sourcePage && <p className="snapshot-source">Captured from {snapshot.image.sourcePage.url} at {new Date(snapshot.image.sourcePage.selectedAt ?? snapshot.image.createdAt).toLocaleString()}. This image remains a snapshot if the tab changes.</p>}
     <img src={snapshot.dataUrl} alt={snapshot.image.filename}/>
   </section>;
 }
