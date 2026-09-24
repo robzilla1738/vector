@@ -46,13 +46,19 @@ Verification: five new result-viewer/card tests plus three existing result-draft
 
 [Result card and reading pane](evidence/2026-09-24/result-viewer-light-1440.png) · [CSV row details in narrow overlay](evidence/2026-09-24/result-table-overlay-dark-1280.png).
 
+### Fourth implementation slice — compact activity
+
+Work history now puts action, summary, outcome and disclosure on one compact row. Duration, error code, observed effect and recorded page/document/generation/target identity are available in expanded details. Confirmed, uncertain and takeover-interrupted receipt labels remain visible without expansion, and observation inspection, nested credential steps and existing redaction remain intact. No source record is inferred from a matching URL or substituted across Profiles.
+
+All 13 timeline tests passed (including a new receipt identity/disclosure test); renderer TypeScript and the 25 chrome/style checks passed. The current vertical/dark/1280×720 fixture showed compact rows, expanded observed-effect detail, visible failure status and persistent run controls. Scrolling upward exposed Jump to latest, preserving explicit transcript navigation. [Activity evidence](evidence/2026-09-24/activity-details-dark-1280.png). Real streamed runs and source-to-step grouping still require qualification/implementation.
+
 ## Remaining ordered batches
 
 | Batch | Required implementation and exit evidence |
 | --- | --- |
 | 1. Shared components and immediate defects | Finish the shared dialog/popover/tooltip/keycap family and both-layout consumption. Verify full sidebar keyboard, overflow, group navigation, short heights, all form controls. Current code covers the immediate defects, not every primitive consumer. |
 | 2. Every input presentation | Home Ask now lazily uses the composer with a minimal default and a plus tool popover. Attachments use one tray, browser context is searchable, and queues sit above the editor. Finish approval/model/scope coverage and verify every narrow state. Prove text **and attachments/context/run controls** across full, side and real Quick Ask windows. Current mock journeys prove text/document/inclusion full↔rail and home handoff; actual Quick Ask remains unproven. |
-| 3. Conversation and output | Complete compact activity/source grouping, persistent takeover/approval controls, remaining viewer/card consumers, image controls, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
+| 3. Conversation and output | Finish source-to-step grouping and approval controls, remaining viewer/card consumers, image controls, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
 | 4. Browser organization | Port suggestion rows/palette grouping, home result cards, tab slot geometry, overview/hover cards, Space/Profile pickers, tab groups, library and history to the shared family. Preserve current tab silhouette, drag membership, native bridge and keyboard routes. |
 | 5. Work management | Tasks/projects/routines/memory/files/diffs/console share list/detail structures; preserve filters, schedule/timezone validation, permission scopes, modified state, file saves and view-switch continuity. |
 | 6. Settings and remaining surfaces | Dedicated searchable preference subviews; model/service/vault/plugin connection flows; supported importer flow; optional resumable onboarding; downloads, translation, find/zoom, capture entry points, transient/error/recovery states, dialogs and about/update entry points. Do not manufacture unsupported reference capabilities. |
@@ -78,4 +84,4 @@ Full qualification remains: both layouts × expanded/collapsed × light/dark × 
 
 ## Host/build boundary
 
-The existing Siso build was observed still running at nice 10, approximately 51,984 completed actions at 6h54m. The compiling source checkout and native patches were not changed. No additional Chromium compile was started. An empty Electron launcher opened during app identification was closed. The renderer preview is on port 5198; the existing isolated real Electron development app remains on port 5197. Candidate native glass and Store compatibility remain open in [M1 host comparison](../M1-HOST-COMPARISON.md).
+The existing Siso build was observed still running at nice 10, approximately 52,978 completed actions at 7h04m. The compiling source checkout and native patches were not changed. No additional Chromium compile was started. An empty Electron launcher opened during app identification was closed. The renderer preview is on port 5198; the existing isolated real Electron development app remains on port 5197. Candidate native glass and Store compatibility remain open in [M1 host comparison](../M1-HOST-COMPARISON.md).

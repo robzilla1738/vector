@@ -210,7 +210,7 @@ const StepCard = memo(function StepCard({
   const obsId = typeof inputsOf(s).obsArtifactId === "string" ? String(inputsOf(s).obsArtifactId) : "";
   const redacted = redactedInputs(s);
   const detailKeys = Object.keys(redacted).filter(key => key !== "obsArtifactId");
-  const hasBody = chips.length > 0 || !!s.outcome?.error?.code || detailKeys.length > 0;
+  const hasBody = chips.length > 0 || !!s.outcome || detailKeys.length > 0;
   const [open, setOpen] = useState(false);
   const [enter, setEnter] = useState(() => live && !playedEntrance.has(s.stepId));
   useEffect(() => {
@@ -226,17 +226,18 @@ const StepCard = memo(function StepCard({
       </span>
       <div className="tl-body">
         <button className="tl-summary" type="button" aria-expanded={open} disabled={!hasBody} onClick={() => hasBody && setOpen(v => !v)}>
-          <span className="tl-head">
-            <span className="tl-op">{opLabel(s.op)}</span>
-            <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
-            {s.outcome && <span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>}
-          </span>
+          <span className="tl-op">{opLabel(s.op)}</span>
           <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
+          <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
+          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} aria-hidden="true">{I.right}</span>}
+
         </button>
-        {state === "failed" && s.outcome?.error?.code && <span className="tl-code">{s.outcome.error.code}</span>}
         {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
         {open && (
           <div className="tl-expand">
+            {s.outcome && <div className="tl-evidence-summary"><span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>{s.outcome.receipt?.observed && <span>{s.outcome.receipt.observed}</span>}</div>}
+            {s.outcome?.error?.code && <code className="tl-code">{s.outcome.error.code}</code>}
+            {s.outcome?.receipt?.identity && <dl className="tl-identity"><dt>Page</dt><dd>{s.outcome.receipt.identity.pageId}</dd><dt>Document</dt><dd>{s.outcome.receipt.identity.documentEpoch}</dd>{s.outcome.receipt.identity.generation !== undefined && <><dt>Generation</dt><dd>{s.outcome.receipt.identity.generation}</dd></>}{s.outcome.receipt.identity.target && <><dt>Target</dt><dd>{s.outcome.receipt.identity.target}</dd></>}</dl>}
             {chips.length > 0 && <div className="tl-chips">{chips.map(chip => <Chip key={`${chip.kind}:${chip.value}`} chip={chip} />)}</div>}
             {detailKeys.length > 0 && <pre className="tl-json">{JSON.stringify(redacted, null, 2)}</pre>}
           </div>

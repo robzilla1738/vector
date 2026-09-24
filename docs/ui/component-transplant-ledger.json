@@ -2392,7 +2392,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/Surface.BU6PW9lK.css"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -2402,12 +2402,16 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/activity-details-dark-1280.png"
+      ],
+      "functionalEvidence": [
+        "apps/desktop/renderer/src/components/StepTimeline.test.tsx: 13 passed; compact outcomes, receipt disclosure and identity, observation action, credential nesting/redaction."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Implement evidenced source-to-step grouping without guessing page/Profile identity.",
+        "Qualify real streamed runs and full accessibility, appearance, size and native-host matrix."
       ]
     },
     {
@@ -4048,11 +4052,12 @@
   ],
   "verificationSummary": {
     "rendererTypecheck": "passed",
-    "focusedRendererChecks": 41,
+    "focusedRendererChecks": 54,
     "chromeStyleChecks": 25,
     "nativeCandidate": "not yet available; native checks pending",
     "fullMatrix": "incomplete",
     "performanceComparison": "not run",
-    "resultSlice": "5 new viewer/card checks; existing result drafts (3), CommandBar (9), supporting pane (1), menu (1) also passed."
+    "resultSlice": "5 new viewer/card checks; existing result drafts (3), CommandBar (9), supporting pane (1), menu (1) also passed.",
+    "timelineSlice": "13 timeline tests passed; 25 style checks rerun passed."
   }
 }

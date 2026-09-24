@@ -51,9 +51,12 @@ describe("StepTimeline", () => {
     expect(rows).toHaveLength(4);
     expect(rows[0]!.className).toContain("ok");
     expect(rows[0]!.textContent).toContain("Open");
+    expect(rows[0]!.textContent).not.toContain("812 ms");
+    act(() => rows[0]!.querySelector<HTMLButtonElement>(".tl-summary")!.click());
     expect(rows[0]!.textContent).toContain("812 ms");
     expect(rows[2]!.className).toContain("failed");
     expect(rows[2]!.textContent).toContain("r41 is off-screen");
+    act(() => rows[2]!.querySelector<HTMLButtonElement>(".tl-summary")!.click());
     expect(rows[2]!.textContent).toContain("not_visible");
     expect(rows[2]!.textContent).toContain("2.0 s");
     expect(rows[3]!.className).toContain("skipped");
@@ -188,4 +191,13 @@ describe("timeline helpers", () => {
     expect(stepSummary(step("d", "fill", undefined, { target: "r3", value: "hello" }))).toBe("r3");
     expect(stepSummary(step("e", "click", { status: "failed", error: { code: "x", message: "boom" } }))).toBe("boom");
   });
+});
+
+it("keeps uncertain outcomes visible while disclosing recorded identity and observation",()=>{
+  const el=render(<StepTimeline live={false} steps={[step("receipt","click",{receipt:{observed:"Dispatch sent; confirmation unavailable",remoteConfirmed:false,uncertain:true,dispatchedBeforeTakeover:false,identity:{pageId:"page-2",documentEpoch:7,generation:3,target:"r4"}}})]}/>);
+  expect(el.textContent).toContain("Uncertain");
+  expect(el.textContent).not.toContain("page-2");
+  act(()=>el.querySelector<HTMLButtonElement>(".tl-summary")!.click());
+  expect(el.textContent).toContain("Dispatch sent; confirmation unavailable");
+  expect(el.querySelector('.tl-identity')?.textContent).toContain("page-2Document7Generation3Targetr4");
 });
