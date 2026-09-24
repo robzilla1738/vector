@@ -6,6 +6,7 @@ import { workspaceMemoryText } from "@aux/contracts/memory-context";
 import { documentSnapshotExcerpt, textContextShares } from "@aux/contracts";
 import { ConversationImages } from "./conversation-images.js";
 import { RunMessageQueue } from "./run-messages.js";
+import { TaskService } from "./tasks.js";
 import { randomUUID } from "node:crypto";
 import {
   EventTypes,
@@ -22,6 +23,7 @@ import {
   type ModelCall,
   type PageContextRef,
   type Run,
+  type RunMessage,
   type SavedProgram,
   type SetMember,
   type Step,
@@ -582,17 +584,35 @@ export class RunService {
         });
       },
     });
-    this.messages = new RunMessageQueue(deps.repo, deps.events, message => this.start({
+    this.messages = new RunMessageQueue(deps.repo, deps.events, message => this.startQueuedMessage(message),
+      runId => this.coordinator.controls.has(runId), runId => this.coordinator.steer(runId));
+    deps.events.subscribe(event => {
+      if (event.type !== EventTypes.RunStatus || !event.runId) return;
+      if (TERMINAL_RUN_STATUSES.has(event.payload.status as Run["status"])) this.takeoverPausedRuns.delete(event.runId);
+    });
+  }
+
+  private async startQueuedMessage(message: RunMessage): Promise<Run> {
+    const target = this.deps.repo.getRun(message.targetRunId);
+    if (!target || target.config?.chatId !== message.chatId) throw new AuxError("conflict", "The original conversation run changed. Review this follow-up.");
+    const taskId = target.config.taskId;
+    const taskRevision = target.config.taskRevision;
+    if (taskId && taskRevision === undefined) throw new AuxError("conflict", "The saved task revision is missing. Review this follow-up.");
+    const prepared = taskId ? new TaskService(this.deps.repo, this.deps.events).prepareRun(taskId, taskRevision!) : undefined;
+    if (prepared && (prepared.chatId !== message.chatId
+      || JSON.stringify(message.pageIds) !== JSON.stringify(target.pageIds)
+      || JSON.stringify(message.contextPageRefs) !== JSON.stringify(target.config.contextPageRefs ?? []))) {
+      throw new AuxError("conflict", "The saved task browser context changed. Review this follow-up.");
+    }
+    return this.start({
+      ...prepared,
       deliveryRunId: message.deliveryRunId,
       queuedMessageId: message.messageId,
       goal: message.text,
       chatId: message.chatId,
       pageIds: message.pageIds,
       contextPageRefs: message.contextPageRefs,
-    }), runId => this.coordinator.controls.has(runId), runId => this.coordinator.steer(runId));
-    deps.events.subscribe(event => {
-      if (event.type !== EventTypes.RunStatus || !event.runId) return;
-      if (TERMINAL_RUN_STATUSES.has(event.payload.status as Run["status"])) this.takeoverPausedRuns.delete(event.runId);
+      ...(prepared ? { accountLabels: target.config.accountLabels ?? [], calendarGrantIds: target.config.calendarGrantIds ?? [] } : {}),
     });
   }
 

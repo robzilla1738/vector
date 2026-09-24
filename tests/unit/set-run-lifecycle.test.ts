@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, WorkerPool } from "@aux/runtime";
+import { describe, it, expect, vi } from "vitest";
+import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, TaskService, WorkerPool } from "@aux/runtime";
+import { EventTypes, taskConversationId } from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
 import { handlePageTakeover } from "../../apps/runtime/src/services/page-takeover.js";
@@ -439,6 +440,54 @@ describe("conversation turn retry", () => {
       config: { chatId: "task-chat", taskId: "task-1", taskRevision: 2 }, createdAt: 10, endedAt: 20,
     });
     await expect(h.runs.retry("task-turn")).rejects.toThrow(/saved task/i);
+  });
+});
+
+describe("saved task queued follow-ups", () => {
+  function taskFixture() {
+    const h = harness();
+    const tasks = new TaskService(h.repo, h.events);
+    const workspace = tasks.createWorkspace("Research");
+    const task = tasks.create({ workspaceId: workspace.workspaceId, title: "Research", objective: "Check the source",
+      criteria: [{ criterionId: "source", description: "Cite the source", verification: "manual" }], resources: [] });
+    const chatId = taskConversationId(task.taskId);
+    const target: Run = { runId: "task-original", goal: task.objective, status: "running", pageIds: ["p1"], createdAt: Date.now(),
+      config: { chatId, taskId: task.taskId, taskRevision: task.revision, messageRevision: 0,
+        contextPageRefs: [], accountLabels: ["work"], calendarGrantIds: ["calendar-original"] } };
+    h.targets.set("p1", { pageId: "p1", url: "https://example.test/", documentEpoch: 1,
+      ownedByRuntime: false, viewStatus: "visible" } as PageTarget);
+    h.repo.saveRun(target);
+    return { ...h, tasks, task, chatId, target };
+  }
+
+  it("delivers within the original task, browser, and account scope", async () => {
+    const h = taskFixture();
+    const input = { messageId: "11111111-1111-4111-8111-111111111111", runId: h.target.runId, chatId: h.chatId,
+      text: "Check the citation too", pageIds: ["p1"], contextPageRefs: [], expectedRevision: 0 };
+    expect(() => h.runs.messages.queue({ ...input, messageId: "22222222-2222-4222-8222-222222222222", pageIds: ["p1", "p2"] }))
+      .toThrow(/context changed/i);
+    const queued = h.runs.messages.queue(input);
+    h.repo.saveRun({ ...h.target, status: "completed", endedAt: Date.now() });
+    h.events.emit(EventTypes.RunUpdated, { run: { ...h.target, status: "completed" } }, h.target.runId);
+    await vi.waitFor(() => expect(h.repo.getRunMessage(queued.messageId)?.status).toBe("delivered"));
+    const delivered = h.repo.getRun(queued.deliveryRunId)!;
+    expect(delivered).toMatchObject({ goal: input.text, pageIds: ["p1"], config: {
+      chatId: h.chatId, taskId: h.task.taskId, taskRevision: 1, messageId: queued.messageId,
+      accountLabels: ["work"], calendarGrantIds: ["calendar-original"],
+    } });
+    await h.runs.messages.stop();
+  });
+
+  it("holds a queued follow-up for review when its task revision changes", async () => {
+    const h = taskFixture();
+    const queued = h.runs.messages.queue({ messageId: "33333333-3333-4333-8333-333333333333", runId: h.target.runId,
+      chatId: h.chatId, text: "Check the citation too", pageIds: ["p1"], contextPageRefs: [], expectedRevision: 0 });
+    h.repo.saveRun({ ...h.target, status: "completed", endedAt: Date.now() });
+    h.tasks.update({ taskId: h.task.taskId, expectedRevision: 1, objective: "Check a different source" });
+    h.runs.messages.resumePending();
+    await vi.waitFor(() => expect(h.repo.getRunMessage(queued.messageId)?.status).toBe("needs_attention"));
+    expect(h.repo.getRun(queued.deliveryRunId)).toBeUndefined();
+    await h.runs.messages.stop();
   });
 });
 

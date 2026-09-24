@@ -1,6 +1,7 @@
-import { AuxError, EventTypes, newRunId, type PageContextRef, type Run, type RunMessage } from "@aux/contracts";
+import { AuxError, EventTypes, newRunId, taskConversationId, type PageContextRef, type Run, type RunMessage } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
+import { TaskService } from "./tasks.js";
 
 const active = new Set<Run["status"]>(["queued", "planning", "running", "paused", "needs_input"]);
 
@@ -52,7 +53,15 @@ export class RunMessageQueue {
       }
       const target = this.repo.getRun(input.runId);
       if (!target || target.config?.chatId !== input.chatId) throw new AuxError("not_found", "The conversation run was not found.");
-      if (target.config?.taskId) throw new AuxError("conflict", "Continue this saved task through its task controls.");
+      if (target.config?.taskId) {
+        const tasks = new TaskService(this.repo, this.events);
+        const task = tasks.get(target.config.taskId);
+        if (task.revision !== target.config.taskRevision || task.state === "archived"
+          || (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId) {
+          throw new AuxError("conflict", "This saved task changed. Review it before queueing a follow-up.");
+        }
+        tasks.requireLocalAuthority(task.taskId, task.revision);
+      }
       if (this.repo.getConversation(input.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before queueing a message.");
       if ((target.config?.messageRevision ?? 0) !== input.expectedRevision) throw new AuxError("conflict", "This run changed. Review it before queueing another message.");
       if (this.repo.pendingRunMessageCount(input.chatId) >= 50) throw new AuxError("conflict", "This conversation already has 50 waiting messages. Let some finish or remove one.");
@@ -60,6 +69,10 @@ export class RunMessageQueue {
         || new Set(input.contextPageRefs.map(ref => ref.pageId)).size !== input.contextPageRefs.length
         || input.contextPageRefs.some(ref => !input.pageIds.includes(ref.pageId))) {
         throw new AuxError("invalid_params", "Queued browser context must contain distinct selected pages.");
+      }
+      if (target.config?.taskId && (JSON.stringify(input.pageIds) !== JSON.stringify(target.pageIds)
+        || JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config.contextPageRefs ?? []))) {
+        throw new AuxError("conflict", "The selected browser context changed. Update it through the saved task after this run finishes.");
       }
       const at = Date.now();
       return this.repo.insertRunMessage({ messageId: input.messageId, chatId: input.chatId, targetRunId: input.runId,
@@ -86,7 +99,15 @@ export class RunMessageQueue {
       }
       const target = this.repo.getRun(input.runId);
       if (!target || target.config?.chatId !== input.chatId) throw new AuxError("not_found", "The conversation run was not found.");
-      if (target.config?.taskId) throw new AuxError("conflict", "Steer this saved task through its task controls.");
+      if (target.config?.taskId) {
+        const tasks = new TaskService(this.repo, this.events);
+        const task = tasks.get(target.config.taskId);
+        if (task.revision !== target.config.taskRevision || task.state === "archived"
+          || (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId) {
+          throw new AuxError("conflict", "This saved task changed. Review it before steering this run.");
+        }
+        tasks.requireLocalAuthority(task.taskId, task.revision);
+      }
       if (!active.has(target.status) || !this.canSteer(input.runId)) throw new AuxError("conflict", "This run has finished. Send a follow-up instead.");
       if (this.repo.getConversation(input.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before correcting it.");
       if ((target.config?.messageRevision ?? 0) !== input.expectedRevision) throw new AuxError("conflict", "This run changed. Review it before steering again.");

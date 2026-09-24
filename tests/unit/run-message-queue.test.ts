@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EventTypes, type Run } from "@aux/contracts";
-import { EventBus, openDb, Repo } from "@aux/runtime";
+import { EventTypes, taskConversationId, type Run } from "@aux/contracts";
+import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
@@ -70,6 +70,29 @@ describe("durable conversation queue", () => {
     expect(repo.getRun("run-steer")?.config?.messageRevision).toBe(1);
     expect(signaled).toHaveBeenCalledTimes(1);
     expect(() => messages.steer({ ...input, messageId: "22222222-2222-4222-8222-222222222222" })).toThrow(/changed/);
+    await messages.stop();
+  });
+
+  it("steers an active saved task only within its current revision and tabs", async () => {
+    const db = openDb(":memory:"); databases.push(db);
+    const repo = new Repo(db);
+    const events = new EventBus(repo);
+    const tasks = new TaskService(repo, events);
+    const workspace = tasks.createWorkspace("Work");
+    const task = tasks.create({ workspaceId: workspace.workspaceId, title: "Research", objective: "Find sources",
+      criteria: [{ criterionId: "source", description: "Cite one source", verification: "manual" }], resources: [] });
+    const chatId = taskConversationId(task.taskId);
+    const target: Run = { runId: "task-steer", goal: task.objective, status: "planning", pageIds: ["p1"], createdAt: Date.now(),
+      config: { chatId, taskId: task.taskId, taskRevision: 1, messageRevision: 0, contextPageRefs: [] } };
+    repo.saveRun(target);
+    const signaled = vi.fn();
+    const messages = new RunMessageQueue(repo, events, async () => { throw new Error("queue should not start"); }, () => true, signaled);
+    const input = { messageId: "33333333-3333-4333-8333-333333333333", runId: target.runId, chatId,
+      text: "Prefer the official source", pageIds: ["p1"], contextPageRefs: [], expectedRevision: 0 };
+    expect(() => messages.steer({ ...input, messageId: "44444444-4444-4444-8444-444444444444", pageIds: ["p1", "p2"] }))
+      .toThrow(/context changed/i);
+    expect(messages.steer(input).status).toBe("delivered");
+    expect(signaled).toHaveBeenCalledTimes(1);
     await messages.stop();
   });
 });
