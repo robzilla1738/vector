@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, expect, it } from "vitest";
 import { ArtifactStore, createRuntimeBackup, EventBus, openDb, Repo, TaskService } from "@aux/runtime";
-import { stageRuntimeRestore } from "../../apps/runtime/src/services/runtime-backup.js";
+import { deleteRuntimeBackup, listRuntimeBackups, stageRuntimeRestore } from "../../apps/runtime/src/services/runtime-backup.js";
 import { applyPendingRuntimeRestore } from "../../apps/desktop/main/runtime-restore.js";
 
 const cleanup: (() => void)[] = [];
@@ -67,4 +67,8 @@ it("omits protected article content and grants from portable backups and strips 
     expect(recovery.prepare("SELECT 1 FROM kv WHERE key=?").get(`setting:${policyKey}`)).toBeUndefined();
     expect(recovery.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
   } finally { recovery.close(); }
+  await expect(deleteRuntimeBackup(dir, "../outside", manifest.database.sha256)).rejects.toThrow(/listed Aux backup/);
+  await expect(deleteRuntimeBackup(dir, backup.path.split("/").at(-1)!, "0".repeat(64))).rejects.toThrow(/changed|no longer available/);
+  expect(await deleteRuntimeBackup(dir, backup.path.split("/").at(-1)!, manifest.database.sha256)).toEqual({ deleted: true });
+  expect(await listRuntimeBackups(dir)).toEqual([]);
 });

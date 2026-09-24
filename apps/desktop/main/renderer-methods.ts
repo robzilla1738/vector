@@ -100,6 +100,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "installation.backupRetention",
 
   "installation.listBackups",
+  "installation.deleteBackup",
 
   "installation.setBackupRetention",
   "installation.stageRestore",

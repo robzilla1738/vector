@@ -32,7 +32,7 @@ import type { CalendarConnectionService } from "../services/calendar-connections
 import type { AgentConnectionScope } from "@aux/contracts";
 import type {NativeBridge} from '../native.js';
 import {CloudEnvironmentService} from '../services/cloud-environments.js';
-import {cancelRuntimeRestore,createRuntimeBackup,listRuntimeBackups,backupRetention,setBackupRetention,stageRuntimeRestore} from '../services/runtime-backup.js';
+import {cancelRuntimeRestore,createRuntimeBackup,deleteRuntimeBackup,listRuntimeBackups,backupRetention,setBackupRetention,stageRuntimeRestore} from '../services/runtime-backup.js';
 import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
 import { PluginService } from "../services/plugins.js";
@@ -601,6 +601,7 @@ export function makeInvoker(s: Services) {
       }
       case 'installation.createBackup':if(client.external)throw new AuxError('permission_denied','Runtime backups require an explicit action in Aux.');return createRuntimeBackup(s.repo,s.settings.all().dataDir);
       case 'installation.listBackups':if(client.external&&client.scope)throw new AuxError('permission_denied','Runtime backups require an explicit action in Aux.');return listRuntimeBackups(s.settings.all().dataDir);
+      case 'installation.deleteBackup':if(client.external)throw new AuxError('permission_denied','Delete backups from the Aux settings window.');return deleteRuntimeBackup(s.settings.all().dataDir,params.name,params.expectedSha256);
       case 'installation.backupRetention':if(client.external&&client.scope)throw new AuxError('permission_denied','Runtime backups require an explicit action in Aux.');return backupRetention(s.repo);
       case 'installation.setBackupRetention':if(client.external)throw new AuxError('permission_denied','Backup retention is managed in Aux.');return setBackupRetention(s.repo,params.keep);
       case 'installation.stageRestore':if(client.external)throw new AuxError('permission_denied','Runtime restore requires an explicit action in Aux.');return stageRuntimeRestore(s.settings.all().dataDir,params.path);

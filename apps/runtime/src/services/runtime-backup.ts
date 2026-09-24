@@ -32,6 +32,15 @@ export async function listRuntimeBackups(dataDir:string){
   }
   return listed;
 }
+export async function deleteRuntimeBackup(dataDir:string,name:string,expectedSha256:string){
+  if(!/^aux-runtime-[A-Za-z0-9._-]{1,160}$/.test(name))throw new Error('Choose a listed Aux backup.');
+  const listed=(await listRuntimeBackups(dataDir)).find(item=>item.name===name&&item.sha256===expectedSha256);
+  if(!listed)throw new Error('This backup changed or is no longer available. Refresh the list.');
+  const info=await lstat(listed.path);
+  if(info.isSymbolicLink()||!info.isDirectory())throw new Error('This backup folder is no longer valid.');
+  await rm(listed.path,{recursive:true,force:false});
+  return {deleted:true as const};
+}
 type ManifestArtifact={artifactId:string;relativePath:string;bytes:number;sha256:string};
 type BackupManifest={formatVersion:1;createdAt:number;schemaVersion:number;database:{bytes:number;sha256:string};artifacts:ManifestArtifact[];missingArtifacts:number};
 
