@@ -125,8 +125,11 @@ it("keeps direct task-bound browser writes in the receipt and requires task evid
 
 it('keeps uncertain connected writes blocking until desktop reconciliation with current evidence',async()=>{
   const f=fixture();f.run();
+  const revoked=f.repo.getRun('r1')!;revoked.config={...revoked.config,contextMemoryRevoked:true};f.repo.saveRun(revoked);
   f.repo.saveOperation({operationId:'op-write',siteKey:'fixture.test',name:'submit-order',effectClass:'write'});
-  f.repo.saveInvocation({invocationId:'inv-write',operationId:'op-write',runId:'r1',status:'interrupted',effectOutcome:'unknown',startedAt:Date.now(),error:'Connection ended before confirmation'});
+  f.repo.saveInvocation({invocationId:'inv-write',operationId:'op-write',runId:'r1',status:'interrupted',effectOutcome:'unknown',startedAt:Date.now(),
+    inputs:{taskId:f.task.taskId,taskRevision:1,privateText:'forgotten article answer'},error:'Connection ended before confirmation'});
+  expect(f.repo.getInvocation('inv-write')?.inputs).toHaveProperty('privateText');
   const evidenceId=f.note().evidenceId;f.review(evidenceId);
   const receipt=f.evidence.receipt(f.task.taskId);expect(receipt.status).toBe('uncertain');expect(receipt.unresolvedOperations).toMatchObject([{invocationId:'inv-write',operation:'fixture.test/submit-order',effectClass:'write'}]);
   expect(()=>f.tasks.prepareRun(f.task.taskId,1)).toThrow('unresolved operation');
@@ -134,6 +137,7 @@ it('keeps uncertain connected writes blocking until desktop reconciliation with 
   await expect(f.invoke('tasks.reconcileOperation',params)).rejects.toMatchObject({code:'permission_denied'});
   await f.invoke('tasks.reconcileOperation',params,{external:false});
   expect(f.evidence.receipt(f.task.taskId).unresolvedOperations).toEqual([]);expect(f.repo.getInvocation('inv-write')).toMatchObject({status:'reconciled',effectOutcome:'not-dispatched'});
+  expect(f.repo.getInvocation('inv-write')?.inputs).toEqual({taskId:f.task.taskId,taskRevision:1});
   expect(f.db.prepare("SELECT outcome,evidence_id FROM operation_reconciliations WHERE invocation_id='inv-write'").get()).toEqual({outcome:'not_applied',evidence_id:evidenceId});
   expect(()=>f.tasks.prepareRun(f.task.taskId,1)).not.toThrow();
 });

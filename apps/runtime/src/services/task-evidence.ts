@@ -7,6 +7,7 @@ import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
 import { TaskService } from "./tasks.js";
 import { DurableWriteLedger } from "../agent/durable.js";
+import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
 
 type Actor = "desktop_user" | "external_client";
 type EvidenceRow = { seq: number; json: string };
@@ -175,6 +176,8 @@ export class TaskEvidenceService {
       if(updated.changes!==1)throw new AuxError('conflict','The operation was reconciled by another client');
       this.repo.db.prepare(`INSERT INTO operation_reconciliations(invocation_id,task_id,task_revision,outcome,evidence_id,note,recorded_at) VALUES(?,?,?,?,?,?,?)`)
         .run(p.invocationId,p.taskId,p.expectedRevision,p.outcome,p.evidenceId,p.note,recordedAt);
+      if (operation.runId && this.repo.getRun(operation.runId)?.config?.contextMemoryRevoked)
+        redactSettledRunInvocations(this.repo.db, operation.runId);
     });
     this.events.emit('task.operation_reconciled',{taskId:p.taskId,invocationId:p.invocationId,outcome:p.outcome,evidenceId:p.evidenceId});return{ok:true};
   }

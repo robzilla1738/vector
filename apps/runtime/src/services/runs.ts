@@ -47,6 +47,7 @@ import { canResumeAfterPageRelease } from "../agent/control-authority.js";
 import { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
 import { observationEvidence } from "./observation-evidence.js";
 import { derivedPageRecallRunIds, redactedPageRecallConfig } from "@aux/contracts/portable-page-recall";
+import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
 
 
 /**
@@ -345,6 +346,7 @@ export class RunService {
       this.deps.repo.transaction(() => {
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
+        redactSettledRunInvocations(this.deps.repo.db, runId);
         this.deps.repo.saveRun({ ...run, status: "cancelled", statusMessage: "Saved article forgotten — generated answer removed",
           result: undefined, error: "A selected saved article was forgotten.",
           config: redactedPageRecallConfig(run.config ?? {}, artifacts.map(item => item.artifactId)) });

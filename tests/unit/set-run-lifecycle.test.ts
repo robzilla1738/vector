@@ -143,6 +143,15 @@ it("forgets saved article answers through later turns, artifact citations, and r
     mediaType: "text/markdown", size: 20, status: "complete", createdAt: Date.now() });
   h.repo.db.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
     VALUES('protected-response','page','https://example.test/?answer=private','GET',1,'followup')`).run();
+  h.repo.db.prepare(`INSERT INTO operations(operation_id,site_key,name,created_at,updated_at)
+    VALUES('forget-op','app.test','lookup',1,1)`).run();
+  const invocation = (id: string, status: string, effectOutcome: string) => h.repo.saveInvocation({
+    invocationId: id, operationId: "forget-op", runId: "followup", status, effectOutcome, startedAt: 1,
+    inputs: { taskId: "task-one", projectId: "project-one", privateText: "private article answer" },
+    error: "private article answer",
+  });
+  invocation("settled-invocation", "completed", "verified");
+  invocation("uncertain-invocation", "running", "unknown");
   save("citation", { contextArtifactIds: ["derived-report"], context: "private answer followup" });
   save("retry", { retryOfRunId: "citation", context: "private answer citation" });
   save("unrelated", { context: "ordinary independent context" });
@@ -161,6 +170,11 @@ it("forgets saved article answers through later turns, artifact citations, and r
   expect(h.repo.getArtifact("derived-report")).toBeUndefined();
   expect(h.repo.getRun("followup")?.config?.revokedArtifactIds).toContain("derived-report");
   expect(h.repo.db.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
+  expect(h.repo.getInvocation("settled-invocation")?.inputs).toEqual({ taskId: "task-one", projectId: "project-one" });
+  expect(h.repo.getInvocation("settled-invocation")?.error).toBeUndefined();
+  expect(h.repo.getInvocation("uncertain-invocation")?.inputs).toHaveProperty("privateText");
+  invocation("uncertain-invocation", "completed", "verified");
+  expect(h.repo.getInvocation("uncertain-invocation")?.inputs).toEqual({ taskId: "task-one", projectId: "project-one" });
   expect(h.removedArtifacts).toContain("/synthetic/derived-report");
   expect(h.repo.getRun("unrelated")?.result).toEqual({ answer: "private answer unrelated" });
   expect(h.runs.redactForgottenArticleOutputs("space")).toBe(0);

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { sanitizeOperationInputSamples } from "./operation-input-stats.js";
+import { redactSettledRunInvocations } from "./forgotten-run-invocations.js";
 
 type RecallConfig = {
   chatId?: string;
@@ -80,6 +81,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
         for (const artifactId of owned) artifactIds.add(artifactId);
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           if (has(table)) db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
+        redactSettledRunInvocations(db, row.runId);
         db.prepare("UPDATE runs SET status='cancelled',result=NULL,status_message=?,error=?,config=? WHERE run_id=?")
           .run("Saved article unavailable after restore — generated answer removed", "Protected article context is not portable.",
             JSON.stringify(redactedPageRecallConfig(row.config, owned)), row.runId);

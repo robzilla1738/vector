@@ -16,6 +16,7 @@ import type {
   AuxEvent,
 } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
+import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
 import { commitRelaxed, kvGetJson, kvSetJson } from "./db.js";
 
 const now = () => Date.now();
@@ -1229,6 +1230,8 @@ export class Repo {
         v.invocationId, v.operationId, v.implId ?? null, v.runId ?? null, v.requestKey ?? null, J(v.inputs ?? {}),
         v.status, v.effectOutcome ?? "unknown", v.routeReason ?? null, v.startedAt, v.endedAt ?? null, v.error ?? null,
       );
+    if (v.runId && this.q("SELECT 1 FROM runs WHERE run_id=? AND json_extract(config,'$.contextMemoryRevoked')=1").get(v.runId))
+      redactSettledRunInvocations(this.db, v.runId);
   }
 
   getInvocation(invocationId: string) {
