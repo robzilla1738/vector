@@ -43,8 +43,10 @@ export function wireRuntimeIpc() {
         if (method === "workspaces.contentMemory.capture") throw new Error("Select the visible tab before remembering its content.");
         return { recorded: false };
       }
-      if (method === "workspaces.contentMemory.capture" && tabCatalog.tab(requestedPageId as string)?.workspaceId !== (params as { workspaceId?: string }).workspaceId)
-        throw new Error("The tab's Space changed. Select its current Space and try again.");
+      if (tabCatalog.tab(requestedPageId as string)?.workspaceId !== (params as { workspaceId?: string }).workspaceId) {
+        if (method === "workspaces.contentMemory.capture") throw new Error("The tab's Space changed. Select its current Space and try again.");
+        return { recorded: false };
+      }
     }
     if (method === "downloads.remove") {
       const selection = MethodSchemas["downloads.remove"].parse(params);

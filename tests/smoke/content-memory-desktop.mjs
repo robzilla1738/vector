@@ -76,8 +76,15 @@ try {
     workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch, expectedUrl: page.url,
   }), { workspaceId: other.workspaceId, page }), /Space changed/i);
   const legacy = await open("/legacy", false);
+  await shell.evaluate(workspaceId => window.aux.invoke("workspaces.browsingMemory.set", { workspaceId, policy: { enabled: true, retentionDays: 7 } }), workspaceId);
+  const record = workspaceId => shell.evaluate(({ workspaceId, legacy }) => window.aux.invoke("workspaces.browsingMemory.record", {
+    workspaceId, pageId: legacy.pageId, expectedDocumentEpoch: legacy.documentEpoch,
+  }), { workspaceId, legacy });
+  assert.equal((await record(workspaceId)).recorded, false);
   const migration = await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:space.id});
   assert.equal(migration.migrated, 1);
+  assert.equal((await record(other.workspaceId)).recorded, false);
+  assert.equal((await record(workspaceId)).recorded, true);
   const bound = await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)), legacy.pageId);
   assert.equal(bound.workspaceId, workspaceId);
   assert.equal((await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:other.id})).migrated, 0);
