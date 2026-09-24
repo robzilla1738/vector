@@ -31,6 +31,11 @@ const fixture = createServer((request, response) => {
     response.end(`<title>Frame parent</title><iframe id="remote" src="http://localhost:${fixture.address().port}/frame-child"></iframe>`);
     return;
   }
+  if (request.url === '/popup') {
+    response.setHeader('Content-Type', 'text/html');
+    response.end('<title>Aux popup proof</title><main id="opener-state"></main><script>document.querySelector("#opener-state").textContent = window.opener && window.opener.location.pathname === "/page" ? "Popup kept its opener" : "Popup lost its opener"</script><button id="popup-act" onclick="this.textContent=\'Popup clicked\'">Click popup</button>');
+    return;
+  }
   if (request.url === '/file') {
     response.setHeader('Content-Type', 'text/plain');
     response.setHeader('Content-Disposition', 'attachment; filename="broker-proof.txt"');
@@ -38,7 +43,7 @@ const fixture = createServer((request, response) => {
     return;
   }
   response.setHeader('Content-Type', 'text/html');
-  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><a id="download" href="/file">Download</a>');
+  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><button id="open-popup" onclick="window.open(\'/popup\',\'aux-popup\',\'width=500,height=400\')">Open popup</button><a id="download" href="/file">Download</a>');
 });
 await new Promise(resolve => fixture.listen(0, resolve));
 const targetUrl = `http://127.0.0.1:${fixture.address().port}/page`;
@@ -118,6 +123,20 @@ try {
   assert.ok(savedDownload?.path.startsWith(join(dataDir, 'downloads')), 'download remains in Aux native profile storage');
   assert.equal(readFileSync(savedDownload.path, 'utf8'), 'Aux download through native session');
 
+  const popupAction = await rpc('pages.execute', { program: { pageId: page.pageId, steps: [{ id: 'open-popup', op: 'click', target: 'css:#open-popup' }] } });
+  assert.equal(popupAction.status, 'completed', JSON.stringify(popupAction));
+  let popup;
+  for (let attempt = 0; attempt < 40 && !popup; attempt++) {
+    popup = (await rpc('workspace.get')).pages.find(item => item.url.endsWith('/popup'));
+    if (!popup) await delay(100);
+  }
+  assert.ok(popup?.pageId, 'native popup should register as an Aux page');
+  const popupObservation = await rpc('pages.observe', { pageId: popup.pageId });
+  assert.match(JSON.stringify(popupObservation), /Popup kept its opener/);
+  const popupClick = await rpc('pages.execute', { program: { pageId: popup.pageId, steps: [{ id: 'popup-click', op: 'click', target: 'css:#popup-act' }] } });
+  assert.equal(popupClick.status, 'completed', JSON.stringify(popupClick));
+  assert.match(JSON.stringify(await rpc('pages.observe', { pageId: popup.pageId })), /Popup clicked/);
+
   const framePage = await rpc('pages.open', { url: `http://127.0.0.1:${fixture.address().port}/frame-parent`, activate: true });
   let frameOverview;
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -153,10 +172,13 @@ try {
   assert.ok(restarted.pages.some(tab => tab.pageId === page.pageId), 'first tab survives runtime restart');
   assert.ok(restarted.pages.some(tab => tab.pageId === second.pageId), 'second tab survives runtime restart');
   assert.ok(restarted.pages.some(tab => tab.pageId === framePage.pageId), 'cross-site frame tab survives runtime restart');
+  assert.ok(restarted.pages.some(tab => tab.pageId === popup.pageId), 'native popup survives runtime restart');
   const afterRestart = await rpc('pages.observe', { pageId: page.pageId });
   assert.match(JSON.stringify(afterRestart), /Agent clicked and verified/);
   assert.ok((output.match(/internal CDP broker listening/g) ?? []).length >= 2, 'runtime generation receives a fresh broker');
-  console.log('Direct Aux launch: agent click, download, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
+  assert.equal((await rpc('pages.close', { pageId: popup.pageId })).ok, true, 'agent can close a native popup');
+  assert.equal((await rpc('workspace.get')).pages.some(tab => tab.pageId === popup.pageId), false, 'closed popup leaves the runtime catalog');
+  console.log('Direct Aux launch: agent click, popup, download, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
 } finally {
   if (app.exitCode === null) {
     const exited = once(app, 'exit');
