@@ -563,6 +563,7 @@ function registerIpc() {
   ipcMain.handle("ui.tabAudio",event=>{requireShell(event);return Object.fromEntries([...pages].map(([id,page])=>[id,{muted:page.view.webContents.isAudioMuted(),audible:page.view.webContents.isCurrentlyAudible()}]));});
   ipcMain.handle("ui.tabCommand", (event, envelope: unknown) => { requireShell(event); return tabController.execute(envelope, PRIVATE_WINDOW_ID); });
   ipcMain.handle("ui.bindTabSpace", event => { requireShell(event); throw new Error("Protected page memory is unavailable in private browsing."); });
+  ipcMain.handle("ui.migrateTabSpaces", event => { requireShell(event); return { migrated: 0 }; });
   ipcMain.handle("ui.tabsSnapshot", event => { requireShell(event); return tabCatalog.snapshot(); });
   ipcMain.handle("ui.tabsSince", (event, version: unknown) => { requireShell(event); return tabCatalog.since(typeof version === "number" ? version : -1); });
   ipcMain.handle("ui.setTabMuted",(event,pageId:string,muted:boolean)=>{requireShell(event);const page=pages.get(pageId);if(!page)throw new Error("Private tab not found");page.view.webContents.setAudioMuted(muted);shellView?.webContents.send("view.audio",{pageId,muted,audible:page.view.webContents.isCurrentlyAudible()});});

@@ -127,6 +127,9 @@ export const TabRecordSchema = z.object({
 });
 export type TabRecord = z.infer<typeof TabRecordSchema>;
 
+/** One-time import from a window's older renderer layout; existing catalog bindings always win. */
+export const TabSpaceMigrationSchema = z.array(z.object({ pageId: id, spaceId: z.string().min(1).max(200) }).strict()).max(512);
+
 export const WindowTabsSchema = z.object({
   windowId: id,
   order: z.array(id),

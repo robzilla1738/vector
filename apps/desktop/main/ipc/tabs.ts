@@ -1,13 +1,12 @@
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
-import type { BrowserSpace } from "@aux/contracts";
+import { TabSpaceMigrationSchema, type BrowserSpace } from "@aux/contracts";
 import { registry, siteZoom } from "../app/services.js";
 import { translator } from "../features/translate.js";
 import { showNavigationMenu } from "../navigation-menu.js";
 import { printPage, savePagePdf } from "../page-output.js";
 import { readArticle } from "../read-article.js";
 import { tabController } from "../tabs/ports.js";
-import { flushTabPatches } from "../tabs/publish.js";
-import { noteTab } from "../tabs/publish.js";
+import { flushTabPatches, noteTab, publishTabPatch } from "../tabs/publish.js";
 import { runtimeInvoke } from "../runtime/supervisor.js";
 import { tabCatalog } from "../tabs/store.js";
 import { viewHooks } from "../views/hooks.js";
@@ -29,6 +28,22 @@ export function wireTabsIpc() {
     noteTab(pageId, { spaceId: space.id, workspaceId: space.workspaceId });
     flushTabPatches();
     return { spaceId: space.id, workspaceId: space.workspaceId };
+  });
+  handleShell("ui.migrateTabSpaces", async (state, raw: unknown) => {
+    const requested = TabSpaceMigrationSchema.parse(raw);
+    if (!requested.length) return { migrated: 0 };
+    const spaces = await runtimeInvoke("spaces.list", {}) as BrowserSpace[];
+    const allowed = new Map(spaces.filter(space => !space.archived && !!space.workspaceId).map(space => [space.id, space]));
+    const seen = new Set<string>();
+    const ops = requested.flatMap(({ pageId, spaceId }) => {
+      if (seen.has(pageId)) return [];
+      seen.add(pageId);
+      const tab = tabCatalog.tab(pageId), space = allowed.get(spaceId);
+      if (!tab || tab.windowId !== state.id || tab.popup || tab.runtimeOwned || tab.spaceId || !space?.workspaceId) return [];
+      return [{ op: "upsert" as const, tab: { ...tab, spaceId: space.id, workspaceId: space.workspaceId } }];
+    });
+    if (ops.length) { publishTabPatch(tabCatalog.apply(ops)); flushTabPatches(); }
+    return { migrated: ops.length };
   });
   handleShell('ui.tabAudio', state => Object.fromEntries(registry.all().filter(entry=>(entry.windowId??PRIMARY_WINDOW_ID)===state.id&&!entry.view.webContents.isDestroyed()).map(entry=>[entry.pageId,{muted:entry.view.webContents.isAudioMuted(),audible:entry.view.webContents.isCurrentlyAudible()}])));
 

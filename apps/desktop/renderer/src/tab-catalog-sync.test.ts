@@ -42,6 +42,17 @@ it("merges catalog fields onto live pages without clobbering runtime fields", ()
   expect(page).toMatchObject({ title: "renamed", loading: true, controller: "agent", documentEpoch: 7 });
 });
 
+it("reconciles an older local tab placement to the main-owned Space", () => {
+  setup();
+  const space = { id: "research", name: "Research", color: "blue" as const, workspaceId: "workspace-research" };
+  useStore.setState(state => ({ layout: { ...state.layout, spaces: [...state.layout.spaces, space], tabSpace: { one: state.layout.activeSpaceId } } }));
+  useStore.getState().applyTabsPatch(patch(4, 3, [{ op: "upsert", tab: record("one", { spaceId: space.id, workspaceId: space.workspaceId }) }]));
+  expect(useStore.getState().layout.tabSpace.one).toBe(space.id);
+  useStore.setState(state => ({ layout: { ...state.layout, tabSpace: { one: state.layout.spaces[0]!.id } } }));
+  useStore.getState().syncTabsSnapshot(snapshot(5, [record("one", { spaceId: space.id, workspaceId: space.workspaceId }), record("two")], ["one", "two"], "two"));
+  expect(useStore.getState().layout.tabSpace.one).toBe(space.id);
+});
+
 it("requests a resync on a base-version gap instead of applying out of order", async () => {
   setup();
   const tabsSince = vi.spyOn(bridge, "tabsSince").mockResolvedValue({ kind: "snapshot", snapshot: snapshot(9, [record("one"), record("four")], ["one", "four"], "four") });

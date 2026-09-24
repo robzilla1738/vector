@@ -20,11 +20,12 @@ const server = createServer({ key: readFileSync(key), cert: readFileSync(cert) }
 await new Promise(resolve => server.listen(0, "localhost", resolve));
 const origin = `https://localhost:${server.address().port}`;
 let app;
+const launch = () => launchApp({ args: ["--use-mock-keychain", "--ignore-certificate-errors"], env: {
+  PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, "profile"),
+  AUX_DATA_DIR: join(dir, "data"), AUX_LOAD_DOTENV: "0",
+} });
 try {
-  app = await launchApp({ args: ["--use-mock-keychain", "--ignore-certificate-errors"], env: {
-    PATH: process.env.PATH, HOME: dir, TMPDIR: dir, AUX_PROFILE_DIR: join(dir, "profile"),
-    AUX_DATA_DIR: join(dir, "data"), AUX_LOAD_DOTENV: "0",
-  } });
+  app = await launch();
   const shell = await shellWindow(app);
   await shell.locator(".aux-home").waitFor();
   await shell.locator(".horizontal-profile").click();
@@ -74,6 +75,12 @@ try {
   await assert.rejects(shell.evaluate(({ workspaceId, page }) => window.aux.invoke("workspaces.contentMemory.capture", {
     workspaceId, pageId: page.pageId, expectedDocumentEpoch: page.documentEpoch, expectedUrl: page.url,
   }), { workspaceId: other.workspaceId, page }), /Space changed/i);
+  const legacy = await open("/legacy", false);
+  const migration = await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:space.id});
+  assert.equal(migration.migrated, 1);
+  const bound = await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)), legacy.pageId);
+  assert.equal(bound.workspaceId, workspaceId);
+  assert.equal((await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:other.id})).migrated, 0);
   const noStore = await open("/no-store");
   await assert.rejects(capture(noStore), /not eligible|no-store/i);
   const sensitive = await open("/sensitive");
@@ -81,7 +88,15 @@ try {
   await shell.evaluate(({ workspaceId, memoryId }) => window.aux.invoke("workspaces.contentMemory.forget", { workspaceId, memoryId }), { workspaceId, memoryId: hits[0].memoryId });
   const after = await shell.evaluate(workspaceId => window.aux.invoke("workspaces.contentMemory.search", { workspaceId, query: "editorial" }), workspaceId);
   assert.equal(after.length, 0);
-  console.log("Native HTTPS article capture, no-store and sensitive-page denial, local search, and forget passed.");
+  const oldTab = await open("/legacy-startup", false);
+  assert.equal((await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)?.workspaceId), oldTab.pageId)), undefined);
+  await closeAux(app); app = undefined;
+  app = await launch();
+  const reopened = await shellWindow(app);
+  await reopened.locator(".app").waitFor();
+  await poll(reopened, async ({pageId,workspaceId}) => (await window.aux.tabsSnapshot()).tabs.find(tab => tab.pageId === pageId)?.workspaceId === workspaceId,
+    {pageId:oldTab.pageId,workspaceId}, 30_000);
+  console.log("Native article capture, Space binding and restart migration, no-store and sensitive-page denial, search, and forget passed.");
 } finally {
   if (app) await closeAux(app);
   server.closeAllConnections();

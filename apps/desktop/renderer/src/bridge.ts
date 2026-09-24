@@ -80,6 +80,7 @@ export interface AuxBridge {
   /** typed human tab commands (§7.2) — actuated in main, no runtime round trip */
   tabCommand(command:TabCommand,catalogVersion?:number):Promise<TabCommandAck>;
   bindTabSpace(pageId:string,spaceId:string):Promise<{spaceId:string;workspaceId:string}>;
+  migrateTabSpaces(assignments:{pageId:string;spaceId:string}[]):Promise<{migrated:number}>;
   tabsSnapshot():Promise<TabCatalogSnapshot>;
   tabsSince(version:number):Promise<TabsSinceResult>;
   onTabsPatch(cb:(patch:TabPatch)=>void):()=>void;
@@ -244,6 +245,7 @@ const stub: AuxBridge = {
   setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
   tabCommand:async()=>({commandId:"",status:"rejected",catalogVersion:0,error:{code:"no_bridge",message:"Tab commands require Aux desktop"}}),
   bindTabSpace:async()=>{throw new Error("Space binding requires Aux desktop");},
+  migrateTabSpaces:async()=>({migrated:0}),
   tabsSnapshot:async()=>({version:0,tabs:[],windows:[]}),
   tabsSince:async()=>({kind:"snapshot",snapshot:{version:0,tabs:[],windows:[]}}),
   onTabsPatch:noop,

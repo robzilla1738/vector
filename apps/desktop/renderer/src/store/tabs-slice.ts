@@ -79,6 +79,11 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
             }
             continue;
           }
+          if (tab.spaceId && [...layout.spaces, ...(layout.archivedSpaces ?? [])].some(space => space.id === tab.spaceId)
+            && layout.tabSpace[tab.pageId] !== tab.spaceId) {
+            layout = assignSpace(layout, tab.pageId, tab.spaceId);
+            layoutDirty = true;
+          }
           openingOptimistic.delete(tab.pageId);
           const index = pages.findIndex(page => page.pageId === tab.pageId);
           if (index < 0 && closingOptimistic.has(tab.pageId)) continue;
@@ -134,6 +139,8 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       const mine = snapshot.windows.find(window => window.windowId === bridge.windowId);
       let layout = st.layout;
       if (!st.restoringTabs) layout = syncLayout(layout, pages, st.pendingRestoreIds);
+      for (const tab of tabs) if (tab.spaceId && [...layout.spaces, ...(layout.archivedSpaces ?? [])].some(space => space.id === tab.spaceId)
+        && layout.tabSpace[tab.pageId] !== tab.spaceId) layout = assignSpace(layout, tab.pageId, tab.spaceId);
       if (mine) layout = rememberActiveTab({ ...layout, order: reconcileWindowOrder(layout.order, mine.order, pages, st.pendingRestoreIds) }, mine.activePageId);
       persistLayout(layout);
       const activePageId = mine ? mine.activePageId : st.activePageId;

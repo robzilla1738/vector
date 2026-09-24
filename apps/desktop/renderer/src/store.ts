@@ -80,6 +80,19 @@ export const useStore = create<Workspace>((set, get, api) => ({
           : (remembered && ws.pages.some(page => page.pageId === remembered) ? remembered : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
         return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
       });
+      if (!bridge.privateMode) setTimeout(() => {
+        void bridge.tabsSnapshot().then(async catalog => {
+          get().syncTabsSnapshot(catalog);
+          const layout = get().layout;
+          const assignments = catalog.tabs.filter(tab => tab.windowId === bridge.windowId && !tab.runtimeOwned && !tab.popup && !tab.spaceId)
+            .flatMap(tab => {
+              const spaceId = layout.tabSpace[tab.pageId] ?? layout.activeSpaceId;
+              return layout.spaces.some(space => space.id === spaceId && !!space.workspaceId) ? [{ pageId: tab.pageId, spaceId }] : [];
+            });
+          for (let offset = 0; offset < assignments.length; offset += 512)
+            await bridge.migrateTabSpaces(assignments.slice(offset, offset + 512));
+        }).catch(() => { /* The next runtime refresh can retry old placements. */ });
+      }, 0);
       void bridge.setShortcutOverrides(settings.shortcutOverrides ?? {}).catch(() => {});
     } catch {
       set({ connected: false });
