@@ -17,6 +17,7 @@ export class NativeViewSync {
     if (!lp) return;
     lp.target.url = url;
     lp.target.documentEpoch++;
+    this.pages.resetDocumentState(lp);
     if (lp.target.viewStatus === "crashed") lp.target.viewStatus = lp.target.ownedByRuntime ? "background" : this.pages.activeByWindow.get(lp.target.windowId ?? "main") === pageId ? "visible" : "hidden";
     lp.target.error = undefined;
     lp.target.navigationError = null;
@@ -29,7 +30,7 @@ export class NativeViewSync {
     const lp = this.pages.live.get(pageId);
     if (!lp) return;
     lp.target.navigationError = error;
-    if (error) { lp.target.url = error.url; lp.target.title = "Page couldn’t load"; lp.target.loading = false; }
+    if (error) { lp.target.url = error.url; lp.target.title = "Page couldn’t load"; lp.target.loading = false; this.pages.resetDocumentState(lp); }
     this.pages.persist(lp);
     if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
   }
@@ -40,6 +41,7 @@ export class NativeViewSync {
     lp.target.viewStatus = "crashed";
     lp.target.error = "The renderer process crashed.";
     lp.target.loading = false;
+    this.pages.resetDocumentState(lp);
     this.pages.persist(lp);
     this.pages.deps.events.emit(EventTypes.PageCrashed, { pageId });
   }

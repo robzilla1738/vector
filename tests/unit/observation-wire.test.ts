@@ -55,12 +55,12 @@ describe("wire observation", () => {
 });
 
 describe("sinceRevision deltas", () => {
-  function harness() {
+  function harness(beforeObserve?: () => Promise<void>) {
     let current = content([el("r1"), el("r2")]);
     let onNavigated: ((url: string, epoch: number) => void) | undefined;
     const page = {
       identity: { pageId: "p", targetId: "t", backend: "aux" }, url: () => current.url, title: async () => "A", isAttached: () => true,
-      navigate: async () => {}, observe: async () => current, setEvents: (e: { onNavigated?: typeof onNavigated }) => { onNavigated = e.onNavigated; },
+      navigate: async () => {}, observe: async () => { await beforeObserve?.(); return current; }, setEvents: (e: { onNavigated?: typeof onNavigated }) => { onNavigated = e.onNavigated; },
       dispose: async () => {},
     } as unknown as DriverPage;
     const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
@@ -81,6 +81,23 @@ describe("sinceRevision deltas", () => {
     expect(h.repo.db.prepare("SELECT name FROM sqlite_schema WHERE name='observations'").get()).toBeUndefined();
     h.navigated(page.documentEpoch + 1);
     expect(controls()).toEqual([]);
+  });
+
+  it("rejects an observation that finishes after its document navigated", async () => {
+    let began!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>(resolve => { began = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let hold = true;
+    const h = harness(async () => { if (hold) { hold = false; began(); await gate; } });
+    const page = await h.pages.open({ url: "about:blank", background: true, ownedByRuntime: true });
+    const pending = h.pages.observe(page.pageId, {});
+    await started;
+    h.navigated(page.documentEpoch + 1);
+    release();
+    await expect(pending).rejects.toThrow("changed while it was being observed");
+    expect(h.pages.currentObservation(page.pageId)).toBeUndefined();
+    expect((await h.pages.observe(page.pageId, {})).content.text).toBe("hello");
   });
 
   it("reports added, removed and changed refs plus text lines against the caller's revision", async () => {

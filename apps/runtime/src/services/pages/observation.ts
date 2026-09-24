@@ -52,6 +52,7 @@ export class ObservationService {
     return this.lanes.enqueue(pageId, async () => {
       const dp = this.pages.driverPageLenient(pageId);
       const lp = this.pages.live.get(pageId);
+      const startingEpoch = lp?.target.documentEpoch;
       // Observation cache (plan A6): one small probe decides whether the
       // last observation is still exact. Same epoch, same request shape,
       // same fingerprint — nothing the walk could see has changed, so the
@@ -61,6 +62,8 @@ export class ObservationService {
       // main-document fingerprint. Re-read it instead of returning stale refs.
       if (req.scope !== "subtree" && dp.observeFingerprint && lp) {
         fingerprint = await dp.observeFingerprint().catch(() => undefined);
+        if (lp.target.documentEpoch !== startingEpoch)
+          throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
         const hit = lp.lastObs;
         if (
           fingerprint &&
@@ -76,7 +79,10 @@ export class ObservationService {
         }
       }
     // console lines reach lp.consoleLines through onConsole; observations do not carry them
-    return this.recordObservation(pageId, await dp.observe(req), req, fingerprint);
+    const content = await dp.observe(req);
+    if (lp?.target.documentEpoch !== startingEpoch)
+      throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
+    return this.recordObservation(pageId, content, req, fingerprint);
     });
   }
 

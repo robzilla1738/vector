@@ -66,6 +66,7 @@ export class PageRegistry {
       onNavigated: (url, epoch) => {
         if (!url.startsWith("chrome-error://")) lp.target.url = url;
         lp.target.documentEpoch = epoch;
+        this.resetDocumentState(lp);
         this.deps.repo.markDatasetsStale(lp.target.pageId);
         this.persist(lp);
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, url: lp.target.url, documentEpoch: epoch });
@@ -74,6 +75,7 @@ export class PageRegistry {
       onDestroyed: (reason) => {
         lp.target.viewStatus = reason === "crashed" ? "crashed" : "detached";
         lp.target.controller = "none";
+        this.resetDocumentState(lp);
         this.persist(lp);
         if (!this.closing) this.deps.events.emit(reason === "crashed" ? EventTypes.PageCrashed : EventTypes.PageRemoved, {
           pageId: lp.target.pageId,
@@ -98,6 +100,15 @@ export class PageRegistry {
       },
       onResponse: this.deps.responses?.record(lp.target.pageId),
     });
+  }
+
+  /** Retire page-derived text and controls when their document is no longer current. */
+  resetDocumentState(lp: LivePage) {
+    lp.lastObs = undefined;
+    lp.lastObservationId = undefined;
+    lp.history = [];
+    lp.consoleLines = [];
+    lp.lastDialog = undefined;
   }
 
   /** Coalesced: the page row and tab strip commit once per tick however many fields changed. */

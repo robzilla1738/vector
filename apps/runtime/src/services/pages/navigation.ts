@@ -109,9 +109,7 @@ export class PageNavigation {
           if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
           throw error;
         }
-        lp.lastObs = undefined;
-        lp.lastObservationId = undefined;
-        lp.history = [];
+        this.pages.resetDocumentState(lp);
         this.pages.wireDriverEvents(lp);
       } else if (lp?.target.navigationError && lp.target.backend === "aux" && this.pages.deps.native.recoverPage) {
         // A renderer can recover in Electron while Playwright retains its
