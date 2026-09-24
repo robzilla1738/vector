@@ -522,6 +522,7 @@ export async function handlePlannerFailure(
     const partial = await early.finish([]);
     if (partial.steps.length) s.stepsRun += partial.steps.length;
   }
+  if (s.self.durable.unresolved(s.runId).length) return "continue";
   if (s.c.abort.signal.aborted) throw e;
   const failure = classifyModelFailure(e);
   if (TRANSIENT_FAILURES.has(failure.category) && (s.transientRetries ?? 0) < TRANSIENT_RETRY_LIMIT) {
@@ -755,6 +756,7 @@ export async function dispatchPlan(
 
 async function recoverFailedChunk(s: TurnState, error: string | undefined): Promise<"return" | "continue"> {
   if (hasNewSteer(s)) return "continue";
+  if (s.self.durable.unresolved(s.runId).length) return "continue";
   s.lastError = error;
   s.lastActionFailed = true;
   const decision = noteRepair(s.repairState, error);

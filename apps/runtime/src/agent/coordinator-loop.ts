@@ -117,15 +117,15 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     while (true) {
       try {
         const latest = self.get(runId);
+        const unresolved = self.durable.unresolved(runId);
+        if (unresolved.length) {
+          self.finish(runId, "interrupted", undefined,
+            `An action's outcome is uncertain (${unresolved.map(intent => intent.id).join(", ")}). Review it before continuing.`,
+            "Stopped to avoid repeating an uncertain action");
+          return;
+        }
         const revision = latest.config?.messageRevision ?? 0;
         if (revision !== s.appliedRevision) {
-          const unresolved = self.durable.unresolved(runId);
-          if (unresolved.length) {
-            self.finish(runId, "interrupted", undefined,
-              `The correction arrived while an action's outcome was uncertain (${unresolved.map(intent => intent.id).join(", ")}). Review it before continuing.`,
-              "Stopped to avoid repeating an uncertain action");
-            return;
-          }
           s.appliedRevision = revision;
           s.steers = self.deps.repo.listRunSteers(runId).map(message => message.text);
           s.notes = undefined;

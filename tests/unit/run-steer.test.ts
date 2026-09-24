@@ -84,4 +84,27 @@ describe("run steering", () => {
     expect(repo.getRun(run.runId)?.error).toMatch(/uncertain/i);
     await messages.stop();
   });
+
+  it("stops on an uncertain write even when no correction arrives", async () => {
+    const execute = vi.fn(async () => { throw new Error("connection lost after click"); });
+    let plannerCalls = 0;
+    const model: ModelClient = {
+      generateStructured: async options => ({ object: options.schema.parse({ status: "done", message: "Done", result: { answer: "Example result" } }), durationMs: 1 }),
+      streamStructured: async options => {
+        plannerCalls++;
+        const plan = { status: "continue", message: "Applying", steps: [{ id: "s1", op: "click", target: "r1" }] };
+        options.onText(JSON.stringify(plan));
+        return { object: options.schema.parse(plan), durationMs: 1 };
+      },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const { repo, coordinator, messages } = harness(model, execute as never);
+    const run = await coordinator.start({ goal: "Apply the change", pageIds: ["page"], chatId: "chat", contextPageRefs: refs });
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("interrupted"));
+    expect(plannerCalls).toBe(1);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(repo.getRun(run.runId)?.error).toMatch(/uncertain/i);
+    await messages.stop();
+  });
 });
