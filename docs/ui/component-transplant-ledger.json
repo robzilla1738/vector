@@ -237,7 +237,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -248,11 +248,13 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Renderer TypeScript passed; existing service boundaries preserved."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Complete populated visual, keyboard, failure and native matrix.",
+        "Verify real capture, retention and provider use through the unchanged services."
       ]
     },
     {
@@ -519,7 +521,7 @@
         "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
       ],
       "treatment": "port-layout",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -530,11 +532,14 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Renderer TypeScript passed; existing service boundaries preserved.",
+        "apps/desktop/renderer/src/components/ContentMemory.test.tsx: late article read cannot populate a different Space."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Complete populated visual, keyboard, failure and native matrix.",
+        "Verify real capture, retention and provider use through the unchanged services."
       ]
     },
     {
@@ -1226,7 +1231,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1236,12 +1241,16 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/memory-detail-dark.png"
+      ],
+      "functionalEvidence": [
+        "apps/desktop/renderer/src/components/MemoryItems.test.tsx: recorded source/scope, excluded filter and exact revision-preserving toggle passed."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Visual matrix and native qualification remain open.",
+        "Complete shared editor/exclusion controls and keyboard focus qualification."
       ]
     },
     {
@@ -1827,7 +1836,9 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/work-lists-dark.png"
+      ],
       "functionalEvidence": [
         "2026-09-24: shared work rows (Tasks/Skills) with revision-preserving actions; inspector DetailPane with raw disclosure, stale-response rejection and incremental observation lines. WorkLists 1, Inspector 2, shared menu 1 and RoutineSchedule 5 focused tests passed. Renderer typecheck passed. Native and full visual qualification pending."
       ],
@@ -2729,7 +2740,9 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/work-lists-dark.png"
+      ],
       "functionalEvidence": [
         "2026-09-24: shared work rows (Tasks/Skills) with revision-preserving actions; inspector DetailPane with raw disclosure, stale-response rejection and incremental observation lines. WorkLists 1, Inspector 2, shared menu 1 and RoutineSchedule 5 focused tests passed. Renderer typecheck passed. Native and full visual qualification pending."
       ],

@@ -67,7 +67,7 @@ Verification: two image tests; two Profile tests and the shared menu test; one n
 
 ### Coverage audit gate
 
-Run `node scripts/audit-ui-coverage.mjs` after adding or moving a surface. It checks every current top-level renderer component against the ledger, duplicate surface/route IDs, mapped route destinations, required record fields and local screenshot paths. It rejects unsupported qualification claims with missing evidence or remaining gates. The current audit has **125 surfaces, 84 reference routes, zero inventory errors**. Its statuses are **35 implemented-partial, 81 planned, 6 retained infrastructure, 3 native gates**. These are inventory statuses, not percentages of finished work. Normalizing older screenshot paths fixed the first audit's path errors; no evidence was invented.
+Run `node scripts/audit-ui-coverage.mjs` after adding or moving a surface. It checks every current top-level renderer component against the ledger, duplicate surface/route IDs, mapped route destinations, required record fields and local screenshot paths. It rejects unsupported qualification claims with missing evidence or remaining gates. The current audit has **127 surfaces, 84 reference routes, zero inventory errors**. Its statuses are **47 implemented-partial, 71 planned, 6 retained infrastructure, 3 native gates**. These are inventory statuses, not percentages of finished work. Normalizing older screenshot paths fixed the first audit's path errors; no evidence was invented.
 
 This integrity check does not assess visual correctness or replace requirement-by-requirement working journeys. No surface has been declared fully qualified. The entire requested design plan remains the completion scope.
 
@@ -120,3 +120,14 @@ The existing Siso build was observed still running at nice 10, approximately 52,
 Tasks and Skills now consume one compact WorkRow with title, summary, recency/schedule, status and an overflow menu. Archive/restore and pause/resume retain expected revision checks; unbound Skills cannot resume. Large superseded card rules were removed. Explicit `scenario=work` fixtures support visual review without pretending to execute real tasks. The Space picker distinguishes current Space from Profile, sorts the current Space first and provides search for longer inventories.
 
 Inspector now uses the shared sticky detail header and a raw-content disclosure after structured evidence. A page switch invalidates the previous read; historical inspection never fetches a replacement. Observation sections reveal additional lines in increments rather than hiding everything after 80. Tests passed: WorkLists 1, Inspector 2, shared menu 1, RoutineSchedule 5; renderer TypeScript passed. Visual review is still underway; these surfaces remain partial pending its evidence and native qualification.
+
+
+### Memory library and work-list verification — 2026-09-24
+
+Memory notes now use searchable/filterable rows, independent use checkboxes, one action menu, and a detail pane with recorded source, Space scope, expiry and update time. Remembered pages and articles share the list/detail family, keeping open-live-source separate from reading a saved copy. Article reads are invalidated on context changes, and per-Space instances reset transient search/selection state. Existing note drafts, optimistic revisions, exclusions, retention, protected capture and provider disclosure are preserved.
+
+Focused checks: MemoryItems provenance/filter/exact-revision toggle and ContentMemory late-read Space isolation both pass; renderer TypeScript passes. A current vertical/dark mock journey created a note, saved its source and inspected the detail pane. This verifies the renderer and explicit mock service, not native storage or provider delivery. [Memory detail](evidence/2026-09-24/memory-detail-dark.png).
+
+Tasks and Skills were visually reviewed in the same preview. Task archive/restore preserved list position; fixing asynchronous busy-state focus loss restored focus to the originating overflow control after Restore. [Work lists](evidence/2026-09-24/work-lists-dark.png). The full visual/native matrix remains open.
+
+The original Chromium compile has completed and candidate Store installation/restart passed; the dated M1 host evidence supersedes the earlier build-in-progress observation above. Incremental native shell compilation is underway in the same checkout.

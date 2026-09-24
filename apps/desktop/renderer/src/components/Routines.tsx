@@ -50,10 +50,14 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     return () => { active = false; };
   }, [workspaceId]);
   async function action(work: () => Promise<void>) {
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusy(true); setError(""); setNotice("");
     try { await work(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    finally {
+      setBusy(false);
+      requestAnimationFrame(() => { if (document.activeElement === document.body && focused?.isConnected) focused.focus(); });
+    }
   }
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   let currentOrigin = "";

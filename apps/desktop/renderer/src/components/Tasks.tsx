@@ -100,9 +100,13 @@ export function Tasks() {
     catch { setDraftNotice("Couldn’t save this draft locally. Keep this window open and save your task before leaving."); }
   }
   async function action(work: () => Promise<void>) {
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusy(true); setError("");
     try { await work(); return true; } catch (e) { setError(e instanceof Error ? e.message : String(e)); return false; }
-    finally { setBusy(false); }
+    finally {
+      setBusy(false);
+      requestAnimationFrame(() => { if (document.activeElement === document.body && focused?.isConnected) focused.focus(); });
+    }
   }
   async function refresh(taskId: string, restoreDraft = true) {
     const [details, receipt, tasks] = await Promise.all([

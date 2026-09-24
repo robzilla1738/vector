@@ -1,3 +1,5 @@
+import { ActionMenu, DetailPane, ListRow, TextField } from "./ui";
+import { I } from "./icons";
 import { useEffect, useRef, useState } from "react";
 import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
@@ -6,11 +8,17 @@ import { call, errToast, useStore } from "../store";
 
 type Saved = { workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[] };
 export function BrowsingMemory({ memory }: { memory: WorkspaceMemory }) {
+  return <BrowsingMemoryContent key={memory.workspaceId} memory={memory} />;
+}
+
+function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   const [saved, setSaved] = useState<Saved | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const pending = useRef(false), sequence = useRef(0);
   const [refresh, setRefresh] = useState(0);
   useEffect(() => bridge.onEvent(event => {
@@ -30,6 +38,8 @@ export function BrowsingMemory({ memory }: { memory: WorkspaceMemory }) {
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { pending.current = false; setBusy(false); }
   }
+  const selected = saved?.pages.find(page => page.memoryId === selectedId);
+  const openSource = (url: string) => { try { const parsed = new URL(url); if (["http:", "https:"].includes(parsed.protocol)) void useStore.getState().newTab(parsed.href).catch(errToast); } catch { /* Invalid stored addresses cannot navigate. */ } };
   const visiblePages = saved?.pages.filter(page => `${page.title} ${page.url}`.toLowerCase().includes(query.trim().toLowerCase())) ?? [];
   return <section className="browsing-memory" aria-label="Browsing memory">
     <h4>Browsing memory</h4>
@@ -40,11 +50,17 @@ export function BrowsingMemory({ memory }: { memory: WorkspaceMemory }) {
       <label className="browsing-retention">Keep remembered pages for<select aria-label="Browsing memory retention" disabled={busy} value={saved.policy.retentionDays} onChange={event => void change("workspaces.browsingMemory.set", { policy: { ...saved.policy, retentionDays: Number(event.target.value) } })}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option></select></label>
       <p className="hint">Up to 200 recent pages per Space. Shortening retention removes older entries. Pausing keeps saved entries until they expire. Excluded sites are not remembered or used.</p>
       <details><summary>Remembered pages · {saved.pages.length}</summary>
-        <input className="field-input" type="search" aria-label="Search remembered pages" placeholder="Search titles and addresses…" value={query} onChange={event => setQuery(event.target.value)}/>
-        <div className="browsing-memory-list">{visiblePages.map(page => <article key={page.memoryId}>
-          <button className="browsing-memory-page" title={page.url} onClick={() => { try { const url = new URL(page.url); if (!["http:", "https:"].includes(url.protocol)) return; void useStore.getState().newTab(url.href).catch(errToast); } catch { /* Ignore malformed stored URLs. */ } }}><b>{page.title}</b><small>{page.url}</small></button>
-          <span className="hint">{new Date(page.lastVisitedAt).toLocaleDateString()}{memorySourceExcluded(memory, page.url) ? " · Site excluded" : ""}</span><button className="btn sm ghost" disabled={busy} onClick={() => void change("workspaces.browsingMemory.forget", { memoryId: page.memoryId })}>Forget</button>
-        </article>)}</div>
+        <TextField type="search" aria-label="Search remembered pages" placeholder="Search titles and addresses…" value={query} onChange={event => setQuery(event.target.value)}/>
+        <div className="browsing-memory-list">{visiblePages.map(page => <ListRow key={page.memoryId} title={page.title} leading={I.globe} selected={selectedId === page.memoryId}
+          description={<><span className="memory-match-source">{page.url}</span><span>{new Date(page.lastVisitedAt).toLocaleDateString()}{memorySourceExcluded(memory, page.url) ? " · Site excluded" : ""}</span></>}
+          onOpen={() => { opener.current = document.activeElement as HTMLElement; setSelectedId(page.memoryId); }} trailing={<ActionMenu label={`Actions for ${page.title}`} actions={[
+            { label: "Open page", onSelect: () => openSource(page.url) },
+            { label: "Forget", danger: true, disabled: busy, onSelect: () => void change("workspaces.browsingMemory.forget", { memoryId: page.memoryId }) },
+          ]} />} />)}</div>
+        {selected && <DetailPane title={selected.title} metadata="Page reference · This Space" actions={<button className="btn sm" onClick={() => openSource(selected.url)}>Open page</button>} onClose={() => { setSelectedId(null); requestAnimationFrame(() => opener.current?.focus()); }}>
+          <dl className="memory-note-metadata"><dt>Source</dt><dd className="selectable">{selected.url}</dd><dt>Last visited</dt><dd>{new Date(selected.lastVisitedAt).toLocaleString()}</dd><dt>Use</dt><dd>{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</dd></dl>
+          <p className="hint">Only this page’s title and address are remembered. No page contents or forms were captured.</p>
+        </DetailPane>}
         {!!saved.pages.length && !visiblePages.length && <p className="hint">No pages match “{query}”.</p>}
         {!saved.pages.length && <p className="hint">No remembered pages. When enabled, spend a few seconds browsing a tab to remember it.</p>}
         {saved.pages.length > 0 && <div className="row">{confirmClear ? <><span className="hint">Forget all {saved.pages.length} saved page references?</span><button className="btn sm" disabled={busy} onClick={() => void change("workspaces.browsingMemory.forget", {})}>Forget all</button><button className="btn sm ghost" disabled={busy} onClick={() => setConfirmClear(false)}>Cancel</button></> : <button className="btn sm ghost" disabled={busy} onClick={() => setConfirmClear(true)}>Forget all remembered pages…</button>}</div>}

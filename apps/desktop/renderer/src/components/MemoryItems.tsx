@@ -1,3 +1,5 @@
+import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "./ui";
+import { I } from "./icons";
 import { MemoryExclusions } from "./MemoryExclusions";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { useEffect, useRef, useState } from "react";
@@ -20,11 +22,17 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
     return () => cancelAnimationFrame(frame);
   }, [draft?.itemId]);
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailOpener = useRef<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState("");
   const [latest, setLatest] = useState<WorkspaceMemory | null>(null);
   const items = memory.items ?? [];
+  const selectedItem = items.find(item => item.itemId === selectedId);
+  const noteStatus = (item: WorkspaceMemoryItem) => item.expiresAt !== undefined && item.expiresAt <= Date.now() ? "Expired" : !item.enabled ? "Paused" : memorySourceExcluded(memory, item.sourceUrl) ? "Source site excluded" : memory.enabled === false ? "Space memory paused" : "Used in this Space";
+  const visibleItems = items.filter(item => `${item.content} ${item.sourceUrl ?? ""}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()) && (filter === "all" || (filter === "active" ? noteStatus(item) === "Used in this Space" : noteStatus(item) !== "Used in this Space")));
   const write = (value: NoteDraft | null, revision = savedDraft?.revision ?? memory.revision) => useMemoryDrafts.getState().write(key, value ? { content: JSON.stringify(value), revision } : null);
   const edit = (item?: WorkspaceMemoryItem) => { setError(""); setLatest(null); write({ itemId: item?.itemId ?? crypto.randomUUID(), content: item?.content ?? "", sourceUrl: item?.sourceUrl ?? "", expires: dateValue(item?.expiresAt) }, memory.revision); };
 
@@ -60,13 +68,21 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
   };
   return <section className="memory-items" aria-label="Saved memory notes">
     <div className="conversation-documents-head"><div><b>Individual notes</b><small>Preferences and facts you choose to keep in this Space.</small></div><button className="btn sm" disabled={disabled || busy || !!draft || items.length >= 40} onClick={() => edit()}>Add note</button></div>
-    {items.length > 3 && <input type="search" aria-label="Search memory notes" placeholder="Find a note…" value={query} onChange={event => setQuery(event.target.value)}/>}
-    <div className="memory-items-list">{items.filter(item => `${item.content} ${item.sourceUrl ?? ""}`.toLowerCase().includes(query.toLowerCase())).map(item => <article key={item.itemId}>
-      <label><input type="checkbox" aria-label={`Use note: ${item.content.slice(0, 80)}`} checked={item.enabled} disabled={disabled || busy || !!draft} onChange={event => void persist(items.map(value => value.itemId === item.itemId ? { ...value, enabled: event.target.checked, updatedAt: Date.now() } : value))}/><span>{item.content}</span></label>
-      <p className="hint">{item.expiresAt !== undefined && item.expiresAt <= Date.now() ? "Expired · excluded from new replies" : !item.enabled ? "Paused" : memorySourceExcluded(memory, item.sourceUrl) ? "Source site excluded" : memory.enabled === false ? "Space memory paused" : "Used in this Space"}{item.expiresAt !== undefined && item.expiresAt > Date.now() ? ` · Until ${new Date(item.expiresAt).toLocaleDateString()}` : ""} · Updated {new Date(item.updatedAt).toLocaleDateString()}</p>
-      {item.sourceUrl && <p className="snapshot-source">Source: {item.sourceUrl}</p>}
-      <div className="row"><button className="btn sm ghost" disabled={disabled || busy || !!draft} onClick={() => edit(item)}>Edit</button><button className="btn sm ghost" disabled={disabled || busy || !!draft} onClick={() => void persist(items.filter(value => value.itemId !== item.itemId))}>Delete</button></div>
-    </article>)}</div>
+    {!!items.length && <div className="memory-list-tools"><TextField type="search" aria-label="Search memory notes" placeholder="Find a note…" value={query} onChange={event => setQuery(event.target.value)} />
+      <Select aria-label="Filter memory notes" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All notes</option><option value="active">Used in replies</option><option value="excluded">Paused or excluded</option></Select></div>}
+    <div className="memory-items-list">{visibleItems.map(item => <ListRow key={item.itemId} title={item.content} leading={I.folder} selected={selectedId === item.itemId}
+      description={`${noteStatus(item)} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`}
+      onOpen={() => { detailOpener.current = document.activeElement as HTMLElement; setSelectedId(item.itemId); }}
+      trailing={<><Checkbox aria-label={`Use note: ${item.content.slice(0, 80)}`} checked={item.enabled} disabled={disabled || busy || !!draft} onChange={event => void persist(items.map(value => value.itemId === item.itemId ? { ...value, enabled: event.target.checked, updatedAt: Date.now() } : value))} />
+        <ActionMenu label={`Actions for note: ${item.content.slice(0, 80)}`} actions={[
+          {label:"Edit",disabled:disabled || busy || !!draft,onSelect:()=>edit(item)},
+          {label:"Delete",danger:true,disabled:disabled || busy || !!draft,onSelect:()=>void persist(items.filter(value=>value.itemId!==item.itemId))},
+        ]} /></>} />)}</div>
+    {!!items.length && !visibleItems.length && <p className="hint" role="status">No notes match these filters.</p>}
+    {selectedItem && <DetailPane title="Memory note" metadata={noteStatus(selectedItem)} onClose={() => { setSelectedId(null); requestAnimationFrame(() => detailOpener.current?.focus()); }}>
+      <p className="memory-note-content selectable">{selectedItem.content}</p>
+      <dl className="memory-note-metadata"><dt>Scope</dt><dd>This Space</dd><dt>Source</dt><dd className="selectable">{selectedItem.sourceUrl || "Added directly"}</dd><dt>Expires</dt><dd>{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</dd><dt>Updated</dt><dd>{new Date(selectedItem.updatedAt).toLocaleString()}</dd></dl>
+    </DetailPane>}
     {!items.length && !draft && <p className="hint">No individual notes yet. Aux only saves notes you explicitly add here.</p>}
     {draft && <form className="memory-note-form" onSubmit={event => { event.preventDefault(); save(); }}>
       <p className="hint">Review before saving · {draft.content.length.toLocaleString()}/2,000 characters{draft.content.length > 2000 ? " · Shorten this selection to keep the useful part." : ""}{draft.selectionTruncated ? " · The page supplied only the first part of the selection." : ""}</p>

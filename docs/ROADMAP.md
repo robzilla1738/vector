@@ -354,3 +354,8 @@ Reference patterns: [Aside architecture](/Users/rcourson/aside-design/agent/AGEN
 Platform constraints: [Electron extension limits](https://www.electronjs.org/docs/latest/api/extensions), [Chromium browser design](https://chromium.googlesource.com/chromium/src/+/main/docs/chrome_browser_design_principles.md), [Chromium WebUI](https://chromium.googlesource.com/chromium/src/+/main/docs/webui/webui_explainer.md), [restricted Google APIs](https://www.chromium.org/developers/how-tos/api-keys/), [1Password additional browsers](https://support.1password.com/additional-browsers/), [Apple browser passkeys](https://developer.apple.com/documentation/authenticationservices/authenticating-people-by-using-passkeys-in-browser-apps), [WebMCP status](https://developer.chrome.com/docs/ai/webmcp), [site-tool security](https://developer.chrome.com/docs/agents/security).
 
 This review checked source and primary documentation. It did not run paid-model trials, install a real extension, sign a build, test a live account, establish comparative browser speed, or validate the present native UI visually. Those are explicit work packages and release evidence requirements above.
+
+
+### UI evidence update — September 24, memory/work management
+
+The component transplant now includes compact Tasks/Skills rows, focused observation inspection, and shared memory list/detail layouts. Note source/scope/filter/revision checks and late article-read Space isolation pass. Preview evidence records task action focus restoration and saved-note inspection. See `docs/ui/COMPONENT-TRANSPLANT.md` and the per-surface ledger; no surface or batch is newly qualified. Native shell compilation now follows the successful baseline and candidate Store/restart proof.
