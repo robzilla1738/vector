@@ -6,6 +6,7 @@ import { I } from "./icons";
 import { RoutineSchedule, routineScheduleSummary } from "./RoutineSchedule";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
+  const currentPageUrl = useStore(state => state.pages.find(page => page.pageId === state.activePageId)?.url);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
   const [comparison, setComparison] = useState<RoutineCompare | null>(null);
@@ -54,7 +55,14 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     finally { setBusy(false); }
   }
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const visibleRoutines = routines.filter(item => (status === "all" || (status === "archived" ? !!item.archivedAt : !item.archivedAt && (status === "paused" ? item.paused : !item.paused))) && `${item.title} ${item.objective}`.toLowerCase().includes(query.toLowerCase()));
+  let currentOrigin = "";
+  try {
+    const page = new URL(currentPageUrl ?? "");
+    if (page.protocol === "https:" || page.protocol === "http:") currentOrigin = page.origin;
+  } catch { /* An internal page has no site origin. */ }
+  const matchesCurrentSite = (item: Routine) => !!currentOrigin && !!item.sourceTaskId && !item.archivedAt && item.siteOrigins.includes(currentOrigin);
+  const visibleRoutines = routines.filter(item => (status === "all" || (status === "archived" ? !!item.archivedAt : !item.archivedAt && (status === "paused" ? item.paused : !item.paused))) && `${item.title} ${item.objective} ${item.outputHint ?? ""}`.toLowerCase().includes(query.toLowerCase()))
+    .sort((left, right) => Number(matchesCurrentSite(right)) - Number(matchesCurrentSite(left)) || right.updatedAt - left.updatedAt);
   return <section className="routines-section" aria-label="Skills" aria-busy={loading || busy}>
     <div className="routines-heading"><div><h4>Skills</h4><p className="hint">Saved work you can revise, rerun, or schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
       const routine = await call("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: [] });
@@ -85,7 +93,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Skill status">{(["all", "ready", "paused", "archived"] as const).map(filter => <button key={filter} className={status === filter ? "active" : ""} aria-pressed={status === filter} onClick={() => setStatus(filter)}>{filter[0]!.toUpperCase() + filter.slice(1)}</button>)}</div><span className="hint" role="status">{visibleRoutines.length} {visibleRoutines.length === 1 ? "Skill" : "Skills"}</span></div>
       {loading ? <p className="hint" role="status">Loading Skills…</p> : <div className="routine-grid">
         {visibleRoutines.map(item => <button className="routine-card" disabled={busy} key={item.routineId} onClick={() => void action(() => refresh(item.routineId))}>
-          <span className="routine-card-top">{I.clock}<span className="routine-status">{item.archivedAt ? "Archived" : item.paused ? "Paused" : "Ready"}</span></span>
+          <span className="routine-card-top">{matchesCurrentSite(item) ? <span className="hint">Saved for this site</span> : I.clock}<span className="routine-status">{item.archivedAt ? "Archived" : item.paused ? "Paused" : "Ready"}</span></span>
           <strong>{item.title}</strong><p>{item.objective}</p>
           <span className="routine-card-trigger">{routineScheduleSummary(item.trigger)}{I.right}</span>
         </button>)}
