@@ -35,7 +35,7 @@ import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
@@ -592,6 +592,7 @@ export const MethodSchemas = {
   "routines.archive": z.object({routineId:id,expectedRevision:z.number().int().positive(),archived:z.boolean()}),
   "routines.run": RoutineRunParams,
   "routines.runs": z.object({routineId:id,limit:z.number().int().min(1).max(100).default(30)}),
+  "routines.outcome": z.object({routineRunId:id}),
   "routines.reconcile": z.object({routineRunId:id,outcome:z.enum(["applied","not_applied"]),note:z.string().trim().min(1).max(1000)}).strict(),
   "routines.due": z.object({now:z.number().optional()}),
   "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
@@ -940,6 +941,7 @@ export const ResultSchemas = {
   "routines.archive": RoutineSchema,
   "routines.run": RoutineRunSchema,
   "routines.runs": z.array(RoutineRunSchema),
+  "routines.outcome": RoutineRunOutcomeSchema,
   "routines.reconcile": RoutineRunSchema,
   "routines.due": z.array(RoutineRunSchema),
   "routines.alerts": z.array(RoutineAlertSchema),

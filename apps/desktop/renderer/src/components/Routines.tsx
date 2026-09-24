@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, Task, VaultItem } from "@aux/contracts";
+import type { Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, Task, VaultItem } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
@@ -137,6 +137,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       {!selected.runs.length && <p className="hint">This Skill has not run yet.</p>}
       {selected.runs.map(run => <div className="routine-run hint" key={run.routineRunId}>
         {run.status.replaceAll("_", " ")}{run.reason ? ` · ${run.reason}` : ""} · {new Date(run.createdAt).toLocaleString()}
+        <RoutineOutcome run={run} />
         {(run.status === "needs_review" || run.status === "uncertain") && <RoutineRunReview run={run} busy={busy} onResolve={(outcome, note) => void action(async () => {
           await call("routines.reconcile", { routineRunId: run.routineRunId, outcome, note });
           await refresh(selected.routine.routineId);
@@ -144,6 +145,34 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       </div>)}
     </div>}
   </section>;
+}
+
+function RoutineOutcome({ run }: { run: RoutineRun }) {
+  const [open, setOpen] = useState(false);
+  const [outcome, setOutcome] = useState<RoutineRunOutcome | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setLoading(true); setError(""); setOutcome(null);
+    try { setOutcome(await call("routines.outcome", { routineRunId: run.routineRunId })); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setLoading(false); }
+  };
+  return <div className="field">
+    <button className="btn sm ghost" aria-expanded={open} onClick={() => { setOpen(!open); if (!open) void load(); }}>{open ? "Hide outcome evidence" : "Inspect outcome evidence"}</button>
+    {open && <div aria-busy={loading}>
+      {loading && <p className="hint" role="status">Loading outcome evidence…</p>}
+      {error && <p className="field-error" role="alert">{error} <button className="btn sm ghost" onClick={() => void load()}>Retry</button></p>}
+      {outcome && <>
+        <p className="hint">Skill revision {outcome.run.revision}{outcome.sourceTaskRevision ? ` · source task revision ${outcome.sourceTaskRevision}` : ""}. {outcome.linkedRunFound ? "Only evidence from this task run is shown." : "No linked agent run is available; criteria remain unverified."}</p>
+        {outcome.criteria.length ? outcome.criteria.map(item => <div className="field" key={item.criterion.criterionId}>
+          <strong>{item.criterion.description} · {item.status.replaceAll("_", " ")}</strong>
+          {item.evidence.map(entry => <span className="hint" key={entry.record.evidenceId}>{entry.record.summary}{entry.stale ? ` · Stale: ${entry.reason}` : ""}</span>)}
+          {item.review && <span className="hint">Human review: {item.review.outcome} · {item.review.note || "No note"}</span>}
+        </div>) : <p className="hint">This Skill revision defined no success criteria.</p>}
+      </>}
+    </div>}
+  </div>;
 }
 
 function RoutineRunReview({ run, busy, onResolve }: { run: RoutineRun; busy: boolean; onResolve: (outcome: "applied" | "not_applied", note: string) => void }) {

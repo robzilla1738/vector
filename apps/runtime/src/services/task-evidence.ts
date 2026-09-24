@@ -284,6 +284,32 @@ export class TaskEvidenceService {
         }) };
   }
 
+  /** Evidence for one task run, never pooled with another run of the same task revision. */
+  runCriteria(taskId: string, revision: number, runId: string | undefined, criteria: Task["criteria"]): { linkedRunFound: boolean; criteria: TaskReceipt["criteria"] } {
+    const row = runId ? this.repo.db.prepare("SELECT rowid AS sequence,config FROM runs WHERE run_id=?").get(runId) as { sequence: number; config: string | null } | undefined : undefined;
+    if (row) {
+      const config = row.config ? JSON.parse(row.config) as { taskId?: string; taskRevision?: number } : {};
+      if (config.taskId !== taskId || config.taskRevision !== revision) throw new AuxError("conflict", "The linked run does not belong to this Skill's source task revision.");
+    }
+    const evidenceRows = row ? this.evidence(taskId, revision).filter(item => item.record.runSequence === row.sequence) : [];
+    const entries: TaskReceipt["criteria"] = criteria.map(criterion => {
+      const rows = evidenceRows.filter(item => item.record.criterionId === criterion.criterionId);
+      const evidence = rows.map(({ record }) => { const reason = this.staleReason(record); return { record, stale: !!reason, reason }; });
+      const reviews = this.repo.db.prepare("SELECT json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC")
+        .all(taskId, revision, criterion.criterionId) as { json: string }[];
+      const review = reviews.map(item => CriterionReviewSchema.parse(JSON.parse(item.json)))
+        .find(item => rows.length > 0 && item.evidenceIds.every(id => rows.some(row => row.record.evidenceId === id)));
+      let status: TaskReceipt["criteria"][number]["status"] = evidence.length ? evidence.every(item => item.stale) ? "stale" : "needs_review" : "unverified";
+      if (review) {
+        const stale = review.evidenceIds.some(id => !evidence.some(item => item.record.evidenceId === id && !item.stale));
+        const newEvidence = rows.some(item => item.seq > review.evidenceSequence);
+        status = stale ? "stale" : newEvidence ? "needs_review" : review.outcome;
+      }
+      return { criterion, status, evidence, review };
+    });
+    return { linkedRunFound: !!row, criteria: entries };
+  }
+
   private current(taskId: string, revision: number, criterionId?: string, idle = false): Task {
     const task = this.tasks.get(taskId);
     if (task.revision !== revision) throw new AuxError("conflict", "Task revision changed; reload before recording evidence or a decision");

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AcceptanceCriterionSchema } from "./tasks.js";
+import { AcceptanceCriterionSchema, TaskReceiptSchema } from "./tasks.js";
 
 const text = z.string().trim().min(1);
 export const RoutineParameterSchema = z.object({
@@ -96,6 +96,13 @@ export const RoutineRunSchema = z.object({
   endedAt: z.number().optional(),
   createdAt: z.number(),
 });
+export const RoutineRunOutcomeSchema = z.object({
+  run: RoutineRunSchema,
+  sourceTaskId: text.optional(),
+  sourceTaskRevision: z.number().int().positive().optional(),
+  linkedRunFound: z.boolean(),
+  criteria: TaskReceiptSchema.shape.criteria,
+});
 export const RoutineCreateParams = RoutineDefinitionSchema;
 export const RoutineUpdateParams = RoutineDefinitionSchema.partial().extend({
   routineId: text,
@@ -145,6 +152,7 @@ export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;
 export type RoutineTrigger = z.infer<typeof RoutineTriggerSchema>;
 export type Routine = z.infer<typeof RoutineSchema>;
 export type RoutineRun = z.infer<typeof RoutineRunSchema>;
+export type RoutineRunOutcome = z.infer<typeof RoutineRunOutcomeSchema>;
 export type RoutineOccurrence = z.infer<typeof RoutineOccurrenceSchema>;
 
 /** Stable identity for one scheduled fire in a timezone. */

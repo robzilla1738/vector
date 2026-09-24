@@ -7,14 +7,17 @@ import {
   type RoutineAlert,
   type RoutineCompare,
   RoutineShareSchema,
+  RoutineRunOutcomeSchema,
   RoutineSchema,
   type RoutineRun,
+  type RoutineRunOutcome,
   type RoutineShare,
   type RoutineTrigger,
   type Run,
 } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
+import type { TaskEvidenceService } from "./task-evidence.js";
 
 function parseRoutine(row: { json: string; revision: number; paused: number; archived_at: number | null; updated_at: number; routine_id: string; workspace_id: string }): Routine {
   const body = JSON.parse(row.json) as Omit<Routine, "routineId" | "revision" | "updatedAt" | "paused" | "archivedAt">;
@@ -99,6 +102,19 @@ export class RoutineService {
 
   get(routineId: string): { routine: Routine; runs: RoutineRun[] } {
     return { routine: this.routine(routineId), runs: this.runs(routineId) };
+  }
+
+  outcome(routineRunId: string, evidence: TaskEvidenceService): RoutineRunOutcome {
+    this.sync();
+    const run = this.runById(routineRunId);
+    const row = this.repo.db.prepare("SELECT json FROM routine_revisions WHERE routine_id=? AND revision=?")
+      .get(run.routineId, run.revision) as { json: string } | undefined;
+    if (!row) throw new AuxError("not_found", "The saved Skill revision for this run is unavailable.");
+    const definition = RoutineSchema.parse(JSON.parse(row.json));
+    const result = definition.sourceTaskId && definition.sourceTaskRevision
+      ? evidence.runCriteria(definition.sourceTaskId, definition.sourceTaskRevision, run.runId, definition.successCriteria)
+      : { linkedRunFound: false, criteria: definition.successCriteria.map(criterion => ({ criterion, status: "unverified" as const, evidence: [] })) };
+    return RoutineRunOutcomeSchema.parse({ run, sourceTaskId: definition.sourceTaskId, sourceTaskRevision: definition.sourceTaskRevision, ...result });
   }
 
   create(input: Omit<RoutineDefinition, "successCriteria"> & { successCriteria?: Routine["successCriteria"] }): Routine {

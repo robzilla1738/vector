@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { EventBus, openDb, Repo, RoutineService, TaskService, nextScheduledTime } from "@aux/runtime";
+import { EventBus, openDb, Repo, RoutineService, TaskEvidenceService, TaskService, nextScheduledTime } from "@aux/runtime";
 import { AuxError, type RoutineShare } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
@@ -64,6 +64,37 @@ it("versions Skill outcome criteria and blocks reruns after the source task chan
   expect(reviewed.revision).toBe(2);
   expect(reviewed.successCriteria).toEqual(changed.criteria);
   expect((await f.routines.run({ routineId: skill.routineId, expectedRevision: reviewed.revision })).status).toBe("running");
+});
+
+it("shows criterion evidence only for the linked Skill run and marks it stale after a later task run", async () => {
+  const f = fixture(async () => ({ runId: "skill-agent-run" }));
+  const evidence = new TaskEvidenceService(f.repo, f.events);
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Evidence Skill" });
+  const occurrence = await f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision });
+  f.repo.saveRun({ runId: "skill-agent-run", goal: "Compare vendors", status: "completed", pageIds: [], createdAt: Date.now(), endedAt: Date.now(), config: { taskId: f.task.taskId, taskRevision: f.task.revision } });
+  const note = evidence.recordNote({ taskId: f.task.taskId, expectedRevision: f.task.revision, criterionId: "c", summary: "Report saved" }, "desktop_user");
+  const review = evidence.review({ taskId: f.task.taskId, expectedRevision: f.task.revision, criterionId: "c", outcome: "accepted", evidenceIds: [note.evidenceId], note: "Checked the report." });
+  let result = f.routines.outcome(occurrence.routineRunId, evidence);
+  expect(result.run.status).toBe("completed");
+  expect(result.linkedRunFound).toBe(true);
+  expect(result.criteria[0]).toMatchObject({ status: "accepted", review: { reviewId: review.reviewId }, evidence: [{ record: { evidenceId: note.evidenceId }, stale: false }] });
+  f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision, title: "New Skill revision" });
+  f.repo.saveRun({ runId: "later-task-run", goal: "Later task run", status: "completed", pageIds: [], createdAt: Date.now(), endedAt: Date.now(), config: { taskId: f.task.taskId, taskRevision: f.task.revision } });
+  evidence.recordNote({ taskId: f.task.taskId, expectedRevision: f.task.revision, criterionId: "c", summary: "Later evidence" }, "desktop_user");
+  result = f.routines.outcome(occurrence.routineRunId, evidence);
+  expect(result.run.revision).toBe(skill.revision);
+  expect(result.criteria[0]?.status).toBe("stale");
+  expect(result.criteria[0]?.evidence.map(item => item.record.evidenceId)).toEqual([note.evidenceId]);
+});
+
+it("does not expose evidence through a mismatched Skill run link", async () => {
+  const f = fixture(async () => ({ runId: "wrong-task-run" }));
+  const skill = f.routines.fromResult({ taskId: f.task.taskId });
+  const occurrence = await f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision });
+  const other = f.tasks.createWorkspace("Other");
+  const otherTask = f.tasks.create({ workspaceId: other.workspaceId, title: "Private", objective: "Private task", criteria: [{ criterionId: "private", description: "Private outcome", verification: "manual" }], resources: [] });
+  f.repo.saveRun({ runId: "wrong-task-run", goal: "Private", status: "completed", pageIds: [], createdAt: Date.now(), endedAt: Date.now(), config: { taskId: otherTask.taskId, taskRevision: otherTask.revision } });
+  expect(() => f.routines.outcome(occurrence.routineRunId, new TaskEvidenceService(f.repo, f.events))).toThrow(/does not belong/i);
 });
 
 it("rejects a source run from another saved task", () => {

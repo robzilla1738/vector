@@ -473,6 +473,7 @@ export function makeInvoker(s: Services) {
       case "routines.archive":
       case "routines.run":
       case "routines.runs":
+      case "routines.outcome":
       case "routines.reconcile":
       case "routines.due":
       case "routines.alerts":
@@ -490,6 +491,7 @@ export function makeInvoker(s: Services) {
         if (method === "routines.archive") return routines.archive(params.routineId, params.expectedRevision, params.archived);
         if (method === "routines.run") return routines.run(params);
         if (method === "routines.runs") return routines.runs(params.routineId, params.limit);
+        if (method === "routines.outcome") return routines.outcome(params.routineRunId, taskEvidence);
         if (method === "routines.reconcile") return routines.reconcile(params.routineRunId, params.outcome, params.note);
         if (method === "routines.alerts") return routines.alerts(params.limit);
         if (method === "routines.compare") return routines.compare(params.leftRunId, params.rightRunId);
