@@ -18,9 +18,15 @@ const profileDir = join(dir, 'profile');
 const dataDir = join(dir, 'data');
 mkdirSync(dataDir);
 writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({ effectGrants: ['effect:read', 'effect:write'] }));
-const fixture = createServer((_request, response) => {
+const fixture = createServer((request, response) => {
+  if (request.url === '/file') {
+    response.setHeader('Content-Type', 'text/plain');
+    response.setHeader('Content-Disposition', 'attachment; filename="broker-proof.txt"');
+    response.end('Aux download through native session');
+    return;
+  }
   response.setHeader('Content-Type', 'text/html');
-  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button>');
+  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><a id="download" href="/file">Download</a>');
 });
 await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
 const targetUrl = `http://127.0.0.1:${fixture.address().port}/page`;
@@ -85,6 +91,20 @@ try {
   });
   assert.equal(action.status, 'completed', JSON.stringify(action));
   assert.match(JSON.stringify(action.observation), /Agent clicked and verified/);
+  const download = await rpc('pages.execute', {
+    program: { pageId: page.pageId, steps: [
+      { id: 'wait-download', op: 'expectDownload' },
+      { id: 'trigger-download', op: 'click', target: 'css:#download' },
+    ] },
+  });
+  assert.equal(download.status, 'completed', JSON.stringify(download));
+  let savedDownload;
+  for (let attempt = 0; attempt < 30 && !savedDownload; attempt++) {
+    savedDownload = (await rpc('downloads.list')).find(item => item.filename === 'broker-proof.txt' && item.state === 'completed');
+    if (!savedDownload) await delay(100);
+  }
+  assert.ok(savedDownload?.path.startsWith(join(dataDir, 'downloads')), 'download remains in Aux native profile storage');
+  assert.equal(readFileSync(savedDownload.path, 'utf8'), 'Aux download through native session');
 
   const firstRuntimePid = JSON.parse(readFileSync(runtimeFile, 'utf8')).pid;
   process.kill(firstRuntimePid, 'SIGTERM');
@@ -104,7 +124,7 @@ try {
   const afterRestart = await rpc('pages.observe', { pageId: page.pageId });
   assert.match(JSON.stringify(afterRestart), /Agent clicked and verified/);
   assert.ok((output.match(/internal CDP broker listening/g) ?? []).length >= 2, 'runtime generation receives a fresh broker');
-  console.log('Direct Aux launch: two tabs, agent click and observation, raw port denial, invalid capability denial, and runtime reconnect pass.');
+  console.log('Direct Aux launch: two tabs, agent click and download, raw port denial, invalid capability denial, and runtime reconnect pass.');
 } finally {
   if (app.exitCode === null) {
     const exited = once(app, 'exit');
