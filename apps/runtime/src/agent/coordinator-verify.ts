@@ -141,14 +141,16 @@ export function verifyDoneAgainstObservation(
   outcomes: StepOutcome[],
   documentEvidence?: string,
   artifactEvidence?: string,
+  memoryEvidence: readonly { url: string; title: string; text: string }[] = [],
 ): { ok: boolean; reason: string } {
   const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op));
   const writesConfirmed = writeOutcomes.every(
     (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
   );
   const observations = Array.isArray(obs) ? obs : [obs];
-  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""} ${artifactEvidence?.toLowerCase() ?? ""}`;
+  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""} ${artifactEvidence?.toLowerCase() ?? ""} ${memoryEvidence.map(source => `${source.title} ${source.url} ${source.text}`.toLowerCase()).join(" ")}`;
   const citedSources = observations.map(observation => ({url:observation.content.url.toLowerCase(),text:observationGroundText(observation)}));
+  for (const source of memoryEvidence) citedSources.push({ url: source.url.toLowerCase(), text: `${source.title} ${source.text}`.toLowerCase() });
   for (const outcome of outcomes) {
     if (outcome.op !== "calendar.events.list" || outcome.status !== "ok") continue;
     const events = outcome.extracted?.events;

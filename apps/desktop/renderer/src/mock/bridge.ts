@@ -246,6 +246,7 @@ export function installMockBridge(q: URLSearchParams) {
     },
     "workspaces.contentMemory.capture": async () => { throw new Error("Article capture needs a native Aux tab."); },
     "workspaces.contentMemory.search": async () => [],
+    "workspaces.contentMemory.get": async () => null,
     "workspaces.contentMemory.forget": async p => { emit("workspace.contentMemory.updated", { workspaceId: String(p.workspaceId) }); return { forgotten: 0 }; },
     "workspaces.memory.get": async p => {
       return memoryNotes.get(String(p.workspaceId))??{workspaceId:String(p.workspaceId),content:"",revision:0,enabled:true};

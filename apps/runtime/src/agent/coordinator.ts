@@ -44,6 +44,7 @@ export interface CoordinatorDeps {
   pages: PageService;
   model: () => ModelClient | null;
   imageReferences?: (run: Run) => string[];
+  memoryReferences?: (run: Run) => Promise<{ url: string; title: string; capturedAt: number; text: string }[]>;
   defaultModel: () => string;
   recoveryModel: () => string | undefined;
   visionModel?: () => string | undefined;
@@ -136,6 +137,7 @@ export class RunCoordinator {
     contextArtifactIds?: string[];
     contextSourceArtifactIds?: string[];
     contextImageArtifactIds?: string[];
+    contextMemoryIds?: string[];
     contextPageRefs?: import("@aux/contracts").PageContextRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
@@ -178,6 +180,7 @@ export class RunCoordinator {
         contextArtifactIds: opts.contextArtifactIds,
         contextSourceArtifactIds: opts.contextSourceArtifactIds,
         contextImageArtifactIds: opts.contextImageArtifactIds,
+        contextMemoryIds: opts.contextMemoryIds,
         contextPageRefs: opts.contextPageRefs,
         messageRevision: 0,
         messageId: opts.messageId,

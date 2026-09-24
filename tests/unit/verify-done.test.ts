@@ -66,6 +66,13 @@ describe("verifyDoneAgainstObservation", () => {
     expect(verifyDoneAgainstObservation(claim,obs(),[],undefined,"AUX-GENERATED ARTIFACT: Option B has offline support.").ok).toBe(true);
   });
 
+  it("grounds a cited saved article only while its source evidence is supplied", () => {
+    const claim = { report: "# Report\nThe harvest begins in October.\n[Source](https://example.test/harvest)" };
+    expect(verifyDoneAgainstObservation(claim, obs(), []).ok).toBe(false);
+    expect(verifyDoneAgainstObservation(claim, obs(), [], undefined, undefined,
+      [{ url: "https://example.test/harvest", title: "Coffee harvest", text: "The harvest begins in October." }]).ok).toBe(true);
+  });
+
   it("accepts a write only when observed or remoteConfirmed", () => {
     const click = {
       stepId: "c",

@@ -263,6 +263,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tracer,
     vault,
     calendar,
+    contentMemory,
     operations,
     durableWrites,
   });

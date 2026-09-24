@@ -69,3 +69,39 @@ it("physically removes excluded and expired sources and rejects tampered ciphert
   expect(await f.memory.search(f.workspace.workspaceId, "distinctive")).toEqual([]);
   expect(f.memory.prune()).toBe(1);
 });
+
+it("ranks source-linked answers to natural questions without requiring every question word", async () => {
+  const f = fixture();
+  const space = f.workspace.workspaceId;
+  f.memory.setPolicy(space, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });
+  const pages = [
+    { url: "https://example.test/coffee", title: "Coffee harvest", text: "The harvest begins in October. Farmers dry the beans in the sun." },
+    { url: "https://example.test/space", title: "Space telescope", text: "The telescope launched in December and studies distant stars." },
+    { url: "https://example.test/garden", title: "Autumn garden", text: "October is the best month to plant garlic bulbs before winter." },
+  ];
+  for (const [index, page] of pages.entries())
+    await f.memory.saveEligible({ workspaceId: space, pageId: `page-${index}`, documentEpoch: 1, ...page });
+  const matches = await f.memory.search(space, "When does the coffee harvest begin?");
+  expect(matches[0]?.url).toBe("https://example.test/coffee");
+  expect(matches[0]?.snippet).toContain("October");
+  expect(matches[0]?.workspaceId).toBe(space);
+  expect(await f.memory.search(space, "unrelated nonexistent subject")).toEqual([]);
+});
+
+it("does not return decrypted content after policy revocation during key access", async () => {
+  const f = fixture();
+  const space = f.workspace.workspaceId;
+  f.memory.setPolicy(space, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });
+  const saved = await f.memory.saveEligible({ workspaceId: space, pageId: "p", documentEpoch: 1,
+    url: "https://example.test/article", title: "Article", text: "Sensitive recalled source" });
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const delayed = new ContentMemoryStore(f.repo, {
+    readSecret: async name => { await gate; return f.native.readSecret(name); },
+    storeSecret: f.native.storeSecret,
+  }, "profile-one", f.now);
+  const pending = delayed.get(space, saved.memoryId);
+  f.memory.setPolicy(space, { enabled: false, retentionDays: 30, allowedOrigins: ["https://example.test"] });
+  release();
+  expect(await pending).toBeUndefined();
+});

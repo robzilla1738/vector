@@ -28,7 +28,7 @@ import { EventSchema } from "./events.js";
 import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
-import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, ContentMemoryPolicySchema, ContentMemoryMatchSchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
+import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, ContentMemoryPolicySchema, ContentMemoryMatchSchema, ContentMemoryDocumentSchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
@@ -219,6 +219,8 @@ export const RunsStartParams = z.object({
   context: z.string().max(20_000).optional(),
   /** Desktop default for a new conversation; never reassigns an existing conversation. */
   defaultWorkspaceId: id.optional(),
+  /** Explicitly chosen protected articles. Only Aux's local window may request model use. */
+  contextMemoryIds: z.array(id).max(3).optional(),
   /** chat thread this run belongs to — groups turns into conversations */
   chatId: z.string().optional(),
 });
@@ -352,7 +354,12 @@ export const CalendarConversationSourceSchema = z.object({
   end: z.string().max(100),
   observedAt: z.number(),
 });
-export const ConversationSourceSchema = z.union([BrowserConversationSourceSchema, CalendarConversationSourceSchema]);
+export const MemoryConversationSourceSchema = z.object({
+  kind: z.literal("memory"), sourceId: id, runId: id, memoryId: id, workspaceId: id,
+  pageId: id, profileId: id, documentEpoch: z.number().int().nonnegative(),
+  url: z.string().url().max(4000), title: z.string().max(1000), observedAt: z.number(),
+});
+export const ConversationSourceSchema = z.union([BrowserConversationSourceSchema, CalendarConversationSourceSchema, MemoryConversationSourceSchema]);
 export type ConversationSource = z.infer<typeof ConversationSourceSchema>;
 export const ConversationSourcesSchema = z.object({ chatId: id, sources: z.array(ConversationSourceSchema).max(200) });
 export const ConversationWorkspaceSchema = z.object({ memoryPreview: z.string().optional(), browsingPreview: z.string().optional(), chatId: id, taskId: id.optional(), assigned: z.boolean().optional(), workspace: WorkspaceSchema.nullable(), memory: WorkspaceMemorySchema.nullable() });
@@ -540,6 +547,7 @@ export const MethodSchemas = {
   "workspaces.contentMemory.setPolicy": z.object({ workspaceId: id, policy: ContentMemoryPolicySchema }),
   "workspaces.contentMemory.capture": z.object({ workspaceId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), expectedUrl: z.string().url().max(8192) }),
   "workspaces.contentMemory.search": z.object({ workspaceId: id, query: z.string().trim().min(1).max(200) }),
+  "workspaces.contentMemory.get": z.object({ workspaceId: id, memoryId: id }),
   "workspaces.contentMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.memory.get": z.object({ workspaceId: id }),
   "workspaces.memory.search": z.object({query:z.string().trim().min(1).max(1000)}),
@@ -903,6 +911,7 @@ export const ResultSchemas = {
   "workspaces.contentMemory.setPolicy": ContentMemoryPolicySchema,
   "workspaces.contentMemory.capture": z.object({ memoryId: id, capturedAt: z.number(), title: z.string(), url: z.string().url() }),
   "workspaces.contentMemory.search": z.array(ContentMemoryMatchSchema),
+  "workspaces.contentMemory.get": ContentMemoryDocumentSchema.nullable(),
   "workspaces.contentMemory.forget": z.object({ forgotten: z.number().int().nonnegative() }),
   "workspaces.memory.get": WorkspaceMemorySchema,
   "workspaces.memory.search": z.array(z.object({workspaceId:id,name:z.string(),excerpt:z.string(),enabled:z.boolean()})),

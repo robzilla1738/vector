@@ -59,10 +59,11 @@ export function dedupeConversationSources(sources: ConversationSource[]): Conver
   for (const source of sources) {
     const key = source.kind === "calendar"
       ? `${source.runId}\0calendar\0${source.connectionId}\0${source.url}`
+      : source.kind === "memory" ? `${source.runId}\0memory\0${source.memoryId}`
       : `${source.runId}\0browser\0${source.profileId ?? ""}\0${source.pageId}\0${source.url}`;
     const prior = latest.get(key);
     if (!prior || source.observedAt > prior.observedAt ||
-      (source.kind !== "calendar" && prior.kind !== "calendar" && source.observedAt === prior.observedAt && source.revision > prior.revision)) latest.set(key, source);
+      (source.kind !== "calendar" && source.kind !== "memory" && prior.kind !== "calendar" && prior.kind !== "memory" && source.observedAt === prior.observedAt && source.revision > prior.revision)) latest.set(key, source);
   }
   return [...latest.values()].sort((a, b) => a.observedAt - b.observedAt || a.sourceId.localeCompare(b.sourceId)).slice(-200);
 }

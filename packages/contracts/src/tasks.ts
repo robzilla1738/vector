@@ -157,3 +157,5 @@ export type ContentMemoryPolicy = z.infer<typeof ContentMemoryPolicySchema>;
 export const ContentMemoryMatchSchema = z.object({ memoryId: text, profileId: text, workspaceId: text, pageId: text,
   documentEpoch: z.number().int().nonnegative(), url: z.string().url(), title: z.string(), capturedAt: z.number(), snippet: z.string() });
 export type ContentMemoryMatch = z.infer<typeof ContentMemoryMatchSchema>;
+export const ContentMemoryDocumentSchema = ContentMemoryMatchSchema.omit({ snippet: true }).extend({ text: z.string().max(64 * 1024) });
+export type ContentMemoryDocument = z.infer<typeof ContentMemoryDocumentSchema>;

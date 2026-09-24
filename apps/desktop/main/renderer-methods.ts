@@ -205,6 +205,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "workspaces.contentMemory.setPolicy",
   "workspaces.contentMemory.capture",
   "workspaces.contentMemory.search",
+  "workspaces.contentMemory.get",
   "workspaces.contentMemory.forget",
   "workspaces.list",
   "workspaces.memory.get",

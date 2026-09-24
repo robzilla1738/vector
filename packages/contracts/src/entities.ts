@@ -135,6 +135,8 @@ export const RunSchema = z.object({
       contextSourceArtifactIds: z.array(z.string()).optional(),
       /** Immutable image snapshots explicitly included in this run. */
       contextImageArtifactIds: z.array(z.string()).max(4).optional(),
+      /** Selected protected article IDs; plaintext is hydrated only for a model call. */
+      contextMemoryIds: z.array(z.string()).max(3).optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */
       contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
       /** Accepted human steering revision for this run. */

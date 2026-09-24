@@ -42,6 +42,8 @@ export function conversationMarkdown(input: {
       lines.push("Sources observed by Aux:");
       for (const source of sources) lines.push(source.kind === "calendar"
         ? `- ${md(source.title)} · ${md(source.url)} · Google Calendar account ${md(source.accountKey)}${source.profileId ? ` · browser Profile ${md(source.profileId)}` : ""} · ${md(source.start)}–${md(source.end)} · fetched ${iso(source.observedAt)}${source.eventId ? ` · event ${md(source.eventId)}` : ""}`
+        : source.kind === "memory"
+        ? `- ${md(source.title)} · ${md(source.url)} · saved article from browser Profile ${md(source.profileId)} · saved ${iso(source.observedAt)} · source ${md(source.memoryId)}`
         : `- ${md(source.title)} · ${md(source.url)} · observed ${iso(source.observedAt)}${source.profileId ? ` · browser Profile ${md(source.profileId)}` : ""} · observation ${md(source.sourceId)} revision ${source.revision}`);
       lines.push("");
     }

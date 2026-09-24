@@ -82,7 +82,9 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     try {
       let pageId = opts.pageId === undefined ? opts.pageIds?.[0] ?? before.activePageId : opts.pageId;
       if (opts.scope === "new" || !pageId) {
-        const page = await get().openBackgroundTab("about:blank", before.layout.activeSpaceId, false);
+        const spaceId = opts.memorySource ? before.layout.spaces.find(space => space.workspaceId === opts.memorySource!.workspaceId)?.id : before.layout.activeSpaceId;
+        if (!spaceId) throw new Error("The selected Space is no longer available.");
+        const page = await get().openBackgroundTab("about:blank", spaceId, false);
         pageId = page.pageId;
       }
       const n = Number(before.settings.maxModelCalls);
@@ -90,8 +92,9 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
       const run = await call("runs.start", { goal: g, pageIds: pageIds.length ? pageIds : undefined,
         contextPageRefs: opts.contextPageRefs,
+        contextMemoryIds: opts.memorySource ? [opts.memorySource.memoryId] : undefined,
         maxModelCalls: budget, chatId: opts.chatId,
-        defaultWorkspaceId: bridge.privateMode ? undefined : before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
+        defaultWorkspaceId: bridge.privateMode ? undefined : opts.memorySource?.workspaceId ?? before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
       const reveal = stayed();
       settle(state => state.runs.some(item => item.runId === run.runId) ? state.runs : [run, ...state.runs]);
       if (!opts.ownsDraft && !existingChat && !hasChatDraft && get().agentDraft === before.agentDraft) get().setAgentDraft("");

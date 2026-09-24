@@ -1798,6 +1798,9 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .browsing-memory-page b, .browsing-memory-page small { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--fs-xs); }
 .browsing-memory-page b { font-weight:var(--fw-medium); }
 .browsing-memory-page small { color:var(--ink-2); }
+.content-memory-document { margin-top:var(--space-3); padding:var(--space-3); border:1px solid var(--line); border-radius:var(--radius-md); }
+.content-memory-document .row { justify-content:space-between; }
+.content-memory-text { max-height:320px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:var(--fs-sm); line-height:1.5; }
 .saved-result-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-2-5) 0; }
 .saved-result-actions > .hint { flex: 1; min-width: 140px; }
 .saved-result-content { max-height: min(240px, 24vh); overflow: auto; padding: var(--space-3); border-radius: var(--r-md); background: var(--bg-1); overflow-wrap: anywhere; }

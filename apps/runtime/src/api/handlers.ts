@@ -96,6 +96,17 @@ export function makeInvoker(s: Services) {
         s.runs.cancel(row.runId, "Workspace context changed before this turn finished. Review and retry with current sources.");
     }
   };
+  const revokeArticleRuns = (workspaceId: string, memoryId?: string) => {
+    const rows = s.repo.db.prepare(`SELECT run_id AS runId, config FROM runs
+      WHERE status IN ('queued','planning','running','paused','needs_input')
+      AND json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId')=?`)
+      .all(workspaceId) as { runId: string; config: string | null }[];
+    for (const row of rows) {
+      const ids = row.config ? (JSON.parse(row.config) as { contextMemoryIds?: string[] }).contextMemoryIds : undefined;
+      if (ids?.length && (!memoryId || ids.includes(memoryId)))
+        s.runs.cancel(row.runId, "A selected saved article was forgotten or its access changed. Start a new turn with current sources.");
+    }
+  };
   const spaces = new SpaceService(s.repo, s.events);
   const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages);
   const cloudEnvironments=new CloudEnvironmentService(s.repo,s.settings);
@@ -378,6 +389,7 @@ export function makeInvoker(s: Services) {
       case "workspaces.contentMemory.setPolicy":
       case "workspaces.contentMemory.capture":
       case "workspaces.contentMemory.search":
+      case "workspaces.contentMemory.get":
       case "workspaces.contentMemory.forget": {
         if (client.external) throw new AuxError("permission_denied", "Page-content memory is managed in Aux.");
         const store = s.contentMemory;
@@ -385,12 +397,20 @@ export function makeInvoker(s: Services) {
         if (method === "workspaces.contentMemory.policy") return store.policy(params.workspaceId);
         if (method === "workspaces.contentMemory.setPolicy") {
           const result = store.setPolicy(params.workspaceId, params.policy);
+          revokeArticleRuns(params.workspaceId);
           s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
           return result;
         }
         if (method === "workspaces.contentMemory.search") return store.search(params.workspaceId, params.query);
+        if (method === "workspaces.contentMemory.get") {
+          const body = await store.get(params.workspaceId, params.memoryId);
+          if (!body) return null;
+          const { memoryId, profileId, workspaceId, pageId, documentEpoch, url, title, capturedAt, text } = body;
+          return { memoryId, profileId, workspaceId, pageId, documentEpoch, url, title, capturedAt, text };
+        }
         if (method === "workspaces.contentMemory.forget") {
           const forgotten = store.forget(params.workspaceId, params.memoryId);
+          revokeArticleRuns(params.workspaceId, params.memoryId);
           s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
           return { forgotten };
         }
@@ -805,10 +825,16 @@ export function makeInvoker(s: Services) {
 
       // runs
       case "runs.start": {
+        if (client.external && params.contextMemoryIds?.length)
+          throw new AuxError("permission_denied", "Protected article context can only be sent from the Aux window.");
         if (client.external && params.defaultWorkspaceId) throw new AuxError("permission_denied", "Conversation Space defaults are set through the Aux browser.");
         return s.runs.start(params as never);
       }
-      case "runs.retry": return s.runs.retry(params.runId, params.pageId);
+      case "runs.retry": {
+        if (client.external && s.runs.coordinator.get(params.runId).config?.contextMemoryIds?.length)
+          throw new AuxError("permission_denied", "Protected article context can only be retried from the Aux window.");
+        return s.runs.retry(params.runId, params.pageId);
+      }
       case "runs.get": {
         const run = s.runs.coordinator.get(params.runId);
         const calls = s.repo.listModelCalls(run.runId);
@@ -860,8 +886,8 @@ export function makeInvoker(s: Services) {
       case "conversations.artifacts.get": return s.runs.conversationArtifacts(params.chatId);
       case "conversations.artifacts.toggle": return s.runs.toggleConversationArtifact(params);
       case "conversations.sources.get": {
-        const result = s.runs.conversationSources(params.chatId);
-        return client.external ? { ...result, sources: result.sources.filter(source => source.kind !== "calendar") } : result;
+        const result = await s.runs.conversationSources(params.chatId);
+        return client.external ? { ...result, sources: result.sources.filter(source => source.kind !== "calendar" && source.kind !== "memory") } : result;
       }
       case "conversations.workspace.get": return s.runs.conversationWorkspace(params.chatId);
       case "conversations.workspace.set": return s.runs.setConversationWorkspace(params);

@@ -290,12 +290,20 @@ export class RunService {
     return this.conversationArtifacts(opts.chatId);
   }
 
-  conversationSources(chatId: string): { chatId: string; sources: ConversationSource[] } {
+  async conversationSources(chatId: string): Promise<{ chatId: string; sources: ConversationSource[] }> {
     const sources: ConversationSource[] = [];
     const runs = this.deps.repo.listRuns(500, { chatId }).reverse();
     for (const step of this.deps.repo.listStepsByOpForRuns(runs.map(run => run.runId), "calendar.events.list"))
       sources.push(...calendarConversationSourcesFromStep(step));
     for (const run of runs) {
+      if (this.deps.contentMemory && run.config?.contextWorkspaceId && run.config.contextMemoryIds?.length) {
+        for (const memoryId of run.config.contextMemoryIds) {
+          const body = await this.deps.contentMemory.get(run.config.contextWorkspaceId, memoryId);
+          if (body) sources.push({ kind: "memory", sourceId: `memory:${run.runId}:${memoryId}`, runId: run.runId,
+            memoryId, workspaceId: body.workspaceId, pageId: body.pageId, profileId: body.profileId,
+            documentEpoch: body.documentEpoch, url: body.url, title: body.title, observedAt: body.capturedAt });
+        }
+      }
       for (const artifact of this.deps.repo.listArtifacts({ runId: run.runId })) {
         if (artifact.mediaType !== "application/json" || artifact.status !== "complete" || artifact.size > 2 * 1024 * 1024) continue;
         try {
@@ -466,6 +474,7 @@ export class RunService {
     nativeAvailable: () => boolean;
     vault?: import("./vault.js").VaultService;
     calendar?: import("./calendar-connections.js").CalendarConnectionService;
+    contentMemory?: import("./content-memory.js").ContentMemoryStore;
     operations?: import("./operations.js").OperationService;
     durableWrites?: DurableWriteLedger;
     tracer?: {
@@ -484,6 +493,15 @@ export class RunService {
       events: deps.events,
       pages: deps.pages,
       imageReferences: run => this.images.forRun(run),
+      memoryReferences: async run => {
+        const ids = run.config?.contextMemoryIds ?? [];
+        if (!ids.length) return [];
+        const workspaceId = run.config?.contextWorkspaceId;
+        if (!workspaceId || !this.deps.contentMemory) throw new AuxError("permission_denied", "Selected article context is unavailable.");
+        const records = await Promise.all(ids.map(id => this.deps.contentMemory!.get(workspaceId, id)));
+        if (records.some(record => !record)) throw new AuxError("permission_denied", "A selected article was forgotten or its site access changed.");
+        return records.map(record => ({ url: record!.url, title: record!.title, capturedAt: record!.capturedAt, text: record!.text.slice(0, 8_000) }));
+      },
       model: () => deps.settings.model(),
       defaultModel: () => deps.settings.plannerModel(),
       recoveryModel: () => deps.settings.recoveryModel(),
@@ -722,6 +740,7 @@ export class RunService {
     contextArtifactIds?: string[];
     contextSourceArtifactIds?: string[];
     contextImageArtifactIds?: string[];
+    contextMemoryIds?: string[];
     contextPageRefs?: PageContextRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
@@ -781,7 +800,13 @@ export class RunService {
       (opts.chatId ? this.attachmentRecords(opts.chatId) : []).filter(item => item.included && contextAttachmentIds?.includes(item.attachmentId) && item.sourceArtifactId).map(item => item.sourceArtifactId!),
     )];
     const contextImageArtifactIds = opts.contextSnapshot ? opts.contextImageArtifactIds : opts.chatId ? this.images.selected(opts.chatId) : [];
-    const contextWorkspaceId = opts.contextSnapshot ? opts.contextWorkspaceId : inherited?.workspaceId ?? opts.contextWorkspaceId;
+    const contextWorkspaceId = opts.contextSnapshot ? opts.contextWorkspaceId : inherited?.workspaceId ?? (opts.chatId ? this.conversationWorkspace(opts.chatId).workspace?.workspaceId : undefined) ?? opts.contextWorkspaceId;
+    const contextMemoryIds = opts.contextMemoryIds?.length ? [...new Set(opts.contextMemoryIds)] : undefined;
+    if (contextMemoryIds?.length) {
+      if (!contextWorkspaceId || !this.deps.contentMemory) throw new AuxError("permission_denied", "Choose an active Space with protected article recall.");
+      for (const id of contextMemoryIds) if (!await this.deps.contentMemory.get(contextWorkspaceId, id))
+        throw new AuxError("permission_denied", "A selected article is unavailable in this Space.");
+    }
     const contextWorkspaceRevision = opts.contextSnapshot ? opts.contextWorkspaceRevision : inherited?.workspaceRevision ?? opts.contextWorkspaceRevision;
     const contextBrowsingMemory = opts.contextSnapshot ? opts.contextBrowsingMemory : !!inherited?.browsing;
     const pageIds = opts.pageIds ?? (opts.pageId ? [opts.pageId] : []);
@@ -841,6 +866,7 @@ export class RunService {
       contextArtifactIds,
       contextSourceArtifactIds,
       contextImageArtifactIds,
+      contextMemoryIds,
       contextPageRefs: opts.contextPageRefs,
       contextWorkspaceId,
       contextWorkspaceRevision,
@@ -901,6 +927,7 @@ export class RunService {
       contextArtifactIds: prior.config?.contextArtifactIds,
       contextSourceArtifactIds: prior.config?.contextSourceArtifactIds,
       contextImageArtifactIds: prior.config?.contextImageArtifactIds,
+      contextMemoryIds: prior.config?.contextMemoryIds,
       contextWorkspaceId: prior.config?.contextWorkspaceId,
       contextWorkspaceRevision: prior.config?.contextWorkspaceRevision,
       contextBrowsingMemory: prior.config?.contextBrowsingMemory,

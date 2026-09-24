@@ -28,8 +28,10 @@ type Row = { memory_id: string; source_key: string; origin: string; captured_at:
 type Index = { revision: number; expiresAt: number; rows: Map<string, RecordBody>; tokens: Map<string, Set<string>> };
 
 const policyKey = (workspaceId: string) => `contentMemoryPolicy:${workspaceId}`;
+const STOPWORDS = new Set(["a", "an", "and", "are", "at", "be", "by", "did", "do", "does", "for", "from", "how", "in", "is", "it", "of", "on", "or", "the", "to", "was", "were", "what", "when", "where", "which", "who", "why", "with"]);
 const terms = (text: string) => [...new Set([...new Intl.Segmenter(undefined, { granularity: "word" }).segment(text)]
-  .filter(part => part.isWordLike).map(part => part.segment.toLocaleLowerCase()))];
+  .filter(part => part.isWordLike).map(part => part.segment.toLocaleLowerCase())
+  .filter(part => part.length > 1 && !STOPWORDS.has(part)))];
 
 /** Page text is encrypted before SQLite sees it. Search structures exist only in bounded process memory. */
 export class ContentMemoryStore {
@@ -177,12 +179,14 @@ export class ContentMemoryStore {
     if (cached?.revision === revision && cached.expiresAt > this.now()) return cached;
     const key = await this.key();
     const policy = this.policy(workspaceId);
+    if (!policy.enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false)
+      return { revision, expiresAt: this.now(), rows: new Map(), tokens: new Map() };
     const rows = this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory
       WHERE profile_id=? AND workspace_id=? AND expires_at>? AND captured_at>? ORDER BY captured_at DESC LIMIT ?`)
       .all(this.profileId, workspaceId, this.now(), this.now() - policy.retentionDays * DAY, MAX_PAGES_PER_SPACE) as Row[];
     const index: Index = { revision, expiresAt: Infinity, rows: new Map(), tokens: new Map() };
     for (const row of rows) {
-      if (memory?.excludedOrigins?.includes(row.origin)) continue;
+      if (!policy.allowedOrigins.includes(row.origin) || memory?.excludedOrigins?.includes(row.origin)) continue;
       index.expiresAt = Math.min(index.expiresAt, row.expires_at);
       const body = this.decrypt(key, row.ciphertext);
       const sourceKey = createHmac("sha256", key).update(`${this.profileId}\0${workspaceId}\0${body.url}`).digest("hex");
@@ -202,16 +206,35 @@ export class ContentMemoryStore {
     return index;
   }
 
+  private readable(body: RecordBody): boolean {
+    const policy = this.policy(body.workspaceId);
+    const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${body.workspaceId}`);
+    return policy.enabled && memory?.enabled !== false && policy.allowedOrigins.includes(new URL(body.url).origin)
+      && (!memory || !memorySourceExcluded(memory, body.url));
+  }
+
   async search(workspaceId: string, query: string, limit = 10) {
     if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return [];
     const tokens = terms(query.slice(0, 200)).slice(0, 8);
     if (!tokens.length) return [];
     const index = await this.index(workspaceId);
-    const candidates = [...(index.tokens.get(tokens[0]!) ?? [])].filter(id => tokens.every(token => index.tokens.get(token)?.has(id)));
-    return candidates.map(id => index.rows.get(id)!).sort((a, b) => b.capturedAt - a.capturedAt).slice(0, Math.max(1, Math.min(limit, 20)))
-      .map(body => {
+    if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return [];
+    const candidates = new Set(tokens.flatMap(token => [...(index.tokens.get(token) ?? [])]));
+    const ranked = [...candidates].map(id => {
+      const body = index.rows.get(id)!;
+      const titleTokens = new Set(terms(body.title));
+      const hits = tokens.filter(token => index.tokens.get(token)?.has(id));
+      const score = hits.reduce((sum, token) => {
+        const frequency = index.tokens.get(token)?.size ?? 1;
+        const rarity = Math.log(1 + (index.rows.size + 1) / frequency);
+        return sum + rarity * (titleTokens.has(token) ? 3 : 1);
+      }, 0) * (0.5 + hits.length / tokens.length);
+      return { body, score, hits };
+    }).sort((a, b) => b.score - a.score || b.body.capturedAt - a.body.capturedAt);
+    return ranked.filter(({ body }) => this.readable(body)).slice(0, Math.max(1, Math.min(limit, 20)))
+      .map(({ body, hits }) => {
         const lower = body.text.toLocaleLowerCase();
-        const at = Math.max(0, lower.indexOf(tokens[0]!));
+        const at = Math.max(0, lower.indexOf(hits.find(token => lower.includes(token)) ?? hits[0]!));
         const start = Math.max(0, at - 70), end = Math.min(body.text.length, start + 240);
         return { memoryId: body.memoryId, profileId: body.profileId, workspaceId: body.workspaceId,
           url: body.url, title: body.title, capturedAt: body.capturedAt, pageId: body.pageId,
@@ -221,7 +244,8 @@ export class ContentMemoryStore {
 
   async get(workspaceId: string, memoryId: string): Promise<RecordBody | undefined> {
     if (!this.policy(workspaceId).enabled || this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${workspaceId}`)?.enabled === false) return undefined;
-    return (await this.index(workspaceId)).rows.get(memoryId);
+    const record = (await this.index(workspaceId)).rows.get(memoryId);
+    return record && this.readable(record) ? record : undefined;
   }
 
   forget(workspaceId: string, memoryId?: string): number {

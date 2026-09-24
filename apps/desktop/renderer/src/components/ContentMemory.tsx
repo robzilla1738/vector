@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ContentMemoryMatch, ContentMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
+import type { ContentMemoryDocument, ContentMemoryMatch, ContentMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 
@@ -7,6 +7,8 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
   const [policy, setPolicy] = useState<ContentMemoryPolicy | null>(null);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<ContentMemoryMatch[]>([]);
+  const [document, setDocument] = useState<ContentMemoryDocument | null>(null);
+  const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
@@ -33,6 +35,22 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
     }, 180);
     return () => { live = false; clearTimeout(timer); };
   }, [memory.workspaceId, policy?.enabled, query, revision]);
+  useEffect(() => { setDocument(null); }, [memory.workspaceId, policy?.enabled, memory.enabled, revision]);
+  async function read(memoryId: string) {
+    setBusy(true); setError("");
+    try {
+      const saved = await call("workspaces.contentMemory.get", { workspaceId: memory.workspaceId, memoryId });
+      if (!saved) throw new Error("This saved article is no longer available.");
+      setDocument(saved);
+    } catch (reason) { setDocument(null); setError(String(reason)); }
+    finally { setBusy(false); }
+  }
+  async function ask() {
+    if (!document || !question.trim()) return;
+    const run = await useStore.getState().startRun(question, { scope: "new", chatId: crypto.randomUUID(), presentation: "conversation",
+      memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId } });
+    if (run) { setQuestion(""); useStore.getState().openConversation(run.runId); }
+  }
   async function change(next: ContentMemoryPolicy) {
     setBusy(true); setError("");
     try {
@@ -47,6 +65,7 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
     try {
       await call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId });
       setMatches(current => current.filter(item => !!memoryId && item.memoryId !== memoryId));
+      setDocument(null);
       setConfirmClear(false);
     } catch (reason) { setError(String(reason)); }
     finally { setBusy(false); }
@@ -68,8 +87,16 @@ export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
       <div className="browsing-memory-list">{matches.map(item => <article key={item.memoryId}>
         <button className="browsing-memory-page" title={item.url} onClick={() => { void useStore.getState().newTab(item.url).catch(errToast); }}><b>{item.title}</b><small>{item.url}</small><span>{item.snippet}</span></button>
         <span className="hint">{new Date(item.capturedAt).toLocaleDateString()}</span>
+        <button className="btn sm ghost" disabled={busy} onClick={() => void read(item.memoryId)}>Read saved text</button>
         <button className="btn sm ghost" disabled={busy} onClick={() => void forget(item.memoryId)}>Forget</button>
       </article>)}</div>
+      {document && <section className="content-memory-document" aria-label="Saved article text">
+        <div className="row"><strong>{document.title}</strong><button className="btn sm ghost" onClick={() => setDocument(null)}>Close</button></div>
+        <p className="hint">Saved {new Date(document.capturedAt).toLocaleString()} from {document.url}. This is a historical copy; open the source to check for updates.</p>
+        <div className="content-memory-text">{document.text}</div>
+        <p className="hint">Ask Aux sends up to 8,000 characters of this saved article to your selected AI provider. The saved copy may be older than the live page.</p>
+        <div className="row"><input className="field-input" aria-label="Question about saved article" placeholder="Ask about this saved article…" value={question} onChange={event => setQuestion(event.target.value)}/><button className="btn sm" disabled={busy || !question.trim()} onClick={() => void ask()}>Ask Aux</button></div>
+      </section>}
       <div className="row">{confirmClear ? <><span className="hint">Forget all saved articles in this Space?</span><button className="btn sm" disabled={busy} onClick={() => void forget()}>Forget all</button><button className="btn sm ghost" disabled={busy} onClick={() => setConfirmClear(false)}>Cancel</button></> : <button className="btn sm ghost" disabled={busy} onClick={() => setConfirmClear(true)}>Forget all remembered articles…</button>}</div>
     </>}
     {error && <p className="field-error" role="alert">{error}</p>}
