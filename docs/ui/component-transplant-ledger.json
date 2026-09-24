@@ -40,7 +40,7 @@
         "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -55,7 +55,8 @@
       ],
       "functionalEvidence": [
         "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
-        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900."
+        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900.",
+        "Mock UI: document and typed draft preserved home \u2192 full \u2192 rail \u2192 full; inclusion toggle persisted. Single AttachmentTray removes duplicate image rows. This is not real Quick Ask/native file-dialog qualification."
       ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
@@ -150,7 +151,7 @@
         "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -161,7 +162,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Anchored native HTML dialog with search and focus return; DOM bounds in 1440\u00d7900 were left 1092, top 655, right 1432, bottom 891.5. Component test filters unavailable/runtime-owned pages and requires explicit selection."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -187,7 +190,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Anchored native HTML dialog with search and focus return; DOM bounds in 1440\u00d7900 were left 1092, top 655, right 1432, bottom 891.5. Component test filters unavailable/runtime-owned pages and requires explicit selection."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -479,7 +484,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -490,11 +495,14 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Home Ask lazily loads the real composer; default controls are Search/Ask, plus and Send. Plus opens an anchored tool panel without expanding the composer. Native visual verification pending in this record until captured."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Run the full appearance, size, input, accessibility, and host matrix.",
+        "Check simplified home and tool popover in native Electron baseline, then Chromium candidate; complete home result-card and search ports."
       ]
     },
     {
@@ -545,11 +553,13 @@
       "visualEvidence": [
         "evidence/2026-09-24/rail-draft-light-1440.png",
         "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
+        "evidence/2026-09-24/composer-queue-light-1280.png"
       ],
       "functionalEvidence": [
         "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
-        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900."
+        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900.",
+        "Mock UI: document and typed draft preserved home \u2192 full \u2192 rail \u2192 full; inclusion toggle persisted. Single AttachmentTray removes duplicate image rows. This is not real Quick Ask/native file-dialog qualification."
       ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
@@ -565,7 +575,7 @@
         "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -576,7 +586,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Anchored native HTML dialog with search and focus return; DOM bounds in 1440\u00d7900 were left 1092, top 655, right 1432, bottom 891.5. Component test filters unavailable/runtime-owned pages and requires explicit selection."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -643,7 +655,7 @@
         "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -654,7 +666,9 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Mock UI: document and typed draft preserved home \u2192 full \u2192 rail \u2192 full; inclusion toggle persisted. Single AttachmentTray removes duplicate image rows. This is not real Quick Ask/native file-dialog qualification."
+      ],
       "nativeHostVerification": "pending Chromium candidate",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -1838,9 +1852,12 @@
       ],
       "visualEvidence": [
         "evidence/2026-09-24/horizontal-question-dark-1920.png",
-        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
+        "evidence/2026-09-24/composer-queue-light-1280.png"
       ],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "RunControls extracted with existing pause/stop supersession semantics; latest conversation controls stay above composer. Existing 4 run-control checks pass; native takeover journey remains open."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
@@ -2338,7 +2355,7 @@
         "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -2349,11 +2366,14 @@
         "keyboard-focus"
       ],
       "visualEvidence": [],
-      "functionalEvidence": [],
+      "functionalEvidence": [
+        "Home Ask lazily loads the real composer; default controls are Search/Ask, plus and Send. Plus opens an anchored tool panel without expanding the composer. Native visual verification pending in this record until captured."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Run the full appearance, size, input, accessibility, and host matrix.",
+        "Check simplified home and tool popover in native Electron baseline, then Chromium candidate; complete home result-card and search ports."
       ]
     },
     {
@@ -3147,6 +3167,121 @@
       "remaining": [
         "Verify actual supported capabilities; preserve provider-owned security and consent UI."
       ]
+    },
+    {
+      "id": "HomeAsk",
+      "component": "apps/desktop/renderer/src/components/HomeAsk.tsx",
+      "entryPoint": "New tab \u2192 Ask",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/home-minimal-dark-1440.png",
+        "docs/ui/evidence/2026-09-24/home-tools-dark-1440.png"
+      ],
+      "functionalEvidence": [
+        "components/Composer.integration.test.tsx: separate answer/follow-up drafts, queued edit preserves existing text, context search and explicit selection, home tools disclosure.",
+        "Renderer TypeScript passes; run-controls, run-answer and CommandBar regression checks pass."
+      ],
+      "nativeHostVerification": "pending Chromium candidate; Electron visual baseline required",
+      "remaining": [
+        "Complete relevant native, appearance, accessibility and state matrix.",
+        "Real Quick Ask / cross-window context handoff remains unqualified."
+      ]
+    },
+    {
+      "id": "AttachmentTray",
+      "component": "apps/desktop/renderer/src/components/AttachmentTray.tsx",
+      "entryPoint": "Composer attachment/context area",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "components/Composer.integration.test.tsx: separate answer/follow-up drafts, queued edit preserves existing text, context search and explicit selection, home tools disclosure.",
+        "Renderer TypeScript passes; run-controls, run-answer and CommandBar regression checks pass."
+      ],
+      "nativeHostVerification": "pending Chromium candidate; Electron visual baseline required",
+      "remaining": [
+        "Complete relevant native, appearance, accessibility and state matrix.",
+        "Real Quick Ask / cross-window context handoff remains unqualified."
+      ]
+    },
+    {
+      "id": "AnchoredPanel",
+      "component": "apps/desktop/renderer/src/components/AnchoredPanel.tsx",
+      "entryPoint": "Composer context controls and previous turns",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "components/Composer.integration.test.tsx: separate answer/follow-up drafts, queued edit preserves existing text, context search and explicit selection, home tools disclosure.",
+        "Renderer TypeScript passes; run-controls, run-answer and CommandBar regression checks pass."
+      ],
+      "nativeHostVerification": "pending Chromium candidate; Electron visual baseline required",
+      "remaining": [
+        "Complete relevant native, appearance, accessibility and state matrix.",
+        "Real Quick Ask / cross-window context handoff remains unqualified."
+      ]
+    },
+    {
+      "id": "RunControls",
+      "component": "apps/desktop/renderer/src/components/RunControls.tsx",
+      "entryPoint": "Conversation composer / standalone run",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "components/Composer.integration.test.tsx: separate answer/follow-up drafts, queued edit preserves existing text, context search and explicit selection, home tools disclosure.",
+        "Renderer TypeScript passes; run-controls, run-answer and CommandBar regression checks pass."
+      ],
+      "nativeHostVerification": "pending Chromium candidate; Electron visual baseline required",
+      "remaining": [
+        "Complete relevant native, appearance, accessibility and state matrix.",
+        "Real Quick Ask / cross-window context handoff remains unqualified."
+      ]
     }
   ],
   "referenceRoutes": [
@@ -3839,7 +3974,7 @@
   ],
   "verificationSummary": {
     "rendererTypecheck": "passed",
-    "focusedRendererChecks": 24,
+    "focusedRendererChecks": 36,
     "chromeStyleChecks": 25,
     "nativeCandidate": "not yet available; native checks pending",
     "fullMatrix": "incomplete",

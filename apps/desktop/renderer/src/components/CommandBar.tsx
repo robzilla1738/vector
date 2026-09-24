@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { ConversationSummary, HistoryEntry, Routine, Run, SavedProgram, SavedResult } from "@aux/contracts";
 import { toUrl } from "../chrome";
@@ -25,6 +25,8 @@ interface Suggestion {
   hint?: string;
   run: () => unknown | Promise<unknown>;
 }
+
+const HomeAsk = lazy(() => import("./HomeAsk"));
 
 const EMPTY_HISTORY: HistoryEntry[] = [];
 
@@ -155,7 +157,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     if (baseIntent.kind === "run" && scopeFlip) return { ...baseIntent, scope: baseIntent.scope === "page" ? "new" : "page" };
     return baseIntent;
   }, [baseIntent, scopeFlip, hero, raw, entryMode, searchEngine]);
-  const typedSomething = editing && raw.length > 0 && raw !== pageAddress;
+  const typedSomething = !(hero && entryMode === "ask") && editing && raw.length > 0 && raw !== pageAddress;
 
   // The local indexed query is cheap; dispatch it immediately and only display
   // a response that belongs to the exact text still in the field.
@@ -363,7 +365,9 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const switchEntryMode=(next:"search"|"ask")=>{
     if(next==="ask"){
       if(val)useStore.getState().setAgentDraft(val);
-      else if(agentDraft)setVal(agentDraft);
+      // Consume search text once; later mode switches resume the same durable draft.
+      setVal("");
+      setEditing(false);
     }
     setEntryMode(next);requestAnimationFrame(()=>inputRef.current?.focus());
   };
@@ -414,6 +418,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const showIntent = typedSomething && intent.kind !== "empty";
   const title = page?.title || (hasPage ? hostOf(pageAddress) : "");
   const placeholder = hero && entryMode === "ask" ? "Ask Aux a task…" : "Search or type a URL";
+
+  if (hero && entryMode === "ask" && !bridge.privateMode) return <Suspense fallback={<div className="home-ask-loading" role="status">Opening composer…</div>}><HomeAsk onSearch={() => switchEntryMode("search")}/></Suspense>;
 
   return (
     <div ref={barRef} className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>

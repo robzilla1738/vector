@@ -18,14 +18,29 @@ The starting code is `c34f3c2c`. Existing historical screenshots are not baselin
 - One supporting-content slot for page preview, source details, documents, images and saved results. At 960px of conversation width it becomes a 320px pane, keyboard/pointer resizable from 280–440px. Narrow conversations use a chip and native HTML dialog with focus restoration. Transcript and draft components remain mounted. Existing result editing, versions and isolated HTML behavior remain inside their original viewers.
 - Run duration/model-call details move into a disclosure; model/provider/cost provenance is preserved.
 
-These changes do **not** complete the six-batch plan. In particular, collapsed editors are an interim step before dedicated Settings subviews, the home Ask field is still CommandBar, and the full primitive/menu/dialog rollout is unfinished.
+These changes do **not** complete the six-batch plan. In particular, collapsed editors are an interim step before dedicated Settings subviews, the full primitive/menu/dialog rollout is unfinished.
+
+### Second implementation slice — input continuity and control
+
+- Home Ask uses the same durable conversation composer. Following user review, its default is **Search/Ask, plus, Send**. The plus opens an anchored tool popover; document/image/capture/context/dictation/full-chat controls no longer expand the input into several rows. Selected attachments and meaningful selected browser context stay visible. Search remains the existing address/search field.
+- One attachment tray covers documents, images and generated results, with shared inclusion, preview and remove controls. Image capture/review logic stays in its existing component; duplicate attached-image rows are removed.
+- Primary browser context, additional tabs and previous-turn selection use viewport-clamped HTML dialogs. Browser context searches available tabs and does not change selection just by searching.
+- Queued follow-ups sit immediately above the editor. Editing an acknowledged cancellation preserves already typed text. Question answers and follow-up drafts now remain separate when changing send mode.
+- The latest run's Stop/pause/takeover/return controls remain above the composer. Existing concurrency behavior still permits Stop during a pending pause and ignores the superseded response.
+- Home avoids mounting a second draft editor while the assistant rail is open. React lazy loading remains in place.
+
+Focused verification added nine existing CommandBar checks and three composer integration checks (61 distinct checks across both slices, including the prior 25 style checks). The new context test initially used the fixture factory incorrectly; correcting the fixture call passed. Renderer typecheck passed. A mock queue journey at vertical/light/1280×720 verified queue placement, editing without draft loss, and restoration of the separate question answer. The mock bridge gained explicit queue fixtures and preserves chat identity on new runs; these fixtures are not runtime-delivery evidence.
+
+The user subsequently withdrew the request to maintain a live native preview while implementation continues. The existing isolated development job was restarted during that investigation; this is not native qualification. React/CSS uses Vite HMR; native-main/preload/runtime changes require an app restart. No complete native visual journey was verified in this slice.
+
+[Minimal home input](evidence/2026-09-24/home-minimal-dark-1440.png) · [Home tool popover](evidence/2026-09-24/home-tools-dark-1440.png) · [Queued follow-up and question](evidence/2026-09-24/composer-queue-light-1280.png). The attachment screenshot from earlier in the slice predates the user's minimal-input correction. The final popover was observed with all tools, and Escape restored focus to its trigger.
 
 ## Remaining ordered batches
 
 | Batch | Required implementation and exit evidence |
 | --- | --- |
 | 1. Shared components and immediate defects | Finish the shared dialog/popover/tooltip/keycap family and both-layout consumption. Verify full sidebar keyboard, overflow, group navigation, short heights, all form controls. Current code covers the immediate defects, not every primitive consumer. |
-| 2. Every input presentation | Home Ask must reuse the composer arrangement. Finish narrow overflow, unified attachment tray, approval placement, queue order/edit controls, model/scope controls and primary source search. Prove text **and attachments/context/run controls** across full, side and real Quick Ask windows. Current local test proves text full↔rail only. |
+| 2. Every input presentation | Home Ask now lazily uses the composer with a minimal default and a plus tool popover. Attachments use one tray, browser context is searchable, and queues sit above the editor. Finish approval/model/scope coverage and verify every narrow state. Prove text **and attachments/context/run controls** across full, side and real Quick Ask windows. Current mock journeys prove text/document/inclusion full↔rail and home handoff; actual Quick Ask remains unproven. |
 | 3. Conversation and output | Complete compact activity/source grouping, persistent takeover/approval controls, all viewer chrome/result cards, image controls, inspector and receipts. Verify real streamed runs, interrupt/resume, scroll stability, result edit/export, ambiguous accounts and failure/partial states. |
 | 4. Browser organization | Port suggestion rows/palette grouping, home result cards, tab slot geometry, overview/hover cards, Space/Profile pickers, tab groups, library and history to the shared family. Preserve current tab silhouette, drag membership, native bridge and keyboard routes. |
 | 5. Work management | Tasks/projects/routines/memory/files/diffs/console share list/detail structures; preserve filters, schedule/timezone validation, permission scopes, modified state, file saves and view-switch continuity. |
@@ -52,4 +67,4 @@ Full qualification remains: both layouts × expanded/collapsed × light/dark × 
 
 ## Host/build boundary
 
-The existing Siso build was observed still running at nice 10, approximately 44,072 completed actions at 5h49m. The compiling source checkout and native patches were not changed. No additional Electron instance or Chromium compile was started. The renderer preview is on port 5198; the existing isolated real Electron development app remains on port 5197. Candidate native glass and Store compatibility remain open in [M1 host comparison](../M1-HOST-COMPARISON.md).
+The existing Siso build was observed still running at nice 10, approximately 51,984 completed actions at 6h54m. The compiling source checkout and native patches were not changed. No additional Chromium compile was started. An empty Electron launcher opened during app identification was closed. The renderer preview is on port 5198; the existing isolated real Electron development app remains on port 5197. Candidate native glass and Store compatibility remain open in [M1 host comparison](../M1-HOST-COMPARISON.md).

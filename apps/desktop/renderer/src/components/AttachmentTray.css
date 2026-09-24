@@ -1,0 +1,14 @@
+@layer components {
+.attachment-tray { display:flex; flex-wrap:wrap; gap:var(--space-2); max-height:160px; overflow:auto; overscroll-behavior:contain; padding:var(--space-1); }
+.attachment-chip { display:flex; align-items:center; gap:var(--space-1); min-width:0; max-width:100%; padding-right:var(--space-1); border-radius:var(--r-lg); background:var(--surface-secondary); box-shadow:var(--line-inset); }
+.attachment-chip.excluded { background:transparent; }
+.attachment-open { display:flex; align-items:center; gap:var(--space-2); min-width:0; padding:var(--space-2); text-align:left; }
+.attachment-open > span:last-child { min-width:0; max-width:200px; }
+.attachment-open strong, .attachment-open small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.attachment-open strong { font-size:var(--fs-xs); font-weight:var(--fw-medium); color:var(--ink-1); }
+.attachment-open small, .attachment-progress { font-size:var(--fs-xs); color:var(--ink-2); }
+.attachment-icon { display:grid; place-items:center; flex:none; width:28px; height:28px; border-radius:var(--r-md); background:var(--bg-hover); }
+.attachment-icon svg { width:16px; height:16px; }
+.attachment-chip > input { flex:none; }
+.attachment-progress { padding:var(--space-2); }
+}

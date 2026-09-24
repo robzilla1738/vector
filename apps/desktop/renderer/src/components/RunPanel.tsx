@@ -1,3 +1,4 @@
+import { RunControls } from "./RunControls";
 import type { ConversationSource } from "@aux/contracts";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -134,7 +135,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
 }
 
 /** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
-export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false }: { questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
+export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false }: { controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
   const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
   const stream = useStore((s) => s.answerStreams[runId]);
@@ -163,17 +164,13 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
     const current = useStore.getState().runs.find((item) => item.runId === runId);
     return !conversation && !!current && isLive(current);
   });
-  type Control = "take" | "return" | "stop" | "pause" | "resume";
-  const [controlBusy, setControlBusy] = useState<Control | null>(null);
-  const pendingControl = useRef<{kind:Control;token:symbol}|null>(null);
-  const [controlError,setControlError]=useState("");
 
   useEffect(() => {
-    setShowObs(false); setObsLoading(false); setObsError(""); setInspectedArtifact(null); setControlBusy(null); setControlError("");
+    setShowObs(false); setObsLoading(false); setObsError(""); setInspectedArtifact(null);
     const r = useStore.getState().runs.find((x) => x.runId === runId);
     setShowSteps(!conversation && !!r && isLive(r));
     if (!steps) void loadRun(runId);
-    return () => { pendingControl.current=null; ++observationRequest.current; };
+    return () => { ++observationRequest.current; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
   const inspectRef = useRef<(artifactId: string) => Promise<void>>(async () => {});
@@ -188,9 +185,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
   const missingOriginals = run.pageIds.filter((id, index) => !usable(originalPages[index]) || originalPages[index]?.pageId !== id);
   const multiTabBlocked = run.pageIds.length > 1 && missingOriginals.length > 0;
   const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
-  const humanPages = runPages.filter(p => run.pageIds.includes(p.pageId) && p.controller === "human");
-  const humanPage = humanPages[0];
-  const humanHolds = humanPages.length > 0;
+  const humanHolds = runPages.some(page => run.pageIds.includes(page.pageId) && page.controller === "human");
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";
   const question = prompt?.runId === run.runId ? prompt.question : run.statusMessage;
   const answer = answerDraft && answerDraft.question === question ? answerDraft.text : "";
@@ -205,27 +200,6 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
     catch(reason) { setAnswerError(reason instanceof Error ? reason.message : String(reason)); }
   };
   const calls = stats?.calls ?? run.config?.modelCalls;
-  const control = async (kind:Control,work:(current:()=>boolean)=>Promise<unknown>) => {
-    if(pendingControl.current && (kind !== "stop" || pendingControl.current.kind === "stop"))return;
-    const token=Symbol(kind);
-    pendingControl.current={kind,token};setControlBusy(kind);setControlError("");
-    const current=()=>pendingControl.current?.token===token;
-    try { await work(current); }
-    catch(reason) {
-      if(current())setControlError(`${{pause:"Pause",resume:"Resume",take:"Take control",return:"Return control",stop:"Stop"}[kind]} wasn’t confirmed. ${reason instanceof Error ? reason.message : String(reason)}`);
-    } finally { if(current()){pendingControl.current=null;setControlBusy(null);} }
-  };
-  const takeControl = async () => {
-    if(!page)return;
-    await control("take",async current=>{
-      const before=useStore.getState();
-      await call("pages.takeover",{pageId:page.pageId});
-      const state=useStore.getState();
-      if(current() && state.activePageId===before.activePageId && state.mode===before.mode && state.overlay===before.overlay && state.conversationId===before.conversationId && state.railOpen===before.railOpen && state.railView===before.railView)await activate(page.pageId);
-    });
-  };
-  const handBack = () => humanPage ? control("return",()=>call("pages.resume",{pageId:humanPage.pageId})) : Promise.resolve();
-  const stopRun = () => control("stop",()=>call("runs.cancel",{runId:run.runId}));
   const openModelSettings = () => useStore.setState({ overlay: "settings", settingsCategory: "Models", railOpen: true });
 
   const observationArtifact = [...(steps ?? [])].reverse().map(step=>(step.inputs as {obsArtifactId?:string}|undefined)?.obsArtifactId).find(Boolean);
@@ -260,10 +234,6 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
         )}
         <span className="sp" />
         <span className="run-acts">
-          {run.status === "running" && <button className="icon-btn sm" disabled={!!controlBusy} title={controlBusy === "pause" ? "Pausing…" : "Pause"} aria-label={controlBusy === "pause" ? "Pausing run" : "Pause run"} onClick={() => void control("pause",()=>call("runs.pause",{runId}))}>{I.pause}</button>}
-          {run.status === "paused" && !humanHolds && <button className="icon-btn sm" disabled={!!controlBusy} title={controlBusy === "resume" ? "Resuming…" : "Resume"} aria-label={controlBusy === "resume" ? "Resuming run" : "Resume run"} onClick={() => void control("resume",()=>call("runs.resume",{runId}))}>{I.play}</button>}
-          {live && page && !humanHolds && <button className="icon-btn sm" disabled={!!controlBusy} title="Take control of browser tab" aria-label="Take control of browser tab" onClick={() => void takeControl()}>{I.handSm}</button>}
-          {live && <button className="icon-btn sm danger" disabled={controlBusy === "stop"} title={controlBusy === "stop" ? "Stopping" : "Stop"} aria-label={controlBusy === "stop" ? "Stopping run" : "Stop run"} onClick={() => void stopRun()}>{I.square}</button>}
           {!live && (run.config?.taskId
             ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{I.layersSm}</button>
             : !conversation && !run.failure
@@ -278,18 +248,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
       {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>Original tabs are missing</strong><p>This turn used {run.pageIds.length} tabs. Restore those tabs before retrying. Aux will not retry a subset.</p></div>
       </section>}
-      {controlError && <p className="field-error" role="alert">{controlError}</p>}
-
-      {humanHolds && humanPage && (
-        <div className="takeover" role="status">
-          <span className="takeover-ico">{I.hand}</span>
-          <div className="takeover-main">
-            <b>You're in control{humanPages.length > 1 ? ` of ${humanPages.length} pages` : ""}</b>
-            <span>The agent remains paused until every held page is returned. Finish what you're doing, then hand {humanPages.length > 1 ? "this page" : "it"} back.</span>
-          </div>
-          <button className="btn primary sm" disabled={!!controlBusy} onClick={() => void handBack()}>{controlBusy === "return" ? "Returning…" : humanPages.length > 1 ? "Return this page" : "Return control"}</button>
-        </div>
-      )}
+      {!controlsInComposer && <RunControls runId={runId} compact/>}
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 

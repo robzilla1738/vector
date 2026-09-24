@@ -1,3 +1,6 @@
+import { AnchoredPanel } from "./AnchoredPanel";
+import { RunControls } from "./RunControls";
+import { AttachmentTray, type AttachmentItem } from "./AttachmentTray";
 import { SupportingContent } from "./SupportingContent";
 import { SourceRow } from "./SourceRow";
 import { ComposerFrame } from "./ui";
@@ -121,7 +124,7 @@ function isCalendarCitation(url: string): boolean {
   } catch { return false; }
 }
 
-export function Conversation({ chatId, embedded = false, onChatCreated }: { chatId?: string | null; embedded?: boolean; onChatCreated?: (chatId: string) => void } = {}) {
+export function Conversation({ chatId, embedded = false, home = false, entryControls, onChatCreated }: { chatId?: string | null; embedded?: boolean; home?: boolean; entryControls?: ReactNode; onChatCreated?: (chatId: string) => void } = {}) {
   const fullPageId = useStore(s => s.conversationId);
   const id = chatId === undefined ? fullPageId : chatId;
   const scrolling = useConversationScroll(id);
@@ -285,13 +288,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     return () => { active = false; };
   }, [id, last?.status, last?.runId]);
   const answering = last?.status === "needs_input";
-  const answerRunId = answering ? last?.runId : undefined, answerQuestion = last?.statusMessage;
   const [sendingChat, setSendingChat] = useState<string | null>(null);
   const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
   const queueAttemptRef = useRef<QueueAttempt | null>(null);
   const [liveSendMode, setLiveSendMode] = useState<"answer" | "steer" | "queue">("answer");
   useEffect(() => setLiveSendMode("answer"), [last?.runId, answering]);
   const effectiveLiveMode = answering ? liveSendMode : liveSendMode === "answer" ? "steer" : liveSendMode;
+  const answerRunId = answering && effectiveLiveMode === "answer" ? last?.runId : undefined, answerQuestion = last?.statusMessage;
   useEffect(() => {
     setQueuedMessages([]);
     queueAttemptRef.current = null;
@@ -309,7 +312,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const readText = () => draftText(useStore.getState(), id, answerRunId, answerQuestion);
   const setText = (value:string) => {
     setSendError("");
-    if(answering && last)useStore.getState().setRunAnswerDraft(last.runId,last.statusMessage ?? "",value);
+    if(answerRunId && last)useStore.getState().setRunAnswerDraft(last.runId,last.statusMessage ?? "",value);
     else if(id)useStore.getState().setConversationDraft(id,value);
     else useStore.getState().setAgentDraft(value);
   };
@@ -451,12 +454,12 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     else useStore.setState({ conversationId: chatId });
     return chatId;
   };
-  const removeImage = async (imageId: string) => {
+  const changeImage = async (imageId: string, included?: boolean) => {
     if (!id || documentBusy.current || attachmentSaving) return;
     const chatId = id;
     documentBusy.current = true; setImageOperations(count => count + 1);
     try {
-      const result = await call("conversations.images.remove", {chatId,imageId});
+      const result = await call(included === undefined ? "conversations.images.remove" : "conversations.images.toggle", {chatId,imageId,...(included === undefined ? {} : {included})});
       if (activeChat.current === chatId) { setImages(result.images); setImagePreview(null); setContextRefresh(value => value + 1); }
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setImageOperations(count => Math.max(0,count - 1)); }
@@ -468,6 +471,15 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     try {
       const value = await call(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", { chatId: id, attachmentId, ...(included === undefined ? {} : { included }) });
       if (activeChat.current === id) { setAttachments(value.attachments); setDocumentPreview(null); }
+    } catch (error) { errToast(error); }
+    finally { documentBusy.current = false; setAttachmentSaving(false); }
+  };
+  const changeResult = async (artifactId: string, included: boolean) => {
+    if (!id || documentBusy.current || attachmentSaving || contextLocked) return;
+    documentBusy.current = true; setAttachmentSaving(true);
+    try {
+      const value = await call("conversations.artifacts.toggle", {chatId:id,artifactId,included});
+      if (activeChat.current === id) setGenerated(value.artifacts);
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setAttachmentSaving(false); }
   };
@@ -546,7 +558,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
         setSendingChat(chatId);
         setText("");
         if (activeChat.current === id) scrolling.jumpToLatest();
-        const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, pageIds, contextPageRefs, scope: selectedContext ? "page" : "new", presentation: embedded ? "rail" : "conversation", ownsDraft: true });
+        const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, pageIds, contextPageRefs, scope: selectedContext ? "page" : "new", presentation: embedded && !home ? "rail" : "conversation", ownsDraft: true });
         if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
         else if (!readText()) setText(text);
       }
@@ -563,12 +575,26 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     } catch (error) { errToast(error); }
     finally { setReopening(false); }
   };
+  const queueChange = useRef<string | null>(null);
+  const [queueBusy, setQueueBusy] = useState<string | null>(null);
   const cancelQueued = async (message: RunMessage, edit = false) => {
+    if (queueChange.current || archived) return;
+    queueChange.current = message.messageId; setQueueBusy(message.messageId);
+    const chatId = id;
     try {
       const cancelled = await call("runs.message.cancel", { messageId: message.messageId });
+      if (activeChat.current !== chatId) return;
       setQueuedMessages(items => items.map(item => item.messageId === cancelled.messageId ? cancelled : item));
-      if (edit) setText(message.text);
+      if (edit && cancelled.status === "cancelled") {
+        const state = useStore.getState();
+        const prior = chatId ? state.conversationDrafts[draftKey(chatId)] ?? "" : state.agentDraft;
+        const next = prior.trim() ? `${prior}\n\n${message.text}` : message.text;
+        if (chatId) state.setConversationDraft(chatId, next); else state.setAgentDraft(next);
+        setLiveSendMode("queue");
+        requestAnimationFrame(() => conversationRoot.current?.querySelector<HTMLTextAreaElement>('.conversation-input textarea')?.focus());
+      }
     } catch (error) { errToast(error); }
+    finally { queueChange.current = null; setQueueBusy(null); }
   };
   const contextLocked = !connected || archived || live || contextLoading || !!contextError;
   const receiveImage = (files: File[]) => {
@@ -591,6 +617,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     },
   };
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+  const [homeTools, setHomeTools] = useState<HTMLDivElement | null>(null);
   const attachDocument = async () => {
     if (contextLocked || documentBusy.current || attachmentSaving) return;
     documentBusy.current = true; setAttachmentSaving(true);
@@ -606,15 +633,31 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     finally { documentBusy.current = false; setAttachmentSaving(false); }
   };
   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
-  const imageTray = <ConversationImages incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
+  const imageTray = <ConversationImages detachedTools={home} toolsTarget={homeTools} showAttachedImages={false} incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
   if (id === "history") return <ConversationHistory/>;
   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} onInsert={words => {
         const state = useStore.getState();
-        const current = answering && last ? state.runAnswerDrafts[last.runId]?.text ?? "" : id ? state.conversationDrafts[draftKey(id)] ?? "" : state.agentDraft;
+        const current = answerRunId && last ? state.runAnswerDrafts[last.runId]?.text ?? "" : id ? state.conversationDrafts[draftKey(id)] ?? "" : state.agentDraft;
         setText(current ? `${current}\n${words}` : words);
       }}/>;
   const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{answering && <button type="button" className={effectiveLiveMode === "answer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "answer"} onClick={() => setLiveSendMode("answer")}>Answer question</button>}<button type="button" className={effectiveLiveMode === "steer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "steer"} onClick={() => setLiveSendMode("steer")}>Steer now</button><button type="button" className={effectiveLiveMode === "queue" ? "selected" : ""} aria-pressed={effectiveLiveMode === "queue"} onClick={() => setLiveSendMode("queue")}>Queue next</button></div>;
-  const composerFooter = !taskBound && !answering && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>;
+  const browserContextControls = <BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/>;
+  const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}{home ? <span className="home-tools-trigger"><AnchoredPanel label="Add context" trigger={I.plusSm}>
+    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setHomeTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{dictation}<button className="context-choice" onClick={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{I.open}<span>Open full conversation</span></button></div>}
+  </AnchoredPanel></span> : <><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button>{browserContextControls}</>}</div>;
+
+  const attachmentItems: AttachmentItem[] = [
+    ...attachments.map(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
+      onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); },
+      onToggle:(included:boolean) => void changeDocument(item.attachmentId,included), onRemove:() => void changeDocument(item.attachmentId) })),
+    ...images.map(item => ({ key:`image:${item.imageId}`, name:item.filename, kind:"image" as const, included:item.included, detail:`${item.width} × ${item.height}`,
+      onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); },
+      onToggle:(included:boolean) => void changeImage(item.imageId,included), onRemove:() => void changeImage(item.imageId) })),
+    ...generated.map(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
+      onOpen:() => { setSourceDetail(null); setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); },
+      onToggle:(included:boolean) => void changeResult(item.artifactId,included) })),
+  ];
+  const queued = queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status));
   const closedPage = !linked && !!last?.pageIds.length;
   const splitPlan = selectedContext ? previewSplit(layout, pages, selectedContext.pageId, activePageId) : null;
   const openPreview = (where: "tab" | "split") => {
@@ -652,7 +695,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     : browserPreview;
   const supportingKey = resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
   const closeSupporting = () => { useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(null); setSourceDetail(null); setPreviewOpen(false); };
-  return <section ref={conversationRoot} className={`conversation${embedded ? " conversation-embedded" : ""}${newChat ? " conversation-new" : ""}${attachmentsOpen ? " attachments-open" : ""}`} aria-label={embedded ? "Conversation" : undefined} aria-labelledby={embedded ? undefined : "conversation-title"}>
+  return <section ref={conversationRoot} className={`conversation${embedded ? " conversation-embedded" : ""}${home ? " conversation-home" : ""}${newChat ? " conversation-new" : ""}${attachmentsOpen ? " attachments-open" : ""}`} aria-label={embedded ? "Conversation" : undefined} aria-labelledby={embedded ? undefined : "conversation-title"}>
     {!embedded && <header className="conversation-head">{newChat && <span className="new-chat-brand"><AuxMark />Aux<span aria-hidden="true">/</span></span>}<h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{selectedContext && selectedContext.url !== "about:blank" && <button className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{I.globe}</button>}{turns.length > 0 && <button className="icon-btn" disabled={exporting} title="Export conversation as Markdown" aria-label="Export conversation as Markdown" onClick={() => void exportConversation()}>{I.downloadSm}</button>}<button className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" onClick={() => useStore.getState().showConversationInRail(id)}>{I.rail}</button></header>}
     <div className="conversation-body"><div className="conversation-main">
     <div className="conversation-scroll" tabIndex={-1} ref={scrolling.scrollRef}><div className="conversation-thread" data-find-surface="conversation" ref={scrolling.threadRef}>
@@ -660,19 +703,19 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} controlsInComposer={run === last} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/><RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
-      {queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status)).map(message => <article className="conversation-turn queued-message" key={message.messageId} data-message-id={message.messageId}><time dateTime={new Date(message.createdAt).toISOString()}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{message.text}</div><div className="queued-message-state"><span>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" onClick={() => void cancelQueued(message)}>Remove</button></>}</div></article>)}
+
     </div></div>
     {scrolling.awayFromLatest && <div className="conversation-jump"><button className="icon-btn" aria-label="Jump to latest" title="Jump to latest" onClick={scrolling.jumpToLatest}>{I.arrowDown}</button></div>}
     <div className="conversation-compose"><div className="conversation-compose-content">
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
       {archived && <div className="conversation-archive-notice" role="status"><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</div>}
-      <ComposerFrame notices={answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{answerQuestion}</p></div>}>
+      {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message)}>Remove</button></>}</div></li>)}</ol></section>}
+      <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{answerQuestion}</p></div>}</>}>
       <div className="composer-context">
-      {attachments.length > 0 && <div className="composer-documents" aria-label="Attached documents">{attachments.map(item => <div key={item.attachmentId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button></div>)}</div>}
-      {generated.length > 0 && <div className="composer-documents" aria-label="Generated reports and results">{generated.map(item => <div key={item.artifactId} className={item.included ? "" : "excluded"}><button title={`${item.filename} · ${item.turnGoal}`} onClick={() => { setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); }}>{I.result}<span>{item.filename}{item.filename==="report.md"||item.mediaType==="text/html"?` · v${item.revision??artifactVersions[item.artifactId]??1}`:""}</span></button><label title="Include this saved result in the next turn"><input type="checkbox" aria-label={`Use ${item.filename} in next reply`} checked={item.included} disabled={contextLocked || archived} onChange={event => { void call("conversations.artifacts.toggle",{chatId:id!,artifactId:item.artifactId,included:event.target.checked}).then(value=>setGenerated(value.artifacts)).catch(errToast); }}/></label></div>)}</div>}
-      {images.length > 0 && <div className="composer-documents" aria-label="Attached images">{images.map(item => <div key={item.imageId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void removeImage(item.imageId)}>{I.close}</button></div>)}</div>}
+      {home && !attachmentsOpen && (selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" onClick={() => conversationRoot.current?.querySelector<HTMLButtonElement>('.home-tools-trigger > button')?.click()}>{I.globe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
+      <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving}/>
       {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
       {imageTray}
       </div>
@@ -690,7 +733,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
       {changedBrowserSources.length > 0 && !closedPage && <p className="field-error" role="status">A selected tab changed or closed. Update or remove it before sending.</p>}
 
-      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()} footer={composerFooter} modes={composerModes}>{dictation}</ComposerInput>
+      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : home ? "Ask Aux…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()} footer={composerFooter} modes={composerModes}>{home ? null : dictation}</ComposerInput>
       </>}
 
       </ComposerFrame>

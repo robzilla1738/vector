@@ -20,7 +20,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
-import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
+import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -31,6 +31,7 @@ export function installMockBridge(q: URLSearchParams) {
   let recoveryTabs=q.get("recovery")==="1"?[{pageId:"saved-fixture-tab",title:"Saved project research",url:"https://example.com/research",windowId:"main",error:"The browser connection was interrupted while restoring this tab.",retrying:false}]:[];
   let bookmarks: {url:string;title:string;folderPath?:string[]}[] = [...BOOKMARKS];
   const bookmarkFolders: string[][] = [];
+  const queuedMessages = new Map<string, RunMessage>();
   const imageReferences = new Map<string, { image: ConversationImage; dataUrl: string }[]>();
   const imageList = (chatId: string) => ({ chatId, images: (imageReferences.get(chatId) ?? []).map(item => item.image) });
   const conversationSpaces = new Map<string, string | null>();
@@ -619,7 +620,7 @@ export function installMockBridge(q: URLSearchParams) {
     },
     "runs.start": async p => {
       const id = `run-${Math.random().toString(36).slice(2, 6)}`;
-      const run: Run = { runId: id, goal: p.goal as string, status: "planning", pageIds: (p.pageIds as string[]) ?? [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Observing the page" };
+      const run: Run = { runId: id, goal: p.goal as string, status: "planning", pageIds: (p.pageIds as string[]) ?? [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Observing the page", config: {chatId:p.chatId as string | undefined} };
       runs = [run, ...runs];
       emit("run.status", { run }, id);
       steps[id] = [];
@@ -636,6 +637,20 @@ export function installMockBridge(q: URLSearchParams) {
       steps[id] = [];
       void scriptRun(id);
       return run;
+    },
+    // Scripted preview only: keep queued items inspectable until edited or removed.
+    "runs.queue": async p => {
+      const existing = queuedMessages.get(String(p.messageId));
+      if (existing) return existing;
+      const message: RunMessage = {messageId:String(p.messageId),chatId:String(p.chatId),targetRunId:String(p.runId),deliveryRunId:`preview-${p.messageId}`,mode:"queue",status:"accepted",text:String(p.text),pageIds:p.pageIds as string[],contextPageRefs:(p.contextPageRefs ?? []) as RunMessage["contextPageRefs"],expectedRevision:Number(p.expectedRevision),createdAt:Date.now(),updatedAt:Date.now()};
+      queuedMessages.set(message.messageId,message); emit("conversation.messages.changed",{chatId:message.chatId}); return message;
+    },
+    "runs.messages.list": async p => [...queuedMessages.values()].filter(message => message.chatId === p.chatId),
+    "runs.message.cancel": async p => {
+      const message = queuedMessages.get(String(p.messageId));
+      if (!message) throw new Error("Queued preview message not found.");
+      const cancelled: RunMessage = {...message,status:"cancelled",updatedAt:Date.now()};
+      queuedMessages.set(message.messageId,cancelled); emit("conversation.messages.changed",{chatId:message.chatId}); return cancelled;
     },
     "runs.pause": async p => {
       patchRun(p.runId as string, { status: "paused", statusMessage: "Paused" }, true);

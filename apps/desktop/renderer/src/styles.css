@@ -1341,7 +1341,7 @@ button:focus-visible, [role="tab"]:focus-visible, .resize-handle:focus-visible {
 .main-col > .toolbar { flex-shrink: 0; }
 .main-col.has-page .stage-wrap { padding: 0 var(--space-1) var(--space-1); }
 .sidebar .sb-pins { padding: 0 var(--space-2) var(--space-2); }
-.cmdbar:has(input:focus-visible), .conversation-input:has(textarea:focus-visible) { outline: 1px solid var(--focus-line); outline-offset: -1px; box-shadow: none; }
+.cmdbar:has(input:focus-visible) { outline: 1px solid var(--focus-line); outline-offset: -1px; box-shadow: none; }
 button:focus-visible, [role="tab"]:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 1px solid var(--focus-line); outline-offset: -1px; box-shadow: none; }
 .cmdbar input:focus-visible, .conversation-input textarea:focus-visible { outline: none; }
 input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
@@ -1687,15 +1687,6 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .palette-filters button[aria-pressed="true"] { background:var(--bg-hover); color:var(--ink-0); }
 .palette-search-status { margin:0; padding:var(--space-2) var(--space-4); font-size:var(--fs-xs); }
 
-/* Document snapshots stay adjacent to the composer, without opening all context controls. */
-.composer-documents { display:flex; flex-wrap:wrap; gap:var(--space-1-5); margin:0 0 var(--space-2); }
-.composer-documents > div { display:flex; align-items:center; max-width:100%; border-radius:var(--r-md); background:var(--bg-2); box-shadow:var(--line-inset); }
-.composer-documents button { display:flex; align-items:center; gap:var(--space-1-5); padding:var(--space-optical) 9px; min-width:0; color:var(--ink-1); font-size:var(--fs-xs); }
-.composer-documents button:first-child { overflow:hidden; }
-.composer-documents button span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.composer-documents button svg { width:14px; height:14px; flex:none; }
-.composer-documents small { color:var(--ink-2); }
-.composer-documents .excluded { background:transparent; }
 .document-snapshot { max-height: 30vh; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; margin-bottom:var(--space-3); padding:var(--space-3) var(--space-3-5); background:var(--bg-2); border-radius:var(--r-lg); box-shadow:var(--line-inset); }
 .document-snapshot header { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); }
 .document-snapshot header strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1803,10 +1794,10 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .quick-ask-connection { font-size:var(--fs-xs); color:var(--ink-2); padding:0 var(--space-4); margin:0; }
 .quick-ask .conversation-scroll:has(.conversation-empty) { display:grid; place-items:center; }
 .quick-ask .conversation-empty { width:100%; padding:var(--space-4); }
-.quick-ask .conversation-input { border-radius:var(--r-composer); transition:box-shadow var(--t-enter) var(--ease-emphasized); }
-.quick-ask .conversation-input:focus-within,
-.quick-ask .conversation-input:has(textarea:focus-visible) { outline:none; box-shadow:0 0 0 1px color-mix(in srgb, var(--ink-0) 16%, transparent), 0 0 0 6px color-mix(in srgb, var(--ink-0) 7%, transparent); }
-.quick-ask .conversation-input textarea:focus-visible { outline:none; }
+.quick-ask .composer-frame { border-radius:var(--r-composer); transition:box-shadow var(--t-enter) var(--ease-emphasized); }
+.quick-ask .composer-frame:focus-within,
+.quick-ask .composer-frame:has(textarea:focus-visible) { outline:none; box-shadow:0 0 0 1px color-mix(in srgb, var(--ink-0) 16%, transparent), 0 0 0 6px color-mix(in srgb, var(--ink-0) 7%, transparent); }
+.quick-ask .composer-frame textarea:focus-visible { outline:none; }
 @keyframes quick-ask-in { from { opacity:0; transform:translateY(8px) scale(.985); } }
 .quick-ask-setting .memory-use-toggle { display:flex; align-items:flex-start; gap:var(--space-2-5); }
 .quick-ask-setting input[type="checkbox"] { width:14px; min-width:14px; height:14px; flex:0 0 14px; padding:0; margin-top:3px; }
@@ -2275,7 +2266,7 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: var(--r-pill); }
 @media (prefers-reduced-transparency: reduce) { :root .app-body { background: var(--sb-bg); backdrop-filter: none; } }
 @media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-reveal::after { transition: none; } }
 @media (prefers-reduced-transparency: reduce) { .site-controls-scrim { background: var(--bg-0); backdrop-filter: none; } .site-controls-card { background: var(--bg-1); } }
-@media (prefers-reduced-motion: reduce) { .quick-ask-panel { animation:none; } .quick-ask .conversation-input { transition:none; } }
+@media (prefers-reduced-motion: reduce) { .quick-ask-panel { animation:none; } .quick-ask .composer-frame { transition:none; } }
 @media (prefers-reduced-motion:reduce) { .split-divider > span { transition:none; } }
 @media (prefers-reduced-motion: reduce) {
   .toolbar > :is(.cmdbar, .tb-left, .tb-right) { transform: none; transition: none; }
@@ -2576,25 +2567,12 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
 .conversation-new .conversation-head h1 { color: var(--ink-2); font-size: var(--fs-sm); }
 .conversation-new .conversation-compose { padding-bottom: 0; }
 .conversation-new .conversation-compose-content { padding-inline: 0; }
-.conversation-new .conversation-input { min-height: 46px; padding: var(--space-2) var(--space-2-5) var(--space-2) var(--space-4); border-radius: var(--r-chat-pill); box-shadow: none; }
-.conversation-new .conversation-input:focus-within { outline: none; box-shadow: 0 0 0 1px var(--line-strong); }
 .new-chat-options { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1-5) var(--space-2) 0; min-height: 34px; color: var(--ink-2); font-size: var(--fs-xs); }
 .new-chat-attach { display: inline-flex; align-items: center; gap: var(--space-1-5); padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); white-space: nowrap; }
 .new-chat-options select { min-width: 0; max-width: min(260px, 60%); border: 0; border-radius: var(--r-md); padding: var(--space-1) var(--space-1-5); background: transparent; color: inherit; text-overflow: ellipsis; }
 .new-chat-options :is(button, select):hover { background: var(--bg-hover); color: var(--ink-0); }
 .conversation-browser-context { display: grid; justify-items: end; gap: var(--space-1-5); min-width: 0; max-width: 100%; margin-left: auto; }
 .conversation-browser-context-controls { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); min-width: 0; max-width: 100%; }
-.conversation-browser-add { min-width: 0; }
-.conversation-browser-add > summary { padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); cursor: pointer; list-style: none; white-space: nowrap; }
-.conversation-browser-add > summary::-webkit-details-marker { display: none; }
-.conversation-browser-add > summary:hover, .conversation-browser-add[open] > summary { background: var(--bg-hover); color: var(--ink-0); }
-.conversation-browser-add > summary[aria-disabled="true"] { opacity: .5; cursor: default; }
-.conversation-browser-add > div { display: grid; gap: var(--space-0); width: min(340px, calc(100vw - 64px)); max-height: 220px; overflow-y: auto; margin-top: var(--space-1); padding: var(--space-1); border: var(--hairline) solid var(--line); border-radius: var(--r-lg); background: var(--surface-primary); box-shadow: var(--shadow-pop); }
-.conversation-browser-add label { display: flex; align-items: center; gap: var(--space-2); min-width: 0; padding: var(--space-1-5); border-radius: var(--r-md); cursor: pointer; }
-.conversation-browser-add label:hover { background: var(--bg-hover); }
-.conversation-browser-add label > span { display: grid; min-width: 0; overflow: hidden; color: var(--ink-1); text-overflow: ellipsis; white-space: nowrap; }
-.conversation-browser-add label small { overflow: hidden; color: var(--ink-2); text-overflow: ellipsis; }
-.conversation-browser-add p { padding: var(--space-2); }
 .conversation-browser-sources { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-1); max-width: 100%; }
 .conversation-browser-sources > span { display: inline-flex; align-items: center; gap: var(--space-1); max-width: min(240px, 100%); padding: var(--space-0) var(--space-1); border-radius: var(--r-md); background: var(--bg-2); color: var(--ink-1); }
 .conversation-browser-sources > span.stale { color: var(--warn); }
@@ -2602,7 +2580,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
 .conversation-browser-sources svg { width: 13px; height: 13px; flex: none; }
 .conversation-browser-sources small { font-size: var(--fs-2xs); }
 .conversation-browser-sources button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--r-xs); flex: none; }
-.conversation.attachments-open .capture-triggers { display: flex; gap: var(--space-1-5); padding-bottom: var(--space-2); }
+.conversation.attachments-open .capture-triggers { display: flex; flex-wrap:wrap; gap: var(--space-1-5); padding-bottom: var(--space-2); }
 
 /* Give AppKit a real, non-draggable hit surface while native chrome is raised.
    A fully transparent view can otherwise turn page gestures into window hits. */
@@ -2624,7 +2602,4 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
 .app.native-host .sidebar { -webkit-app-region: no-drag; }
 
 @layer components {
-  .conversation-history-context section { display: grid; gap: var(--space-2); max-height: 180px; overflow: auto; padding: var(--space-2); }
-  .conversation-history-context label { display: flex; align-items: center; gap: var(--space-2); }
-  .conversation-history-context input { flex: none; }
 }

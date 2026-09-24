@@ -49,7 +49,8 @@ async function cropImage(dataUrl: string, region: Rect | null) {
 }
 
 /** Frozen page references stay separate from the agent's live browser view. */
-export function ConversationImages({ chatId, page, images, disabled, ensureChatId, onChange, onBusy, onDocument, incomingFile, onFileConsumed }: {
+export function ConversationImages({ chatId, page, images, disabled, ensureChatId, onChange, onBusy, onDocument, incomingFile, onFileConsumed, showAttachedImages = true, toolsTarget, detachedTools = false }: {
+  showAttachedImages?: boolean; toolsTarget?: HTMLElement | null; detachedTools?: boolean;
   chatId: string | null | undefined; page?: PageTarget; images: ConversationImage[]; disabled: boolean;
   incomingFile?: File | null; onFileConsumed?(file: File): void;
   ensureChatId(): string; onChange(chatId: string, images: ConversationImage[]): void; onBusy(busy: boolean): void; onDocument(): void;
@@ -197,14 +198,15 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     <img src={capture.dataUrl} alt="Image to review before attaching" draggable={false}/>
     {region && <span className="capture-region" style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}/>}</div>;
   const captureActions = <div className="capture-actions"><button className="btn sm ghost" disabled={busy} onClick={cancelCapture}>Cancel</button>{region && <button className="btn sm ghost" disabled={busy} onClick={() => setRegion(null)}>Use whole image</button>}<button className="btn sm" disabled={disabled || busy} onClick={() => void saveCapture()}>Attach {region ? "region" : "image"}</button></div>;
-  const showRest = images.length > 0 || !!error || busy || !!capture || !!preview;
+  const triggers = <div className="capture-triggers"><button className="btn sm" disabled={disabled || busy} onClick={onDocument}>Document</button><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture</button><button ref={lassoTrigger} className="btn sm" disabled={disabled || busy || !onPage || images.length >= 4} title={onPage ? "Select directly on the visible page" : "Show this page by itself to select an area"} onClick={() => void takeCapture(true)}>Select area</button></div>;
+  const showRest = (showAttachedImages && images.length > 0) || !!error || busy || !!capture || !!preview;
   return <><section className="conversation-captures" aria-label="Image references">
-    <div className="capture-triggers"><button className="btn sm" disabled={disabled || busy} onClick={onDocument}>Document</button><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture</button><button ref={lassoTrigger} className="btn sm" disabled={disabled || busy || !onPage || images.length >= 4} title={onPage ? "Select directly on the visible page" : "Show this page by itself to select an area"} onClick={() => void takeCapture(true)}>Select area</button></div>
+    {detachedTools ? toolsTarget && createPortal(triggers, toolsTarget) : triggers}
     {showRest && <div className="conversation-capture-rest">
     {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
     {busy && <p className="hint" role="status">Preparing image…</p>}
-    {images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}
+    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}
     {capture && !lasso && <div className="capture-editor" ref={review}>
       <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
       <p className="hint">Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>

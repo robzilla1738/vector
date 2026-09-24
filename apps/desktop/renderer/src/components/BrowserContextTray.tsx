@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { PageContextRef } from "@aux/contracts";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
 import { conversationPage } from "../conversation-page";
 import { useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { BrowserContextPicker } from "./BrowserContextPicker";
+import { AnchoredPanel } from "./AnchoredPanel";
+import { Checkbox } from "./ui";
 import { I } from "./icons";
 
 /** Additional tabs are explicit live sources. Navigation requires a fresh choice. */
@@ -30,13 +32,6 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     ? primaryPage.pageId === splitPageId ? activePageId : splitPageId
     : null;
   const splitCompanion = available.find(page => page.pageId === splitCompanionId);
-  const picker = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const close = (event: PointerEvent) => { if (!picker.current?.contains(event.target as Node)) picker.current!.open = false; };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, []);
-
   const liveSource = async (pageId: string) => {
     const pending = await call("browser.recovery.list", {});
     if (pending.some(tab => tab.pageId === pageId)) await call("browser.recovery.retry", { pageId });
@@ -81,18 +76,13 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
         <button type="button" className="btn sm ghost" disabled={disabled || !!busyPageId || additionalSources.length >= 8}
           title={`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`}
           onClick={() => void toggle(splitCompanion.pageId)}>Add split tab</button>}
-      <details ref={picker} className="conversation-browser-add" onKeyDown={event => {
-        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); picker.current!.open = false; picker.current?.querySelector("summary")?.focus(); }
-      }}>
-        <summary aria-disabled={disabled || !!busyPageId} onClick={event => { if (disabled || busyPageId) event.preventDefault(); }}>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</summary>
-        <div role="group" aria-label="Additional browser tabs">
-          <input type="search" aria-label="Search browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
-          {available.length ? available.filter(page => `${page.title} ${page.url}`.toLowerCase().includes(query.toLowerCase())).map(page => <label key={page.pageId}>
-            <input type="checkbox" checked={sources.some(source => source.pageId === page.pageId)} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !sources.some(source => source.pageId === page.pageId))} onChange={() => void toggle(page.pageId)} />
-            <span title={page.url}>{page.title || hostOf(page.url)}<small>{hostOf(page.url)}</small></span>
-          </label>) : <p>No other available browser tabs.</p>}
-        </div>
-      </details>
+      <AnchoredPanel label="Add browser tabs" disabled={disabled} trigger={<span>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</span>}>
+        {() => <><input type="search" aria-label="Search browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
+          <div role="group" aria-label="Additional browser tabs">{available.filter(page => `${page.title} ${page.url}`.toLowerCase().includes(query.toLowerCase())).map(page => <label className="context-choice" key={page.pageId}>
+            <Checkbox checked={sources.some(source => source.pageId === page.pageId)} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !sources.some(source => source.pageId === page.pageId))} onChange={() => void toggle(page.pageId)} />
+            <span title={page.url}><strong>{page.title || hostOf(page.url)}</strong><small>{hostOf(page.url)}</small></span>
+          </label>)}{!available.some(page => `${page.title} ${page.url}`.toLowerCase().includes(query.toLowerCase())) && <p className="hint">No matching available tabs.</p>}</div></>}
+      </AnchoredPanel>
     </div>
     {sources.length > 0 && <div className="conversation-browser-sources" aria-label="Selected browser tabs">
       {sources.map(source => {
