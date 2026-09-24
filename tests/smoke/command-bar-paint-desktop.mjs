@@ -29,6 +29,7 @@ try {
     return performance.now() - start;
   }) : null;
   const input = shell.getByRole("combobox", { name: /Search or address/ });
+  const runtimePendingAtFirstInput = await shell.getByText("Runtime reconnecting — tabs keep working").isVisible();
   const samples = [];
   for (let i = 0; i < 12; i++) {
     const query = `needletopic${i}`;
@@ -82,7 +83,8 @@ try {
   await palette.fill("needletopic0");
   const palettePaintMs = await shell.evaluate(() => window.__auxPalettePaint);
   console.log(JSON.stringify({ kind: "native-local-suggestion-input-to-paint", historyRows: 2012,
-    trials: samples.length, prewarmMs: prewarmMs === null ? null : Math.round(prewarmMs * 10) / 10,
+    trials: samples.length, runtimePendingAtFirstInput,
+    prewarmMs: prewarmMs === null ? null : Math.round(prewarmMs * 10) / 10,
     p50Ms: Math.round(p50 * 10) / 10, p95Ms: Math.round(p95 * 10) / 10,
     palettePaintMs: Math.round(palettePaintMs * 10) / 10,
     samplesMs: samples.map(value => Math.round(value * 10) / 10) }));
