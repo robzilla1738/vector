@@ -141,6 +141,8 @@ it("forgets saved article answers through later turns, artifact citations, and r
   save("followup", { contextRunIds: ["article"], context: "private answer article", contextArtifactEvidence: "private excerpt" });
   h.repo.saveArtifact({ artifactId: "derived-report", runId: "followup", path: "/synthetic/derived-report",
     mediaType: "text/markdown", size: 20, status: "complete", createdAt: Date.now() });
+  h.repo.db.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
+    VALUES('protected-response','page','https://example.test/?answer=private','GET',1,'followup')`).run();
   save("citation", { contextArtifactIds: ["derived-report"], context: "private answer followup" });
   save("retry", { retryOfRunId: "citation", context: "private answer citation" });
   save("unrelated", { context: "ordinary independent context" });
@@ -154,6 +156,7 @@ it("forgets saved article answers through later turns, artifact citations, and r
     expect(run.config?.contextArtifactEvidence).toBeUndefined();
   }
   expect(h.repo.getArtifact("derived-report")).toBeUndefined();
+  expect(h.repo.db.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
   expect(h.removedArtifacts).toContain("/synthetic/derived-report");
   expect(h.repo.getRun("unrelated")?.result).toEqual({ answer: "private answer unrelated" });
   expect(h.runs.redactForgottenArticleOutputs("space")).toBe(0);

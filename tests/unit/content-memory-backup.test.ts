@@ -36,6 +36,8 @@ it("omits protected article content and grants from portable backups and strips 
   repo.saveRun({ runId: "run-citation", goal: "Cite report", status: "completed", pageIds: [], createdAt: 3,
     config: { contextArtifactIds: [report.artifactId], contextArtifactEvidence: "Derived private report" },
     result: { answer: "Cited private answer" } });
+  repo.db.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
+    VALUES('protected-response','page','https://example.com/?answer=private','GET',1,'run-followup')`).run();
   const backup = await createRuntimeBackup(repo, dir);
   const backupPath = join(backup.path, "state.sqlite");
   const saved = new DatabaseSync(backupPath);
@@ -50,6 +52,7 @@ it("omits protected article content and grants from portable backups and strips 
     expect(JSON.parse(row.config).contextArtifactEvidence).toBeUndefined();
   }
   expect(saved.prepare("SELECT 1 FROM artifacts WHERE artifact_id=?").get(report.artifactId)).toBeUndefined();
+  expect(saved.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
   expect(JSON.parse(readFileSync(join(backup.path, "manifest.json"), "utf8")).artifacts).toEqual([]);
   // Simulate a valid older portable backup that carried protected rows.
   add(saved);
@@ -59,6 +62,8 @@ it("omits protected article content and grants from portable backups and strips 
     .run(JSON.stringify({ answer: "Followup private answer" }), JSON.stringify({ contextRunIds: ["run-memory"], context: "Derived private answer" }));
   saved.prepare("UPDATE runs SET result=?,status='completed',config=? WHERE run_id='run-citation'")
     .run(JSON.stringify({ answer: "Cited private answer" }), JSON.stringify({ contextRunIds: ["run-followup"], contextArtifactEvidence: "Derived private report" }));
+  saved.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
+    VALUES('legacy-protected-response','page','https://example.com/?answer=private','GET',1,'run-followup')`).run();
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
   saved.close();
   const manifestPath = join(backup.path, "manifest.json");
@@ -76,6 +81,7 @@ it("omits protected article content and grants from portable backups and strips 
     expect(staged.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-followup'").get()).toEqual({ result: null });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-citation'").get()).toEqual({ result: null });
+    expect(staged.prepare("SELECT 1 FROM response_metadata WHERE request_id='legacy-protected-response'").get()).toBeUndefined();
     expect(db.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 1 });
   } finally { staged.close(); }
   db.close(); open = false;

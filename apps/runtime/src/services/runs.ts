@@ -339,9 +339,8 @@ export class RunService {
       const paths = this.deps.repo.listArtifacts({ runId }).map(item => item.path);
       this.deps.artifacts.removeFiles(paths);
       this.deps.repo.transaction(() => {
-        for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans"])
+        for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
-        this.deps.repo.db.prepare("UPDATE response_metadata SET body_artifact_id=NULL WHERE run_id=?").run(runId);
         this.deps.repo.saveRun({ ...run, status: "cancelled", statusMessage: "Saved article forgotten — generated answer removed",
           result: undefined, error: "A selected saved article was forgotten.",
           config: redactedPageRecallConfig(run.config ?? {}) });

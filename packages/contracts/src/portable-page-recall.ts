@@ -61,9 +61,8 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
       for (const row of parsed) {
         if (!affected.has(row.runId)) continue;
         for (const [artifactId, owner] of owners) if (owner === row.runId) artifactIds.add(artifactId);
-        for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans"])
+        for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           if (has(table)) db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
-        if (has("response_metadata")) db.prepare("UPDATE response_metadata SET body_artifact_id=NULL WHERE run_id=?").run(row.runId);
         db.prepare("UPDATE runs SET status='cancelled',result=NULL,status_message=?,error=?,config=? WHERE run_id=?")
           .run("Saved article unavailable after restore — generated answer removed", "Protected article context is not portable.",
             JSON.stringify(redactedPageRecallConfig(row.config)), row.runId);
