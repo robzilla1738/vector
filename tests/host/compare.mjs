@@ -13,6 +13,7 @@ const commands = [
   ['electron.agent-control-and-private-boundary', 'tests/smoke/internal-cdp-direct.mjs', 120_000],
   ['electron.two-regular-profile-isolation', 'tests/smoke/two-profiles-desktop.mjs', 120_000],
   ['electron.foreground-input-paint', 'tests/smoke/command-bar-paint-desktop.mjs', 90_000],
+  ['electron.tab-input-to-native-placement', 'tests/smoke/tab-activation-desktop.mjs', 90_000],
   ['electron.restore-20-tabs', 'tests/smoke/restore-tabs-desktop.mjs', 120_000, { AUX_RUNS: '3', AUX_TABS: '20' }],
   ['electron.restore-100-tabs', 'tests/smoke/restore-tabs-desktop.mjs', 180_000, { AUX_RUNS: '3', AUX_TABS: '100' }],
   ['chromium-reference.synthetic-extension-apis', 'tests/smoke/chromium-extension-baseline.mjs', 90_000],
