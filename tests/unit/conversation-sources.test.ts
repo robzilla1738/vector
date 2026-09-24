@@ -21,9 +21,10 @@ it("extracts bounded path-free source provenance only from web observations", ()
   expect(isObservationArtifactContent('{"report":true}')).toBe(false);
 });
 
-it("keeps the latest exact observation for each URL in a turn", () => {
+it("keeps the latest observation per page and URL in each turn", () => {
   const base = conversationSourceFromArtifact(artifact, observation())!;
   const newer = { ...base, sourceId: "observation-new", observedAt: 20, revision: 5 };
+  const otherPage = { ...base, sourceId: "observation-second-account", pageId: "page-2", observedAt: 12 };
   const otherTurn = { ...base, sourceId: "observation-other", runId: "run-2", observedAt: 15 };
-  expect(dedupeConversationSources([newer, base, otherTurn])).toEqual([otherTurn, newer]);
+  expect(dedupeConversationSources([newer, base, otherPage, otherTurn])).toEqual([otherPage, otherTurn, newer]);
 });

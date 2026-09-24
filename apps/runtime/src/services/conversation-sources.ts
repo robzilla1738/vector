@@ -29,11 +29,11 @@ export function conversationSourceFromArtifact(artifact: Artifact, content: stri
   };
 }
 
-/** Keep the latest observation of a URL per turn while retaining exact identity. */
+/** Keep the latest observation of each tab and URL per turn. */
 export function dedupeConversationSources(sources: ConversationSource[]): ConversationSource[] {
   const latest = new Map<string, ConversationSource>();
   for (const source of sources) {
-    const key = `${source.runId}\0${source.url}`;
+    const key = `${source.runId}\0${source.pageId}\0${source.url}`;
     const prior = latest.get(key);
     if (!prior || source.observedAt > prior.observedAt || (source.observedAt === prior.observedAt && source.revision > prior.revision)) latest.set(key, source);
   }
