@@ -25,6 +25,8 @@ export const MCP_SCOPED_CATALOG: readonly McpCatalogTool[] = [
   { name: "aux_workspaces_list", group: "workspace", scoped: true, description: "List the workspace this connection is allowed to see." },
   { name: "aux_tasks_list", group: "task", scoped: true, description: "List saved tasks in this connection’s scope. Optional query matches title, objective, criteria and resource labels." },
   { name: "aux_task_get", group: "task", scoped: true, description: "Read a task, revisions and associated runs." },
+  { name: "aux_calendar_task_grants", group: "task", scoped: true, description: "List Calendar accounts explicitly granted to this task revision." },
+  { name: "aux_calendar_task_events", group: "task", scoped: true, description: "Read upcoming events from one explicitly granted Calendar account for this task revision." },
   { name: "aux_task_update", group: "task", scoped: true, description: "Revise a task using its expected current revision." },
   { name: "aux_task_archive", group: "task", scoped: true, description: "Archive or restore a task." },
   { name: "aux_task_start", group: "task", scoped: true, description: "Start Aux’s built-in agent on a saved task." },

@@ -187,6 +187,10 @@ export class TaskService {
       const result = this.repo.db.prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
         .run(next.revision, next.state, next.updatedAt, JSON.stringify(next), taskId, expectedRevision);
       if (result.changes !== 1) throw new AuxError("conflict", "Task was changed by another client; refresh it before editing");
+      // A task revision may change its objective or resources. Its prior
+      // provider authority must not silently carry into the new definition.
+      this.repo.db.prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE task_id=? AND revoked_at IS NULL")
+        .run(next.updatedAt, taskId);
       this.repo.db.prepare("UPDATE conversations SET title=?,archived=? WHERE chat_id=?").run(next.title.slice(0, 160), next.state === "archived" ? 1 : 0, next.conversationId ?? taskConversationId(taskId));
       this.saveRevision(next);
       return next;

@@ -7,7 +7,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { MethodSchemas, errorAdvice, toErrorPayload, AuxError, requireScopedAuxMcpCatalog } from "@aux/contracts";
+import { CalendarTaskEventsInputSchema, MethodSchemas, errorAdvice, toErrorPayload, AuxError, requireScopedAuxMcpCatalog } from "@aux/contracts";
 import { rpc } from "./client.js";
 import { McpStepInputSchema, parseMcpSteps, summarizeExecute } from "./steps.js";
 
@@ -390,6 +390,19 @@ for (const [name, method, description, annotation] of taskTools) {
     try { return text(await rpc(method, params)); } catch (error) { return err(error); }
   });
 }
+
+server.registerTool("aux_calendar_task_grants", {
+  description: "List only Calendar accounts that the Aux user explicitly granted to this saved task revision. No tokens are returned.",
+  annotations: RO, inputSchema: MethodSchemas["calendar.taskGrants.list"].shape,
+}, async (params: unknown) => {
+  try { return text(await rpc("calendar.taskGrants.list", params)); } catch (error) { return err(error); }
+});
+server.registerTool("aux_calendar_task_events", {
+  description: "Read one page of events from a Calendar account granted to this task revision. Pass the grant ID from aux_calendar_task_grants. Revocation or task edits stop further reads.",
+  annotations: RO, inputSchema: CalendarTaskEventsInputSchema.shape,
+}, async (params: unknown) => {
+  try { return text(await rpc("calendar.taskEvents.list", params)); } catch (error) { return err(error); }
+});
 
 const developmentTools = [
   ['aux_development_projects','development.projects','List only managed checkouts attached to the authorized saved task.','ro'],

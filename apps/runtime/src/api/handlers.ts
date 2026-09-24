@@ -196,6 +196,8 @@ export function makeInvoker(s: Services) {
         requireScopedTask(scope,params.taskId);
       } else if(method.startsWith('cloud.')&&typeof params.taskId==='string'){
         requireScopedTask(scope,params.taskId);
+      } else if ((method === "calendar.taskGrants.list" || method === "calendar.taskEvents.list") && typeof params.taskId === "string") {
+        requireScopedTask(scope, params.taskId);
       } else if (method.startsWith("pages.") && method !== "pages.list") {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
@@ -227,6 +229,22 @@ export function makeInvoker(s: Services) {
         if (client.external) throw new AuxError("permission_denied", "Calendar reads require an Aux account grant.");
         if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
         return s.calendar.events(params);
+      case "calendar.taskGrants.list":
+        if (client.external && !scope) throw new AuxError("permission_denied", "Calendar task grants require a scoped connection.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.taskGrants(params.taskId);
+      case "calendar.taskGrants.create":
+        if (client.external) throw new AuxError("permission_denied", "Calendar task grants are managed in Aux.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.grantTask(params.taskId, params.expectedRevision, params.connectionId);
+      case "calendar.taskGrants.revoke":
+        if (client.external) throw new AuxError("permission_denied", "Calendar task grants are managed in Aux.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.revokeTaskGrant(params.taskId, params.grantId);
+      case "calendar.taskEvents.list":
+        if (client.external && !scope) throw new AuxError("permission_denied", "Calendar task reads require a scoped connection.");
+        if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
+        return s.calendar.taskEvents(params);
       case "agentConnections.list":
         if (client.external) throw new AuxError("permission_denied", "Connections can only be managed in Aux Settings");
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");

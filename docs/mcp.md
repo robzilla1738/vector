@@ -62,6 +62,7 @@ declares `readOnlyHint`/`destructiveHint`/`idempotentHint` annotations.
 | `aux_extract`, `aux_wait_for`, `aux_console`, `aux_dialog`, `aux_network` | read fields, wait for a condition, read console/network, answer a dialog |
 | `aux_run_get`, `aux_run_control`, `aux_run_answer` | inspect, pause/resume/cancel, answer a run in scope |
 | `aux_workspaces_list`, `aux_tasks_list`, `aux_task_get`, `aux_task_create`, `aux_task_update`, `aux_task_archive`, `aux_task_start` | task lifecycle inside the connection's scope |
+| `aux_calendar_task_grants`, `aux_calendar_task_events` | list accounts the Aux user granted to a saved task revision, then read a bounded page of events from one grant; no account management or tokens |
 | `aux_task_record_evidence`, `aux_task_capture_evidence`, `aux_task_receipt`, `aux_task_verify_criterion`, `aux_task_replace_agent` | evidence and verification |
 
 `aux_development_*` and `aux_cloud_*` tools are listed only when the connection can use

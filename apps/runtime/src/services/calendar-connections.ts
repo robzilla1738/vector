@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
-import { AuxError, CalendarConnectionSchema, CalendarEventsQuerySchema, type CalendarConnection, type CalendarEvent, type CalendarEventsQuery } from "@aux/contracts";
+import { AuxError, CalendarConnectionSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema, type CalendarConnection, type CalendarEvent, type CalendarEventsQuery, type CalendarTaskEventsQuery, type CalendarTaskGrant } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 
@@ -10,6 +10,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 1_000_000;
 
 type Row = { connection_id: string; account_key: string; label: string; secret_name: string; scopes: string; state: "active" | "needs_reauth"; created_at: number; updated_at: number };
+type GrantRow = { grant_id: string; task_id: string; task_revision: number; connection_id: string; created_at: number; revoked_at: number | null; account_key: string; label: string };
 type Secret = { accessToken: string; refreshToken: string; expiresAt: number };
 type Pending = { server: Server; timer: NodeJS.Timeout; verifier: string; redirectUri: string };
 type Endpoints = { auth: string; token: string; revoke: string; calendar: string };
@@ -45,6 +46,7 @@ async function jsonResponse(response: Response): Promise<Record<string, unknown>
 export class CalendarConnectionService {
   private pending = new Map<string, Pending>();
   private activeReads = new Map<string, Set<AbortController>>();
+  private grantReads = new Map<string, Set<AbortController>>();
   private refreshing = new Map<string, Promise<Secret>>();
   private closed = false;
 
@@ -69,6 +71,54 @@ export class CalendarConnectionService {
     const row = this.deps.repo.db.prepare("SELECT * FROM calendar_connections WHERE connection_id=? AND revoked_at IS NULL").get(connectionId) as Row | undefined;
     if (!row) throw new AuxError("not_found", "Calendar connection is unavailable or revoked.");
     return row;
+  }
+  private grantRow(taskId: string, grantId: string): GrantRow {
+    const grant = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.label FROM calendar_task_grants g
+      JOIN calendar_connections c ON c.connection_id=g.connection_id
+      JOIN tasks t ON t.task_id=g.task_id
+      WHERE g.grant_id=? AND g.task_id=? AND g.revoked_at IS NULL AND c.revoked_at IS NULL
+        AND c.state='active' AND t.state='open' AND t.revision=g.task_revision`).get(grantId, taskId) as GrantRow | undefined;
+    if (!grant) throw new AuxError("permission_denied", "This task revision has no active grant for that Calendar account.");
+    return grant;
+  }
+  private publicGrant(row: GrantRow): CalendarTaskGrant {
+    return CalendarTaskGrantSchema.parse({ grantId: row.grant_id, taskId: row.task_id, taskRevision: row.task_revision,
+      connectionId: row.connection_id, accountKey: row.account_key, label: row.label, createdAt: row.created_at,
+      ...(row.revoked_at == null ? {} : { revokedAt: row.revoked_at }) });
+  }
+  taskGrants(taskId: string): CalendarTaskGrant[] {
+    if (!this.deps.repo.db.prepare("SELECT 1 FROM tasks WHERE task_id=?").get(taskId)) throw new AuxError("not_found", "Task not found.");
+    const rows = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.label FROM calendar_task_grants g
+      JOIN calendar_connections c ON c.connection_id=g.connection_id WHERE g.task_id=? AND g.revoked_at IS NULL AND c.revoked_at IS NULL
+      ORDER BY g.created_at,g.grant_id`).all(taskId) as GrantRow[];
+    return rows.map(row => this.publicGrant(row));
+  }
+  grantTask(taskId: string, expectedRevision: number, connectionId: string): CalendarTaskGrant {
+    const grant = this.deps.repo.transaction(() => {
+      const task = this.deps.repo.db.prepare("SELECT revision,state FROM tasks WHERE task_id=?").get(taskId) as { revision: number; state: string } | undefined;
+      if (!task) throw new AuxError("not_found", "Task not found.");
+      if (task.state !== "open" || task.revision !== expectedRevision) throw new AuxError("conflict", "Save or restore the current task revision before granting Calendar access.");
+      const connection = this.row(connectionId);
+      if (connection.state !== "active") throw new AuxError("needs_input", "Reconnect this Calendar account before granting it to a task.");
+      const existing = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.label FROM calendar_task_grants g JOIN calendar_connections c ON c.connection_id=g.connection_id
+        WHERE g.task_id=? AND g.task_revision=? AND g.connection_id=? AND g.revoked_at IS NULL`).get(taskId, expectedRevision, connectionId) as GrantRow | undefined;
+      if (existing) return this.publicGrant(existing);
+      const grantId = randomUUID(), createdAt = Date.now();
+      this.deps.repo.db.prepare("INSERT INTO calendar_task_grants(grant_id,task_id,task_revision,connection_id,created_at) VALUES(?,?,?,?,?)")
+        .run(grantId, taskId, expectedRevision, connectionId, createdAt);
+      return CalendarTaskGrantSchema.parse({ grantId, taskId, taskRevision: expectedRevision, connectionId,
+        accountKey: connection.account_key, label: connection.label, createdAt });
+    });
+    this.deps.onChange?.();
+    return grant;
+  }
+  revokeTaskGrant(taskId: string, grantId: string): { ok: true } {
+    if (!this.deps.repo.db.prepare("SELECT 1 FROM calendar_task_grants WHERE grant_id=? AND task_id=? AND revoked_at IS NULL").get(grantId, taskId))
+      throw new AuxError("not_found", "Calendar task grant not found.");
+    this.deps.repo.db.prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE grant_id=? AND task_id=? AND revoked_at IS NULL").run(Date.now(), grantId, taskId);
+    this.grantReads.get(grantId)?.forEach(controller => controller.abort());
+    this.deps.onChange?.();
+    return { ok: true };
   }
   async start(): Promise<{ url: string; expiresAt: number }> {
     if (this.closed) throw new AuxError("cancelled", "Calendar sign-in is unavailable while Aux closes.");
@@ -198,15 +248,28 @@ export class CalendarConnectionService {
     }
     return secret;
   }
-  async events(input: CalendarEventsQuery): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
+  async taskEvents(input: CalendarTaskEventsQuery): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
+    const query = CalendarTaskEventsQuerySchema.parse(input);
+    const grant = this.grantRow(query.taskId, query.grantId);
+    return this.events({ connectionId: grant.connection_id, timeMin: query.timeMin, timeMax: query.timeMax,
+      limit: query.limit, ...(query.pageToken ? { pageToken: query.pageToken } : {}) }, { taskId: query.taskId, grantId: query.grantId, connectionId: grant.connection_id });
+  }
+  async events(input: CalendarEventsQuery, grant?: { taskId: string; grantId: string; connectionId: string }): Promise<{ events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number }> {
     const query = CalendarEventsQuerySchema.parse(input);
+    const checkGrant = () => {
+      if (grant && this.grantRow(grant.taskId, grant.grantId).connection_id !== grant.connectionId)
+        throw new AuxError("permission_denied", "Calendar task grant changed during the read.");
+    };
+    checkGrant();
     const row = this.row(query.connectionId);
     if (row.state !== "active") throw new AuxError("needs_input", "Reconnect this Calendar account before reading events.");
     const secret = await this.token(row);
     if (this.row(query.connectionId).secret_name !== row.secret_name) throw new AuxError("cancelled", "Calendar connection changed before the read.");
+    checkGrant();
     const controller = new AbortController();
     const active = this.activeReads.get(query.connectionId) ?? new Set<AbortController>();
     active.add(controller); this.activeReads.set(query.connectionId, active);
+    if (grant) { const granted = this.grantReads.get(grant.grantId) ?? new Set<AbortController>(); granted.add(controller); this.grantReads.set(grant.grantId, granted); }
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const url = new URL("https://calendar.invalid/calendars/primary/events");
@@ -214,6 +277,7 @@ export class CalendarConnectionService {
       if (query.pageToken) url.searchParams.set("pageToken", query.pageToken);
       const response = await this.calendarGet(`${url.pathname}${url.search}`, secret.accessToken, controller.signal);
       if (this.row(query.connectionId).secret_name !== row.secret_name) throw new AuxError("cancelled", "Calendar connection changed during the read.");
+      checkGrant();
       const fetchedAt = Date.now();
       const items = Array.isArray(response.items) ? response.items.slice(0, query.limit) : [];
       const events = items.flatMap((raw): CalendarEvent[] => {
@@ -239,13 +303,17 @@ export class CalendarConnectionService {
         this.deps.onChange?.();
       }
       throw error;
-    } finally { clearTimeout(timeout); active.delete(controller); if (!active.size) this.activeReads.delete(query.connectionId); }
+    } finally {
+      clearTimeout(timeout); active.delete(controller); if (!active.size) this.activeReads.delete(query.connectionId);
+      if (grant) { const granted = this.grantReads.get(grant.grantId); granted?.delete(controller); if (!granted?.size) this.grantReads.delete(grant.grantId); }
+    }
   }
   async revoke(connectionId: string): Promise<{ ok: true; providerRevocation: "confirmed" | "pending" }> {
     const row = this.row(connectionId);
     this.activeReads.get(connectionId)?.forEach(controller => controller.abort());
     this.deps.repo.db.prepare("UPDATE calendar_connections SET revoked_at=?,updated_at=? WHERE connection_id=? AND revoked_at IS NULL")
       .run(Date.now(), Date.now(), connectionId);
+    this.deps.repo.db.prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE connection_id=? AND revoked_at IS NULL").run(Date.now(), connectionId);
     this.deps.onChange?.();
     const raw = await this.deps.native.readSecret(row.secret_name).then(result => result.value).catch(() => undefined);
     await this.deps.native.storeSecret(row.secret_name, "");

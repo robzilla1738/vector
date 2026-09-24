@@ -71,6 +71,11 @@ call, including calls from older or hand-written clients.
 
 1. List the permitted work with `aux_workspaces_list` and `aux_tasks_list`.
 2. Read the saved definition and current revision with `aux_task_get`.
+   If the task needs Calendar context, the Aux user grants a connected account
+   in that task's Calendar access section. Use `aux_calendar_task_grants` to
+   identify the current grant, then `aux_calendar_task_events` for bounded,
+   source-labeled event reads. Task edits and revocation invalidate the grant;
+   the external client never receives the provider token.
 3. Inspect an attached tab with `aux_pages_list` and `aux_page_observe`; use browser
    actions only on those returned page IDs.
 4. Record a claim with `aux_task_record_evidence`, or capture a page observation

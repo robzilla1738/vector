@@ -190,6 +190,11 @@ CREATE TABLE calendar_connections(
   scopes TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','needs_reauth')),
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, revoked_at INTEGER);
 CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key) WHERE revoked_at IS NULL;
+CREATE TABLE calendar_task_grants(
+  grant_id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(task_id),
+  task_revision INTEGER NOT NULL, connection_id TEXT NOT NULL REFERENCES calendar_connections(connection_id),
+  created_at INTEGER NOT NULL, revoked_at INTEGER);
+CREATE UNIQUE INDEX idx_calendar_task_grant_active ON calendar_task_grants(task_id,task_revision,connection_id) WHERE revoked_at IS NULL;
 CREATE TABLE vault_items(
   item_id TEXT PRIMARY KEY, label TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('password','secret')),
   username TEXT, account_label TEXT, origin TEXT NOT NULL,
@@ -248,7 +253,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -310,6 +315,14 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       scopes TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','needs_reauth')),
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, revoked_at INTEGER)`,
     `CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key) WHERE revoked_at IS NULL`,
+  ],
+  // v7 → v8: grants bind one calendar account to one saved task revision.
+  7: [
+    `CREATE TABLE calendar_task_grants(
+      grant_id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(task_id),
+      task_revision INTEGER NOT NULL, connection_id TEXT NOT NULL REFERENCES calendar_connections(connection_id),
+      created_at INTEGER NOT NULL, revoked_at INTEGER)`,
+    `CREATE UNIQUE INDEX idx_calendar_task_grant_active ON calendar_task_grants(task_id,task_revision,connection_id) WHERE revoked_at IS NULL`,
   ],
 };
 

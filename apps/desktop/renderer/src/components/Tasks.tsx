@@ -7,6 +7,7 @@ import { TaskResources } from "./TaskResources";
 import { TaskHistory } from "./TaskHistory";
 import { TaskReceiptView } from "./TaskReceiptView";
 import { Routines } from "./Routines";
+import { CalendarTaskGrants } from "./CalendarTaskGrants";
 import { bridge } from "../bridge";
 
 type Details = { task: Task; revisions: Task[]; runs: { run: Run; currentRevision: boolean }[]; children:{task:Task;depth:number;latestRun?:{runId:string;status:string;taskRevision?:number};cloudAuthority?:{environmentId:string;remoteName:string};receiptStatus?:TaskReceipt['status']}[] };
@@ -202,6 +203,7 @@ export function Tasks() {
               await call("tasks.update", {taskId:selected.task.taskId, expectedRevision:selected.task.revision, resources});
               await refresh(selected.task.taskId);
             })} onEvidenceImported={()=>refresh(selected.task.taskId)}/>}
+            {!dirty && !conflict && <CalendarTaskGrants key={`calendar:${selected.task.taskId}:${selected.task.revision}`} task={selected.task} onOpenSettings={() => close("settings")} />}
             {receipt && !dirty && !conflict && <TaskReceiptView key={`${receipt.taskId}:${receipt.taskRevision}`} receipt={receipt} pageId={attached ? activePageId : null} submit={(method, ...params) => action(async () => {
               await call(method, ...params); await refresh(receipt.taskId);
             })} />}

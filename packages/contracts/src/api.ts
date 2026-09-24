@@ -31,7 +31,7 @@ import { StateQuerySchema } from "./state.js";
 import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
-import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema } from "./calendar.js";
+import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
 import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
@@ -620,6 +620,10 @@ export const MethodSchemas = {
   "calendar.auth.start": z.object({}),
   "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "calendar.events.list": CalendarEventsQuerySchema,
+  "calendar.taskGrants.list": z.object({ taskId: z.string().uuid() }).strict(),
+  "calendar.taskGrants.create": z.object({ taskId: z.string().uuid(), expectedRevision: z.number().int().positive(), connectionId: z.string().uuid() }).strict(),
+  "calendar.taskGrants.revoke": z.object({ taskId: z.string().uuid(), grantId: z.string().uuid() }).strict(),
+  "calendar.taskEvents.list": CalendarTaskEventsQuerySchema,
   "pages.list": PagesListParams,
   "pages.open": PagesOpenParams,
   "pages.close": PagesCloseParams,
@@ -986,6 +990,10 @@ export const ResultSchemas = {
   "calendar.auth.start": z.object({ url: z.string().url(), expiresAt: z.number().int().nonnegative() }),
   "calendar.connections.revoke": z.object({ ok: z.literal(true), providerRevocation: z.enum(["confirmed", "pending"]) }),
   "calendar.events.list": z.object({ events: z.array(CalendarEventSchema), nextPageToken: z.string().optional(), fetchedAt: z.number().int().nonnegative() }),
+  "calendar.taskGrants.list": z.array(CalendarTaskGrantSchema),
+  "calendar.taskGrants.create": CalendarTaskGrantSchema,
+  "calendar.taskGrants.revoke": z.object({ ok: z.literal(true) }),
+  "calendar.taskEvents.list": z.object({ events: z.array(CalendarEventSchema), nextPageToken: z.string().optional(), fetchedAt: z.number().int().nonnegative() }),
   "pages.list": z.array(PageTargetSchema),
   "pages.open": PageTargetSchema,
   "pages.close": z.object({ ok: z.boolean() }),

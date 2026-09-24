@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { CalendarConnectionService } from "../../apps/runtime/src/services/calendar-connections.js";
 import { openDb } from "../../apps/runtime/src/store/db.js";
 import { Repo } from "../../apps/runtime/src/store/repo.js";
+import { EventBus } from "../../apps/runtime/src/events.js";
+import { TaskService } from "../../apps/runtime/src/services/tasks.js";
+import { makeInvoker, type Services } from "../../apps/runtime/src/api/handlers.js";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 
 const scope = "https://www.googleapis.com/auth/calendar.readonly";
@@ -11,6 +14,9 @@ afterEach(() => { for (const db of databases.splice(0)) db.close(); });
 
 function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: boolean; offline?: boolean; onEvents?: (signal: AbortSignal | null | undefined) => Promise<Response> } = {}) {
   const db = openDb(":memory:"); databases.push(db);
+  const repo = new Repo(db);
+  const events = new EventBus(repo);
+  const tasks = new TaskService(repo, events);
   const secrets = new Map<string, string>();
   const native = { available: () => true, storeSecret: async (name: string, value: string) => { if (value) secrets.set(name, value); else secrets.delete(name); return { ok: true as const }; }, readSecret: async (name: string) => ({ value: secrets.get(name) }) } as NativeBridge;
   const calls: { url: URL; init?: RequestInit }[] = [];
@@ -37,8 +43,8 @@ function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: b
     if (url.pathname === "/revoke") return Response.json({});
     throw new Error(`Unexpected request ${url}`);
   };
-  const service = new CalendarConnectionService({ repo: new Repo(db), native, clientId: "desktop-client", fetch: http, endpoints });
-  return { db, secrets, calls, service };
+  const service = new CalendarConnectionService({ repo, native, clientId: "desktop-client", fetch: http, endpoints });
+  return { db, repo, events, tasks, secrets, calls, service };
 }
 
 async function connect(service: CalendarConnectionService, account: string) {
@@ -54,6 +60,8 @@ async function connect(service: CalendarConnectionService, account: string) {
 }
 
 describe("outbound Google Calendar connection", () => {
+  const makeTask = (tasks: TaskService, workspaceId: string, title: string) => tasks.create({ workspaceId, title,
+    objective: `Prepare ${title}`, criteria: [{ criterionId: "brief", description: "Produce a sourced brief", verification: "manual" }] });
   it("isolates two accounts, paginates bounded reads, refreshes, and removes the revoked secret", async () => {
     const { db, secrets, calls, service } = fixture();
     try {
@@ -122,6 +130,74 @@ describe("outbound Google Calendar connection", () => {
       await begun;
       await setup.service.revoke(account.connectionId);
       await expect(read).rejects.toThrow(/cancelled/);
+    } finally { await setup.service.close(); }
+  });
+
+  it("binds each account grant to exactly one saved task revision", async () => {
+    const { service, tasks } = fixture();
+    try {
+      await connect(service, "alice"); await connect(service, "bob");
+      const space = tasks.createWorkspace("Research");
+      const firstTask = makeTask(tasks, space.workspaceId, "First meeting");
+      const otherTask = makeTask(tasks, space.workspaceId, "Other meeting");
+      const accounts = service.list().connections;
+      const grant = service.grantTask(firstTask.taskId, firstTask.revision, accounts[0]!.connectionId);
+      expect(service.taskGrants(firstTask.taskId)).toEqual([grant]);
+      const query = { taskId: firstTask.taskId, grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 25 };
+      expect((await service.taskEvents(query)).events[0]?.source.accountKey).toBe("alice@example.test");
+      await expect(service.taskEvents({ ...query, taskId: otherTask.taskId })).rejects.toThrow(/no active grant/);
+      expect(() => service.grantTask(otherTask.taskId, 2, accounts[1]!.connectionId)).toThrow(/revision/);
+      tasks.update({ taskId: firstTask.taskId, expectedRevision: 1, objective: "Prepare a revised brief" });
+      expect(service.taskGrants(firstTask.taskId)).toEqual([]);
+      await expect(service.taskEvents(query)).rejects.toThrow(/no active grant/);
+      const replacement = service.grantTask(firstTask.taskId, 2, accounts[1]!.connectionId);
+      expect((await service.taskEvents({ ...query, grantId: replacement.grantId })).events[0]?.source.accountKey).toBe("bob@example.test");
+      expect(service.revokeTaskGrant(firstTask.taskId, replacement.grantId)).toEqual({ ok: true });
+      await expect(service.taskEvents({ ...query, grantId: replacement.grantId })).rejects.toThrow(/no active grant/);
+      const again = service.grantTask(firstTask.taskId, 2, accounts[1]!.connectionId);
+      await service.revoke(accounts[1]!.connectionId);
+      expect(service.taskGrants(firstTask.taskId)).toEqual([]);
+      await expect(service.taskEvents({ ...query, grantId: again.grantId })).rejects.toThrow(/no active grant/);
+    } finally { await service.close(); }
+  });
+
+  it("stops a task-scoped event read when its grant is revoked", async () => {
+    let reading!: () => void;
+    const begun = new Promise<void>(resolve => { reading = resolve; });
+    const { service, tasks } = fixture({ onEvents: async signal => {
+      reading();
+      return new Promise<Response>((_resolve, reject) => signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+    } });
+    try {
+      await connect(service, "alice");
+      const space = tasks.createWorkspace("Research");
+      const task = makeTask(tasks, space.workspaceId, "First meeting");
+      const grant = service.grantTask(task.taskId, task.revision, service.list().connections[0]!.connectionId);
+      const query = { taskId: task.taskId, grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 25 };
+      const pending = service.taskEvents(query);
+      await begun;
+      service.revokeTaskGrant(task.taskId, grant.grantId);
+      await expect(pending).rejects.toThrow(/cancelled/);
+    } finally { await service.close(); }
+  });
+
+  it("exposes granted reads to a scoped agent but denies account management and unrelated tasks", async () => {
+    const setup = fixture();
+    try {
+      await connect(setup.service, "alice"); await connect(setup.service, "bob");
+      const space = setup.tasks.createWorkspace("Research");
+      const task = makeTask(setup.tasks, space.workspaceId, "Authorized meeting");
+      const other = makeTask(setup.tasks, space.workspaceId, "Unrelated meeting");
+      const account = setup.service.list().connections[0]!;
+      const grant = setup.service.grantTask(task.taskId, task.revision, account.connectionId);
+      const invoke = makeInvoker({ repo: setup.repo, events: setup.events, calendar: setup.service, pages: {} } as Services);
+      const client = { external: true, connectionId: "external-client", scope: { kind: "task" as const, workspaceId: space.workspaceId, taskId: task.taskId } };
+      expect(await invoke("calendar.taskGrants.list", { taskId: task.taskId }, client)).toEqual([grant]);
+      const query = { taskId: task.taskId, grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 25 };
+      expect((await invoke("calendar.taskEvents.list", query, client) as { events: { source: { accountKey: string } }[] }).events[0]?.source.accountKey).toBe("alice@example.test");
+      await expect(invoke("calendar.taskEvents.list", { ...query, taskId: other.taskId }, client)).rejects.toMatchObject({ code: "permission_denied" });
+      await expect(invoke("calendar.events.list", { connectionId: account.connectionId, timeMin: query.timeMin, timeMax: query.timeMax, limit: 25 }, client)).rejects.toMatchObject({ code: "permission_denied" });
+      await expect(invoke("calendar.taskGrants.create", { taskId: task.taskId, expectedRevision: 1, connectionId: setup.service.list().connections[1]!.connectionId }, client)).rejects.toMatchObject({ code: "permission_denied" });
     } finally { await setup.service.close(); }
   });
 });
