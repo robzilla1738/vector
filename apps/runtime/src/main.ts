@@ -159,6 +159,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let operations!: OperationService;
   const pages = new PageService({
     repo,
+    profileId: env.AUX_BROWSER_PROFILE_ID,
     events,
     native,
     drivers: () => drivers,

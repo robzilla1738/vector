@@ -121,6 +121,7 @@ export class ObservationService {
     const obs: Observation = {
       observationId: newObservationId(),
       pageId,
+      ...(this.pages.deps.profileId ? { profileId: this.pages.deps.profileId } : {}),
       documentEpoch: lp.target.documentEpoch,
       revision,
       observedAt: Date.now(),

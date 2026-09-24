@@ -12,6 +12,7 @@ it("extracts bounded path-free source provenance only from web observations", ()
   expect(conversationSourceFromArtifact(artifact, observation())).toEqual({
     sourceId: "artifact-observation", runId: "run-1", pageId: "page-1", url: "https://example.test/report", title: "Source report", observedAt: 10, documentEpoch: 2, revision: 4,
   });
+  expect(conversationSourceFromArtifact(artifact, observation({ profileId: "profile-work" }))?.profileId).toBe("profile-work");
   expect(JSON.stringify(conversationSourceFromArtifact(artifact, observation()))).not.toContain("not/exposed");
   expect(conversationSourceFromArtifact(artifact, observation({ content: { ...JSON.parse(observation()).content, url: "file:///Users/example/private.txt" } }))).toBeUndefined();
   expect(conversationSourceFromArtifact({ ...artifact, pageId: "other" }, observation())).toBeUndefined();
@@ -25,6 +26,7 @@ it("keeps the latest observation per page and URL in each turn", () => {
   const base = conversationSourceFromArtifact(artifact, observation())!;
   const newer = { ...base, sourceId: "observation-new", observedAt: 20, revision: 5 };
   const otherPage = { ...base, sourceId: "observation-second-account", pageId: "page-2", observedAt: 12 };
+  const otherProfile = { ...base, sourceId: "observation-other-profile", profileId: "work-profile", observedAt: 13 };
   const otherTurn = { ...base, sourceId: "observation-other", runId: "run-2", observedAt: 15 };
-  expect(dedupeConversationSources([newer, base, otherPage, otherTurn])).toEqual([otherPage, otherTurn, newer]);
+  expect(dedupeConversationSources([newer, base, otherPage, otherProfile, otherTurn])).toEqual([otherPage, otherProfile, otherTurn, newer]);
 });

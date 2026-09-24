@@ -687,6 +687,7 @@ export function installMockBridge(q: URLSearchParams) {
     archiveBrowserProfile:async()=>[],
     deleteBrowserProfile:async()=>[],
     openBrowserProfile:async()=>false,
+    openBrowserProfileUrl:async()=>false,
     defaultBrowser:async()=>({isDefault:false}),
     setDefaultBrowser:async()=>({isDefault:false}),
     autofill:async()=>0,

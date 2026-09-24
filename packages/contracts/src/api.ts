@@ -316,6 +316,7 @@ export const ConversationSourceSchema = z.object({
   sourceId: id,
   runId: id,
   pageId: id,
+  profileId: id.optional(),
   url: z.string().url().max(4000),
   title: z.string().max(1000),
   observedAt: z.number(),

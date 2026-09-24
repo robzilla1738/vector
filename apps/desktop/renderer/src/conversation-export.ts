@@ -40,7 +40,7 @@ export function conversationMarkdown(input: {
     const sources = input.sources.filter(source => source.runId === run.runId);
     if (sources.length) {
       lines.push("Sources observed by Aux:");
-      for (const source of sources) lines.push(`- ${md(source.title)} · ${md(source.url)} · observed ${iso(source.observedAt)} · observation ${md(source.sourceId)} revision ${source.revision}`);
+      for (const source of sources) lines.push(`- ${md(source.title)} · ${md(source.url)} · observed ${iso(source.observedAt)}${source.profileId ? ` · browser Profile ${md(source.profileId)}` : ""} · observation ${md(source.sourceId)} revision ${source.revision}`);
       lines.push("");
     }
   }

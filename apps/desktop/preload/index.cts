@@ -28,6 +28,7 @@ const aux = {
   archiveBrowserProfile:(id:string,archived:boolean)=>ipcRenderer.invoke("ui.archiveBrowserProfile",id,archived),
   deleteBrowserProfile:(id:string)=>ipcRenderer.invoke("ui.deleteBrowserProfile",id),
   openBrowserProfile:(id:string)=>ipcRenderer.invoke("ui.openBrowserProfile",id),
+  openBrowserProfileUrl:(id:string,url:string)=>ipcRenderer.invoke("ui.openBrowserProfileUrl",id,url),
   onPageAction: (cb: (action: import("@aux/contracts").PageQuickAction) => void) => {
     const listener = (_event: unknown, action: import("@aux/contracts").PageQuickAction) => cb(action);
     ipcRenderer.on("page.quickAction", listener);

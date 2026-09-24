@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { spawn as spawnProcess } from "node:child_process";
+import { spawn as spawnProcess, type ChildProcess } from "node:child_process";
 import { channel, runtimeInvoke, runtimeReady } from "../runtime/supervisor.js";
 import { focusedRegularWindow } from "../windows/registry.js";
 import { PRIMARY_WINDOW_ID, desktopEnv, log } from "./bootstrap.js";
@@ -17,17 +17,33 @@ export let openingExternalUrls = false;
  * instance handling opens it whether that instance is running or not. The
  * `AUX_EXTERNAL_FORWARD` hop count bounds routing to two hops.
  */
+const DIRECT_PROFILE_URL = "--aux-direct-profile-url";
+
+function spawnProfileUrl(target: string, url: string, hop: number, direct = false): ChildProcess {
+  const env = { ...browserProfiles.environment(target, process.env), AUX_EXTERNAL_FORWARD: String(hop) };
+  const args = [...(app.isPackaged ? [] : [app.getAppPath()]), ...(direct ? [DIRECT_PROFILE_URL] : []), url];
+  return spawnProcess(process.execPath, args, { env, detached: true, stdio: "ignore" });
+}
+
 export function forwardExternalUrl(target: string, url: string) {
-  const hop = Number(desktopEnv.AUX_EXTERNAL_FORWARD ?? "0");
   try {
-    const env = { ...browserProfiles.environment(target, process.env), AUX_EXTERNAL_FORWARD: String(hop + 1) };
-    const child = spawnProcess(process.execPath, app.isPackaged ? [url] : [app.getAppPath(), url], { env, detached: true, stdio: "ignore" });
+    const child = spawnProfileUrl(target, url, Number(desktopEnv.AUX_EXTERNAL_FORWARD ?? "0") + 1);
     child.once("error", () => { pendingExternalUrls.push(url); void flushExternalUrls(); });
     child.unref();
     return true;
   } catch {
     return false;
   }
+}
+
+/** A cited source goes to its captured Profile, regardless of the last-active Profile. */
+export async function openProfileSourceUrl(target: string, url: string): Promise<boolean> {
+  if (!isWebUrl(url)) throw new Error("Only web source URLs can open in a browser Profile.");
+  const child = spawnProfileUrl(target, url, 2, true);
+  return new Promise<boolean>((resolve, reject) => {
+    child.once("spawn", () => { child.unref(); resolve(true); });
+    child.once("error", reject);
+  });
 }
 
 
@@ -65,7 +81,10 @@ export async function flushExternalUrls() {
 
 export function installExternalUrlHandlers() {
   app.on("second-instance", (_event, argv) => {
-    for (const value of argv) queueExternalUrl(value);
+    for (const value of argv) {
+      if (argv.includes(DIRECT_PROFILE_URL)) queueDirectProfileUrl(value);
+      else queueExternalUrl(value);
+    }
     const state = focusedRegularWindow();
     if (state?.win.isMinimized()) state.win.restore();
     state?.win.show();
@@ -76,7 +95,16 @@ export function installExternalUrlHandlers() {
     queueExternalUrl(url);
   });
   app.on("activate", () => browserProfiles.noteActive(browserProfiles.currentId));
-  for (const value of process.argv.slice(1)) queueExternalUrl(value);
+  for (const value of process.argv.slice(1)) {
+    if (process.argv.includes(DIRECT_PROFILE_URL)) queueDirectProfileUrl(value);
+    else queueExternalUrl(value);
+  }
+}
+
+function queueDirectProfileUrl(url: string) {
+  if (!isWebUrl(url)) return;
+  pendingExternalUrls.push(url);
+  void flushExternalUrls();
 }
 
 export function markShellReady() {

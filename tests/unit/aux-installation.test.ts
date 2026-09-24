@@ -48,7 +48,7 @@ describe("Aux configuration", () => {
 
   it("uses shell-owned connection coordinates over inherited values", () => {
     const env = desktopRuntimeEnv({
-      dataDir: "/selected", cdpPort: 9001,
+      dataDir: "/selected", profileId: "default", cdpPort: 9001,
       env: { AUX_DATA_DIR: "/old", AUX_ELECTRON_CDP: "http://wrong", AUX_STANDALONE: "0" },
     });
     expect(env.AUX_DATA_DIR).toBe("/selected");

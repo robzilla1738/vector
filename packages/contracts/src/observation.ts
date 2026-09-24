@@ -150,6 +150,8 @@ export const ObservationSchema = z.object({
   protocolVersion: z.literal(1).optional(),
   observationId: z.string(),
   pageId: z.string(),
+  /** Browser Profile that owned this observation when it was captured. */
+  profileId: z.string().min(1).max(200).optional(),
   documentEpoch: z.number(),
   revision: z.number(),
   observedAt: z.number(),

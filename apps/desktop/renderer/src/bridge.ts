@@ -54,6 +54,7 @@ export interface AuxBridge {
   archiveBrowserProfile(id:string,archived:boolean):Promise<BrowserProfile[]>;
   deleteBrowserProfile(id:string):Promise<BrowserProfile[]>;
   openBrowserProfile(id:string):Promise<boolean>;
+  openBrowserProfileUrl(id:string,url:string):Promise<boolean>;
   onPageAction(cb: (action: import("@aux/contracts").PageQuickAction) => void): () => void;
   quickAskShortcut(enabled?:boolean):Promise<{enabled:boolean;registered:boolean;error:string}>;
   quickAskMode: boolean;

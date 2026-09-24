@@ -47,6 +47,7 @@ export interface ObservedRevision {
 
 export interface PageServiceDeps {
   repo: Repo;
+  profileId?: string;
   events: EventBus;
   native: NativeBridge;
   drivers: () => DriverSet;

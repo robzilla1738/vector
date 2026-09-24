@@ -1,12 +1,14 @@
 import { app } from "electron";
 import { spawn as spawnProcess } from "node:child_process";
 import { browserProfiles, profile } from "../app/services.js";
+import { openProfileSourceUrl } from "../app/external-urls.js";
 import { focusedRegularWindow, handleShell, regularWindows } from "../windows/registry.js";
 import { updateWindowTitle } from "../windows/stage.js";
 
 export const profileLaunches=new Map<string,Promise<void>>();
 
 export function wireProfilesIpc() {
+  handleShell("ui.openBrowserProfileUrl", (_, id:string, url:string) => openProfileSourceUrl(id, url));
   handleShell("ui.browserProfiles", () => {const profiles=browserProfiles.list();const current=profiles.find(profile=>profile.current);if(current){profile.name=current.name;for(const state of regularWindows.values())updateWindowTitle(state);}return profiles;});
 
   handleShell("ui.archiveBrowserProfile", (_, id:string,archived:boolean) => browserProfiles.archive(id,archived));

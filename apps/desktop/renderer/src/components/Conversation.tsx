@@ -98,11 +98,11 @@ function LivePage({ pageId }: { pageId: string }) {
   </>;
 }
 
-function RunSources({ sources, onOpen }: { sources: ConversationSource[]; onOpen: (source: ConversationSource) => void }) {
+function RunSources({ sources, profileNames, onOpen }: { sources: ConversationSource[]; profileNames: Record<string, string>; onOpen: (source: ConversationSource) => void }) {
   if (!sources.length) return null;
   return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
     {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
-      <span><b>{source.title}</b><small>{hostOf(source.url)} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
+      <span><b>{source.title}</b><small>{hostOf(source.url)}{source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · observed {new Date(source.observedAt).toLocaleString()}</small></span>{I.open}
     </button>)}
     <p>Observed browser pages provide provenance, not independent proof of an external outcome.</p>
   </div></details>;
@@ -152,6 +152,15 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
   const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
+  const [sourceProfileNames, setSourceProfileNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!conversationSources.some(source => source.profileId)) return;
+    let active = true;
+    void bridge.browserProfiles().then(profiles => {
+      if (active) setSourceProfileNames(Object.fromEntries(profiles.map(profile => [profile.id, profile.name])));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [conversationSources]);
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
 
   const [previewOpen, setPreviewOpen] = useState(true);
@@ -246,6 +255,14 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   };
   const openSource = async (source: ConversationSource) => {
     try {
+      if (source.profileId) {
+        const profiles = await bridge.browserProfiles();
+        if (!profiles.some(profile => profile.id === source.profileId && profile.current)) {
+          if (!profiles.some(profile => profile.id === source.profileId)) throw new Error("The source browser Profile is unavailable on this device.");
+          if (!await bridge.openBrowserProfileUrl(source.profileId, source.url)) throw new Error("The source Profile could not open this page.");
+          return;
+        }
+      }
       const existing = useStore.getState().pages.find(page => page.pageId === source.pageId && page.url === source.url
         && page.documentEpoch === source.documentEpoch && !page.ownedByRuntime
         && !["crashed", "detached"].includes(page.viewStatus ?? ""));
@@ -518,7 +535,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} profileNames={sourceProfileNames} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
       {queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status)).map(message => <article className="conversation-turn queued-message" key={message.messageId} data-message-id={message.messageId}><time dateTime={new Date(message.createdAt).toISOString()}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{message.text}</div><div className="queued-message-state"><span>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" onClick={() => void cancelQueued(message)}>Remove</button></>}</div></article>)}
     </div></div>

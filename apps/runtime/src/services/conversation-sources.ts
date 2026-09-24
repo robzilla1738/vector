@@ -21,6 +21,7 @@ export function conversationSourceFromArtifact(artifact: Artifact, content: stri
     sourceId: artifact.artifactId,
     runId: artifact.runId,
     pageId: parsed.data.pageId,
+    ...(parsed.data.profileId ? { profileId: parsed.data.profileId } : {}),
     url: url.href.slice(0, 4000),
     title: parsed.data.content.title.replace(/\s+/g, " ").trim().slice(0, 1000) || url.hostname,
     observedAt: parsed.data.observedAt,
@@ -33,7 +34,7 @@ export function conversationSourceFromArtifact(artifact: Artifact, content: stri
 export function dedupeConversationSources(sources: ConversationSource[]): ConversationSource[] {
   const latest = new Map<string, ConversationSource>();
   for (const source of sources) {
-    const key = `${source.runId}\0${source.pageId}\0${source.url}`;
+    const key = `${source.runId}\0${source.profileId ?? ""}\0${source.pageId}\0${source.url}`;
     const prior = latest.get(key);
     if (!prior || source.observedAt > prior.observedAt || (source.observedAt === prior.observedAt && source.revision > prior.revision)) latest.set(key, source);
   }

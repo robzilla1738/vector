@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { CDP_PORT_FILE, DATA_DIR, PRIMARY_WINDOW_ID, desktopEnv, log } from "../app/bootstrap.js";
 import { exitApproved } from "../app/exit.js";
 import { flushExternalUrls } from "../app/external-urls.js";
-import { registry } from "../app/services.js";
+import { browserProfiles, registry } from "../app/services.js";
 import { profileSession } from "../native-views.js";
 import { spawnRuntime } from "../runtime-proc.js";
 import { pausedAgent, scheduleIdleFreeze, wakePage } from "../tabs/lifecycle-controller.js";
@@ -123,6 +123,7 @@ function launchRuntimeProcess() {
   reportRuntimeStatus(false, runtimeRestartAttempt ? "Reconnecting to the Aux runtime…" : undefined);
   const runtime = spawnRuntime({
     dataDir: DATA_DIR,
+    profileId: browserProfiles.currentId,
     cdpPort: runtimeCdpPort,
     internalCdp: useInternalCdp,
     onExit: code => {

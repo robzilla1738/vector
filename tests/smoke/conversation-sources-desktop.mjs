@@ -24,6 +24,7 @@ await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen)
 const base = `http://127.0.0.1:${fixture.address().port}`;
 const env = { PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_PROFILE_DIR: join(temporary, "profile"), AUX_DATA_DIR: dataDir, AUX_LOAD_DOTENV: "0" };
 let app;
+let secondaryApp;
 const launch = () => launchApp({args:["--use-mock-keychain"],env});
 async function shell() {
   const page = await shellWindow(app, 15_000);
@@ -49,8 +50,8 @@ async function waitActiveUrl(page, url) {
   }
   throw new Error(`Aux did not activate ${url}`);
 }
-function observation({ id, pageId, url, title, observedAt, revision, documentEpoch }) {
-  return { observationId: id, pageId, documentEpoch, revision, observedAt, scope: "full", content: {
+function observation({ id, pageId, profileId = "default", url, title, observedAt, revision, documentEpoch }) {
+  return { observationId: id, pageId, profileId, documentEpoch, revision, observedAt, scope: "full", content: {
     url, title, viewport: { width: 1000, height: 700, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 }, frames: [], text: `${title} PRIVATE_PAGE_BODY`, headings: [title], elements: [], formFields: [], tables: [], links: [], dialogs: [], truncated: false,
     stats: { elementsTotal: 0, elementsShown: 0, textChars: title.length, approxTokens: 4 },
   } };
@@ -61,7 +62,10 @@ try {
   let page = await shell();
   const alpha = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/alpha`);
   const beta = await page.evaluate(url => window.aux.invoke("pages.open", { url, activate: true }), `${base}/beta`);
+  const otherProfile = await page.evaluate(() => window.aux.createBrowserProfile("Work"));
   await page.waitForFunction(ids => window.aux.invoke("pages.list", {}).then(pages => ids.every(id => pages.some(item => item.pageId === id && !item.loading))), [alpha.pageId, beta.pageId]);
+  const liveObservation = await page.evaluate(pageId => window.aux.invoke("pages.observe", { pageId }), alpha.pageId);
+  assert.equal(liveObservation.profileId, "default", "native observations should carry their owning browser Profile");
   const epochs = Object.fromEntries((await page.evaluate(() => window.aux.invoke("pages.list", {}))).map(item => [item.pageId, item.documentEpoch]));
   await app.close(); app = undefined;
 
@@ -75,6 +79,7 @@ try {
     ["source-alpha-latest", observation({ id: "obs-alpha-latest", pageId: alpha.pageId, url: `${base}/alpha`, title: "Research Alpha", observedAt: now + 3, revision: 2, documentEpoch: epochs[alpha.pageId] })],
     ["source-beta", observation({ id: "obs-beta", pageId: beta.pageId, url: `${base}/beta`, title: "Research Beta", observedAt: now + 2, revision: 1, documentEpoch: epochs[beta.pageId] })],
     ["source-local", observation({ id: "obs-local", pageId: beta.pageId, url: "file:///Users/example/private.txt", title: "Private local path", observedAt: now + 4, revision: 2, documentEpoch: epochs[beta.pageId] })],
+    ["source-other-profile", observation({ id: "obs-other-profile", pageId: "other-profile-page", profileId: otherProfile.id, url: `${base}/other-profile`, title: "Research in Work", observedAt: now + 5, revision: 1, documentEpoch: 1 })],
   ];
   for (const [artifactId, record] of records) {
     const path = join(dir, `${artifactId}.json`);
@@ -85,6 +90,12 @@ try {
   repo.db.close();
 
   app = await launch(); page = await shell();
+  secondaryApp = await launchApp({ args: ["--use-mock-keychain"], env: {
+    PATH: process.env.PATH, HOME: temporary, TMPDIR: temporary, AUX_DATA_DIR: join(dataDir, "browser-profiles", otherProfile.id, "runtime"),
+    AUX_PROFILE_DIR: join(dataDir, "browser-profiles", otherProfile.id, "browser"), AUX_PROFILE_CATALOG_DIR: join(dataDir, "browser-profiles"),
+    AUX_BROWSER_PROFILE_ID: otherProfile.id, AUX_LOAD_DOTENV: "0",
+  } });
+  const otherPage = await shellWindow(secondaryApp, 15_000);
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
   const sourcesSummary = page.locator(".conversation-sources summary");
@@ -93,9 +104,11 @@ try {
   const sourceList = page.locator(".conversation-sources");
   await sourceList.getByRole("button", { name: /Research Alpha/ }).waitFor();
   await sourceList.getByRole("button", { name: /Research Beta/ }).waitFor();
-  assert.equal(await page.locator(".conversation-sources button").count(), 2, "same-turn URL revisions should collapse to the latest source");
+  await sourceList.getByRole("button", { name: /Research in Work/ }).waitFor();
+  assert.equal(await page.locator(".conversation-sources button").count(), 3, "same-turn URL revisions should collapse to the latest source");
   const sources = await page.evaluate(() => window.aux.invoke("conversations.sources.get", { chatId: "source-chat" }));
-  assert.deepEqual(sources.sources.map(source => source.sourceId), ["source-beta", "source-alpha-latest"]);
+  assert.deepEqual(sources.sources.map(source => source.sourceId), ["source-beta", "source-alpha-latest", "source-other-profile"]);
+  assert.deepEqual(sources.sources.map(source => source.profileId), ["default", "default", otherProfile.id], "source provenance should retain each captured Profile");
   assert.equal(JSON.stringify(sources).includes(temporary), false, "source API must not expose artifact paths");
   assert.equal(JSON.stringify(sources).includes("PRIVATE_PAGE_BODY"), false, "source API must not expose captured page text");
   await page.screenshot({ path: join(artifactsDir, "aux-conversation-sources.png") });
@@ -115,6 +128,14 @@ try {
 
   await sidebarAction(page, "Chats");
   await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
+  await page.locator(".conversation-sources summary").click();
+  await page.locator(".conversation-sources").getByRole("button", { name: /Research in Work/ }).click();
+  await waitActiveUrl(otherPage, `${base}/other-profile`);
+  const personalPages = await page.evaluate(() => window.aux.invoke("pages.list", {}));
+  assert.ok(!personalPages.some(item => item.url === `${base}/other-profile`), "a Work source must not open in Personal");
+
+  await sidebarAction(page, "Chats");
+  await page.locator("button.history-conversation").filter({ hasText: "Compare the two research sources" }).click();
   const exportedPath = join(temporary, "source-report.md");
   await app.evaluate(({ dialog }, filePath) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath }); }, exportedPath);
   await page.getByRole("button", { name: "Export conversation as Markdown", exact: true }).click();
@@ -122,11 +143,14 @@ try {
   const exported = readFileSync(exportedPath, "utf8");
   assert.match(exported, /Sources observed by Aux/);
   assert.match(exported, /source-alpha-latest revision 2/);
+  assert.match(exported, /browser Profile default/);
+  assert.match(exported, new RegExp(`browser Profile ${otherProfile.id}`));
   assert.doesNotMatch(exported, /source-alpha-old/);
   assert.doesNotMatch(exported, /PRIVATE_PAGE_BODY/);
   assert.doesNotMatch(exported, new RegExp(temporary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  console.log("Conversation sources survive restart, deduplicate observations, reject changed or same-URL tab identities, and export path-free provenance.");
+  console.log("Conversation sources survive restart, retain Profile identity, open in the correct running Profile, and export path-free provenance.");
 } finally {
+  await secondaryApp?.close().catch(() => {});
   await app?.close().catch(() => {});
   fixture.closeAllConnections();
   await new Promise(resolveClose => fixture.close(resolveClose));

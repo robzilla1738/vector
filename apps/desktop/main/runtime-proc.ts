@@ -29,6 +29,7 @@ export interface RuntimeProc {
 
 export function spawnRuntime(opts: {
   dataDir: string;
+  profileId: string;
   cdpPort: number;
   internalCdp?: boolean;
   onExit: (code: number | null) => void;
@@ -40,6 +41,7 @@ export function spawnRuntime(opts: {
     cwd: app.isPackaged ? undefined : join(app.getAppPath(), "..", ".."),
     env: desktopRuntimeEnv({
       dataDir: opts.dataDir,
+      profileId: opts.profileId,
       cdpPort: opts.cdpPort,
       internalCdp: opts.internalCdp,
       electronVersion: String(process.versions.electron ?? "dev"),
