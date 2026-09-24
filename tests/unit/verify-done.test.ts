@@ -58,6 +58,12 @@ describe("verifyDoneAgainstObservation", () => {
     expect(verifyDoneAgainstObservation(claim, obs(), [], "LOCAL DOCUMENT SNAPSHOT: Option B has offline support").ok).toBe(true);
   });
 
+  it("uses the exact selected verified report excerpt for a later turn", () => {
+    const claim = {report:"# Report\nOption B has offline support."};
+    expect(verifyDoneAgainstObservation(claim,obs(),[]).ok).toBe(false);
+    expect(verifyDoneAgainstObservation(claim,obs(),[],undefined,"AUX-GENERATED ARTIFACT: Option B has offline support.").ok).toBe(true);
+  });
+
   it("accepts a write only when observed or remoteConfirmed", () => {
     const click = {
       stepId: "c",

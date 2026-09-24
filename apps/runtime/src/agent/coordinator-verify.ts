@@ -138,13 +138,14 @@ export function verifyDoneAgainstObservation(
   obs: Observation | readonly Observation[],
   outcomes: StepOutcome[],
   documentEvidence?: string,
+  artifactEvidence?: string,
 ): { ok: boolean; reason: string } {
   const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op));
   const writesConfirmed = writeOutcomes.every(
     (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
   );
   const observations = Array.isArray(obs) ? obs : [obs];
-  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""}`;
+  const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""} ${artifactEvidence?.toLowerCase() ?? ""}`;
   const report = result && typeof result === "object" && !Array.isArray(result) && typeof (result as Record<string, unknown>).report === "string"
     ? (result as Record<string, string>).report : undefined;
   const claims = report

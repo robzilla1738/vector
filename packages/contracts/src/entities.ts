@@ -125,6 +125,8 @@ export const RunSchema = z.object({
       contextAttachmentIds: z.array(z.string()).optional(),
       /** Exact bounded document excerpt actually sent in this turn's prompt. */
       contextDocumentEvidence: z.string().max(20_000).optional(),
+      /** Exact excerpt of a verified prior report included in this turn. */
+      contextArtifactEvidence: z.string().max(20_000).optional(),
       /** exact Aux-generated text artifacts used for this turn */
       contextArtifactIds: z.array(z.string()).optional(),
       /** Immutable image snapshots explicitly included in this run. */

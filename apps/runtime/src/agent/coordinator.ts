@@ -124,6 +124,7 @@ export class RunCoordinator {
     contextRunIds?: string[];
     contextAttachmentIds?: string[];
     contextDocumentEvidence?: string;
+    contextArtifactEvidence?: string;
     contextArtifactIds?: string[];
     contextImageArtifactIds?: string[];
     contextPageRefs?: import("@aux/contracts").PageContextRef[];
@@ -159,6 +160,7 @@ export class RunCoordinator {
         contextRunIds: opts.contextRunIds,
         contextAttachmentIds: opts.contextAttachmentIds,
         contextDocumentEvidence: opts.contextDocumentEvidence,
+        contextArtifactEvidence: opts.contextArtifactEvidence,
         contextArtifactIds: opts.contextArtifactIds,
         contextImageArtifactIds: opts.contextImageArtifactIds,
         contextPageRefs: opts.contextPageRefs,
