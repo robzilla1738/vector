@@ -18,7 +18,19 @@ const profileDir = join(dir, 'profile');
 const dataDir = join(dir, 'data');
 mkdirSync(dataDir);
 writeFileSync(join(dataDir, 'settings.json'), JSON.stringify({ effectGrants: ['effect:read', 'effect:write'] }));
+let frameClicks = 0;
 const fixture = createServer((request, response) => {
+  if (request.url === '/frame-click') { frameClicks++; response.writeHead(204).end(); return; }
+  if (request.url === '/frame-child') {
+    response.setHeader('Content-Type', 'text/html');
+    response.end('<title>Cross-site child</title><button id="frame-act" onclick="this.textContent=\'Frame clicked\';fetch(\'/frame-click\')">Act inside frame</button>');
+    return;
+  }
+  if (request.url === '/frame-parent') {
+    response.setHeader('Content-Type', 'text/html');
+    response.end(`<title>Frame parent</title><iframe id="remote" src="http://localhost:${fixture.address().port}/frame-child"></iframe>`);
+    return;
+  }
   if (request.url === '/file') {
     response.setHeader('Content-Type', 'text/plain');
     response.setHeader('Content-Disposition', 'attachment; filename="broker-proof.txt"');
@@ -28,7 +40,7 @@ const fixture = createServer((request, response) => {
   response.setHeader('Content-Type', 'text/html');
   response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><a id="download" href="/file">Download</a>');
 });
-await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
+await new Promise(resolve => fixture.listen(0, resolve));
 const targetUrl = `http://127.0.0.1:${fixture.address().port}/page`;
 const app = spawn(electron, [join(root, 'apps/desktop'), '--use-mock-keychain'], {
   cwd: root,
@@ -106,6 +118,25 @@ try {
   assert.ok(savedDownload?.path.startsWith(join(dataDir, 'downloads')), 'download remains in Aux native profile storage');
   assert.equal(readFileSync(savedDownload.path, 'utf8'), 'Aux download through native session');
 
+  const framePage = await rpc('pages.open', { url: `http://127.0.0.1:${fixture.address().port}/frame-parent`, activate: true });
+  let frameOverview;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    frameOverview = await rpc('pages.observe', { pageId: framePage.pageId });
+    if (frameOverview.content.frames.some(frame => frame.url.includes('/frame-child') && !frame.sameOrigin)) break;
+    await delay(100);
+  }
+  assert.ok(frameOverview.content.frames.some(frame => frame.url.includes('/frame-child') && !frame.sameOrigin), JSON.stringify(frameOverview.content));
+  assert.equal(frameOverview.content.elements.some(element => element.name?.includes('Act inside frame')), false, 'default observation skips cross-site content');
+  const frameObservation = await rpc('pages.observe', { pageId: framePage.pageId, scope: 'subtree', subtreeRef: 'css:#remote' });
+  const frameButton = frameObservation.content.elements.find(element => element.name?.includes('Act inside frame'));
+  assert.ok(frameButton?.ref, JSON.stringify(frameObservation));
+  const frameAction = await rpc('pages.execute', { program: { pageId: framePage.pageId, steps: [{ id: 'frame-click', op: 'click', target: frameButton.ref }] } });
+  assert.equal(frameAction.status, 'completed', JSON.stringify(frameAction));
+  const afterFrameClick = await rpc('pages.observe', { pageId: framePage.pageId, scope: 'subtree', subtreeRef: 'css:#remote' });
+  assert.ok(afterFrameClick.content.elements.some(element => element.name?.includes('Frame clicked')), JSON.stringify({ frameAction, afterFrameClick, frameClicks }));
+  for (let attempt = 0; attempt < 30 && !frameClicks; attempt++) await delay(100);
+  assert.equal(frameClicks, 1, 'explicitly selected cross-site frame action reached its own origin');
+
   const firstRuntimePid = JSON.parse(readFileSync(runtimeFile, 'utf8')).pid;
   process.kill(firstRuntimePid, 'SIGTERM');
   let restarted;
@@ -121,10 +152,11 @@ try {
   assert.ok(restarted, `Broker/runtime did not recover: ${output}`);
   assert.ok(restarted.pages.some(tab => tab.pageId === page.pageId), 'first tab survives runtime restart');
   assert.ok(restarted.pages.some(tab => tab.pageId === second.pageId), 'second tab survives runtime restart');
+  assert.ok(restarted.pages.some(tab => tab.pageId === framePage.pageId), 'cross-site frame tab survives runtime restart');
   const afterRestart = await rpc('pages.observe', { pageId: page.pageId });
   assert.match(JSON.stringify(afterRestart), /Agent clicked and verified/);
   assert.ok((output.match(/internal CDP broker listening/g) ?? []).length >= 2, 'runtime generation receives a fresh broker');
-  console.log('Direct Aux launch: two tabs, agent click and download, raw port denial, invalid capability denial, and runtime reconnect pass.');
+  console.log('Direct Aux launch: agent click, download, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
 } finally {
   if (app.exitCode === null) {
     const exited = once(app, 'exit');

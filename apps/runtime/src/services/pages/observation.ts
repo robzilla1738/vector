@@ -57,7 +57,9 @@ export class ObservationService {
       // same fingerprint — nothing the walk could see has changed, so the
       // renderer is not re-walked and nothing is re-persisted.
       let fingerprint: string | undefined;
-      if (dp.observeFingerprint && lp) {
+      // An explicit subtree can read a child frame whose DOM is outside the
+      // main-document fingerprint. Re-read it instead of returning stale refs.
+      if (req.scope !== "subtree" && dp.observeFingerprint && lp) {
         fingerprint = await dp.observeFingerprint().catch(() => undefined);
         const hit = lp.lastObs;
         if (

@@ -776,7 +776,7 @@ export class PlaywrightDriverPage implements DriverPage {
     return { buffer, width: meta.w, height: meta.h, scale: meta.s };
   }
 
-  /** One small evaluate on the main frame; frames are folded in by URL so a child navigation invalidates too. */
+  /** One small evaluate on the main frame; cache only when child DOM cannot enter the observation. */
   async observeFingerprint(): Promise<string> {
     await this.navigationCommitted();
     // without the world's mutation tracker a text-only change would leave the
@@ -785,11 +785,14 @@ export class PlaywrightDriverPage implements DriverPage {
     if (!world) throw new AuxError("backend_unavailable", "mutation tracker unavailable on this page");
     const main = await bounded(world.call<string>("__aux.fingerprint()"), FRAME_PROBE_MS);
     if (typeof main !== "string") throw new AuxError("backend_unavailable", "fingerprint probe timed out");
-    const frames = this.page
-      .frames()
-      .filter((f) => f !== this.page.mainFrame())
-      .map((f) => f.url())
-      .join("\u0002");
+    const mainOrigin = new URL(this.page.url()).origin;
+    const children = this.page.frames().filter(frame => frame !== this.page.mainFrame());
+    for (const frame of children) {
+      let origin: string;
+      try { origin = new URL(frame.url()).origin; } catch { throw new AuxError("backend_unavailable", "Child frame is navigating"); }
+      if (origin === "null" || origin === mainOrigin) throw new AuxError("backend_unavailable", "Observed child frame needs a fresh read");
+    }
+    const frames = children.map(frame => frame.url()).join("\u0002");
     return frames ? `${main}\u0001frames:${frames}` : main;
   }
 
@@ -820,10 +823,10 @@ export class PlaywrightDriverPage implements DriverPage {
     } catch {
       /* unparsable — every frame falls through to the probe */
     }
-    // Origin check first: a provably-cross-origin frame is skipped with no
-    // round-trip. Only ambiguous frames (about:, srcdoc, unparsable urls)
-    // pay for an evaluate — and every call is bounded, so a wedged
-    // ad/tracking iframe cannot stall the lane that serializes behind it.
+    // Origin check first: default observations skip provably cross-origin
+    // frames without a round-trip. An explicitly selected iframe subtree may
+    // inspect that frame, so useful login/checkout widgets remain operable.
+    // Every read stays bounded so a wedged frame cannot stall the page lane.
     const sameOriginOf = async (frame: Frame): Promise<boolean> => {
       try {
         const origin = new URL(frame.url()).origin;
@@ -831,12 +834,19 @@ export class PlaywrightDriverPage implements DriverPage {
       } catch {
         /* ambiguous url — probe below */
       }
-      return (
+      const probed = (
         (await bounded(
           frame.evaluate(() => true).then(() => true).catch(() => false),
           FRAME_PROBE_MS,
         )) === true
       );
+      // An about:blank frame may navigate while the probe is in flight. Use
+      // its current URL before allowing a content read.
+      try {
+        const currentOrigin = new URL(frame.url()).origin;
+        if (mainOrigin !== null && currentOrigin !== "null") return currentOrigin === mainOrigin;
+      } catch { /* still ambiguous */ }
+      return probed;
     };
     // Subtree scope (plan A10): `subtreeRef` is an `rN` from the last
     // observation or a css selector. A ref resolves through the registry to
@@ -858,13 +868,19 @@ export class PlaywrightDriverPage implements DriverPage {
           if (child) subtree = { onlyFrame: child };
         }
       } else {
-        subtree = { css: parsed.strategy.css ?? req.subtreeRef, frameKey: "main" };
+        const css = parsed.strategy.css ?? req.subtreeRef;
+        subtree = { css, frameKey: "main" };
+        const child = await bounded(
+          this.page.mainFrame().$(css).then(handle => handle?.contentFrame() ?? null),
+          FRAME_PROBE_MS,
+        ).catch(() => null);
+        if (child) subtree = { onlyFrame: child };
       }
     }
     for (const [key, frame] of frameMap) {
       const sameOrigin = await sameOriginOf(frame);
       frames.push({ frame: key, url: frame.url(), name: frame.name() || undefined, sameOrigin });
-      if (!sameOrigin) continue;
+      if (!sameOrigin && frame !== subtree?.onlyFrame) continue;
       if (subtree?.onlyFrame && frame !== subtree.onlyFrame) continue;
       if (subtree?.frameKey && key !== subtree.frameKey && key !== "main") continue;
       const scoped = subtree && !subtree.onlyFrame && key === subtree.frameKey;
