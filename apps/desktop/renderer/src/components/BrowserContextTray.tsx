@@ -18,12 +18,17 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
 }) {
   const pages = useStore(state => state.pages);
   const activePageId = useStore(state => state.activePageId);
+  const splitPageId = useStore(state => state.splitPageId);
   const [busyPageId, setBusyPageId] = useState<string | null>(null);
   const primaryPage = conversationPage(pages, primary, activePageId, linkedPageId);
   const additionalSources = sources.filter(source => source.pageId !== primaryPage?.pageId);
   const available = pages.filter(page => !page.ownedByRuntime && !page.loading
     && !["crashed", "detached"].includes(page.viewStatus ?? "") && page.url.length <= 8192
     && page.pageId !== primaryPage?.pageId);
+  const splitCompanionId = primaryPage && splitPageId
+    ? primaryPage.pageId === splitPageId ? activePageId : splitPageId
+    : null;
+  const splitCompanion = available.find(page => page.pageId === splitCompanionId);
   const picker = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const close = (event: PointerEvent) => { if (!picker.current?.contains(event.target as Node)) picker.current!.open = false; };
@@ -71,6 +76,10 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
         const chosen = conversationPage(pages, value, activePageId, linkedPageId);
         if (chosen && sources.some(source => source.pageId === chosen.pageId)) onSources(sources.filter(source => source.pageId !== chosen.pageId));
       }} linkedPageId={linkedPageId} disabled={disabled} />
+      {splitCompanion && !sources.some(source => source.pageId === splitCompanion.pageId) &&
+        <button type="button" className="btn sm ghost" disabled={disabled || !!busyPageId || additionalSources.length >= 8}
+          title={`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`}
+          onClick={() => void toggle(splitCompanion.pageId)}>Add split tab</button>}
       <details ref={picker} className="conversation-browser-add" onKeyDown={event => {
         if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); picker.current!.open = false; picker.current?.querySelector("summary")?.focus(); }
       }}>

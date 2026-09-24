@@ -57,12 +57,13 @@ try {
   const first = await page.evaluate(value => window.aux.invoke("pages.open", { url: value, activate: true }), url("first"));
   const second = await page.evaluate(value => window.aux.invoke("pages.open", { url: value, activate: true }), url("second"));
   await page.waitForFunction(async ids => (await window.aux.invoke("pages.list", {})).filter(item => ids.includes(item.pageId) && !item.loading).length === 2, [first.pageId, second.pageId]);
+  await page.getByRole("tab", { name: /first/i }).click();
+  await page.getByRole("tab", { name: /second/i }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Open beside current tab" }).click();
   await sidebarAction(page, "Chats");
   await page.getByRole("button", { name: "New chat", exact: true }).click();
   await page.getByRole("combobox", { name: "Browser context" }).selectOption(first.pageId);
-  await page.locator(".conversation-browser-add summary").click();
-  await page.getByRole("group", { name: "Additional browser tabs" }).getByRole("checkbox", { name: /second/i }).check();
-  await page.locator(".conversation-browser-add summary").click();
+  await page.getByRole("button", { name: "Add split tab", exact: true }).click();
   assert.equal(await page.locator('.conversation-browser-sources[aria-label="Selected browser tabs"]').getByText("second", { exact: true }).count(), 1);
   await app.close(); app = undefined;
 
