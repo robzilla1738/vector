@@ -17,7 +17,7 @@ const SHELL_CSP = [
   // search suggestions and cloud terminal sessions
   "connect-src 'self' https: wss:",
   "object-src 'none'",
-  "frame-src 'none'",
+  "frame-src aux-result:",
   "base-uri 'none'",
   "form-action 'none'",
 ].join("; ");

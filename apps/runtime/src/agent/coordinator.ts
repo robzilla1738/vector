@@ -62,6 +62,7 @@ export interface CoordinatorDeps {
   onStepRecorded?: (runId: string, outcome: StepOutcome, step: Step, obsArtifactId?: string) => void;
   saveObservation?: (runId: string, obs: Observation) => string | undefined;
   saveCompletedReport?: (run: Run, markdown: string) => void;
+  saveCompletedHtml?: (run: Run, html: string) => void;
   tracer?: {
     start(
       name: string,
@@ -331,12 +332,16 @@ export class RunCoordinator {
     run.config = { ...run.config, modelCalls: this.deps.repo.listModelCalls(runId).length };
     this.deps.repo.saveRun(run);
     this.persistCheckpoint(run);
-    if (status === "completed" && typeof result?.report === "string" && result.report.trim() && run.config?.chatId) {
-      try { this.deps.saveCompletedReport?.(run, result.report); }
+    if (status === "completed" && run.config?.chatId &&
+      ((typeof result?.report === "string" && result.report.trim()) || (typeof result?.html === "string" && result.html.trim()))) {
+      try {
+        if (typeof result?.report === "string" && result.report.trim()) this.deps.saveCompletedReport?.(run, result.report);
+        if (typeof result?.html === "string" && result.html.trim()) this.deps.saveCompletedHtml?.(run, result.html);
+      }
       catch (cause) {
         run.status = "partially_completed";
-        run.error = `The report could not be saved: ${cause instanceof Error ? cause.message : String(cause)}`;
-        run.statusMessage = "The report was generated but could not be saved";
+        run.error = `The generated result could not be saved: ${cause instanceof Error ? cause.message : String(cause)}`;
+        run.statusMessage = "A generated result could not be saved";
         this.persistCheckpoint(run);
         status = run.status;
         error = run.error;

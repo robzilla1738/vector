@@ -1805,6 +1805,8 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .saved-result-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-2-5) 0; }
 .saved-result-actions > .hint { flex: 1; min-width: 140px; }
 .saved-result-content { max-height: min(240px, 24vh); overflow: auto; padding: var(--space-3); border-radius: var(--r-md); background: var(--bg-1); overflow-wrap: anywhere; }
+.saved-result-content.html-result { max-height: none; padding: 0; overflow: hidden; }
+.saved-result-content.html-result iframe { display: block; width: 100%; height: min(440px, 42vh); border: 0; background: white; }
 .saved-result-content pre { max-height: none; margin: 0; padding: 0; }
 .structured-result-tools { display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2); }
 .structured-result-table { overflow:auto; }

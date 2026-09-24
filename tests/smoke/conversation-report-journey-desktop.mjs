@@ -13,6 +13,7 @@ const documentPath = join(temporary, "brief.md");
 writeFileSync(documentPath, "# Brief\nBrief recommends Beta.");
 const pages = createServer((request, response) => {
   const name = request.url?.slice(1) ?? "";
+  if (name === "preview-leak") { previewLeakRequests++; response.writeHead(204).end(); return; }
   response.setHeader("content-type", "text/html");
   response.end(`<!doctype html><title>${name}</title><h1>${name} detail</h1>`);
 });
@@ -20,6 +21,15 @@ await new Promise(resolve => pages.listen(0, "127.0.0.1", resolve));
 const url = name => `http://127.0.0.1:${pages.address().port}/${name}`;
 let selectedIds = [];
 let plannerCalls = 0;
+let previewLeakRequests = 0;
+const generatedHtml = `<!doctype html><h1>Interactive prototype</h1><button id="try">Try it</button><button id="navigate">Navigate</button><p id="status">Ready</p><script>
+  document.body.dataset.aux = String(!!window.aux);
+  document.body.dataset.bridge = (() => { try { return String(!!parent.aux); } catch { return 'blocked'; } })();
+  document.body.dataset.storage = (() => { try { localStorage.setItem('probe','x'); return 'available'; } catch { return 'blocked'; } })();
+  document.querySelector('#try').onclick = () => { document.querySelector('#status').textContent = 'Clicked'; };
+  document.querySelector('#navigate').onclick = () => { location.href = ${JSON.stringify(url("preview-leak"))}; };
+  fetch(${JSON.stringify(url("preview-leak"))}).catch(() => {});
+</script>`;
 const provider = createServer(async (request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
   const chunks = [];
@@ -36,7 +46,7 @@ const provider = createServer(async (request, response) => {
         ? {status:"continue",pageId:selectedIds[2],message:"Read Gamma",steps:[]}
         : plannerCalls === 3
           ? {status:"done",message:"Prepared cited report",result:{report:`# Report\n- Alpha detail. [Source](${url("Alpha")})\n- Beta detail. [Source](${url("Beta")})\n- Gamma detail. [Source](${url("Gamma")})\n- Brief recommends Beta.`}}
-          : {status:"done",message:"Revised report",result:{report:"# Report\n- Edited note."}});
+          : {status:"done",message:"Revised report and interactive prototype",result:{report:"# Report\n- Edited note.",html:generatedHtml}});
   }
   response.setHeader("content-type", "application/json");
   response.end(JSON.stringify({id:"chatcmpl_report",object:"chat.completion",created:1,model:"aux-report-fixture",
@@ -135,6 +145,26 @@ try {
   assert.match(secondRun.result.report,/Edited note/);
   assert.deepEqual(secondRun.config.contextSourceArtifactIds,[originalReport.artifactId]);
   assert.ok(secondRun.config.contextArtifactIds.includes(savedEdit.artifactId));
+  const htmlResult=await page.evaluate(chatId=>window.aux.invoke("conversations.artifacts.get",{chatId}).then(value=>value.artifacts.find(item=>item.mediaType==="text/html")),firstRun.config.chatId);
+  assert.equal(htmlResult.filename,"preview.html");
+  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"preview.html · v1",exact:true}).click();
+  const htmlPreview=page.getByRole("region",{name:"Saved result preview"});
+  const frame=page.frameLocator('iframe[title="Isolated HTML result"]');
+  await frame.locator("body[data-bridge]").waitFor();
+  await frame.locator("#try").click();
+  assert.equal(await frame.locator("#status").textContent(),"Clicked");
+  assert.equal(await frame.locator("body").getAttribute("data-aux"),"false");
+  assert.equal(await frame.locator("body").getAttribute("data-bridge"),"blocked");
+  assert.equal(await frame.locator("body").getAttribute("data-storage"),"blocked");
+  await frame.locator("#navigate").click();
+  await new Promise(resolve=>setTimeout(resolve,200));
+  assert.equal(page.frames().some(item=>item.url().startsWith(url("preview-leak"))),false,"HTML preview cannot navigate into a site");
+  assert.equal(previewLeakRequests,0,"HTML preview cannot fetch a page or send Profile data");
+  await htmlPreview.getByRole("button",{name:"Edit copy"}).click();
+  await htmlPreview.getByRole("textbox",{name:"Edit result copy"}).fill("<h1>Edited prototype</h1><script>document.body.dataset.active='yes'</script>");
+  await htmlPreview.getByRole("button",{name:"Save version"}).click();
+  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"preview.html · v2",exact:true}).waitFor();
+  await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();
   await app.close();app=undefined;
   app=await launch();page=await shell();
   await poll(page,async ids=>(await window.aux.invoke("pages.list",{})).filter(item=>ids.includes(item.pageId)&&!item.loading).length===3,selectedIds,30000);
@@ -143,6 +173,9 @@ try {
   await page.locator(".cmdbar.compact .cb-opt.results").first().waitFor();
   await page.locator(".cmdbar.compact .cb-opt.results").first().click();
   await page.getByRole("region",{name:"Saved result preview"}).waitFor();
+  await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();
+  await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"preview.html · v2",exact:true}).click();
+  await page.frameLocator('iframe[title="Isolated HTML result"]').locator("h1").getByText("Edited prototype").waitFor();
   await page.getByRole("region",{name:"Saved result preview"}).getByRole("button",{name:"Close result preview"}).click();
   await page.locator('.composer-documents[aria-label="Generated reports and results"]').getByRole("button",{name:"report.md · v3",exact:true}).click();
   await page.getByRole("region",{name:"Saved result preview"}).getByText("Edited note.").waitFor();

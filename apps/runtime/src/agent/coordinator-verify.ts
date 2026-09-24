@@ -169,9 +169,16 @@ export function verifyDoneAgainstObservation(
   }
   const report = result && typeof result === "object" && !Array.isArray(result) && typeof (result as Record<string, unknown>).report === "string"
     ? (result as Record<string, string>).report : undefined;
+  const html = result && typeof result === "object" && !Array.isArray(result) && typeof (result as Record<string, unknown>).html === "string"
+    ? (result as Record<string, string>).html : undefined;
+  if (html && !report && !(result as Record<string, unknown>).answer)
+    return { ok: false, reason: "an HTML preview needs a grounded answer or report" };
+  // Executable presentation code is not factual evidence. Ground the answer
+  // and report separately; the preview remains labeled as generated content.
+  const claimsResult = html ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== "html")) : result;
   const claims = report
-    ? [...collectClaims(Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text, citedSources)]
-    : collectClaims(result);
+    ? [...collectClaims(Object.fromEntries(Object.entries(claimsResult as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text, citedSources)]
+    : collectClaims(claimsResult);
   const numbers = claims.some((c) => c.numeric) ? groundNumbers(text, outcomes) : new Set<number>();
   const ungrounded = claims.filter((c) =>
     c.invalid || (c.numeric ? !numbers.has(toNumber(c.text)) && !text.includes(c.text.toLowerCase()) : (c.strict || c.text.length >= 8) && !text.includes(c.text.toLowerCase())),

@@ -7,6 +7,7 @@ import { isWebUrl } from "../app/external-urls.js";
 import { browserProfiles, offscreen, profile } from "../app/services.js";
 import { notifyRuntime } from "../runtime/supervisor.js";
 import { isShellDocument } from "../shell-origin.js";
+import { releaseWindowPreviews } from "../result-preview-protocol.js";
 import { attachToolbarEdgeWatch } from "../toolbar-edge-watch.js";
 import { trafficLights } from "../traffic-lights.js";
 import { viewHooks } from "../views/hooks.js";
@@ -62,6 +63,12 @@ export async function createRegularWindow(id = `window-${randomUUID()}`, quickAs
   regularShell.webContents.on("will-navigate", (event, url) => {
     if (!isShellUrl(url)) { event.preventDefault(); log("blocked shell navigation to", url); }
   });
+  // HTML results are isolated subframes of the shell. They may run local script,
+  // but cannot turn themselves into a normal web page in the shell session.
+  regularShell.webContents.on("will-frame-navigate", details => {
+    if (!details.isMainFrame && !details.url.startsWith("aux-result://preview/")) details.preventDefault();
+  });
+  regularShell.webContents.on("destroyed", () => releaseWindowPreviews(regularShell.webContents.id));
   // The shell is chrome UI only — page WebContents live in their own processes,
   // so reloading a crashed shell never discards the user's tabs.
   regularShell.webContents.on("render-process-gone", (_event, details) => {

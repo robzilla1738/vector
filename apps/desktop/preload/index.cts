@@ -118,6 +118,8 @@ const aux = {
   focusShell: () => ipcRenderer.invoke("ui.focusShell") as Promise<void>,
   /** thumbnail data-url for a native page */
   preview: (pageId: string) => ipcRenderer.invoke("ui.preview", pageId) as Promise<string | null>,
+  createResultPreview: (html: string) => ipcRenderer.invoke("ui.resultPreview.create", html) as Promise<string>,
+  releaseResultPreview: (url: string) => ipcRenderer.invoke("ui.resultPreview.release", url) as Promise<boolean>,
   watchPreview: (pageId: string) => ipcRenderer.invoke("ui.watchPreview", pageId) as Promise<boolean>,
   unwatchPreview: (pageId: string) => ipcRenderer.invoke("ui.unwatchPreview", pageId) as Promise<boolean>,
   onPreviewFrame: (cb: (frame: { pageId: string; image: Uint8Array }) => void) => {
@@ -224,4 +226,4 @@ const aux = {
 };
 
 export type AuxBridge = typeof aux;
-contextBridge.exposeInMainWorld("aux", aux);
+if (process.isMainFrame) contextBridge.exposeInMainWorld("aux", aux);

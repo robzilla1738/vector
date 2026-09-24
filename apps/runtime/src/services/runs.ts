@@ -600,6 +600,13 @@ export class RunService {
           buffer,
         });
       },
+      saveCompletedHtml: (run, html) => {
+        const buffer = Buffer.from(html, "utf8");
+        if (buffer.length > 256 * 1024 || html.includes("\0")) {
+          throw new AuxError("invalid_params", "The generated HTML exceeds the saved text result limit.");
+        }
+        this.deps.artifacts.save({ runId: run.runId, label: "preview.html", mediaType: "text/html", buffer });
+      },
       tracer: deps.tracer,
       grants: () => deps.settings.effectGrantsForRun(),
       durableWrites,

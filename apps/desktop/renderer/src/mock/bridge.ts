@@ -787,6 +787,8 @@ export function installMockBridge(q: URLSearchParams) {
     sidebarPeek: async () => true,
     focusShell: async () => {},
     preview: async () => null,
+    createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
+    releaseResultPreview: async () => true,
     watchPreview: async () => false,
     unwatchPreview: async () => true,
     onPreviewFrame: () => () => {},

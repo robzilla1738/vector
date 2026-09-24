@@ -54,6 +54,13 @@ describe("verifyDoneAgainstObservation", () => {
     expect(verifyDoneAgainstObservation({report:"# Report\n[Source](javascript:alert(1))"}, obs(), []).ok).toBe(false);
   });
 
+  it("treats interactive HTML as presentation while grounding its answer", () => {
+    const html = "<button onclick=\"this.textContent='fabricated claim'\">Try it</button>";
+    expect(verifyDoneAgainstObservation({html},obs(),[])).toMatchObject({ok:false,reason:"an HTML preview needs a grounded answer or report"});
+    expect(verifyDoneAgainstObservation({answer:"visible page heading",html},obs(),[]).ok).toBe(true);
+    expect(verifyDoneAgainstObservation({answer:"fabricated claim",html},obs(),[]).ok).toBe(false);
+  });
+
   it("accepts a claim from the selected document excerpt actually included in the prompt", () => {
     const claim = { answer: "Option B has offline support" };
     expect(verifyDoneAgainstObservation(claim, obs(), []).ok).toBe(false);
@@ -99,22 +106,25 @@ describe("verifyDoneAgainstObservation", () => {
   });
 });
 
-it("saves a completed conversation report once and keeps a failed report out of saved results", () => {
+it("saves completed report and HTML results once and keeps failed outputs out of saved results", () => {
   const repo = new Repo(openDb(":memory:"));
-  const saved: string[] = [];
+  const saved: string[] = [], htmlSaved:string[]=[];
   const coordinator = new RunCoordinator({
     repo, events: new EventBus(repo), pages: {} as never,
     model: () => null, defaultModel: () => "m", recoveryModel: () => undefined,
     recordModelCall: () => {}, saveCompletedReport: (_run, markdown) => saved.push(markdown),
+    saveCompletedHtml: (_run, html) => htmlSaved.push(html),
   });
   const seed = (runId: string) => repo.saveRun({runId, goal:"Write a report", status:"running", pageIds:["p1"], config:{chatId:"chat-1"}, createdAt:Date.now()});
   seed("run-1");
-  coordinator.finish("run-1", "completed", {report:"# Verified report"});
+  coordinator.finish("run-1", "completed", {report:"# Verified report",html:"<h1>Preview</h1>"});
   expect(repo.getRun("run-1")?.status).toBe("completed");
   expect(saved).toEqual(["# Verified report"]);
+  expect(htmlSaved).toEqual(["<h1>Preview</h1>"]);
   seed("run-2");
-  coordinator.finish("run-2", "failed", {report:"# Unsupported report"});
+  coordinator.finish("run-2", "failed", {report:"# Unsupported report",html:"<h1>Unsupported</h1>"});
   expect(saved).toEqual(["# Verified report"]);
+  expect(htmlSaved).toEqual(["<h1>Preview</h1>"]);
 });
 
 describe("lying model cannot complete a run", () => {

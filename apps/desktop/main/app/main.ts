@@ -10,7 +10,9 @@ import { setSwallowedSink } from "../swallowed.js";
 import { PRIMARY_WINDOW_ID } from "./bootstrap.js";
 import { notifyHttpAuthChanged, regularWindows, requireShellUi } from "../windows/registry.js";
 import { watchAppearance } from "../windows/appearance.js";
+import { registerResultPreviewScheme } from "../result-preview-protocol.js";
 
+registerResultPreviewScheme();
 setSwallowedSink(site => browserHealth.noteSwallowed(site));
 browserProfiles.markInstance();
 setInterval(() => browserProfiles.markInstance(), 120_000).unref();

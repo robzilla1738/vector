@@ -1,4 +1,5 @@
 import { powerMonitor } from "electron";
+import { wireResultPreviewProtocol } from "../result-preview-protocol.js";
 import { wireDownloads } from "../downloads/controller.js";
 import { configureQuickAskShortcut, quickAskShortcutEnabled } from "../features/quick-ask.js";
 import { wireRendererIpc } from "../ipc/index.js";
@@ -29,6 +30,7 @@ export async function loadProfileExtensions() {
 }
 
 export async function boot() {
+  wireResultPreviewProtocol();
   // IPC first: React effects can invoke before the shell finishes loading.
   wireRendererIpc();
   wireDownloads();

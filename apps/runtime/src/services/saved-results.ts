@@ -56,7 +56,7 @@ export class SavedResults {
       JOIN conversations c ON c.chat_id=coalesce(json_extract(r.config,'$.chatId'),r.run_id)
       LEFT JOIN result_versions rv ON rv.artifact_id=a.artifact_id
       WHERE c.archived=0 AND a.status='complete' AND a.size<=262144
-      AND a.media_type IN ('text/plain','text/markdown','text/csv','application/json')
+      AND a.media_type IN ('text/plain','text/markdown','text/csv','application/json','text/html')
       AND instr(a.path,'-observation-r')=0
       AND (instr(lower(a.path),?)>0 OR instr(lower(c.title),?)>0 OR instr(lower(r.goal),?)>0)
       ORDER BY a.created_at DESC, a.artifact_id`).iterate(term, term, term) as Iterable<{artifactId:string;runId:string;path:string;mediaType:string;byteLength:number;createdAt:number;chatId:string;conversationTitle:string;turnGoal:string;revision:number|null}>;

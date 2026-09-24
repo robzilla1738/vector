@@ -5,8 +5,14 @@ import { wakePage } from "../tabs/lifecycle-controller.js";
 import type { ViewEntry } from "../target-registry.js";
 import { handleShell, requireOwnedEntry, requireShellUi } from "../windows/registry.js";
 import { applyStage, clearPreviewWatch } from "../windows/stage.js";
+import { createResultPreview, releaseResultPreview } from "../result-preview-protocol.js";
 
 export function wirePreviewIpc() {
+  handleShell("ui.resultPreview.create", (state, html: unknown) => createResultPreview(state.shellView.webContents.id, html as string));
+  handleShell("ui.resultPreview.release", (state, url: unknown) => {
+    if (typeof url === "string") releaseResultPreview(state.shellView.webContents.id, url);
+    return true;
+  });
   ipcMain.handle("ui.watchPreview", async (event, pageId: unknown) => {
     const state = requireShellUi(event);
     if (typeof pageId !== "string") return false;

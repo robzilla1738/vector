@@ -1,12 +1,30 @@
 import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
 import { StructuredResult } from "./StructuredResult";
 import { useEffect, useRef, useState } from "react";
-import { bridge } from "../bridge";
+import { bridge, inElectron } from "../bridge";
 import { call, errToast, toast } from "../store";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 import { I } from "./icons";
+import { isolatedHtmlDocument } from "../isolated-html";
 
 type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number; revision?:number;parentArtifactId?:string };
+function IsolatedHtmlResult({html}:{html:string}) {
+  const [url,setUrl]=useState<string|null>(null),[error,setError]=useState("");
+  useEffect(()=>{
+    if(!inElectron)return;
+    let live=true,registered:string|undefined;
+    setUrl(null);setError("");
+    void bridge.createResultPreview(html).then(value=>{
+      registered=value;
+      if(live)setUrl(value);
+      else void bridge.releaseResultPreview(value);
+    }).catch(reason=>{if(live)setError(reason instanceof Error?reason.message:String(reason));});
+    return()=>{live=false;if(registered)void bridge.releaseResultPreview(registered);};
+  },[html]);
+  if(error)return <p role="alert" className="field-error">{error}</p>;
+  if(!inElectron)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
+  return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<p role="status" className="hint">Preparing isolated preview…</p>;
+}
 export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;onVersionSaved?:(artifactId:string)=>void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {
   const [result,setResult]=useState<Result|null>(null), [error,setError]=useState(""), [retry,setRetry]=useState(0), [saving,setSaving]=useState(false);
   const [draft,setDraft]=useState(()=>readResultDraft(artifactId));
@@ -66,11 +84,12 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
     {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<p className="hint" role="status">Loading saved result…</p>:<>
       <div className="saved-result-actions"><span className="hint">Saved {new Date(result.createdAt).toLocaleString()}{result.revision?` · v${result.revision}`:""}</span><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm" disabled={saving||attaching||!valid} onClick={()=>void save()}>{saving?"Exporting…":"Export…"}</button>{result.mediaType==="text/csv"&&<button className="btn sm ghost" disabled={saving||attaching||!valid} onClick={()=>void save(true)}>Export Excel…</button>}</div>
       {result.mediaType==="text/csv"&&<p className="hint">Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
+      {result.mediaType==="text/html"&&<p className="hint">Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
       {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button className="btn sm ghost" disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button className="btn sm" disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button className="btn sm ghost" disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
       {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
       {draftError&&<p className="field-error" role="alert">{draftError}</p>}
       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}
-      {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className="saved-result-content" tabIndex={0}>{result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={onCitationOpen}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
+      {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className={`saved-result-content ${result.mediaType==="text/html"?"html-result":""}`} tabIndex={0}>{result.mediaType==="text/html"?<IsolatedHtmlResult html={content}/>:result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={onCitationOpen}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
     </>}
   </section>;
 }

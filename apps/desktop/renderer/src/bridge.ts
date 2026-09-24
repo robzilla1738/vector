@@ -108,6 +108,8 @@ export interface AuxBridge {
   sidebarPeek(open: boolean): Promise<boolean>;
   focusShell(): Promise<void>;
   preview(pageId: string): Promise<string | null>;
+  createResultPreview(html: string): Promise<string>;
+  releaseResultPreview(url: string): Promise<boolean>;
   /** Keep a hidden page laid out and stream JPEG frames until unwatch. */
   watchPreview(pageId: string): Promise<boolean>;
   unwatchPreview(pageId: string): Promise<boolean>;
@@ -268,6 +270,8 @@ const stub: AuxBridge = {
   sidebarPeek: async () => true,
   focusShell: async () => {},
   preview: async () => null,
+  createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
+  releaseResultPreview: async () => true,
   watchPreview: async () => false,
   unwatchPreview: async () => true,
   onPreviewFrame: noop,
