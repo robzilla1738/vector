@@ -1,3 +1,5 @@
+import { LayoutChoice } from "./LayoutChoice";
+import { SettingsRow as Field, SettingsDisclosure, SettingsGroup, Switch } from "./ui";
 import { WebsiteSizes } from "./WebsiteSizes";
 import { QuickAskSetting } from "./QuickAskSetting";
 import { BrowserProfiles } from "./BrowserProfiles";
@@ -13,7 +15,7 @@ import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registr
 import { ClearHistory } from "./ClearHistory";
 import { MemorySettings } from "./MemorySettings";
 import type { ModelProvider } from "@aux/contracts";
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, toast, errToast } from "../store";
 import { bridge, emptyBrowserHealthSummary, type BrowserHealthSummary } from "../bridge";
 
@@ -72,16 +74,6 @@ function activateRadioOnArrow(event: React.KeyboardEvent<HTMLDivElement>) {
   radios[next]?.click();
 }
 
-function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
-  const id=useId();
-  return (
-    <div className="field" data-setting={label} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={hint?`${id}-hint`:undefined}>
-      <span id={`${id}-label`} className="setting-label">{label}</span>
-      {children}
-      {hint && <span id={`${id}-hint`} className="hint">{hint}</span>}
-    </div>
-  );
-}
 
 const categoryDescriptions: Record<string, string> = {
   General: "Search, profiles, shortcuts, and your browsing data.",
@@ -453,7 +445,7 @@ export function Settings() {
         <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>
 
         <section className="appearance-preferences" hidden={!visible("Appearance")}><div className="drawer-section">Appearance</div>
-        <Field label="Theme">
+        <Field compact label="Theme">
           <div className="seg" role="radiogroup" aria-label="Theme" onKeyDown={activateRadioOnArrow}>
             {(["system", "dark", "light"] as const).map((t) => (
               <button key={t} role="radio" aria-checked={theme === t} tabIndex={theme === t ? 0 : -1} className={theme === t ? "on" : ""} onClick={() => void set({ theme: t })}>{t === "system" ? "System" : t === "dark" ? "Dark" : "Light"}</button>
@@ -461,7 +453,7 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Interface text" hint="Shell type size only. Does not change website zoom or the html root font size.">
+        <Field compact label="Interface text" hint="Shell type size only. Does not change website zoom or the html root font size.">
           <div className="seg" role="radiogroup" aria-label="Interface text" onKeyDown={activateRadioOnArrow}>
             {UI_FONT_SIZES.map((size) => (
               <button key={size} role="radio" aria-checked={uiFont === size} tabIndex={uiFont === size ? 0 : -1} className={uiFont === size ? "on" : ""} onClick={() => { writeUiFontSize(size); setUiFont(size); }}>{size}</button>
@@ -469,12 +461,12 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Sidebar appearance" hint="Translucent lets your desktop show through the sidebar. Reduce Transparency uses solid surfaces."><select aria-label="Sidebar appearance" value={String(settings.sidebarAppearance ?? "translucent")} onChange={e => void set({ sidebarAppearance: e.target.value })}><option value="translucent">Translucent</option><option value="solid">Solid</option></select></Field>
-        <Field label="Native material" hint="Liquid Glass uses macOS Tahoe’s native material, with a title-bar fallback on older macOS. Browser previews cannot show native blur."><select aria-label="Native material" disabled={settings.sidebarAppearance === "solid"} value={String(settings.sidebarMaterial ?? "liquid-glass")} onChange={e => void set({ sidebarMaterial: e.target.value })}><option value="liquid-glass">Liquid Glass</option><option value="titlebar">Title bar</option><option value="sidebar">Sidebar</option><option value="under-window">Under window</option></select></Field>
-        <Field label="Sidebar tint" hint="Adds theme-colored opacity over the native blur without fading text or weakening the blur."><select aria-label="Sidebar tint" disabled={settings.sidebarAppearance === "solid"} value={Number(settings.sidebarTint ?? 0)} onChange={e => void set({ sidebarTint: Number(e.target.value) })}>{[0, 10, 20, 30, 40, 50, 60].map(value => <option key={value} value={value}>{value}%</option>)}</select></Field>
-        <Field label="Content opacity" hint="Keeps chats and the new-tab surface separate from the glass sidebar. Websites remain opaque."><select aria-label="Content opacity" disabled={settings.sidebarAppearance === "solid"} value={Number(settings.contentOpacity ?? 95)} onChange={e => void set({ contentOpacity: Number(e.target.value) })}>{[80, 85, 90, 95, 100].map(value => <option key={value} value={value}>{value}%</option>)}</select></Field>
-        <Field label="Glass defaults" hint="Restore the native glass material, clear sidebar tint and 95% content opacity."><button className="btn sm" onClick={() => void set({ sidebarAppearance: "translucent", sidebarMaterial: "liquid-glass", sidebarTint: 0, contentOpacity: 95 })}>Reset glass appearance</button></Field>
-        <Field label="Tab layout" hint="Both layouts use the same tabs, folders, and current selection."><select aria-label="Tab layout" value={String(settings.tabLayout ?? "horizontal")} onChange={e => void set({ tabLayout: e.target.value })}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></Field>
+        <Field compact label="Sidebar appearance" hint="Translucent lets your desktop show through the sidebar. Reduce Transparency uses solid surfaces."><select aria-label="Sidebar appearance" value={String(settings.sidebarAppearance ?? "translucent")} onChange={e => void set({ sidebarAppearance: e.target.value })}><option value="translucent">Translucent</option><option value="solid">Solid</option></select></Field>
+        <Field compact label="Native material" hint="Liquid Glass uses macOS Tahoe’s native material, with a title-bar fallback on older macOS. Browser previews cannot show native blur."><select aria-label="Native material" disabled={settings.sidebarAppearance === "solid"} value={String(settings.sidebarMaterial ?? "liquid-glass")} onChange={e => void set({ sidebarMaterial: e.target.value })}><option value="liquid-glass">Liquid Glass</option><option value="titlebar">Title bar</option><option value="sidebar">Sidebar</option><option value="under-window">Under window</option></select></Field>
+        <Field compact label="Sidebar tint" hint="Adds theme-colored opacity over the native blur without fading text or weakening the blur."><select aria-label="Sidebar tint" disabled={settings.sidebarAppearance === "solid"} value={Number(settings.sidebarTint ?? 0)} onChange={e => void set({ sidebarTint: Number(e.target.value) })}>{[0, 10, 20, 30, 40, 50, 60].map(value => <option key={value} value={value}>{value}%</option>)}</select></Field>
+        <Field compact label="Content opacity" hint="Keeps chats and the new-tab surface separate from the glass sidebar. Websites remain opaque."><select aria-label="Content opacity" disabled={settings.sidebarAppearance === "solid"} value={Number(settings.contentOpacity ?? 95)} onChange={e => void set({ contentOpacity: Number(e.target.value) })}>{[80, 85, 90, 95, 100].map(value => <option key={value} value={value}>{value}%</option>)}</select></Field>
+        <Field compact label="Glass defaults" hint="Restore the native glass material, clear sidebar tint and 95% content opacity."><button className="btn sm" onClick={() => void set({ sidebarAppearance: "translucent", sidebarMaterial: "liquid-glass", sidebarTint: 0, contentOpacity: 95 })}>Reset glass appearance</button></Field>
+        <Field compact label="Tab layout" hint="Both layouts use the same tabs, folders, and current selection."><LayoutChoice value={String(settings.tabLayout ?? "horizontal")} onChange={tabLayout => void set({ tabLayout })}/></Field>
         <Field label="Website sizes"><WebsiteSizes /></Field>
         </section><section hidden={!visible("Agent permissions")}><div className="drawer-section">Agent permissions</div>
         <Field
@@ -515,7 +507,7 @@ export function Settings() {
           </div>
         </Field>
 
-        </section><section hidden={!visible("General")}><div className="drawer-section">Browsing</div>
+        </section><section hidden={!visible("General")}><SettingsGroup title="Browsing">
         <Field label="Default browser">
           <DefaultBrowserSetting />
         </Field>
@@ -524,17 +516,17 @@ export function Settings() {
           <AutofillSetting value={settings.autofill as AutofillProfile | undefined} onSave={autofill => set({ autofill })} />
         </Field>
 
-        <Field label="Search engine">
+        <Field compact label="Search engine">
           <SearchEngineSetting value={(settings.searchEngine as string) ?? DEFAULT_SEARCH_ENGINE} onSave={searchEngine => set({ searchEngine })} />
         </Field>
 
-        <Field label="Search suggestions" hint="Show suggestions from your search engine as you type. Typed text is only sent when it doesn’t look like a private or local address, and never in Private mode.">
-          <label className="row"><input type="checkbox" checked={Boolean(settings.searchSuggestions)} onChange={event => void set({ searchSuggestions: event.target.checked })}/><span className="hint">Show search suggestions in the address bar</span></label>
+        <Field compact label="Search suggestions" hint="Show suggestions from your search engine as you type. Typed text is only sent when it doesn’t look like a private or local address, and never in Private mode.">
+          <Switch aria-label="Show search suggestions in the address bar" checked={Boolean(settings.searchSuggestions)} onChange={event => void set({ searchSuggestions: event.target.checked })}/>
         </Field>
 
-        <Field label="Keyword engines" hint="Search a site directly by typing its keyword first.">
+        <SettingsDisclosure label="Keyword engines" description="Manage shortcuts for searching individual sites."><Field label="Keyword engines" hint="Search a site directly by typing its keyword first.">
           <SearchEnginesSetting value={(settings.searchEngines as EngineRow[]) ?? []} onSave={searchEngines => set({ searchEngines })} />
-        </Field>
+        </Field></SettingsDisclosure>
 
         <Field label="Import Chrome sign-ins" hint={cookieImport.result?.detail ?? "Import available sign-in cookies from Chrome. macOS may ask for keychain access; some sites may require you to sign in again."}>
           <div className="row">
@@ -559,19 +551,21 @@ export function Settings() {
           <ImportDataSetting />
         </Field>
 
-        <Field label="Keyboard shortcuts" hint="Change any browser or app shortcut. Menus, web pages and the shell share one set — a chord that collides is explained before it is assigned.">
+        </SettingsGroup><SettingsGroup title="Workspace and shortcuts">
+        <SettingsDisclosure label="Keyboard shortcuts" description="Search and customize browser shortcuts."><Field label="Keyboard shortcuts" hint="Change any browser or app shortcut. Menus, web pages and the shell share one set — a chord that collides is explained before it is assigned.">
           <ShortcutsSetting value={(settings.shortcutOverrides as ShortcutOverrides | undefined) ?? {}} onSave={shortcutOverrides => set({ shortcutOverrides })} />
-        </Field>
+        </Field></SettingsDisclosure>
 
         <Field label="Quick Ask"><QuickAskSetting /></Field>
-        <Field label="Browser profiles"><BrowserProfiles /></Field>
+        <SettingsDisclosure label="Browser profiles" description="Manage separate browsing identities."><Field label="Browser profiles"><BrowserProfiles /></Field></SettingsDisclosure>
 
-        <Field label="Task data backup" hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants; older backups are scrubbed when restored but may retain earlier copies until you delete them. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores.">
+        </SettingsGroup><SettingsGroup title="Data and recovery">
+        <SettingsDisclosure label="Task data backup" description="Create, restore, and manage local backups."><Field label="Task data backup" hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants; older backups are scrubbed when restored but may retain earlier copies until you delete them. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores.">
           <div className="row"><button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.exportRuntimeBackup().then(result=>{setBackupMessage(result?`Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts?` · ${result.missingArtifacts} unavailable`:''} · ${result.bytes} bytes`:'Backup cancelled.');return call("installation.listBackups", {});}).then(value=>{if(Array.isArray(value))setBackups(value as typeof backups);}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{backupBusy?'Preparing…':'Create backup…'}</button><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void bridge.stageRuntimeRestore().then(result=>{if(result){setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts?`; ${result.missingArtifacts} were unavailable when the backup was created`:''}. Quit Aux normally and reopen it to apply.`);}else setBackupMessage('Restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore backup…</button>{restoreStatus.pending&&<button className="btn sm" disabled={backupBusy} onClick={()=>{setBackupBusy(true);void bridge.cancelRuntimeRestore().then(()=>{setRestoreStatus(current=>({...current,pending:false}));setBackupMessage('Pending restore cancelled.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Cancel pending restore</button>}</div>
           <label>Keep complete backups<select aria-label="Backup retention" value={backupKeep} disabled={backupBusy} onChange={event=>{const keep=Number(event.target.value) as 3|5|10|20;setBackupBusy(true);void call("installation.setBackupRetention",{keep}).then(value=>setBackupKeep(value.keep as 3|5|10|20)).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>{([3,5,10,20] as const).map(keep=><option key={keep} value={keep}>Keep {keep}</option>)}</select></label>
           {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button>{deleteBackupName===item.name?<><span>Delete this local backup?</span><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.deleteBackup",{name:item.name,expectedSha256:item.sha256}).then(()=>call("installation.listBackups",{})).then(value=>{setBackups(value);setDeleteBackupName(null);setBackupMessage('Local backup deleted.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Delete backup</button><button className="btn sm ghost" disabled={backupBusy} onClick={()=>setDeleteBackupName(null)}>Cancel</button></>:<button className="btn sm ghost" disabled={backupBusy||restoreStatus.pending} onClick={()=>setDeleteBackupName(item.name)}>Delete…</button>}</div>)}</details>}
           {restoreStatus.pending&&<output className="hint">A restore is staged for the next launch. Changes made before quitting will be replaced.</output>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<output className="hint">{backupMessage}</output>}
-        </Field>
+        </Field></SettingsDisclosure>
 
 
         <details className="settings-advanced">
@@ -598,7 +592,7 @@ export function Settings() {
         <div className="drawer-foot" data-setting="clear-history" tabIndex={-1}>
           <ClearHistory />
         </div>
-      </section></div></div>
+      </SettingsGroup></section></div></div>
     </div>
   );
 }

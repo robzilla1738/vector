@@ -396,7 +396,7 @@ const FOLDER_EMOJIS = ["", "📁", "⭐", "🔖", "📌", "🧭", "🧪", "🎯"
 /** Rows beyond this render only inside the scroll window. */
 const VIRTUAL_TABS = 60;
 /** The sidebar previews the newest bookmarks; the Library holds the rest. */
-const SIDEBAR_BOOKMARKS = 12;
+const SIDEBAR_BOOKMARKS = 4;
 
 type OpenLink = (link: Pin, event: React.MouseEvent) => void;
 
@@ -428,7 +428,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: {
 });
 
 const SidebarChats = memo(function SidebarChats() {
-  return <div className="sb-chats"><button className="sb-link" onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button><ChatSessions /></div>;
+  return <div className="sb-chats"><button className="sb-link" onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button><ChatSessions compact /></div>;
 });
 
 /* ------------------------------------------------------------------ */

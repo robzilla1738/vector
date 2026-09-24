@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tokens = readFileSync(join(here, "../../apps/desktop/renderer/src/tokens.css"), "utf8");
 const styles = readFileSync(join(here, "../../apps/desktop/renderer/src/styles.css"), "utf8");
+const sharedUi = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ui.css"), "utf8");
 const css = tokens + "\n" + styles;
 
 function block(theme: "dark" | "light"): string {
@@ -222,7 +223,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
     expect(commandBar).toContain("{I.send}");
     expect(commandBar).not.toContain("I.enter");
-    expect(styles).toContain(".conversation-input > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
+    expect(styles).toContain(".composer-send-actions > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
   });
 
   it("keeps a conversation page card live and offers Open in tab and Split view", () => {
@@ -252,12 +253,13 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(styles).toContain("settings-nav button {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2-5);");
     expect(styles).toContain("border-radius: var(--r-control);\n  corner-shape: round;");
     expect(styles).toContain(".settings-content .drawer-section + .field,\n.settings-content section > .field:first-child { border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl); }");
-    expect(styles).toContain(".settings-content .field:not(:has(+ .field)) { border-end-start-radius: var(--r-xl); border-end-end-radius: var(--r-xl); border-bottom-color: transparent; }");
+    expect(sharedUi).toContain(".ui-settings-group > div { background:var(--surface-secondary); border-radius:var(--r-xl); overflow:hidden; }");
+    expect(styles).toContain('input:not([type="range"]):not([type="checkbox"]):not([type="radio"])');
     expect(styles).not.toContain(".settings-content .field:first-of-type { border-radius: 14px 14px 0 0; }");
     expect(styles).not.toContain(".settings-content .field:last-of-type { border-radius: 0 0 14px 14px; }");
   });
 
-  it("opens attachments as one row and hides conversation options and work history", () => {
+  it("opens attachments without hiding run controls and work history", () => {
     for (const dead of [".context-body", ".context-attach", ".composer-options", ".composer-attach", ".attach-page"]) expect(styles).not.toContain(dead);
     expect(styles).toContain(".capture-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:var(--space-2); }");
     expect(styles).not.toMatch(/capture-actions[^{]*\{[^}]*display:\s*contents/);
@@ -274,7 +276,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     // hiding them regresses the live-run controls — see .conversation .run-msg above.
     expect(styles).not.toMatch(/\.conversation \.run-status[^{}]*display:\s*none/);
     expect(styles).not.toMatch(/\.conversation \.run-section[^{}]*display:\s*none/);
-    expect(styles).toContain(".conversation-input > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
+    expect(styles).toContain(".composer-send-actions > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
 
   });
 });

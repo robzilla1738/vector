@@ -1,3 +1,4 @@
+import type { ConversationSource } from "@aux/contracts";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, Run } from "@aux/contracts";
@@ -84,7 +85,7 @@ function chatReply(run: Run): string | null {
 }
 
 /** Final answer as prose — no status chrome, copy is an icon. */
-function Answer({ run, conversation = false, retry = null, stream, onCitationOpen }: { run: Run; conversation?: boolean; retry?: ReactNode; stream?: string; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
+function Answer({ run, conversation = false, retry = null, stream, onCitationOpen, sources }: { sources?: ConversationSource[]; run: Run; conversation?: boolean; retry?: ReactNode; stream?: string; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
   const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const reply = conversation ? chatReply(run) : null;
@@ -108,7 +109,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
     if (!reply && !retry && !(run.error && !run.failure)) return null;
     return (
       <section className="answer">
-        {reply && <AnswerMarkdown text={reply} onOpenLink={onCitationOpen ? (url,background)=>onCitationOpen(url,background,run.runId) : undefined}/>}
+        {reply && <AnswerMarkdown text={reply} sources={sources} onOpenLink={onCitationOpen ? (url,background)=>onCitationOpen(url,background,run.runId) : undefined}/>}
         {(reply || retry) && <span className="answer-tools">{reply && <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>{copied ? I.check : I.copy}</button>}{retry}</span>}
         {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
       </section>
@@ -133,7 +134,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
 }
 
 /** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
-export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen }: { runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
+export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false }: { questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
   const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
   const stream = useStore((s) => s.answerStreams[runId]);
@@ -251,9 +252,6 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
 
       {!(conversation && !live && run.status === "completed") && <div className="run-status nums">
         {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
-        {!conversation && <Elapsed run={run} />}
-        {!conversation && calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
-        {!conversation && stats && stats.costUsd > 0 && <span title={`${stats.inputTokens.toLocaleString()} in · ${stats.outputTokens.toLocaleString()} out tokens`}>{fmtCost(stats.costUsd, stats.costEstimated)}</span>}
         {page && page.url !== "about:blank" && page.pageId !== activePageId && (
           <button className="run-host" onClick={() => void activate(page.pageId).catch(errToast)} title={page.url}>
             {hostOf(page.url)}
@@ -295,7 +293,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      {asksMe && question && (
+      {asksMe && question && !questionInComposer && (
         <div className="needs-input" role="group" aria-label="The agent needs your answer">
           <div className="ni-head">{I.chat}<span>Needs your answer</span></div>
           <p className="ni-q">{question}</p>
@@ -321,11 +319,13 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
         </div>
       )}
 
-      <Answer run={run} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
+      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
 
-      {stats && stats.calls > 0 && (stats.modelIds.length > 0 || stats.providers.length > 0) && <details className="run-provenance">
-        <summary>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</summary>
-        <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div>
+      {(calls != null || stats || !conversation) && <details className="run-provenance">
+        <summary>Run details</summary>
+        <div><Elapsed run={run}/>{calls != null && <span>{calls} {calls === 1 ? "model call" : "model calls"}</span>}</div>
+        {stats && <><p>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</p>
+        <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div></>}
       </details>}
 
       {run.failure && (

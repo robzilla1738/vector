@@ -1,0 +1,3848 @@
+{
+  "version": 1,
+  "updated": "2026-09-24",
+  "baselineCommit": "c34f3c2c",
+  "scope": "Approved complete component and layout transplant plan. Existing screenshots are not the baseline.",
+  "matrix": {
+    "layouts": [
+      "horizontal",
+      "vertical"
+    ],
+    "sidebar": [
+      "expanded",
+      "collapsed/peek"
+    ],
+    "appearance": [
+      "light",
+      "dark"
+    ],
+    "viewports": [
+      "1280x720",
+      "1440x900",
+      "1920x1080"
+    ],
+    "text": [
+      "default",
+      "enlarged"
+    ],
+    "accessibility": [
+      "keyboard",
+      "reduced motion",
+      "reduced transparency"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "AgentRail",
+      "component": "apps/desktop/renderer/src/components/AgentRail.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/rail-draft-light-1440.png"
+      ],
+      "functionalEvidence": [
+        "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
+        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "AnswerMarkdown",
+      "component": "apps/desktop/renderer/src/components/AnswerMarkdown.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "answer-markdown.test.tsx: recorded-only citation previews, ambiguous Profile fallback, account-aware activation, no remote images"
+      ],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "AutofillSetting",
+      "component": "apps/desktop/renderer/src/components/AutofillSetting.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "AuxMark",
+      "component": "apps/desktop/renderer/src/components/AuxMark.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "retained-infrastructure",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Retain identity, lazy loading, virtualization, and mock-only boundaries."
+      ]
+    },
+    {
+      "id": "BrowserContextPicker",
+      "component": "apps/desktop/renderer/src/components/BrowserContextPicker.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "BrowserContextTray",
+      "component": "apps/desktop/renderer/src/components/BrowserContextTray.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "BrowserProfiles",
+      "component": "apps/desktop/renderer/src/components/BrowserProfiles.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "BrowsingMemory",
+      "component": "apps/desktop/renderer/src/components/BrowsingMemory.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "CalendarConnections",
+      "component": "apps/desktop/renderer/src/components/CalendarConnections.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "CalendarTaskGrants",
+      "component": "apps/desktop/renderer/src/components/CalendarTaskGrants.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ChatSessions",
+      "component": "apps/desktop/renderer/src/components/ChatSessions.tsx",
+      "entryPoint": "sessions",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js"
+      ],
+      "treatment": "port-layout",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+      ],
+      "functionalEvidence": [
+        "components/ChatSessions.test.tsx: compact rows, one action menu, destructive confirmation",
+        "components/ui.test.tsx: keyboard focus, disabled items, Escape and selection"
+      ],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ChatSidebar",
+      "component": "apps/desktop/renderer/src/components/ChatSidebar.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+      ],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "CitationChip",
+      "component": "apps/desktop/renderer/src/components/CitationChip.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "answer-markdown.test.tsx: recorded-only citation previews, ambiguous Profile fallback, account-aware activation, no remote images"
+      ],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ClearHistory",
+      "component": "apps/desktop/renderer/src/components/ClearHistory.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "CloudEnvironmentPanel",
+      "component": "apps/desktop/renderer/src/components/CloudEnvironmentPanel.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "CloudTerminal",
+      "component": "apps/desktop/renderer/src/components/CloudTerminal.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "CommandBar",
+      "component": "apps/desktop/renderer/src/components/CommandBar.tsx",
+      "entryPoint": "search",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/search-view-L-AR8vWd.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ContentMemory",
+      "component": "apps/desktop/renderer/src/components/ContentMemory.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Conversation",
+      "component": "apps/desktop/renderer/src/components/Conversation.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/rail-draft-light-1440.png",
+        "evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+      ],
+      "functionalEvidence": [
+        "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
+        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ConversationContext",
+      "component": "apps/desktop/renderer/src/components/ConversationContext.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ConversationDrafts",
+      "component": "apps/desktop/renderer/src/components/ConversationDrafts.tsx",
+      "entryPoint": "sessions",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ConversationHistory",
+      "component": "apps/desktop/renderer/src/components/ConversationHistory.tsx",
+      "entryPoint": "sessions",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ConversationImages",
+      "component": "apps/desktop/renderer/src/components/ConversationImages.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ConversationTask",
+      "component": "apps/desktop/renderer/src/components/ConversationTask.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "DefaultBrowserSetting",
+      "component": "apps/desktop/renderer/src/components/DefaultBrowserSetting.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "DeferredSurface",
+      "component": "apps/desktop/renderer/src/components/DeferredSurface.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Dictation",
+      "component": "apps/desktop/renderer/src/components/Dictation.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "DocumentContent",
+      "component": "apps/desktop/renderer/src/components/DocumentContent.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "DocumentSnapshot",
+      "component": "apps/desktop/renderer/src/components/DocumentSnapshot.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Downloads",
+      "component": "apps/desktop/renderer/src/components/Downloads.tsx",
+      "entryPoint": "files",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/files-artifact-CHwMh-J0.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Extensions",
+      "component": "apps/desktop/renderer/src/components/Extensions.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ExternalAgents",
+      "component": "apps/desktop/renderer/src/components/ExternalAgents.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "FindBar",
+      "component": "apps/desktop/renderer/src/components/FindBar.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "HorizontalPins",
+      "component": "apps/desktop/renderer/src/components/HorizontalPins.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "HorizontalTabs",
+      "component": "apps/desktop/renderer/src/components/HorizontalTabs.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+      ],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "HttpAuthPrompt",
+      "component": "apps/desktop/renderer/src/components/HttpAuthPrompt.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ImageSnapshot",
+      "component": "apps/desktop/renderer/src/components/ImageSnapshot.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ImportDataSetting",
+      "component": "apps/desktop/renderer/src/components/ImportDataSetting.tsx",
+      "entryPoint": "import",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/import-browser-3mA7e-Wx.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Inspector",
+      "component": "apps/desktop/renderer/src/components/Inspector.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "LayoutChoice",
+      "component": "apps/desktop/renderer/src/components/LayoutChoice.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/appearance-light-1440.png"
+      ],
+      "functionalEvidence": [
+        "Local mock UI: nested shortcut search opens and focuses editor; Light theme and layout selection controls present."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Library",
+      "component": "apps/desktop/renderer/src/components/Library.tsx",
+      "entryPoint": "search",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/search-view-L-AR8vWd.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "LocalProjectResources",
+      "component": "apps/desktop/renderer/src/components/LocalProjectResources.tsx",
+      "entryPoint": "projects",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/project-list-DoacRdKT.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/project-dialog-BPnQKmXM.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "MemoryExclusions",
+      "component": "apps/desktop/renderer/src/components/MemoryExclusions.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "MemoryItems",
+      "component": "apps/desktop/renderer/src/components/MemoryItems.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "MemorySettings",
+      "component": "apps/desktop/renderer/src/components/MemorySettings.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "MockPage",
+      "component": "apps/desktop/renderer/src/components/MockPage.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "retained-infrastructure",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Retain identity, lazy loading, virtualization, and mock-only boundaries."
+      ]
+    },
+    {
+      "id": "NavigationButtons",
+      "component": "apps/desktop/renderer/src/components/NavigationButtons.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ObservationPanel",
+      "component": "apps/desktop/renderer/src/components/ObservationPanel.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "OpenBookmarkFolder",
+      "component": "apps/desktop/renderer/src/components/OpenBookmarkFolder.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Overview",
+      "component": "apps/desktop/renderer/src/components/Overview.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "PageZoom",
+      "component": "apps/desktop/renderer/src/components/PageZoom.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Palette",
+      "component": "apps/desktop/renderer/src/components/Palette.tsx",
+      "entryPoint": "search",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/search-view-L-AR8vWd.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "PaneBoundary",
+      "component": "apps/desktop/renderer/src/components/PaneBoundary.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "PinMenu",
+      "component": "apps/desktop/renderer/src/components/PinMenu.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "PluginsPanel",
+      "component": "apps/desktop/renderer/src/components/PluginsPanel.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ProjectCommandPanel",
+      "component": "apps/desktop/renderer/src/components/ProjectCommandPanel.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ProjectFileEditor",
+      "component": "apps/desktop/renderer/src/components/ProjectFileEditor.tsx",
+      "entryPoint": "files",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/files-artifact-CHwMh-J0.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "QuickAsk",
+      "component": "apps/desktop/renderer/src/components/QuickAsk.tsx",
+      "entryPoint": "composer",
+      "referenceDonors": [
+        "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "QuickAskSetting",
+      "component": "apps/desktop/renderer/src/components/QuickAskSetting.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ReaderView",
+      "component": "apps/desktop/renderer/src/components/ReaderView.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "RecentWork",
+      "component": "apps/desktop/renderer/src/components/RecentWork.tsx",
+      "entryPoint": "home",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/newtab-DBpOtHpI.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/newtab-editor-umuLQGyq.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "RecentlyClosed",
+      "component": "apps/desktop/renderer/src/components/RecentlyClosed.tsx",
+      "entryPoint": "search",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/search-view-L-AR8vWd.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ResizeHandle",
+      "component": "apps/desktop/renderer/src/components/ResizeHandle.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ResultsTable",
+      "component": "apps/desktop/renderer/src/components/ResultsTable.tsx",
+      "entryPoint": "tables",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolTableRow.CHOBgxwO.css"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "RoutineSchedule",
+      "component": "apps/desktop/renderer/src/components/RoutineSchedule.tsx",
+      "entryPoint": "routines",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/routines-B2j0DOh-.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Routines",
+      "component": "apps/desktop/renderer/src/components/Routines.tsx",
+      "entryPoint": "routines",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/routines-B2j0DOh-.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "RunImages",
+      "component": "apps/desktop/renderer/src/components/RunImages.tsx",
+      "entryPoint": "activity",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/Surface.BU6PW9lK.css"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "RunPanel",
+      "component": "apps/desktop/renderer/src/components/RunPanel.tsx",
+      "entryPoint": "activity",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/Surface.BU6PW9lK.css"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png"
+      ],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SaveConversationTask",
+      "component": "apps/desktop/renderer/src/components/SaveConversationTask.tsx",
+      "entryPoint": "projects",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/project-list-DoacRdKT.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/project-dialog-BPnQKmXM.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SavedResultPreview",
+      "component": "apps/desktop/renderer/src/components/SavedResultPreview.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SearchEngineSetting",
+      "component": "apps/desktop/renderer/src/components/SearchEngineSetting.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SearchEnginesSetting",
+      "component": "apps/desktop/renderer/src/components/SearchEnginesSetting.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SessionRecovery",
+      "component": "apps/desktop/renderer/src/components/SessionRecovery.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SetPanel",
+      "component": "apps/desktop/renderer/src/components/SetPanel.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Settings",
+      "component": "apps/desktop/renderer/src/components/Settings.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/appearance-light-1440.png"
+      ],
+      "functionalEvidence": [
+        "Local mock UI: nested shortcut search opens and focuses editor; Light theme and layout selection controls present."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "ShortcutsSetting",
+      "component": "apps/desktop/renderer/src/components/ShortcutsSetting.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Sidebar",
+      "component": "apps/desktop/renderer/src/components/Sidebar.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SidebarSection",
+      "component": "apps/desktop/renderer/src/components/SidebarSection.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SiteControls",
+      "component": "apps/desktop/renderer/src/components/SiteControls.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SitePermissions",
+      "component": "apps/desktop/renderer/src/components/SitePermissions.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SiteTile",
+      "component": "apps/desktop/renderer/src/components/SiteTile.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Skeleton",
+      "component": "apps/desktop/renderer/src/components/Skeleton.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SourceRow",
+      "component": "apps/desktop/renderer/src/components/SourceRow.tsx",
+      "entryPoint": "reading",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css"
+      ],
+      "treatment": "port-layout",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "answer-markdown.test.tsx: recorded-only citation previews, ambiguous Profile fallback, account-aware activation, no remote images"
+      ],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SpaceMemoryEditor",
+      "component": "apps/desktop/renderer/src/components/SpaceMemoryEditor.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SplitDivider",
+      "component": "apps/desktop/renderer/src/components/SplitDivider.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Stage",
+      "component": "apps/desktop/renderer/src/components/Stage.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "StartPage",
+      "component": "apps/desktop/renderer/src/components/StartPage.tsx",
+      "entryPoint": "home",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/newtab-DBpOtHpI.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/newtab-editor-umuLQGyq.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "StepTimeline",
+      "component": "apps/desktop/renderer/src/components/StepTimeline.tsx",
+      "entryPoint": "activity",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/Surface.BU6PW9lK.css"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "StructuredResult",
+      "component": "apps/desktop/renderer/src/components/StructuredResult.tsx",
+      "entryPoint": "tables",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolTableRow.CHOBgxwO.css"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "SupportingContent",
+      "component": "apps/desktop/renderer/src/components/SupportingContent.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "evidence/2026-09-24/horizontal-question-dark-1920.png",
+        "evidence/2026-09-24/horizontal-collapsed-dark-1280.png",
+        "evidence/2026-09-24/supporting-overlay-dark-1280.png"
+      ],
+      "functionalEvidence": [
+        "components/SupportingContent.test.tsx: mounted container measurement, keyboard resize, breakpoint, modal focus, draft DOM continuity",
+        "Local mock UI: typed draft survives full \u2192 rail \u2192 full at 1440\u00d7900.",
+        "Local mock browser: 956px conversation becomes chip; overlay Escape returns focus and preserves answer draft."
+      ],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TabAudioButton",
+      "component": "apps/desktop/renderer/src/components/TabAudioButton.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TabMenu",
+      "component": "apps/desktop/renderer/src/components/TabMenu.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TabPreview",
+      "component": "apps/desktop/renderer/src/components/TabPreview.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TaskHistory",
+      "component": "apps/desktop/renderer/src/components/TaskHistory.tsx",
+      "entryPoint": "sessions",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TaskReceiptView",
+      "component": "apps/desktop/renderer/src/components/TaskReceiptView.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TaskResources",
+      "component": "apps/desktop/renderer/src/components/TaskResources.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TaskWorkspace",
+      "component": "apps/desktop/renderer/src/components/TaskWorkspace.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Tasks",
+      "component": "apps/desktop/renderer/src/components/Tasks.tsx",
+      "entryPoint": "sessions",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Toasts",
+      "component": "apps/desktop/renderer/src/components/Toasts.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "Toolbar",
+      "component": "apps/desktop/renderer/src/components/Toolbar.tsx",
+      "entryPoint": "shell",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "TranslationBar",
+      "component": "apps/desktop/renderer/src/components/TranslationBar.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "UntrackedFileReview",
+      "component": "apps/desktop/renderer/src/components/UntrackedFileReview.tsx",
+      "entryPoint": "detail",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css"
+      ],
+      "treatment": "port-layout",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "VaultOfferBanner",
+      "component": "apps/desktop/renderer/src/components/VaultOfferBanner.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "VaultSettings",
+      "component": "apps/desktop/renderer/src/components/VaultSettings.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "VirtualList",
+      "component": "apps/desktop/renderer/src/components/VirtualList.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "retained-infrastructure",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Retain identity, lazy loading, virtualization, and mock-only boundaries."
+      ]
+    },
+    {
+      "id": "WebsiteSizes",
+      "component": "apps/desktop/renderer/src/components/WebsiteSizes.tsx",
+      "entryPoint": "settings",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "WorkbookPreview",
+      "component": "apps/desktop/renderer/src/components/WorkbookPreview.tsx",
+      "entryPoint": "tables",
+      "referenceDonors": [
+        "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolTableRow.CHOBgxwO.css"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "central-icons",
+      "component": "apps/desktop/renderer/src/components/central-icons.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "retained-infrastructure",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Retain identity, lazy loading, virtualization, and mock-only boundaries."
+      ]
+    },
+    {
+      "id": "icons",
+      "component": "apps/desktop/renderer/src/components/icons.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "retained-infrastructure",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Retain identity, lazy loading, virtualization, and mock-only boundaries."
+      ]
+    },
+    {
+      "id": "surfaces",
+      "component": "apps/desktop/renderer/src/components/surfaces.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "retained-infrastructure",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Retain identity, lazy loading, virtualization, and mock-only boundaries."
+      ]
+    },
+    {
+      "id": "ui",
+      "component": "apps/desktop/renderer/src/components/ui.tsx",
+      "entryPoint": "shared",
+      "referenceDonors": [],
+      "treatment": "unify",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [
+        "components/ChatSessions.test.tsx: compact rows, one action menu, destructive confirmation",
+        "components/ui.test.tsx: keyboard focus, disabled items, Escape and selection"
+      ],
+      "nativeHostVerification": "pending relevant-host journey",
+      "remaining": [
+        "Complete all applicable requirements in the approved surface map.",
+        "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "First-run setup",
+      "component": null,
+      "entryPoint": "First-run setup",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/onboarding-layout-DJDioK8u.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    },
+    {
+      "id": "Selection and capture",
+      "component": null,
+      "entryPoint": "Selection and capture",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/capture-toolbar-BS0mxWef.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/selection-handle-CVRs8Ptf.js"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    },
+    {
+      "id": "Native print/save/open",
+      "component": null,
+      "entryPoint": "Native print/save/open",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "retained-native",
+      "status": "native-gate",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    },
+    {
+      "id": "Extension installation and permissions",
+      "component": null,
+      "entryPoint": "Extension installation and permissions",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "retained-native",
+      "status": "native-gate",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    },
+    {
+      "id": "Passkeys and SSO",
+      "component": null,
+      "entryPoint": "Passkeys and SSO",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "retained-native",
+      "status": "native-gate",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    },
+    {
+      "id": "About and updates",
+      "component": null,
+      "entryPoint": "About and updates",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    },
+    {
+      "id": "Shared dialogs and popovers",
+      "component": null,
+      "entryPoint": "Shared dialogs and popovers",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/liquid-glass.css",
+        "/Users/rcourson/06/assets/runtime/ax-tree.txt"
+      ],
+      "treatment": "adapt",
+      "status": "planned",
+      "requiredStates": [
+        "available",
+        "unavailable",
+        "error",
+        "cancel",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [],
+      "functionalEvidence": [],
+      "nativeHostVerification": "pending Chromium candidate",
+      "remaining": [
+        "Verify actual supported capabilities; preserve provider-owned security and consent UI."
+      ]
+    }
+  ],
+  "referenceRoutes": [
+    {
+      "route": "/account/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/agents/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ExternalAgents",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/ai/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/appearance/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/archived-chats/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ConversationHistory",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/artifact-test/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "SavedResultPreview",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/auth",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/billing/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/callback/google/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/callback/p3-p3/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/capture-anchor/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Selection and capture",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/capture-result/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Selection and capture",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/capture-toolbar/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Selection and capture",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/channels/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/communication/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Conversation",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/context-awareness/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ConversationContext",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/developers/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/done/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "First-run setup",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/error-test/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "PaneBoundary",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/experimental/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/experimental/detect-tools/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "PluginsPanel",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/files/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "LocalProjectResources",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/general/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/glance/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "QuickAsk",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/histories/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Library",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/import-browser/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ImportDataSetting",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/import-browser/progress/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ImportDataSetting",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/import-password/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "VaultSettings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/import/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ImportDataSetting",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/inbox",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Tasks",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/inbox/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Tasks",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/lasso/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Selection and capture",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/liquid-glass-playground/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ui",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/memories",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "MemoryItems",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/mini-popup/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "QuickAsk",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/minipopup/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "QuickAsk",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/model/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/new",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "StartPage",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/onboarding",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "First-run setup",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/password/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "VaultSettings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/payment-use/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/plugins/mcps/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "PluginsPanel",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/plugins/skills/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Routines",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/privacy/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "SitePermissions",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/profile/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "BrowserProfiles",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/projects",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "LocalProjectResources",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/projects/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "LocalProjectResources",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/recovery/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "SessionRecovery",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/remote-sessions",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/routines",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Routines",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/routines/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Routines",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/selection-handle/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Selection and capture",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/account",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/settings/agents",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ExternalAgents",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/appearance",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/archived-chats",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "ConversationHistory",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/billing",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/settings/channels",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/settings/developers",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/general",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/lasso",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Selection and capture",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/memories",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "MemoryItems",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/mini-popup",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "QuickAsk",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/model",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/password",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "VaultSettings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/plugins/mcps",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "PluginsPanel",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/plugins/skills",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Routines",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/privacy",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "SitePermissions",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/projects",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "LocalProjectResources",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/routines",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Routines",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/settings/statistics",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/sidepanel",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "AgentRail",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/sign-in/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/sign-in/verify/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/sign-up/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/sign-up/verify-email/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    },
+    {
+      "route": "/splash/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "First-run setup",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/statistics/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Settings",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/tab-preview/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "TabPreview",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/tasks",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "Tasks",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/translate-status/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "mapped",
+      "sharedImplementation": "TranslationBar",
+      "remaining": "Use the shared Aux implementation; qualify supported states before marking port complete."
+    },
+    {
+      "route": "/u/",
+      "donorInventory": "/Users/rcourson/06/assets/extension-on-disk/routes.txt",
+      "status": "capability-gated",
+      "sharedImplementation": null,
+      "remaining": "Reference-only account, billing, channel, remote session, payment, or unknown capability. No functional Aux equivalent established; do not render a decorative copy."
+    }
+  ],
+  "donorEvidence": [
+    {
+      "path": "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/0.B_VuoG67.css",
+      "sha256": "9c5b1a6f23ac95a43c13fa5c15fa5b489dd69f4dc62f21bdeddc7a149d42d2c6"
+    },
+    {
+      "path": "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/Surface.BU6PW9lK.css",
+      "sha256": "3c52f71d5865090f87d40df4eed469abef62b91424e7012ffc0568267350c597"
+    },
+    {
+      "path": "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolDetailPane.CVzvVPLM.css",
+      "sha256": "768e22bda9228c6351d9a03c3fb43d8c793f07f6ff9b01cd3aed7cdca3596681"
+    },
+    {
+      "path": "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/ToolTableRow.CHOBgxwO.css",
+      "sha256": "8ad25093b0198103b47f0b8e005e02df6978430e9e11441897c7f0252b3e6035"
+    },
+    {
+      "path": "/Users/rcourson/05/assets/web-chat/dist/app/immutable/assets/response-context-content.BlTLFqVz.css",
+      "sha256": "d5ed3fd1b008a9e1d209138d4b1e1a0ef247147af8b72628800e23f90b4b602b"
+    },
+    {
+      "path": "/Users/rcourson/06/agent/reference/session-composer-CnTzVrop.js",
+      "sha256": "3e317fe73c685e41e9b77d15142b36643facf5b99ab03cbf9e6b9ba179b161b1"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/appearance-DstV8fYk.js",
+      "sha256": "ef6a0268a14a1728ba10f226f1742cf7c90b48b791a028419fc56769407e0d5f"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/capture-toolbar-BS0mxWef.js",
+      "sha256": "1dcbbdea406e2dcfad4dce88c6cbb9412d2da34ef7205b31c89a53f374284bf9"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/chat-list-item-B365UCgd.js",
+      "sha256": "32f39ab7dffa618d4c6f22d9d35c3d8d2468d9ba63e297487e929dd346205c99"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/chat-preview-card-7QeH9Bh1.js",
+      "sha256": "2b71cc57c3d1f87238e8156acab9d8b73ba047f20b576f68d8f126867720b80e"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/connect-dialog-kDTbka9k.js",
+      "sha256": "05f511eb34697557d158369202dd9a0bc87815debd52037fd04c130712b7d20c"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/files-artifact-CHwMh-J0.js",
+      "sha256": "52196f37c704f5b2c8c840b47cbfa247d307f875990a1731bf34bdca447b06ea"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/import-browser-3mA7e-Wx.js",
+      "sha256": "b8549c9e7c4110747ea8e6f9140ed9afb4c50add3086f6544bbb25ea32b3b157"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/newtab-DBpOtHpI.js",
+      "sha256": "919ec207c64da214c6be074d4f310232bb48f4c4cc8f9e609b1393e2af31365b"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/newtab-editor-umuLQGyq.js",
+      "sha256": "0a4982464e506b9f1931b01ad9a876f04818a176fdd72dc9d03528bad9e0f0a5"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/onboarding-layout-DJDioK8u.js",
+      "sha256": "fa27c6f7f654603cb19c1c760cfed3d9b9a2cdd392f99f671c0d490cb88e16db"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/project-dialog-BPnQKmXM.js",
+      "sha256": "7c25255280e72153d3b04e60c7e8d0cbdf7d8714825d1a4d8a96ca65fe3d65e8"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/project-list-DoacRdKT.js",
+      "sha256": "c6b81c6f68ab81e919398d0d3730c6b5a851e5cf0bca016338c47bfda988ce2a"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/routines-B2j0DOh-.js",
+      "sha256": "48836307762e03e2eaa4a3b8aa71a33712d7b0616b879739ffcfc3b09f3a33f3"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/search-view-L-AR8vWd.js",
+      "sha256": "6400aa657297407faa2b47abdcead57bec440ddd57c7fd9ded7d6fc7b9b74751"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/selection-handle-CVRs8Ptf.js",
+      "sha256": "c0c4a0718d6a1857c513130fa26fbc7d3997e823798d403d562f371139e25522"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/06-agent-manager/assets/tabsearch-ki2vKQEQ.js",
+      "sha256": "968ca6f6c38c3958cb644872173447930ffa3b5e2d29924b8a3b9c3c63eecf15"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/liquid-glass.css",
+      "sha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7"
+    },
+    {
+      "path": "/Users/rcourson/06/assets/runtime/ax-tree.txt",
+      "sha256": "78a6f6feda794f8947ad3218cb4fc67b2adbcf69f0e267c78bfc57b47de2aee5"
+    }
+  ],
+  "verificationSummary": {
+    "rendererTypecheck": "passed",
+    "focusedRendererChecks": 24,
+    "chromeStyleChecks": 25,
+    "nativeCandidate": "not yet available; native checks pending",
+    "fullMatrix": "incomplete",
+    "performanceComparison": "not run"
+  }
+}

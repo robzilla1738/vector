@@ -1,0 +1,109 @@
+import { useEffect, useId, useLayoutEffect, useRef, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
+import { moveMenuFocus } from "../keyboard-list";
+import { positionContextMenu } from "../position-context-menu";
+import { requestStageReport } from "../stage-obstruction";
+import { useDismissable } from "../use-dismissable";
+import { I } from "./icons";
+import "./ui.css";
+
+/** Aux materials: native chrome owns page blur; reading surfaces remain stable. */
+export function Surface({ material = "panel", className = "", ...props }: HTMLAttributes<HTMLDivElement> & { material?: "panel" | "floating" | "inset" | "reading" }) {
+  return <div {...props} className={`ui-surface ${className}`} data-material={material} />;
+}
+
+export function SettingsRow({ label, hint, children, compact = false }: { label: string; hint?: ReactNode; children: ReactNode; compact?: boolean }) {
+  const id = useId();
+  return <div className={`field ui-setting${compact ? " compact" : ""}`} data-setting={label} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined}>
+    <span id={`${id}-label`} className="setting-label">{label}</span>
+    <div className="ui-setting-control">{children}</div>
+    {hint && <span id={`${id}-hint`} className="hint">{hint}</span>}
+  </div>;
+}
+
+export function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+  return <section className="ui-settings-group" aria-label={title}><h4>{title}</h4><div>{children}</div></section>;
+}
+
+export function SettingsDisclosure({ label, description, children }: { label: string; description: string; children: ReactNode }) {
+  return <details className="ui-settings-disclosure" data-setting={label} tabIndex={-1}>
+    <summary><span><strong>{label}</strong><small>{description}</small></span>{I.right}</summary>
+    <div className="ui-settings-disclosure-body">{children}</div>
+  </details>;
+}
+
+export function Switch(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role">) {
+  return <input {...props} type="checkbox" role="switch" className={`ui-switch ${props.className ?? ""}`} />;
+}
+export function Checkbox(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  return <input {...props} type="checkbox" className={`ui-checkbox ${props.className ?? ""}`} />;
+}
+export function TextField(props: InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={`ui-text-field ${props.className ?? ""}`} />;
+}
+export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select {...props} className={`ui-select ${props.className ?? ""}`} />;
+}
+
+export type MenuAction = { label: string; icon?: ReactNode; onSelect(): void; disabled?: boolean; danger?: boolean; shortcut?: string };
+export function ActionMenu({ label, actions, children = I.more }: { label: string; actions: MenuAction[]; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const openAtEnd = useRef(false);
+  const menu = useRef<HTMLDivElement>(null);
+  const id = useId();
+  const close = () => { setOpen(false); trigger.current?.focus(); };
+  useDismissable(open, close);
+  useLayoutEffect(() => {
+    if (!open || !menu.current || !trigger.current) return;
+    const rect = trigger.current.getBoundingClientRect();
+    positionContextMenu(menu.current, rect.right - menu.current.offsetWidth, rect.bottom + 4);
+    const items = menu.current.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+    (openAtEnd.current ? items[items.length - 1] : items[0])?.focus();
+    requestStageReport();
+    return () => { requestAnimationFrame(requestStageReport); };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (!menu.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const resized = () => setOpen(false);
+    document.addEventListener("pointerdown", outside);
+    window.addEventListener("resize", resized);
+    return () => { document.removeEventListener("pointerdown", outside); window.removeEventListener("resize", resized); };
+  }, [open]);
+  return <>
+    <button ref={trigger} type="button" className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => { openAtEnd.current = false; setOpen(value => !value); }} onKeyDown={event => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); openAtEnd.current = event.key === "ArrowUp"; setOpen(true); }
+    }}>{children}</button>
+    {open && createPortal(<div id={id} ref={menu} className="menu ctx-menu ui-action-menu" role="menu" aria-label={label} onKeyDown={event => {
+      if (event.key === "Tab") { setOpen(false); trigger.current?.focus(); return; }
+      moveMenuFocus(event);
+    }}>{actions.map(action => <button key={action.label} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={() => { close(); action.onSelect(); }}>
+      <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.shortcut && <kbd>{action.shortcut}</kbd>}
+    </button>)}</div>, document.body)}
+  </>;
+}
+
+export function ListRow({ title, description, leading, trailing, selected = false, onOpen }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; onOpen(): void }) {
+  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button type="button" className="ui-list-open" onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
+    {leading && <span className="ui-list-icon">{leading}</span>}<span className="ui-list-copy"><strong>{title}</strong>{description && <small>{description}</small>}</span>
+  </button>{trailing && <div className="ui-list-actions">{trailing}</div>}</div>;
+}
+
+export function StatusBadge({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "active" | "success" | "warning" | "error" }) {
+  return <span className="ui-status" data-tone={tone}><span aria-hidden="true" />{label}</span>;
+}
+
+export function EmptyState({ title, description, action, icon = I.folder }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
+  return <div className="ui-empty"><span className="ui-empty-icon" aria-hidden="true">{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
+}
+
+export function DetailPane({ title, metadata, actions, onClose, children, className = "" }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: () => void; children: ReactNode; className?: string }) {
+  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{I.close}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+}
+
+export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {
+  return <div className="composer-frame-wrap">{notices && <div className="composer-notices">{notices}</div>}<Surface material="inset" className="composer-frame">{context && <div className="composer-context">{context}</div>}{children}</Surface></div>;
+}

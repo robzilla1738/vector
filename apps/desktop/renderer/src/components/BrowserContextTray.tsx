@@ -19,6 +19,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
   const pages = useStore(state => state.pages);
   const activePageId = useStore(state => state.activePageId);
   const splitPageId = useStore(state => state.splitPageId);
+  const [query, setQuery] = useState("");
   const [busyPageId, setBusyPageId] = useState<string | null>(null);
   const primaryPage = conversationPage(pages, primary, activePageId, linkedPageId);
   const additionalSources = sources.filter(source => source.pageId !== primaryPage?.pageId);
@@ -85,7 +86,8 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
       }}>
         <summary aria-disabled={disabled || !!busyPageId} onClick={event => { if (disabled || busyPageId) event.preventDefault(); }}>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</summary>
         <div role="group" aria-label="Additional browser tabs">
-          {available.length ? available.map(page => <label key={page.pageId}>
+          <input type="search" aria-label="Search browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
+          {available.length ? available.filter(page => `${page.title} ${page.url}`.toLowerCase().includes(query.toLowerCase())).map(page => <label key={page.pageId}>
             <input type="checkbox" checked={sources.some(source => source.pageId === page.pageId)} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !sources.some(source => source.pageId === page.pageId))} onChange={() => void toggle(page.pageId)} />
             <span title={page.url}>{page.title || hostOf(page.url)}<small>{hostOf(page.url)}</small></span>
           </label>) : <p>No other available browser tabs.</p>}

@@ -5,7 +5,24 @@
 .conversation-steer { margin: 0 0 var(--space-2); }
 .conversation-steer small { display: block; margin: 0 0 var(--space-1) auto; width: fit-content; color: var(--ink-2); font-size: var(--fs-xs); }
 .conversation-steer .user-message { margin-bottom: var(--space-2); }
-.conversation-live-actions { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); color: var(--ink-2); font-size: var(--fs-xs); }
+.conversation-live-actions { display: flex; align-items: center; flex-wrap:wrap; gap: var(--space-1); color: var(--ink-2); font-size: var(--fs-xs); }
 .conversation-live-actions button { border-radius: var(--r-md); padding: var(--space-1) var(--space-2); color: inherit; }
 .conversation-live-actions button:hover { background: var(--bg-hover); color: var(--ink-0); }
 .conversation-live-actions button.selected { background: var(--bg-hover); color: var(--ink-0); }
+.composer-footer { display:flex; align-items:flex-end; gap:var(--space-2); padding:0 var(--space-1) var(--space-1); }
+.composer-footer-context { flex:1; min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-1); }
+.composer-send-actions { display:flex; align-items:center; flex:none; gap:var(--space-1); }
+.composer-send-actions > button[aria-label="Send message"] { background:var(--accent); color:var(--accent-ink); border-radius:var(--r-pill); }
+.composer-footer .new-chat-options { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-1); width:100%; padding:0; margin:0; }
+.composer-footer .conversation-browser-context { flex:1; min-width:0; }
+.composer-footer .conversation-browser-context-controls { flex-wrap:wrap; }
+.composer-footer select { max-width:100%; text-overflow:ellipsis; }
+.composer-context .conversation-history-context { margin:0; font-size:var(--fs-xs); }
+.composer-context .composer-documents { margin:0; padding:var(--space-1); }
+.composer-frame .conversation-input { background:transparent; border:0; box-shadow:none; border-radius:0; }
+.composer-frame .conversation-images { margin:0; }
+.composer-frame-wrap .field-error { margin:var(--space-1) var(--space-2); }
+.composer-question { padding:var(--space-3); margin-bottom:var(--space-2); border:var(--hairline) solid var(--line); border-radius:var(--r-xl); background:var(--surface-secondary); }
+.composer-question p { margin:var(--space-1) 0 0; white-space:pre-wrap; }
+.conversation-browser-add input[type="search"] { width:100%; min-height:36px; border:var(--hairline) solid var(--line); border-radius:var(--r-md); padding:var(--space-2); background:var(--surface-input); }
+.conversation-body:has(> .supporting-chip) .conversation-scroll { padding-top:48px; }

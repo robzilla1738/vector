@@ -1,3 +1,6 @@
+import { SupportingContent } from "./SupportingContent";
+import { SourceRow } from "./SourceRow";
+import { ComposerFrame } from "./ui";
 import { ConversationContext } from "./ConversationContext";
 import { BrowserContextTray } from "./BrowserContextTray";
 import { RunImages } from "./RunImages";
@@ -28,6 +31,8 @@ import { I } from "./icons";
 import { useDismissable } from "../use-dismissable";
 import "./Conversation.css";
 
+const NO_SOURCES: ConversationSource[] = [];
+
 type DraftState = ReturnType<typeof useStore.getState>;
 const QUEUE_ATTEMPT_PREFIX = "aux.pending-queue-message.v1:";
 type QueueAttempt = { messageId: string; runId: string; text: string; mode: "queue" | "steer" };
@@ -48,12 +53,12 @@ const draftText = (s: DraftState, id: string | null | undefined, answerRunId?: s
 };
 
 /** Owns the draft subscription so typing re-renders the input, never the thread. */
-const ComposerInput = memo(function ComposerInput({ id, answerRunId, answerQuestion, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children }: {
+const ComposerInput = memo(function ComposerInput({ id, answerRunId, answerQuestion, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children, footer, modes }: {
   id: string | null | undefined; answerRunId?: string; answerQuestion?: string; disabled: boolean; sendDisabled: boolean; placeholder: string; maxLength?: number;
-  inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">; onChange(value: string): void; onSend(): void; children?: ReactNode;
+  inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">; onChange(value: string): void; onSend(): void; children?: ReactNode; footer?: ReactNode; modes?: ReactNode;
 }) {
   const text = useStore(s => draftText(s, id, answerRunId, answerQuestion));
-  return <div className="conversation-input"><textarea {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/>{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{I.send}</button></div>;
+  return <div className="conversation-input"><textarea {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/><div className="composer-footer"><div className="composer-footer-context">{footer}{modes}</div><div className="composer-send-actions">{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{I.send}</button></div></div></div>;
 });
 
 type ConversationSpaceContext = { workspace: Workspace | null; memory: WorkspaceMemory | null; assigned?: boolean; taskId?: string; memoryPreview?: string; browsingPreview?: string };
@@ -103,12 +108,7 @@ function LivePage({ pageId }: { pageId: string }) {
 function RunSources({ sources, profileNames, onOpen }: { sources: ConversationSource[]; profileNames: Record<string, string>; onOpen: (source: ConversationSource) => void }) {
   if (!sources.length) return null;
   return <details className="conversation-sources"><summary>{I.globe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
-    {sources.map(source => <button key={source.sourceId} onClick={() => onOpen(source)} title={source.url}>
-      <span><b>{source.title}</b><small>{source.kind === "calendar"
-        ? `Google Calendar · ${source.accountKey}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · ${source.start} · fetched ${new Date(source.observedAt).toLocaleString()}`
-        : source.kind === "memory" ? `Saved article · ${hostOf(source.url)} · ${profileNames[source.profileId] ?? "Unknown Profile"} · saved ${new Date(source.observedAt).toLocaleString()}`
-        : `${hostOf(source.url)}${source.profileId ? ` · ${profileNames[source.profileId] ?? "Unknown Profile"}` : ""} · observed ${new Date(source.observedAt).toLocaleString()}`}</small></span>{I.open}
-    </button>)}
+    {sources.map(source => <SourceRow key={source.sourceId} source={source} profileNames={profileNames} onOpen={() => onOpen(source)} />)}
     <p>Sources record what Aux read; verify external outcomes in the source account.</p>
   </div></details>;
 }
@@ -176,6 +176,14 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     return Object.fromEntries(generated.map(item=>[item.artifactId,version(item,new Set())]));
   },[generated]);
   const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
+  const sourcesByRun = useMemo(() => {
+    const grouped = new Map<string, ConversationSource[]>();
+    for (const source of conversationSources) {
+      const rows = grouped.get(source.runId) ?? [];
+      rows.push(source); grouped.set(source.runId, rows);
+    }
+    return grouped;
+  }, [conversationSources]);
   const [calendarSourceChoice, setCalendarSourceChoice] = useState<{ source: Extract<ConversationSource, { kind: "calendar" }>; profiles: BrowserProfile[]; background: boolean } | null>(null);
   const calendarChoiceRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -207,6 +215,8 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
   const [workspaceContext, setWorkspaceContext] = useState<ConversationSpaceContext>({ workspace: null, memory: null });
 
   const [previewOpen, setPreviewOpen] = useState(true);
+  const [sourceDetail, setSourceDetail] = useState<ConversationSource | null>(null);
+  useEffect(() => setSourceDetail(null), [id]);
   const [previewMenu, setPreviewMenu] = useState(false);
   const previewRoot = useRef<HTMLDivElement>(null);
   const createdChat = useRef<string | null>(null);
@@ -603,6 +613,8 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
         const current = answering && last ? state.runAnswerDrafts[last.runId]?.text ?? "" : id ? state.conversationDrafts[draftKey(id)] ?? "" : state.agentDraft;
         setText(current ? `${current}\n${words}` : words);
       }}/>;
+  const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{answering && <button type="button" className={effectiveLiveMode === "answer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "answer"} onClick={() => setLiveSendMode("answer")}>Answer question</button>}<button type="button" className={effectiveLiveMode === "steer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "steer"} onClick={() => setLiveSendMode("steer")}>Steer now</button><button type="button" className={effectiveLiveMode === "queue" ? "selected" : ""} aria-pressed={effectiveLiveMode === "queue"} onClick={() => setLiveSendMode("queue")}>Queue next</button></div>;
+  const composerFooter = !taskBound && !answering && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>;
   const closedPage = !linked && !!last?.pageIds.length;
   const splitPlan = selectedContext ? previewSplit(layout, pages, selectedContext.pageId, activePageId) : null;
   const openPreview = (where: "tab" | "split") => {
@@ -633,6 +645,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {splitPlan && <button type="button" className="menu-item" role="menuitem" onClick={() => openPreview("split")}>{I.split}<span>Split view</span></button>}
     </div>}
   </div> : null;
+  const supporting = id && resultPreview ? <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/>
+    : id && imagePreview && images.some(image => image.imageId === imagePreview) ? <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} onClose={() => setImagePreview(null)}/>
+    : id && documentPreview ? <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)}/>
+    : sourceDetail ? <><SourceRow source={sourceDetail} profileNames={sourceProfileNames} onOpen={() => void openSource(sourceDetail)}/><p className="hint selectable">{sourceDetail.url}</p><button className="btn" onClick={() => void openSource(sourceDetail)}>Open recorded source {I.open}</button></>
+    : browserPreview;
+  const supportingKey = resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
+  const closeSupporting = () => { useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(null); setSourceDetail(null); setPreviewOpen(false); };
   return <section ref={conversationRoot} className={`conversation${embedded ? " conversation-embedded" : ""}${newChat ? " conversation-new" : ""}${attachmentsOpen ? " attachments-open" : ""}`} aria-label={embedded ? "Conversation" : undefined} aria-labelledby={embedded ? undefined : "conversation-title"}>
     {!embedded && <header className="conversation-head">{newChat && <span className="new-chat-brand"><AuxMark />Aux<span aria-hidden="true">/</span></span>}<h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{selectedContext && selectedContext.url !== "about:blank" && <button className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{I.globe}</button>}{turns.length > 0 && <button className="icon-btn" disabled={exporting} title="Export conversation as Markdown" aria-label="Export conversation as Markdown" onClick={() => void exportConversation()}>{I.downloadSm}</button>}<button className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" onClick={() => useStore.getState().showConversationInRail(id)}>{I.rail}</button></header>}
     <div className="conversation-body"><div className="conversation-main">
@@ -641,7 +660,7 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} onCitationOpen={openCitation}/><RunSources sources={conversationSources.filter(source => source.runId === run.runId)} profileNames={sourceProfileNames} onOpen={source => void openSource(source)}/><RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/><RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
       {queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status)).map(message => <article className="conversation-turn queued-message" key={message.messageId} data-message-id={message.messageId}><time dateTime={new Date(message.createdAt).toISOString()}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{message.text}</div><div className="queued-message-state"><span>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" onClick={() => void cancelQueued(message)}>Remove</button></>}</div></article>)}
     </div></div>
@@ -649,14 +668,14 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
     <div className="conversation-compose"><div className="conversation-compose-content">
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
       {archived && <div className="conversation-archive-notice" role="status"><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</div>}
-      {id && resultPreview && <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/> }
-      {id && imagePreview && images.some(image => image.imageId === imagePreview) && <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} onClose={() => setImagePreview(null)} />}
-      {id && documentPreview && <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)} />}
-      {attachments.length > 0 && <div className="composer-documents" aria-label="Attached documents">{attachments.map(item => <div key={item.attachmentId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setImagePreview(null); setDocumentPreview(item.attachmentId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button></div>)}</div>}
+      <ComposerFrame notices={answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{answerQuestion}</p></div>}>
+      <div className="composer-context">
+      {attachments.length > 0 && <div className="composer-documents" aria-label="Attached documents">{attachments.map(item => <div key={item.attachmentId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void changeDocument(item.attachmentId)}>{I.close}</button></div>)}</div>}
       {generated.length > 0 && <div className="composer-documents" aria-label="Generated reports and results">{generated.map(item => <div key={item.artifactId} className={item.included ? "" : "excluded"}><button title={`${item.filename} · ${item.turnGoal}`} onClick={() => { setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); }}>{I.result}<span>{item.filename}{item.filename==="report.md"||item.mediaType==="text/html"?` · v${item.revision??artifactVersions[item.artifactId]??1}`:""}</span></button><label title="Include this saved result in the next turn"><input type="checkbox" aria-label={`Use ${item.filename} in next reply`} checked={item.included} disabled={contextLocked || archived} onChange={event => { void call("conversations.artifacts.toggle",{chatId:id!,artifactId:item.artifactId,included:event.target.checked}).then(value=>setGenerated(value.artifacts)).catch(errToast); }}/></label></div>)}</div>}
-      {images.length > 0 && <div className="composer-documents" aria-label="Attached images">{images.map(item => <div key={item.imageId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setDocumentPreview(null); setImagePreview(item.imageId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void removeImage(item.imageId)}>{I.close}</button></div>)}</div>}
+      {images.length > 0 && <div className="composer-documents" aria-label="Attached images">{images.map(item => <div key={item.imageId} className={item.included ? "" : "excluded"}><button title={`${item.filename}${item.included ? "" : " · Excluded"}`} onClick={() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); }}>{I.result}<span>{item.filename}</span>{!item.included && <small>Excluded</small>}</button><button aria-label={`Remove ${item.filename}`} disabled={attachmentSaving || contextLocked} onClick={() => void removeImage(item.imageId)}>{I.close}</button></div>)}</div>}
       {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
       {imageTray}
+      </div>
       {!connected && <p className="hint" role="status">Connecting to Aux… You can keep writing.</p>}
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
       {taskBound ? <>
@@ -670,12 +689,13 @@ export function Conversation({ chatId, embedded = false, onChatCreated }: { chat
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
       {changedBrowserSources.length > 0 && !closedPage && <p className="field-error" role="status">A selected tab changed or closed. Update or remove it before sending.</p>}
-      {live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{answering && <button type="button" className={effectiveLiveMode === "answer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "answer"} onClick={() => setLiveSendMode("answer")}>Answer question</button>}<button type="button" className={effectiveLiveMode === "steer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "steer"} onClick={() => setLiveSendMode("steer")}>Steer now</button><button type="button" className={effectiveLiveMode === "queue" ? "selected" : ""} aria-pressed={effectiveLiveMode === "queue"} onClick={() => setLiveSendMode("queue")}>Queue next</button></div>}
-      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()}>{dictation}</ComposerInput>
+
+      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()} footer={composerFooter} modes={composerModes}>{dictation}</ComposerInput>
       </>}
-      {!taskBound && !answering && <div className="new-chat-options"><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{I.plusSm}<span>Add context</span></button><BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/></div>}
+
+      </ComposerFrame>
     </div></div>
-    </div>{browserPreview}</div>
+    </div>{supporting && <SupportingContent key={supportingKey} container={conversationRoot} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
     {calendarSourceChoice && createPortal(<div className="scrim-soft" onMouseDown={() => setCalendarSourceChoice(null)}>
       <div ref={calendarChoiceRef} className="sheet conversation-calendar-choice" role="dialog" aria-modal="true" aria-labelledby="calendar-source-choice-title"
         onMouseDown={event => event.stopPropagation()} onKeyDown={event => {
