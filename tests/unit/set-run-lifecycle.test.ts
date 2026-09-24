@@ -156,10 +156,14 @@ it("forgets saved article answers through later turns, artifact citations, and r
     expect(run.config?.contextArtifactEvidence).toBeUndefined();
   }
   expect(h.repo.getArtifact("derived-report")).toBeUndefined();
+  expect(h.repo.getRun("followup")?.config?.revokedArtifactIds).toContain("derived-report");
   expect(h.repo.db.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
   expect(h.removedArtifacts).toContain("/synthetic/derived-report");
   expect(h.repo.getRun("unrelated")?.result).toEqual({ answer: "private answer unrelated" });
   expect(h.runs.redactForgottenArticleOutputs("space")).toBe(0);
+  save("late-citation", { contextArtifactIds: ["derived-report"], context: "private answer from removed report" });
+  expect(h.runs.redactForgottenArticleOutputs("space")).toBe(1);
+  expect(h.repo.getRun("late-citation")?.result).toBeUndefined();
   await expect(h.runs.retry("retry")).rejects.toThrow(/forgotten saved article/);
 });
 

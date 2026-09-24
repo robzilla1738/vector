@@ -415,6 +415,9 @@ export function openDb(path: string): DatabaseSync {
     if (version > SCHEMA_VERSION || version < 0) {
       throw new Error(`Database schema ${version} is newer than this Aux build supports (schema ${SCHEMA_VERSION}). The file was left unchanged; use the matching newer application.`);
     }
+    // SQLite may otherwise leave deleted run answers in reusable database pages.
+    // Set on every compatible connection, before migrations or Forget writes.
+    db.exec("PRAGMA secure_delete = ON");
     if (path !== ":memory:") chmodSync(path, 0o600);
     if (version === 0) {
       applyMigrations(db, [SCHEMA, `PRAGMA user_version = ${SCHEMA_VERSION}`]);

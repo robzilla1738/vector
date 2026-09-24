@@ -139,6 +139,8 @@ export const RunSchema = z.object({
       contextMemoryIds: z.array(z.string()).max(3).optional(),
       /** The selected article was deleted; saved model outputs were removed. */
       contextMemoryRevoked: z.boolean().optional(),
+      /** IDs of removed generated artifacts, retained only to revoke later dependent turns. */
+      revokedArtifactIds: z.array(z.string()).optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */
       contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
       /** Accepted human steering revision for this run. */

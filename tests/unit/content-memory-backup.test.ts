@@ -52,6 +52,8 @@ it("omits protected article content and grants from portable backups and strips 
     expect(JSON.parse(row.config).contextArtifactEvidence).toBeUndefined();
   }
   expect(saved.prepare("SELECT 1 FROM artifacts WHERE artifact_id=?").get(report.artifactId)).toBeUndefined();
+  expect(JSON.parse((saved.prepare("SELECT config FROM runs WHERE run_id='run-memory'").get() as { config: string }).config).revokedArtifactIds)
+    .toContain(report.artifactId);
   expect(saved.prepare("SELECT 1 FROM response_metadata WHERE request_id='protected-response'").get()).toBeUndefined();
   expect(JSON.parse(readFileSync(join(backup.path, "manifest.json"), "utf8")).artifacts).toEqual([]);
   // Simulate a valid older portable backup that carried protected rows.
@@ -62,6 +64,10 @@ it("omits protected article content and grants from portable backups and strips 
     .run(JSON.stringify({ answer: "Followup private answer" }), JSON.stringify({ contextRunIds: ["run-memory"], context: "Derived private answer" }));
   saved.prepare("UPDATE runs SET result=?,status='completed',config=? WHERE run_id='run-citation'")
     .run(JSON.stringify({ answer: "Cited private answer" }), JSON.stringify({ contextRunIds: ["run-followup"], contextArtifactEvidence: "Derived private report" }));
+  saved.prepare(`INSERT INTO runs(run_id,goal,status,page_ids,config,result,created_at) VALUES(?,?,?,?,?,?,?)`)
+    .run("run-late-citation", "Cite removed report", "completed", "[]",
+      JSON.stringify({ contextArtifactIds: [report.artifactId], context: "Derived private report" }),
+      JSON.stringify({ answer: "Late private answer" }), 4);
   saved.prepare(`INSERT INTO response_metadata(request_id,page_id,url,method,started_at,run_id)
     VALUES('legacy-protected-response','page','https://example.com/?answer=private','GET',1,'run-followup')`).run();
   saved.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run(`setting:${policyKey}`, JSON.stringify({ enabled: true, retentionDays: 30, allowedOrigins: ["https://example.com"] }));
@@ -81,6 +87,7 @@ it("omits protected article content and grants from portable backups and strips 
     expect(staged.prepare("SELECT result,status FROM runs WHERE run_id='run-memory'").get()).toEqual({ result: null, status: "cancelled" });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-followup'").get()).toEqual({ result: null });
     expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-citation'").get()).toEqual({ result: null });
+    expect(staged.prepare("SELECT result FROM runs WHERE run_id='run-late-citation'").get()).toEqual({ result: null });
     expect(staged.prepare("SELECT 1 FROM response_metadata WHERE request_id='legacy-protected-response'").get()).toBeUndefined();
     expect(db.prepare("SELECT count(*) AS count FROM content_memory").get()).toEqual({ count: 1 });
   } finally { staged.close(); }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -20,6 +20,19 @@ afterEach(() => {
 });
 
 describe("schema versioning", () => {
+  it("overwrites deleted plaintext cells before a checkpointed profile is persisted", () => {
+    const { path } = fixture();
+    const db = track(openDb(path));
+    expect(db.prepare("PRAGMA secure_delete").get()).toEqual({ secure_delete: 1 });
+    const secret = "private-answer-sentinel-".repeat(500);
+    db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("forgotten-answer", secret);
+    db.prepare("DELETE FROM kv WHERE key=?").run("forgotten-answer");
+    db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    db.close();
+    expect(readFileSync(path).includes(Buffer.from("private-answer-sentinel"))).toBe(false);
+    expect(track(openDb(path)).prepare("PRAGMA secure_delete").get()).toEqual({ secure_delete: 1 });
+  });
+
   it("initializes a fresh profile with every table, indexes, and the Aux marker", () => {
     const { directory, path } = fixture();
     const db = track(openDb(path));

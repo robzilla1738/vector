@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 type RecallConfig = {
   contextMemoryIds?: string[]; contextMemoryRevoked?: boolean; contextRunIds?: string[];
   contextArtifactIds?: string[]; contextSourceArtifactIds?: string[]; contextImageArtifactIds?: string[];
+  revokedArtifactIds?: string[];
   retryOfRunId?: string;
   context?: string; contextDocumentEvidence?: string; contextArtifactEvidence?: string;
 };
@@ -35,8 +36,9 @@ export function derivedPageRecallRunIds(
 }
 
 /** A revoked turn keeps its human request and lineage, but no derived prompt text. */
-export function redactedPageRecallConfig<T extends RecallConfig>(config: T): T {
+export function redactedPageRecallConfig<T extends RecallConfig>(config: T, artifactIds: string[] = []): T {
   return { ...config, contextMemoryRevoked: true, context: undefined,
+    revokedArtifactIds: [...new Set([...(config.revokedArtifactIds ?? []), ...artifactIds])],
     contextDocumentEvidence: undefined, contextArtifactEvidence: undefined,
     contextArtifactIds: undefined, contextSourceArtifactIds: undefined, contextImageArtifactIds: undefined };
 }
@@ -55,17 +57,26 @@ export function sanitizePortablePageRecall(db: DatabaseSync): Set<string> {
       const owners = new Map((has("artifacts")
         ? db.prepare("SELECT artifact_id AS artifactId,run_id AS runId FROM artifacts").all() as { artifactId: string; runId: string }[]
         : []).map(row => [row.artifactId, row.runId]));
+      for (const row of parsed) for (const artifactId of row.config.revokedArtifactIds ?? [])
+        if (!owners.has(artifactId)) owners.set(artifactId, row.runId);
+      const ownedArtifacts = new Map<string, string[]>();
+      for (const [artifactId, runId] of owners) {
+        const ids = ownedArtifacts.get(runId) ?? [];
+        ids.push(artifactId);
+        ownedArtifacts.set(runId, ids);
+      }
       const seeds = new Set(parsed.filter(row => row.config.contextMemoryIds?.length || row.config.contextMemoryRevoked)
         .map(row => row.runId));
       const affected = derivedPageRecallRunIds(parsed, seeds, owners);
       for (const row of parsed) {
         if (!affected.has(row.runId)) continue;
-        for (const [artifactId, owner] of owners) if (owner === row.runId) artifactIds.add(artifactId);
+        const owned = ownedArtifacts.get(row.runId) ?? [];
+        for (const artifactId of owned) artifactIds.add(artifactId);
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           if (has(table)) db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(row.runId);
         db.prepare("UPDATE runs SET status='cancelled',result=NULL,status_message=?,error=?,config=? WHERE run_id=?")
           .run("Saved article unavailable after restore — generated answer removed", "Protected article context is not portable.",
-            JSON.stringify(redactedPageRecallConfig(row.config)), row.runId);
+            JSON.stringify(redactedPageRecallConfig(row.config, owned)), row.runId);
       }
     }
     if (has("content_memory")) db.prepare("DELETE FROM content_memory").run();

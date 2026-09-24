@@ -325,6 +325,8 @@ export class RunService {
       config: (row.config ? JSON.parse(row.config) : {}) as NonNullable<Run["config"]> }));
     const owners = new Map((this.deps.repo.db.prepare("SELECT artifact_id AS artifactId,run_id AS runId FROM artifacts")
       .all() as { artifactId: string; runId: string }[]).map(row => [row.artifactId, row.runId]));
+    for (const run of runs) for (const artifactId of run.config.revokedArtifactIds ?? [])
+      if (!owners.has(artifactId)) owners.set(artifactId, run.runId);
     const seeds = new Set(runs.filter(run => run.config.contextWorkspaceId === workspaceId && run.config.contextMemoryIds?.length &&
       (run.config.contextMemoryRevoked || run.config.contextMemoryIds.some(id =>
         !this.deps.repo.db.prepare("SELECT 1 FROM content_memory WHERE workspace_id=? AND memory_id=?").get(workspaceId, id))))
@@ -336,14 +338,15 @@ export class RunService {
       if (!current || current.config?.contextMemoryRevoked) continue;
       if (!TERMINAL_RUN_STATUSES.has(current.status)) this.cancel(runId, "A selected saved article was forgotten.");
       const run = this.deps.repo.getRun(runId)!;
-      const paths = this.deps.repo.listArtifacts({ runId }).map(item => item.path);
+      const artifacts = this.deps.repo.listArtifacts({ runId });
+      const paths = artifacts.map(item => item.path);
       this.deps.artifacts.removeFiles(paths);
       this.deps.repo.transaction(() => {
         for (const table of ["artifacts", "model_calls", "events", "steps", "results", "datasets", "spans", "response_metadata"])
           this.deps.repo.db.prepare(`DELETE FROM ${table} WHERE run_id=?`).run(runId);
         this.deps.repo.saveRun({ ...run, status: "cancelled", statusMessage: "Saved article forgotten — generated answer removed",
           result: undefined, error: "A selected saved article was forgotten.",
-          config: redactedPageRecallConfig(run.config ?? {}) });
+          config: redactedPageRecallConfig(run.config ?? {}, artifacts.map(item => item.artifactId)) });
       });
       const updated = this.deps.repo.getRun(runId)!;
       this.deps.events.emit(EventTypes.RunUpdated, { run: updated }, runId);
