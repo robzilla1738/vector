@@ -37,8 +37,8 @@ export async function boot() {
   installMenu();
   // Extensions load beside window creation; only page loads wait for them.
   gatePageLoads(loadProfileExtensions().catch(error => log("extensions failed to load", String(error))));
-  // The runtime forks as soon as Chromium publishes its DevTools port and the
-  // primary window (its native-page host) exists — overlapping the shell load.
+  // The runtime forks once the primary native-page host exists; the optional
+  // development legacy transport also waits for Chromium's DevTools port.
   let primaryCreated!: () => void;
   startRuntimeWhenReady(new Promise<void>(resolve => { primaryCreated = resolve; }));
 

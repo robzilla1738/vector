@@ -1,4 +1,4 @@
-# Aux native startup baseline — September 24, 2026
+# Aux native performance baseline — September 24, 2026
 
 Development measurement from the current Aux code on branch `codex/aux-roadmap-build` at `a583f834`, after rebuilding the Electron shell and renderer. The test launches ten disposable profiles per condition through `tests/smoke/startup-timing-desktop.mjs`. It records process spawn to shell window, painted home surface, runtime readiness, and completion of the first local fixture page open. Times are wall clock milliseconds; p95 uses nearest rank. The fixture is local HTTP, with no model configured.
 
@@ -19,8 +19,23 @@ An earlier five-launch fresh-profile batch immediately after the build had paint
 
 The current bundle budget passed: startup JS 468 KB against 490 KB, startup CSS 220 KB against 225 KB, total JS 1709 KB against 1800 KB. These byte counts are guards, not a proxy for paint or input latency.
 
+### Broker-default startup check
+
+After switching the internal CDP broker to the default transport at `c1db57af`, the same fresh-profile fixture ran ten more warm-system launches on the same Mac. Shell window p50/p95 was **339/383 ms** [383, 329, 345, 339, 346, 329, 352, 333, 359, 339]; painted home **681/716 ms** [716, 667, 712, 681, 680, 696, 694, 669, 702, 674]; runtime ready **601/636 ms** [635, 593, 636, 599, 601, 604, 610, 590, 631, 597]; first local page open **771/806 ms** [806, 753, 797, 771, 765, 791, 783, 763, 794, 763]. These samples show no evident startup regression in this fixture, but the batches are independent and too small to establish a general speed improvement.
+
 ## Local history suggestion paint
 
-The same unsigned native build opened a disposable profile with 50,000 indexed history visits and 20 unique matching entries. `tests/smoke/omnibox-paint-desktop.mjs` measured each input event through the exact matching suggestion's DOM update and two animation frames. Twenty distinct queries returned p50 **43.5 ms** and p95 **44.5 ms**: 31.5, 38.3, 41.8, 42.8, 42.5, 43.5, 42.3, 43.3, 43.6, 43.7, 43.8, 43.5, 44.5, 44.1, 43.6, 43.9, 44.5, 42.1, 46.2, 44.0 ms. This covers local IPC, ranking, React render, and an approximate paint boundary. It does not cover actual pixel capture, a cold OS/index, 100 open tabs, or a foreground agent. The two-frame method adds its own frame interval and should be kept identical when comparing changes.
+The pre-broker unsigned native build opened a disposable profile with 50,000 indexed history visits and 20 unique matching entries. `tests/smoke/omnibox-paint-desktop.mjs` measured each input event through the exact matching suggestion's DOM update and two animation frames. Twenty distinct queries returned p50 **43.5 ms** and p95 **44.5 ms**: 31.5, 38.3, 41.8, 42.8, 42.5, 43.5, 42.3, 43.3, 43.6, 43.7, 43.8, 43.5, 44.5, 44.1, 43.6, 43.9, 44.5, 42.1, 46.2, 44.0 ms. This covers local IPC, ranking, React render, and an approximate paint boundary. It does not cover actual pixel capture, a cold OS/index, 100 open tabs, or a foreground agent. The two-frame method adds its own frame interval and should be kept identical when comparing changes.
 
-Next measurements required by the roadmap: signed release build on this and the oldest supported Mac; cold OS and warm app launch; 20/100-tab restore and whole-process memory; input-to-visible-paint for tab activation and local command-bar history; and browsing during fixed agent work. Keep raw samples, p50/p95, long stalls, and hardware/workload conditions. Do not use this local fixture to claim release speed.
+## 20/100-tab restore
+
+`tests/smoke/restore-tabs-desktop.mjs` seeds a disposable native browser catalog with local HTTP tabs, makes the middle tab active, then launches the current broker-default Aux build. Ten warm-system runs per condition measured process spawn to a native catalog snapshot with every logical tab, and to the active page's loaded heading. After 1.5 seconds, it counted resident local-page WebContents and summed RSS across the Aux process tree. The RSS sum double counts shared pages and is a comparison metric, not physical memory use.
+
+| Restored tabs | Logical tabs p50/p95 | Active page loaded p50/p95 | Resident local pages at 1.5 s | Process-tree RSS at 1.5 s |
+| --- | ---: | ---: | ---: | ---: |
+| 20 | 391/414 ms | 544/581 ms | 2 in every run | 895–903 MiB |
+| 100 | 410/430 ms | 552/562 ms | 2 in every run | 906–918 MiB |
+
+Raw logical times: 20 tabs [414, 405, 408, 383, 391, 402, 359, 343, 400, 340] ms; 100 tabs [430, 389, 414, 401, 410, 413, 360, 406, 411, 421] ms. Raw active-load times: 20 tabs [543, 549, 581, 503, 544, 570, 551, 521, 544, 483] ms; 100 tabs [562, 543, 559, 543, 530, 559, 555, 552, 560, 515] ms. Raw RSS sums: 20 tabs [898, 898, 898, 899, 901, 902, 897, 903, 895, 897] MiB; 100 tabs [916, 918, 911, 909, 908, 906, 910, 910, 914, 914] MiB. These seeded rows do not include logged-in page state, extensions, media, or a warm restored Chromium session. Background views continue to materialize after the 1.5-second observation window.
+
+Next measurements required by the roadmap: signed release build on this and the oldest supported Mac; cold OS and warm app launch; real returning 20/100-tab profiles with extensions and whole-process physical memory; input-to-visible-paint for tab activation and local command-bar history; and browsing during fixed agent work. Keep raw samples, p50/p95, long stalls, and hardware/workload conditions. Do not use these local fixtures to claim release speed.
