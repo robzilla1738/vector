@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -136,6 +136,25 @@ try {
   }
   assert.ok(savedDownload?.path.startsWith(join(dataDir, 'downloads')), 'download remains in Aux native profile storage');
   assert.equal(readFileSync(savedDownload.path, 'utf8'), 'Aux download through native session');
+  const downloadFolder = join(dataDir, 'downloads');
+  renameSync(downloadFolder, `${downloadFolder}-saved`);
+  writeFileSync(downloadFolder, 'unavailable destination');
+  let brokenDownload;
+  try {
+    brokenDownload = await rpc('pages.execute', {
+      program: { pageId: page.pageId, steps: [
+        { id: 'wait-broken', op: 'expectDownload', timeoutMs: 5000 },
+        { id: 'trigger-broken', op: 'click', target: 'css:#download' },
+      ] },
+    });
+  } finally {
+    rmSync(downloadFolder);
+    renameSync(`${downloadFolder}-saved`, downloadFolder);
+  }
+  assert.equal(brokenDownload.status, 'failed', JSON.stringify(brokenDownload));
+  const transferStates = await rpc('downloads.list');
+  assert.match(JSON.stringify({ brokenDownload, transferStates }), /interrupted|cancelled/i);
+  assert.ok(transferStates.some(item => item.filename === 'broker-proof.txt' && item.state === 'interrupted'), JSON.stringify(transferStates));
 
   const popupAction = await rpc('pages.execute', { program: { pageId: page.pageId, steps: [{ id: 'open-popup', op: 'click', target: 'css:#open-popup' }] } });
   assert.equal(popupAction.status, 'completed', JSON.stringify(popupAction));
@@ -217,7 +236,7 @@ try {
   assert.equal((await rpc('pages.close', { pageId: popup.pageId })).ok, true, 'agent can close a native popup');
   assert.equal((await rpc('workspace.get')).pages.some(tab => tab.pageId === popup.pageId), false, 'closed popup leaves the runtime catalog');
   assert.equal((await rpc('pages.close', { pageId: postPopup.pageId })).ok, true, 'agent can close a POST popup');
-  console.log('Direct Aux launch: agent click, popup including POST, background tab, download, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
+  console.log('Direct Aux launch: agent click, popup including POST, background tab, completed and interrupted downloads, explicit cross-site frame action, raw port denial, and runtime reconnect pass.');
 } finally {
   if (app.exitCode === null) {
     const exited = once(app, 'exit');

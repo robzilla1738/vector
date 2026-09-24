@@ -87,6 +87,10 @@ export interface DriverPage {
 
   waitFor(condition: Condition): Promise<WaitOutcome>;
   waitForDownload(timeoutMs?: number): Promise<{ suggestedFilename: string; path?: string }>;
+  /** Desktop profile downloads report terminal results through the native session. */
+  setNativeDownloadAuthority?(): void;
+  notifyDownloadStarted?(info: { id: string; startedAt: number }): void;
+  notifyDownload?(info: { id: string; startedAt: number; suggestedFilename: string; path?: string; state: string }): void;
   handleDialog(action: "accept" | "dismiss", promptText?: string): Promise<void>;
 
   /** Scroll a container/viewport, accumulating items by stable key (virtualized/infinite lists). */
@@ -188,4 +192,3 @@ export interface BrowserDriver {
   /** Release human takeover after revalidating page and authorization state. */
   resume?(pageId?: string): Promise<{ controller: string; controllerEpoch: number }>;
 }
-

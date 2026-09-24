@@ -53,6 +53,9 @@ export class PageRegistry {
   addLive(target: PageTarget, driver: DriverPage | null): LivePage {
     const lp: LivePage = { target, driver, queue: Promise.resolve(), history: [], consoleLines: [] };
     this.live.set(target.pageId, lp);
+    if (driver && target.backend === "aux" && this.deps.native.available()) {
+      driver.setNativeDownloadAuthority?.();
+    }
     if (driver) this.wireDriverEvents(lp);
     this.persist(lp);
     return lp;

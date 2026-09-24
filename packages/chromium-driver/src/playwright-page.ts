@@ -62,7 +62,10 @@ export class PlaywrightDriverPage implements DriverPage {
     resolve: (v: { suggestedFilename: string; path?: string }) => void;
     reject: (e: Error) => void;
     timer: NodeJS.Timeout;
+    startedAt: number;
+    downloadId?: string;
   }[] = [];
+  private nativeDownloadAuthority = false;
   private attached = true;
   private capture: ResponseCaptureOptions;
   /** Resolves to null when the page cannot host the isolated world (test doubles, exotic targets). */
@@ -176,10 +179,12 @@ export class PlaywrightDriverPage implements DriverPage {
     });
     this.on("download", (download: Download) => {
       const info = { suggestedFilename: download.suggestedFilename(), path: undefined as string | undefined };
-      const waiters = this.externalDownloadWaiters.splice(0);
-      for (const w of waiters) {
-        clearTimeout(w.timer);
-        w.resolve(info);
+      if (!this.nativeDownloadAuthority) {
+        const waiters = this.externalDownloadWaiters.splice(0);
+        for (const w of waiters) {
+          clearTimeout(w.timer);
+          w.resolve(info);
+        }
       }
       this.events.onDownload?.(info);
     });
@@ -266,12 +271,23 @@ export class PlaywrightDriverPage implements DriverPage {
     }
   }
 
-  /** Called by the runtime when the native side reports a finished download. */
-  notifyDownload(info: { suggestedFilename: string; path?: string }) {
-    const waiters = this.externalDownloadWaiters.splice(0);
+  /** Native Aux downloads complete through the profile session, not Playwright's start event. */
+  setNativeDownloadAuthority() { this.nativeDownloadAuthority = true; }
+
+  notifyDownloadStarted(info: { id: string; startedAt: number }) {
+    for (const waiter of this.externalDownloadWaiters) {
+      if (!waiter.downloadId && info.startedAt >= waiter.startedAt) waiter.downloadId = info.id;
+    }
+  }
+
+  /** Called by the runtime when the native side reports a terminal download. */
+  notifyDownload(info: { id: string; startedAt: number; suggestedFilename: string; path?: string; state: string }) {
+    const waiters = this.externalDownloadWaiters.filter(w => w.downloadId === info.id || (!w.downloadId && info.startedAt >= w.startedAt));
+    this.externalDownloadWaiters = this.externalDownloadWaiters.filter(w => !waiters.includes(w));
     for (const w of waiters) {
       clearTimeout(w.timer);
-      w.resolve(info);
+      if (info.state === "completed") w.resolve(info);
+      else w.reject(new Error(`Download ${info.suggestedFilename} ${info.state}`));
     }
   }
 
@@ -749,7 +765,7 @@ export class PlaywrightDriverPage implements DriverPage {
         this.externalDownloadWaiters = this.externalDownloadWaiters.filter((w) => w.resolve !== resolve);
         reject(new AuxError("condition_timeout", "Timed out waiting for download"));
       }, timeoutMs);
-      this.externalDownloadWaiters.push({ resolve, reject, timer });
+      this.externalDownloadWaiters.push({ resolve, reject, timer, startedAt: Date.now() });
     });
   }
 
@@ -1007,6 +1023,10 @@ export class PlaywrightDriverPage implements DriverPage {
     // We never close the underlying page — lifecycle belongs to the
     // native tab manager or to Chrome. Detach this wrapper's listeners only.
     this.attached = false;
+    for (const waiter of this.externalDownloadWaiters.splice(0)) {
+      clearTimeout(waiter.timer);
+      waiter.reject(new AuxError("target_detached", "Page detached while waiting for download"));
+    }
     for (const [event, fn] of this.listeners.splice(0)) this.page.off(event as never, fn as never);
     void this.world.then((w) => w?.dispose());
   }

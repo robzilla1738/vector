@@ -231,6 +231,8 @@ export class NativeViewSync {
     info: { id: string; sourceUrl?: string; filename: string; path: string; size: number; totalBytes?: number; startedAt: number },
   ) {
     this.pages.deps.repo.saveDownload({ ...info, pageId, state: "started" });
+    const lp = pageId ? this.pages.live.get(pageId) : undefined;
+    lp?.driver?.notifyDownloadStarted?.(info);
     this.pages.deps.events.emit(EventTypes.DownloadStarted, { pageId, ...info, state: "started" });
   }
 
@@ -240,10 +242,13 @@ export class NativeViewSync {
   ) {
     this.pages.deps.repo.saveDownload({ ...info, pageId });
     const lp = pageId ? this.pages.live.get(pageId) : undefined;
-    if (lp?.driver && info.state === "completed") {
-      (lp.driver as { notifyDownload?: (i: { suggestedFilename: string; path?: string }) => void }).notifyDownload?.({
+    if (lp?.driver) {
+      lp.driver.notifyDownload?.({
+        id: info.id,
+        startedAt: info.startedAt,
         suggestedFilename: info.filename,
         path: info.path,
+        state: info.state,
       });
     }
     this.pages.deps.events.emit(EventTypes.DownloadFinished, { pageId, ...info });
