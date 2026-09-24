@@ -113,7 +113,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     };
   };
   if (config.electronCdp) {
-    const d = new ManagedChromiumDriver(config.electronCdp);
+    const d = new ManagedChromiumDriver(config.electronCdp, {
+      trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
+    });
     watchDriver(d, "aux", "Aux");
     try {
       await d.connect();

@@ -33,6 +33,17 @@ export class TabSessionRestore {
             /* one stale native target must not block the other live tabs */
           }
         }
+        // A lazily materialized catalog can expose the active native view
+        // before its background placeholders. Restore those saved tabs too;
+        // otherwise one existing view makes the remaining tabs disappear from
+        // the runtime indefinitely after restart.
+        for (const pageId of [...this.pages.pendingRestore.keys()]) {
+          try {
+            await this.restoreSavedTab(pageId);
+          } catch (error) {
+            this.pages.restoreErrors.set(pageId, error instanceof Error ? error.message : String(error));
+          }
+        }
         const byWindow = new Map<string, (typeof existing.pages)[number]>();
         for (const page of existing.pages) {
           const windowId = page.windowId ?? "main";

@@ -1,5 +1,7 @@
-import type { Page } from "playwright-core";
+import type { Browser, Page } from "playwright-core";
+import { AuxError } from "@aux/contracts";
 import { CdpAttachedDriver } from "./cdp-driver.js";
+import type { DiscoveredTarget, DriverPage } from "./types.js";
 
 /**
  * Driver for Aux-owned pages: real WebContentsView instances created by
@@ -11,19 +13,66 @@ import { CdpAttachedDriver } from "./cdp-driver.js";
 export const AUX_MARKER_GLOBAL = "__auxTid";
 export const auxMarkerForWebContents = (webContentsId: number) => `atab-${webContentsId}`;
 
+export interface TrustedAuxPage {
+  pageId: string;
+  marker: string;
+  cdpTargetId?: string;
+}
+
 export class ManagedChromiumDriver extends CdpAttachedDriver {
   readonly backend = "aux" as const;
+
+  private readonly trustedPages?: () => Promise<TrustedAuxPage[]>;
+
+  constructor(endpoint: string, deps: {
+    connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
+    trustedPages?: () => Promise<TrustedAuxPage[]>;
+  } = {}) {
+    super(endpoint, deps);
+    this.trustedPages = deps.trustedPages;
+  }
+
+  private async trusted(pageId: string, marker: string): Promise<TrustedAuxPage | undefined> {
+    return (await this.trustedPages?.())?.find(page => page.pageId === pageId && page.marker === marker);
+  }
+
+  override async listTargets(): Promise<DiscoveredTarget[]> {
+    const targets = await super.listTargets();
+    if (!this.trustedPages) return targets;
+    const allowed = new Set((await this.trustedPages()).map(page => page.marker));
+    return targets.filter(target => allowed.has(target.targetId));
+  }
+
+  override async attach(targetId: string, pageId: string, hint?: { cdpTargetId?: string }): Promise<DriverPage> {
+    if (this.trustedPages) {
+      const page = await this.trusted(pageId, targetId);
+      if (!page) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
+      // A hint supplied by another process cannot redirect the attach to a
+      // different native view. Main's registry is the source of target IDs.
+      hint = page.cdpTargetId ? { cdpTargetId: page.cdpTargetId } : undefined;
+    }
+    return super.attach(targetId, pageId, hint);
+  }
 
   protected async identityOfPage(page: Page): Promise<string | null> {
     return this.markerOf(page, AUX_MARKER_GLOBAL);
   }
 
   async recoverPage(targetId: string, pageId: string, documentEpoch = 0) {
+    const trusted = this.trustedPages ? await this.trusted(pageId, targetId) : undefined;
+    if (this.trustedPages && !trusted) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
     // Playwright retains the crashed flag on its old Page proxy. A fresh CDP
     // connection observes the recovered renderer without disturbing other tabs.
     const browser = await this.connectOverCDP(this.endpoint, { timeout: 15_000 });
     try {
       for (const context of browser.contexts()) for (const page of context.pages()) {
+        if (trusted?.cdpTargetId) {
+          const session = await context.newCDPSession(page).catch(() => null);
+          if (!session) continue;
+          const info = await session.send("Target.getTargetInfo").catch(() => null) as { targetInfo?: { targetId?: string } } | null;
+          await session.detach().catch(() => {});
+          if (info?.targetInfo?.targetId !== trusted.cdpTargetId) continue;
+        }
         if (await this.markerOf(page, AUX_MARKER_GLOBAL) !== targetId) continue;
         const { PlaywrightDriverPage } = await import("./playwright-page.js");
         this.refs.clear(pageId);
@@ -36,9 +85,12 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
 
   /** attachDirect fallback matches by marker too — /json/list only has ids. */
   protected override async attachDirect(targetId: string, pageId: string) {
+    const trusted = this.trustedPages ? await this.trusted(pageId, targetId) : undefined;
+    if (this.trustedPages && !trusted?.cdpTargetId) return null;
     const targets = await this.jsonTargets().catch(() => []);
     for (const t of targets) {
       if (t.type !== "page" || !t.webSocketDebuggerUrl) continue;
+      if (trusted && t.id !== trusted.cdpTargetId) continue;
       let browser;
       try {
         browser = await this.connectOverCDP(t.webSocketDebuggerUrl, { timeout: 6_000 });

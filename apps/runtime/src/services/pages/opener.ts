@@ -146,6 +146,7 @@ export class PageOpener {
     title?: string;
     active?: boolean;
     showBlankDocument?: boolean;
+    cdpTargetId?: string;
     restored?: PageTarget;
   }): Promise<PageTarget> {
     const pageId = opts.pageId ?? newPageId();
@@ -171,10 +172,11 @@ export class PageOpener {
     title?: string;
     active?: boolean;
     showBlankDocument?: boolean;
+    cdpTargetId?: string;
     restored?: PageTarget;
   }, pageId: string, pending: { removed: boolean }): Promise<PageTarget> {
     const driver = this.pages.driverFor(opts.backend);
-    const dp = driver ? await driver.attach(opts.marker, pageId) : null;
+    const dp = driver ? await driver.attach(opts.marker, pageId, opts.cdpTargetId ? { cdpTargetId: opts.cdpTargetId } : undefined) : null;
     if (pending.removed || this.pages.closing) {
       await dp?.dispose().catch(() => {});
       throw new AuxError("not_found", "Page closed while it was being attached");

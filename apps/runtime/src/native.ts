@@ -6,7 +6,7 @@ import { AuxError, type RpcChannel, type LocalProject, type ProjectInspection, t
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
-  listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>;
+  listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>;
   /** Scoped agent tab commands (§7.3) — same controller humans use, deduplicated + ack'd. */
   tabCommand(envelope: TabCommandEnvelope): Promise<TabCommandAck>;
   focusPage(pageId: string): Promise<{ ok: boolean }>;
@@ -55,7 +55,7 @@ export class ChannelNativeBridge implements NativeBridge {
     return true;
   }
   listPages() {
-    return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean }[] }>("native.listPages", {});
+    return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>("native.listPages", {});
   }
   tabCommand(envelope: TabCommandEnvelope) {
     return this.channel.call<TabCommandAck>("native.tabCommand", envelope, 55_000);

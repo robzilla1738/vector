@@ -13,10 +13,10 @@ import { notifyRuntime } from "../supervisor.js";
 import { onNative } from "./validate.js";
 
 export function registerPageMethods(ch: RpcChannel) {
-  onNative(ch, "native.listPages", () => ({
-    pages: registry.all()
+  onNative(ch, "native.listPages", async () => ({
+    pages: await Promise.all(registry.all()
       .filter(entry => !entry.view.webContents.isDestroyed())
-      .map(entry => ({
+      .map(async entry => ({
         pageId: entry.pageId,
         windowId: entry.windowId ?? PRIMARY_WINDOW_ID,
         marker: entry.marker,
@@ -24,7 +24,8 @@ export function registerPageMethods(ch: RpcChannel) {
         url: entry.view.webContents.getURL() || "about:blank",
         title: entry.view.webContents.getTitle(),
         active: entry.popup ? entry.popup.isFocused() : entry.pageId === stateForEntry(entry)?.focusedPageId,
-      })),
+        cdpTargetId: ((await entry.view.webContents.debugger.sendCommand("Target.getTargetInfo").catch(() => undefined)) as { targetInfo?: { targetId?: string } } | undefined)?.targetInfo?.targetId,
+      }))),
   }));
   onNative(ch, "native.movePage", async ({ pageId, windowId, activate = true }) => {
     const moved = await movePageToWindow(pageId, windowId, activate);
