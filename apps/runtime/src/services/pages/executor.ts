@@ -56,7 +56,7 @@ export class ProgramExecutor {
       if (!lp?.driver?.isAttached()) throw new AuxError("target_detached", `page ${pageId} is not attached`);
       if (lp.target.controller === "human")
         throw new AuxError("conflict", `page ${pageId} is under human control`);
-      const allSteps = collectSteps(program);
+      const allSteps = collectProgramSteps(program);
       const grants = ctx.runId
         ? (this.pages.deps.grantsForRun ?? this.pages.deps.grants ?? DEFAULT_GRANTS)
         : (this.pages.deps.grants ?? DEFAULT_GRANTS);
@@ -97,6 +97,8 @@ export class ProgramExecutor {
       }
       ctx.beforeJournal?.();
       const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
+      if(ctx.journaled&&!ctx.journalIntentId&&this.pages.deps.durableWrites&&allSteps.some(step=>classifyStep(step.op)!=='read'))
+        throw new AuxError("conflict","A pre-journaled browser write requires its durable intent ID");
       const journal = ctx.journaled ? { skip: false as const, intentId: undefined as string | undefined } : beginConsequentialWrite(this.pages.deps.durableWrites, {
         runId: ctx.runId ?? `direct:${pageId}`,
         pageId,
@@ -266,7 +268,7 @@ function stepInputsOf(s: { op: string } & Record<string, unknown>): Record<strin
 
 /** Every browser step inside a program — flat or nested in control flow. */
 export function programHasConsequentialSteps(program: Program): boolean {
-  return collectSteps(program).some(step => classifyStep(step.op) !== "read");
+  return collectProgramSteps(program).some(step => classifyStep(step.op) !== "read");
 }
 
 export function programContainsOperationCalls(program: Program): boolean {
@@ -276,7 +278,7 @@ export function programContainsOperationCalls(program: Program): boolean {
   return !!program.nodes&&walk(program.nodes);
 }
 
-function collectSteps(program: Program): Step[] {
+export function collectProgramSteps(program: Program): Step[] {
   const out: Step[] = [...(program.steps ?? [])];
   const walk = (nodes: readonly ProgramNode[]) => {
     for (const n of nodes) {

@@ -869,7 +869,7 @@ export class RunService {
 
   async mapSet(opts: {
     setId: string;
-    program?: { steps: Step[] };
+    program?: { steps?: Step[]; nodes?: Program["nodes"] };
     programId?: string;
     goal?: string;
     concurrency?: number;

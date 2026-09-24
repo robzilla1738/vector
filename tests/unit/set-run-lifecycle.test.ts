@@ -440,6 +440,14 @@ describe("conversation turn retry", () => {
 });
 
 describe("set-run lifecycle (P0-2 / P1-3)", () => {
+  it("journals consequential steps nested in a replay program",async()=>{
+    const h=harness({execMs:5});
+    const set=await h.sets.create({name:"nested",source:"urls",urls:urls(1)});
+    const {runId}=await h.runs.mapSet({setId:set.setId,program:{nodes:[{kind:"if",when:{op:"truthy",a:true},then:[{kind:"step",step:{id:"act",op:"click",target:"css:#act"}}]}]}});
+    await untilTerminal(h.repo,runId);
+    const intents=h.repo.db.prepare("SELECT status,run_id AS runId FROM action_intents WHERE run_id=?").all(runId);
+    expect(intents).toMatchObject([{status:"confirmed",runId}]);
+  });
   it("a member with neither url nor page fails alone instead of rejecting the whole run", async () => {
     const h = harness({ execMs: 5 });
     const set = await h.sets.create({ name: "s", source: "records", records: [{ id: "no-url" }, { id: "ok", url: urls(1)[0] }] });

@@ -13,6 +13,7 @@ import type { PageService } from "../services/pages.js";
 import type { SetService } from "../services/sets.js";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "../agent/durable.js";
+import { collectProgramSteps } from "../services/pages/executor.js";
 import type { GrantSource } from "../agent/permissions.js";
 import { WorkerPool } from "./pool.js";
 
@@ -357,19 +358,19 @@ export class SetRunner {
     });
     if ("rejected" in prepared) return { blocked: prepared.rejected };
     if ("denied" in prepared) return { blocked: prepared.denied };
-    const steps = prepared.program.steps ?? learned.steps ?? [];
+    const program: Program = { ...prepared.program, nodes: learned.nodes };
     const write = beginConsequentialWrite(this.deps.durableWrites, {
       runId: opts.runId,
       pageId,
       documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
       revision: obs.revision,
-      steps,
+      steps: collectProgramSteps(program),
     });
     if (write.skip) return { blocked: write.reason! };
-    const program: Program = { ...prepared.program, nodes: learned.nodes };
     const res = await this.deps.pages.execute(program, {
       runId: opts.runId,
       journaled: true,
+      journalIntentId: write.intentId,
       signal: opts.signal,
       allowEval: learned.trusted,
     });

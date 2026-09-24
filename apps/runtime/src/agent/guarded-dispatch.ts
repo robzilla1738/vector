@@ -3,6 +3,7 @@ import type { ExecContext } from "../execution/executor.js";
 import type { ExecuteResult, PageService } from "../services/pages.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "./durable.js";
+import { collectProgramSteps } from "../services/pages/executor.js";
 import type { GrantSource } from "./permissions.js";
 import type { SkillGuard } from "./skills.js";
 
@@ -62,12 +63,12 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
     pageId: opts.pageId,
     documentEpoch: prepared.program.documentEpoch ?? opts.documentEpoch,
     revision: opts.revision,
-    steps: program.steps ?? [],
+    steps: collectProgramSteps(program),
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
   });
   if (write.skip) return { kind: "skipped", reason: write.reason! };
-  const result = await deps.pages.execute(program, { journaled: true, ...opts.exec }, opts.returnObservation ? { returnObservation: opts.returnObservation } : {});
+  const result = await deps.pages.execute(program, { ...opts.exec, journaled: true, journalIntentId:write.intentId }, opts.returnObservation ? { returnObservation: opts.returnObservation } : {});
   settleWrite(deps.durable, write.intentId, result);
   return { kind: "ran", result, program };
 }
