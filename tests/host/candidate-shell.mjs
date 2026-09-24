@@ -49,6 +49,13 @@ async function waitForTarget(url) {
   }
   throw new Error(`No native page target for ${url}`);
 }
+async function waitForTargetGone(url) {
+  for (let i = 0; i < 40; i++) {
+    if (!browser.contexts().some(context => context.pages().some(page => page.url() === url))) return;
+    await delay(500);
+  }
+  throw new Error(`Closed Aux tab left a native page target for ${url}`);
+}
 
 try {
   const endpoint = await port();
@@ -116,7 +123,8 @@ try {
 
   const close = await shell.evaluate(pageId => window.aux.tabCommand({ kind: 'close', pageId }), b.pageId);
   const closed = await shell.evaluate(() => window.aux.tabsSnapshot());
-  record('close reconciles catalog', close.status === 'applied' && !closed.tabs.some(tab => tab.pageId === b.pageId),
+  await waitForTargetGone(bUrl);
+  record('close reconciles catalog and native target', close.status === 'applied' && !closed.tabs.some(tab => tab.pageId === b.pageId),
     JSON.stringify({ close, version: closed.version }));
   facts.stageBounds = { horizontal: horizontal.stage, vertical: vertical.stage };
 } catch (error) {
