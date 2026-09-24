@@ -16,7 +16,27 @@ export function applyPendingRuntimeRestore(dataDir:string){
     const pending=new DatabaseSync(pendingPath,{readOnly:true});try{const check=pending.prepare('PRAGMA quick_check').get() as {'quick_check':string};if(check['quick_check']!=='ok')throw new Error('The staged restore failed SQLite integrity checking.');const version=(pending.prepare('PRAGMA user_version').get() as {user_version:number}).user_version;if(version!==marker.schemaVersion)throw new Error('The staged restore schema changed after validation.');}finally{pending.close();}
     const databasePath=resolveDatabasePath(dataDir),recoveryDirectory=join(dataDir,'restore-recovery',`${Date.now()}-${randomUUID().slice(0,8)}`);mkdirSync(recoveryDirectory,{recursive:true,mode:0o700});
     if(existsSync(databasePath)){const current=new DatabaseSync(databasePath),recovery=join(recoveryDirectory,'state.sqlite'),temporary=`${recovery}.${randomUUID()}.tmp`;try{current.prepare('VACUUM INTO ?').run(temporary);chmodSync(temporary,0o600);const sanitized=new DatabaseSync(temporary);try{sanitizePortablePageRecall(sanitized);sanitized.exec('VACUUM');}finally{sanitized.close();}renameSync(temporary,recovery);}catch(error){rmSync(temporary,{force:true});throw error;}finally{current.close();}}
-    for(const value of marker.artifactFiles){const item=value as {relativePath?:unknown;bytes?:unknown;sha256?:unknown};const rel=safeRelative(item.relativePath);if(typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('The staged restore contains invalid artifact metadata.');const source=join(pendingArtifacts,rel),sourceInfo=lstatSync(source);if(sourceInfo.isSymbolicLink()||!sourceInfo.isFile()||sourceInfo.size!==item.bytes||digest(source)!==item.sha256)throw new Error('A staged artifact failed its final integrity check.');const target=join(dataDir,'artifacts',rel);if(existsSync(target)){const targetInfo=lstatSync(target);if(targetInfo.isSymbolicLink()||!targetInfo.isFile()||targetInfo.size!==item.bytes||digest(target)!==item.sha256)throw new Error('A staged artifact conflicts with current Aux data.');continue;}mkdirSync(dirname(target),{recursive:true,mode:0o700});const temporary=`${target}.${randomUUID()}.restore`;copyFileSync(source,temporary);chmodSync(temporary,0o600);renameSync(temporary,target);}
+    for(const value of marker.artifactFiles){
+      const item=value as {relativePath?:unknown;bytes?:unknown;sha256?:unknown};
+      const rel=safeRelative(item.relativePath);
+      if(typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))
+        throw new Error('The staged restore contains invalid artifact metadata.');
+      const source=join(pendingArtifacts,rel),sourceInfo=lstatSync(source);
+      if(sourceInfo.isSymbolicLink()||!sourceInfo.isFile()||sourceInfo.size!==item.bytes||digest(source)!==item.sha256)
+        throw new Error('A staged artifact failed its final integrity check.');
+      const target=join(dataDir,'artifacts',rel);
+      if(existsSync(target)){
+        const targetInfo=lstatSync(target);
+        if(targetInfo.isSymbolicLink()||!targetInfo.isFile())throw new Error('A staged artifact conflicts with current Aux data.');
+        const targetDigest=digest(target);
+        if(targetInfo.size===item.bytes&&targetDigest===item.sha256)continue;
+        throw new Error('A staged artifact conflicts with current Aux data.');
+      }
+      mkdirSync(dirname(target),{recursive:true,mode:0o700});
+      const temporary=`${target}.${randomUUID()}.restore`;
+      try{copyFileSync(source,temporary);chmodSync(temporary,0o600);renameSync(temporary,target);}
+      finally{rmSync(temporary,{force:true});}
+    }
     const replacement=`${databasePath}.${randomUUID()}.restore`;copyFileSync(pendingPath,replacement);chmodSync(replacement,0o600);rmSync(`${databasePath}-wal`,{force:true});rmSync(`${databasePath}-shm`,{force:true});renameSync(replacement,databasePath);rmSync(markerPath,{force:true});rmSync(pendingPath,{force:true});writeFileSync(join(dataDir,lastName),JSON.stringify({appliedAt:Date.now(),schemaVersion:marker.schemaVersion,recoveryDirectory},null,2)+'\n',{encoding:'utf8',mode:0o600});
     rmSync(pendingArtifacts,{recursive:true,force:true});
   }catch(error){const failed=join(dataDir,'failed-restores',`${Date.now()}-${randomUUID().slice(0,8)}`);mkdirSync(failed,{recursive:true,mode:0o700});if(existsSync(markerPath))renameSync(markerPath,join(failed,markerName));if(existsSync(pendingPath))renameSync(pendingPath,join(failed,pendingName));if(existsSync(pendingArtifacts))renameSync(pendingArtifacts,join(failed,pendingArtifactsName));writeFileSync(join(failed,'error.txt'),`${error instanceof Error?error.message:String(error)}\n`,{encoding:'utf8',mode:0o600});process.stderr.write(`[main] staged runtime restore was quarantined: ${error instanceof Error?error.message:String(error)}\n`);}

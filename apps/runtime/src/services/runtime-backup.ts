@@ -1,12 +1,12 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {createReadStream} from 'node:fs';
-import {chmod,copyFile,lstat,mkdir,readdir,realpath,rename,rm,stat,writeFile} from 'node:fs/promises';
+import {chmod,copyFile,lstat,mkdir,readFile,readdir,realpath,rename,rm,stat,writeFile} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
 import {SCHEMA_VERSION} from '../store/db.js';
 import type {Repo} from '../store/repo.js';
 import {sanitizePortablePageRecall} from '@aux/contracts/portable-page-recall';
-import {minimizeLegacyObservationArtifacts} from './observation-artifact-migration.js';
+import {minimizeLegacyObservationArtifacts,minimizedObservationArtifactBytes} from './observation-artifact-migration.js';
 
 const MAX_BACKUP_BYTES=2*1024*1024*1024,MAX_ARTIFACT_BYTES=1024*1024*1024,MAX_ARTIFACTS=10_000;
 const BACKUP_PREFIX='aux-runtime-';
@@ -48,7 +48,7 @@ type BackupManifest={formatVersion:1;createdAt:number;schemaVersion:number;datab
 async function digest(path:string){return new Promise<string>((ok,fail)=>{const hash=createHash('sha256'),stream=createReadStream(path);stream.on('data',chunk=>hash.update(chunk));stream.on('error',fail);stream.on('end',()=>ok(hash.digest('hex')));});}
 function validateDatabase(path:string){const db=new DatabaseSync(path,{readOnly:true});try{const version=(db.prepare('PRAGMA user_version').get() as {user_version:number}).user_version;if(version<1||version>SCHEMA_VERSION)throw new Error(`This backup uses unsupported database schema ${version}.`);if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get()||(db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as {value:string}|undefined)?.value!=='aux')throw new Error('The selected file is not an Aux database.');const check=db.prepare('PRAGMA quick_check').get() as {'quick_check':string};if(check['quick_check']!=='ok')throw new Error('The selected backup failed SQLite integrity checking.');for(const table of ['kv','pages','runs','tasks','artifacts'])if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table))throw new Error(`The selected file is missing the ${table} table.`);if(db.prepare("SELECT 1 FROM sqlite_schema WHERE (type IN ('trigger','view') OR upper(coalesce(sql,'')) LIKE '%VIRTUAL TABLE%') AND name NOT LIKE 'history_fts%' LIMIT 1").get())throw new Error('The selected backup contains unsupported executable database schema.');return version;}finally{db.close();}}
 function safeRelative(value:unknown){if(typeof value!=='string'||!value||value.length>1024||isAbsolute(value))throw new Error('The backup contains an invalid artifact path.');const normalized=value.replaceAll('\\','/');if(normalized.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('The backup contains an unsafe artifact path.');return normalized;}
-async function readManifest(root:string):Promise<BackupManifest>{const path=join(root,'manifest.json'),info=await lstat(path);if(info.isSymbolicLink()||!info.isFile()||info.size>10*1024*1024)throw new Error('The backup manifest is invalid.');const value=JSON.parse(await import('node:fs/promises').then(fs=>fs.readFile(path,'utf8'))) as Partial<BackupManifest>;if(value.formatVersion!==1||typeof value.createdAt!=='number'||typeof value.schemaVersion!=='number'||!value.database||typeof value.database.bytes!=='number'||typeof value.database.sha256!=='string'||!Array.isArray(value.artifacts)||value.artifacts.length>MAX_ARTIFACTS||typeof value.missingArtifacts!=='number')throw new Error('This is not a supported Aux runtime backup.');for(const item of value.artifacts){if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('The backup manifest contains an invalid artifact.');safeRelative(item.relativePath);}return value as BackupManifest;}
+async function readManifest(root:string):Promise<BackupManifest>{const path=join(root,'manifest.json'),info=await lstat(path);if(info.isSymbolicLink()||!info.isFile()||info.size>10*1024*1024)throw new Error('The backup manifest is invalid.');const value=JSON.parse(await import('node:fs/promises').then(fs=>fs.readFile(path,'utf8'))) as Partial<BackupManifest>;if(value.formatVersion!==1||typeof value.createdAt!=='number'||typeof value.schemaVersion!=='number'||!value.database||typeof value.database.bytes!=='number'||typeof value.database.sha256!=='string'||!Array.isArray(value.artifacts)||value.artifacts.length>MAX_ARTIFACTS||typeof value.missingArtifacts!=='number')throw new Error('This is not a supported Aux runtime backup.');const ids=new Set<string>(),paths=new Set<string>();for(const item of value.artifacts){if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('The backup manifest contains an invalid artifact.');const rel=safeRelative(item.relativePath);if(ids.has(item.artifactId)||paths.has(rel))throw new Error('The backup manifest repeats an artifact.');ids.add(item.artifactId);paths.add(rel);}return value as BackupManifest;}
 
 export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBackupBytes?:number;interrupt?:()=>void}={}){
   const maxBytes=opts.maxBackupBytes??MAX_BACKUP_BYTES,keep=backupRetention(repo).keep;
@@ -63,14 +63,109 @@ export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBack
 }
 
 export async function stageRuntimeRestore(dataDir:string,sourcePath:string){
-  const root=await realpath(sourcePath),rootInfo=await lstat(root);if(rootInfo.isSymbolicLink()||!rootInfo.isDirectory())throw new Error('Choose an Aux runtime backup folder.');const manifest=await readManifest(root),sourceDatabase=await realpath(join(root,'state.sqlite')),databaseRel=relative(root,sourceDatabase);if(databaseRel==='..'||databaseRel.startsWith(`..${sep}`))throw new Error('The backup database escapes its folder.');const databaseInfo=await lstat(sourceDatabase);if(databaseInfo.isSymbolicLink()||!databaseInfo.isFile()||databaseInfo.size!==manifest.database.bytes||await digest(sourceDatabase)!==manifest.database.sha256)throw new Error('The backup database failed its integrity check.');const schemaVersion=validateDatabase(sourceDatabase);if(schemaVersion!==manifest.schemaVersion)throw new Error('The backup schema does not match its manifest.');
-  const pendingDatabase=join(dataDir,'pending-runtime-restore.sqlite'),pendingArtifacts=join(dataDir,'pending-runtime-restore-artifacts'),temporaryDatabase=`${pendingDatabase}.${randomUUID()}.tmp`,temporaryArtifacts=`${pendingArtifacts}.${randomUUID()}.tmp`;await rm(temporaryArtifacts,{recursive:true,force:true});await mkdir(temporaryArtifacts,{recursive:true,mode:0o700});
+  const root=await realpath(sourcePath),rootInfo=await lstat(root);
+  if(rootInfo.isSymbolicLink()||!rootInfo.isDirectory())throw new Error('Choose an Aux runtime backup folder.');
+  const manifest=await readManifest(root),sourceDatabase=await realpath(join(root,'state.sqlite'));
+  const databaseRel=relative(root,sourceDatabase);
+  if(databaseRel==='..'||databaseRel.startsWith(`..${sep}`))throw new Error('The backup database escapes its folder.');
+  const databaseInfo=await lstat(sourceDatabase);
+  if(databaseInfo.isSymbolicLink()||!databaseInfo.isFile()||databaseInfo.size!==manifest.database.bytes||await digest(sourceDatabase)!==manifest.database.sha256)
+    throw new Error('The backup database failed its integrity check.');
+  const schemaVersion=validateDatabase(sourceDatabase);
+  if(schemaVersion!==manifest.schemaVersion)throw new Error('The backup schema does not match its manifest.');
+
+  const pendingDatabase=join(dataDir,'pending-runtime-restore.sqlite');
+  const pendingArtifacts=join(dataDir,'pending-runtime-restore-artifacts');
+  const temporaryDatabase=`${pendingDatabase}.${randomUUID()}.tmp`;
+  const temporaryArtifacts=`${pendingArtifacts}.${randomUUID()}.tmp`;
+  await mkdir(temporaryArtifacts,{recursive:true,mode:0o700});
   try{
-    await copyFile(sourceDatabase,temporaryDatabase);await chmod(temporaryDatabase,0o600);
-    const staged=new DatabaseSync(temporaryDatabase);let omittedArtifacts:Set<string>;try{staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();omittedArtifacts=sanitizePortablePageRecall(staged);}finally{staged.close();}
+    await copyFile(sourceDatabase,temporaryDatabase);
+    await chmod(temporaryDatabase,0o600);
+    const staged=new DatabaseSync(temporaryDatabase);
+    let omittedArtifacts:Set<string>;
+    let artifactRows:Map<string,{pageId:string|null;mediaType:string;path:string}>;
+    try{
+      staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
+      omittedArtifacts=sanitizePortablePageRecall(staged);
+      const rows=staged.prepare('SELECT artifact_id AS artifactId,page_id AS pageId,media_type AS mediaType,path FROM artifacts').all() as
+        {artifactId:string;pageId:string|null;mediaType:string;path:string}[];
+      artifactRows=new Map(rows.map(row=>[row.artifactId,row]));
+    }finally{staged.close();}
+
     const portableArtifacts=manifest.artifacts.filter(item=>!omittedArtifacts.has(item.artifactId));
-    let artifactBytes=0;for(const item of portableArtifacts){const rel=safeRelative(item.relativePath),source=await realpath(join(root,'artifacts',rel)),sourceRel=relative(join(root,'artifacts'),source);if(sourceRel==='..'||sourceRel.startsWith(`..${sep}`))throw new Error('A backup artifact escapes its folder.');const info=await lstat(source);artifactBytes+=info.size;if(info.isSymbolicLink()||!info.isFile()||info.size!==item.bytes||artifactBytes>MAX_ARTIFACT_BYTES||await digest(source)!==item.sha256)throw new Error(`Backup artifact ${item.artifactId} failed its integrity check.`);const current=join(dataDir,'artifacts',rel);try{const currentInfo=await lstat(current);if(currentInfo.isSymbolicLink()||!currentInfo.isFile()||currentInfo.size!==item.bytes||await digest(current)!==item.sha256)throw new Error(`Artifact ${item.artifactId} conflicts with existing Aux data.`);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}const target=join(temporaryArtifacts,rel);await mkdir(dirname(target),{recursive:true,mode:0o700});await copyFile(source,target);await chmod(target,0o600);}
-    const prepared=new DatabaseSync(temporaryDatabase);try{const included=new Set(portableArtifacts.map(item=>item.artifactId)),update=prepared.prepare("UPDATE artifacts SET path=?,status='complete' WHERE artifact_id=?"),missing=prepared.prepare("UPDATE artifacts SET path=?,status='failed' WHERE artifact_id=?");for(const item of portableArtifacts)update.run(join(dataDir,'artifacts',safeRelative(item.relativePath)),item.artifactId);for(const row of prepared.prepare('SELECT artifact_id FROM artifacts').all() as unknown as {artifact_id:string}[])if(!included.has(row.artifact_id))missing.run(join(dataDir,'artifacts','missing',row.artifact_id),row.artifact_id);prepared.exec('VACUUM');}finally{prepared.close();}const stagedInfo=await stat(temporaryDatabase),sha256=await digest(temporaryDatabase);await rm(pendingArtifacts,{recursive:true,force:true});await rename(temporaryArtifacts,pendingArtifacts);await rename(temporaryDatabase,pendingDatabase);await writeFile(join(dataDir,'pending-runtime-restore.json'),JSON.stringify({version:2,createdAt:Date.now(),schemaVersion,bytes:stagedInfo.size,sha256,artifactFiles:portableArtifacts},null,2)+'\n',{encoding:'utf8',mode:0o600});return{staged:true as const,schemaVersion,bytes:stagedInfo.size+artifactBytes,sha256,artifactFiles:portableArtifacts.length,missingArtifacts:manifest.missingArtifacts};
+    const stagedArtifacts:ManifestArtifact[]=[];
+    const stagedPaths=new Set<string>();
+    let artifactBytes=0;
+    for(const item of portableArtifacts){
+      const rel=safeRelative(item.relativePath);
+      const metadata=artifactRows.get(item.artifactId);
+      if(!metadata)throw new Error(`Backup artifact ${item.artifactId} has no database record.`);
+      const sourcePath=join(root,'artifacts',rel);
+      const linkInfo=await lstat(sourcePath);
+      if(linkInfo.isSymbolicLink())throw new Error(`Backup artifact ${item.artifactId} is a symbolic link.`);
+      const source=await realpath(sourcePath),sourceRel=relative(join(root,'artifacts'),source);
+      if(sourceRel==='..'||sourceRel.startsWith(`..${sep}`))throw new Error('A backup artifact escapes its folder.');
+      const info=await lstat(source);
+      if(!info.isFile()||info.size!==item.bytes||await digest(source)!==item.sha256)
+        throw new Error(`Backup artifact ${item.artifactId} failed its integrity check.`);
+      const evidencePath=/-observation-r\d+\.json$/.test(metadata.path)?metadata.path:rel;
+      const candidate=metadata.mediaType==='application/json'&&/-observation-r\d+\.json$/.test(evidencePath);
+      if(candidate&&info.size>4*1024*1024)throw new Error('An observation artifact is too large to minimize.');
+      const original=candidate?await readFile(source):undefined;
+      const minimized=original?minimizedObservationArtifactBytes({...metadata,path:evidencePath},original):undefined;
+      const transformed=!!minimized&&!!original&&!minimized.equals(original);
+      const bytes=minimized?.length??info.size;
+      artifactBytes+=bytes;
+      if(artifactBytes>MAX_ARTIFACT_BYTES)throw new Error('Aux artifact restores are limited to 1 GB.');
+      const stagedDigest=minimized?createHash('sha256').update(minimized).digest('hex'):item.sha256;
+      let targetRel=rel;
+      const current=join(dataDir,'artifacts',rel);
+      try{
+        const currentInfo=await lstat(current);
+        if(currentInfo.isSymbolicLink()||!currentInfo.isFile())throw new Error(`Artifact ${item.artifactId} conflicts with existing Aux data.`);
+        const currentDigest=await digest(current);
+        if(currentInfo.size!==bytes||currentDigest!==stagedDigest){
+          if(!transformed||currentInfo.size!==item.bytes||currentDigest!==item.sha256)
+            throw new Error(`Artifact ${item.artifactId} conflicts with existing Aux data.`);
+          // Preserve the current profile's file for its recovery snapshot.
+          targetRel=safeRelative(join(dirname(rel),`${item.artifactId}-minimized-observation.json`));
+        }
+      }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+      const targetCurrent=join(dataDir,'artifacts',targetRel);
+      try{
+        const existing=await lstat(targetCurrent);
+        if(existing.isSymbolicLink()||!existing.isFile()||existing.size!==bytes||await digest(targetCurrent)!==stagedDigest)
+          throw new Error(`Artifact ${item.artifactId} conflicts with existing Aux data.`);
+      }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+      if(stagedPaths.has(targetRel))throw new Error('The backup maps multiple artifacts to one restored file.');
+      stagedPaths.add(targetRel);
+      const target=join(temporaryArtifacts,targetRel);
+      await mkdir(dirname(target),{recursive:true,mode:0o700});
+      if(minimized)await writeFile(target,minimized,{mode:0o600});else await copyFile(source,target);
+      await chmod(target,0o600);
+      const stagedItem:ManifestArtifact={artifactId:item.artifactId,relativePath:targetRel,bytes,sha256:await digest(target)};
+      stagedArtifacts.push(stagedItem);
+    }
+
+    const prepared=new DatabaseSync(temporaryDatabase);
+    try{
+      const included=new Set(stagedArtifacts.map(item=>item.artifactId));
+      const update=prepared.prepare("UPDATE artifacts SET path=?,size=?,status='complete' WHERE artifact_id=?");
+      const missing=prepared.prepare("UPDATE artifacts SET path=?,status='failed' WHERE artifact_id=?");
+      for(const item of stagedArtifacts)update.run(join(dataDir,'artifacts',item.relativePath),item.bytes,item.artifactId);
+      for(const row of prepared.prepare('SELECT artifact_id FROM artifacts').all() as {artifact_id:string}[])
+        if(!included.has(row.artifact_id))missing.run(join(dataDir,'artifacts','missing',row.artifact_id),row.artifact_id);
+      prepared.exec('VACUUM');
+    }finally{prepared.close();}
+    const stagedInfo=await stat(temporaryDatabase),sha256=await digest(temporaryDatabase);
+    await rm(pendingArtifacts,{recursive:true,force:true});
+    await rename(temporaryArtifacts,pendingArtifacts);
+    await rename(temporaryDatabase,pendingDatabase);
+    await writeFile(join(dataDir,'pending-runtime-restore.json'),JSON.stringify({version:2,createdAt:Date.now(),schemaVersion,
+      bytes:stagedInfo.size,sha256,artifactFiles:stagedArtifacts},null,2)+'\n',{encoding:'utf8',mode:0o600});
+    return{staged:true as const,schemaVersion,bytes:stagedInfo.size+artifactBytes,sha256,
+      artifactFiles:stagedArtifacts.length,missingArtifacts:manifest.missingArtifacts};
   }catch(error){await Promise.all([rm(temporaryDatabase,{force:true}),rm(temporaryArtifacts,{recursive:true,force:true})]);throw error;}
 }
 

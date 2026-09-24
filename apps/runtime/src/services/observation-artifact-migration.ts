@@ -8,6 +8,20 @@ import { observationEvidence } from "./observation-evidence.js";
 
 const inFlight = new WeakMap<Repo, Promise<number>>();
 
+export function minimizedObservationArtifactBytes(
+  row: { path: string; pageId: string | null; mediaType: string }, original: Buffer,
+): Buffer | undefined {
+  if (row.mediaType !== "application/json" || !/-observation-r\d+\.json$/.test(basename(row.path))) return undefined;
+  if (original.length > 4 * 1024 * 1024) throw new Error("An observation artifact is too large to minimize.");
+  let parsed: unknown;
+  try { parsed = JSON.parse(original.toString("utf8")); }
+  catch { throw new Error("A saved observation artifact is not valid JSON."); }
+  const observation = ObservationSchema.safeParse(parsed);
+  if (!observation.success || observation.data.pageId !== row.pageId)
+    throw new Error("A saved observation artifact does not match its page.");
+  return Buffer.from(JSON.stringify(observationEvidence(observation.data)));
+}
+
 /** Minimize observation artifacts written before Aux stopped saving interactive page state. */
 export function minimizeLegacyObservationArtifacts(repo: Repo, artifactRoot: string): Promise<number> {
   const existing = inFlight.get(repo);
@@ -31,13 +45,7 @@ export function minimizeLegacyObservationArtifacts(repo: Repo, artifactRoot: str
       if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024)
         throw new Error("An observation artifact is invalid or too large to minimize.");
       const original = await readFile(row.path);
-      let parsed: unknown;
-      try { parsed = JSON.parse(original.toString("utf8")); }
-      catch { throw new Error("A saved observation artifact is not valid JSON."); }
-      const observation = ObservationSchema.safeParse(parsed);
-      if (!observation.success || observation.data.pageId !== row.pageId)
-        throw new Error("A saved observation artifact does not match its page.");
-      const minimized = Buffer.from(JSON.stringify(observationEvidence(observation.data)));
+      const minimized = minimizedObservationArtifactBytes({ ...row, mediaType: "application/json" }, original)!;
       const current = repo.getArtifact(row.artifactId);
       if (!current || current.path !== row.path) continue;
       if (!original.equals(minimized)) {
