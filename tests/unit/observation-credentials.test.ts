@@ -9,19 +9,22 @@ it("removes credential values before a raw observation leaves the page", () => {
   document.body.innerHTML = `<label>Password<input id="password" type="PASSWORD" value="synthetic-password-123"></label>
     <input id="shown" type="text" autocomplete="section-login current-password" value="synthetic-revealed-password">
     <input id="otp" autocomplete="one-time-code" value="938271">
+    <input id="access_token" type="text" value="synthetic-access-token">
+    <input id="payment" autocomplete="cc-number" value="4111111111111111">
+    <textarea name="apiKey">synthetic-api-key</textarea>
     <input id="empty" type="password">
     <input id="ordinary" aria-label="Search" value="ordinary search">
     <div id="shadow"></div>`;
   const shadow = document.querySelector("#shadow")!.attachShadow({mode:"open"});
   shadow.innerHTML = '<input type="password" value="synthetic-shadow-secret">';
   document.querySelector<HTMLInputElement>("#password")!.setCustomValidity("synthetic-password-123 is invalid");
-  Object.defineProperty(document.body,"innerText",{configurable:true,value:"Sign in synthetic-revealed-password 938271"});
+  Object.defineProperty(document.body,"innerText",{configurable:true,value:"Sign in synthetic-revealed-password 938271 synthetic-access-token 4111111111111111 synthetic-api-key"});
   vi.spyOn(Element.prototype,"getBoundingClientRect").mockReturnValue({x:0,y:0,left:0,top:0,right:120,bottom:32,width:120,height:32,toJSON:()=>({})});
   const result = collectObservation({maxElements:30,maxTextChars:2000,frameKey:"main",refStart:1});
   const serialized = JSON.stringify(result);
-  for (const secret of ["synthetic-password-123","synthetic-revealed-password","938271","synthetic-shadow-secret"]) expect(serialized).not.toContain(secret);
+  for (const secret of ["synthetic-password-123","synthetic-revealed-password","938271","synthetic-shadow-secret","synthetic-access-token","4111111111111111","synthetic-api-key"]) expect(serialized).not.toContain(secret);
   expect(serialized).toContain("ordinary search");
-  expect(result.elements.filter(element => element.value === "{redacted}")).toHaveLength(4);
+  expect(result.elements.filter(element => element.value === "{redacted}")).toHaveLength(7);
   expect(result.formFields.find(field => field.name === undefined && field.type === "password" && field.value === "{redacted}")?.valid).toBe(false);
   expect(result.formFields.find(field => field.type === "password" && field.value === "")?.value).toBe("");
 });

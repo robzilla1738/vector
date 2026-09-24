@@ -2,10 +2,13 @@
 export function extractElements(elements: Element[] | null, attribute: string | null = null): (string | null)[] {
   const doc = elements?.[0]?.ownerDocument ?? document;
   const secrets = new Set<string>();
-  const protectedField = (element: Element) =>
-    (element.getAttribute("type") ?? "").toLowerCase() === "password"
-    || (element.getAttribute("autocomplete") ?? "").toLowerCase().split(/\s+/)
-      .some(token => ["current-password", "new-password", "one-time-code"].includes(token));
+  const protectedField = (element: Element) => {
+    if ((element.getAttribute("type") ?? "").toLowerCase() === "password") return true;
+    if ((element.getAttribute("autocomplete") ?? "").toLowerCase().split(/\s+/)
+      .some(token => ["current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp", "cc-exp-month", "cc-exp-year"].includes(token))) return true;
+    const identity = ["name", "id", "aria-label", "placeholder"].map(name => element.getAttribute(name)).filter(Boolean).join(" ").toLowerCase();
+    return /(?:password|passphrase|secret|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|auth(?:orization)?[-_ ]?token|session[-_ ]?token|bearer[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b)/i.test(identity);
+  };
   const scan = (root: Document | ShadowRoot) => {
     for (const element of root.querySelectorAll("*")) {
       if (protectedField(element)) {

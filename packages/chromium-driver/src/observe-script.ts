@@ -281,7 +281,9 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   function protectedField(el: any): boolean {
     if (String(el.type ?? el.getAttribute?.("type") ?? "").toLowerCase() === "password") return true;
     const tokens = String(el.getAttribute?.("autocomplete") ?? "").toLowerCase().split(/\s+/);
-    return tokens.some(token => ["current-password", "new-password", "one-time-code"].includes(token));
+    if (tokens.some(token => ["current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp", "cc-exp-month", "cc-exp-year"].includes(token))) return true;
+    const identity = [el.getAttribute?.("name"), el.getAttribute?.("id"), el.getAttribute?.("aria-label"), el.getAttribute?.("placeholder")].filter(Boolean).join(" ").toLowerCase();
+    return /(?:password|passphrase|secret|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|id[-_ ]?token|auth(?:orization)?[-_ ]?token|session[-_ ]?token|bearer[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b)/i.test(identity);
   }
 
   const protectedValues = new Set<string>();
@@ -409,7 +411,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     if (!visible(el)) continue;
     const tag = (el.tagName as string).toLowerCase();
     const role = implicitRole(el);
-    const name = accessibleName(el);
+    const name = redactText(accessibleName(el));
     const r = rectOf(el);
     const entry: any = {
       ref: refOf(el),
@@ -428,7 +430,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     const val = fieldValue(el);
     if (val !== undefined && val !== "") entry.value = val.slice(0, 200);
     if (tag === "input" && (type === "checkbox" || type === "radio")) entry.checked = !!el.checked;
-    if (tag === "select") entry.selected = el.options?.[el.selectedIndex]?.text?.trim() ?? "";
+    if (tag === "select") entry.selected = redactText(el.options?.[el.selectedIndex]?.text?.trim() ?? "");
     if (tag === "a") entry.href = el.getAttribute("href") || undefined;
     const ph = el.getAttribute?.("placeholder");
     if (ph) entry.placeholder = redactText(ph).slice(0, 100);
@@ -436,11 +438,11 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     // Action-reliability state (plan A10): choices, toggles, focus, and
     // whether a click would actually land (viewport + occlusion).
     if (tag === "select" && el.options) {
-      const opts = Array.from(el.options as any[]).map((o: any) => (o.label || o.text || "").trim()).filter(Boolean);
+      const opts = Array.from(el.options as any[]).map((o: any) => redactText((o.label || o.text || "").trim())).filter(Boolean);
       if (opts.length) entry.options = opts.slice(0, 20);
     } else if (role === "listbox" || role === "menu" || role === "radiogroup") {
       const opts = Array.from(el.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]') as any[])
-        .map((o: any) => (o.getAttribute("aria-label") || o.textContent || "").replace(/\s+/g, " ").trim())
+        .map((o: any) => redactText((o.getAttribute("aria-label") || o.textContent || "").replace(/\s+/g, " ").trim()))
         .filter(Boolean);
       if (opts.length) entry.options = opts.slice(0, 20);
     }
