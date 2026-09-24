@@ -287,7 +287,7 @@ export function Overview() {
     {progress && <p className="hint ov-progress" role="status">{progress}</p>}
     {error && <p role="alert" className="field-error">{error}</p>}
     {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? I.search : I.grid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
-    <div ref={grid} className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
+    <div role="group" ref={grid} className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
         const shot = shots[page.pageId] || pagePreview(page.pageId);
         const title = page.title || "New Tab";

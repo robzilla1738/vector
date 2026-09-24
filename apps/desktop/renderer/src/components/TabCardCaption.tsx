@@ -9,7 +9,7 @@ export function TabCardCaption({ page, space, pinned = false }: { page: PageTarg
   return <span className="tab-card-caption">
     <span className="tab-card-heading"><FavIcon url={page.url} src={page.favicon} size="sm" />
       <span className="tab-card-title">{page.title || "New Tab"}</span>
-      {pinned && <span className="tab-card-pin" aria-label="Pinned">{I.pin}</span>}
+      {pinned && <span role="img" className="tab-card-pin" aria-label="Pinned">{I.pin}</span>}
     </span>
     <span className="tab-card-domain">{page.url === "about:blank" ? "New Tab" : hostOf(page.url)}{space ? ` · ${space}` : ""}</span>
     {page.viewStatus === "crashed" ? <span className="tab-card-status">Page stopped responding</span> : page.loading ? <span className="tab-card-status">Loading…</span> : null}

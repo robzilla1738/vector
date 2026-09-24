@@ -336,7 +336,7 @@ export function Settings() {
         {!searching && category === "Connections" && <div className="settings-connection-tabs" role="tablist" aria-label="Connection types" onKeyDown={event => moveListFocus(event, '[role="tab"]', false)}>
           {(["Models", "Services", "Vault", "Agents", "Plugins"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
         </div>}
-        <div className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
+        <div role="group" className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
         {searching && <div className="settings-search-results">
           <output className="hint" data-block>{results.length ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}` : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}</output>
           <div onKeyDown={event => moveListFocus(event, "button")}>

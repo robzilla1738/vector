@@ -24,7 +24,7 @@ export function UntrackedFileReview({projectId,names}:{projectId:string;names:st
   {preview&&<>
    <strong className="selectable">{preview.file.name}</strong>
    <p className="hint">Read {new Date(preview.at).toLocaleString()}. This is a snapshot; refresh checkout status after editing or staging files.</p>
-   <pre className="project-diff" tabIndex={0} aria-label="Untracked file contents">{preview.file.content===''?'(Empty file)':preview.file.content}</pre>
+   <pre role="group" className="project-diff" tabIndex={0} aria-label="Untracked file contents">{preview.file.content===''?'(Empty file)':preview.file.content}</pre>
    <button className="btn sm" onClick={()=>setPreview(null)}>Close file preview</button>
   </>}
  </section>;

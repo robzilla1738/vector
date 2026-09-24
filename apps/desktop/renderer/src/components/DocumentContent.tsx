@@ -12,5 +12,5 @@ export function DocumentExtractionNote({ filename }: { filename: string }) {
 
 export function DocumentContent({ filename, content }: { filename: string; content: string }) {
   if (filename.toLowerCase().endsWith(".xlsx")) return <Suspense fallback={<p className="hint" role="status">Loading workbook preview…</p>}><WorkbookPreview content={content} /></Suspense>;
-  return <pre tabIndex={0} className="evidence-text" aria-label="Full document snapshot">{content || "Empty document"}</pre>;
+  return <pre role="group" tabIndex={0} className="evidence-text" aria-label="Full document snapshot">{content || "Empty document"}</pre>;
 }

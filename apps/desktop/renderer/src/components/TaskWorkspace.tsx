@@ -33,7 +33,7 @@ export function TaskWorkspace({
       <div className="row"><button className="btn sm" disabled={busy} onClick={() => void onInspect()}>{current ? "Refresh changes" : "Inspect checkout"}</button></div>
       {current ? <>
         {current.changes.error ? <p role="alert">{current.changes.error}</p> : current.changes.patch
-          ? <pre className="project-diff" tabIndex={0} aria-label="Changes from saved commit">{current.changes.patch.split("\n").map((line, index) => <span key={index} className={line.startsWith("+") && !line.startsWith("+++") ? "diff-added" : line.startsWith("-") && !line.startsWith("---") ? "diff-removed" : line.startsWith("@@") ? "diff-location" : ""}>{line}{"\n"}</span>)}</pre>
+          ? <pre role="group" className="project-diff" tabIndex={0} aria-label="Changes from saved commit">{current.changes.patch.split("\n").map((line, index) => <span key={index} className={line.startsWith("+") && !line.startsWith("+++") ? "diff-added" : line.startsWith("-") && !line.startsWith("---") ? "diff-removed" : line.startsWith("@@") ? "diff-location" : ""}>{line}{"\n"}</span>)}</pre>
           : <p className="hint">No tracked changes from the saved commit.</p>}
         {current.changes.untracked.length > 0 && <UntrackedFileReview key={`${current.project.projectId}:${current.inspectedAt}`} projectId={current.project.projectId} names={current.changes.untracked} />}
       </> : <p className="hint">Inspect the checkout to load the current diff.</p>}

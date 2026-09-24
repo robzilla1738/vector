@@ -95,7 +95,7 @@ export function HorizontalTabs() {
             }
             if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); const peers = allTabs.filter(item => (layout.tabFolder[item.pageId] ?? null) === (folder?.id ?? null)); const from = peers.indexOf(page); const to = event.key === "ArrowLeft" ? from - 1 : from + 2; if (to >= 0 && to <= peers.length) useStore.getState().reorderGroup(layout.activeSpaceId, folder?.id ?? null, from, to); }
           }}>
-          {page.viewStatus==="crashed"?I.alert:page.loading?<span className="spin" aria-label="Loading"/>:page.url === "about:blank" ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}<span className="horizontal-tab-title">{page.title || "New Tab"}</span>
+          {page.viewStatus==="crashed"?I.alert:page.loading?<span role="status" className="spin" aria-label="Loading"/>:page.url === "about:blank" ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}<span className="horizontal-tab-title">{page.title || "New Tab"}</span>
         </button>
         <TabAudioButton pageId={page.pageId} title={page.title || "New Tab"} />
         <button className="horizontal-tab-close" aria-label={`Close ${page.title || "New Tab"}`} onClick={() => void useStore.getState().closeTab(page.pageId).catch(errToast)}>{I.close}</button>

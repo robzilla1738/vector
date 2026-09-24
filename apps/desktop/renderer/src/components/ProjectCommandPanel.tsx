@@ -154,7 +154,7 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
       {run.mode==='command'&&run.state==='succeeded'&&<p className="hint">{run.verifiedTree?`Verified checkout ${run.verifiedTree.slice(0,12)}`:run.verificationError??'Checkout fingerprint was not recorded. Run this check again before handoff.'}</p>}
       <pre className="evidence-text">{run.command}</pre>
       {run.truncated&&<p className="hint">Earlier output omitted; showing the latest 128K characters.</p>}
-      <pre className="project-diff" tabIndex={0} aria-label="Command output">{run.output||(run.state==='running'?'Waiting for output…':'No output was recorded.')}</pre>
+      <pre role="group" className="project-diff" tabIndex={0} aria-label="Command output">{run.output||(run.state==='running'?'Waiting for output…':'No output was recorded.')}</pre>
       {(run.state==='running'||run.state==='stopping')&&<button className="btn sm" disabled={busy||run.state==='stopping'} onClick={()=>void action(async()=>{await bridge.stopProjectCommand(projectId,run.commandId);setRuns(await bridge.listProjectCommands(projectId));})}>{run.state==='stopping'?'Stopping…':run.mode==='service'?'Stop service':'Stop command'}</button>}
       {run.state==='interrupted'&&<><p className="hint">Completion was not recorded. Nothing was restarted automatically. After a force quit, verify external processes before running again.</p>{!run.stackId&&run.mode==='service'&&run.task?.taskId===task.taskId&&run.task.taskRevision===task.revision&&<button className="btn sm" disabled={disabled||busy||runningServices>=4} onClick={()=>void action(async()=>{await bridge.runProjectCommand(projectId,run.command,{taskId:task.taskId,expectedRevision:task.revision},'service');setRuns(await bridge.listProjectCommands(projectId));})}>Review and restart service</button>}{run.mode==='service'&&run.task&&(run.task.taskId!==task.taskId||run.task.taskRevision!==task.revision)&&<p className="hint">This service belongs to another or earlier task revision. Review its command in the current task before running it again.</p>}</>}
     </details>)}
@@ -178,7 +178,7 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
         {previewReady&&!pick&&<button className="btn sm" disabled={busy||picking} onClick={()=>void beginPick()}>{picking?'Click an element in the preview…':'Request edit…'}</button>}
         <button className="btn sm" disabled={!previewReady||diagnosticsBusy} onClick={()=>previewReady&&void refreshDiagnostics(linkedPage.pageId)}>{diagnosticsBusy?'Refreshing…':'Refresh'}</button>
       </div></div>
-      {pick&&<div className="field" aria-label="Edit request">
+      {pick&&<div role="group" className="field" aria-label="Edit request">
         <strong>Edit request</strong>
         <span className="hint">{`Element: ${describePick(pick)}`}</span>
         <textarea aria-label="What should change" placeholder="Describe the change for this element…" value={editText} onChange={event=>setEditText(event.target.value)} />

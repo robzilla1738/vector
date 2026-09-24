@@ -75,6 +75,9 @@ function main() {
     mkdirSync(dirname(target), { recursive: true });
     cpSync(join(source, asset.path), target);
   }
+  const bootstrap = readFileSync(join(import.meta.dirname, "native/aux-host.js"));
+  writeFileSync(join(stage, "aux-host.js"), bootstrap);
+  assets.push({ path: "aux-host.js", bytes: bootstrap.length, sha256: createHash("sha256").update(bootstrap).digest("hex"), contentType: "text/javascript" });
   const result = {
     kind: 'aux-chromium-webui-assets-v1', source: relative(repo, source), stage,
     entry: manifest['index.html'].file, assets,

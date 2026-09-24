@@ -896,14 +896,14 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
   const updateFolder = useStore((s) => s.updateFolder);
   return (
     <div ref={ref} className="menu ctx-menu" role="menu" aria-label={group ? "Tab group actions" : "Folder actions"} onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
-      <div className="menu-swatches" aria-label="Folder colour">
+      <div role="group" className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
           <button key={color} aria-pressed={folder.color === color} aria-label={color} data-space={color}
             className={`swatch sm ${folder.color === color ? "on" : ""}`}
             onClick={() => updateFolder(folder.id, { color: folder.color === color ? null : color })} />
         ))}
       </div>
-      <div className="menu-swatches" aria-label="Folder icon">
+      <div role="group" className="menu-swatches" aria-label="Folder icon">
         {FOLDER_EMOJIS.map((emoji) => {
           const on = (folder.emoji ?? "") === emoji;
           return (

@@ -80,7 +80,7 @@ export function ProjectFileEditor({projectId,taskId,taskRevision,attached,disabl
    {diskConflict&&<section className="field project-external-conflict" aria-label="External file changes">
     <strong>Changed in another app</strong>
     <p className="hint">Aux kept your draft unchanged. Review the current disk version, then keep one version deliberately. Replacing the disk version keeps it in recovery history.</p>
-    <pre className="project-diff" tabIndex={0} aria-label="External file contents">{diskConflict.content||'(Empty file)'}</pre>
+    <pre role="group" className="project-diff" tabIndex={0} aria-label="External file contents">{diskConflict.content||'(Empty file)'}</pre>
     <div className="row"><button className="btn sm" disabled={busy||disabled} onClick={()=>void action(async()=>{
       const saved=await bridge.saveProjectFile(projectId,file.name,diskConflict.sha256,content);setFile(saved);setBase(saved.sha256);setContent(saved.content);setDiskConflict(null);setRecovery(saved.recoveryPath);try{localStorage.removeItem(key(projectId,file.name));}catch{}setMessage('Kept the Aux draft. The external version is available in recovery history.');
     })}>Replace disk with Aux draft</button><button className="btn sm" disabled={busy} onClick={()=>{
@@ -102,7 +102,7 @@ export function ProjectFileEditor({projectId,taskId,taskRevision,attached,disabl
     {history.unreadable>0&&<p role="alert">{history.unreadable} project recovery copies could not be read or verified. They remain on disk.</p>}
     {!history.versions.length&&<p className="hint">No matching recovery versions found.</p>}
     <div className="project-file-list">{history.versions.map(item=><button className="btn sm" key={item.versionId} disabled={busy} onClick={()=>void action(async()=>setVersion(await bridge.readProjectFileVersion(projectId,file.name,item.versionId)))}>Preview {new Date(item.savedAt).toLocaleString()} · {item.byteLength.toLocaleString()} bytes</button>)}</div>
-    {version&&<><pre className="project-diff" tabIndex={0} aria-label="Recovery version contents">{version.content||'(Empty file)'}</pre>
+    {version&&<><pre role="group" className="project-diff" tabIndex={0} aria-label="Recovery version contents">{version.content||'(Empty file)'}</pre>
       <p className="hint">SHA-256 {version.sha256}</p>
       {dirty&&<p className="hint">Save or explicitly discard your draft before restoring a version.</p>}
       <button className="btn sm" disabled={busy||disabled||dirty||version.sha256===base} onClick={()=>void action(async()=>{

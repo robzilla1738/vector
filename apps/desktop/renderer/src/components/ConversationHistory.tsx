@@ -137,7 +137,7 @@ export function ConversationHistory() {
     finally { pending.current = false; setSaving(false); }
   };
   return <section className="conversation conversation-history" aria-label="Conversation history">
-    <header className="conversation-head"><h1>Chats</h1><div className="sp"/><div className="history-segment" aria-label="Conversation state"><button disabled={saving} aria-pressed={!archived} className={!archived ? "active" : ""} onClick={() => setArchived(false)}>Active</button><button disabled={saving} aria-pressed={archived} className={archived ? "active" : ""} onClick={() => setArchived(true)}>Archived</button></div></header>
+    <header className="conversation-head"><h1>Chats</h1><div className="sp"/><div role="group" className="history-segment" aria-label="Conversation state"><button disabled={saving} aria-pressed={!archived} className={!archived ? "active" : ""} onClick={() => setArchived(false)}>Active</button><button disabled={saving} aria-pressed={archived} className={archived ? "active" : ""} onClick={() => setArchived(true)}>Archived</button></div></header>
     <div className="conversation-history-list" ref={list} onKeyDown={event=>moveListFocus(event,".history-conversation")}>
       <div className="history-toolbar">
       <label className="history-search">{I.search}

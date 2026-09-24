@@ -131,3 +131,7 @@ Focused checks: MemoryItems provenance/filter/exact-revision toggle and ContentM
 Tasks and Skills were visually reviewed in the same preview. Task archive/restore preserved list position; fixing asynchronous busy-state focus loss restored focus to the originating overflow control after Restore. [Work lists](evidence/2026-09-24/work-lists-dark.png). The full visual/native matrix remains open.
 
 The original Chromium compile has completed and candidate Store installation/restart passed; the dated M1 host evidence supersedes the earlier build-in-progress observation above. Incremental native shell compilation is underway in the same checkout.
+
+### Native accessibility feedback — September 24
+
+The first actual Chromium shell run found a prohibited accessible name on the loading spinner. Labelled generic renderer containers now carry appropriate group/status/image roles, preserving their labels without triggering Chromium WebUI's naming check. `accessibility-names.test.ts` and the shared menu test pass, and production rendering proceeds. This is native feedback applied to shared Aux code, not full accessibility qualification; a later native AX click still exposed a detached-object failure, recorded in M1. Transparent live-page backgrounds are explicit, but scrim overlays intentionally replace the page and cannot prove floating-overlay composition.

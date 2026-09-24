@@ -80,3 +80,25 @@ The original isolated `//chrome` identity build completed successfully: 56,841 s
 Integration difficulty: directly executing the binary then selecting its unregistered bundle path in CUA opened a second default-profile process. The newly added test extension was removed there, both test processes stopped, and the complete journey repeated in the explicit isolated Profile using LaunchServices (`open -n -a … --args --user-data-dir=…`). The repeated isolated result is the evidence above. Do not count the first profile-mismatched installation as persistence proof. CUA should subsequently select the existing app by name, and process identity must match the proof Profile.
 
 This is an Aux-branded Chromium candidate with stock Chromium controls. It does **not** establish Aux UI integration, signed extension compatibility, extension update delivery, native messaging, passkeys/SSO, signed updates, or comparative speed. Recommendation remains Chromium `//chrome`, contingent on real Aux shell/native overlays and remaining compatibility/security gates. Next work is the bounded real-shell integration in this same checkout; no full migration or release.
+
+
+### Native shell integration checkpoint — September 24, 18:24 CDT
+
+The opt-in production-shell patch compiled in the existing checkout. Initial integration needed current Views metadata declarations and the current committed-origin API; after those fixes, the successful incremental pass took 283.10 seconds (178 executed steps, eight jobs, nice 10; `/usr/bin/time` maximum resident set size 3,189,424,128 bytes, not whole-process-tree RSS).
+
+First launch failed a Chromium layout CHECK: the prototype hid `multi_contents_view`, which the stock BrowserView layout requires to remain visible. The correction preserves the required container and collapses its bounds when Aux has no page stage. This is a diagnosed integration failure, not evidence against the architecture. A small incremental rebuild is running. No native shell visual or overlay pass is claimed yet. Source lives in `experiments/chromium-fork/native`; original Store/restart evidence remains separate and valid for the identity-only candidate.
+
+### Production shell execution — September 24, 18:36 CDT
+
+The corrected candidate loads Aux's actual production React/CSS at `chrome://aux/` alongside a native Chromium page. Entering `https://example.com` in Aux's home field navigated that same native tab, and Aux's address/title followed it. Both horizontal and vertical renderer layouts were observed. The appearance method now applies the owning Profile's Chromium theme; its false result deliberately does **not** claim native backdrop/window-control support. New-tab documents route to Aux's existing home presentation. Duplicate native toolbar and tab-strip paint/input are suppressed only in opt-in proof windows; native extension anchoring still needs qualification.
+
+Aux's command palette opened and received keyboard input. Its existing scrim behavior deliberately clears the native stage (`nativePageId` returns null for scrim overlays), so this screenshot is **not** evidence of transparent composition over a visible page: `docs/ui/evidence/2026-09-24/host/candidate-palette-live-page.png` records the earlier attempt, including duplicate chrome. Do not mark the hardest overlay gate passed. Live-page shell slots now have explicit transparent backgrounds, and the WebView preserves transparent render-frame backgrounds; floating toolbar/peek composition remains to verify.
+
+Actual integration failures exposed by the candidate:
+
+- Chromium WebUI's accessibility DCHECK rejected the loading spinner's name on a generic span. Aux now assigns valid nameable roles to labelled generic containers throughout its renderer. A focused source gate and shared menu test pass, and the corrected renderer loaded without that failure.
+- Clicking a hidden/revealing address input through native accessibility subsequently hit Blink's `AXObject::ParentObject` detached-object DCHECK (`OnNativeClickAction`). This is preserved in `release/test-artifacts/candidate-shell-transparent.log`; no check was disabled. Root cause and normal-pointer/focus reproduction remain open.
+- Native Cmd+S still reached Chromium's Save dialog instead of Aux's sidebar action after page focus. The dialog was cancelled. Native shortcut routing, toolbar-edge events, traffic lights and dragging are required next host integrations.
+- Home recent work, attachments and agent entry points accurately report unsupported runtime methods. The proof currently supplies native tab truth and browser-only shell boot; it has not connected the production agent runtime or claimed task functionality.
+
+Successful small rebuilds after the first shell pass took 29.17, 57.21 and 13.30 seconds wall time (three executed compile/archive/link steps each). These are warm component-build iteration measurements, not release build estimates or foreground benchmarks. The prototype adds two native files plus hooks in BrowserView and its GN source list, and a staged WebUI bootstrap. The original identity build, Profile and successful Store/restart evidence are retained.

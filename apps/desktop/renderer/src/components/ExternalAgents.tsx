@@ -73,7 +73,7 @@ export function ExternalAgents() {
   return <section className="field external-agents" aria-label="External agents">
     <div className="drawer-section">External agents</div>
     <p>Connect Codex or Claude Code to one saved task or workspace through MCP. The client uses its own account and model.</p>
-    <div className="row" aria-label="Detected agent clients">{installations.map(item=><span className="hint" key={item.client}><strong>{item.client==='codex'?'Codex':'Claude Code'}</strong> · {item.installed?(item.version??(item.error?'version unavailable':'installed')):'not installed'}</span>)}</div>
+    <div role="group" className="row" aria-label="Detected agent clients">{installations.map(item=><span className="hint" key={item.client}><strong>{item.client==='codex'?'Codex':'Claude Code'}</strong> · {item.installed?(item.version??(item.error?'version unavailable':'installed')):'not installed'}</span>)}</div>
     <span className="hint">The generated token can access only the selected task scope, its attached browser tabs and attached Aux-managed checkouts. File changes, local commands, preview tabs and commits require native approval. It cannot accept evidence, reconcile actions, create workspaces, or expand its own scope. Use the client’s approval controls for its non-Aux tools.</span>
     <details className="field"><summary>Tools this token can call</summary>
       <p className="hint">{scopeKind === "task" ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation." : "Workspace-scoped connections can create tasks inside the selected workspace."} Vault, routines, backups and human review stay in Aux.</p>

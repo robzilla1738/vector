@@ -84,7 +84,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
           </label>)}{!available.some(page => `${page.title} ${page.url}`.toLowerCase().includes(query.toLowerCase())) && <p className="hint">No matching available tabs.</p>}</div></>}
       </AnchoredPanel>
     </div>
-    {sources.length > 0 && <div className="conversation-browser-sources" aria-label="Selected browser tabs">
+    {sources.length > 0 && <div role="group" className="conversation-browser-sources" aria-label="Selected browser tabs">
       {sources.map(source => {
         const page = pages.find(item => item.pageId === source.pageId);
         const status = sourceStatus(source, pages);

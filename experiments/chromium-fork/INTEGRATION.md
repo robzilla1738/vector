@@ -68,3 +68,9 @@ Use the visible candidate, never the mock renderer or a separate stock Chromium 
 ### Build/Store checkpoint — 2026-09-24
 
 The identity binary completed and the candidate Store installation/restart passed; see the dated evidence in `docs/M1-HOST-COMPARISON.md`. Native patches may now be integrated into this same checkout for the narrow shell proof. Keep the baseline Store Profile and binary evidence. Use LaunchServices with explicit Profile arguments and then bind CUA by app name to avoid a second default-profile process. The next native integration will require restarting the candidate; React/CSS production staging alone cannot update native C++.
+
+### Executable shell proof — current checkpoint
+
+The original build has completed. `apply-shell-proof.py <existing src>` installs the opt-in source from `native/` into that checkout after verifying its original completion metadata. Run it only when no build is active. Rebuild the same `out/AuxProof` with eight jobs at nice 10. Build the current renderer with `pnpm --filter @aux/desktop exec vite build`, then run `node experiments/chromium-fork/prepare-shell-assets.mjs`; this now stages and hashes `aux-host.js` too. Launch the same app/Profile with `--aux-shell-assets=<reported stage>`. A native source change requires quitting and restarting the candidate after the incremental build; this production asset workflow does not yet provide HMR.
+
+The native handler only accepts requests from its registered shell's committed main frame. Native tabs come from the owning Browser's TabStripModel; ordinary sites do not receive the bootstrap. Unsupported methods reject visibly. The current JS catalog poll, proof-local settings/Spaces, lack of complete tab command validation/dedup/restore and unconnected runtime are prototype limitations, not completed integration interfaces. See M1's dated execution record for measured passes and failures. No full migration or release is authorized by this checkpoint.

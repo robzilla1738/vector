@@ -26,7 +26,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
       setCopied(true);
     } catch (error) { errToast(error); }
   }
-  return <div className="answer-code"><header><span>{language || "Code"}</span><button className="btn sm ghost" aria-pressed={wrap} onClick={() => setWrap(value => !value)}>Wrap</button><button className="btn sm" onClick={() => void copy()} aria-label="Copy code">{copied ? I.check : I.copy}{copied ? "Copied" : "Copy code"}</button></header><pre ref={pre} className={wrap ? "wrap" : ""} tabIndex={0} aria-label={language ? `${language} code` : "Code block"}>{children}</pre></div>;
+  return <div className="answer-code"><header><span>{language || "Code"}</span><button className="btn sm ghost" aria-pressed={wrap} onClick={() => setWrap(value => !value)}>Wrap</button><button className="btn sm" onClick={() => void copy()} aria-label="Copy code">{copied ? I.check : I.copy}{copied ? "Copied" : "Copy code"}</button></header><pre role="group" ref={pre} className={wrap ? "wrap" : ""} tabIndex={0} aria-label={language ? `${language} code` : "Code block"}>{children}</pre></div>;
 }
 
 function ResponseTable({ children }: { children?: ReactNode }) {
