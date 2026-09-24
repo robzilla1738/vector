@@ -177,6 +177,21 @@ try {
   assert.equal(interruptedAction.status, 'failed', JSON.stringify(interruptedAction));
   assert.equal(interruptedAction.steps[0]?.receipt?.dispatchedBeforeTakeover, true, JSON.stringify(interruptedAction));
   assert.equal(interruptedAction.steps[0]?.effect, 'uncertain', JSON.stringify(interruptedAction));
+  const revokedPage = await rpc('pages.open', { url: `http://127.0.0.1:${fixture.address().port}/delayed-action`, activate: true });
+  const clicksBeforeRevoke = delayedClicks;
+  const revokedProgram = rpc('pages.execute', { program: { pageId: revokedPage.pageId, steps: [
+    { id: 'first-authorized-click', op: 'click', target: 'css:#delayed-act' },
+    { id: 'wait-before-revocation', op: 'waitFor', condition: { kind: 'textVisible', text: 'Done' } },
+    { id: 'revoked-click', op: 'click', target: 'css:#delayed-act' },
+  ] } }, 10_000);
+  for (let attempt = 0; attempt < 50 && delayedClicks === clicksBeforeRevoke; attempt++) await delay(20);
+  assert.equal(delayedClicks, clicksBeforeRevoke + 1, 'first click precedes grant revocation');
+  await rpc('settings.set', { effectGrants: ['effect:read'] });
+  const revokedAction = await revokedProgram;
+  assert.equal(revokedAction.status, 'failed', JSON.stringify(revokedAction));
+  assert.match(JSON.stringify(revokedAction), /permission denied for click/i);
+  assert.equal(delayedClicks, clicksBeforeRevoke + 1, 'revoked grant blocks the next click');
+  await rpc('settings.set', { effectGrants: ['effect:read', 'effect:write'] });
   const download = await rpc('pages.execute', {
     program: { pageId: page.pageId, steps: [
       { id: 'wait-download', op: 'expectDownload' },
