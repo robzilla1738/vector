@@ -33,6 +33,7 @@ const RELEASE_SUITE = [
   "window-unsaved-work-desktop",
   "conversation-lifecycle-desktop",
   "conversation-context-desktop",
+  "content-memory-desktop",
   "conversation-multi-tab-desktop",
   "page-action-context-desktop",
   "conversation-queue-desktop",
