@@ -242,7 +242,11 @@ export function makeInvoker(s: Services) {
       const release = client.external ? s.runs.pageOwnership.tryAcquire({
         pageId, actor: "external", taskId, connectionId: client.connectionId,
       }) : undefined;
-      try { return await action(); }
+      try {
+        if (client.external && s.pages.get(pageId).controller === "human")
+          throw new AuxError("conflict", "A person controls this tab; return control before an external action");
+        return await action();
+      }
       finally { release?.(); }
     };
 

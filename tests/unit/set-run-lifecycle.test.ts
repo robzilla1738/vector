@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, WorkerPool } from "@aux/runtime";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
+import { handlePageTakeover } from "../../apps/runtime/src/services/page-takeover.js";
 
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((res) => {
@@ -41,6 +42,7 @@ function fakePages(opts: { execMs: number }) {
       return t;
     },
     isAttached: (id: string) => targets.has(id),
+    list: () => [...targets.values()],
     livePageIds: () => [...targets.keys()],
     navigate: async (id: string, url: string) => { targets.get(id)!.url = url; return targets.get(id)!; },
     observe: async (id: string) => obs(id, targets.get(id)?.url ?? ""),
@@ -441,6 +443,72 @@ describe("conversation turn retry", () => {
 });
 
 describe("set-run lifecycle (P0-2 / P1-3)", () => {
+  it("does not start a coordinator on a human-held tab", async () => {
+    let modelCalls = 0;
+    const model: ModelClient = {
+      generateStructured: async () => { modelCalls++; throw new Error("model should not run"); },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const h = harness({ model });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    page.controller = "human";
+    const run = await h.runs.start({ goal: "Read", pageIds: [page.pageId] });
+    expect((await untilTerminal(h.repo, run.runId)).status).toBe("failed");
+    expect(modelCalls).toBe(0);
+    expect(h.runs.pageOwnership.snapshot()[page.pageId]).toBeUndefined();
+  });
+
+  it("keeps manual pauses separate from takeover auto-resume", async () => {
+    const model: ModelClient = {
+      generateStructured: async opts => new Promise((_resolve, reject) =>
+        opts.signal?.addEventListener("abort", () => reject(new Error("stopped")), { once: true })),
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const h = harness({ model });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    const run = await h.runs.start({ goal: "Read", pageIds: [page.pageId] });
+    await sleep(10);
+    h.runs.pause(run.runId);
+    page.controller = "human";
+    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    page.controller = "none";
+    handlePageTakeover(page.pageId, "none", h.repo, h.runs);
+    expect(h.repo.getRun(run.runId)?.status).toBe("paused");
+    h.runs.resume(run.runId);
+    page.controller = "human";
+    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    expect(h.repo.getRun(run.runId)?.status).toBe("paused");
+    page.controller = "none";
+    handlePageTakeover(page.pageId, "none", h.repo, h.runs);
+    expect(h.repo.getRun(run.runId)?.status).toBe("running");
+    h.runs.cancel(run.runId);
+  });
+
+  it("cancels an active set map when a person takes its member tab", async () => {
+    const h = harness({ execMs: 150 });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    const set = await h.sets.create({ name: "takeover", source: "tabs", pageIds: [page.pageId] });
+    const { runId } = await h.runs.mapSet({ setId: set.setId, program });
+    await sleep(10);
+    page.controller = "human";
+    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    expect(h.repo.getRun(runId)?.status).toBe("cancelled");
+    const members = await untilMembersSettled(h.repo, set.setId);
+    expect(members[0]?.status).toBe("skipped");
+  });
+
+  it("does not dispatch a set member against a human-held tab", async () => {
+    const h = harness({ execMs: 5 });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    page.controller = "human";
+    const set = await h.sets.create({ name: "taken", source: "tabs", pageIds: [page.pageId] });
+    const { runId } = await h.runs.mapSet({ setId: set.setId, program });
+    expect((await untilTerminal(h.repo, runId)).status).toBe("failed");
+    expect(h.state.executed).toBe(0);
+  });
+
   it("claims a set before model discovery and rejects a competing map", async () => {
     const h = harness({ execMs: 5 });
     const set = await h.sets.create({ name: "exclusive", source: "urls", urls: urls(1) });

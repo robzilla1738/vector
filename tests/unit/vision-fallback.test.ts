@@ -75,6 +75,7 @@ function harness(opts: {
   } as unknown as ModelClient;
 
   const pages = {
+    get: () => ({ controller: "none" }),
     observe: vi.fn(async () => opts.observeOverride ?? obs()),
     execute: vi.fn(async (program: { steps: { id: string; op: string }[] }, ctx: { onStep?: (o: StepOutcome, s: unknown) => void }) => {
       executeCalls.push({ steps: program.steps.length });

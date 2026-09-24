@@ -27,6 +27,7 @@ import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./nati
 import { PageService, type DriverSet } from "./services/pages.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
+import { handlePageTakeover } from "./services/page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
 import { CookieService } from "./services/cookies.js";
 import { SettingsService } from "./services/settings.js";
@@ -38,7 +39,6 @@ import { makeInvoker } from "./api/handlers.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
-import { canResumeAfterPageRelease } from "./agent/control-authority.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
@@ -269,14 +269,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const pageId = e.payload.pageId;
     const controller = e.payload.controller;
     if (typeof pageId !== "string" || typeof controller !== "string") return;
-    for (const run of repo.listRuns(200)) {
-      if (!run.pageIds.includes(pageId)) continue;
-      if (controller === "human") {
-        if (run.status === "running" || run.status === "planning") runs.pause(run.runId);
-      } else if (run.status === "paused") {
-        if (canResumeAfterPageRelease(run.pageIds, pageId, pages.list())) runs.resume(run.runId);
-      }
-    }
+    handlePageTakeover(pageId, controller, repo, runs);
   });
 
   // ---- chrome attach ----

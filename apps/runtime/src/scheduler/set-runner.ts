@@ -315,6 +315,8 @@ export class SetRunner {
     } else if (m.url && this.deps.pages.get(pageId).url !== m.url) {
       throw new AuxError("conflict", "Set member page changed since it was added; refresh the set before running it");
     }
+    if (this.deps.pages.get(pageId).controller === "human")
+      throw new AuxError("conflict", "A person controls this tab; return control before mapping the set");
 
     // replay a validated program when the member's site matches its key
     if (learned && (learned.siteKey === "*" || siteKeyOf(url) === learned.siteKey)) {

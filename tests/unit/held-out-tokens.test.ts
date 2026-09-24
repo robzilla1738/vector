@@ -42,6 +42,7 @@ function harness(model: MockModelClient) {
   const tokens: { input: number; output: number; ms: number }[] = [];
   let currentObservation = obs;
   const pages = {
+    get: () => ({ controller: "none" }),
     observe: async () => currentObservation,
     execute: async (program: { steps: { id: string; op: string }[] }, ctx: { onStep?: (o: StepOutcome, s: unknown) => void }) => {
       for (const s of program.steps) ctx.onStep?.(done(s.id, s.op), s);

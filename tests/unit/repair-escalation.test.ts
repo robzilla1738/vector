@@ -62,6 +62,7 @@ function harness(readOnly = false) {
 
   let executeCalls = 0;
   const pages = {
+    get: () => ({ controller: "none" }),
     observe: vi.fn(async () => obs()),
     execute: vi.fn(async () => {
       executeCalls += 1;

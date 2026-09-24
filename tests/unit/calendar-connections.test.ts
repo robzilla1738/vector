@@ -281,7 +281,7 @@ describe("outbound Google Calendar connection", () => {
         return { object: options.schema.parse(object), durationMs: 1 };
       }, generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
       const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
-        pages: { observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
+        pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Prepare a sourced meeting brief", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
       for (let attempt = 0; attempt < 200 && !["completed", "failed", "partially_completed"].includes(setup.repo.getRun(run.runId)!.status); attempt++)
@@ -319,7 +319,7 @@ describe("outbound Google Calendar connection", () => {
         sourceRequest: { kind: "calendar.events.list", grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z" } }), durationMs: 1 }),
         generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
       const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
-        pages: { observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
+        pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Read Calendar", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
       await begun;

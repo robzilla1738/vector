@@ -414,11 +414,15 @@ export class RunCoordinator {
     if (!control) throw new AuxError("cancelled", "run has ended");
     const release = await this.pageOwnership.acquireMany(this.get(runId).pageIds,
       { actor: "coordinator", runId }, control.abort.signal);
-    if (control.abort.signal.aborted) {
+    try {
+      const humanHeld = this.get(runId).pageIds.find(pageId => this.deps.pages.get(pageId).controller === "human");
+      if (humanHeld) throw new AuxError("conflict", `Page ${humanHeld} is under human control`);
+      if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled while waiting for a page");
+      this.pageReleases.set(runId, release);
+    } catch (error) {
       release();
-      throw new AuxError("cancelled", "run cancelled while waiting for a page");
+      throw error;
     }
-    this.pageReleases.set(runId, release);
   }
 
   private releasePages(runId: string): void {

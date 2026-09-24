@@ -41,6 +41,7 @@ import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
+import { canResumeAfterPageRelease } from "../agent/control-authority.js";
 import { calendarConversationSourcesFromStep, conversationSourceFromArtifact, dedupeConversationSources } from "./conversation-sources.js";
 
 
@@ -142,6 +143,7 @@ export class RunService {
   private pool: WorkerPool;
   private setRunControls = new Map<string, SetRunControl>();
   private activeSetClaims = new Map<string, string>();
+  private takeoverPausedRuns = new Set<string>();
 
   private contextPreference(chatId: string): { historyEnabled: boolean; excludedRunIds: string[] } {
     const saved = this.deps.repo.getSetting<{ historyEnabled?: boolean; excludedRunIds?: string[] }>(`conversationContext:${chatId}`);
@@ -588,6 +590,10 @@ export class RunService {
       pageIds: message.pageIds,
       contextPageRefs: message.contextPageRefs,
     }), runId => this.coordinator.controls.has(runId), runId => this.coordinator.steer(runId));
+    deps.events.subscribe(event => {
+      if (event.type !== EventTypes.RunStatus || !event.runId) return;
+      if (TERMINAL_RUN_STATUSES.has(event.payload.status as Run["status"])) this.takeoverPausedRuns.delete(event.runId);
+    });
   }
 
   private recordModelCall(input: {
@@ -958,6 +964,7 @@ export class RunService {
   }
 
   pause(runId: string): Run {
+    this.takeoverPausedRuns.delete(runId);
     const sc = this.setRunControls.get(runId);
     if (sc) {
       // set runs pause at member granularity — in-flight members finish,
@@ -977,6 +984,7 @@ export class RunService {
   }
 
   resume(runId: string): Run {
+    this.takeoverPausedRuns.delete(runId);
     const sc = this.setRunControls.get(runId);
     const run = this.deps.repo.getRun(runId);
     if (sc && run) {
@@ -994,11 +1002,32 @@ export class RunService {
   }
 
   cancel(runId: string, reason?: string): Run {
+    this.takeoverPausedRuns.delete(runId);
     const run = this.deps.repo.getRun(runId);
     if (run?.config?.chatId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) this.messages.cancelForChat(run.config.chatId);
     const sc = this.setRunControls.get(runId);
     if (sc) sc.cancel();
     return this.coordinator.cancel(runId, reason);
+  }
+
+  pauseForTakeover(runId: string): Run {
+    const run = this.deps.repo.getRun(runId);
+    if (!run) throw new AuxError("not_found", `no run ${runId}`);
+    if (run.status !== "running" && run.status !== "planning") return run;
+    const paused = this.pause(runId);
+    if (paused.status === "paused") this.takeoverPausedRuns.add(runId);
+    return paused;
+  }
+
+  resumeAfterTakeover(runId: string, releasedPageId: string): Run | undefined {
+    if (!this.takeoverPausedRuns.has(runId)) return undefined;
+    const run = this.deps.repo.getRun(runId);
+    if (!run || run.status !== "paused") {
+      this.takeoverPausedRuns.delete(runId);
+      return run;
+    }
+    if (!canResumeAfterPageRelease(run.pageIds, releasedPageId, this.deps.pages.list())) return run;
+    return this.resume(runId);
   }
 
   /** Test/diagnostic hook: is this set run currently gated? */
