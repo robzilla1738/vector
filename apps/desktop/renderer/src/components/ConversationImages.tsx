@@ -207,7 +207,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     {images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}
     {capture && !lasso && <div className="capture-editor" ref={review}>
       <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
-      <p className="hint">Drag to select a region. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
+      <p className="hint">Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
       {selection}
       {captureActions}
     </div>}
@@ -215,6 +215,6 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     </div>}
   </section>{capture && lasso && overlay === "capture" && createPortal(<div className="page-lasso" role="dialog" aria-modal="true" aria-label="Select an area of the captured page">
     <div className="page-lasso-image" style={{ left: lasso.bounds.left + (lasso.bounds.width - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width) / 2, top: lasso.bounds.top + (lasso.bounds.height - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height) / 2, width: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width, height: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height }}>{selection}</div>
-    <div className="page-lasso-bar"><span>{capture.title} · Drag on the frozen page to select an area</span>{captureActions}</div>
+    <div className="page-lasso-bar"><span>{capture.title} · Drag to select · Editable fields hidden</span>{captureActions}</div>
   </div>, document.body)}</>;
 }
