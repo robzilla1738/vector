@@ -1,6 +1,6 @@
-import { AuxError, type Condition, type Observation, type ObservationContent, type Program, type ProgramNode, type ProgramResult, type Step, type StepRecord, newStepId } from "@aux/contracts";
+import { AuxError, isElementRef, type Condition, type Observation, type ObservationContent, type Program, type ProgramNode, type ProgramResult, type Step, type StepRecord, newStepId } from "@aux/contracts";
 import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
-import { DEFAULT_GRANTS, authorizeProgram } from "../../agent/permissions.js";
+import { DEFAULT_GRANTS, authorizeProgram, classifyStep } from "../../agent/permissions.js";
 import { type ExecContext, executeProgram } from "../../execution/executor.js";
 import type { ControlAuthority } from "./control.js";
 import type { PageLanes } from "./lanes.js";
@@ -62,12 +62,39 @@ export class ProgramExecutor {
         : (this.pages.deps.grants ?? DEFAULT_GRANTS);
       let origin = "";
       try {
-        origin = lp.target.url ? new URL(lp.target.url).origin : "";
+        origin = new URL(lp.driver.url()).origin;
       } catch {
         origin = "";
       }
-      const auth = authorizeProgram(allSteps, grants, origin);
-      if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
+      const liveOrigin = () => {
+        try { return new URL(lp.driver!.url()).origin; }
+        catch { return ""; }
+      };
+      const authorize = async (step: Step, projectedOrigin?: string) => {
+        const targets = ["target" in step && typeof step.target === "string" ? step.target : undefined,
+          step.op === "dragTo" ? step.to : undefined].filter((target): target is string => !!target);
+        const ambiguousInput = step.op === "clickPoint" || step.op === "dialog" || step.op === "press" && targets.length === 0;
+        const fallbackOrigin = projectedOrigin ?? (ambiguousInput && lp.driver!.hasForeignFrames?.() ? "" : liveOrigin());
+        const origins = targets.length
+          ? await Promise.all(targets.map(target => projectedOrigin !== undefined && !isElementRef(target)
+            ? projectedOrigin : lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)))
+          : [fallbackOrigin];
+        for (const actionOrigin of origins) {
+          const auth = authorizeProgram([step], grants, actionOrigin);
+          if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
+        }
+      };
+      // Fail fast while the current document is knowable. A write can navigate
+      // or replace a frame, so later steps are checked against live origins at
+      // dispatch instead of the program's original top-level URL.
+      let projectedOrigin = origin;
+      for (const step of allSteps) {
+        await authorize(step, projectedOrigin);
+        if (step.op === "navigate") {
+          try { projectedOrigin = new URL(step.url, lp.driver.url()).origin; }
+          catch { break; }
+        } else if (classifyStep(step.op) !== "read") break;
+      }
       const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
       const journal = ctx.journaled ? { skip: false as const, intentId: undefined as string | undefined } : beginConsequentialWrite(this.pages.deps.durableWrites, {
         runId: ctx.runId ?? `direct:${pageId}`,
@@ -148,6 +175,7 @@ export class ProgramExecutor {
             if (lp.target.controllerEpoch !== expectedEpoch)
               throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
           },
+          authorizeStep: step => authorize(step),
           checkpoint: ctx.checkpoint ?? ((name, env) => this.pages.deps.repo.saveCheckpoint(pageId, name, env)),
           loadCheckpoint: ctx.loadCheckpoint ?? ((name) => this.pages.deps.repo.loadCheckpoint(pageId, name)),
           onArtifact: ctx.onArtifact ?? ((label, buffer, mediaType) =>

@@ -62,7 +62,8 @@ const fixture = createServer((request, response) => {
     return;
   }
   response.setHeader('Content-Type', 'text/html');
-  response.end('<title>Direct broker test</title><main>Scoped agent observation</main><button id="act" onclick="document.querySelector(\'main\').textContent=\'Agent clicked and verified\'">Act</button><button id="open-popup" onclick="window.open(\'/popup\',\'aux-popup\',\'width=500,height=400\')">Open popup</button><form method="post" action="/posted" target="aux-post"><input type="hidden" name="proof" value="kept"><button id="post-popup">POST popup</button></form><a id="background" href="/background">Background tab</a><a id="download" href="/file">Download</a>');
+  const foreign = request.headers.host?.startsWith('localhost:') && request.url?.startsWith('/page?foreign');
+  response.end(`<title>Direct broker test</title><main>${foreign ? 'Foreign origin loaded' : 'Scoped agent observation'}</main><button id="act" onclick="document.querySelector('main').textContent='Agent clicked and verified'">Act</button><button id="open-popup" onclick="window.open('/popup','aux-popup','width=500,height=400')">Open popup</button><form method="post" action="/posted" target="aux-post"><input type="hidden" name="proof" value="kept"><button id="post-popup">POST popup</button></form><a id="background" href="/background">Background tab</a><a id="cross-nav" href="http://localhost:${fixture.address().port}/page?foreign">Cross-origin navigation</a><a id="download" href="/file">Download</a>`);
 });
 await new Promise(resolve => fixture.listen(0, resolve));
 const targetUrl = `http://127.0.0.1:${fixture.address().port}/page`;
@@ -81,12 +82,15 @@ app.stdout.on('data', chunk => { output += String(chunk); });
 app.stderr.on('data', chunk => { output += String(chunk); });
 const delay = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms));
 const runtimeFile = join(dataDir, 'runtime.json');
-async function rpc(method, params = {}) {
+async function rpc(method, params = {}, timeoutMs = 10_000) {
   const { port, token } = JSON.parse(readFileSync(runtimeFile, 'utf8'));
-  const response = await fetch(`http://127.0.0.1:${port}/rpc`, {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ id: 1, method, params }), signal: AbortSignal.timeout(10_000),
-  });
+  let response;
+  try {
+    response = await fetch(`http://127.0.0.1:${port}/rpc`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id: 1, method, params }), signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) { throw new Error(`${method}: ${String(error)}\n${output.slice(0, 3000)}\n${output.slice(-3000)}`); }
   const body = await response.json();
   if (body.error) throw new Error(`${method}: ${body.error.message}`);
   return body.result;
@@ -243,9 +247,41 @@ try {
   assert.ok(afterFrameClick.content.elements.some(element => element.name?.includes('Frame clicked')), JSON.stringify({ frameAction, afterFrameClick, frameClicks }));
   for (let attempt = 0; attempt < 30 && !frameClicks; attempt++) await delay(100);
   assert.equal(frameClicks, 1, 'explicitly selected cross-site frame action reached its own origin');
+  const changedFrameButton = afterFrameClick.content.elements.find(element => element.name?.includes('Frame clicked'));
+  const parentOrigin = `http://127.0.0.1:${fixture.address().port}`;
+  const childOrigin = `http://localhost:${fixture.address().port}`;
+  const readGrant = { effect: 'read', origin: '*', scope: 'page', expiresAt: 0 };
+  await rpc('settings.set', { effectGrants: [readGrant, { effect: 'write', origin: parentOrigin, scope: 'page', expiresAt: 0 }] });
+  await assert.rejects(
+    rpc('pages.execute', { program: { pageId: framePage.pageId, steps: [{ id: 'wrong-origin', op: 'click', target: changedFrameButton.ref }] } }),
+    /permission denied for click/i,
+  );
+  const iframeElementAction = await rpc('pages.execute', { program: { pageId: framePage.pageId, steps: [{ id: 'iframe-element', op: 'click', target: 'css:#remote' }] } });
+  assert.equal(iframeElementAction.status, 'failed', JSON.stringify(iframeElementAction));
+  assert.match(JSON.stringify(iframeElementAction), /permission denied for click/i);
+  const unscopedPointAction = await rpc('pages.execute', { program: { pageId: framePage.pageId, steps: [{ id: 'point-into-frame', op: 'clickPoint', x: 30, y: 30 }] } });
+  assert.equal(unscopedPointAction.status, 'failed', JSON.stringify(unscopedPointAction));
+  assert.match(JSON.stringify(unscopedPointAction), /permission denied for clickPoint/i);
+  assert.equal(frameClicks, 1, 'parent-origin grant cannot authorize a child-origin action');
+  await rpc('settings.set', { effectGrants: [readGrant, { effect: 'write', origin: childOrigin, scope: 'page', expiresAt: 0 }] });
+  const childGrantedAction = await rpc('pages.execute', { program: { pageId: framePage.pageId, steps: [{ id: 'child-origin', op: 'click', target: changedFrameButton.ref }] } });
+  assert.equal(childGrantedAction.status, 'completed', JSON.stringify(childGrantedAction));
+  for (let attempt = 0; attempt < 30 && frameClicks < 2; attempt++) await delay(100);
+  assert.equal(frameClicks, 2, 'child-origin grant authorizes only its own iframe action');
+  await rpc('settings.set', { effectGrants: [readGrant, { effect: 'write', origin: parentOrigin, scope: 'page', expiresAt: 0 }] });
+  const navigatingPage = await rpc('pages.open', { url: targetUrl, activate: true });
+  const navigatedAction = await rpc('pages.execute', { program: { pageId: navigatingPage.pageId, steps: [
+    { id: 'cross-nav', op: 'click', target: 'css:#cross-nav' },
+    { id: 'foreign-arrived', op: 'waitFor', condition: { kind: 'textVisible', text: 'Foreign origin loaded' } },
+    { id: 'foreign-click', op: 'click', target: 'css:#act' },
+  ] } }, 25_000);
+  assert.equal(navigatedAction.status, 'failed', JSON.stringify(navigatedAction));
+  assert.match(JSON.stringify(navigatedAction), /permission denied for click/i);
+  assert.match(JSON.stringify(await rpc('pages.observe', { pageId: navigatingPage.pageId })), /Foreign origin loaded/);
+  await rpc('settings.set', { effectGrants: ['effect:read', 'effect:write'] });
 
   const firstRuntimePid = JSON.parse(readFileSync(runtimeFile, 'utf8')).pid;
-  process.kill(firstRuntimePid, 'SIGTERM');
+  process.kill(firstRuntimePid, 'SIGKILL');
   let restarted;
   const restartDeadline = Date.now() + 25_000;
   while (Date.now() < restartDeadline && !restarted) {

@@ -37,6 +37,8 @@ export interface ExecContext {
   allowEval?: boolean;
   /** abort if the page controller changed mid-program */
   checkValid?: () => void;
+  /** Recheck live target origin and current grants immediately before dispatch. */
+  authorizeStep?: (step: Step) => Promise<void>;
   /** saved task that authorized this run, used to scope vault grants */
   taskId?: string;
   /**
@@ -87,10 +89,11 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
     case "fill": return void (await page.fill(s.target, s.value, s.timeoutMs));
     case "fillCredential": {
       if (!ctx.resolveCredential) throw new AuxError("backend_unavailable", "Trusted fill requires the agent vault.");
+      const origin = await page.originForTarget?.(s.target) ?? ctx.pageOrigin ?? "";
       const secret = await ctx.resolveCredential(s.credentialRef, {
         pageId: page.identity.pageId,
         runId: ctx.runId,
-        origin: ctx.pageOrigin ?? "",
+        origin,
         target: s.target,
         taskId: ctx.taskId,
       });
@@ -158,6 +161,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
+      await ctx.authorizeStep?.(step);
       const detail = await runStep(page, step, ctx);
       // verify post-conditions
       if (step.expect) {

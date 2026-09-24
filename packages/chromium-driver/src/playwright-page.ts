@@ -404,6 +404,38 @@ export class PlaywrightDriverPage implements DriverPage {
     return selectUniqueLocator(locatorAttempts(frame, strategy), target);
   }
 
+  async originForTarget(target: string): Promise<string> {
+    await this.navigationCommitted();
+    const parsed = parseTarget(target);
+    let frame = this.page.mainFrame();
+    let iframeRef = false;
+    if (parsed.kind === "ref") {
+      const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
+      if (!entry) throw new AuxError("target_detached", `Ref ${parsed.ref} is unknown or stale — re-observe the page`);
+      frame = this.frameForKey(entry.frame);
+      iframeRef = entry.tag.toLowerCase() === "iframe";
+    }
+    if ((parsed.kind !== "ref" || iframeRef) && this.page.frames().some(child => child.parentFrame() === frame)) {
+      const locator = await this.resolveLocator(target);
+      const handle = isHandle(locator) ? locator : await locator.elementHandle();
+      const child = await handle?.contentFrame();
+      if (child) frame = child;
+    }
+    try { return new URL(frame.url()).origin; }
+    catch { throw new AuxError("target_detached", "Target frame is navigating — re-observe the page"); }
+  }
+
+  hasForeignFrames(): boolean {
+    const main = this.page.mainFrame().url();
+    let origin: string;
+    try { origin = new URL(main).origin; } catch { return true; }
+    return this.page.frames().some(frame => {
+      if (frame === this.page.mainFrame()) return false;
+      try { return new URL(frame.url()).origin !== origin; }
+      catch { return true; }
+    });
+  }
+
   /**
    * One-hop ref resolution (speed P0-3 / plan A7): the observe script keeps
    * the live `ref → Element` map, so a ref resolves to its node directly —

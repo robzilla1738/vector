@@ -25,6 +25,10 @@ export class InternalCdpBroker {
   private readonly server = new WebSocketServer({ host: "127.0.0.1", port: 0, path: this.path, maxPayload: 8 * 1024 * 1024, clientTracking: true });
   private client: WebSocket | null = null;
   private readonly pageSessions = new Map<string, string>();
+  private readonly attachmentQueues = new Map<string, Promise<void>>();
+  private readonly attachmentModes = new Map<string, "auto" | "explicit">();
+  private readonly autoPageSessions = new Map<string, string>();
+  private readonly silentPageSessions = new Set<string>();
   private readonly sessionOwners = new Map<string, string>();
   private readonly sessionParents = new Map<string, string>();
   private readonly browserSessions = new Set<string>();
@@ -89,6 +93,8 @@ export class InternalCdpBroker {
         void this.root.debugger.sendCommand("Target.detachFromTarget", { sessionId }).catch(() => {});
       }
       this.pageSessions.clear();
+      this.autoPageSessions.clear();
+      this.silentPageSessions.clear();
       this.sessionOwners.clear();
       this.sessionParents.clear();
       this.pointerCapture.clear();
@@ -117,10 +123,17 @@ export class InternalCdpBroker {
       this.pageSessions.set(child, info.targetId);
       this.sessionOwners.set(child, owner);
       if (sessionId) this.sessionParents.set(child, sessionId);
+      if (!sessionId && (this.silentPageSessions.has(child) || this.attachmentModes.get(info.targetId) === "explicit")) {
+        this.silentPageSessions.add(child);
+        return;
+      }
+      if (!sessionId) this.autoPageSessions.set(info.targetId, child);
     } else if (method === "Target.detachedFromTarget") {
       const child = params.sessionId;
       if (typeof child !== "string" || !this.pageSessions.has(child)) return;
+      const silent = this.silentPageSessions.has(child);
       this.dropSession(child);
+      if (silent) return;
     } else if (method.startsWith("Target.target")) {
       const info = params.targetInfo as TargetInfo | undefined;
       const targetId = info?.targetId ?? params.targetId;
@@ -147,6 +160,8 @@ export class InternalCdpBroker {
     for (const [source, capture] of this.pointerCapture) if (source === sessionId || capture.sessionId === sessionId) this.pointerCapture.delete(source);
     for (const [child, parent] of this.sessionParents) if (parent === sessionId) this.dropSession(child);
     this.pageSessions.delete(sessionId);
+    this.silentPageSessions.delete(sessionId);
+    for (const [targetId, attachedSession] of this.autoPageSessions) if (attachedSession === sessionId) this.autoPageSessions.delete(targetId);
     this.sessionOwners.delete(sessionId);
     this.sessionParents.delete(sessionId);
   }
@@ -257,12 +272,31 @@ export class InternalCdpBroker {
     }
   }
 
-  private async attachTarget(targetId: string): Promise<{ sessionId: string }> {
+  private async attachTarget(targetId: string, mode: "auto" | "explicit" = "auto"): Promise<{ sessionId: string }> {
     if (!this.allowedTargets.has(targetId)) throw new Error("Target is not an Aux tab");
-    const attached = await this.root.debugger.sendCommand("Target.attachToTarget", { targetId, flatten: true }) as { sessionId: string };
-    this.pageSessions.set(attached.sessionId, targetId);
-    this.sessionOwners.set(attached.sessionId, targetId);
-    return attached;
+    const previous = this.attachmentQueues.get(targetId) ?? Promise.resolve();
+    const operation = previous.then(async () => {
+      const existing = mode === "auto" ? this.autoPageSessions.get(targetId) : undefined;
+      if (existing && this.pageSessions.has(existing)) return { sessionId: existing };
+      if (!this.allowedTargets.has(targetId) || this.closed || !this.client) throw new Error("Target is no longer available");
+      this.attachmentModes.set(targetId, mode);
+      try {
+        const attached = await this.root.debugger.sendCommand("Target.attachToTarget", { targetId, flatten: true }) as { sessionId: string };
+        if (this.closed || !this.client || !this.allowedTargets.has(targetId)) {
+          void this.root.debugger.sendCommand("Target.detachFromTarget", { sessionId: attached.sessionId }).catch(() => {});
+          throw new Error("Target is no longer available");
+        }
+        this.pageSessions.set(attached.sessionId, targetId);
+        this.sessionOwners.set(attached.sessionId, targetId);
+        if (mode === "auto") this.autoPageSessions.set(targetId, attached.sessionId);
+        else this.silentPageSessions.add(attached.sessionId);
+        return attached;
+      } finally { this.attachmentModes.delete(targetId); }
+    });
+    const tail = operation.then(() => {}, () => {});
+    this.attachmentQueues.set(targetId, tail);
+    void tail.then(() => { if (this.attachmentQueues.get(targetId) === tail) this.attachmentQueues.delete(targetId); });
+    return operation;
   }
 
   private async handle(socket: WebSocket, raw: string) {
@@ -347,7 +381,7 @@ export class InternalCdpBroker {
     }
     if (method === "Target.attachToTarget") {
       if (typeof params.targetId !== "string") throw new Error("Target ID required");
-      return this.attachTarget(params.targetId);
+      return this.attachTarget(params.targetId, "explicit");
     }
     if (method === "Target.activateTarget") {
       if (typeof params.targetId !== "string" || !this.allowedTargets.has(params.targetId)) throw new Error("Target is not an Aux tab");

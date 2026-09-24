@@ -64,6 +64,10 @@ export interface DriverPage {
   url(): string;
   title(): Promise<string>;
   isAttached(): boolean;
+  /** Origin of the live frame containing an action target; throws for stale refs. */
+  originForTarget?(target: string): Promise<string>;
+  /** Untargeted input needs an unrestricted grant when a foreign frame may own focus/hit testing. */
+  hasForeignFrames?(): boolean;
 
   navigate(url: string, timeoutMs?: number): Promise<void>;
   back(timeoutMs?: number): Promise<void>;
