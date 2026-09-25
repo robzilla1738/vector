@@ -161,7 +161,23 @@ export class ProgramExecutor {
         lp.target.backend === "aux" &&
         this.pages.deps.native.available() &&
         allSteps.some((s) => INTERACTIVE_OPS.has(s.op));
-      if (needsStage) await this.pages.deps.native.acquireStage(pageId).catch(() => ({ ok: false }));
+      if (needsStage) {
+        let acquired = false;
+        try {
+          acquired = (await this.pages.deps.native.acquireStage(pageId)).ok;
+        } catch {
+          // A lost native reply may still have acquired the stage. Release is
+          // idempotent; never send input without a confirmed acquisition.
+          await this.pages.deps.native.releaseStage(pageId).catch(() => {});
+        }
+        if (!acquired) {
+          settleWrite(this.pages.deps.durableWrites, journal.intentId, false);
+          if (!ctx.runId && (lp.target.controller === "agent" || lp.target.controller === "external"))
+            lp.target.controller = "none";
+          this.pages.persist(lp);
+          throw new AuxError("backend_unavailable", "The page is not ready for browser input");
+        }
+      }
       // takeover epoch: a human claiming the page mid-run must abort in-flight
       // programs rather than fight for the input lane
       const expectedEpoch = lp.target.controllerEpoch;

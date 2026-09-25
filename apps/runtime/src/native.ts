@@ -45,7 +45,7 @@ export interface NativeBridge {
   recoverPage?(pageId: string, url: string): Promise<{ ok: boolean }>;
   /** Stop an in-flight load without needing the renderer's event loop. */
   stopPage(pageId: string): Promise<{ ok: boolean }>;
-  /** Temporarily show a hidden page's view while pointer steps run — serialized. */
+  /** Confirm a native view is ready for input; implementations may reject hidden pages. */
   acquireStage(pageId: string): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
