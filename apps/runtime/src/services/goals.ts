@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { AuxError, GoalCreateParams, GoalSchema, type Goal, type Run } from "@aux/contracts";
+import { AuxError, GoalCreateParams, GoalSchema, type Goal } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { RunService } from "./runs.js";
 
