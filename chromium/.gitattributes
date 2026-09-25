@@ -1,0 +1,2 @@
+# Git's binary patch format requires a blank line after the encoded payload.
+patches/aux/branding/0003-app-icon.patch whitespace=-blank-at-eof
