@@ -35,6 +35,13 @@ export const RoutineDefinitionSchema = z.object({
   /** Exact task Calendar grants saved with this Skill. Imports must bind them locally. */
   calendarGrantIds: z.array(z.string().uuid()).max(20).default([]),
   outputHint: z.string().max(400).optional(),
+  description: z.string().trim().max(2000).optional(),
+  icon: z.string().trim().max(200).optional(),
+  /** Context matches only suggest this Skill; they never start it or grant effects. */
+  autoInject: z.object({
+    keywords: z.array(text.max(80)).max(20).default([]),
+    urls: z.array(z.string().url().max(2048)).max(20).default([]),
+  }).strict().default({ keywords: [], urls: [] }),
   successCriteria: z.array(AcceptanceCriterionSchema).max(20).refine(items => new Set(items.map(item => item.criterionId)).size === items.length, "Criterion IDs must be unique").default([]),
   reviewRequired: z.boolean().default(true),
   cloudCapable: z.boolean().default(false),
@@ -49,6 +56,11 @@ export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: tr
 export const RoutineShareEnvelopeSchema = z.object({
   format: z.literal("aux-routine@1"),
   routines: z.array(RoutineShareSchema).min(1).max(500),
+});
+export const RoutineSuggestionSchema = z.object({
+  routineId: text,
+  title: text.max(200),
+  reasons: z.array(z.enum(["keyword", "url"])).min(1).max(2),
 });
 /** Thin plugin: a named bundle of existing capabilities (portable routines). */
 export const AuxPluginManifestSchema = z.object({
@@ -163,6 +175,7 @@ export type Plugin = z.infer<typeof PluginSchema>;
 export type PluginAsset = z.infer<typeof PluginAssetSchema>;
 export type RoutineShare = z.infer<typeof RoutineShareSchema>;
 export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
+export type RoutineSuggestion = z.infer<typeof RoutineSuggestionSchema>;
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;
 export type RoutineTrigger = z.infer<typeof RoutineTriggerSchema>;
 export type Routine = z.infer<typeof RoutineSchema>;

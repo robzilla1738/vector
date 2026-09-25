@@ -38,7 +38,7 @@ import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
@@ -714,6 +714,7 @@ export const MethodSchemas = {
   "vault.update": VaultUpdateParams,
   "vault.secretMatches": VaultSecretMatchParams,
   "routines.list": z.object({workspaceId:id.optional(),query:z.string().trim().max(200).optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
+  "routines.suggest": z.object({workspaceId:id.optional(),text:z.string().max(4000).optional(),pageUrl:z.string().max(2048).optional(),limit:z.number().int().min(1).max(20).default(5)}).strict(),
   "routines.get": z.object({routineId:id}),
   "routines.create": RoutineCreateParams,
   "routines.fromResult": RoutineFromResultParams,
@@ -1106,6 +1107,7 @@ export const ResultSchemas = {
   "vault.update": VaultItemSchema,
   "vault.secretMatches": z.object({ matches: z.boolean() }),
   "routines.list": z.array(RoutineSchema),
+  "routines.suggest": z.array(RoutineSuggestionSchema),
   "routines.get": z.object({routine:RoutineSchema,runs:z.array(RoutineRunSchema)}),
   "routines.create": RoutineSchema,
   "routines.fromResult": RoutineSchema,

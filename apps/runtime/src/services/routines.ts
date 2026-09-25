@@ -4,6 +4,7 @@ import {
   routineOccurrenceIdentity,
   AuxError,
   type Routine,
+  type RoutineSuggestion,
   type RoutineAlert,
   type RoutineCompare,
   RoutineShareSchema,
@@ -100,6 +101,34 @@ export class RoutineService {
     return rows.map(parseRoutine);
   }
 
+  /** Context is a hint to the human; no suggestion can enqueue or start a run. */
+  suggest(input: { workspaceId?: string; text?: string; pageUrl?: string; limit?: number }): RoutineSuggestion[] {
+    const words = (value: string) => ` ${value.normalize("NFKC").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
+    const context = words(input.text ?? "");
+    let page: URL | undefined;
+    try { if (input.pageUrl) page = new URL(input.pageUrl); } catch { /* an invalid page context cannot match */ }
+    if (page && !["http:", "https:"].includes(page.protocol)) page = undefined;
+    return this.list({ workspaceId: input.workspaceId, limit: 200 })
+      .filter(routine => !routine.paused && !!routine.sourceTaskId)
+      .map(routine => {
+        const reasons: RoutineSuggestion["reasons"] = [];
+        if (context.trim() && routine.autoInject.keywords.some(keyword => context.includes(words(keyword)))) reasons.push("keyword");
+        if (page && routine.autoInject.urls.some(pattern => {
+          try {
+            const rule = new URL(pattern);
+            if (!["http:", "https:"].includes(rule.protocol) || page!.origin !== rule.origin) return false;
+            const prefix = rule.pathname.replace(/\/$/, "");
+            return !prefix || page!.pathname === prefix || page!.pathname.startsWith(`${prefix}/`);
+          } catch { return false; }
+        })) reasons.push("url");
+        return { routine, reasons };
+      })
+      .filter(item => item.reasons.length)
+      .sort((a, b) => b.reasons.length - a.reasons.length || b.routine.updatedAt - a.routine.updatedAt)
+      .slice(0, input.limit ?? 5)
+      .map(({ routine, reasons }) => ({ routineId: routine.routineId, title: routine.title, reasons }));
+  }
+
   get(routineId: string): { routine: Routine; runs: RoutineRun[] } {
     return { routine: this.routine(routineId), runs: this.runs(routineId) };
   }
@@ -117,7 +146,7 @@ export class RoutineService {
     return RoutineRunOutcomeSchema.parse({ run, sourceTaskId: definition.sourceTaskId, sourceTaskRevision: definition.sourceTaskRevision, ...result });
   }
 
-  create(input: Omit<RoutineDefinition, "successCriteria" | "calendarGrantIds"> & { successCriteria?: Routine["successCriteria"]; calendarGrantIds?: string[] }): Routine {
+  create(input: Omit<RoutineDefinition, "successCriteria" | "calendarGrantIds" | "autoInject"> & { successCriteria?: Routine["successCriteria"]; calendarGrantIds?: string[]; autoInject?: Routine["autoInject"] }): Routine {
     this.requireWorkspace(input.workspaceId);
     const source = input.sourceTaskId ? this.requireSourceTask(input.sourceTaskId, input.workspaceId) : undefined;
     const now = Date.now();
@@ -128,6 +157,7 @@ export class RoutineService {
       siteOrigins: input.siteOrigins ?? [],
       accountLabels: input.accountLabels ?? [],
       calendarGrantIds: input.calendarGrantIds ?? [],
+      autoInject: input.autoInject ?? { keywords: [], urls: [] },
       successCriteria: input.successCriteria ?? [],
       reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
       cloudCapable: input.cloudCapable ?? false,
@@ -162,6 +192,7 @@ export class RoutineService {
     return this.create({
       title: (input.title ?? task.title).slice(0, 200),
       objective: task.objective,
+      description: task.objective.slice(0, 2000),
       workspaceId: taskRow.workspace_id,
       sourceTaskId: input.taskId,
       sourceRunId: run?.runId,
@@ -188,6 +219,7 @@ export class RoutineService {
       siteOrigins: input.siteOrigins ?? current.siteOrigins,
       accountLabels: input.accountLabels ?? current.accountLabels,
       calendarGrantIds: input.calendarGrantIds ?? (input.sourceTaskId !== undefined || input.sourceTaskRevision !== undefined ? [] : current.calendarGrantIds),
+      autoInject: input.autoInject ?? current.autoInject,
       successCriteria: input.successCriteria ?? current.successCriteria,
       sourceRunId: input.sourceRunId ?? (input.sourceTaskId && input.sourceTaskId !== current.sourceTaskId ? undefined : current.sourceRunId),
       trigger: input.trigger ?? current.trigger,

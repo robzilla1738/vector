@@ -769,6 +769,7 @@ export function makeInvoker(s: Services) {
         return vault.grants({ taskId: params.taskId, origin });
       }
       case "routines.list":
+      case "routines.suggest":
       case "routines.get":
       case "routines.create":
       case "routines.fromResult":
@@ -784,9 +785,10 @@ export function makeInvoker(s: Services) {
       case "routines.export":
       case "routines.import":
       case "routines.compare": {
-        const routineRead = method === "routines.list" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare" || method === "routines.export";
+        const routineRead = method === "routines.list" || method === "routines.suggest" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare" || method === "routines.export";
         if (client.external && (client.scope || !routineRead)) throw new AuxError("permission_denied", "Routines are managed in Aux.");
         if (method === "routines.list") return routines.list(params);
+        if (method === "routines.suggest") return routines.suggest(params);
         if (method === "routines.get") return routines.get(params.routineId);
         if (method === "routines.create") return routines.create(params);
         if (method === "routines.fromResult") return routines.fromResult(params);

@@ -36,6 +36,21 @@ it("searches Skills by name, objective, and output within their Space", () => {
   expect(f.routines.list({ workspaceId: f.workspace.workspaceId, query: "missing" })).toEqual([]);
 });
 
+it("suggests enabled Skills for bounded keyword and exact-origin URL context without running them", () => {
+  let started = 0;
+  const f = fixture(async () => { started++; return { runId: "unexpected" }; });
+  const saved = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check" });
+  const skill = f.routines.update({ routineId: saved.routineId, expectedRevision: saved.revision,
+    icon: "chart", autoInject: { keywords: ["vendor pricing"], urls: ["https://example.com/pricing"] } });
+  expect(f.routines.suggest({ workspaceId: f.workspace.workspaceId, text: "Review vendor pricing today", pageUrl: "https://example.com/pricing/plan" }))
+    .toEqual([{ routineId: skill.routineId, title: skill.title, reasons: ["keyword", "url"] }]);
+  expect(f.routines.suggest({ text: "vendor pricing", pageUrl: "https://example.com.evil.test/pricing" })[0]?.reasons).toEqual(["keyword"]);
+  expect(f.routines.suggest({ text: "vendor pricings", pageUrl: "https://example.com/price" })).toEqual([]);
+  expect(started).toBe(0);
+  f.routines.pause(skill.routineId, skill.revision, true);
+  expect(f.routines.suggest({ text: "vendor pricing", pageUrl: "https://example.com/pricing" })).toEqual([]);
+});
+
 it("builds parameterized routines from a saved task and versions edits", () => {
   const f = fixture();
   const routine = f.routines.fromResult({
@@ -387,7 +402,7 @@ it("imports an inactive definition without local task authority or its schedule"
   const imported = f.routines.importRoutines([{
     title: "Shared", objective: "Check {{topic}}", sourceTaskId: f.task.taskId,
     parameters: [{ name: "topic", label: "Topic", value: "default" }], siteOrigins: [], accountLabels: ["Private"], successCriteria: [],
-    reviewRequired: false, cloudCapable: true, consecutive: true,
+    autoInject: { keywords: [], urls: [] }, reviewRequired: false, cloudCapable: true, consecutive: true,
     trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 5 }, paused: false,
   } as RoutineShare], f.workspace.workspaceId);
   const routine = f.routines.get(imported.routineIds[0]!).routine;
