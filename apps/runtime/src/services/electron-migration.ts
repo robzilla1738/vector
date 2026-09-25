@@ -24,7 +24,7 @@ const digest = async (path: string) => new Promise<string>((ok, fail) => {
   stream.on("end", () => ok(hash.digest("hex")));
 });
 const hashJson = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
-const contentDigest = (manifest: Pick<ElectronMigrationManifest, "source" | "database" | "layout" | "tabs" | "bookmarks" | "bookmarkFolders" | "artifacts" | "omitted">) =>
+export const electronMigrationContentHash = (manifest: Pick<ElectronMigrationManifest, "source" | "database" | "layout" | "tabs" | "bookmarks" | "bookmarkFolders" | "artifacts" | "omitted">) =>
   hashJson({ sourceSnapshotSha256: manifest.source.snapshotSha256, databaseSha: manifest.database.sha256,
     layout: manifest.layout, tabs: manifest.tabs, bookmarks: manifest.bookmarks,
     bookmarkFolders: manifest.bookmarkFolders, artifacts: manifest.artifacts, omitted: manifest.omitted });
@@ -261,7 +261,7 @@ export async function prepareElectronMigration(input: { sourceDataDir: string; d
       createdAt: Date.now(), source: { schemaVersion, snapshotSha256: sourceSnapshotSha256 },
       database: { relativePath: AUX_DATABASE_NAME, sha256: databaseSha, bytes: databaseInfo.size },
       layout, tabs, bookmarks, bookmarkFolders, artifacts, omitted });
-    const contentHash = contentDigest(canonical);
+    const contentHash = electronMigrationContentHash(canonical);
     const manifest: ElectronMigrationManifest = { ...canonical, contentHash };
     const report = (path: string | null, dryRun: boolean, alreadyPrepared: boolean): ElectronMigrationReport => ({
       path, dryRun, alreadyPrepared, contentHash, schemaVersion, spaces: layout.spaces.length, tabs: tabs.length,
@@ -273,7 +273,7 @@ export async function prepareElectronMigration(input: { sourceDataDir: string; d
       if (!existing.isDirectory() || existing.isSymbolicLink()) throw new Error("The destination already exists and is not a migration bundle.");
       const current = ElectronMigrationManifestSchema.parse(JSON.parse(await readFile(join(destination, "manifest.json"), "utf8")));
       const currentDatabase = await lstat(join(destination, AUX_DATABASE_NAME));
-      if (current.contentHash !== contentHash || current.contentHash !== contentDigest(current) || !currentDatabase.isFile() ||
+      if (current.contentHash !== contentHash || current.contentHash !== electronMigrationContentHash(current) || !currentDatabase.isFile() ||
           currentDatabase.isSymbolicLink() || currentDatabase.size !== current.database.bytes || current.database.sha256 !== await digest(join(destination, AUX_DATABASE_NAME)))
         throw new Error("The destination contains different or damaged migration data.");
       for (const item of current.artifacts) {

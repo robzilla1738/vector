@@ -27,6 +27,26 @@ function digestPassphrase(passphrase: string, salt: Buffer): Buffer {
   return scryptSync(passphrase, salt, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 }
 
+/** Authenticates a portable transfer without writing secrets to any profile. */
+export function verifyVaultTransfer(pkgInput: unknown, passphrase: string): { items: number } {
+  return { items: decryptVaultTransfer(pkgInput, passphrase).items.length };
+}
+
+function decryptVaultTransfer(pkgInput: unknown, passphrase: string) {
+  VaultTransferPassphraseSchema.parse(passphrase);
+  const pkg = VaultTransferPackageSchema.parse(pkgInput);
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", digestPassphrase(passphrase, Buffer.from(pkg.salt, "hex")), Buffer.from(pkg.nonce, "hex"));
+    decipher.setAAD(Buffer.from("aux-vault-transfer:v1"));
+    decipher.setAuthTag(Buffer.from(pkg.tag, "hex"));
+    const plain = Buffer.concat([decipher.update(Buffer.from(pkg.ciphertext, "base64")), decipher.final()]);
+    try { return VaultExportSchema.parse(JSON.parse(plain.toString("utf8"))); }
+    finally { plain.fill(0); }
+  } catch {
+    throw new AuxError("invalid_params", "The vault package or transfer passphrase is invalid.");
+  }
+}
+
 function rowItem(row: Record<string, unknown>): VaultItem {
   return {
     itemId: String(row.item_id),
@@ -411,19 +431,7 @@ export class VaultService {
   }
 
   async importEncrypted(input: { passphrase: string; package: unknown }) {
-    VaultTransferPassphraseSchema.parse(input.passphrase);
-    const pkg = VaultTransferPackageSchema.parse(input.package);
-    let payload;
-    try {
-      const decipher = createDecipheriv("aes-256-gcm", digestPassphrase(input.passphrase, Buffer.from(pkg.salt, "hex")), Buffer.from(pkg.nonce, "hex"));
-      decipher.setAAD(Buffer.from("aux-vault-transfer:v1"));
-      decipher.setAuthTag(Buffer.from(pkg.tag, "hex"));
-      const plain = Buffer.concat([decipher.update(Buffer.from(pkg.ciphertext, "base64")), decipher.final()]);
-      payload = VaultExportSchema.parse(JSON.parse(plain.toString("utf8")));
-    } catch {
-      throw new AuxError("invalid_params", "The vault package or transfer passphrase is invalid.");
-    }
-    return this.importItems(payload);
+    return this.importItems(decryptVaultTransfer(input.package, input.passphrase));
   }
 
   /** Import exported items — duplicates (same origin+username+label) are skipped. */
