@@ -303,7 +303,7 @@ button:focus-visible, [role="tab"]:focus-visible, .resize-handle:focus-visible {
 
 /* Neutral material around one continuous content surface. */
 .main-col > .toolbar { flex-shrink: 0; }
-.main-col.has-page .stage-wrap { padding: 0 var(--space-1) var(--space-1); }
+.main-col.has-page .stage-wrap { padding: 0; }
 .sidebar .sb-pins { padding: 0 var(--space-2) var(--space-2); }
 .cmdbar:has(input:focus-visible) { outline: 1px solid var(--focus-line); outline-offset: -1px; box-shadow: none; }
 button:focus-visible, [role="tab"]:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 1px solid var(--focus-line); outline-offset: -1px; box-shadow: none; }
@@ -369,7 +369,6 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .sidebar:not(.expanded) .sidebar-content { opacity: 0; transform: translateX(-16px); pointer-events: none; }
 .sidebar.fully-hidden, .app.native-host .sidebar.fully-hidden { width: 0; min-width: 0; margin: 0; padding: 0; border: 0; overflow: clip; pointer-events: none; }
 .sidebar-reveal { position: absolute; z-index: var(--z-peek); left: 0; top: var(--toolbar-h); bottom: 0; width: 8px; border: 0; padding: 0; background: transparent; cursor: default; -webkit-app-region: no-drag; }
-.tabs-vertical .main-col.has-page .stage-wrap { padding: 0; }
 .layout-hidden .main-col, .layout-rail .main-col { margin-left: 0; }
 .layout-hidden .main-col { border: 0; border-radius: 0; box-shadow: none; }
 .sidebar .cmdbar:focus-within { border-color: var(--focus-line); }

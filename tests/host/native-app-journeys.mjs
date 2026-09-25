@@ -1,4 +1,4 @@
-// Browser and liquid-glass journeys against an official Aux.app, without a
+// Browser and liquid-glass journeys against a built Aux.app, without a
 // public DevTools port. The runtime bearer is read only from this run's fresh
 // Profile and is never included in artifacts.
 import assert from "node:assert/strict";
@@ -32,12 +32,12 @@ const appArg = option("--app");
 if (!appArg || !isAbsolute(appArg)) throw new Error("Pass --app /absolute/path/to/Aux.app.");
 const requireDependency = createRequire(join(root, "package.json"));
 const app = realpathSync(appArg);
-assert.equal(basename(app), "Aux.app", "Use the official Aux.app bundle");
+assert.equal(basename(app), "Aux.app", "Use the native Aux.app bundle");
 const binary = join(app, "Contents/MacOS/Aux");
 const helper = join(app, "Contents/Helpers/Aux Runtime");
 assert.ok(existsSync(binary) && existsSync(helper), "Aux browser and runtime helper must both be packaged");
 const bundleId = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleIdentifier", join(app, "Contents/Info.plist")], { encoding: "utf8" }).trim();
-assert.equal(bundleId, "dev.aux.browser", "The native journey must target the official Aux identity");
+assert.equal(bundleId, "dev.aux.browser", "The native journey must target the Aux identity");
 const rpcOnly = process.argv.includes("--rpc-only");
 const uiOnly = process.argv.includes("--ui-only");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
@@ -51,7 +51,7 @@ const profile = join(disposable, "profile");
 const runtimeFile = join(profile, "Default/Aux Runtime Data/runtime.json");
 const script = join(root, "tests/host/native-window.swift");
 const windowTool = join(disposable, "native-window");
-const report = { schema: 1, scope: "Official Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
+const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
