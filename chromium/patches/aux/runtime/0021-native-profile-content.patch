@@ -42,10 +42,10 @@ index 2651df44a7..92e591a7c1 100644
 +}
 diff --git a/chrome/browser/ui/aux/cookie_import.cc b/chrome/browser/ui/aux/cookie_import.cc
 new file mode 100644
-index 0000000000..4060ddd7d1
+index 0000000000..e68ff072c9
 --- /dev/null
 +++ b/chrome/browser/ui/aux/cookie_import.cc
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,182 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -56,6 +56,7 @@ index 0000000000..4060ddd7d1
 +#include <memory>
 +#include <string>
 +#include <utility>
++#include <vector>
 +
 +#include "base/functional/bind.h"
 +#include "base/time/time.h"
@@ -183,14 +184,27 @@ index 0000000000..4060ddd7d1
 +    return;
 +  }
 +  auto batch = std::make_shared<Batch>(std::move(callback));
++  std::vector<std::unique_ptr<net::CanonicalCookie>> valid;
++  valid.reserve(cookies->size());
 +  for (const base::Value& raw : *cookies) {
 +    auto cookie = ParseImportedCookie(raw);
-+    if (!cookie) {
-+      continue;
++    if (cookie) {
++      valid.push_back(std::move(cookie));
 +    }
++  }
++  batch->pending = valid.size();
++  if (batch->pending == 0) {
++    base::Value::Dict outcome;
++    outcome.Set("ok", true);
++    outcome.Set("count", 0);
++    base::Value::Dict reply;
++    reply.Set("result", std::move(outcome));
++    std::move(batch->callback).Run(std::move(reply));
++    return;
++  }
++  for (const auto& cookie : valid) {
 +    const GURL source = net::cookie_util::SimulatedCookieSource(
 +        *cookie, cookie->IsSecure() ? "https" : "http");
-+    ++batch->pending;
 +    net::CookieOptions options;
 +    options.set_include_httponly();
 +    manager->SetCanonicalCookie(
@@ -210,14 +224,6 @@ index 0000000000..4060ddd7d1
 +              }
 +            },
 +            batch));
-+  }
-+  if (batch->pending == 0) {
-+    base::Value::Dict outcome;
-+    outcome.Set("ok", true);
-+    outcome.Set("count", 0);
-+    base::Value::Dict reply;
-+    reply.Set("result", std::move(outcome));
-+    std::move(batch->callback).Run(std::move(reply));
 +  }
 +}
 +
