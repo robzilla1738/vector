@@ -1580,10 +1580,11 @@
       "component": "apps/desktop/renderer/src/components/ProjectFileEditor.tsx",
       "entryPoint": "files",
       "referenceDonors": [
-        "/Users/rcourson/06/assets/06-agent-manager/assets/files-artifact-CHwMh-J0.js"
+        "/Users/rcourson/06/assets/06-agent-manager/assets/file-tree-DZ6ZAX95.js",
+        "/Users/rcourson/06/assets/06-agent-manager/assets/session-files-BaRX34YB.js"
       ],
       "treatment": "adapt",
-      "status": "planned",
+      "status": "implemented-partial",
       "requiredStates": [
         "empty",
         "populated",
@@ -1593,12 +1594,17 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
-      "functionalEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/file-workspace-dark.png"
+      ],
+      "functionalEvidence": [
+        "ProjectFileEditor tests: draft restoration across file selection, exact saved base revision, late read isolation across project switches, explicit external conflict and disabled destructive actions. FileTree tests: keyboard hierarchy navigation and searchable expansion/collapse.",
+        "Mock preview at 1280\u00d7720 vertical/dark: opened nested file, edited, switched away/back without draft loss, inspected all overflow actions, saved and observed saved status. This is not native filesystem verification."
+      ],
       "nativeHostVerification": "pending relevant-host journey",
       "remaining": [
-        "Complete all applicable requirements in the approved surface map.",
-        "Run the full appearance, size, input, accessibility, and host matrix."
+        "Full appearance, size, text, keyboard and error-state matrix.",
+        "Real host file-access, save/recovery, external editing and native-dialog qualification."
       ]
     },
     {
@@ -3515,6 +3521,35 @@
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
         "Run the full appearance, size, input, accessibility, and host matrix."
+      ]
+    },
+    {
+      "id": "FileTree",
+      "component": "apps/desktop/renderer/src/components/FileTree.tsx",
+      "entryPoint": "shared project files",
+      "referenceDonors": [
+        "/Users/rcourson/06/assets/06-agent-manager/assets/file-tree-DZ6ZAX95.js"
+      ],
+      "treatment": "port",
+      "status": "implemented-partial",
+      "requiredStates": [
+        "empty",
+        "populated",
+        "loading",
+        "disabled",
+        "error",
+        "overflow",
+        "keyboard-focus"
+      ],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/file-workspace-dark.png"
+      ],
+      "functionalEvidence": [
+        "FileTree.test.tsx: one tab stop, folder expansion, parent/sibling/end keyboard navigation, leaf selection, selected ancestors and search-collapse behavior."
+      ],
+      "nativeHostVerification": "pending relevant-host file workspace journey",
+      "remaining": [
+        "Full appearance, size, text and native-host matrix."
       ]
     }
   ],

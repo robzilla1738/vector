@@ -1,3 +1,4 @@
+import { projectFixture } from "./project";
 import { workFixtures } from "./work";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
@@ -861,6 +862,7 @@ export function installMockBridge(q: URLSearchParams) {
     stopProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
     listProjects: async () => [],
     inspectProject: async () => { throw new Error("Local projects require Aux desktop"); },
+    ...(scenario === "work" ? projectFixture() : {}),
     pickEvidenceImage: async () => {
       const canvas = document.createElement("canvas"); canvas.width = 800; canvas.height = 500;
       const ctx = canvas.getContext("2d")!; ctx.fillStyle = "#dbe7fa"; ctx.fillRect(0, 0, 800, 500);

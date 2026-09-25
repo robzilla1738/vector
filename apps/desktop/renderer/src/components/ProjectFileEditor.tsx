@@ -1,18 +1,23 @@
 import {useEffect,useState} from 'react';
 import type {ProjectFile,ProjectFileHistory,ProjectFileVersionSnapshot} from '@aux/contracts';
 import {bridge} from '../bridge';
+import {FileTree} from './FileTree';
+import {ActionMenu, DetailPane, EmptyState} from './ui';
 const key=(project:string,name:string)=>`aux.file-draft.v1:${project}:${name}`;
 
-export function ProjectFileEditor({projectId,taskId,taskRevision,attached,disabled}:{projectId:string;taskId:string;taskRevision:number;attached:boolean;disabled:boolean}){
+type Props={projectId:string;taskId:string;taskRevision:number;attached:boolean;disabled:boolean};
+export function ProjectFileEditor(props:Props){return <ProjectFileEditorView key={`${props.projectId}:${props.taskId}`} {...props}/>;}
+function ProjectFileEditorView({projectId,taskId,taskRevision,attached,disabled}:Props){
  const [files,setFiles]=useState<string[]>([]),[query,setQuery]=useState('');
+ const [loadingFiles,setLoadingFiles]=useState(true);
  const [creating,setCreating]=useState(false),[newName,setNewName]=useState('');
  const [renaming,setRenaming]=useState(false),[renameName,setRenameName]=useState('');
  const [file,setFile]=useState<ProjectFile|null>(null),[content,setContent]=useState(''),[base,setBase]=useState('');
  const [history,setHistory]=useState<ProjectFileHistory|null>(null),[version,setVersion]=useState<ProjectFileVersionSnapshot|null>(null);
  const [error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[recovery,setRecovery]=useState('');
  const [externalFile,setExternalFile]=useState<string|null>(null),[diskConflict,setDiskConflict]=useState<ProjectFile|null>(null),[checkingDisk,setCheckingDisk]=useState(false);
- useEffect(()=>{let active=true;bridge.listProjectFiles(projectId).then(files=>{if(active)setFiles(files);}).catch(error=>{if(active)setError(String(error));});return()=>{active=false;};},[projectId]);
- async function action(work:()=>Promise<void>){setBusy(true);setError('');setMessage('');try{await work();}catch(error){setError(error instanceof Error?error.message:String(error));}finally{setBusy(false);}}
+ useEffect(()=>{let active=true;bridge.listProjectFiles(projectId).then(files=>{if(active)setFiles(files);}).catch(error=>{if(active)setError(String(error));}).finally(()=>{if(active)setLoadingFiles(false);});return()=>{active=false;};},[projectId]);
+ async function action(work:()=>Promise<void>){const opener=document.activeElement;setBusy(true);setError('');setMessage('');try{await work();}catch(error){setError(error instanceof Error?error.message:String(error));}finally{setBusy(false);requestAnimationFrame(()=>{if(document.activeElement===document.body&&opener instanceof HTMLElement&&opener.isConnected){const target=opener.matches(":disabled")?opener.closest(".ui-detail-pane")?.querySelector<HTMLElement>("textarea:not(:disabled)"):opener;target?.focus();}});}}
  async function load(name:string,discard=false){
   const next=await bridge.readProjectFile(projectId,name);let draft:null|{content:string;sha256:string}=null;
   if(discard)localStorage.removeItem(key(projectId,name));
@@ -38,6 +43,21 @@ export function ProjectFileEditor({projectId,taskId,taskRevision,attached,disabl
   const check=()=>{void inspectDisk(true);};window.addEventListener('focus',check);return()=>window.removeEventListener('focus',check);
  },[externalFile,file?.name,file?.sha256,content,base]);
  const matches=files.filter(name=>name.toLowerCase().includes(query.toLowerCase()));
+ const fileActions=file?<><button className="btn sm" disabled={disabled||busy||!dirty||!!diskConflict} onClick={()=>void action(async()=>{
+    const saved=await bridge.saveProjectFile(projectId,file.name,base,content);setFile(saved);setBase(saved.sha256);setContent(saved.content);setRecovery(saved.recoveryPath);try{localStorage.removeItem(key(projectId,file.name));}catch{setError('File saved, but the stored draft could not be removed. Reopening may show the older draft.');}setMessage('File saved. Refresh checkout status to review the diff.');
+   })}>Save file</button><ActionMenu label={`Actions for ${file.name}`} actions={[
+    {label:'Reload disk and discard draft',disabled:busy,onSelect:()=>void action(()=>load(file.name,true))},
+    {label:'Open externally',disabled:busy||!attached,onSelect:()=>void action(()=>bridge.openProjectFileExternal(projectId,file.name,{taskId,expectedRevision:taskRevision}).then(()=>{setExternalFile(file.name);setMessage('Opened for external editing. Aux will check the disk file when you return.');}))},
+    {label:checkingDisk?'Checking disk…':'Check disk changes',disabled:busy||checkingDisk,onSelect:()=>void action(()=>inspectDisk(false))},
+    {label:'Rename',disabled:busy||disabled||dirty,onSelect:()=>{setRenaming(true);setRenameName(file.name);}},
+    {label:'Delete',danger:true,disabled:busy||disabled||dirty,onSelect:()=>void action(async()=>{
+      const removed=await bridge.deleteProjectFile(projectId,file.name,file.sha256);if(!removed)return;
+      try{localStorage.removeItem(key(projectId,file.name));}catch{}
+      setFiles(current=>current.filter(name=>name!==file.name));setFile(null);setContent('');setBase('');setHistory(null);setVersion(null);setRecovery(removed.recoveryPath);setMessage(`Deleted ${removed.name} from this checkout. A recovery copy was retained.`);
+    })},
+    {label:'Recovery history',disabled:busy,onSelect:()=>void action(async()=>{setVersion(null);setHistory(await bridge.projectFileHistory(projectId,file.name));})},
+    ...(recovery?[{label:'Show recovery copy',onSelect:()=>void action(()=>bridge.revealPath(recovery).then(()=>{}))}]:[]),
+  ]}/></>:undefined;
  return <section className="field project-editor" aria-label="Project file editor">
   <div className="row"><input aria-label="Find project file" placeholder="Find a file by name" value={query} onChange={event=>setQuery(event.target.value)}/><button className="btn sm" disabled={busy} onClick={()=>void action(async()=>setFiles(await bridge.listProjectFiles(projectId)))}>Refresh files</button><button className="btn sm" disabled={busy||disabled} aria-expanded={creating} onClick={()=>setCreating(!creating)}>New file</button></div>
   {creating&&<form aria-label="Create project file" onSubmit={event=>{event.preventDefault();if(busy||disabled||!newName)return;void action(async()=>{
@@ -50,32 +70,19 @@ export function ProjectFileEditor({projectId,taskId,taskRevision,attached,disabl
    <p className="hint">Creates an empty text file and any missing folders inside this checkout. Existing and ignored paths are not replaced. Failed creation may leave empty folders.</p>
   </form>}
   <p className="hint">Tracked and untracked files; ignored files are excluded. Choose a UTF-8 file up to 256 KB. No file contents are read until you open one.</p>
-  <div className="project-file-list" role="list" aria-label="Project files">{matches.slice(0,100).map(name=><div role="listitem" key={name}><button className="btn sm" disabled={busy} onClick={()=>void action(()=>load(name))}>{name}</button></div>)}</div>
+  <div className="project-editor-layout"><aside className="project-file-browser" aria-label="File browser"><FileTree paths={matches.slice(0,100)} selected={file?.name} disabled={busy||loadingFiles} expandAll={!!query.trim()} onSelect={name=>void action(()=>load(name))}/>
   {matches.length>100&&<p className="hint">Showing 100 of {matches.length} matches. Narrow your search.</p>}
-  {!matches.length&&<p className="hint">No matching files.</p>}
+  {loadingFiles?<p className="hint" role="status">Loading files…</p>:!matches.length&&<p className="hint">No matching files.</p>}
+  </aside><div className="project-file-detail">{!file&&!error&&<EmptyState title="Choose a file" description="Open a file from the tree to inspect or edit it."/>}
   {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
   {!file&&recovery&&<button className="btn sm" onClick={()=>void action(()=>bridge.revealPath(recovery).then(()=>{}))}>Show recovery copy</button>}
-  {file&&<><strong className="selectable">{file.name}{dirty?' · Unsaved draft':''}</strong>
+  {file&&<DetailPane title={file.name} metadata={dirty?"Unsaved draft":"Saved to this checkout"} actions={fileActions}>
    <textarea className="project-file-text" aria-label="File contents" spellCheck={false} rows={16} disabled={busy||disabled} value={content} onChange={event=>{
     const value=file.content.includes('\r\n')&&!file.content.replaceAll('\r\n','').includes('\n')?event.target.value.replace(/\r?\n/g,'\r\n'):event.target.value;
     setContent(value);setMessage('');
     try{localStorage.setItem(key(projectId,file.name),JSON.stringify({content:value,sha256:base}));}catch{setError('Draft could not be saved locally. Keep this view open and copy your edits before leaving.');}
    }}/>
    <p className="hint">Unsaved drafts stay in this Aux profile. Save replaces only this checkout file and keeps a recovery copy. External edits block saving. Stop build/check commands before saving; local services can watch your edits.</p>
-   <div className="row"><button className="btn sm" disabled={disabled||busy||!dirty||!!diskConflict} onClick={()=>void action(async()=>{
-    const saved=await bridge.saveProjectFile(projectId,file.name,base,content);setFile(saved);setBase(saved.sha256);setContent(saved.content);setRecovery(saved.recoveryPath);try{localStorage.removeItem(key(projectId,file.name));}catch{setError('File saved, but the stored draft could not be removed. Reopening may show the older draft.');}setMessage('File saved. Refresh checkout status to review the diff.');
-   })}>Save file</button>
-   <button className="btn sm" disabled={busy} onClick={()=>void action(()=>load(file.name,true))}>Reload disk and discard draft</button>
-   <button className="btn sm" disabled={busy||!attached} title={attached?'Open this task checkout file in its default app':'Attach this checkout to the task first'} onClick={()=>void action(()=>bridge.openProjectFileExternal(projectId,file.name,{taskId,expectedRevision:taskRevision}).then(()=>{setExternalFile(file.name);setMessage('Opened for external editing. Aux will check the disk file when you return.');}))}>Open externally</button>
-   <button className="btn sm" disabled={busy||checkingDisk} onClick={()=>void action(()=>inspectDisk(false))}>{checkingDisk?'Checking disk…':'Check disk changes'}</button>
-   <button className="btn sm" disabled={busy||disabled||dirty} aria-expanded={renaming} onClick={()=>{setRenaming(!renaming);setRenameName(file.name);}}>Rename</button>
-   <button className="btn sm danger" disabled={busy||disabled||dirty} onClick={()=>void action(async()=>{
-     const removed=await bridge.deleteProjectFile(projectId,file.name,file.sha256);if(!removed)return;
-     try{localStorage.removeItem(key(projectId,file.name));}catch{}
-     setFiles(current=>current.filter(name=>name!==file.name));setFile(null);setContent('');setBase('');setHistory(null);setVersion(null);setRecovery(removed.recoveryPath);setMessage(`Deleted ${removed.name} from this checkout. A recovery copy was retained.`);
-   })}>Delete</button>
-   <button className="btn sm" disabled={busy} onClick={()=>void action(async()=>{setVersion(null);setHistory(await bridge.projectFileHistory(projectId,file.name));})}>Recovery history</button>
-   {recovery&&<button className="btn sm" onClick={()=>void action(()=>bridge.revealPath(recovery).then(()=>{}))}>Show recovery copy</button>}</div>
    {!attached&&<p className="hint">Attach this checkout to the current task before opening its files in another app.</p>}
    {diskConflict&&<section className="field project-external-conflict" aria-label="External file changes">
     <strong>Changed in another app</strong>
@@ -114,6 +121,7 @@ export function ProjectFileEditor({projectId,taskId,taskRevision,attached,disabl
     </>}
     <button className="btn sm" disabled={busy} onClick={()=>{setHistory(null);setVersion(null);}}>Close recovery history</button>
    </section>}
-  </>}
+  </DetailPane>}
+  </div></div>
  </section>;
 }
