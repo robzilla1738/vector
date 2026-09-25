@@ -164,7 +164,7 @@ html, body, .app, .app.native-host, .app-body { background: transparent; }
 .horizontal-space > .space-menu { top: calc(100% + var(--space-1)); right: 0; bottom: auto; left: auto; transform-origin: top right; }
 .horizontal-tabs-row:has(.horizontal-space > .space-menu) { z-index: var(--z-drawer); }
 .tabs-horizontal .main-col { border: 0; border-radius: 0; box-shadow: none; }
-.tabs-horizontal .horizontal-chrome > .toolbar { z-index: 1; height: 42px; padding: 0 var(--space-2); background: var(--chrome-surface, var(--bg-0)); border-radius: var(--r-peek) var(--r-peek) 0 0; }
+.tabs-horizontal .horizontal-chrome > .toolbar { z-index: 1; height: 42px; padding: 0 var(--space-2); background: var(--chrome-surface, var(--bg-0)); border-radius: var(--stage-radius) var(--stage-radius) 0 0; corner-shape: superellipse(var(--squircle-factor)); }
 .tabs-horizontal .horizontal-chrome > .toolbar > :is(.cmdbar, .tb-left, .tb-right) { opacity: 1; transform: none; }
 .tabs-horizontal .horizontal-chrome > .toolbar .cmdbar { min-width: 0; background: transparent; box-shadow: none; }
 .tabs-horizontal .horizontal-chrome > .toolbar .cmdbar { height: 34px; }
@@ -370,7 +370,6 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .sidebar.fully-hidden, .app.native-host .sidebar.fully-hidden { width: 0; min-width: 0; margin: 0; padding: 0; border: 0; overflow: clip; pointer-events: none; }
 .sidebar-reveal { position: absolute; z-index: var(--z-peek); left: 0; top: var(--toolbar-h); bottom: 0; width: 8px; border: 0; padding: 0; background: transparent; cursor: default; -webkit-app-region: no-drag; }
 .tabs-vertical .main-col.has-page .stage-wrap { padding: 0; }
-.tabs-vertical .stage-card.has-page { border-radius: var(--stage-radius); }
 .layout-hidden .main-col, .layout-rail .main-col { margin-left: 0; }
 .layout-hidden .main-col { border: 0; border-radius: 0; box-shadow: none; }
 .sidebar .cmdbar:focus-within { border-color: var(--focus-line); }

@@ -12,7 +12,11 @@
   overflow: hidden;
   transition: box-shadow var(--t-fast) var(--ease-out);
 }
-.stage-card.has-page { background: var(--stage-bg); border-radius: var(--r-card); }
+.stage-card.has-page {
+  background: var(--stage-bg);
+  border-radius: var(--stage-radius);
+  corner-shape: superellipse(var(--squircle-factor));
+}
 #stage { position: absolute; inset: 0; }
 .stage-progress { position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 3; opacity: 0; overflow: hidden; transition: opacity var(--t-fast) var(--ease-out); pointer-events: none; }
 .stage-progress::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 32%; border-radius: 1px; background: var(--ink-0); animation: sweep var(--t-sweep) var(--ease-in-out) infinite; }
