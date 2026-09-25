@@ -8,11 +8,13 @@ describe("native interactive stage", () => {
     let mode: "rejected" | "lost" | "ready" = "rejected";
     let clicked = 0;
     let releases = 0;
+    const visibilityRequests: boolean[] = [];
     const native: NativeBridge = Object.assign(new NullNativeBridge(), {
       available: () => enabled,
-      acquireStage: async () => {
+      acquireStage: async (_pageId: string, requiresVisible = false) => {
+        visibilityRequests.push(requiresVisible);
         if (mode === "lost") throw new Error("socket closed");
-        return { ok: mode === "ready" };
+        return { ok: mode === "ready" && !requiresVisible };
       },
       releaseStage: async () => { releases++; return { ok: true }; },
     });
@@ -46,5 +48,10 @@ describe("native interactive stage", () => {
     await expect(pages.execute(program)).resolves.toMatchObject({ status: "completed" });
     expect(clicked).toBe(1);
     expect(releases).toBe(2);
+    await expect(pages.execute({ pageId: target.pageId, steps: [
+      { id: "pixel", op: "clickPoint", x: 12, y: 24 },
+    ] })).rejects.toMatchObject({ code: "backend_unavailable" });
+    expect(visibilityRequests).toEqual([false, false, false, true]);
+    expect(clicked).toBe(1);
   });
 });

@@ -46,7 +46,7 @@ export interface NativeBridge {
   /** Stop an in-flight load without needing the renderer's event loop. */
   stopPage(pageId: string): Promise<{ ok: boolean }>;
   /** Confirm a native view is ready for input; implementations may reject hidden pages. */
-  acquireStage(pageId: string): Promise<{ ok: boolean }>;
+  acquireStage(pageId: string, requiresVisible?: boolean): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
   stopFind(pageId: string, action: "clear" | "keep"): Promise<{ ok: boolean }>;
@@ -151,8 +151,8 @@ export class ChannelNativeBridge implements NativeBridge {
   stopPage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.stopPage", { pageId });
   }
-  acquireStage(pageId: string) {
-    return this.channel.call<{ ok: boolean }>("native.acquireStage", { pageId });
+  acquireStage(pageId: string, requiresVisible = false) {
+    return this.channel.call<{ ok: boolean }>("native.acquireStage", { pageId, requiresVisible });
   }
   releaseStage(pageId: string) {
     return this.channel.call<{ ok: boolean }>("native.releaseStage", { pageId });

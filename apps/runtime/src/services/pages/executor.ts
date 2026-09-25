@@ -164,7 +164,9 @@ export class ProgramExecutor {
       if (needsStage) {
         let acquired = false;
         try {
-          acquired = (await this.pages.deps.native.acquireStage(pageId)).ok;
+          acquired = (await this.pages.deps.native.acquireStage(
+            pageId, allSteps.some((step) => step.op === "clickPoint"),
+          )).ok;
         } catch {
           // A lost native reply may still have acquired the stage. Release is
           // idempotent; never send input without a confirmed acquisition.

@@ -60,7 +60,7 @@ export const NativeMethods = {
   "native.tabCommand": TabCommandEnvelopeSchema,
   "native.recoverPage": z.object({ pageId: z.string(), url: z.string() }),
   "native.stopPage": NativePageIdParams,
-  "native.acquireStage": NativePageIdParams,
+  "native.acquireStage": NativePageIdParams.extend({ requiresVisible: z.boolean().optional() }),
   "native.releaseStage": NativePageIdParams,
   /** Cookies are checked one by one — an invalid cookie is skipped, not fatal to the batch. */
   "native.setCookies": z.object({ cookies: z.array(z.unknown()) }),

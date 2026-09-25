@@ -9,10 +9,11 @@ CDP broker; `Input.*` dispatch requires a current native input stage.
 
 `findInPage` uses Chromium's `FindTabHelper` final result and rejects a stale
 page, document, or request. Stage acquisition succeeds only for a regular
-Profile page with a showing, laid-out HTTP(S) renderer view. A hidden tab has
-no safe native input stage yet, so interactive programs on it fail before
-input dispatch. Chromium owns tab visibility; this bridge does not force-show
-a hidden tab outside the tab strip's lifecycle.
+Profile page with a retained, laid-out HTTP(S) renderer view. This permits
+selector actions on background tabs without changing the active tab. Pixel
+`clickPoint` actions additionally require a showing view, because their
+coordinates refer to the visible viewport. Chromium owns tab visibility; this
+bridge does not force-show a hidden tab outside the tab strip's lifecycle.
 
 The remaining `NativeMethods` without Chromium handlers are local project and
 cloud development methods (`developmentProjects` through
