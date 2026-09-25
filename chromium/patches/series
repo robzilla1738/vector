@@ -4,3 +4,4 @@ aux/branding/0003-app-icon.patch
 aux/shell/0004-enable-webium.patch
 aux/shell/0005-package-aux-webui.patch
 aux/runtime/0006-runtime-socket.patch
+aux/tabs/0007-page-identity.patch
