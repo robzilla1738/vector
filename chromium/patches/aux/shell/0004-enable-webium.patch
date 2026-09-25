@@ -9,13 +9,16 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser.cc b/chrome/browser/u
  #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
  #include "chrome/common/chrome_features.h"
  #include "content/public/browser/web_contents.h"
-@@ -14,7 +15,8 @@
+@@ -14,7 +15,11 @@
  namespace webui_browser {
  
  bool IsWebUIBrowserEnabled() {
 -  return base::FeatureList::IsEnabled(features::kWebium);
-+  return BUILDFLAG(ENABLE_AUX_SHELL) ||
-+         base::FeatureList::IsEnabled(features::kWebium);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  return true;
++#else
++  return base::FeatureList::IsEnabled(features::kWebium);
++#endif
  }
  
  bool IsBrowserUIWebContents(content::WebContents* web_contents) {
