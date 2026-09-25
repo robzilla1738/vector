@@ -4,7 +4,7 @@
  * `--mode mock` main.tsx installs a scripted bridge before this module reads
  * window.aux (see mock/bridge.ts).
  */
-import type { AuxEvent, MethodName, MethodResult, RpcArgs, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
+import type { AuxEvent, MethodName, MethodResult, RpcArgs, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement, OrganizationSnapshot, OrganizationCommit } from "@aux/contracts";
 
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
@@ -92,6 +92,9 @@ export interface AuxBridge {
   bindTabSpace(pageId:string,spaceId:string):Promise<{spaceId:string;workspaceId:string}>;
   migrateTabSpaces(assignments:{pageId:string;spaceId:string}[]):Promise<{migrated:number}>;
   tabsSnapshot():Promise<TabCatalogSnapshot>;
+  organizationSnapshot():Promise<OrganizationSnapshot>;
+  organizationCommit(input:OrganizationCommit):Promise<OrganizationSnapshot>;
+  onOrganizationChanged(cb:(revision:number)=>void):()=>void;
   tabsSince(version:number):Promise<TabsSinceResult>;
   onTabsPatch(cb:(patch:TabPatch)=>void):()=>void;
   /** workspace placement relayed by main when a `move` lands in this window */
@@ -267,6 +270,9 @@ const stub: AuxBridge = {
   bindTabSpace:async()=>{throw new Error("Space binding requires Aux desktop");},
   migrateTabSpaces:async()=>({migrated:0}),
   tabsSnapshot:async()=>({version:0,tabs:[],windows:[]}),
+  organizationSnapshot:async()=>({revision:0,layout:null}),
+  organizationCommit:async()=>{throw new Error("Organization storage requires Aux desktop");},
+  onOrganizationChanged:noop,
   tabsSince:async()=>({kind:"snapshot",snapshot:{version:0,tabs:[],windows:[]}}),
   onTabsPatch:noop,
   onTabsPlacement:noop,

@@ -1,6 +1,8 @@
 import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 import { TabSpaceMigrationSchema, type BrowserSpace } from "@aux/contracts";
 import { registry, siteZoom } from "../app/services.js";
+import { PROFILE_DIR } from "../app/bootstrap.js";
+import { OrganizationHostStore } from "../organization-store.js";
 import { translator } from "../features/translate.js";
 import { showNavigationMenu } from "../navigation-menu.js";
 import { printPage, savePagePdf } from "../page-output.js";
@@ -14,6 +16,17 @@ import { unsavedWorkScript } from "../tabs/unsaved-work.js";
 import { broadcastToShells, handleShell, requireOwnedEntry } from "../windows/registry.js";
 
 export function wireTabsIpc() {
+  const organization = new OrganizationHostStore(PROFILE_DIR);
+  handleShell("ui.organizationSnapshot", state => {
+    if (state.quickAsk) throw new Error("Quick Ask has no saved organization.");
+    return organization.snapshot(state.id);
+  });
+  handleShell("ui.organizationCommit", (state, input: unknown) => {
+    if (state.quickAsk) throw new Error("Quick Ask has no saved organization.");
+    const snapshot = organization.commit(state.id, input as import("@aux/contracts").OrganizationCommit);
+    broadcastToShells("organization.changed", snapshot.revision);
+    return snapshot;
+  });
   const bindingVersions = new Map<string, number>();
   handleShell("ui.bindTabSpace", async (state, pageId: unknown, spaceId: unknown) => {
     if (typeof pageId !== "string" || typeof spaceId !== "string") throw new Error("Choose a tab and Space.");

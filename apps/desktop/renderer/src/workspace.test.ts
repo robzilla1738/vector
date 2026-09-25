@@ -178,6 +178,7 @@ describe("folders", () => {
     layout = updateFolder(layout, folderId, { emoji: null });
     expect(layout.folders[0]!.emoji).toBeUndefined();
     expect(layout.folders[0]!.color).toBe("green");
+    expect(parseLayout(JSON.stringify(layout)).folders[0]).toEqual(layout.folders[0]);
     expect(updateFolder(layout, "missing", { name: "X" })).toBe(layout);
   });
 });

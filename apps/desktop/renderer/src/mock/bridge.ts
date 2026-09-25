@@ -28,6 +28,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  */
 import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool, ZapRule } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
+import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -49,6 +50,8 @@ export function installMockBridge(q: URLSearchParams) {
   const customCss = new Map<string, { css: string; updatedAt: number }>();
   let zapRules: ZapRule[] = [];
   let rankingChoices: CommandRankingEntry[] = [];
+  let organization: OrganizationSnapshot = { revision: 0, layout: null };
+  const organizationListeners = new Set<(revision:number)=>void>();
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
@@ -963,6 +966,15 @@ export function installMockBridge(q: URLSearchParams) {
     },
     migrateTabSpaces:async()=>({migrated:0}),
     tabsSnapshot:async()=>({version:1,tabs:pages.map(p=>({pageId:p.pageId,windowId:"main",url:p.url,title:p.title,favicon:p.favicon,loading:!!p.loading,muted:false,audible:false,canGoBack:!!p.canGoBack,canGoForward:!!p.canGoForward,popup:false,crashed:p.viewStatus==="crashed",runtimeOwned:p.ownedByRuntime,generation:0,createdAt:p.createdAt,lastActiveAt:p.lastActiveAt})),windows:[{windowId:"main",order:pages.map(p=>p.pageId),activePageId}]}),
+    organizationSnapshot:async()=>organization,
+    organizationCommit:async input=>{
+      const next=OrganizationCommitSchema.parse(input);
+      if(next.expectedRevision!==organization.revision)throw new Error("Organization revision conflict.");
+      organization={revision:organization.revision+1,layout:next.layout};
+      for(const listener of organizationListeners)listener(organization.revision);
+      return organization;
+    },
+    onOrganizationChanged:cb=>(organizationListeners.add(cb),()=>organizationListeners.delete(cb)),
     tabsSince:async()=>({kind:"snapshot" as const,snapshot:await bridge.tabsSnapshot()}),
     onTabsPatch:()=>()=>{},
     onTabsPlacement:()=>()=>{},

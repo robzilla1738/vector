@@ -30,7 +30,7 @@ const eventMethods = new Set([
   "onAudio", "onDownload", "onEvent", "onHttpAuthChanged", "onLoading",
   "onPageAction", "onPageCursor", "onPreviewFrame", "onQuickAskState",
   "onRuntimeStatus", "onShortcut", "onSidebarEdge", "onSiteZoomChanged",
-  "onTabsPatch", "onTabsPlacement", "onToolbarEdge", "onTranslationChanged",
+  "onTabsPatch", "onTabsPlacement", "onToolbarEdge", "onTranslationChanged", "onOrganizationChanged",
   "onVaultOffer", "onDictation",
 ]);
 

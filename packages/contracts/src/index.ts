@@ -22,6 +22,7 @@ export * from "./hooks.js";
 export * from "./outbound-mcp.js";
 export * from "./customization.js";
 export * from "./command-ranking.js";
+export * from "./organization.js";
 export * from "./command-ranking-query.js";
 export * from "./memory-pipeline.js";
 export * from "./subagents.js";

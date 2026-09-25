@@ -6,7 +6,7 @@ import { createBookmarksSlice } from "./store/bookmarks-slice";
 import { createDraftsSlice } from "./store/drafts-slice";
 import { eventEffects, reduceLibraryEvent, reducePageEvent, reduceRunEvent } from "./store/events";
 import { createLayoutSlice } from "./store/layout-slice";
-import { LAYOUT_KEY, persistLayout, storage } from "./store/persistence";
+import { loadOrganizationLayout, persistLayout, reloadOrganizationLayout } from "./store/persistence";
 import { createRunsSlice } from "./store/runs-slice";
 import { call, lastEventSeq, noteEventSeq, patchPage, sendTabCommand } from "./store/shared";
 import { createTabsSlice } from "./store/tabs-slice";
@@ -22,6 +22,7 @@ export { call, decodeBase64Json, lastEventSeq, pagePreview, pageRevision } from 
  * The shell's single store, composed from domain slices (./store). Runtime
  * events apply through per-domain reducers plus one effects pass.
  */
+let organizationHydrated = false;
 export const useStore = create<Workspace>((set, get, api) => ({
   ...createUiSlice(set, get, api),
   ...createDraftsSlice(set, get, api),
@@ -31,6 +32,13 @@ export const useStore = create<Workspace>((set, get, api) => ({
   ...createRunsSlice(set, get, api),
 
   refresh: async () => {
+    if (!bridge.privateMode && !bridge.quickAskMode && !organizationHydrated) {
+      try {
+        const layout = await loadOrganizationLayout();
+        if (!organizationHydrated) { set({ layout }); organizationHydrated = true; }
+      }
+      catch (error) { errToast(error); set({ connected: false }); setTimeout(() => void get().refresh(), 1500); return; }
+    }
     // The main-owned catalog converges independently of runtime health.
     void bridge.tabsSnapshot().then(snapshot => get().syncTabsSnapshot(snapshot)).catch(() => {});
     try {
@@ -41,12 +49,9 @@ export const useStore = create<Workspace>((set, get, api) => ({
         call("downloads.list").catch(() => [] as Download[]),
         call("programs.list").catch(() => [] as SavedProgram[]),
       ]);
-      if (!bridge.privateMode) {
+      if (!bridge.privateMode && !bridge.quickAskMode) {
         const layout = get().layout;
         const legacySpaces = layout.spaces.filter(space => !space.workspaceId);
-        if (legacySpaces.length && storage && !storage.getItem(`${LAYOUT_KEY}:before-spaces`)) {
-          storage.setItem(`${LAYOUT_KEY}:before-spaces`, JSON.stringify(layout));
-        }
         const spaces = await call("spaces.import", { spaces: legacySpaces.map(space => ({
           id: space.id, name: space.name.slice(0, 100) || "Untitled", color: space.color ?? "slate", grain: space.grain,
         })) });
@@ -80,7 +85,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
           : (remembered && ws.pages.some(page => page.pageId === remembered) ? remembered : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
         return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
       });
-      if (!bridge.privateMode) setTimeout(() => {
+      if (!bridge.privateMode && !bridge.quickAskMode) setTimeout(() => {
         void bridge.tabsSnapshot().then(async catalog => {
           get().syncTabsSnapshot(catalog);
           const layout = get().layout;
@@ -111,6 +116,14 @@ export const useStore = create<Workspace>((set, get, api) => ({
     eventEffects(e, before, set, get);
   },
 }));
+
+if (!bridge.privateMode && !bridge.quickAskMode) bridge.onOrganizationChanged(() => {
+  if (!organizationHydrated) return;
+  const before = useStore.getState().layout;
+  void reloadOrganizationLayout().then(layout => {
+    if (useStore.getState().layout === before) useStore.setState({ layout });
+  }).catch(errToast);
+});
 
 /** Typed human tab command (§7.2) — main actuates, the patch stream confirms. */
 export const tabCommand = (command: TabCommand) => sendTabCommand(useStore.getState, command);

@@ -398,7 +398,9 @@ export function parseLayout(raw: string | null): Layout {
       folders: Array.isArray(v.folders)
         ? v.folders.flatMap((f) => {
             if (!f || typeof f.id !== "string" || typeof f.name !== "string" || typeof f.spaceId !== "string") return [];
-            return [{ id: f.id, name: f.name, spaceId: f.spaceId, collapsed: !!f.collapsed }];
+            return [{ id: f.id, name: f.name, spaceId: f.spaceId, collapsed: !!f.collapsed,
+              ...(f.color && SPACE_COLORS.includes(f.color) ? { color: f.color } : {}),
+              ...(typeof f.emoji === "string" && f.emoji.length <= 16 ? { emoji: f.emoji } : {}) }];
           })
         : [],
       tabFolder: v.tabFolder && typeof v.tabFolder === "object"
