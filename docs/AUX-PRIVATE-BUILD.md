@@ -1,6 +1,6 @@
 # Aux private development build handoff
 
-> Host scope, September 24: this document describes the existing Electron development/package baseline unless explicitly labeled otherwise. Chromium is now the intended architecture with a partial executable proof; these instructions and feature results do not qualify the fork. Start with [the current handoff](HANDOFF.md) and [candidate runbook](../experiments/chromium-fork/CONTINUATION.md). No signed release is claimed.
+> **Host scope, September 25:** this document describes the Electron development/package baseline unless explicitly labeled otherwise. The working Chromium 154 AuxDev app is the current development target; Electron instructions and results do not qualify it. Start with [the current handoff](HANDOFF.md) and [native runbook](../experiments/chromium-fork/CONTINUATION.md). Final DMG/signing and release qualification are deferred.
 
 Status: candidate for founder review. Updated 2026-09-21. Development and unsigned
 local packaged builds are available; neither is a signed or external release.

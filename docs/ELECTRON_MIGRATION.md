@@ -1,5 +1,7 @@
 # Electron Aux → Chromium Aux migration handoff
 
+> **Current authorization:** keep implementation and fixture/copy testing, but do not migrate the owner's real data or apply a bundle to their real Aux Profile. The development build is the current handoff target; release takeover is deferred. See [HANDOFF.md](HANDOFF.md).
+
 The host-neutral preparation step is `prepareElectronMigration` in the runtime package. It reads the Electron Aux data directory and creates a **new** standalone bundle. It never opens the source for writing, copies a consistent SQLite snapshot with `VACUUM INTO`, and never reads or copies Chromium/Electron Cookies, Login Data, Web Data, Keychain material, browser profile files, or OS credentials. The source app and profile remain usable.
 
 ## Preparing a bundle

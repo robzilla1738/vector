@@ -1,5 +1,7 @@
 # Architecture
 
+> This process diagram documents the Electron/standalone implementation. The current native development target is Chromium 154 `AuxDev/Aux.app`: its browser process owns the trusted `chrome://aux/` WebUI, real tabs and Profile boundaries, and launches the authenticated Aux Runtime. See [HANDOFF.md](HANDOFF.md) and the [native runbook](../experiments/chromium-fork/CONTINUATION.md). Electron code remains while its journeys are ported; this diagram must not be used as proof that a native feature is integrated.
+
 The product GUI is the coherent desktop shell in `apps/desktop`. Chromium is
 the sole web rendering engine — embedded in the shell, headless in standalone
 mode, or the user's Chrome attached over CDP. The Node **runtime**

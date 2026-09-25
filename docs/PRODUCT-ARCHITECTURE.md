@@ -1,11 +1,9 @@
 # Aux product architecture
 
-> Implementation direction is maintained in [Aux roadmap](ROADMAP.md).
-> This document describes the existing architecture and release gates; its
-> implemented labels are not evidence that the complete Aux product is ready.
+> The current Chromium product direction and implementation status are in the [roadmap](ROADMAP.md) and [handoff](HANDOFF.md). The Electron `WebContentsView` architecture described below is the development preview and historical source of behavior to port. The native AuxDev app uses Chromium's WebUI browser shell, SurfaceEmbed pages, authenticated runtime channel and private CDP broker. Electron implementation labels below do not qualify the native app; final release gates are deferred.
 
 **Decision date:** 19 September 2026, revised 22 September 2026
-**Status:** authoritative product architecture and release gates
+**Status:** Electron preview architecture and product requirements; native implementation status lives in the handoff
 
 Aux is one browser on one rendering engine. Chromium is the sole web engine —
 embedded in the desktop shell as `WebContentsView` pages, headless in

@@ -1,90 +1,64 @@
-# Chromium candidate — continuation runbook
+# Native Aux development continuation
 
-Current implementation checkpoint: `31e7ef95`, September 24, 2026. Read [the handoff](../../docs/HANDOFF.md) first. This is an unsigned development proof; no full migration or release is approved.
+Updated September 25, 2026. This is the runbook for the **stable Chromium 154 AuxDev checkout**. Read [the current handoff](../../docs/HANDOFF.md), [evidence ledger](../../docs/EVIDENCE.md), and [patch README](../../chromium/README.md) before changing it. The original `Aux Host Proof` checkout, checkpoint files and `apply-shell-proof.py` in this directory are historical experiments; do not apply them to AuxDev.
 
-## Tracked inputs and local outputs
+## Paths and state
 
-- `aux-proof.patch`: original identity patch against upstream `b151276ea2110e74b063c6964bd0a5c14dc42f52`.
-- `native/aux_shell_view.{cc,h}`: native shell/tab/bridge/input proof.
-- `native/aux_page_material.h`: isolated-world, visual-only toolbar/sidebar page frost.
-- `native/aux-host.js`: trusted WebUI bootstrap; rejects unsupported operations instead of substituting mock success.
-- `apply-shell-proof.py`: idempotent integration into the already-built pinned checkout. Requires the original completion metadata. It does not check for active incremental builds; the operator must do that first.
-- `prepare-shell-assets.mjs`: stages current production renderer and bootstrap with freshness/CSP/hash checks.
-- `checkpoints/2026-09-24-upstream.patch`: exact diff of the eight tracked upstream files (identity plus native integration) at the checkpoint. The three new C++ files are separately in `native/` and are not inside that upstream diff.
-- `checkpoints/2026-09-24.json`: upstream revision, source hashes, GN arguments and original build measurements. Native C++ files were byte-compared to the built checkout when captured.
-- `fixtures/material.html`: controlled live-page blur/input target; not product UI.
+| Item | Current location / condition |
+| --- | --- |
+| Source | `/Users/rcourson/aux-chromium-stable/chromium/src` at pinned Chromium `154.0.8037.58` plus Aux patches 0001–0046 |
+| App | `out/AuxDev/Aux.app`, component development build with bundled Aux Runtime |
+| Patch source of truth | [`chromium/patches/series`](../../chromium/patches/series) and its ordered patch files in this repository |
+| Shell assets | [`chromium/shell-assets`](../../chromium/shell-assets), staged into `chrome/browser/resources/aux/assets` |
+| Local evidence | [`docs/evidence/native-aux-live-2026-09-25.md`](../../docs/evidence/native-aux-live-2026-09-25.md); raw logs and disposable Profiles stay outside Git |
+| Release build | `out/AuxRelease` was interrupted intentionally; preserve its cache. Official app and DMG are deferred. |
 
-Do not apply both patches blindly: the checkpoint patch includes the original identity patch. On the existing Mac, changes are already applied. Use `git diff`/reverse checks and preserve that tree. On a fresh pinned checkout, either use the original identity-build → integration-script sequence, or apply the complete checkpoint diff and copy the three native files before GN generation. Do not copy the bootstrap into Chromium's source resources; staging includes it.
+The native source checkout is dirty **by design** because the ordered Aux patches are applied. Do not reset it, re-run `setup`/`push`, or copy the 2024 proof files onto it. The repository branch should be clean between integration batches. Before editing a native file, inspect the matching latest patch and confirm no build is active.
 
-The first-build script writes the original metadata/log and regenerates GN arguments. **Do not rerun it to continue an already completed build.** Use incremental commands below. `watch-build.py` was a one-shot guard for the original build; stale PID files are not proof that a build is running.
-
-## Existing Mac: inspect before changing anything
+## Inspect before building
 
 ```sh
-export AUX_CHROMIUM_SRC=/Users/rcourson/aux-chromium-proof/chromium/src
-export AUX_DEPOT_TOOLS=/Users/rcourson/aux-chromium-proof/depot_tools
-export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
-export PATH="$AUX_DEPOT_TOOLS:$PATH"
-git -C "$AUX_CHROMIUM_SRC" rev-parse HEAD
-ps -axo pid,ppid,ni,command | rg 'autoninja|siso|clang|Aux Host Proof'
-tail -30 "$AUX_CHROMIUM_SRC/out/AuxProof/aux-shell-build.log"
+cd /Users/rcourson/Code/web
+git status --short --branch
+tail -6 chromium/patches/series
+ps -axo pid,etime,command | rg 'siso ninja|autoninja|AuxDev/Aux.app/Contents/MacOS/Aux'
+git -C /Users/rcourson/aux-chromium-stable/chromium/src rev-parse HEAD
 ```
 
-If compilation is active, preserve it and keep native edits in this Aux repository until it completes. Do not start another build. Before relinking, quit only the candidate through its native app menu; keep personal browsers and other apps alone.
+The pinned upstream commit is in [`chromium/version.txt`](../../chromium/version.txt). A running Aux browser should be quit **through its app menu** before relinking its framework. Leave unrelated browsers and personal Profiles alone. Do not run two native builds at once. The old official build is not needed for the current scope.
 
-## Incremental native build
+## Integrate a source change
 
-From the Aux repository, only after the active compile has finished:
+1. Edit only the required native source files in the existing checkout. Capture their pre-change state, record the incremental diff as the next ordered patch in this repository, and add it to `chromium/patches/series`. Verify that patch with `git apply --reverse --check` against the modified checkout. A fresh full-series replay is a separate gate; the last recorded one is through patch 0036.
+2. For renderer changes, from the repository run `python3 chromium/aux-chromium stage-shell`, then `node scripts/check-budgets.mjs bundle`. If the runtime changed, stage it with `node chromium/stage-runtime.mjs /Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app` after building it. These steps do not replace a native resource rebuild.
+3. Build locally in the native source checkout after AuxDev has exited:
 
 ```sh
-python3 experiments/chromium-fork/apply-shell-proof.py "$AUX_CHROMIUM_SRC"
-cd "$AUX_CHROMIUM_SRC"
-nohup nice -n 10 /usr/bin/time -l autoninja -C out/AuxProof chrome -j 8 \
-  >> out/AuxProof/aux-shell-build.log 2>&1 < /dev/null &
+cd /Users/rcourson/aux-chromium-stable/chromium/src
+DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
+  nice -n 10 third_party/siso/cipd/siso ninja -offline -local_jobs=8 \
+  -C out/AuxDev chrome > /tmp/aux-dev-next-build.log 2>&1
 ```
 
-The detached process can continue after the agent turn stops. Inspect its exit/build log; launching a process is not a successful build. Do not erase object files or logs to retry. The original GN configuration is component build, release mode, no symbols, `use_lld=false`; it is recorded in the checkpoint manifest. Production build characteristics are not measured by this configuration.
+Check the **exit code and end of the log** before reporting success. Preserve the incremental cache and prior logs. Do not start the official static build for development-only work.
 
-## Stage the real renderer and launch
+## Verify the development app
 
-From the Aux repository:
+Use a disposable Profile for automated host tests and fixture content for agent/model flows. Native test instructions and permissions are in [native-journeys.md](../../docs/native-journeys.md). For the current app:
 
 ```sh
-pnpm --filter @aux/desktop exec vite build
-node experiments/chromium-fork/prepare-shell-assets.mjs
+node tests/host/native-app-journeys.mjs --app /Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app --rpc-only
+node tests/host/native-profile-journeys.mjs --app /Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app
 ```
 
-Use the **new staging directory printed by that command**, not a temporary path from an older environment. Set `AUX_SHELL_STAGE` to it, then launch after confirming the candidate is not already running:
+Run these only when native/runtime changes touch their assertions or a handoff gate calls for a fresh run. `--rpc-only` omits layout and glass verification. The full app journey needs macOS Accessibility and Screen Recording permissions. Inspect live AuxDev with UI tooling for the exact affected journey; window screenshots cannot establish perceptual macOS blur. Keep the owner's real Profile and data untouched.
 
-```sh
-export AUX_CANDIDATE_PROFILE="$PWD/release/test-artifacts/chromium-candidate-profile"
-open -n -a "$AUX_CHROMIUM_SRC/out/AuxProof/Aux Host Proof.app" --args \
-  --user-data-dir="$AUX_CANDIDATE_PROFILE" \
-  --remote-debugging-port=0 --no-first-run --no-default-browser-check \
-  --use-mock-keychain --password-store=basic \
-  --aux-shell-assets="$AUX_SHELL_STAGE" --enable-features=GlassFrame \
-  --enable-logging --log-file="$PWD/release/test-artifacts/candidate-shell-continuation.log" \
-  about:blank
-```
+For a renderer batch, run the focused tests, `pnpm typecheck`, `pnpm lint`, `pnpm format:check` as relevant, and the existing bundle budget gate. Record the exact local command, outcome, app/build identity and limits in [EVIDENCE.md](../../docs/EVIDENCE.md). A passing targeted test or earlier hosted SHA does not qualify the whole roadmap.
 
-These flags are for the isolated proof only, including mock keychain/basic password storage and debugging. Do not use a personal Profile or treat this launch as secure production packaging. Native glass uses macOS 26+ public AppKit through upstream Chromium's experimental GlassFrame service. Fallbacks/private/popups still need qualification.
+## Current next work and constraints
 
-Select the already-running app by **name** (`Aux Host Proof`) in computer-use tooling; selecting its full bundle path previously launched an unwanted default-Profile instance. Native C++ changes require restart; candidate React HMR is not established. Electron's Vite development workflow is separate.
+Native Quick Ask and the Profiles management screen remain gated off. Several feature families still need native bridge services and live journeys; extension, passkey, import, agent, both-layout accessibility, and glass checks are incomplete. The owner confirmed the corrected right-only assistant corners and selected the expanded left panel's blur as the reference. Keep both Aside layouts and the shared liquid-glass material while integrating.
 
-For the controlled material page, first check whether port 5199 is already served. If absent, serve only `experiments/chromium-fork/fixtures` with a loopback HTTP server and open `http://127.0.0.1:5199/material.html` in the candidate. The existing mock UI on 5198 is not native evidence.
+Migration implementation remains in scope, but **do not migrate real data**. Final DMG, signing/notarization, official static compilation, full release qualification and takeover packaging are deferred. Build and test on this Mac; tell the owner before any Linux VM. Avoid GitHub-hosted runs and paid billing. A protected-main merge needs GitHub's required check once the account can run it; local development does not.
 
-## Verification order
-
-1. Resolve current CI failures in [the CI checkpoint](../../docs/evidence/ci-handoff-2026-09-24.md), without weakening gates.
-2. Reproduce floating sidebar over the material page and compare AX with pixels. An AX node appearing briefly is not success. Trace native edge events, shell pointer/focus/blur and dismissal. Child-view exit handling is corrected but retention still fails; clicking outside intentionally dismisses in `App.tsx`.
-3. Verify actual New Tab → live page → New Tab seam-free glass, native input focus and toolbar blur/click routing after relevant changes. Add window, layout, theme, reduced-accessibility and split tests separately.
-4. Connect runtime, then execute the complete `tests/host/candidate-shell.mjs` contract. It depends on runtime truth; manual shell checks do not satisfy it.
-5. Run candidate extension/API/native-messaging tests from [INTEGRATION.md](INTEGRATION.md), then account/signing/security/performance gates. Preserve earlier Store evidence and requalify after integration changes.
-
-Focused material/bootstrap checks and UI coverage audit are in the handoff. Use one worker while native compilation runs. Do not claim full CI or host completion from them.
-
-## Transfer to another machine
-
-Fetch the Aux branch; provision the pinned Chromium source and dependencies using the platform's supported Chromium toolchain. The original Mac used Xcode 27 beta, 10 CPUs/32 GiB; this is observed build evidence, not a guaranteed minimum specification. This repo contains no object cache or ready-to-run candidate binary. Review the checkpoint patch, copy the native source files, generate GN and build locally. Rebuild/stage renderer assets there; absolute paths and temporary staging directories are machine-specific.
-
-Raw Profiles/cookies, account secrets, generated build outputs and reference-product bundles are deliberately excluded from GitHub. Sanitized result JSON and selected screenshots are committed under `docs/ui/evidence/2026-09-24/host`. Restore required external credentials through approved secret handling; never paste them into docs or PRs.
+The historical [proof map](INTEGRATION.md) and [checkpoint](checkpoints/2026-09-24.json) document the previous `Aux Host Proof` binary only. Do not use their mock keychain, public debugging port or old `AuxProof` launch flags for the current development app.

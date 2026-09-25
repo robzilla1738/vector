@@ -1,10 +1,12 @@
 # Aux takeover
 
+> **Deferred release document.** The September 25 scope amendment targets a working native development build. Final DMG, release signing/notarization, full release qualification and this takeover package are not current gates. See [HANDOFF.md](HANDOFF.md) for the development checkpoint; do not run these instructions against the owner's real Profile.
+
 This is the handoff for the official Chromium build. It stops before Developer ID signing, Apple notarization submission, production update hosting and release. The Electron package commands in `docs/packaging.md` apply to the development preview and do not qualify this browser.
 
 ## Current gate
 
-`scripts/chromium-sign.mjs` plans Chromium's `sign_chrome.py` pipeline and an ad-hoc DMG. It requires an **official static** build (`is_component_build=false`, `is_debug=false`) containing `Aux.app` with bundle ID `dev.aux.browser`, `Contents/Helpers/Aux Runtime`, and generated `* Packaging/sign_chrome.py`. The existing `out/AuxProof` is a component proof named `Aux Host Proof`; a dry run correctly reports it unready. No official ad-hoc app or DMG is claimed by these scripts.
+`scripts/chromium-sign.mjs` plans Chromium's `sign_chrome.py` pipeline and an ad-hoc DMG. It requires an **official static** build (`is_component_build=false`, `is_debug=false`) containing `Aux.app` with bundle ID `dev.aux.browser`, `Contents/Helpers/Aux Runtime`, and generated `* Packaging/sign_chrome.py`. The current `out/AuxDev` is a component development build and cannot satisfy that preflight. The separate `out/AuxRelease` compile was stopped with its cache preserved. No official ad-hoc app or DMG is claimed by these scripts.
 
 From the Aux repository, after the native lane completes the official build:
 

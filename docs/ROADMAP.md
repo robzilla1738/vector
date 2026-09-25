@@ -24,6 +24,8 @@ isProject: false
 
 ## Current scope amendment — September 25, 2026
 
+The [current development checkpoint](HANDOFF.md) and [evidence ledger](EVIDENCE.md#current-development-checkpoint--september-25) report implementation status. The original wave metadata and historical findings below are retained as the reviewed **plan**, not current completion claims. In particular, their official-build/DMG/takeover tasks are deferred by this amendment.
+
 The owner's latest instruction makes a **working development build** the current handoff goal. Finish the product features and native Chromium integration in this roadmap, preserving Aux branding, liquid glass and both Aside layouts. Verify the development build through the relevant live product journeys.
 
 Defer the final DMG, release signing/notarization, full release qualification and takeover package. These later deliverables in B11/B12 are retained below as future work, not current completion gates. Keep migration implementation and fixture qualification; **do not migrate the owner's real data**. Release-only official/static builds may be stopped safely with their build cache preserved. The current development component build is authoritative for ongoing product integration.

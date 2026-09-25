@@ -4,6 +4,12 @@ Aux lives in `robzilla1738/vector`. The workflow is
 [`.github/workflows/runtime.yml`](../.github/workflows/runtime.yml), named `runtime`.
 It runs for pushes to `main`, pull requests, manual dispatch, and merge groups.
 
+## September 25 development status and cost boundary
+
+The repository is private. PR [#24](https://github.com/robzilla1738/vector/pull/24) remains open, but its prior hosted results are **not** checks for the current development code: one native validation passed on an older SHA, and GitHub rejected the hosted runtime jobs before they started because Actions billing/spending was limited. Do not interpret those failures as a test result for the current code. The owner requested local Mac builds/tests, minimal hosted Actions cost, and **no paid billing enablement**. Do not manually dispatch or rerun hosted workflows for the present development checkpoint.
+
+The native development app can be used and locally evaluated without a GitHub check. A normal merge into protected `main` requires the exact-head `CI passed` check under the current branch policy; that check is genuinely required **for the merge**, not for the local app handoff. Report the billing block honestly if it persists. A documentation/branch sync may use a CI-skip commit to avoid starting another billed run, but a skipped check is not green and cannot satisfy branch protection.
+
 ## Gates
 
 | Job | Purpose |
@@ -86,14 +92,11 @@ full SHA pins; the default token stays read-only and cannot approve PRs.
 gh auth switch --user robzilla1738
 gh run list -R robzilla1738/vector --workflow runtime.yml --limit 10
 gh run view RUN_ID -R robzilla1738/vector --log-failed
-gh run rerun RUN_ID -R robzilla1738/vector --failed
-gh workflow run runtime.yml -R robzilla1738/vector --ref main
+# Do not rerun or dispatch while the owner's local-only cost preference applies.
 ```
 
 Run `actionlint .github/workflows/runtime.yml` when changing workflow syntax.
-For product changes, run relevant local checks before pushing, then check the
-**exact commit's** hosted run. A previous green commit or a local test result is
-not evidence that the current commit passed hosted CI.
+For product changes, run relevant local checks before pushing. If the owner later authorizes hosted qualification and GitHub can run it, inspect the **exact commit's** result. A previous green commit or a local test result is not evidence that the current commit passed hosted CI.
 
 ## September 23 audit
 
@@ -106,5 +109,4 @@ removing its persistence assertions. Blank-sidebar window dragging must exclude
 `summary` and `label` controls as well as buttons/inputs, or the More menu cannot
 open normally.
 
-See [HANDOFF](HANDOFF.md) for the audit checkpoint and verification limits. Always use the
-latest exact commit’s Actions result when deciding whether to merge or ship.
+See [HANDOFF](HANDOFF.md) for the current development checkpoint and verification limits. A future protected-main merge or release needs the latest exact commit’s required Actions result; the local AuxDev build does not imply that result.

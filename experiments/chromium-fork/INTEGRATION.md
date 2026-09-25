@@ -1,5 +1,7 @@
 # Aux shell and host proof map
 
+> **Historical proof map (September 24).** This file describes the original `Aux Host Proof` candidate and target contracts. The active Chromium 154 development app, current checks and build commands are in [CONTINUATION.md](CONTINUATION.md) and [the handoff](../../docs/HANDOFF.md). Statements below about an unconnected runtime or an unsigned proof binary refer to that earlier checkpoint.
+
 This maps the **current Aux checkout** to the existing isolated `//chrome` candidate. The original identity build and live Store install/restart proof completed on September 24. The candidate now executes Aux's production shell with real tabs; dated evidence and unresolved failures are in `docs/archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md`. This remains a bounded proof, not a full migration or release.
 
 The original process-continuity watcher completed without restarting the baseline build. Native iterations reuse the same checkout/output at nice 10 and run detached. Apply native patches only after the active incremental build finishes, then restart the candidate to load the new binary. Renderer production assets are staged independently; HMR is not yet established.

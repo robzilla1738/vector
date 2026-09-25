@@ -5,21 +5,15 @@ you want, and know what actually happened.**
 
 Start with the [implementation handoff](docs/HANDOFF.md), [roadmap](docs/ROADMAP.md),
 and [evidence ledger](docs/EVIDENCE.md). Historical [UI implementation](docs/archive/2026-09-24-b0-reset/ui/COMPONENT-TRANSPLANT.md) and [host proof](docs/archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md) records are archived.
-The reviewed implementation sequence and release stop line are in the [roadmap](docs/ROADMAP.md).
+The roadmap's September 25 amendment makes the **native Chromium development build** the current handoff goal. The app is working for the [verified native journeys](docs/evidence/native-aux-live-2026-09-25.md), but product integration remains incomplete. Preserve the Aux liquid-glass material and both Aside layouts. Final DMG, release signing/notarization, full release qualification and takeover packaging are deferred; real data migration is not authorized.
 
-Aux targets a Chromium `//chrome` fork, contingent on compatibility and native integration qualification.
-The candidate builds, runs Aux's real shell and has passed Store installation/restart persistence.
-Its agent runtime and several native interactions remain incomplete. Electron is still the development baseline;
-`pnpm dev` launches Electron, not the fork. Follow the [native runbook](experiments/chromium-fork/CONTINUATION.md)
-to resume the existing candidate. No signed or external release is claimed. Hosted CI at the last implementation
-checkpoint was red; see [the recorded failures](docs/evidence/ci-handoff-2026-09-24.md).
+Aux's native development app is a Chromium `//chrome` fork at version `154.0.8037.58`, built locally as `out/AuxDev/Aux.app` in the stable source checkout. Its real shell, runtime, and scoped native journeys pass. Quick Ask, native Profiles management, and other product gates remain. `pnpm dev` still launches the Electron preview, **not** AuxDev. Follow the [native runbook](experiments/chromium-fork/CONTINUATION.md) to continue the Chromium app. Prior hosted jobs were blocked by billing; see [CI operations](docs/ci.md). No signed or external release is claimed.
 
-`AUX_*` is the only runtime configuration namespace. Process environment overrides
+For the standalone and Electron runtime, `AUX_*` is the configuration namespace. Process environment overrides
 `.env` files. Runtime data uses `Aux Browser/aux-state.sqlite` under the OS data
 root. Legacy Vector data directories and databases are left in place untouched —
 they are not read, merged, or adopted; select a different directory with
-`AUX_DATA_DIR` if one is present in a custom location. The browser's separate
-Chromium profile lives under `Aux Browser Profile`/`Aux Browser Development Profile`.
+`AUX_DATA_DIR` if one is present in a custom location. The native Chromium app uses its own `Application Support/Aux` product directory. The Electron preview's Profile roots remain separate.
 
 A local agent-first browser with one desktop window, workspace, permission
 model, and agent contract. Chromium is the sole web engine — embedded in the
@@ -39,8 +33,9 @@ dragging. Existing Aux colors and explicit preferences are preserved.
 
 
 
-Run `AUX_LOAD_DOTENV=0 pnpm dev` for the current private development build. `pnpm preview` opens a
-separate persistent Aux Preview profile. Follow the [local Mac handoff](docs/HANDOFF.md),
+Run `AUX_LOAD_DOTENV=0 pnpm dev` for the **Electron preview**. `pnpm preview` opens a
+separate persistent Aux Preview profile. For native AuxDev, follow the [local Mac handoff](docs/HANDOFF.md) and [runbook](experiments/chromium-fork/CONTINUATION.md).
+The Electron-specific instructions below remain useful while its tests are being ported. See the
 [private build handoff](docs/AUX-PRIVATE-BUILD.md)
 and [archived first review walkthrough](docs/archive/2026-09-24-b0-reset/AUX-FIRST-REVIEW.md) for browsing, tasks,
 development, cloud setup and the known compatibility limits. The current handoff separates implemented Electron behavior, partial Chromium integration, and remaining external qualification. The reviewed roadmap replaces the six-batch transplant plan.

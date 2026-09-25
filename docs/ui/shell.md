@@ -1,7 +1,6 @@
 # Aux desktop shell
 
-This is the product GUI (`pnpm dev`): one native desktop window with embedded
-page views, browser chrome, workspace, and agent rail.
+This describes the shared renderer as exercised by the Electron preview (`pnpm dev`). The current native development app serves that renderer from trusted `chrome://aux/` and composes Chromium SurfaceEmbed pages behind it. Its bridge is `chromium-bridge.ts`, with browser-process authorization; Electron's `contextBridge` below applies only to the preview. See the [native handoff](../HANDOFF.md) for verified journeys and open integration.
 
 The renderer in `apps/desktop/renderer/src` is the browser chrome around the
 runtime's pages: Aside-inspired sidebar, top command bar, continuous rounded
