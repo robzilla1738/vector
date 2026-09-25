@@ -112,3 +112,14 @@ After consolidating the bootstrap’s separate delivery/subscription allowlists 
 - **[Verified]** The broker cleared JavaScript connection/session maps on disconnect but left native DevTools clients attached until the entire runtime channel closed. That retained enabled protocol-domain state across new Playwright clients.
 - **[Implemented, pending native staging]** Patch 0038 adds an authenticated, argument-free native.cdpReset operation. The runtime serializes native resets and waits before accepting commands from each new CDP client. Ordinary disconnects release native attachments. These changes must be staged together after the active official build; the developer app still carries the prior runtime/native pair.
 - **[Verified]** Broker tests cover reset ordering, stale-client isolation, private-socket Playwright connection and page/OOPIF routing. The runtime builds. Live restart recovery remains unqualified until patch 0038 is compiled and the updated runtime is staged.
+
+### Deferred assistant panels and startup budget
+
+The set-results panel and recent-conversation list now load when selected in the assistant rail. Both retain the shared recoverable loading/error boundary. The boundary accepts a container-specific close action, so Cancel, Escape and error Close dismiss the rail without changing the main browser mode. The browser chrome and both layout implementations are unchanged.
+
+- **[Verified]** Chromium-targeted renderer build (`AUX_CHROMIUM_SHELL_BUILD=1`) and renderer TypeScript check pass.
+- **[Verified]** The configured bundle gate passes: startup JavaScript **486 KB / 490 KB**, startup CSS **210 KB / 218 KB**, total JavaScript **1677 KB / 1800 KB**. Budgets were not raised. These are the existing manifest gate's measurements, not a presented-frame or full layout-interaction measurement.
+- **[Verified]** Two deferred-surface tests pass: retry preserves surrounding draft DOM; embedded loading/failure Cancel, Escape and Close use the container's close action. Targeted lint has no errors; the two existing accessibility/effect warnings remain.
+- **[Pending]** These renderer changes and the cookie-import cleanup have not been staged into the running native build. The official build remains on its frozen source, compiling without a reported failure at approximately 15,278 completed actions. Queued patches 37/38 and the matching runtime still require the subsequent native rebuild and live persisted-session recovery test.
+
+Local logs: `/tmp/aux-deferred-panel-{types,build,budget,tests,lint}.log`. No hosted Actions, Linux VM, model calls or publishing were used for this batch.

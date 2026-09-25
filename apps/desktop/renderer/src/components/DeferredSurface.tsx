@@ -8,13 +8,13 @@ class SurfaceBoundary extends Component<{children:ReactNode; fallback(error:Erro
   override render() { return this.state.error ? this.props.fallback(this.state.error) : this.props.children; }
 }
 
-function SurfaceStatus({label, error, retry, pane}: {label:string; error?:Error; retry?:()=>void; pane:boolean}) {
+function SurfaceStatus({label, error, retry, pane, onClose}: {label:string; error?:Error; retry?:()=>void; pane:boolean; onClose?:()=>void}) {
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (pane) return;
     root.current?.focus();
   }, [pane]);
-  const close = () => pane ? useStore.getState().setMode("focus") : useStore.getState().setOverlay(null);
+  const close = onClose ?? (() => pane ? useStore.getState().setMode("focus") : useStore.getState().setOverlay(null));
   return <div className={`surface-status${pane ? " pane" : " overlay"}`} role={pane ? "region" : "dialog"} aria-modal={pane ? undefined : true} aria-label={label} tabIndex={-1} ref={root} onKeyDown={event => {
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
     if (!pane && event.key === "Tab") {
@@ -39,7 +39,7 @@ export type DeferredSurface<Props extends object> = ComponentType<Props> & { pre
  * synchronously, so a prefetched first open never shows the loading state.
  * `quiet` surfaces render nothing while loading (always-mounted chrome).
  */
-export function deferSurface<Props extends object>(load:()=>Promise<{default:ComponentType<Props>}>, label:string, pane=false, quiet=false): DeferredSurface<Props> {
+export function deferSurface<Props extends object>(load:()=>Promise<{default:ComponentType<Props>}>, label:string, pane=false, quiet=false, onClose?:()=>void): DeferredSurface<Props> {
   let loaded: ComponentType<Props> | undefined;
   let pending: Promise<{default:ComponentType<Props>}> | undefined;
   const fetch = () => pending ??= load().then(module => { loaded = module.default; return module; }, (error: unknown) => { pending = undefined; throw error; });
@@ -47,7 +47,7 @@ export function deferSurface<Props extends object>(load:()=>Promise<{default:Com
   // module mid-life would remount the surface and drop its state.
   function Loader(props:Props) {
     const [Surface] = useState<ComponentType<Props>>(() => loaded ?? lazy(fetch));
-    return <Suspense fallback={quiet ? null : <SurfaceStatus label={label} pane={pane} />}><Surface {...props}/></Suspense>;
+    return <Suspense fallback={quiet ? null : <SurfaceStatus label={label} pane={pane} onClose={onClose} />}><Surface {...props}/></Suspense>;
   }
   function DeferredSurface(props:Props) {
     const [attempt, setAttempt] = useState(0);
@@ -59,7 +59,7 @@ export function deferSurface<Props extends object>(load:()=>Promise<{default:Com
         if (previous?.isConnected && !previous.closest("[inert]")) previous.focus();
       });
     }, []);
-    return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} retry={() => setAttempt(value => value + 1)} />}>
+    return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} onClose={onClose} retry={() => setAttempt(value => value + 1)} />}>
       <Loader {...props}/>
     </SurfaceBoundary>;
   }
