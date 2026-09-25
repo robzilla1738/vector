@@ -76,6 +76,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     maxModelCalls: () => 8,
     model: () => opts.model ?? null,
     plannerModel: () => "mock/planner",
+    agentRoute: (category: "fast" | "standard" | "deep" | "visual") => ({ modelId: "mock/planner", reasoning: category === "deep" ? "xhigh" : category === "fast" ? "low" : "medium" }),
     listModels: async()=>({models:[{id:"mock/planner",source:"catalog",inputUsdPerMTok:1,outputUsdPerMTok:2}],source:"gateway"}),
     recoveryModel: () => undefined,
     visionModel: () => undefined,
