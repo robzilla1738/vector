@@ -38,3 +38,6 @@ aux/branding/0037-aux-profile-directory.patch
 aux/runtime/0038-cdp-connection-reset.patch
 aux/runtime/0039-async-runtime-rpc.patch
 aux/shell/0040-aux-first-run.patch
+aux/shell/0041-native-page-controls.patch
+aux/runtime/0042-runtime-shutdown-join.patch
+aux/shell/0043-modal-surface-bounds.patch

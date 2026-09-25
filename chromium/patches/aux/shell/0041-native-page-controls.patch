@@ -1,0 +1,66 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -18,6 +18,9 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/devtools/devtools_window.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/dictation_mac.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+@@ -1191,6 +1194,52 @@
+     std::move(callback).Run(true, "true", "", "");
+     return;
+   }
++  if (method == "hardReload" || method == "printPage" ||
++      method == "devTools") {
++    if (list->size() != 1 || !(*list)[0].is_string() ||
++        (*list)[0].GetString().empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A browser page ID is required");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The page is no longer in this window");
++      return;
++    }
++    if (method == "hardReload") {
++      // Keep Chromium's repost confirmation when bypassing the HTTP cache.
++      contents->GetController().Reload(content::ReloadType::BYPASSING_CACHE,
++                                       /*check_for_repost=*/true);
++    } else if (method == "devTools") {
++      if (!DevToolsWindow::AllowDevToolsFor(browser_->GetProfile(), contents)) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Developer tools are disabled for this page");
++        return;
++      }
++      DevToolsWindow::OpenDevToolsWindow(
++          contents, DevToolsOpenedByAction::kMainMenuOrMainShortcut);
++    } else {
++      // Browser print commands act on the active tab. Never print a different
++      // page if selection changed while the shell request was in flight.
++      if (browser_->GetTabStripModel()->GetActiveWebContents() != contents) {
++        std::move(callback).Run(false, "", "conflict",
++                                "Select this page before printing");
++        return;
++      }
++      if (!chrome::CanPrint(browser_)) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Printing is unavailable for this page");
++        return;
++      }
++      chrome::Print(browser_);
++    }
++    std::move(callback).Run(true, "true", "", "");
++    return;
++  }
+   if (method == "focusShell") {
+     if (!list->empty()) {
+       std::move(callback).Run(false, "", "invalid_argument",

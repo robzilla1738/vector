@@ -196,3 +196,24 @@ The hidden-sidebar rule removed all content-column rounding even when the right 
 - The owner selected the expanded left sidebar’s current native blur as the reference for both sides and layouts. The native host already installs one autoresizing `NSGlassEffectView` (or an older macOS `NSVisualEffectView` fallback) underneath the entire window. No per-sidebar native blur strength exists.
 - Removed the horizontal layout’s additional 85% opaque veil from the chat sidebar and assistant. Docked navigation, chat sidebar, assistant and horizontal tab strip now use one `--window-glass-tint`, matching the expanded left sidebar’s existing setting. Content-area opacity remains separate. Reduce Transparency retains its opaque fallback. Different colors behind each side can still produce different colors through the same material.
 - Renderer build and bundle budgets pass. Native resource rebuild passed (12 actions, 1m22.93s; `/tmp/aux-dev-shared-glass-build.log`). The update is in AuxDev/Aux.app. Relaunch verification was interrupted by concurrent owner interaction; no new live glass appearance claim.
+
+### Native page controls and shutdown cleanup
+
+- Patch 41 implements shell `hardReload`, `printPage`, and `devTools` with page/window ownership validation. Hard reload retains repost confirmation; DevTools respects native policy; printing checks active-page identity and Chromium policy/content restrictions before opening native preview. Native build passes (2 actions, 48.28s). Live command-palette Hard reload returns to Example Domain without an unsupported-method toast. Printing and DevTools qualification remain pending.
+- A print-preview attempt ended with no Aux window available. The only available crash report was from an earlier normal shutdown (15:05), so it does not establish a print-specific crash. That report proves `AuxRuntimeHost` synchronously joined its worker thread on the restricted UI sequence.
+- Patch 42 invalidates callbacks, queues worker destruction, and transfers the thread to a `MayBlock`/`BLOCK_SHUTDOWN` ThreadPool task for joining. This preserves shutdown completion without blocking the UI or suppressing its synchronization checks. Native build passes (4 actions, 46.68s); live normal-quit verification remains pending.
+
+Logs: `/tmp/aux-dev-page-controls-build.log`, `/tmp/aux-dev-shutdown-build.log`. Both patches pass reverse application checks against the native checkout.
+
+### Print preview geometry failure reproduced
+
+A second live Print command reproduced termination. The local Crashpad diagnostic gives the exact failure: `constrained_window_views.cc:130: DCHECK failed: dialog_screen_bounds.Intersects(host_screen_bounds)`. No crash dumps or raw profile data were copied into the repository.
+
+The upstream WebUI host reads content bounds from a tracked Webium DOM element that Aux does not register, returning an empty rectangle. Patch 43 obtains Aux’s active SurfaceEmbed guest bounds, clipped to the shell client area, and uses the client area for Home or a guest that has not rendered yet. The modal host now converts screen coordinates relative to the hosting client area rather than the outer window frame. Native build passes (3 actions, 25.48s; `/tmp/aux-dev-modal-bounds-build.log`). The repeated live preview check is pending.
+
+### Live page-command results
+
+- **Verified:** Aux’s command-palette Print opens native preview, finishes rendering a one-page Example Domain PDF, and Cancel returns to the browser. No job was sent to a printer. This confirms the modal geometry correction against the previously crashing path.
+- **Verified:** The command-palette Developer tools action opens a DevTools window attached to `example.com/`; the Elements panel is accessible and closing it returns to Aux.
+- **Open:** Command-K did not open the palette while the embedded page had focus; the sidebar Search button works. Native shortcut forwarding still needs completion.
+- The first background-join trial still triggered the synchronization check because `MayBlock` does not authorize base synchronization waits. The cleanup task now also declares `WithBaseSyncPrimitives`; this permission is limited to the shutdown worker task, never the UI sequence. Build passes (2 actions, 49.37s; `/tmp/aux-dev-shutdown-sync-build.log`). Normal-quit retest passed after connected runtime startup: the Aux browser process exited and no new Crashpad dumps appeared. The prior failing quit produced two new dumps immediately.
