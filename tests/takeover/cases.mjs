@@ -34,18 +34,18 @@ export const cases = {
     title: "Platform passkey registration and sign-in",
     inputs: [
       "Developer ID signed Aux.app",
-      "Apple passkey browser entitlement",
-      "provisioning profile",
+      "approved Aux Team ID and passkey provisioning profile",
       "test relying party",
     ],
     steps: [
-      "Verify the passkey entitlement exists on the signed browser and helpers that require it.",
+      "Build with enable_aux_passkey_entitlements=true and the approved aux_passkey_team_id, then supply --passkey-profile and --team-id to chromium-sign.mjs.",
+      "Verify the signed browser has the Aux application identifier, Aux-only passkey Keychain and application groups, the browser passkey entitlement, and the embedded approved profile. Verify ad-hoc builds omit all of these passkey entitlements.",
       "Register a platform passkey on the test relying party in Aux, then sign out.",
       "Sign in with the passkey after a cold Aux restart and confirm the same account identity.",
       "Repeat in a second Profile and check the site/account isolation expected by the relying party.",
     ],
     evidence: [
-      "signed entitlement report",
+      "redacted signed entitlement and provisioning reports",
       "registration/sign-in results",
       "Profile and relying-party identifiers",
     ],

@@ -14,3 +14,4 @@ aux/tabs/0013-profile-organization.patch
 aux/runtime/0014-runtime-event-pump.patch
 aux/branding/0015-sign-runtime-helper.patch
 aux/runtime/0016-disable-remote-debugging.patch
+aux/branding/0017-aux-passkey-signing.patch

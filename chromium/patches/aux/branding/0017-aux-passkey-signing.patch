@@ -1,0 +1,248 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+index ce7ebbe4f6..6fc05f6c78 100644
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -72,6 +72,11 @@ declare_args() {
+   # signing identity. If `include_branded_entitlements` is set to false, these
+   # entitlements will be skipped.
+   include_branded_entitlements = true
++
++  # Entitlements granted only to Aux's approved Team ID and provisioning
++  # profile. Keep ordinary and ad-hoc builds on the unbranded template.
++  enable_aux_passkey_entitlements = false
++  aux_passkey_team_id = ""
+ }
+ 
+ assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
+@@ -755,10 +760,18 @@ if (is_win) {
+       # certificate and will not necessarily work in any other build.
+       entitlements_templates += [ "app/app-entitlements-chrome.plist" ]
+     }
++    if (enable_aux_passkey_entitlements) {
++      assert(enable_aux_shell && chrome_mac_bundle_id == "dev.aux.browser",
++             "Aux passkey entitlements require the Aux shell and bundle ID")
++      assert(aux_passkey_team_id != "",
++             "Aux passkey entitlements require an approved Team ID")
++      entitlements_templates += [ "app/app-entitlements-aux-passkey.plist" ]
++    }
+     output_name = "$target_gen_dir/app-entitlements.plist"
+     substitutions = [
+       "CHROMIUM_BUNDLE_ID=$chrome_mac_bundle_id",
+       "CHROMIUM_TEAM_ID=$chrome_mac_team_id",
++      "AUX_PASSKEY_TEAM_ID=$aux_passkey_team_id",
+     ]
+     visibility = [ "//chrome/installer/mac:copies" ]
+   }
+diff --git a/chrome/app/app-entitlements-aux-passkey.plist b/chrome/app/app-entitlements-aux-passkey.plist
+new file mode 100644
+index 0000000000..3c62921948
+--- /dev/null
++++ b/chrome/app/app-entitlements-aux-passkey.plist
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>com.apple.application-identifier</key>
++	<string>${AUX_PASSKEY_TEAM_ID}.dev.aux.browser</string>
++	<key>keychain-access-groups</key>
++	<array>
++		<string>${AUX_PASSKEY_TEAM_ID}.dev.aux.browser.webauthn</string>
++		<string>${AUX_PASSKEY_TEAM_ID}.dev.aux.browser.webauthn-uvk</string>
++	</array>
++	<key>com.apple.security.application-groups</key>
++	<array>
++		<string>group.dev.aux.browser.passkeys</string>
++	</array>
++	<key>com.apple.developer.web-browser.public-key-credential</key>
++	<true/>
++</dict>
++</plist>
+diff --git a/chrome/installer/mac/signing/driver.py b/chrome/installer/mac/signing/driver.py
+index 1c95371f92..94380c3a41 100644
+--- a/chrome/installer/mac/signing/driver.py
++++ b/chrome/installer/mac/signing/driver.py
+@@ -8,13 +8,15 @@ The driver module provides the command line interface to the signing module.
+ import argparse
+ import asyncio
+ import os
++import re
+ import subprocess
+ 
+ from signing import config_factory, commands, invoker, logger, model, pipeline
+ 
+ 
+ def _create_config(
+-    config_args, development, embed_development_provisioning_profile
++    config_args, development, embed_development_provisioning_profile,
++    aux_passkey_profile=None
+ ):
+     """Creates the |model.CodeSignConfig| for the signing operations.
+ 
+@@ -74,6 +76,15 @@ def _create_config(
+ 
+         config_class = DevelopmentCodeSignConfig
+ 
++    if aux_passkey_profile:
++
++        class AuxPasskeyCodeSignConfig(config_class):
++            @property
++            def aux_passkey_profile(self):
++                return aux_passkey_profile
++
++        config_class = AuxPasskeyCodeSignConfig
++
+     return config_class(**config_args)
+ 
+ 
+@@ -177,6 +188,15 @@ def main(args):
+         'signing identity in the application bundle before signing. Only '
+         'applicable if --development is specified.',
+     )
++    parser.add_argument(
++        '--aux-passkey-profile',
++        help='Absolute path to an approved Aux passkey provisioning profile. '
++        'Only valid for a non-development Aux distribution.',
++    )
++    parser.add_argument(
++        '--aux-passkey-team-id',
++        help='Approved ten-character Team ID for the Aux passkey profile.',
++    )
+ 
+     invoker_cls = config_factory.get_invoker_class()
+     invoker_cls.register_arguments(parser)
+@@ -197,6 +217,16 @@ def main(args):
+             "without --development"
+         )
+ 
++    if bool(args.aux_passkey_profile) != bool(args.aux_passkey_team_id):
++        parser.error('Aux passkey profile and Team ID must be supplied together')
++    if args.aux_passkey_profile:
++        if args.development or args.identity == '-':
++            parser.error('Aux passkeys require a non-development signing identity')
++        if not os.path.isabs(args.aux_passkey_profile) or not os.path.isfile(args.aux_passkey_profile):
++            parser.error('Aux passkey profile must be an existing absolute file')
++        if not re.fullmatch(r'[A-Z0-9]{10}', args.aux_passkey_team_id):
++            parser.error('Aux passkey Team ID must be ten uppercase letters or digits')
++
+     config_args = model.pick(
+         args,
+         (
+@@ -217,7 +247,10 @@ def main(args):
+         config_args,
+         args.development,
+         args.embed_development_provisioning_profile,
++        args.aux_passkey_profile,
+     )
++    if args.aux_passkey_profile and config.base_bundle_id != 'dev.aux.browser':
++        parser.error('Aux passkey profile cannot sign another browser identity')
+     paths = model.Paths(args.input, args.output, None)
+ 
+     if not commands.file_exists(paths.output):
+diff --git a/chrome/installer/mac/signing/driver_test.py b/chrome/installer/mac/signing/driver_test.py
+index fb09737fdb..41c9c2602f 100644
+--- a/chrome/installer/mac/signing/driver_test.py
++++ b/chrome/installer/mac/signing/driver_test.py
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import unittest
++import tempfile
+ from unittest import mock
+ 
+ from signing import driver, model, test_config
+@@ -83,6 +84,40 @@ class TestDriverExecution(unittest.TestCase):
+ @mock.patch.multiple('signing.driver', _show_tool_versions=mock.DEFAULT)
+ @mock.patch('signing.pipeline.sign_all')
+ class TestCommandLine(unittest.TestCase):
++    def test_aux_passkey_rejects_partial_or_development_config(self, sign_all, **kwargs):
++        base = ['--input', '/input', '--output', '/output', '--identity', '-']
++        with self.assertRaises(SystemExit):
++            driver.main(base + ['--aux-passkey-team-id', 'ABCDEFGHIJ'])
++        with tempfile.NamedTemporaryFile() as profile:
++            with self.assertRaises(SystemExit):
++                driver.main(base + ['--aux-passkey-team-id', 'ABCDEFGHIJ',
++                                    '--aux-passkey-profile', profile.name])
++        self.assertEqual(0, sign_all.call_count)
++
++    def test_aux_passkey_rejects_other_browser_identity(self, sign_all, **kwargs):
++        with tempfile.NamedTemporaryFile() as profile:
++            with self.assertRaises(SystemExit):
++                driver.main(['--input', '/input', '--output', '/output',
++                             '--identity', 'Developer ID Application: Fixture',
++                             '--aux-passkey-team-id', 'ABCDEFGHIJ',
++                             '--aux-passkey-profile', profile.name])
++        self.assertEqual(0, sign_all.call_count)
++
++    def test_aux_passkey_config_accepts_approved_aux_path(self, sign_all, **kwargs):
++        class AuxConfig(test_config.TestConfig):
++            @property
++            def base_bundle_id(self):
++                return 'dev.aux.browser'
++
++        with tempfile.NamedTemporaryFile() as profile:
++            with mock.patch('signing.config_factory.get_class', lambda: AuxConfig):
++                driver.main(['--input', '/input', '--output', '/output',
++                             '--identity', 'Developer ID Application: Fixture',
++                             '--aux-passkey-team-id', 'ABCDEFGHIJ',
++                             '--aux-passkey-profile', profile.name])
++                self.assertEqual(profile.name,
++                                 sign_all.call_args.args[1].aux_passkey_profile)
++
+     def test_required_arguments(self, sign_all, **kwargs):
+         with self.assertRaises(SystemExit):
+             driver.main([])
+diff --git a/chrome/installer/mac/signing/parts.py b/chrome/installer/mac/signing/parts.py
+index 1294f530a0..1f558f2b0b 100644
+--- a/chrome/installer/mac/signing/parts.py
++++ b/chrome/installer/mac/signing/parts.py
+@@ -285,8 +285,17 @@ async def sign_chrome(paths, config, sign_framework=False):
+         # Sign the framework bundle.
+         signing.sign_part(paths, config, parts['framework'])
+ 
++    aux_passkey_profile = getattr(config, 'aux_passkey_profile', None)
+     provisioning_profile_basename = config.provisioning_profile_basename
+-    if provisioning_profile_basename:
++    if aux_passkey_profile:
++        # The owner-supplied profile was validated before invoking the signer.
++        # Copy it only into the signing work tree, never the generated package.
++        commands.copy_files(
++            aux_passkey_profile,
++            os.path.join(paths.work, parts['app'].path, 'Contents',
++                         _PROVISIONPROFILE_DEST),
++        )
++    elif provisioning_profile_basename:
+         commands.copy_files(
+             os.path.join(
+                 paths.packaging_dir(config),
+diff --git a/chrome/installer/mac/signing/parts_test.py b/chrome/installer/mac/signing/parts_test.py
+index 071d4acf4b..23e6138e0b 100644
+--- a/chrome/installer/mac/signing/parts_test.py
++++ b/chrome/installer/mac/signing/parts_test.py
+@@ -364,6 +364,26 @@ class TestSignChrome(unittest.TestCase):
+ 
+         self.assertEqual(0, kwargs['copy_files'].call_count)
+ 
++    @mock.patch('signing.parts._sanity_check_version_keys')
++    def test_aux_passkey_profile_copied_into_signing_work_tree(self, *args, **kwargs):
++        kwargs['run_command_all_output_async'].return_value = ('', 0, '', '')
++
++        class AuxConfig(test_config.TestConfig):
++            @property
++            def base_bundle_id(self):
++                return 'dev.aux.browser'
++
++            @property
++            def aux_passkey_profile(self):
++                return '/approved/aux-passkey.provisionprofile'
++
++        config = model.Distribution().to_config(AuxConfig())
++        asyncio.run(parts.sign_chrome(self.paths, config, sign_framework=True))
++        kwargs['copy_files'].assert_called_once_with(
++            '/approved/aux-passkey.provisionprofile',
++            '/$W/App Product.app/Contents/embedded.provisionprofile',
++        )
++
+     @mock.patch('signing.parts._sanity_check_version_keys')
+     def test_aux_runtime_signed_when_framework_reused(self, *args, **kwargs):
+         class AuxConfig(test_config.TestConfig):

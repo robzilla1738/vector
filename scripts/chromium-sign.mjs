@@ -13,10 +13,15 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import {
+  PASSKEY_ENTITLEMENT,
+  expectedPasskeyEntitlements,
+  validatePasskeySigning,
+} from "./lib/passkey-signing.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const flags = new Map();
-const options = new Set(["--input", "--output", "--identity", "--team-id"]);
+const options = new Set(["--input", "--output", "--identity", "--team-id", "--passkey-profile"]);
 for (let index = 2; index < process.argv.length; index += 1) {
   const flag = process.argv[index];
   if (flag === "--execute") flags.set(flag, true);
@@ -29,6 +34,7 @@ const input = resolve(String(flags.get("--input") ?? process.env.AUX_CHROMIUM_BU
 const output = resolve(String(flags.get("--output") ?? join(root, "release")));
 const identity = String(flags.get("--identity") ?? process.env.AUX_SIGNING_IDENTITY ?? "").trim();
 const teamId = String(flags.get("--team-id") ?? process.env.AUX_TEAM_ID ?? "").trim();
+const passkeyProfile = flags.get("--passkey-profile") ? resolve(String(flags.get("--passkey-profile"))) : "";
 const adhoc = !identity && !teamId;
 if (!!identity !== !!teamId)
   throw new Error("Signing identity and Team ID must both be set, or both be empty for ad-hoc signing.");
@@ -49,6 +55,24 @@ const run = (command, args, stream = false) => {
   return stream ? "" : `${result.stdout}${result.stderr}`;
 };
 const plist = (path) => JSON.parse(run("plutil", ["-convert", "json", "-o", "-", path]));
+const parsePlist = (xml) => {
+  const result = spawnSync("plutil", ["-convert", "json", "-o", "-", "-"], {
+    encoding: "utf8",
+    input: xml,
+  });
+  if (result.error || result.status !== 0) throw new Error("Provisioning plist is unreadable.");
+  return JSON.parse(result.stdout);
+};
+const decodeProvisioningProfile = (path) => {
+  const result = spawnSync("security", ["cms", "-D", "-i", path], { encoding: "utf8" });
+  if (result.error || result.status !== 0) throw new Error("Provisioning profile cannot be decoded.");
+  return parsePlist(result.stdout);
+};
+const signedEntitlementsFor = (path) => {
+  const result = spawnSync("codesign", ["-d", "--entitlements", ":-", path], { encoding: "utf8" });
+  if (result.error || result.status !== 0) throw new Error("Signed entitlements cannot be read.");
+  return parsePlist(result.stdout);
+};
 const signingScript = existsSync(input)
   ? readdirSync(input)
       .filter((name) => name.endsWith(" Packaging"))
@@ -61,6 +85,7 @@ const signingPackage = signingScript ? join(dirname(signingScript), "signing") :
 const runtimeEntitlementsPath = signingScript
   ? join(dirname(signingScript), "aux-runtime-entitlements.plist")
   : "";
+const packagedEntitlementsPath = signingScript ? join(dirname(signingScript), "app-entitlements.plist") : "";
 const argsPath = join(input, "args.gn");
 const args = existsSync(argsPath) ? readFileSync(argsPath, "utf8") : "";
 const blockers = [];
@@ -94,6 +119,39 @@ if (
   blockers.push("Chromium signing pipeline does not register Aux Runtime");
 if (!adhoc && !identity.startsWith("Developer ID Application: "))
   blockers.push("Developer ID signing identity must start with 'Developer ID Application: '");
+let packagedEntitlements;
+try {
+  if (packagedEntitlementsPath && existsSync(packagedEntitlementsPath))
+    packagedEntitlements = plist(packagedEntitlementsPath);
+  else blockers.push("Chromium packaging lacks app entitlements");
+} catch {
+  blockers.push("Chromium packaged app entitlements are unreadable");
+}
+let approvedProfile;
+if (passkeyProfile) {
+  try {
+    approvedProfile = decodeProvisioningProfile(passkeyProfile);
+  } catch {
+    blockers.push("Aux passkey provisioning profile is unreadable or invalid");
+  }
+}
+blockers.push(
+  ...validatePasskeySigning({
+    args,
+    entitlements: packagedEntitlements,
+    profile: approvedProfile,
+    teamId,
+    adhoc,
+    profileRequested: !!passkeyProfile,
+  }),
+);
+if (
+  passkeyProfile &&
+  signingScript &&
+  existsSync(join(signingPackage, "driver.py")) &&
+  !readFileSync(join(signingPackage, "driver.py"), "utf8").includes("--aux-passkey-profile")
+)
+  blockers.push("Chromium signing pipeline lacks Aux passkey profile embedding");
 
 let version = "unknown";
 if (existsSync(join(app, "Contents", "Info.plist")) && process.platform === "darwin") {
@@ -119,6 +177,7 @@ const signArgs = [
   "--disable-packaging",
 ];
 if (adhoc) signArgs.push("--development");
+if (passkeyProfile) signArgs.push("--aux-passkey-profile", passkeyProfile, "--aux-passkey-team-id", teamId);
 const plan = {
   input,
   output,
@@ -126,6 +185,7 @@ const plan = {
   version,
   signing: adhoc ? "ad-hoc" : "Developer ID",
   teamId: teamId || null,
+  passkeyProvisioning: passkeyProfile ? "approved profile supplied" : "omitted",
   ready: blockers.length === 0,
   blockers,
   commands: [
@@ -160,6 +220,23 @@ const signature = run("codesign", ["-dv", "--verbose=4", signedApp]);
 if (adhoc && !/Signature=adhoc/.test(signature)) throw new Error("Expected an ad-hoc signature.");
 if (!adhoc && !signature.includes(`TeamIdentifier=${teamId}`))
   throw new Error("Signed Team ID differs from configuration.");
+const signedEntitlements = signedEntitlementsFor(signedApp);
+if (Boolean(signedEntitlements[PASSKEY_ENTITLEMENT]) !== Boolean(passkeyProfile))
+  throw new Error("Signed Aux passkey entitlement differs from the reviewed provisioning plan.");
+if (passkeyProfile) {
+  const expected = expectedPasskeyEntitlements(teamId);
+  if (
+    Object.entries(expected).some(([key, value]) =>
+      Array.isArray(value)
+        ? !Array.isArray(signedEntitlements[key]) ||
+          value.some((item) => !signedEntitlements[key].includes(item))
+        : signedEntitlements[key] !== value,
+    )
+  )
+    throw new Error("Signed Aux passkey entitlement or group differs from the approved profile.");
+  const embedded = join(signedApp, "Contents", "embedded.provisionprofile");
+  if (!existsSync(embedded)) throw new Error("Signed Aux app lacks the approved provisioning profile.");
+}
 run("hdiutil", ["create", "-srcfolder", signedApp, "-volname", "Aux", "-format", "UDZO", dmg], true);
 run("hdiutil", ["verify", dmg], true);
 const digest = createHash("sha256");
