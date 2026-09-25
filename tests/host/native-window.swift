@@ -12,7 +12,7 @@ func fail(_ message: String) -> Never {
 
 guard CommandLine.arguments.count >= 3,
   let pid = Int32(CommandLine.arguments[2]), pid > 0 else {
-  fail("Use window|activate|toggle-sidebar|move PID [x y].")
+  fail("Use window|activate|has-button|focused|toggle-sidebar|next-tab|focus-address|escape|move PID [args].")
 }
 
 let action = CommandLine.arguments[1]
@@ -26,6 +26,29 @@ struct WindowRecord: Encodable {
   let y: Double
   let width: Double
   let height: Double
+}
+
+struct FocusRecord: Encodable {
+  let role: String
+  let title: String
+  let description: String
+}
+
+func focusedElement() -> FocusRecord? {
+  var focused: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid),
+                                     kAXFocusedUIElementAttribute as CFString,
+                                     &focused) == .success,
+    let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID() else { return nil }
+  let target = unsafeBitCast(element, to: AXUIElement.self)
+  func attribute(_ key: String) -> String {
+    var value: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(target, key as CFString, &value) == .success else { return "" }
+    return value as? String ?? ""
+  }
+  // Never return AXValue: an address or prompt may contain private text.
+  return FocusRecord(role: attribute(kAXRoleAttribute), title: attribute(kAXTitleAttribute),
+                     description: attribute(kAXDescriptionAttribute))
 }
 
 func hasButton(_ label: String) -> Bool {
@@ -56,6 +79,10 @@ func hasButton(_ label: String) -> Bool {
 if action == "has-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-button PID label.") }
   print(hasButton(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "focused" {
+  guard let focus = focusedElement(), let data = try? JSONEncoder().encode(focus),
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot read focused Aux element.") }
+  print(text)
 } else if action == "window" {
   let windows = CGWindowListCopyWindowInfo(
     [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
@@ -78,7 +105,7 @@ if action == "has-button" {
   }
   print(text)
 } else if action == "activate" || action == "toggle-sidebar" ||
-  action == "next-tab" || action == "move" {
+  action == "next-tab" || action == "focus-address" || action == "escape" || action == "move" {
   guard app.activate(options: []) else {
     fail("Cannot activate the launched Aux browser window.")
   }
@@ -86,11 +113,11 @@ if action == "has-button" {
   guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
     fail("Aux is not the frontmost app; refusing to send input elsewhere.")
   }
-  if action == "toggle-sidebar" || action == "next-tab" {
-    // The renderer declares Command-S for the sidebar and Control-Tab for
-    // next tab. Stock Chromium also accepts Control-Tab.
-    let key: CGKeyCode = action == "next-tab" ? 48 : 1
-    let flags: CGEventFlags = action == "next-tab" ? .maskControl : .maskCommand
+  if action != "move" && action != "activate" {
+    // Aux declares Command-S for the sidebar, Command-L for the address,
+    // and Control-Tab for next tab. Stock Chromium accepts the latter two.
+    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "escape" ? 53 : 1
+    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "escape" ? [] : .maskCommand
     let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
     let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
     down?.flags = flags

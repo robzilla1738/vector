@@ -13,8 +13,10 @@ const root = resolve(import.meta.dirname, "../..");
 const journeys = [
   "Authenticated native runtime and no public debugging port",
   "Two real local pages, observation, action and human takeover",
-  "Vertical expanded, collapsed and floating liquid-glass sidebar",
-  "Horizontal tabs and effective Profile layout preference",
+  "Identical-URL tabs and parallel actions on background pages",
+  "Keyboard tab switching in vertical and horizontal layouts",
+  "Vertical expanded, collapsed and floating liquid-glass sidebar with Escape dismissal",
+  "Horizontal tabs, Profile layout preference and accessible address focus",
 ];
 const option = name => {
   const index = process.argv.indexOf(name);
@@ -115,7 +117,7 @@ try {
     const color = request.url?.startsWith("/blue") ? "#164b72" : "#7c344b";
     const name = color === "#164b72" ? "Blue" : "Red";
     response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-    response.end(`<!doctype html><title>Aux native ${name}</title><style>html,body{margin:0;height:100%;background:${color};color:white;font:24px system-ui}main{padding:64px}</style><main><h1>Aux native ${name} fixture</h1><button id="act" onclick="fetch('/click');this.textContent='Clicked'">Act</button></main>`);
+    response.end(`<!doctype html><title>Aux native ${name}</title><style>html,body{margin:0;height:100%;background:${color};color:white;font:24px system-ui}main{padding:64px}</style><main><h1>Aux native ${name} fixture</h1><label for="name">Title</label><input id="name" name="title"><button id="act" onclick="fetch('/click');this.textContent='Clicked'">Act</button></main>`);
   });
   await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
   origin = `http://127.0.0.1:${fixture.address().port}`;
@@ -144,6 +146,9 @@ try {
   const red = await rpc("pages.open", { url: `${origin}/red`, activate: true });
   const blue = await rpc("pages.open", { url: `${origin}/blue`, activate: true });
   assert.ok(red.pageId && blue.pageId && red.pageId !== blue.pageId);
+  assert.equal(red.backend, "aux");
+  assert.equal(blue.backend, "aux");
+  assert.ok(red.targetId && blue.targetId && red.targetId !== blue.targetId);
   await until("both native pages", async () => {
     const pages = await rpc("pages.list");
     return pages.some(page => page.pageId === red.pageId && page.url === `${origin}/red` && !page.loading) &&
@@ -178,6 +183,13 @@ try {
     native("toggle-sidebar");
     await delay(700);
     assert.equal(native("has-button", "Collapse sidebar"), "true", "The expanded Aside sidebar must be accessible");
+    await until("vertical tab close controls in the accessibility tree", () =>
+      native("has-button", "Close Aux native Red") === "true" && native("has-button", "Close Aux native Blue") === "true");
+    native("next-tab");
+    await until("vertical keyboard tab switch to red", async () => (await rpc("workspace.get")).activePageId === red.pageId);
+    native("next-tab");
+    await until("vertical keyboard tab switch to blue", async () => (await rpc("workspace.get")).activePageId === blue.pageId);
+    record("vertical tabs switch through the native keyboard shortcut", { restoredPageId: blue.pageId });
     const expanded = capture(window.id, "vertical-expanded");
     native("toggle-sidebar");
     await delay(450);
@@ -191,16 +203,56 @@ try {
     const peek = capture(window.id, "vertical-floating-peek");
     const peekChange = changedFraction(collapsed, peek);
     assert.ok(peekChange > 0.02, `Edge hover did not reveal the glass sidebar (${peekChange.toFixed(3)})`);
+    native("escape");
+    await until("floating sidebar dismissal by Escape", () => native("has-button", "Keep sidebar open") === "false");
+    record("floating Aside reveals at the edge and dismisses with Escape", { peekChange });
     native("move", awayX, centerY);
     await delay(350);
     await rpc("settings.set", { tabLayout: "horizontal" });
     assert.equal((await rpc("settings.get")).tabLayout, "horizontal");
     await delay(500);
+    await until("horizontal tab close controls in the accessibility tree", () =>
+      native("has-button", "Close Aux native Red") === "true" && native("has-button", "Close Aux native Blue") === "true");
     const horizontal = capture(window.id, "horizontal-tabs");
     const layoutChange = changedFraction(expanded, horizontal, 0.7);
     assert.ok(layoutChange > 0.02, `Layout change was not visible (${layoutChange.toFixed(3)})`);
+    native("next-tab");
+    await until("horizontal keyboard tab switch to red", async () => (await rpc("workspace.get")).activePageId === red.pageId);
+    native("next-tab");
+    await until("horizontal keyboard tab switch to blue", async () => (await rpc("workspace.get")).activePageId === blue.pageId);
+    record("horizontal tabs switch through the native keyboard shortcut", { restoredPageId: blue.pageId });
+    native("focus-address");
+    const focus = await until("accessible address field focus", () => {
+      try {
+        const value = JSON.parse(native("focused"));
+        return /address|search|prompt/i.test(`${value.title} ${value.description}`) ? value : null;
+      } catch { return null; }
+    });
+    assert.match(focus.role, /^AX(TextField|ComboBox|SearchField)$/);
+    native("escape");
+    record("Command-L focuses a labeled, keyboard-accessible address field", { role: focus.role, label: `${focus.title} ${focus.description}`.trim() });
     record("native Aside glass reveal and both layouts", { windowId: window.id, collapseChange, peekChange, layoutChange });
   }
+
+  const backgroundA = await rpc("pages.open", { url: `${origin}/red`, background: true });
+  const backgroundB = await rpc("pages.open", { url: `${origin}/red`, background: true });
+  assert.ok(backgroundA.pageId && backgroundB.pageId && backgroundA.pageId !== backgroundB.pageId);
+  assert.notEqual(backgroundA.targetId, backgroundB.targetId, "Identical URLs need distinct native targets");
+  assert.equal((await rpc("workspace.get")).activePageId, blue.pageId, "Background creation must preserve the foreground tab");
+  await until("background pages to finish loading", async () => {
+    const pages = await rpc("pages.list");
+    return [backgroundA, backgroundB].every(target => pages.some(page => page.pageId === target.pageId && !page.loading));
+  });
+  const results = await Promise.all([backgroundA, backgroundB].map((target, index) => rpc("pages.execute", {
+    program: { pageId: target.pageId, steps: [{ id: "background-fill", op: "fill", target: "css:#name", value: index ? "bravo" : "alpha" }] },
+  })));
+  assert.deepEqual(results.map(result => result.status), ["completed", "completed"]);
+  for (const [target, value] of [[backgroundA, "alpha"], [backgroundB, "bravo"]]) {
+    assert.match(JSON.stringify(await rpc("pages.observe", { pageId: target.pageId, scope: "forms" })), new RegExp(value));
+    await rpc("pages.close", { pageId: target.pageId });
+  }
+  assert.equal((await rpc("workspace.get")).activePageId, blue.pageId, "Parallel background actions must not steal focus");
+  record("identical-URL tabs and parallel background page actions preserve foreground identity", { foregroundPageId: blue.pageId });
 
   await rpc("pages.close", { pageId: blue.pageId });
   await until("closed native page to disappear", async () => !(await rpc("pages.list")).some(page => page.pageId === blue.pageId));
