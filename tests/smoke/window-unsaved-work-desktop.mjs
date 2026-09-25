@@ -17,6 +17,8 @@ try{
  let page;({ app, page } = await launchAux({args:['--use-mock-keychain'],env:{PATH:process.env.PATH,HOME:dir,TMPDIR:dir,AUX_PROFILE_DIR:join(dir,'profile'),AUX_DATA_DIR:join(dir,'data'),AUX_LOAD_DOTENV:'0'}}));page.setDefaultTimeout(15000);await page.locator('.aux-home').waitFor();await expandedSidebar(page);
  await app.evaluate(({dialog})=>{globalThis.unloadAnswers=[];globalThis.unloadPrompts=[];const respond=(...args)=>{const options=args.at(-1);if(options.title!=='Leave website?')throw new Error('Unexpected dialog');globalThis.unloadPrompts.push({message:options.message,defaultId:options.defaultId});globalThis.changeDuringUnload?.();const response=globalThis.unloadAnswers.shift();if(typeof response!=='number')throw new Error('Missing synthetic response');return response;};dialog.showMessageBoxSync=respond;dialog.showMessageBox=async(...args)=>({response:respond(...args),checkboxChecked:false});});
  await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/draft');
+ await page.locator('.tab-row.active').filter({hasText:'Draft /draft'}).waitFor();
+ await page.locator('.stage-card.has-page').waitFor();
  let fixture;for(let i=0;i<100;i++){fixture=app.windows().find(p=>p.url()===base+'/draft');if(fixture)break;await new Promise(r=>setTimeout(r,50));}assert.ok(fixture);fixture.on('dialog',()=>{});
  const editor=embedded?fixture.frameLocator('iframe'):fixture;
  async function dirty(){await editor.getByLabel('Draft',{exact:true}).click();await editor.getByLabel('Draft',{exact:true}).fill('unsaved synthetic draft');}
@@ -54,6 +56,7 @@ try{
  assert.equal(await page.locator('.tab-row.active').innerText(),selection);
  // A later veto must not destroy an earlier approved document or clean tab.
  const second=await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),base+'/second');
+ await page.locator('.tab-row.active').filter({hasText:'Draft /second'}).waitFor();
  let other;for(let i=0;i<100;i++){other=app.windows().find(p=>p.url()===base+'/second');if(other)break;await new Promise(r=>setTimeout(r,50));}assert.ok(other);other.on('dialog',()=>{});
  await other.getByLabel('Draft',{exact:true}).click();await other.getByLabel('Draft',{exact:true}).fill('second unsaved draft');
  await answer(1);await answer(0);
