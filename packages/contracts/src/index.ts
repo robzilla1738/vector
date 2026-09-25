@@ -28,6 +28,7 @@ export * from "./model-providers.js";
 export * from "./model-registry.js";
 
 export * from "./local-projects.js";
+export * from "./command-seatbelt.js";
 
 export { textContextShares } from "./text-context.js";
 

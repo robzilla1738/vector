@@ -1,6 +1,7 @@
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
 import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
+import { CommandEscalationDecisionSchema, CommandEscalationRequestSchema } from "./command-seatbelt.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
@@ -641,6 +642,9 @@ export const MethodSchemas = {
   "development.deleteFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),
   "development.commands": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
   "development.runCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),command:z.string().min(1).max(8000),mode:z.enum(['command','service']).default('command')}).strict(),
+  "development.requestCommandEscalation": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),command:z.string().min(1).max(8000),justification:z.string().trim().min(1).max(2000),prefixRule:z.string().trim().min(1).max(200).optional()}).strict(),
+  "development.commandEscalations.pending": z.object({}).strict(),
+  "development.commandEscalations.decide": z.object({decision:CommandEscalationDecisionSchema}).strict(),
   "development.openPreview": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),url:z.string().min(1).max(2048)}).strict(),
   "development.stopCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
   "development.review": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
@@ -1021,6 +1025,9 @@ export const ResultSchemas = {
   "development.deleteFile": z.object({name:z.string(),recoveryPath:z.string()}).nullable(),
   "development.commands": z.array(ProjectCommandSchema),
   "development.runCommand": ProjectCommandSchema.nullable(),
+  "development.requestCommandEscalation": CommandEscalationRequestSchema,
+  "development.commandEscalations.pending": z.array(CommandEscalationRequestSchema),
+  "development.commandEscalations.decide": z.object({ok:z.literal(true)}),
   "development.openPreview": z.object({check:LocalPreviewCheckSchema,page:PageTargetSchema.optional()}).nullable(),
   "development.stopCommand": ProjectCommandSchema,
   "development.review": ProjectReviewSummarySchema,

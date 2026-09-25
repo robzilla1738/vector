@@ -1,9 +1,9 @@
 import { SavedResults } from "../services/saved-results.js";
 import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
 import { ContentMemoryStore } from "../services/content-memory.js";
-import { EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, requireAuxMethod, type AuxFeatureHost, type AuxFeatureOverrides, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
+import { CommandSeatbeltPermitSchema, EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, requireAuxMethod, type AuxFeatureHost, type AuxFeatureOverrides, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
 import {readFile,rm} from 'node:fs/promises';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import type { PageService } from "../services/pages.js";
 import type { SetService } from "../services/sets.js";
 import type { RunService } from "../services/runs.js";
@@ -42,6 +42,7 @@ import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
 import { AgentCodeMode } from "../agent/code-mode.js";
 import { HistoryProjection } from "../services/history-projection.js";
+import { CommandEscalationStore, commandDigest, defaultCommandSeatbelt } from "../services/command-seatbelt.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -89,6 +90,8 @@ function browserImporter(s: Services): BrowserImporter {
 
 /** Validates params against MethodSchemas and dispatches to services. */
 export function makeInvoker(s: Services) {
+  const commandSessionId = randomUUID();
+  const commandEscalations = new CommandEscalationStore(s.repo.db);
   const tasks = new TaskService(s.repo, s.events);
   const browsingMemory = new BrowsingMemory(s.repo);
   browsingMemory.prune();
@@ -152,7 +155,7 @@ export function makeInvoker(s: Services) {
   const developmentNative=()=>{
     const native=s.native;
     if(!native?.developmentProjects||!native.inspectProject||!native.githubProject||!native.recordGithubStatus||!native.writeIncidentReport||!native.listProjectFiles||!native.readProjectFile||!native.writeProjectFile||!native.createProjectFile||!native.renameProjectFile||!native.deleteProjectFile||!native.projectCommands||!native.runProjectCommand||!native.approveProjectPreview||!native.stopProjectCommand||!native.prepareProjectReview||!native.commitProject)throw new AuxError('backend_unavailable','Local development tools require the Aux desktop app');
-    return native as Required<Pick<NativeBridge,'developmentProjects'|'inspectProject'|'githubProject'|'recordGithubStatus'|'writeIncidentReport'|'listProjectFiles'|'readProjectFile'|'writeProjectFile'|'createProjectFile'|'renameProjectFile'|'deleteProjectFile'|'projectCommands'|'runProjectCommand'|'approveProjectPreview'|'stopProjectCommand'|'prepareProjectReview'|'commitProject'>>&Pick<NativeBridge,'projectSnapshotTree'>;
+    return native as Required<Pick<NativeBridge,'developmentProjects'|'inspectProject'|'githubProject'|'recordGithubStatus'|'writeIncidentReport'|'listProjectFiles'|'readProjectFile'|'writeProjectFile'|'createProjectFile'|'renameProjectFile'|'deleteProjectFile'|'projectCommands'|'runProjectCommand'|'approveProjectPreview'|'stopProjectCommand'|'prepareProjectReview'|'commitProject'>>&Pick<NativeBridge,'projectSnapshotTree'|'prepareCommandSeatbelt'>;
   };
   const projectBroker = () => {
     if (!s.operations) throw new AuxError("backend_unavailable", "Project operation journal is unavailable.");
@@ -546,11 +549,56 @@ export function makeInvoker(s: Services) {
           execute:(invocationId)=>developmentNative().deleteProjectFile({projectId:params.projectId,name:params.name,expectedHash:params.expectedHash,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
       }
       case 'development.commands':tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().projectCommands(params.projectId);
+      case 'development.requestCommandEscalation': {
+        tasks.prepareLocalCommand(params.taskId,params.expectedRevision,params.projectId);
+        if (s.featureHost !== 'chromium-fork') throw new AuxError('backend_unavailable','Command seatbelt escalation requires the Aux browser host.');
+        const project = await developmentNative().inspectProject(params.projectId);
+        const requestedProfile = { ...defaultCommandSeatbelt({sessionId:commandSessionId,projectId:params.projectId,
+          projectPath:project.project.path,expiresAt:Date.now()+10*60_000}),network:true };
+        return commandEscalations.request({taskId:params.taskId,projectId:params.projectId,sessionId:commandSessionId,
+          command:params.command,justification:params.justification,prefixRule:params.prefixRule,requestedProfile});
+      }
+      case 'development.commandEscalations.pending':
+        if (client.external) throw new AuxError('permission_denied','Command escalation decisions are local to Aux.');
+        return commandEscalations.pending();
+      case 'development.commandEscalations.decide':
+        if (client.external) throw new AuxError('permission_denied','Only the Aux interface can decide a command escalation.');
+        commandEscalations.decide(params.decision);
+        return {ok:true};
       case 'development.runCommand':{
         const task=tasks.prepareLocalCommand(params.taskId,params.expectedRevision,params.projectId);
+        let seatbeltCapability: string | undefined;
+        let seatbeltReview: { input: {taskId:string;projectId:string;sessionId:string;command:string;projectPath:string}; profile: import('@aux/contracts').CommandSeatbeltProfile } | undefined;
+        if (s.featureHost === 'chromium-fork') {
+          const native = developmentNative();
+          if (!native.prepareCommandSeatbelt) throw new AuxError('backend_unavailable','The native command seatbelt is unavailable.');
+          const project = await native.inspectProject(params.projectId);
+          const input = {taskId:task.taskId,projectId:params.projectId,sessionId:commandSessionId,
+            command:params.command,projectPath:project.project.path};
+          const reviewed = commandEscalations.authorize(input,Date.now(),false);
+          const requestedProfile = reviewed ?? defaultCommandSeatbelt({sessionId:commandSessionId,
+            projectId:params.projectId,projectPath:project.project.path,expiresAt:Date.now()+10*60_000});
+          let permit;
+          try { permit = CommandSeatbeltPermitSchema.parse(await native.prepareCommandSeatbelt({
+            projectId:params.projectId,taskId:task.taskId,taskRevision:task.revision,
+            sessionId:commandSessionId,commandSha256:commandDigest(params.command),requestedProfile})); }
+          catch { throw new AuxError('backend_unavailable','The native command seatbelt could not attest this command.'); }
+          if (permit.commandSha256 !== commandDigest(params.command) || permit.expiresAt <= Date.now())
+            throw new AuxError('permission_denied','The command seatbelt permit is stale or belongs to another command.');
+          if (reviewed) seatbeltReview = {input,profile:reviewed};
+          seatbeltCapability = permit.capabilityId;
+        }
         return projectBroker().invokeProjectEffect({name:"command.start",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
           audit:{mode:params.mode,commandSha256:createHash("sha256").update(params.command).digest("hex"),commandBytes:Buffer.byteLength(params.command)},
-          execute:(invocationId)=>developmentNative().runProjectCommand({projectId:params.projectId,command:params.command,mode:params.mode,task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}})});
+          execute:(invocationId)=>{
+            if (seatbeltReview) {
+              const current = commandEscalations.authorize(seatbeltReview.input);
+              if (!current || JSON.stringify(current) !== JSON.stringify(seatbeltReview.profile))
+                throw new AuxError('permission_denied','Command escalation changed before launch. Review it again.');
+            }
+            return developmentNative().runProjectCommand({projectId:params.projectId,command:params.command,mode:params.mode,
+              ...(seatbeltCapability?{seatbeltCapability}:{}),task:{taskId:task.taskId,taskRevision:task.revision,title:task.title,workspaceId:task.workspaceId,invocationId}});
+          }});
       }
       case 'development.openPreview':{
         const task=tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);

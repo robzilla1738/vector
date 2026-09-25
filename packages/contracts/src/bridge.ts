@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ProjectCommandSchema, ProjectCommandTaskSchema, ProjectCommitRequestSchema, ProjectGithubStatusSchema, ProjectReviewContextSchema } from "./local-projects.js";
+import { CommandSeatbeltPrepareSchema } from "./command-seatbelt.js";
 import { TabCommandEnvelopeSchema } from "./tabs.js";
 
 /**
@@ -84,7 +85,8 @@ export const NativeMethods = {
   "native.renameProjectFile": ProjectFileParams.extend({ nextName: z.string().min(1), expectedHash: z.string(), task: ProjectCommandTaskSchema }),
   "native.deleteProjectFile": ProjectFileParams.extend({ expectedHash: z.string(), task: ProjectCommandTaskSchema }),
   "native.projectCommands": ProjectParams,
-  "native.runProjectCommand": ProjectParams.extend({ command: ProjectCommandSchema.shape.command, mode: ProjectCommandSchema.shape.mode, task: ProjectCommandTaskSchema }),
+  "native.prepareCommandSeatbelt": CommandSeatbeltPrepareSchema,
+  "native.runProjectCommand": ProjectParams.extend({ command: ProjectCommandSchema.shape.command, mode: ProjectCommandSchema.shape.mode, task: ProjectCommandTaskSchema, seatbeltCapability: z.string().min(1).max(200).optional() }),
   "native.approveProjectPreview": ProjectParams.extend({ url: z.string(), task: ProjectCommandTaskSchema }),
   "native.stopProjectCommand": ProjectParams.extend({ commandId: z.string(), task: ProjectCommandTaskSchema }),
   "native.prepareProjectReview": ProjectParams.extend({ task: ProjectReviewContextSchema }),

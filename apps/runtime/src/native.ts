@@ -1,4 +1,4 @@
-import { AuxError, type RpcChannel, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck } from "@aux/contracts";
+import { AuxError, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck } from "@aux/contracts";
 
 /**
  * Calls into the Electron main process, which owns all native surfaces.
@@ -42,7 +42,8 @@ export interface NativeBridge {
   renameProjectFile?(input:{projectId:string;name:string;nextName:string;expectedHash:string;task:ProjectCommandTask}):Promise<(ProjectFile&{recoveryPath:string})|null>;
   deleteProjectFile?(input:{projectId:string;name:string;expectedHash:string;task:ProjectCommandTask}):Promise<{name:string;recoveryPath:string}|null>;
   projectCommands?(projectId:string):Promise<ProjectCommand[]>;
-  runProjectCommand?(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask}):Promise<ProjectCommand|null>;
+  prepareCommandSeatbelt?(input:CommandSeatbeltPrepare):Promise<CommandSeatbeltPermit>;
+  runProjectCommand?(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask;seatbeltCapability?:string}):Promise<ProjectCommand|null>;
   approveProjectPreview?(input:{projectId:string;url:string;task:ProjectCommandTask}):Promise<LocalPreviewCheck|null>;
   stopProjectCommand?(projectId:string,commandId:string,task:ProjectCommandTask):Promise<ProjectCommand>;
   prepareProjectReview?(projectId:string,task:ProjectReviewContext):Promise<ProjectReviewSummary>;
@@ -121,7 +122,8 @@ export class ChannelNativeBridge implements NativeBridge {
   renameProjectFile(input:{projectId:string;name:string;nextName:string;expectedHash:string;task:ProjectCommandTask}){return this.channel.call<(ProjectFile&{recoveryPath:string})|null>("native.renameProjectFile",input,120_000);}
   deleteProjectFile(input:{projectId:string;name:string;expectedHash:string;task:ProjectCommandTask}){return this.channel.call<{name:string;recoveryPath:string}|null>("native.deleteProjectFile",input,120_000);}
   projectCommands(projectId:string){return this.channel.call<ProjectCommand[]>("native.projectCommands",{projectId});}
-  runProjectCommand(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask}){return this.channel.call<ProjectCommand|null>("native.runProjectCommand",input,120_000);}
+  prepareCommandSeatbelt(input:CommandSeatbeltPrepare){return this.channel.call<CommandSeatbeltPermit>("native.prepareCommandSeatbelt",input,30_000);}
+  runProjectCommand(input:{projectId:string;command:string;mode:ProjectCommand['mode'];task:ProjectCommandTask;seatbeltCapability?:string}){return this.channel.call<ProjectCommand|null>("native.runProjectCommand",input,120_000);}
   approveProjectPreview(input:{projectId:string;url:string;task:ProjectCommandTask}){return this.channel.call<LocalPreviewCheck|null>("native.approveProjectPreview",input,120_000);}
   stopProjectCommand(projectId:string,commandId:string,task:ProjectCommandTask){return this.channel.call<ProjectCommand>("native.stopProjectCommand",{projectId,commandId,task});}
   prepareProjectReview(projectId:string,task:ProjectReviewContext){return this.channel.call<ProjectReviewSummary>("native.prepareProjectReview",{projectId,task});}
