@@ -37,6 +37,7 @@ import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
 import { PluginService } from "../services/plugins.js";
 import { TranslateService } from "../services/translate.js";
+import { SendJournal } from "../safety/send-journal.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -115,6 +116,7 @@ export function makeInvoker(s: Services) {
   const cloudEnvironments=new CloudEnvironmentService(s.repo,s.settings);
   const vault = s.vault ?? new VaultService(s.repo, s.native);
   const translate = new TranslateService(s.settings);
+  const sendJournal = new SendJournal(s.repo.db);
   const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
     objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");
   const routines = s.routines ?? new RoutineService(s.repo, s.events, async (routine, parameters) => {
@@ -938,10 +940,14 @@ export function makeInvoker(s: Services) {
         return s.runs.messages.queue(params);
       case "runs.steer":
         if (client.external) throw new AuxError("permission_denied", "Steer conversation runs in Aux.");
+        if (params.expectedTurnId !== params.runId) throw new AuxError("conflict", "The active turn changed. Review it before steering.");
         return s.runs.messages.steer(params);
       case "runs.messages.list":
         if (client.external) throw new AuxError("permission_denied", "Conversation messages are available in Aux.");
         return s.runs.messages.list(params.chatId);
+      case "runs.messageStatus":
+        if (client.external) throw new AuxError("permission_denied", "Message delivery status is available in Aux.");
+        return sendJournal.messageStatus(params.nonce) ?? null;
       case "runs.message.cancel":
         if (client.external) throw new AuxError("permission_denied", "Cancel queued messages in Aux.");
         return s.runs.messages.cancel(params.messageId);

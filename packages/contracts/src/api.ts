@@ -1,5 +1,6 @@
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
+import { OriginRuleSchema, SendRecordSchema } from "./safety.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
@@ -241,6 +242,7 @@ export const RunsQueueParams = z.object({
   contextPageRefs: z.array(PageContextRefSchema).max(9),
   expectedRevision: z.number().int().nonnegative(),
 });
+export const RunsSteerParams = RunsQueueParams.extend({ expectedTurnId: id });
 export const RunsListParams = z.object({
   limit: z.number().int().positive().max(500).default(50),
   before: z.object({ createdAt: z.number().finite(), runId: z.string().min(1) }).optional(),
@@ -466,6 +468,8 @@ export const SettingsSetParams = z.object({
       ]),
     )
     .optional(),
+  /** Per-origin user policy. Managed policy is supplied by the host and can only tighten these rules. */
+  originPolicies: z.array(OriginRuleSchema).max(500).optional(),
 });
 export const SettingsGetParams = z.object({});
 
@@ -735,8 +739,9 @@ export const MethodSchemas = {
   "runs.cancel": RunsControlParams,
   "runs.answer": RunsAnswerParams,
   "runs.queue": RunsQueueParams,
-  "runs.steer": RunsQueueParams,
+  "runs.steer": RunsSteerParams,
   "runs.messages.list": z.object({ chatId: id }),
+  "runs.messageStatus": z.object({ nonce: id }),
   "runs.message.cancel": z.object({ messageId: id }),
   "runs.events": RunsEventsParams,
   "events.since": EventsSinceParams,
@@ -1142,6 +1147,7 @@ export const ResultSchemas = {
   "runs.queue": RunMessageSchema,
   "runs.steer": RunMessageSchema,
   "runs.messages.list": z.array(RunMessageSchema),
+  "runs.messageStatus": SendRecordSchema.nullable(),
   "runs.message.cancel": RunMessageSchema,
   "runs.events": z.object({ events: z.array(EventSchema), lastSeq: z.number() }),
   "events.since": z.object({ events: z.array(EventSchema), lastSeq: z.number() }),

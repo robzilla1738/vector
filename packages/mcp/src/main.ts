@@ -27,9 +27,8 @@ const ANNOTATIONS = { ro: RO, w: WRITE, d: DESTRUCTIVE } as const;
 
 const text = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v) }] });
 const err = (e: unknown) => {
-  const base = e instanceof AuxError
-    ? { code: e.code, message: e.message, details: e.detail ?? null }
-    : { ...toErrorPayload(e), details: null as unknown };
+  const safe = toErrorPayload(e);
+  const base = { ...safe, details: safe.detail ?? null };
   const advice = errorAdvice(base.code);
   return {
     content: [{ type: "text" as const, text: JSON.stringify({ code: base.code, message: base.message, details: base.details, retryable: advice.retryable, hint: advice.hint }) }],

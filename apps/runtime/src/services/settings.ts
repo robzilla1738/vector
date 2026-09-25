@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ModelProviderSchema, SidebarMaterialSchema, type ModelProvider, type ShortcutOverrides } from "@aux/contracts";
+import { ModelProviderSchema, OriginRuleSchema, SidebarMaterialSchema, type ModelProvider, type OriginRule, type ShortcutOverrides } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY, mergeModelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
@@ -51,6 +51,7 @@ export interface Settings {
    * The person sets these. Model text cannot expand them.
    */
   effectGrants?: GrantInput[];
+  originPolicies?: OriginRule[];
   /** Nonsecret result of the latest explicit connection test. */
   modelProbe?: ModelProbeRecord;
   githubProbe?: GithubProbeRecord;
@@ -184,6 +185,7 @@ export class SettingsService {
       autofill: (this.get("autofill") as Settings["autofill"]) ?? {},
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
       effectGrants: [...this.effectGrantsForRun()],
+      originPolicies: this.originPolicies(),
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
   }
@@ -201,6 +203,10 @@ export class SettingsService {
     const explicit = this.get("effectGrants") ?? this.fileSettings.effectGrants;
     if (explicit !== undefined) return sanitizeGrants(explicit);
     return sanitizeGrants([...USER_RUN_GRANTS]);
+  }
+
+  originPolicies(): OriginRule[] {
+    return OriginRuleSchema.array().parse(this.get("originPolicies") ?? []);
   }
 
   set(patch: Settings): Promise<{ ok: true }> {
@@ -257,6 +263,7 @@ export class SettingsService {
       next.providerModels = { ...this.profiles(), [selectedProvider]: profile };
     }
     if (next.effectGrants !== undefined) next.effectGrants = sanitizeGrants(next.effectGrants);
+    if (next.originPolicies !== undefined) next.originPolicies = OriginRuleSchema.array().max(500).parse(next.originPolicies);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) this.repo.deleteSetting("modelProbe");
     for (const [k, v] of Object.entries(next)) {

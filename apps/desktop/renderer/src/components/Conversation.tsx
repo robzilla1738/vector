@@ -525,7 +525,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         queueAttemptRef.current = attempt;
         const message = await call(mode === "steer" ? "runs.steer" : "runs.queue", { messageId: attempt.messageId, runId: last.runId, chatId: id,
           text: attempt.text, pageIds: last.pageIds, contextPageRefs: last.config?.contextPageRefs ?? [],
-          expectedRevision: last.config?.messageRevision ?? 0 });
+          expectedRevision: last.config?.messageRevision ?? 0, expectedTurnId: last.runId });
         setQueuedMessages(items => items.some(item => item.messageId === message.messageId) ? items : [...items, message]);
         if (readText() === text) setText("");
         queueAttemptRef.current = null;

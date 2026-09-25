@@ -70,7 +70,7 @@ export class RpcChannel {
         this.transport.send({
           kind: "res",
           id: f.id,
-          error: { code: "not_found", message: `unknown method ${f.method}` },
+          error: toErrorPayload(new AuxError("not_found", "Unknown method")),
         });
         return;
       }

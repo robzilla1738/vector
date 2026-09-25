@@ -80,5 +80,12 @@ export {
 } from "./agent/repair.js";
 export { negotiate as negotiateBidi, dispatch as dispatchBidi, authorizePageTool, attachBidiRuntime, type BidiCommand, type BidiSession } from "./services/bidi.js";
 export { recoverAfterCrash, COORDINATOR_TRANSITIONS, type CrashRecovery } from "./agent/recovery.js";
+export { evaluateOriginPolicy, exactOrigin, type OriginPolicyDecision, type OriginPolicyAudit } from "./safety/origin-policy.js";
+export { ApprovalStore, type AuthorizationDecision, type LocalCeiling } from "./safety/approval.js";
+export { decideConfirmation, confirmationLevelForAction, ChallengeRecoveryGate, type ConfirmationResult } from "./safety/confirmation.js";
+export { secureCredentialHandoff, type CredentialHost } from "./safety/credential-handoff.js";
+export { reviewGuardian, untrustedOutput, type GuardianFinding, type GuardianDecision, type UntrustedOutput } from "./safety/guardian.js";
+export { SendJournal, sendNotice, type MessageTransport, type SendState } from "./safety/send-journal.js";
+export { SAFETY_TIMING, withDeadline, retryWithHints, pollUntil, ViewerLivenessWatchdog, tightenEgress, recoveryLadder } from "./safety/policies.js";
 
 export { directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "./agent/direct-providers.js";

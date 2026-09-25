@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { toErrorPayload, type AgentConnectionScope, type AuxEvent } from "@aux/contracts";
+import { AuxError, toErrorPayload, type AgentConnectionScope, type AuxEvent } from "@aux/contracts";
 import { MethodSchemas } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 
@@ -75,7 +75,7 @@ export class ApiServer {
     const env = (payload ?? {}) as { id?: unknown; method?: unknown; params?: unknown };
     const id = env.id;
     if (typeof env.method !== "string" || !(env.method in MethodSchemas)) {
-      return { id, error: { code: "not_found", message: `unknown method ${String(env.method)}` } };
+      return { id, error: toErrorPayload(new AuxError("not_found", "Unknown method")) };
     }
     try {
       const result = await this.opts.invoke(env.method, env.params ?? {}, client);
@@ -137,15 +137,17 @@ export class ApiServer {
       try {
         payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       } catch {
-        return send(400, { error: { code: "invalid_params", message: "bad JSON" } });
+        return send(400, { error: toErrorPayload(new AuxError("invalid_params", "bad JSON")) });
       }
+      const method = payload && typeof payload === "object" && "method" in payload ? (payload as { method: unknown }).method : undefined;
+      const unknownMethod = typeof method !== "string" || !(method in MethodSchemas);
       const out = await this.dispatch(payload, client);
-      if (out.error?.code === "not_found" && !("result" in out) && out.error.message.startsWith('unknown method')) {
+      if (unknownMethod) {
         return send(404, { error: out.error });
       }
       return send(200, out.error ? { error: out.error } : { result: out.result });
     }
-    return send(404, { error: { code: "not_found", message: "not found" } });
+    return send(404, { error: toErrorPayload(new AuxError("not_found", "not found")) });
   }
 
   async close() {
