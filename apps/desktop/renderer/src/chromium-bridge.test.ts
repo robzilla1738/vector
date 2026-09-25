@@ -156,3 +156,15 @@ it("registers the shared native shortcut bindings and reserves disabled defaults
   expect(bindings.some(row => row.key === "left" && row.alt && !row.meta)).toBe(false);
   expect(chord("p").at(-1)?.commandId).toBe("print");
 });
+
+it("keeps the registry's first command when custom chords conflict", async () => {
+  const request = vi.fn(async () => true);
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork", windowId: "current", profileId: "profile-1",
+    platform: "darwin", privateMode: false, request, subscribe: vi.fn(() => () => {}),
+  });
+  installChromiumBridge(target);
+  await target.aux!.setShortcutOverrides({ sidebar: [{ key: "k", command: true }] });
+  const bindings = (request.mock.calls[0] as unknown as [string, [Array<Record<string, unknown>>]])[1][0];
+  expect(bindings.filter(row => row.key === "k" && row.meta && !row.shift).at(-1)?.commandId).toBe("sidebar");
+});

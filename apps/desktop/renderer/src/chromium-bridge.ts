@@ -78,9 +78,11 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
               shift: !!binding.shift, alt: !!binding.alt,
             })));
         // Reserve defaults even when disabled or rebound, so AppKit's original
-        // browser menu cannot reinterpret them as a different command.
+        // browser menu cannot reinterpret them as a different command. The
+        // native accelerator map keeps the last row for a chord, while the
+        // shared registry matches the first command, so reverse active rows.
         return port.request("setShortcuts", [
-          [...rows().map(row => ({ ...row, commandId: "" })), ...rows(overrides)],
+          [...rows().map(row => ({ ...row, commandId: "" })), ...rows(overrides).reverse()],
         ]);
       };
       if (key === "windows") return async () => {
