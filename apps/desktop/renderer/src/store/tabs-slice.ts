@@ -9,14 +9,17 @@ import { applyRemoval, call, closingGroups, closingOptimistic, mergeTabInto, ope
 import type { Slice, TabKeys, Workspace } from "./types";
 
 /** Space/folder snapshot carried on a move so the destination window can file the tab. */
-const tabPlacementFor = (state: { layout: Workspace["layout"] }, pageId: string): TabPlacement | undefined => {
+const tabPlacementFor = (state: Pick<Workspace, "layout" | "pages">, pageId: string): TabPlacement | undefined => {
   const spaceId = state.layout.tabSpace[pageId] ?? state.layout.activeSpaceId;
   const space = [...state.layout.spaces, ...(state.layout.archivedSpaces ?? [])].find(item => item.id === spaceId);
   if (!space) return undefined;
   const folder = state.layout.folders.find(item => item.id === state.layout.tabFolder[pageId]);
+  const page = state.pages.find(item => item.pageId === pageId);
+  const tabName = state.layout.tabNames?.[pageId];
   return {
     space: { id: space.id, name: space.name, color: space.color, grain: space.grain, ...(space.workspaceId ? { workspaceId: space.workspaceId } : {}) },
     ...(folder ? { folder: { id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: folder.collapsed, ...(folder.color ? { color: folder.color } : {}), ...(folder.emoji ? { emoji: folder.emoji } : {}) } } : {}),
+    ...(page && tabName?.url === page.url ? { tabName } : {}),
   };
 };
 
@@ -151,7 +154,8 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   applyTabsPlacement: ({ pageId, windowId, placement }) => {
     if (windowId !== bridge.windowId) return;
     set(s => {
-      if (!s.pages.some(page => page.pageId === pageId)) return {};
+      const page = s.pages.find(item => item.pageId === pageId);
+      if (!page) return {};
       const space: Space = { id: placement.space.id, name: placement.space.name, color: placement.space.color as SpaceColor, grain: placement.space.grain ?? 0, ...(placement.space.workspaceId ? { workspaceId: placement.space.workspaceId } : {}) };
       let layout = s.layout.spaces.some(item => item.id === space.id) ? s.layout
         : { ...s.layout, spaces: [...s.layout.spaces, space], archivedSpaces: s.layout.archivedSpaces?.filter(item => item.id !== space.id) };
@@ -161,6 +165,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         if (!layout.folders.some(item => item.id === folder.id)) layout = { ...layout, folders: [...layout.folders, folder] };
         layout = assignFolder(layout, pageId, folder.id);
       }
+      if (placement.tabName?.url === page.url) layout = { ...layout, tabNames: { ...layout.tabNames, [pageId]: placement.tabName } };
       persistLayout(layout);
       return { layout };
     });

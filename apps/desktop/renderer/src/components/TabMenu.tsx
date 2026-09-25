@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { PageTarget } from "@aux/contracts";
+import { TabNameSchema, type PageTarget, type TabNameSuggestion } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { requestStageReport } from "../stage-obstruction";
 import { call, errToast, tabCommand, toast, useStore } from "../store";
-import { canSplitPage, groupedTabs, hostOf, isPinned, tabsInSpace } from "../workspace";
+import { canSplitPage, groupedTabs, hostOf, isPinned, tabLabel, tabsInSpace } from "../workspace";
 import { moveMenuFocus } from "../keyboard-list";
 import { useMenuDismiss } from "../use-menu-dismiss";
 import { positionContextMenu } from "../position-context-menu";
@@ -27,6 +27,13 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const [moving, setMoving] = useState(false);
   const [remembering, setRemembering] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState("");
+  const [suggestion, setSuggestion] = useState<TabNameSuggestion | null>(null);
+  const nameRequest = useRef(0);
+  const nameInput = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const moveButton = useRef<HTMLButtonElement>(null);
   const [windows, setWindows] = useState<Awaited<ReturnType<typeof bridge.windows>>>([]);
@@ -57,23 +64,25 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
   const canMoveWindow = inNativeHost && !bridge.privateMode;
   const canMove = folders.some(folder => folder.id !== currentFolder) || hasFolder || layout.spaces.length > 1 || canMoveWindow;
   useEffect(() => {
-    if (remembering) ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    if (naming) nameInput.current?.focus();
+    else if (remembering) ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     else if (moving) ref.current?.querySelector<HTMLInputElement>("input")?.focus();
     else moveButton.current?.focus();
-  }, [moving, remembering]);
+  }, [moving, remembering, naming]);
 
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
     positionContextMenu(menu, x, y);
     requestStageReport();
-  }, [x, y, folders.length, layout.spaces.length, windows.length, moving, remembering, query]);
+  }, [x, y, folders.length, layout.spaces.length, windows.length, moving, remembering, naming, nameBusy, query]);
 
   useEffect(() => {
     const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
     document.addEventListener("mousedown", outside);
     ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     return () => {
+      nameRequest.current++;
       document.removeEventListener("mousedown", outside);
       requestStageReport();
       if (previous.current?.isConnected) previous.current.focus();
@@ -108,6 +117,54 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     void Promise.resolve().then(work).catch(errToast);
   }
 
+  function openNaming() {
+    const saved = layout.tabNames?.[page.pageId];
+    setNameDraft(saved?.url === page.url ? saved.title : "");
+    setSuggestion(null);
+    setNameError("");
+    setNaming(true);
+  }
+
+  function closeNaming() {
+    nameRequest.current++;
+    setNameBusy(false);
+    setNaming(false);
+  }
+
+  function saveName() {
+    const name = nameDraft;
+    const source = suggestion;
+    action(() => {
+      if (source) {
+        const current = useStore.getState().pages.find(item => item.pageId === page.pageId);
+        if (!current || current.title !== source.sourceTitle || current.documentEpoch !== source.documentEpoch)
+          throw new Error("The page changed. Review its title before applying the suggestion.");
+      }
+      useStore.getState().setTabName(page.pageId, page.url, name);
+      toast("Tab label saved");
+    });
+  }
+
+  async function suggestName() {
+    const request = ++nameRequest.current;
+    setNameBusy(true); setNameError(""); setSuggestion(null);
+    try {
+      const result = await call("agent.tabName.suggest", {
+        pageId: page.pageId, expectedUrl: page.url, expectedDocumentEpoch: page.documentEpoch,
+      });
+      if (request !== nameRequest.current) return;
+      const current = useStore.getState().pages.find(item => item.pageId === page.pageId);
+      if (!current || current.url !== result.sourceUrl || current.title !== result.sourceTitle
+        || current.documentEpoch !== result.documentEpoch) throw new Error("The page changed while Aux suggested a name. Try again.");
+      setSuggestion(result);
+      setNameDraft(result.name);
+    } catch (error) {
+      if (request === nameRequest.current) setNameError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (request === nameRequest.current) setNameBusy(false);
+    }
+  }
+
   async function rememberPage() {
     const workspaceId = space?.workspaceId;
     if (!workspaceId) return;
@@ -128,10 +185,26 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
 
   return <div ref={ref} className="menu ctx-menu tab-menu" role="menu" style={{ left: x, top: y }} onKeyDown={event => {
     if(event.key==="Tab"){event.preventDefault();onClose();return;}
+    if (naming && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeNaming(); return; }
     if (moving && (event.key === "Escape" || (event.key === "ArrowLeft" && !(event.target instanceof HTMLInputElement)))) { event.preventDefault(); event.stopPropagation(); setMoving(false); setQuery(""); return; }
     moveMenuFocus(event);
   }}>
-    {remembering ? <>
+    {naming ? <>
+      <button className="menu-item tab-menu-back" role="menuitem" onClick={closeNaming}>{I.left}<span className="t">Back to tab actions</span></button>
+      <div className="menu-label">Name this tab</div>
+      <p className="menu-empty">Use a short label in your tab strip. The page title stays unchanged.</p>
+      <input ref={nameInput} className="tab-menu-search" aria-label="Tab label" maxLength={60} value={nameDraft} disabled={nameBusy}
+        placeholder={tabLabel(layout, page)} onChange={event => { setNameDraft(event.target.value); setSuggestion(null); }}
+        onKeyDown={event => { if (event.key === "Enter" && TabNameSchema.safeParse(nameDraft).success && !nameBusy) {
+          event.preventDefault(); saveName();
+        } }} />
+      <p className="menu-empty">AI sees this page title and site domain. Review its suggestion before saving.</p>
+      {nameError && <p className="menu-empty" role="alert">{nameError}</p>}
+      {suggestion && <p className="menu-empty">Suggested from “{suggestion.sourceTitle}” · {hostOf(suggestion.sourceUrl)}</p>}
+      <button className="menu-item" role="menuitem" disabled={nameBusy} onClick={() => void suggestName()}>{I.agentSm}<span className="t">{nameBusy ? "Suggesting…" : "Suggest with AI"}</span></button>
+      <button className="menu-item" role="menuitem" disabled={nameBusy || !TabNameSchema.safeParse(nameDraft).success} onClick={saveName}>Save tab label</button>
+      {layout.tabNames?.[page.pageId]?.url === page.url && <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().setTabName(page.pageId, page.url, null))}>Use page title again</button>}
+    </> : remembering ? <>
       <div className="menu-label">Remember page content</div>
       <p className="menu-empty">Save readable article text from {hostOf(page.url)} in {space?.name}. This allows this site in the Space until you remove it in Space memory. Forms and private pages are excluded.</p>
       <button className="menu-item" role="menuitem" onClick={() => action(rememberPage)}>Remember this article</button>
@@ -161,8 +234,9 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
     {!bulk && <>
     <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}>{I.reloadSm}<span className="t">Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
-    <TabAudioButton pageId={page.pageId} title={page.title || "New Tab"} menu onDone={onClose} />
+    <TabAudioButton pageId={page.pageId} title={tabLabel(layout, page)} menu onDone={onClose} />
     {web && <>
+      <button className="menu-item" role="menuitem" onClick={openNaming}>{I.agentSm}<span className="t">Name tab…</span></button>
       <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>{I.copy}<span className="t">Duplicate tab</span></button>
       <button className="menu-item" role="menuitem" onClick={() => action(async () => { await navigator.clipboard.writeText(page.url); toast("URL copied"); })}>{I.copy}<span className="t">Copy URL</span></button>
       <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{I.pin}<span className="t">{pinned ? "Unpin" : "Pin to space"}</span></button>

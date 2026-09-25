@@ -10,7 +10,7 @@ export const AUX_FEATURES = {
   spaceThemes: "B7", tabSections: "B3", folders: "B3", archive: "B3",
   tidy: "B7", aiTidy: "B6", splitView: "B3", peek: "B7",
   littleWindow: "B7", hoverCards: "B7", linkRouting: "B3",
-  titleRules: "B3", smartDownloadNames: "B6", tabLifecycle: "B3",
+  titleRules: "B3", aiTabNaming: "B6", smartDownloadNames: "B6", tabLifecycle: "B3",
   profiles: "B3", privateWindows: "B3", commandRegistry: "B7",
   browserImport: "B8", appleScript: "B8", commandBar: "B3",
   searchRanking: "B7", searchEngines: "B8", homeAsk: "B7",
@@ -85,6 +85,7 @@ const METHOD_FEATURE_PREFIXES: readonly [string, AuxFeature][] = [
 
 export function auxFeatureForMethod(method: string): AuxFeature | undefined {
   if (method === "agent.tidy.propose") return "aiTidy";
+  if (method === "agent.tabName.suggest") return "aiTabNaming";
   return METHOD_FEATURE_PREFIXES.find(([prefix]) => method.startsWith(prefix))?.[1];
 }
 

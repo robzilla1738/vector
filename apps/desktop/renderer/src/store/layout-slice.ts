@@ -1,4 +1,5 @@
 import { splitRatio } from "@aux/contracts/split-layout";
+import { TabNameSchema } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { errToast, toast } from "../store";
 import { assignFolder, assignSpace, canSplitPage, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder } from "../workspace";
@@ -73,6 +74,23 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     if (!bridge.privateMode) for (const page of targets) void bridge.bindTabSpace(page.pageId, spaceId).catch(errToast);
     if (activePageId && activePageId !== state.activePageId) void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
     if (beforeId !== undefined) syncCatalogOrder(layout.order, state.pages, state.catalogVersion);
+  },
+  setTabName: (pageId, expectedUrl, name) => {
+    const state = get();
+    const page = state.pages.find(item => item.pageId === pageId);
+    if (!page || page.url !== expectedUrl || page.ownedByRuntime || page.viewStatus === "detached"
+      || page.controller === "agent" || page.controller === "external")
+      throw new Error("The tab changed or is controlled by an agent. Review it and try again.");
+    const tabNames = { ...state.layout.tabNames };
+    if (name === null) delete tabNames[pageId];
+    else {
+      const parsed = TabNameSchema.safeParse(name);
+      if (!parsed.success) throw new Error("Use a tab label of 2–60 characters without control characters.");
+      tabNames[pageId] = { title: parsed.data, url: expectedUrl };
+    }
+    const layout = { ...state.layout, tabNames };
+    persistLayout(layout);
+    set({ layout });
   },
   moveTabToSpace: (pageId, spaceId) => {
     set((s) => {

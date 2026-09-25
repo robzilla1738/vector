@@ -9,7 +9,7 @@ import { useShortcutLabels } from "../use-shortcut-label";
 import { useStore, call, toast, errToast, tabCommand } from "../store";
 import { bridge } from "../bridge";
 import { detectIntent } from "../intent";
-import { canSplitPage, hostOf } from "../workspace";
+import { canSplitPage, hostOf, tabLabel } from "../workspace";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { openLocalFile } from "../open-local-file";
@@ -141,11 +141,11 @@ export function Palette() {
       return [space?.name, folder?.name, hostOf(url)].filter(Boolean).join(" · ");
     };
     const matchingTabs = pages.filter(page => !page.ownedByRuntime && page.viewStatus !== "detached"
-      && match(`${page.title} ${page.url} ${tabDescription(page.pageId, page.url)}`))
+      && match(`${tabLabel(layout,page)} ${page.title} ${page.url} ${tabDescription(page.pageId, page.url)}`))
       .sort((a,b) => Number(layout.tabSpace[b.pageId] === layout.activeSpaceId) - Number(layout.tabSpace[a.pageId] === layout.activeSpaceId));
     if (tabOnly || (filter === "tabs" && !commandOnly && !chromeTabs && !splitPick)) return matchingTabs.map(page => ({
       id: `tab-${page.pageId}`, section: "tabs" as const, icon: <FavIcon url={page.url} src={page.favicon} size="sm" />,
-      t: page.title || (page.url === "about:blank" ? "New Tab" : hostOf(page.url)),
+      t: tabLabel(layout,page),
       d: `${tabDescription(page.pageId, page.url)}${page.pageId === activePageId ? " · Current" : ""}`,
       run: () => activate(page.pageId),
     }));
@@ -170,8 +170,8 @@ export function Palette() {
     }
     if (splitPick) {
       for (const p of pages) {
-        if (p.pageId === activePageId || !canSplitPage(p) || !canSplitPage(activePage) || layout.tabSpace[p.pageId] !== layout.activeSpaceId || !match(`${p.title} ${p.url}`)) continue;
-        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: p.title || p.url, d: hostOf(p.url), run: () => useStore.getState().setSplitPage(p.pageId) });
+        if (p.pageId === activePageId || !canSplitPage(p) || !canSplitPage(activePage) || layout.tabSpace[p.pageId] !== layout.activeSpaceId || !match(`${tabLabel(layout,p)} ${p.title} ${p.url}`)) continue;
+        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: tabLabel(layout,p), d: hostOf(p.url), run: () => useStore.getState().setSplitPage(p.pageId) });
       }
       if (out.length === 0) out.push({ id: "none", section: "tabs", t: "No other available browser pages in this Space", run: () => setSplitPick(false) });
       return out;
@@ -198,7 +198,7 @@ export function Palette() {
       }
       // switch to an open tab
       for (const p of commandOnly ? [] : matchingTabs.filter(page => page.pageId !== activePageId).slice(0, 8)) {
-        out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: p.title || hostOf(p.url), d: tabDescription(p.pageId, p.url), run: () => activate(p.pageId) });
+        out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: tabLabel(layout,p), d: tabDescription(p.pageId, p.url), run: () => activate(p.pageId) });
       }
     }
 

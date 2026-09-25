@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { errToast, useStore } from "../store";
-import { groupedTabs, tabsInSpace } from "../workspace";
+import { groupedTabs, tabLabel, tabsInSpace } from "../workspace";
 import { moveListFocus } from "../keyboard-list";
 import { FolderContextMenu, SpaceEditor, SpaceMenu } from "./Sidebar";
 import { TabPreview } from "./TabPreview";
@@ -95,10 +95,10 @@ export function HorizontalTabs() {
             }
             if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); const peers = allTabs.filter(item => (layout.tabFolder[item.pageId] ?? null) === (folder?.id ?? null)); const from = peers.indexOf(page); const to = event.key === "ArrowLeft" ? from - 1 : from + 2; if (to >= 0 && to <= peers.length) useStore.getState().reorderGroup(layout.activeSpaceId, folder?.id ?? null, from, to); }
           }}>
-          {page.viewStatus==="crashed"?I.alert:page.loading?<span role="status" className="spin" aria-label="Loading"/>:page.url === "about:blank" ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}<span className="horizontal-tab-title">{page.title || "New Tab"}</span>
+          {page.viewStatus==="crashed"?I.alert:page.loading?<span role="status" className="spin" aria-label="Loading"/>:page.url === "about:blank" ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}<span className="horizontal-tab-title">{tabLabel(layout,page)}</span>
         </button>
-        <TabAudioButton pageId={page.pageId} title={page.title || "New Tab"} />
-        <button className="horizontal-tab-close" aria-label={`Close ${page.title || "New Tab"}`} onClick={() => void useStore.getState().closeTab(page.pageId).catch(errToast)}>{I.close}</button>
+        <TabAudioButton pageId={page.pageId} title={tabLabel(layout,page)} />
+        <button className="horizontal-tab-close" aria-label={`Close ${tabLabel(layout,page)}`} onClick={() => void useStore.getState().closeTab(page.pageId).catch(errToast)}>{I.close}</button>
       </div>}</Fragment>; })}
     </div>
       <div className="horizontal-tab-tools">

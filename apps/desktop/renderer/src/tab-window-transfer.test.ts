@@ -59,6 +59,22 @@ it("files an arriving tab into the relayed space and folder", () => {
   expect(state.layout.tabFolder.moved).toBe("folder");
   expect(state.layout.folders.find(item => item.id === "folder")).toMatchObject({color: "teal", emoji: "📌"});
 });
+it("carries a reviewed tab name to its destination only for the same URL", async () => {
+  setup();
+  useStore.getState().setTabName("one", "https://example.com", "Project brief");
+  const tabCommand = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack("destination"));
+  await useStore.getState().moveTabsToWindow(["one"]);
+  const command = tabCommand.mock.calls[0]?.[0];
+  expect(command?.kind).toBe("move");
+  const placement = command?.kind === "move" ? command.placement : undefined;
+  expect(placement?.tabName).toEqual({title: "Project brief", url: "https://example.com"});
+  useStore.setState({layout: emptyLayout(), pages: [{pageId: "one", url: "https://example.com"} as PageTarget]});
+  useStore.getState().applyTabsPlacement({pageId: "one", windowId: bridge.windowId, placement: placement!});
+  expect(useStore.getState().layout.tabNames?.one?.title).toBe("Project brief");
+  useStore.setState({layout: emptyLayout(), pages: [{pageId: "one", url: "https://changed.example"} as PageTarget]});
+  useStore.getState().applyTabsPlacement({pageId: "one", windowId: bridge.windowId, placement: placement!});
+  expect(useStore.getState().layout.tabNames?.one).toBeUndefined();
+});
 it("ignores placement relayed for another window", () => {
   const layout = emptyLayout();
   useStore.setState({layout, pages: [{pageId: "moved", url: "https://example.com"} as PageTarget]});

@@ -53,6 +53,8 @@ export interface Layout {
   folders: Folder[];
   /** pageId → folderId; missing means unfiled (shown below New Tab) */
   tabFolder: Record<string, string>;
+  /** Human tab labels, bound to an exact URL so navigation restores the page title. */
+  tabNames?: Record<string, { title: string; url: string }>;
 }
 
 export const DEFAULT_SPACE: Space = { id: "space-personal", name: "Personal", color: "blue", grain: 0 };
@@ -61,8 +63,13 @@ export function spaceGrain(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : 0;
 }
 
+export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url" | "title">): string {
+  const saved = layout.tabNames?.[page.pageId];
+  return saved?.url === page.url ? saved.title : page.title || (page.url && page.url !== "about:blank" ? hostOf(page.url) : "New Tab");
+}
+
 export function emptyLayout(): Layout {
-  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {} };
+  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {}, tabNames: {} };
 }
 
 let seq = 0;
@@ -91,8 +98,16 @@ export function withSyncedOrder(layout: Layout, pages: Pick<PageTarget, "pageId"
 }
 
 /** Order and Space assignment synced to the live pages — identity-preserving. */
-export function syncLayout(layout: Layout, pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): Layout {
-  return syncSpaces(withSyncedOrder(layout, pages, preservedIds), pages, preservedIds);
+export function syncLayout(layout: Layout, pages: (Pick<PageTarget, "pageId"> & Partial<Pick<PageTarget, "url">>)[], preservedIds: string[] = []): Layout {
+  const synced = syncSpaces(withSyncedOrder(layout, pages, preservedIds), pages, preservedIds);
+  const names = synced.tabNames;
+  if (!names || !Object.keys(names).length) return synced;
+  const live = new Map(pages.map(page => [page.pageId, page]));
+  const next = Object.fromEntries(Object.entries(names).filter(([pageId, name]) => {
+    const page = live.get(pageId);
+    return page ? page.url === undefined || page.url === name.url : preservedIds.includes(pageId);
+  }));
+  return Object.keys(next).length === Object.keys(names).length ? synced : { ...synced, tabNames: next };
 }
 
 /** Ensure every live page has a space; new pages land in the active space. */
@@ -388,6 +403,12 @@ export function parseLayout(raw: string | null): Layout {
         : [],
       tabFolder: v.tabFolder && typeof v.tabFolder === "object"
         ? Object.fromEntries(Object.entries(v.tabFolder).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+        : {},
+      tabNames: v.tabNames && typeof v.tabNames === "object"
+        ? Object.fromEntries(Object.entries(v.tabNames).filter((entry): entry is [string, { title: string; url: string }] =>
+          !!entry[1] && typeof entry[1].title === "string" && entry[1].title.trim().length >= 2
+          && entry[1].title.length <= 60 && !/[\p{Cc}\p{Cf}]/u.test(entry[1].title)
+          && typeof entry[1].url === "string" && entry[1].url.length <= 8192))
         : {},
     };
   } catch {

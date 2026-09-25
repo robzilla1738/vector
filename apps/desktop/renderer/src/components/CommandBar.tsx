@@ -7,7 +7,7 @@ import { detectIntent, intentLabel, type Intent } from "../intent";
 import { engineList, parseSuggestResponse, suggestEndpoint } from "../engines";
 import { isPrivateAddress, rankCandidates } from "../suggest";
 import { isLive, useStore, call, errToast, toast } from "../store";
-import { hostOf } from "../workspace";
+import { hostOf, tabLabel } from "../workspace";
 
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
@@ -49,6 +49,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   // those fields keeps loading/audio churn from re-rendering the bar.
   const tabDigest = useStore(useShallow((s) => s.pages.map((p) => `${p.pageId}${p.title}${p.url}${p.favicon}${p.ownedByRuntime ? 1 : 0}`)));
   const activePageId = useStore((s) => s.activePageId);
+  const tabNames = useStore(s => s.layout.tabNames);
   const settings = useStore((s) => s.settings);
   const runs = useStore((s) => s.runs);
   const programs = useStore((s) => s.programs);
@@ -282,7 +283,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   // The intent row tracks every keystroke; provider ranking follows a deferred
   // query so typing never waits on it. Candidate lists are built once per source
   // change so the ranker's folded-text cache survives across keystrokes.
-  const tabCandidates = useMemo(() => useStore.getState().pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime).map(p => ({ ...p, id: p.pageId })), [tabDigest, activePageId]);
+  const tabCandidates = useMemo(() => {
+    const layout = useStore.getState().layout;
+    return useStore.getState().pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime)
+      .map(p => ({ ...p, id: p.pageId, title: tabLabel(layout,p) }));
+  }, [tabDigest, activePageId, tabNames]);
   const bookmarkCandidates = useMemo(() => bookmarks.map(b => ({ ...b, id: `bookmark-${b.url}` })), [bookmarks]);
   const closedCandidates = useMemo(() => closedTabs.map(tab => ({ ...tab, id: tab.pageId })), [closedTabs]);
   const historyCandidates = useMemo(() => history.map(entry => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt })), [history]);

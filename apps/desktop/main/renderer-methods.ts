@@ -7,6 +7,7 @@
  */
 export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "agent.tidy.propose",
+  "agent.tabName.suggest",
   "artifacts.list",
   "artifacts.read",
   "bookmarks.add",

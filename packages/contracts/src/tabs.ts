@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TabNameSchema } from "./tab-name.js";
 
 /**
  * Human tab command + catalog protocol (§7.2). The desktop main process owns
@@ -28,6 +29,7 @@ export const TabPlacementSchema = z.object({
     workspaceId: z.string().max(200).optional(),
   }),
   folder: z.object({ id, name: z.string().max(200), spaceId: z.string().min(1).max(200), collapsed: z.boolean(), color: z.string().max(40).optional(), emoji: z.string().max(16).optional() }).optional(),
+  tabName: z.object({ title: TabNameSchema, url: z.string().url().max(8192) }).optional(),
 });
 export type TabPlacement = z.infer<typeof TabPlacementSchema>;
 

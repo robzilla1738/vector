@@ -6,7 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
-import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
+import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabLabel, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
 
 import { bookmarkTabsFromDrop, TAB_DRAG_TYPE } from "../bookmark-drop";
 import { requestStageReport } from "../stage-obstruction";
@@ -116,7 +116,7 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
   if (!p) return null;
   const crashed = p.viewStatus === "crashed";
   const sleeping = !crashed && (p.lifecycle === "frozen" || p.lifecycle === "discarded" || p.lifecycle === "placeholder");
-  const title = p.title || (p.url && p.url !== "about:blank" ? hostOf(p.url) : "New Tab");
+  const title = useStore(state => tabLabel(state.layout, p));
   return (
     <>
     <div

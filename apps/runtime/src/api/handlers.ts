@@ -45,6 +45,7 @@ import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
 import { AgentCodeMode } from "../agent/code-mode.js";
 import { proposeTabTidy } from "../agent/tidy.js";
+import { suggestTabName } from "../agent/tab-name.js";
 import { HistoryProjection } from "../services/history-projection.js";
 import { CommandEscalationStore, commandDigest, defaultCommandSeatbelt, validateEffectiveSeatbelt } from "../services/command-seatbelt.js";
 import { AgentWebTools, permittedWebUrl } from "../agent/web-tools.js";
@@ -352,6 +353,14 @@ export function makeInvoker(s: Services) {
         const proposal = await proposeTabTidy(params, s.pages.list(), model, s.settings.agentRoute("fast"));
         s.events.emit("agent.tidy.proposed", { tabCount: proposal.pages.length, groupCount: proposal.groups.length, modelId: proposal.modelId });
         return proposal;
+      }
+      case "agent.tabName.suggest": {
+        if (client.external) throw new AuxError("permission_denied", "Tab names must be requested in Aux.");
+        const model = s.settings.model();
+        if (!model) throw new AuxError("backend_unavailable", "Connect a model in Settings before suggesting a tab name.");
+        const suggestion = await suggestTabName(params, s.pages.list().find(page => page.pageId === params.pageId), model, s.settings.agentRoute("fast"));
+        s.events.emit("agent.tabName.suggested", { pageId: suggestion.pageId, modelId: suggestion.modelId });
+        return suggestion;
       }
       case "agent.web.fetch":
       case "agent.web.search": {

@@ -7,7 +7,7 @@ import type { PageTarget, TidyProposal } from "@aux/contracts";
 import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../store";
 import { bridge, inNativeHost } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
-import { hostOf, isPinned } from "../workspace";
+import { hostOf, isPinned, tabLabel } from "../workspace";
 import { persistLayout } from "../store/persistence";
 import { applyTidyProposal, revertTidyProposal } from "../tidy-layout";
 import { FavIcon } from "./SiteTile";
@@ -52,7 +52,7 @@ export function Overview() {
     const ownerId = layout.tabSpace[page.pageId] ?? layout.activeSpaceId;
     const owner = spaces.find(space => space.id === ownerId);
     const folder = layout.folders.find(folder => folder.id === layout.tabFolder[page.pageId]);
-    return (!spaceId || ownerId === spaceId) && `${page.title} ${page.url} ${owner?.name ?? ""} ${folder?.name ?? ""}`.toLocaleLowerCase().includes(search);
+    return (!spaceId || ownerId === spaceId) && `${tabLabel(layout,page)} ${page.title} ${page.url} ${owner?.name ?? ""} ${folder?.name ?? ""}`.toLocaleLowerCase().includes(search);
   }).sort((a, b) => (order.get(a.pageId) ?? Infinity) - (order.get(b.pageId) ?? Infinity));
   const protectedDuplicates = protectedDuplicateIds(visible, layout, audio);
   const duplicates = duplicateTabs(visible, layout, activePageId, protectedDuplicates);
@@ -328,7 +328,7 @@ export function Overview() {
     <div role="group" ref={grid} className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
         const shot = shots[page.pageId] || pagePreview(page.pageId);
-        const title = page.title || "New Tab";
+        const title = tabLabel(layout,page);
         const owner = [...layout.spaces, ...(layout.archivedSpaces ?? [])].find(space => space.id === layout.tabSpace[page.pageId]);
         return <article key={page.pageId} className={`ov-card ${page.pageId === activePageId ? "active" : ""} ${selected.has(page.pageId) ? "selected" : ""}`}>
           <button className="ov-open" data-page-id={page.pageId} tabIndex={focusedId === page.pageId ? 0 : -1} onFocus={() => setFocused(page.pageId)} onKeyDown={event => navigateGrid(event, page.pageId)} aria-label={`Open ${title}`} title={`${title}\n${page.url}`} onClick={event => open(page, event)}>

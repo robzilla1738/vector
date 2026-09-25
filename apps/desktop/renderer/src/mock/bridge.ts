@@ -241,6 +241,15 @@ export function installMockBridge(q: URLSearchParams) {
     return page(p.pageId as string);
   };
   const handlers = {
+    "agent.tabName.suggest": async p => {
+      const source = pages.find(item => item.pageId === p.pageId);
+      if (!source || source.url !== p.expectedUrl || source.documentEpoch !== p.expectedDocumentEpoch)
+        throw new Error("The tab changed. Review it and try again.");
+      const short = source.title.split(/[|–—]/)[0]!.trim().slice(0, 60);
+      return { pageId: source.pageId, sourceUrl: source.url, sourceTitle: source.title,
+        documentEpoch: source.documentEpoch, name: short.length >= 2 ? short : "Useful page",
+        modelId: "meta/muse-spark-1.3-contributor" };
+    },
     "agent.tidy.propose": async p => {
       const pageIds = (p.pageIds as string[]);
       const chosen = pageIds.map(id => pages.find(item => item.pageId === id));
