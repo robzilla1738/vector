@@ -1108,7 +1108,7 @@ export function installMockBridge(q: URLSearchParams) {
     setTrackerBlock: async () => ({ trackerBlock: true, blocked: 0 }),
     setSiteTrackers: async () => { throw new Error("Site controls require the desktop browser."); },
     removeAllowedHost: async () => [],
-    filterLists: async () => ({ sources: [], hosts: 0, builtinHosts: 0, backend: "preview" as const }),
+    filterLists: async () => ({ sources: [], hosts: 0, cookieSelectors: 0, builtinHosts: 0, backend: "preview" as const }),
     updateFilters: async () => { throw new Error("Content blocking requires the Aux desktop browser."); },
     addFilterSource: async () => { throw new Error("Content blocking requires the Aux desktop browser."); },
     removeFilterSource: async () => { throw new Error("Content blocking requires the Aux desktop browser."); },

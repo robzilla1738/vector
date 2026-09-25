@@ -47,6 +47,7 @@ export interface ViewHooks {
   onCredentialOffer?(pageId: string, offer: { username: string; origin: string }): void;
   /** Cosmetic ad filtering — whether this page's host stays filtered. */
   cosmeticFiltered?(hostname: string): boolean;
+  cookieSelectors?(hostname: string): readonly string[];
   /** Explicit page/selection translation through the configured model. */
   onTranslatePage?(pageId: string): void;
   onTranslateSelection?(pageId: string, text: string, x: number, y: number): void;
@@ -300,7 +301,7 @@ function wireEvents(entry: ViewEntry, hooks: ViewHooks) {
   });
   installNavGesture(wc, (dir) => hooks.onNavGesture?.(entry.pageId, dir));
   if (hooks.onCredentialOffer) installCredentialWatch(wc, offer => hooks.onCredentialOffer?.(entry.pageId, offer));
-  if (hooks.cosmeticFiltered) installCosmeticFilter(wc, { filtered: hooks.cosmeticFiltered });
+  if (hooks.cosmeticFiltered) installCosmeticFilter(wc, { filtered: hooks.cosmeticFiltered, selectors: hooks.cookieSelectors });
 }
 
 /**

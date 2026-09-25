@@ -40,7 +40,7 @@ export const COSMETIC_SELECTORS: readonly string[] = [
   "[data-outbrain]",
 ];
 
-const styleSheet = () => `${COSMETIC_SELECTORS.join(",\n")} { display: none !important; }`;
+const styleSheet = (extra: readonly string[] = []) => `${[...COSMETIC_SELECTORS, ...extra].join(",\n")} { display: none !important; }`;
 
 /** Runs at document start in the isolated world. */
 function injectorBody(bindingName: string, styleId: string, css: string) {
@@ -60,31 +60,32 @@ function injectorBody(bindingName: string, styleId: string, css: string) {
 }
 
 /** Applies or removes the style — main-world evaluate for state changes. */
-export function cosmeticApplyScript(on: boolean): string {
-  const css = JSON.stringify(styleSheet());
+export function cosmeticApplyScript(on: boolean, selectors: readonly string[] = []): string {
+  const css = JSON.stringify(styleSheet(selectors));
   const id = JSON.stringify(STYLE_ID);
   return `(function(){var id=${id},el=document.getElementById(id);
     if(!${on}){if(el)el.remove();return 0;}
-    if(el)return 1;
+    if(el){el.textContent=${css};return 1;}
     var s=document.createElement('style');s.id=id;s.textContent=${css};
     (document.documentElement||document.head||document.body).appendChild(s);return 1;})()`;
 }
 
 /** Applies or removes the style on an open page — live toggle/allow changes. */
-export function applyCosmetic(wc: WebContents, on: boolean) {
+export function applyCosmetic(wc: WebContents, on: boolean, selectors: readonly string[] = []) {
   if (wc.isDestroyed()) return;
-  void wc.executeJavaScript(cosmeticApplyScript(on), true).catch(() => noteSwallowed("cosmetic.apply"));
+  void wc.executeJavaScript(cosmeticApplyScript(on, selectors), true).catch(() => noteSwallowed("cosmetic.apply"));
 }
 
 export function installCosmeticFilter(wc: WebContents, hooks: {
   /** Should this page host stay filtered? (blocking enabled && host not allowed) */
   filtered(hostname: string): boolean;
+  selectors?(hostname: string): readonly string[];
 }) {
   void addDocumentBinding(wc, COSMETIC_BINDING, (payload, contextId) => {
     const host = payload.replace(/^"|"$/g, "");
-    if (!host || hooks.filtered(host) || typeof contextId !== "number") return;
+    if (!host || typeof contextId !== "number") return;
     void wc.debugger.sendCommand("Runtime.evaluate", {
-      expression: `document.getElementById(${JSON.stringify(STYLE_ID)})?.remove()`,
+      expression: cosmeticApplyScript(hooks.filtered(host), hooks.selectors?.(host) ?? []),
       contextId,
     }).catch(() => noteSwallowed("cosmetic.remove"));
   }, {

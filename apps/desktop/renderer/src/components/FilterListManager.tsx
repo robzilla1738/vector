@@ -11,7 +11,8 @@ export function FilterListManager() {
   const [selectedId, setSelectedId] = useState("");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [review, setReview] = useState<{ name: string; url: string } | null>(null);
+  const [kind, setKind] = useState<"hosts" | "cookie_banner">("hosts");
+  const [review, setReview] = useState<{ name: string; url: string; kind: "hosts" | "cookie_banner" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -47,7 +48,7 @@ export function FilterListManager() {
     try {
       const normalized = filterSourceUrl(url.trim());
       const label = name.trim().slice(0, 120) || new URL(normalized).hostname;
-      setReview({ name: label, url: normalized });
+      setReview({ name: label, url: normalized, kind });
       setError("");
     } catch (reason) {
       setError(messageOf(reason));
@@ -58,13 +59,13 @@ export function FilterListManager() {
     <section className="filter-manager" aria-label="Filter lists">
       <div className="drawer-section">Filter lists</div>
       <p className="hint">
-        Choose HTTPS hosts lists you trust. Downloads update in Aux while it is open. The built-in protection
+        Choose HTTPS hosts or cookie-banner lists you trust. Downloads update in Aux while it is open. The built-in protection
         works without a download.
       </p>
       {status && (
         <p className="hint">
           {status.builtinHosts.toLocaleString()} built-in domains · {status.hosts.toLocaleString()} enabled
-          list entries
+          list entries · {status.cookieSelectors.toLocaleString()} cookie-banner selectors
           {preview && " · Browser preview only; no requests are blocked here."}
         </p>
       )}
@@ -79,7 +80,9 @@ export function FilterListManager() {
             >
               <strong>{source.name}</strong>
               <span>
-                {source.enabled ? "Enabled" : "Paused"} · {source.meta?.hosts?.toLocaleString() ?? 0} domains
+                {source.enabled ? "Enabled" : "Paused"} · {source.kind === "cookie_banner"
+                  ? `${source.meta?.selectors?.toLocaleString() ?? 0} cookie-banner selectors`
+                  : `${source.meta?.hosts?.toLocaleString() ?? 0} domains`}
               </span>
             </button>
           ))}
@@ -140,6 +143,14 @@ export function FilterListManager() {
       </div>
       <div className="filter-manager-add">
         <label>
+          List type
+          <select aria-label="Filter list type" value={kind} disabled={busy || preview}
+            onChange={(event) => { setKind(event.target.value as "hosts" | "cookie_banner"); setReview(null); }}>
+            <option value="hosts">Domain blocking hosts list</option>
+            <option value="cookie_banner">Cookie-banner cosmetic list</option>
+          </select>
+        </label>
+        <label>
           List name
           <input
             aria-label="Filter list name"
@@ -153,7 +164,7 @@ export function FilterListManager() {
           />
         </label>
         <label>
-          HTTPS hosts list URL
+          HTTPS filter list URL
           <input
             aria-label="Filter list URL"
             value={url}
@@ -191,8 +202,9 @@ export function FilterListManager() {
               {review.name} · {review.url}
             </p>
             <p className="hint">
-              Aux will fetch this source and use validated host entries for subresource blocking. The source
-              sees this browser's network address.
+              Aux will fetch this source and use {review.kind === "hosts"
+                ? "validated host entries for subresource blocking"
+                : "validated cosmetic selectors to hide cookie banners on matching sites"}. The source sees this browser's network address.
             </p>
             <div className="row">
               <button
@@ -200,7 +212,7 @@ export function FilterListManager() {
                 disabled={busy}
                 onClick={() =>
                   void action(async () => {
-                    await bridge.addFilterSource(review.name, review.url);
+                    await bridge.addFilterSource(review.name, review.url, review.kind);
                     const next = await refresh();
                     setSelectedId(next.sources.find((source) => source.url === review.url)?.id ?? "");
                     setReview(null);

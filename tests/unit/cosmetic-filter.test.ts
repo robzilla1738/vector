@@ -29,6 +29,22 @@ describe("cosmeticApplyScript", () => {
   it("is a no-op when removing without a style present", () => {
     expect(apply(false)).toBe(0);
   });
+
+  it("updates reviewed cookie selectors on an open page and removes them on exemption", () => {
+    const banner = document.createElement("div");
+    banner.className = "cookie-overlay";
+    document.body.appendChild(banner);
+    // oxlint-disable-next-line no-eval — exercising the real injected script.
+    (0, eval)(cosmeticApplyScript(true, [".cookie-overlay"]));
+    expect(getComputedStyle(banner).display).toBe("none");
+    // oxlint-disable-next-line no-eval — exercising the real injected script.
+    (0, eval)(cosmeticApplyScript(true, []));
+    expect(getComputedStyle(banner).display).not.toBe("none");
+    // oxlint-disable-next-line no-eval — exercising the real injected script.
+    (0, eval)(cosmeticApplyScript(false, [".cookie-overlay"]));
+    expect(document.getElementById("__aux-ads")).toBeNull();
+    banner.remove();
+  });
 });
 
 describe("COSMETIC_SELECTORS", () => {

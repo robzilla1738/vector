@@ -58,7 +58,7 @@ export function openPrivateWindow() {
         let payload: { ok: boolean; result?: unknown; error?: string };
         try {
           if (action === "update") payload = { ok: true, result: await filterOps.update() };
-          else if (action === "add") payload = { ok: true, result: await filterOps.add(payloadArgs.name, payloadArgs.url) };
+          else if (action === "add") payload = { ok: true, result: await filterOps.add(payloadArgs.name, payloadArgs.url, payloadArgs.kind) };
           else if (action === "remove") payload = { ok: true, result: await filterOps.remove(payloadArgs.id) };
           else if (action === "setEnabled") payload = { ok: true,
             result: await filterOps.setEnabled(payloadArgs.id, payloadArgs.enabled) };

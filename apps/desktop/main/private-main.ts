@@ -4,7 +4,7 @@ import { saveWorkbookSnapshot } from "./save-workbook.js";
 import { trafficLights } from "./traffic-lights.js";
 import { showNavigationMenu } from "./navigation-menu.js";
 import { splitRatio as normalizeSplitRatio, splitWidths } from "@aux/contracts/split-layout";
-import { BlockedCountState } from "@aux/contracts";
+import { BlockedCountState, cookieSelectorsForSite, type CookieBannerRule } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SiteZoomPreferences } from "./site-zoom.js";
 import { installSitePermissions } from "./site-permissions.js";
@@ -149,6 +149,7 @@ let privateBlockedCount = 0;
 const privateBlockedCounts = new BlockedCountState();
 const privateAllowed = new Set((process.env.AUX_PRIVATE_ALLOWED ?? "").split(",").map(host => host.trim().toLowerCase()).filter(Boolean));
 let privateBlockedHosts = new Set<string>(TRACKER_HOSTS);
+let privateCookieRules: CookieBannerRule[] = [];
 const privateHttpsFirst = new HttpsFirst();
 privateHttpsFirst.enabled = process.env.AUX_PRIVATE_HTTPS_UPGRADE !== "0";
 const privateInsecureBypass = createInsecureBypass();
@@ -156,11 +157,14 @@ const privateInsecureBypass = createInsecureBypass();
 let privateHostsGeneration = 0;
 function refreshPrivateBlockedHosts() {
   const generation = ++privateHostsGeneration;
-  void privateFilterLists?.loadHostsOffThread().then(hosts => {
+  void Promise.all([privateFilterLists?.loadHostsOffThread() ?? Promise.resolve([]),
+    privateFilterLists?.loadCookieRulesOffThread() ?? Promise.resolve([])]).then(([hosts, rules]) => {
     if (generation !== privateHostsGeneration) return;
     const next = new Set(TRACKER_HOSTS);
     for (const host of hosts) next.add(host);
     privateBlockedHosts = next;
+    privateCookieRules = rules;
+    privateApplyCosmeticAll();
   }).catch(() => { /* the built-in seed still applies */ });
 }
 refreshPrivateBlockedHosts();
@@ -176,7 +180,11 @@ function privateTrackersAllowed(hostname: string): boolean {
 }
 function privateApplyCosmeticAll() {
   for (const page of pages.values()) {
-    try { applyCosmetic(page.view.webContents, privateTrackerBlock && !privateTrackersAllowed(new URL(page.view.webContents.getURL()).hostname)); }
+    try {
+      const host = new URL(page.view.webContents.getURL()).hostname;
+      applyCosmetic(page.view.webContents, privateTrackerBlock && !privateTrackersAllowed(host),
+        cookieSelectorsForSite(privateCookieRules, host));
+    }
     catch { /* page mid-navigation */ }
   }
 }
@@ -286,7 +294,8 @@ function wirePage(page: PrivatePage) {
   });
   wc.once("destroyed",()=>forgetPage(page));
   installNavGesture(wc,dir=>{(dir==="back"?tabPorts.back:tabPorts.forward)(page.target.pageId);});
-  installCosmeticFilter(wc,{filtered:host=>privateTrackerBlock&&!privateTrackersAllowed(host)});
+  installCosmeticFilter(wc,{filtered:host=>privateTrackerBlock&&!privateTrackersAllowed(host),
+    selectors:host=>cookieSelectorsForSite(privateCookieRules,host)});
   wc.setWindowOpenHandler(({url,disposition,referrer}) => {
     if(offerExternalLink(wc,stagePageId===page.target.pageId?win??undefined:undefined,url))return {action:"deny"};
     if (url !== "about:blank" && !webUrl(url)) return {action:"deny"};
@@ -632,9 +641,9 @@ function registerIpc() {
     savePermissions: next => { permissionDecisions = next; },
     filters: {
       status: () => privateFilterLists ? privateFilterLists.status(TRACKER_HOSTS.size) :
-        { sources: [], hosts: 0, builtinHosts: TRACKER_HOSTS.size, backend: "electron_web_request" },
+        { sources: [], hosts: 0, cookieSelectors: 0, builtinHosts: TRACKER_HOSTS.size, backend: "electron_web_request" },
       update: () => privateFilterOp({ action: "update" }, true),
-      add: (name, url) => privateFilterOp({ action: "add", args: { name, url } }),
+      add: (name, url, kind) => privateFilterOp({ action: "add", args: { name, url, kind } }),
       remove: id => privateFilterOp({ action: "remove", args: { id } }),
       setEnabled: (id, enabled) => privateFilterOp({ action: "setEnabled", args: { id, enabled } }),
     },

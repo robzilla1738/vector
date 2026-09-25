@@ -132,4 +132,48 @@ describe("FilterLists", () => {
     expect(status.hosts).toBe(2);
     expect(status.sources[0]?.meta?.hosts).toBe(2);
   });
+
+  it("keeps hosts and cookie-banner caches separate across enable and failure", async () => {
+    const { dataDir, lists } = setup();
+    lists.addSource("Network", "https://lists.example.test/hosts", "hosts");
+    lists.addSource("Cookies", "https://lists.example.test/cookies", "cookie_banner");
+    expect(lists.sources().map(source => source.kind)).toEqual(["hosts", "cookie_banner"]);
+    await lists.update(async url => ({ status: 200, text: async () => url.endsWith("hosts")
+      ? "0.0.0.0 ads.example.test" : "##.cookie-overlay\nexample.test##[data-cookie-consent]" }));
+    expect(await lists.loadHostsOffThread()).toEqual(["ads.example.test"]);
+    expect(await lists.loadCookieRulesOffThread()).toEqual([
+      { domains: [], selector: ".cookie-overlay" },
+      { domains: ["example.test"], selector: "[data-cookie-consent]" },
+    ]);
+    expect(lists.status(5)).toMatchObject({ hosts: 1, cookieSelectors: 2 });
+    const cookie = lists.sources()[1]!;
+    lists.setEnabled(cookie.id, false);
+    expect(await lists.loadCookieRulesOffThread()).toEqual([]);
+    lists.setEnabled(cookie.id, true);
+    await lists.update(async url => ({ status: url.endsWith("cookies") ? 200 : 304,
+      text: async () => "<script>not a cosmetic list</script>" }));
+    expect(lists.meta(cookie.id)?.error).toMatch(/cookie-banner filter list/);
+    expect(await lists.loadCookieRulesOffThread()).toHaveLength(2);
+    expect(new FilterLists(dataDir).sources()[1]?.kind).toBe("cookie_banner");
+  });
+
+  it("treats legacy sources without a kind as hosts lists", () => {
+    const { dataDir, lists } = setup();
+    const [source] = lists.addSource("Legacy", "https://lists.example.test/old");
+    writeFileSync(join(dataDir, "filters", "sources.json"), JSON.stringify([{ ...source, kind: undefined }]));
+    expect(new FilterLists(dataDir).sources()[0]?.kind).toBe("hosts");
+  });
+
+  it("does not apply a modified cookie cache and rejects an unchanged response for it", async () => {
+    const { dataDir, lists } = setup();
+    const [source] = lists.addSource("Cookies", "https://lists.example.test/cookies", "cookie_banner");
+    await lists.update(async () => ({ status: 200, etag: "v1", text: async () => "##.cookie-banner" }));
+    expect(await lists.loadCookieRulesOffThread()).toHaveLength(1);
+    writeFileSync(join(dataDir, "filters", `${source!.id}.txt`), "##.tampered-banner");
+    expect(await lists.loadCookieRulesOffThread()).toEqual([]);
+    await lists.update(async () => ({ status: 304, text: async () => "" }));
+    expect(lists.meta(source!.id)?.error).toMatch(/cached filter list is unavailable/);
+    await lists.update(async () => ({ status: 200, text: async () => "##.cookie-banner" }));
+    expect(await lists.loadCookieRulesOffThread()).toEqual([{ domains: [], selector: ".cookie-banner" }]);
+  });
 });

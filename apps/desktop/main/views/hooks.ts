@@ -12,7 +12,7 @@ import { noteCredentialOffer, pendingVaultSaves, runVaultFill } from "../feature
 import { createPageView, markDocument } from "../native-views.js";
 import { exitPageFullscreen, wirePageFullscreen } from "../page-fullscreen.js";
 import { cssCursor } from "../page-pointer.js";
-import { httpsFirst, privacy, trackersAllowed } from "../privacy/state.js";
+import { cookieSelectors, httpsFirst, privacy, trackersAllowed } from "../privacy/state.js";
 import { channel, notifyRuntime, runtimeInvoke } from "../runtime/supervisor.js";
 import { newTabRecord } from "../tabs/catalog.js";
 import { discarding, forgetPageLifecycle, scheduleIdleFreeze, wakePage } from "../tabs/lifecycle-controller.js";
@@ -163,6 +163,7 @@ export const viewHooks = {
   },
   onCredentialOffer: (pageId: string, offer: { username: string; origin: string }) => { void noteCredentialOffer(pageId, offer); },
   cosmeticFiltered: (hostname: string) => privacy.trackerBlock && !trackersAllowed(hostname),
+  cookieSelectors: (hostname: string) => cookieSelectors(hostname),
   onTranslatePage: (pageId: string) => {
     void translator.page(pageId).catch(error => translator.failed(pageId, error));
   },

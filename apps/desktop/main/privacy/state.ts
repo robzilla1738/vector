@@ -8,7 +8,7 @@ import { FilterLists } from "../filter-lists.js";
 import { HttpsFirst } from "../https-first.js";
 import { createInsecureBypass } from "../insecure-bypass.js";
 import { TRACKER_HOSTS } from "../tracker-hosts.js";
-import { BlockedCountState } from "@aux/contracts";
+import { BlockedCountState, cookieSelectorsForSite, type CookieBannerRule, type FilterSourceKind } from "@aux/contracts";
 
 export const SITE_PERMISSIONS_FILE = join(DATA_DIR, "site-permissions.json");
 export type PermissionDecision = "allow" | "deny";
@@ -56,6 +56,8 @@ export const filterLists = new FilterLists(DATA_DIR);
 // each update so the request policy reads the merged set live. Lists parse
 // off-thread; the seed applies until the merged set swaps in.
 export let blockedHostSet = new Set<string>(TRACKER_HOSTS);
+export let cookieBannerRules: CookieBannerRule[] = [];
+export const cookieSelectors = (hostname: string) => cookieSelectorsForSite(cookieBannerRules, hostname);
 // Shared by the regular IPC surface and the private-process proxy so list
 // mutations always run in this process — the shared cache stays single-writer.
 export const filterOps = {
@@ -65,9 +67,9 @@ export const filterOps = {
     await refreshBlockedHosts();
     return status;
   },
-  add: async (name: unknown, url: unknown) => {
+  add: async (name: unknown, url: unknown, kind: unknown = "hosts") => {
     if (typeof name !== "string" || typeof url !== "string") throw new Error("Choose a filter list URL.");
-    const sources = filterLists.addSource(name, url);
+    const sources = filterLists.addSource(name, url, kind as FilterSourceKind);
     await filterLists.update(fetchFilterText);
     await refreshBlockedHosts();
     return sources;
@@ -91,18 +93,23 @@ export let blockedHostsGeneration = 0;
 export async function refreshBlockedHosts() {
   const generation = ++blockedHostsGeneration;
   try {
-    const hosts = await filterLists.loadHostsOffThread();
+    const [hosts, rules] = await Promise.all([filterLists.loadHostsOffThread(), filterLists.loadCookieRulesOffThread()]);
     if (generation !== blockedHostsGeneration) return;
     const next = new Set(TRACKER_HOSTS);
     for (const host of hosts) next.add(host);
     blockedHostSet = next;
+    cookieBannerRules = rules;
+    applyCosmeticAll();
   } catch (error) { log("filter lists unavailable:", String(error)); }
 }
 void refreshBlockedHosts();
 /** Re-apply cosmetic filtering to open pages after toggle/allow changes. */
 export function applyCosmeticAll() {
   for (const entry of registry.all()) {
-    try { applyCosmetic(entry.view.webContents, privacy.trackerBlock && !trackersAllowed(new URL(entry.view.webContents.getURL()).hostname)); }
+    try {
+      const host = new URL(entry.view.webContents.getURL()).hostname;
+      applyCosmetic(entry.view.webContents, privacy.trackerBlock && !trackersAllowed(host), cookieSelectors(host));
+    }
     catch { /* page mid-navigation */ }
   }
 }

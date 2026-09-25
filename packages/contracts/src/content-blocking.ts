@@ -2,12 +2,49 @@
 export const MAX_FILTER_BYTES = 16 * 1024 * 1024;
 export const MAX_FILTER_HOSTS = 400_000;
 export const MAX_FILTER_SOURCES = 20;
+export const MAX_COOKIE_SELECTORS = 10_000;
+export type FilterSourceKind = "hosts" | "cookie_banner";
 
 export interface FilterSourceDefinition {
   id: string;
   name: string;
   url: string;
   enabled: boolean;
+  kind: FilterSourceKind;
+}
+
+export interface CookieBannerRule { domains: string[]; selector: string }
+
+/** A deliberately small cosmetic subset. Scriptlets, procedural rules and arbitrary CSS are ignored. */
+export function parseCookieBannerList(text: string, maxRules = 10_000): CookieBannerRule[] {
+  // Self-contained because the desktop parses downloaded lists in a worker.
+  const HOST = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+$/;
+  const SAFE = /^(?:[.#][a-zA-Z][\w-]*|\[data-[a-zA-Z][\w-]*(?:[~|^$*]?=["']?[a-zA-Z0-9_ -]{1,80}["']?)?\])(?:\s*(?:>|\s)\s*(?:[.#][a-zA-Z][\w-]*|\[data-[a-zA-Z][\w-]*(?:[~|^$*]?=["']?[a-zA-Z0-9_ -]{1,80}["']?)?\])){0,3}$/;
+  const rules: CookieBannerRule[] = [];
+  const seen = new Set<string>();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("!") || line.startsWith("# ") || line.length > 512) continue;
+    const marker = line.indexOf("##");
+    if (marker < 0 || line.includes("#@#") || line.includes("#$#") || line.includes("#?#")) continue;
+    const scope = line.slice(0, marker).trim().toLowerCase();
+    const selector = line.slice(marker + 2).trim();
+    if (!selector || selector.length > 300 || !SAFE.test(selector) || /[{};\\]|url\s*\(|:has\s*\(/i.test(selector)) continue;
+    const domains = scope ? scope.split(",") : [];
+    if (domains.some(domain => !HOST.test(domain))) continue;
+    const key = `${scope}##${selector}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rules.push({ domains, selector });
+    if (rules.length >= maxRules) break;
+  }
+  return rules;
+}
+
+export function cookieSelectorsForSite(rules: readonly CookieBannerRule[], siteHost: string): string[] {
+  const host = siteHost.toLowerCase();
+  return rules.filter(rule => rule.domains.length === 0 || rule.domains.some(domain => host === domain || host.endsWith(`.${domain}`)))
+    .map(rule => rule.selector);
 }
 
 /** Exact HTTPS source URL; embedded credentials and local literal targets are rejected. */
@@ -85,6 +122,36 @@ export interface ChromiumContentBlockReceipt {
 }
 export interface ChromiumContentBlockPort {
   apply(snapshot: ContentBlockSnapshot): Promise<ChromiumContentBlockReceipt>;
+}
+/** Future native cosmetic application is scoped to a profile and navigation generation. */
+export interface ChromiumCookieBannerSnapshot {
+  profileId: string;
+  private: boolean;
+  generation: number;
+  rulesDigest: string;
+  rules: readonly CookieBannerRule[];
+  allowedSiteHosts: readonly string[];
+  enabled: boolean;
+}
+export interface ChromiumCookieBannerReceipt {
+  backend: "isolated_world_stylesheet";
+  profileId: string;
+  private: boolean;
+  generation: number;
+  rulesDigest: string;
+  installedRules: number;
+}
+export interface ChromiumCookieBannerPort {
+  apply(snapshot: ChromiumCookieBannerSnapshot): Promise<ChromiumCookieBannerReceipt>;
+}
+export function assertCookieBannerReceipt(snapshot: ChromiumCookieBannerSnapshot, receipt: ChromiumCookieBannerReceipt): void {
+  if (!snapshot.profileId || !Number.isSafeInteger(snapshot.generation) || snapshot.generation < 1 ||
+      !/^[a-f0-9]{64}$/.test(snapshot.rulesDigest) || snapshot.rules.length > MAX_COOKIE_SELECTORS ||
+      receipt.backend !== "isolated_world_stylesheet" || receipt.profileId !== snapshot.profileId ||
+      receipt.private !== snapshot.private || receipt.generation !== snapshot.generation ||
+      receipt.rulesDigest !== snapshot.rulesDigest || !Number.isSafeInteger(receipt.installedRules) ||
+      receipt.installedRules < 0 || (snapshot.enabled && snapshot.rules.length > 0 && receipt.installedRules === 0))
+    throw new Error("Chromium did not attest the reviewed cookie-banner snapshot.");
 }
 export function assertContentBlockReceipt(snapshot: ContentBlockSnapshot, receipt: ChromiumContentBlockReceipt): void {
   if (!Number.isSafeInteger(snapshot.generation) || snapshot.generation < 1 ||

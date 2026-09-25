@@ -218,7 +218,7 @@ const aux = {
   removeAllowedHost: (hostname: string) => ipcRenderer.invoke("app.removeAllowedHost", hostname) as Promise<string[]>,
   filterLists: () => ipcRenderer.invoke("app.filterLists"),
   updateFilters: () => ipcRenderer.invoke("app.updateFilters"),
-  addFilterSource: (name: string, url: string) => ipcRenderer.invoke("app.addFilterSource", name, url),
+  addFilterSource: (name: string, url: string, kind: "hosts" | "cookie_banner" = "hosts") => ipcRenderer.invoke("app.addFilterSource", name, url, kind),
   removeFilterSource: (id: string) => ipcRenderer.invoke("app.removeFilterSource", id),
   setFilterSourceEnabled: (id: string, enabled: boolean) => ipcRenderer.invoke("app.setFilterSourceEnabled", id, enabled),
   proceedInsecure: (url: string) => ipcRenderer.invoke("app.proceedInsecure", url) as Promise<boolean>,

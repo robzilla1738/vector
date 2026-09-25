@@ -20,6 +20,7 @@ const source = {
   name: "Research list",
   url: "https://lists.example.test/hosts",
   enabled: true,
+  kind: "hosts" as const,
   meta: { fetchedAt: 1000, hosts: 2, sha256: "b".repeat(64) },
 };
 
@@ -59,6 +60,7 @@ it("requires review before adding a source and lets the user pause it", async ()
   api.filterLists.mockImplementation(async () => ({
     sources,
     hosts: sources.length ? 2 : 0,
+    cookieSelectors: 0,
     builtinHosts: 50,
     backend: "electron_web_request",
   }));
@@ -79,7 +81,7 @@ it("requires review before adding a source and lets the user pause it", async ()
   expect(container.textContent).toContain("The source sees this browser's network address.");
   await act(async () => button("Add selected list").click());
   await flush();
-  expect(api.addFilterSource).toHaveBeenCalledWith("Research list", source.url);
+  expect(api.addFilterSource).toHaveBeenCalledWith("Research list", source.url, "hosts");
   await act(async () => button("Pause list").click());
   await flush();
   expect(api.setFilterSourceEnabled).toHaveBeenCalledWith(source.id, false);
@@ -87,10 +89,25 @@ it("requires review before adding a source and lets the user pause it", async ()
 });
 
 it("states preview limits and disables filter mutations", async () => {
-  api.filterLists.mockResolvedValue({ sources: [], hosts: 0, builtinHosts: 0, backend: "preview" });
+  api.filterLists.mockResolvedValue({ sources: [], hosts: 0, cookieSelectors: 0, builtinHosts: 0, backend: "preview" });
   await act(async () => root.render(<FilterListManager />));
   await flush();
   expect(container.textContent).toContain("no requests are blocked here");
   expect(button("Review list").hasAttribute("disabled")).toBe(true);
   expect(api.addFilterSource).not.toHaveBeenCalled();
+});
+
+it("reviews cookie-banner type before adding and describes the cosmetic scope", async () => {
+  api.filterLists.mockResolvedValue({ sources: [], hosts: 0, cookieSelectors: 0, builtinHosts: 50,
+    backend: "electron_web_request" });
+  api.addFilterSource.mockResolvedValue([]);
+  await act(async () => root.render(<FilterListManager />));
+  await flush();
+  const select = container.querySelector<HTMLSelectElement>('[aria-label="Filter list type"]')!;
+  await act(async () => { select.value = "cookie_banner"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  write("Filter list URL", "https://lists.example.test/cookies.txt");
+  act(() => button("Review list").click());
+  expect(container.textContent).toContain("hide cookie banners on matching sites");
+  await act(async () => button("Add selected list").click());
+  expect(api.addFilterSource).toHaveBeenCalledWith("lists.example.test", "https://lists.example.test/cookies.txt", "cookie_banner");
 });
