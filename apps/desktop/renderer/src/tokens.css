@@ -3,7 +3,7 @@
  */
 
 /* tokens.css loads first, so it owns the cascade order for both stylesheets. */
-@layer reset, tokens, base, components, overrides;
+@layer reset, tokens, base, components, refinements, overrides;
 
 @layer tokens {
 :root {

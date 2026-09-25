@@ -1,0 +1,59 @@
+@layer components {
+/* ---------- stage ---------- */
+.stage-wrap { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); position: relative; padding: 0; min-width: 0; }
+.app.layout-hidden .stage-wrap, .app.layout-rail .stage-wrap { padding-top: 0; }
+.stage-card {
+  flex: 1;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+  position: relative;
+  background: var(--bg-0);
+  overflow: hidden;
+  transition: box-shadow var(--t-fast) var(--ease-out);
+}
+.stage-card.has-page { background: var(--stage-bg); border-radius: var(--r-card); }
+#stage { position: absolute; inset: 0; }
+.stage-progress { position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 3; opacity: 0; overflow: hidden; transition: opacity var(--t-fast) var(--ease-out); pointer-events: none; }
+.stage-progress::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 32%; border-radius: 1px; background: var(--ink-0); animation: sweep var(--t-sweep) var(--ease-in-out) infinite; }
+.stage-card.loading .stage-progress { opacity: 1; }
+.stage-message { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-7); background: var(--bg-0); }
+.empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); max-width: 26rem; }
+.empty-ico { width: var(--row-h-lg); height: var(--row-h-lg); border-radius: var(--r-xl); display: grid; place-items: center; background: var(--bg-2); color: var(--ink-1); box-shadow: var(--line-inset); margin-bottom: var(--space-2); }
+.empty-ico .ci { width: var(--ico-lg); height: var(--ico-lg); }
+.empty-ico.err { color: var(--err); background: var(--err-soft); }
+.empty-state h2 { font-size: var(--fs-xl); font-weight: var(--fw-medium); letter-spacing: var(--tracking-tight); color: var(--ink-0); text-wrap: balance; }
+.empty-state p { font-size: var(--fs-md); color: var(--ink-1); line-height: var(--lh-relaxed); text-wrap: pretty; }
+.empty-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* mock page (browser preview only) */
+.mock-page { position: absolute; inset: 0; background: #fff; color: #1a1a1e; overflow: hidden; font-family: var(--font-ui); }
+[data-theme="dark"] .mock-page { background: #fbfbfc; }
+.mp-nav { display: flex; align-items: center; gap: var(--space-5); height: 56px; padding: 0 var(--space-8); border-bottom: 1px solid #ececf1; }
+.mp-logo { width: 26px; height: 26px; border-radius: var(--r-md); background: #1a1a1e; }
+.mp-navtext { height: 10px; border-radius: var(--r-sm); background: #e4e4ea; }
+.mp-sp { flex: 1; }
+.mp-avatar { width: 28px; height: 28px; border-radius: 50%; background: #d9d9e2; }
+.mp-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 48px; padding: var(--space-8); max-width: 1180px; margin: 0 auto; }
+.mp-crumb { font-size: var(--fs-xs); color: #8a8a93; margin-bottom: var(--space-3-5); }
+.mp-h1 { font-size: var(--fs-3xl); font-weight: var(--fw-medium); letter-spacing: var(--tracking-tight); line-height: 1.15; margin-bottom: var(--space-3-5); color: #1a1a1e; }
+.mp-meta { display: flex; gap: var(--space-3); margin-bottom: var(--space-6); }
+.mp-meta span { height: 10px; border-radius: var(--r-sm); background: #ececf1; }
+.mp-hero { aspect-ratio: 21 / 9; border-radius: var(--r-lg); background: #ececea; margin-bottom: 26px; }
+.mp-line { height: 11px; border-radius: var(--r-sm); background: #e8e8ee; margin-bottom: var(--space-3); }
+.mp-cards { display: grid; gap: 18px; margin-top: 26px; }
+.mp-card { border: 1px solid #ececf1; border-radius: var(--r-lg); padding: var(--space-3-5); }
+.mp-card-img { aspect-ratio: 16 / 10; border-radius: var(--r-md); background: #eef0f6; margin-bottom: var(--space-3); }
+.mp-side { padding-top: var(--space-8); }
+.mp-btn { height: 36px; border-radius: var(--r-control); background: #1a1a1e; margin-top: var(--space-2); }
+@media (max-width: 1100px) { .mp-body { grid-template-columns: 1fr; } .mp-side { display: none; } }
+
+/* ---------- start page ---------- */
+.start-inner {
+  position: relative; max-width: 640px; margin: 0 auto;
+  padding: min(16vh, 120px) var(--space-7) var(--space-8);
+  display: flex; flex-direction: column; gap: var(--space-7);
+}
+
+
+}

@@ -1,3 +1,4 @@
+import "./Downloads.css";
 import { useEffect, useRef, useState } from "react";
 import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";

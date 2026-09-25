@@ -1,0 +1,58 @@
+/*
+ * Aux shell — component styles. Tokens live in tokens.css; nothing here
+ * should introduce a literal colour, radius, or duration.
+ *
+ * Layout:  .app ▸ [.degraded] / .app-body ▸ .sidebar | .main-col ▸ [.toolbar if sidebar hidden] / .main ▸ .stage-wrap ▸ .stage-card | .rail
+ *
+ * Layers (order declared in tokens.css): reset · tokens · base (element
+ * selectors only) · components · overrides (reduced motion, reduced
+ * transparency, increased contrast). Define each selector once per context.
+ */
+
+@layer reset {
+html, body, #root { height: 100%; margin: 0; }
+html { color-scheme: inherit; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+  font-optical-sizing: auto;
+  font-synthesis: none;
+  line-height: var(--lh-normal);
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink-0);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+}
+} /* @layer reset */
+
+@layer base {
+output[data-block] { display: block; }
+::selection { background: var(--selection); }
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: default; letter-spacing: inherit; }
+input, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+input, textarea { cursor: text; }
+a { color: var(--accent); }
+h1, h2, h3, p { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+img { display: block; }
+
+/* overlay scrollbars — thin, only on hover */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; box-sizing: border-box; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: var(--r-pill); border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+kbd {
+  font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: var(--fw-regular); line-height: 1;
+  color: var(--ink-2); background: var(--bg-3); border-radius: var(--r-xs); padding: var(--space-0) var(--space-1);
+  min-width: var(--badge-h); text-align: center; box-shadow: var(--line-inset); flex: none; white-space: nowrap;
+}
+::highlight(aux-conversation-matches) { background: var(--find-match); color: inherit; }
+::highlight(aux-conversation-active) { background: var(--find-active); color: var(--find-active-ink); }
+::highlight(aux-reader-matches) { background: var(--find-match); color: inherit; }
+::highlight(aux-reader-active) { background: var(--find-active); color: var(--find-active-ink); }
+} /* @layer base */

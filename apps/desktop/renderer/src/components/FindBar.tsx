@@ -1,3 +1,4 @@
+import "./FindBar.css";
 import { conversationFinder, readerFinder } from "../text-surface-find";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore, call } from "../store";

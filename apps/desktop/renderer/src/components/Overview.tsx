@@ -1,3 +1,4 @@
+import "./Overview.css";
 import { TabCardCaption } from "./TabCardCaption";
 import { duplicateTabs, protectedDuplicateIds } from "../duplicate-tabs";
 import { useEffect, useRef, useState } from "react";

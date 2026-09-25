@@ -1,3 +1,4 @@
+import "./Palette.css";
 import { SearchResultRow } from "./SearchResultRow";
 import { conversationDraftEntries } from "../conversation-drafts";
 import type { PreparedConversation, SavedResult, ConversationSummary, HistoryEntry, Task, Routine } from "@aux/contracts";
