@@ -1,5 +1,6 @@
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
+import { MemoryPipeline } from "./services/memory-pipeline.js";
 /**
  * Aux runtime entry point.
  *
@@ -192,6 +193,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const vault = new VaultService(repo, native);
   const contentMemory = native.available() && env.AUX_BROWSER_PROFILE_ID
     ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events) : undefined;
+  const memoryPipeline = native.available() && env.AUX_BROWSER_PROFILE_ID
+    ? new MemoryPipeline(repo, native, join(config.dataDir, "space-memory"), env.AUX_BROWSER_PROFILE_ID) : undefined;
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
   const pages = new PageService({
@@ -298,8 +301,26 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     vault,
     calendar,
     contentMemory,
+    memoryPipeline,
     operations,
     durableWrites,
+  });
+
+  const extractingRuns = new Set<string>();
+  events.subscribe(event => {
+    if (event.type !== EventTypes.RunUpdated || !memoryPipeline) return;
+    const run = event.payload.run;
+    if (!run || typeof run !== "object" || !("status" in run) || run.status !== "completed" ||
+      !("runId" in run) || typeof run.runId !== "string" || extractingRuns.has(run.runId)) return;
+    const workspaceId = "config" in run && run.config && typeof run.config === "object" &&
+      "contextWorkspaceId" in run.config ? run.config.contextWorkspaceId : undefined;
+    if (typeof workspaceId !== "string" || !memoryPipeline.policy(workspaceId).enabled) return;
+    const runId = run.runId;
+    extractingRuns.add(runId);
+    void memoryPipeline.extractRun(workspaceId, runId).then(result => {
+      if (result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
+    }).catch(() => events.emit("memory.pipeline.failed", { workspaceId, runId }))
+      .finally(() => extractingRuns.delete(runId));
   });
 
   events.subscribe((e) => {
@@ -345,6 +366,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
     native,
     contentMemory,
+    memoryPipeline,
     checkpointDeletedData: () => privacyCheckpoint.request(),
     pages,
     sets,

@@ -12,6 +12,8 @@ export const OutboundMcpServerSchema = z.object({
   createdAt: z.number(), updatedAt: z.number(),
 });
 export const OutboundMcpRegisterParams = OutboundMcpServerSchema.pick({ workspaceId: true, name: true, source: true });
+export const OutboundMcpBundleInspectionSchema = z.object({ path: z.string(), sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  format: z.enum(["mcpb", "dxt"]), name: z.string().max(200), server: z.record(z.string(), z.unknown()) });
 export const OutboundMcpGrantSchema = z.object({
   grantId: z.string().uuid(), serverId: z.string().uuid(), toolName: z.string().min(1).max(200),
   scope: z.discriminatedUnion("kind", [

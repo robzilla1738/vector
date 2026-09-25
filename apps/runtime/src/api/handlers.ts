@@ -53,6 +53,7 @@ import { authorizeProgram } from "../agent/permissions.js";
 import { AgentTurnTabs } from "../agent/turn-tabs.js";
 import { siteExportUrl } from "../agent/site-adapters.js";
 import { OutboundMcpService, type McpTransportProvider } from "../services/outbound-mcp.js";
+import type { MemoryPipeline } from "../services/memory-pipeline.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -71,6 +72,7 @@ export interface Services {
   calendar?: CalendarConnectionService;
   native?:NativeBridge;
   contentMemory?: ContentMemoryStore;
+  memoryPipeline?: MemoryPipeline;
   checkpointDeletedData?: () => void;
   vault?: VaultService;
   routines?: RoutineService;
@@ -419,6 +421,7 @@ export function makeInvoker(s: Services) {
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
         return s.agentConnections.revoke(params.connectionId);
       case "mcp.servers.register":
+      case "mcp.bundles.inspect":
       case "mcp.servers.list":
       case "mcp.servers.approve":
       case "mcp.servers.revoke":
@@ -427,7 +430,8 @@ export function makeInvoker(s: Services) {
       case "mcp.grants.list":
       case "mcp.grants.revoke":
       case "mcp.tools.call": {
-        if (client.external) throw new AuxError("permission_denied", "MCP connections are managed in Aux.");
+        if (client.external || client.codeMode) throw new AuxError("permission_denied", "MCP connections are managed in Aux.");
+        if (method === "mcp.bundles.inspect") return outboundMcp.inspectBundle(params.path);
         if (method === "mcp.servers.register") return outboundMcp.register(params);
         if (method === "mcp.servers.list") return outboundMcp.list(params.workspaceId);
         if (method === "mcp.servers.approve") return outboundMcp.approve(params.serverId, params.expectedDigest);
@@ -526,6 +530,25 @@ export function makeInvoker(s: Services) {
       case "workspaces.memory.search":
         if(client.external)throw new AuxError("permission_denied","Search Space memory in Aux.");
         return tasks.searchWorkspaceMemory(params.query);
+      case "memory.pipeline.policy":
+      case "memory.pipeline.setPolicy":
+      case "memory.pipeline.extractRun":
+      case "memory.pipeline.overview":
+      case "memory.pipeline.search":
+      case "memory.pipeline.forget": {
+        if (client.external || client.codeMode) throw new AuxError("permission_denied", "Space memory is managed in Aux.");
+        const pipeline = s.memoryPipeline;
+        if (!pipeline) throw new AuxError("backend_unavailable", "Protected Space memory requires the Aux desktop app.");
+        if (method === "memory.pipeline.policy") return pipeline.policy(params.workspaceId);
+        if (method === "memory.pipeline.setPolicy") return pipeline.setPolicy(params.workspaceId, params.enabled);
+        if (method === "memory.pipeline.extractRun") return pipeline.extractRun(params.workspaceId, params.runId);
+        if (method === "memory.pipeline.overview") return pipeline.overview(params.workspaceId);
+        if (method === "memory.pipeline.search") return pipeline.search(params.workspaceId, params.query);
+        const result = await pipeline.forget(params);
+        revokeWorkspaceContext(params.workspaceId, false);
+        s.events.emit("workspace.memory.updated", { workspaceId: params.workspaceId });
+        return result;
+      }
       case "workspaces.browsingMemory.get":
       case "workspaces.browsingMemory.set":
       case "workspaces.browsingMemory.record":

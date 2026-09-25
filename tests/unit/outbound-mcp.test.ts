@@ -55,6 +55,7 @@ it("inspects a bundle as inert data and pins its exact bytes", async () => {
     const bundle = join(directory, "example.mcpb");
     execFileSync("/usr/bin/zip", ["-q", bundle, "manifest.json"], { cwd: directory });
     const sha256 = createHash("sha256").update(readFileSync(bundle)).digest("hex");
+    expect(await f.service.inspectBundle(bundle)).toMatchObject({ path: bundle, sha256, format: "mcpb", name: "Example" });
     const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "bundle",
       source: { kind: "bundle", path: bundle, sha256, format: "mcpb" } });
     expect(server.state).toBe("pending");

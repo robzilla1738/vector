@@ -24,7 +24,11 @@ export class OutboundMcpService {
     const input = OutboundMcpRegisterParams.parse(raw);
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(input.workspaceId))
       throw new AuxError("not_found", "Space does not exist");
-    if (input.source.kind === "bundle") await this.inspectBundle(input.source.path, input.source.sha256, input.source.format);
+    if (input.source.kind === "bundle") {
+      const inspected = await this.inspectBundle(input.source.path);
+      if (inspected.sha256 !== input.source.sha256 || inspected.format !== input.source.format)
+        throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
+    }
     const now = Date.now();
     const server = OutboundMcpServerSchema.parse({ ...input, serverId: randomUUID(), state: "pending",
       sourceDigest: createHash("sha256").update(JSON.stringify(input.source)).digest("hex"), createdAt: now, updatedAt: now });
@@ -33,13 +37,13 @@ export class OutboundMcpService {
     return server;
   }
 
-  private async inspectBundle(path: string, expectedSha: string, format: "mcpb" | "dxt") {
-    if (!path.toLowerCase().endsWith(`.${format}`)) throw new AuxError("invalid_params", "Bundle extension does not match its format.");
+  async inspectBundle(path: string) {
+    const format = path.toLowerCase().endsWith(".mcpb") ? "mcpb" : path.toLowerCase().endsWith(".dxt") ? "dxt" : null;
+    if (!format) throw new AuxError("invalid_params", "Choose a .mcpb or .dxt bundle.");
     const info = await stat(path);
     if (!info.isFile() || info.size > 20_000_000) throw new AuxError("invalid_params", "Bundle must be a regular file under 20 MB.");
     const bytes = await readFile(path);
-    if (createHash("sha256").update(bytes).digest("hex") !== expectedSha)
-      throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
     let manifest: unknown;
     try {
       const { stdout } = await runFile("/usr/bin/unzip", ["-p", path, "manifest.json"], { timeout: 5000, maxBuffer: 131_072 });
@@ -47,8 +51,13 @@ export class OutboundMcpService {
     } catch { throw new AuxError("invalid_params", "Bundle has no valid manifest.json."); }
     if (!manifest || typeof manifest !== "object" || Array.isArray(manifest) ||
       typeof (manifest as Record<string, unknown>).name !== "string" ||
-      typeof (manifest as Record<string, unknown>).server !== "object")
+      !((manifest as Record<string, unknown>).server instanceof Object) ||
+      Array.isArray((manifest as Record<string, unknown>).server))
       throw new AuxError("invalid_params", "Bundle manifest is incomplete.");
+    if (createHash("sha256").update(await readFile(path)).digest("hex") !== sha256)
+      throw new AuxError("conflict", "Bundle contents changed during inspection.");
+    return { path, sha256, format, name: String((manifest as Record<string, unknown>).name).slice(0, 200),
+      server: (manifest as Record<string, unknown>).server as Record<string, unknown> };
   }
 
   get(serverId: string): OutboundMcpServer {
