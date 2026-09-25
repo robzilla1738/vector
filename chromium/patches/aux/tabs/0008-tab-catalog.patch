@@ -92,12 +92,94 @@ index 6d7f7697bb..a1e13494fd 100644
    ]
    frameworks = [ "Security.framework" ]
  }
+diff --git a/chrome/browser/ui/aux/page_identity.cc b/chrome/browser/ui/aux/page_identity.cc
+index 5b3dbffd2e..b5dce06297 100644
+--- a/chrome/browser/ui/aux/page_identity.cc
++++ b/chrome/browser/ui/aux/page_identity.cc
+@@ -17,6 +17,22 @@ namespace {
+ 
+ constexpr char kPageIdExtraDataKey[] = "aux.page_id";
+ 
++bool IsValidPageId(const std::string& id) {
++  if (base::Uuid::ParseLowercase(id).is_valid()) {
++    return true;
++  }
++  if (id.size() < 8 || id.size() > 128 || id.rfind("p_", 0) != 0) {
++    return false;
++  }
++  for (char character : id) {
++    if ((character < 'a' || character > 'z') &&
++        (character < '0' || character > '9') && character != '_') {
++      return false;
++    }
++  }
++  return true;
++}
++
+ }  // namespace
+ 
+ PageIdentity::PageIdentity(content::WebContents* contents, std::string id)
+@@ -37,6 +53,27 @@ std::string PageIdentity::GetOrCreate(Profile* profile,
+   return identity->id();
+ }
+ 
++bool PageIdentity::IsValid(const std::string& id) {
++  return IsValidPageId(id);
++}
++
++bool PageIdentity::Assign(Profile* profile,
++                          content::WebContents* contents,
++                          const std::string& id) {
++  if (!contents || !IsValidPageId(id)) {
++    return false;
++  }
++  if (auto* identity = FromWebContents(contents)) {
++    identity->id_ = id;
++    identity->persisted_ = false;
++    identity->Persist(profile, contents);
++  } else {
++    CreateForWebContents(contents, id);
++    FromWebContents(contents)->Persist(profile, contents);
++  }
++  return true;
++}
++
+ void PageIdentity::Persist(Profile* profile, content::WebContents* contents) {
+   if (persisted_ || !profile || profile->IsOffTheRecord()) {
+     return;
+@@ -68,9 +105,8 @@ void PageIdentity::RestoreFromExtraData(
+   if (entry == extra_data.end() || FromWebContents(contents)) {
+     return;
+   }
+-  base::Uuid id = base::Uuid::ParseLowercase(entry->second);
+-  if (id.is_valid()) {
+-    CreateForWebContents(contents, id.AsLowercaseString());
++  if (IsValidPageId(entry->second)) {
++    CreateForWebContents(contents, entry->second);
+   }
+ }
+ 
+diff --git a/chrome/browser/ui/aux/page_identity.h b/chrome/browser/ui/aux/page_identity.h
+index dfc63859e9..db698bd0f4 100644
+--- a/chrome/browser/ui/aux/page_identity.h
++++ b/chrome/browser/ui/aux/page_identity.h
+@@ -29,6 +29,10 @@ class PageIdentity : public content::WebContentsUserData<PageIdentity> {
+ 
+   static std::string GetOrCreate(Profile* profile,
+                                  content::WebContents* contents);
++  static bool IsValid(const std::string& id);
++  static bool Assign(Profile* profile,
++                     content::WebContents* contents,
++                     const std::string& id);
+   static void Transfer(content::WebContents* from, content::WebContents* to);
+   static void RestoreFromExtraData(
+       content::WebContents* contents,
 diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
 new file mode 100644
-index 0000000000..b93ce1365a
+index 0000000000..1d3af44ce7
 --- /dev/null
 +++ b/chrome/browser/ui/aux/tab_catalog.cc
-@@ -0,0 +1,454 @@
+@@ -0,0 +1,482 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -108,6 +190,8 @@ index 0000000000..b93ce1365a
 +#include <memory>
 +#include <utility>
 +
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
 +#include "base/json/json_writer.h"
 +#include "base/no_destructor.h"
 +#include "base/strings/string_number_conversions.h"
@@ -223,6 +307,10 @@ index 0000000000..b93ce1365a
 +}
 +
 +void TabCatalog::Changed() {
++  if (executing_command_) {
++    pending_change_ = true;
++    return;
++  }
 +  const int previous_version = version_;
 +  ++version_;
 +  base::Value::Dict snapshot = Snapshot();
@@ -261,6 +349,14 @@ index 0000000000..b93ce1365a
 +  patch.Set("ts", static_cast<double>(NowMs()));
 +  if (auto json = base::WriteJson(patch)) {
 +    observers_.Notify(*json);
++  }
++}
++
++void TabCatalog::FinishCommand() {
++  executing_command_ = false;
++  if (pending_change_) {
++    pending_change_ = false;
++    Changed();
 +  }
 +}
 +
@@ -436,9 +532,18 @@ index 0000000000..b93ce1365a
 +  if (!kind) {
 +    return Reject(command_id, "invalid_params", "Missing tab command kind");
 +  }
++  executing_command_ = true;
++  base::ScopedClosureRunner finish_command(
++      base::BindOnce(&TabCatalog::FinishCommand, base::Unretained(this)));
 +  TabStripModel* model = issuer->GetTabStripModel();
 +  std::string result_page_id;
 +  if (*kind == "open") {
++    const std::string* requested_id = command.FindString("pageId");
++    if (requested_id &&
++        (!PageIdentity::IsValid(*requested_id) || FindPage(*requested_id))) {
++      return Reject(command_id, "invalid_params",
++                    "Requested page ID is invalid or already in use");
++    }
 +    const std::string* url_text = command.FindString("url");
 +    const GURL url(url_text ? *url_text : "");
 +    if (url_text && !url_text->empty() && !url.is_valid()) {
@@ -456,7 +561,11 @@ index 0000000000..b93ce1365a
 +    for (int index = 0; index < model->count(); ++index) {
 +      content::WebContents* candidate = model->GetWebContentsAt(index);
 +      if (!before.contains(candidate)) {
++        if (requested_id) {
++          PageIdentity::Assign(profile_, candidate, *requested_id);
++        }
 +        result_page_id = PageIdentity::GetOrCreate(profile_, candidate);
++        Changed();
 +        break;
 +      }
 +    }
@@ -537,6 +646,7 @@ index 0000000000..b93ce1365a
 +      return Reject(command_id, "not_found", "Unsupported tab command");
 +    }
 +  }
++  finish_command.RunAndReset();
 +  base::Value::Dict ack;
 +  ack.Set("commandId", command_id);
 +  ack.Set("status", "applied");
@@ -554,10 +664,10 @@ index 0000000000..b93ce1365a
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
 new file mode 100644
-index 0000000000..938a63f232
+index 0000000000..5ef51e0d46
 --- /dev/null
 +++ b/chrome/browser/ui/aux/tab_catalog.h
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,98 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -628,6 +738,7 @@ index 0000000000..938a63f232
 +  void ObserveBrowser(BrowserWindowInterface* browser);
 +  void ForgetBrowser(BrowserWindowInterface* browser);
 +  void Changed();
++  void FinishCommand();
 +  std::string WindowId(const BrowserWindowInterface* browser) const;
 +  base::Value::Dict TabRecord(BrowserWindowInterface* browser,
 +                              content::WebContents* contents);
@@ -648,6 +759,8 @@ index 0000000000..938a63f232
 +  std::set<std::string> published_pages_;
 +  base::RepeatingCallbackList<void(const std::string&)> observers_;
 +  int version_ = 0;
++  bool executing_command_ = false;
++  bool pending_change_ = false;
 +};
 +
 +}  // namespace aux
