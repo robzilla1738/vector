@@ -12,7 +12,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const flags = new Map();
@@ -57,6 +57,10 @@ const signingScript = existsSync(input)
   : undefined;
 const app = join(input, "Aux.app");
 const runtimeHelper = join(app, "Contents", "Helpers", "Aux Runtime");
+const signingPackage = signingScript ? join(dirname(signingScript), "signing") : "";
+const runtimeEntitlementsPath = signingScript
+  ? join(dirname(signingScript), "aux-runtime-entitlements.plist")
+  : "";
 const argsPath = join(input, "args.gn");
 const args = existsSync(argsPath) ? readFileSync(argsPath, "utf8") : "";
 const blockers = [];
@@ -76,6 +80,14 @@ else if (process.platform === "darwin") {
   }
 }
 if (!existsSync(runtimeHelper)) blockers.push("bundled Contents/Helpers/Aux Runtime is missing");
+if (!runtimeEntitlementsPath || !existsSync(runtimeEntitlementsPath))
+  blockers.push("Chromium packaging lacks Aux Runtime JIT entitlements");
+if (
+  !signingPackage ||
+  !existsSync(join(signingPackage, "parts.py")) ||
+  !readFileSync(join(signingPackage, "parts.py"), "utf8").includes("'aux-runtime'")
+)
+  blockers.push("Chromium signing pipeline does not register Aux Runtime");
 if (!adhoc && !identity.startsWith("Developer ID Application: "))
   blockers.push("Developer ID signing identity must start with 'Developer ID Application: '");
 
