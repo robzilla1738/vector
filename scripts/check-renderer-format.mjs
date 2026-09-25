@@ -6,6 +6,9 @@ import { join } from "node:path";
 const root = fileURLToPath(new URL("../", import.meta.url));
 // Add files as their legacy formatting is converted. This is the B7 renderer ratchet.
 const files = [
+  "apps/desktop/renderer/src/voice-commands.ts",
+  "apps/desktop/renderer/src/voice-commands.test.ts",
+  "apps/desktop/renderer/src/components/Dictation.tsx",
   "apps/desktop/renderer/src/floating-sidebar.ts",
   "apps/desktop/renderer/src/floating-sidebar.test.tsx",
   "apps/desktop/renderer/src/toolbar-reveal.ts",
