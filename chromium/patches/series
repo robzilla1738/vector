@@ -27,3 +27,4 @@ aux/runtime/0026-profile-password-handoff.patch
 aux/runtime/0027-native-window-transfer.patch
 aux/runtime/0028-content-blocking.patch
 aux/runtime/0029-profile-searchbox.patch
+aux/runtime/0030-aux-result-isolation.patch
