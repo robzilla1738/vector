@@ -209,10 +209,10 @@ index 248245c8c9..fda61cd0cb 100644
    void OnRuntimeNote(std::string type, std::string payload_json);
 diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
 new file mode 100644
-index 0000000000..0e5cdc6273
+index 0000000000..7107918e26
 --- /dev/null
 +++ b/chrome/browser/ui/aux/zap_controller.cc
-@@ -0,0 +1,504 @@
+@@ -0,0 +1,509 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -435,6 +435,11 @@ index 0000000000..0e5cdc6273
 +  const std::string hash = *request.FindString("stylesheetSha256");
 +  const int revision = *request.FindInt("revision");
 +  const auto previous_it = policies_.find(origin);
++  if (previous_it == policies_.end() && !stylesheet.empty() &&
++      policies_.size() >= 100) {
++    std::move(callback).Run(Fault("Zap is limited to 100 Profile origins"));
++    return;
++  }
 +  if (previous_it != policies_.end() &&
 +      previous_it->second.revision > revision) {
 +    std::move(callback).Run(Fault("Zap policy revision is stale"));
