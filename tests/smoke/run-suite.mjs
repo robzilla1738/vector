@@ -24,7 +24,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 const DESIGN_SUITE = [
   "toolbar-glass-design", "floating-sidebar-design", "tab-preview-layout",
   "sidebar-sessions", "new-chat-design", "settings-design", "projects-design",
-  "tab-groups", "motion-design", "conversation-jump-design", "text-contrast-design",
+  "tab-groups", "motion-design", "conversation-jump-design", "text-contrast-design", "forced-colors-shell-design",
 ];
 const RELEASE_SUITE = [
   "runtime-recovery-desktop",

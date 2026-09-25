@@ -29,6 +29,7 @@ export function HorizontalTabs() {
   const [groupMenu, setGroupMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [spaceMenuOpen, setSpaceMenuOpen] = useState(false);
+  const spaceTrigger = useRef<HTMLButtonElement>(null);
   const [editingSpace, setEditingSpace] = useState<typeof layout.spaces[number] | "new" | null>(null);
   const [preview, setPreview] = useState<{ page: PageTarget; x: number; y: number } | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,7 +107,7 @@ export function HorizontalTabs() {
       </div>
       <div className="horizontal-tabs-spacer" />
       <div className="horizontal-space" data-space={space?.color}>
-        <button className="horizontal-profile" aria-label={`Switch space, current: ${space?.name ?? "Personal"}`} aria-haspopup="menu" aria-expanded={spaceMenuOpen} title="Switch space" onClick={() => setSpaceMenuOpen(open => !open)}>
+        <button ref={spaceTrigger} className="horizontal-profile" aria-label={`Switch space, current: ${space?.name ?? "Personal"}`} aria-haspopup="menu" aria-expanded={spaceMenuOpen} title="Switch space" onClick={() => setSpaceMenuOpen(open => !open)}>
           {I.person}<span className="horizontal-space-name">{space?.name ?? "Personal"}</span>{I.down}
         </button>
         {spaceMenuOpen && <SpaceMenu
@@ -125,7 +126,7 @@ export function HorizontalTabs() {
         />}
       </div>
     </div>
-    {editingSpace && <SpaceEditor space={editingSpace === "new" ? null : editingSpace} onClose={() => setEditingSpace(null)}
+    {editingSpace && <SpaceEditor space={editingSpace === "new" ? null : editingSpace} onClose={() => setEditingSpace(null)} returnFocus={spaceTrigger}
       onSave={(name, color, grain) => editingSpace === "new" ? useStore.getState().addSpace(name, color, grain) : useStore.getState().editSpace(editingSpace.id, name, color, grain)} />}
     {groupMenu && folders.some(folder => folder.id === groupMenu.id) && <FolderContextMenu group folder={folders.find(folder => folder.id === groupMenu.id)!} x={groupMenu.x} y={groupMenu.y} onClose={() => setGroupMenu(null)} onRename={() => setRenaming(groupMenu.id)} onDelete={() => { useStore.getState().deleteFolder(groupMenu.id); setGroupMenu(null); }} />}
     {preview && !groupMenu && !menu && pages.some(page => page.pageId === preview.page.pageId) && <TabPreview {...preview} page={pages.find(page => page.pageId === preview.page.pageId)!} />}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { bridge } from "../bridge";
 import { isScrimOverlay } from "../chrome";
 import { useStore } from "../store";
@@ -9,10 +9,12 @@ export default function SpaceEditor({
   space,
   onSave,
   onClose,
+  returnFocus,
 }: {
   space: Space | null;
   onSave: (name: string, color: SpaceColor, grain: number) => Promise<void>;
   onClose: () => void;
+  returnFocus?: RefObject<HTMLElement | null>;
 }) {
   const [name, setName] = useState(space?.name ?? "");
   const [color, setColor] = useState<SpaceColor>(space?.color ?? "violet");
@@ -43,7 +45,7 @@ export default function SpaceEditor({
     <NativeDialog
       label={space ? "Edit space" : "New space"}
       onClose={onClose}
-      returnFocus={previous}
+      returnFocus={returnFocus ?? previous}
       className="sheet pop-in"
     >
       <h3>{space ? "Edit space" : "New space"}</h3>

@@ -1,7 +1,7 @@
 import { useWindowDrag } from "../use-window-drag";
 import { ChatSessions } from "./ChatSessions";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
-import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
@@ -287,7 +287,7 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
 }
 
 const LazySpaceEditor = lazy(() => import("./SpaceEditor"));
-export function SpaceEditor(props: { space: Space | null; onSave: (name: string, color: SpaceColor, grain: number) => Promise<void>; onClose: () => void }) {
+export function SpaceEditor(props: { space: Space | null; onSave: (name: string, color: SpaceColor, grain: number) => Promise<void>; onClose: () => void; returnFocus?: RefObject<HTMLElement | null> }) {
   return <Suspense fallback={null}><LazySpaceEditor {...props} /></Suspense>;
 }
 
@@ -455,6 +455,7 @@ export const Sidebar = memo(function Sidebar() {
   const web = !!page && page.url.startsWith("http");
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const spaceTrigger = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState<Space | null | "new">(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const pinDrag = useRef<{ url: string; spaceId: string } | null>(null);
@@ -711,7 +712,7 @@ export const Sidebar = memo(function Sidebar() {
       </SidebarSection>
       <div className="sb-foot">
       <div className="sb-space">
-        <button className="space-switch" data-space={space.color} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
+        <button ref={spaceTrigger} className="space-switch" data-space={space.color} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
           <span className="space-ico">{I.person}</span>
           <span className="space-name">{space.name}</span>
         </button>
@@ -780,7 +781,7 @@ export const Sidebar = memo(function Sidebar() {
         {sidebarVisible && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
       </aside>
       {editing && (
-        <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
+        <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)} returnFocus={spaceTrigger}
           onSave={(name, color, grain) => (editing === "new" ? addSpace(name, color, grain) : editSpace(editing.id, name, color, grain))} />
       )}
       {pinCtx && <PinMenu {...pinCtx} onClose={() => setPinCtx(null)} />}
