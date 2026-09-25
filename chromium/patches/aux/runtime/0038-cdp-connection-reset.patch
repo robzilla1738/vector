@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -567,6 +567,13 @@
+   auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+   if (!catalog) {
+     return NativeFault("backend_unavailable", "Tab catalog is unavailable");
++  }
++  if (method == "native.cdpReset") {
++    if (!params.empty()) {
++      return NativeFault("invalid_argument", "CDP reset takes no arguments");
++    }
++    cdp_broker_->DetachAll();
++    return NativeResult(base::Value(base::DictValue()));
+   }
+   if (method == "native.cdpDispatch") {
+     const std::string* page_id = params.FindString("pageId");

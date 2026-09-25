@@ -73,6 +73,7 @@ export class NativeCdpBroker {
   private readonly pending = new Map<number, Pending>();
   private nextNativeId = 1;
   private client: WebSocket | null = null;
+  private nativeReset: Promise<void> = Promise.resolve();
   private refreshQueue: Promise<void> = Promise.resolve();
   private autoAttach = false;
   private discover = false;
@@ -125,12 +126,21 @@ export class NativeCdpBroker {
       return;
     }
     this.client = socket;
+    // Native protocol domains retain enabled state until the attachment is
+    // detached. A fresh Playwright client needs their initial state events.
+    const ready = this.resetNativeSessions();
+    void ready.catch(() => socket.close(1011, "Native CDP reset failed"));
     socket.on("message", (raw) => {
-      void this.handle(socket, String(raw));
+      void ready.then(() => {
+        if (socket === this.client) return this.handle(socket, String(raw));
+      }).catch(() => socket.close(1011, "Native CDP reset failed"));
     });
     socket.once("close", () => {
       if (this.client !== socket) return;
       this.client = null;
+      if (!this.closed) void this.resetNativeSessions().catch(() => {
+        // A later connection retries the reset before accepting any command.
+      });
       this.sessions.clear();
       this.childOwners.clear();
       this.autoAttachSessions.clear();
@@ -141,6 +151,13 @@ export class NativeCdpBroker {
       this.discover = false;
     });
   };
+
+  private resetNativeSessions(): Promise<void> {
+    this.nativeReset = this.nativeReset.catch(() => {}).then(async () => {
+      await this.channel.call("native.cdpReset", {});
+    });
+    return this.nativeReset;
+  }
 
   private send(payload: unknown): void {
     if (this.client?.readyState === WebSocket.OPEN) this.client.send(JSON.stringify(payload));

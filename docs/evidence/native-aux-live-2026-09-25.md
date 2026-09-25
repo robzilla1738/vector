@@ -105,3 +105,10 @@ After consolidating the bootstrap’s separate delivery/subscription allowlists 
 - **[Partial]** Abrupt restart must wait for Chromium's session checkpoint; the original test terminated before its 2.5-second write-behind could save navigation. The harness now checks for the fixture URL and identity in the session journal before terminating. This is persisted-session recovery, not qualification of the native Quit menu.
 - **[Failed]** With a persisted session, the runtime's first internal CDP connection timed out after 15 seconds and remained degraded. A 90-second diagnostic startup deadline did not recover it.
 - **[Implemented, pending live verification]** Retain the managed driver after initial connection failure and retry connection setup with capped backoff. This retries no browser actions. Shutdown cancels timers and drains an in-flight handshake before disconnecting. Three lifecycle tests and the runtime TypeScript build pass.
+
+### Native CDP attachment reset
+
+- **[Verified]** The revised runtime attempts recovery after initial failure. Under the official-build workload, the persisted-session journey still timed out while connecting; repeated private WebSocket connections were observed in the fixture log. Isolation still passed.
+- **[Verified]** The broker cleared JavaScript connection/session maps on disconnect but left native DevTools clients attached until the entire runtime channel closed. That retained enabled protocol-domain state across new Playwright clients.
+- **[Implemented, pending native staging]** Patch 0038 adds an authenticated, argument-free native.cdpReset operation. The runtime serializes native resets and waits before accepting commands from each new CDP client. Ordinary disconnects release native attachments. These changes must be staged together after the active official build; the developer app still carries the prior runtime/native pair.
+- **[Verified]** Broker tests cover reset ordering, stale-client isolation, private-socket Playwright connection and page/OOPIF routing. The runtime builds. Live restart recovery remains unqualified until patch 0038 is compiled and the updated runtime is staged.

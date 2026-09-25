@@ -15,11 +15,49 @@ const WebSocket = requireRuntime("ws") as new (url: string) => {
 };
 
 describe("Chromium native CDP facade", () => {
+  it("waits for native attachment reset before accepting protocol commands", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "aux-cdp-reset-"));
+    const [runtimeTransport, hostTransport] = memoryTransportPair();
+    const runtime = new RpcChannel(runtimeTransport, "runtime");
+    const host = new RpcChannel(hostTransport, "host");
+    let release!: () => void;
+    let started!: () => void;
+    const resetting = new Promise<void>(resolve => { started = resolve; });
+    let resets = 0;
+    host.onMethod("native.cdpReset", () => {
+      if (++resets > 1) return {};
+      started();
+      return new Promise<void>(resolve => { release = resolve; });
+    });
+    let versions = 0;
+    host.onMethod("native.cdpVersion", () => { versions++; return { version: "154.0.8037.58" }; });
+    const broker = await NativeCdpBroker.start(runtime, dir);
+    const client = new WebSocket(broker.endpoint());
+    try {
+      await new Promise<void>(resolve => client.on("open", () => resolve()));
+      await resetting;
+      const reply = new Promise<Record<string, unknown>>(resolve => client.on("message", raw => resolve(JSON.parse(String(raw)))));
+      client.send(JSON.stringify({ id: 1, method: "Browser.getVersion", params: {} }));
+      await new Promise(resolve => setTimeout(resolve, 20));
+      expect(versions).toBe(0);
+      release();
+      expect((await reply).id).toBe(1);
+      expect(versions).toBe(1);
+    } finally {
+      release?.();
+      client.terminate();
+      await broker.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+
   it("does not carry a disconnected client's target reply into a new connection", async () => {
     const dir = mkdtempSync(join(tmpdir(), "aux-cdp-reconnect-"));
     const [runtimeTransport, hostTransport] = memoryTransportPair();
     const runtime = new RpcChannel(runtimeTransport, "runtime");
     const host = new RpcChannel(hostTransport, "host");
+    host.onMethod("native.cdpReset", () => ({}));
     let releaseFirst!: (value: { pages: unknown[] }) => void;
     let markFirstStarted!: () => void;
     const firstSnapshot = new Promise<{ pages: unknown[] }>((resolve) => {
@@ -99,6 +137,7 @@ describe("Chromium native CDP facade", () => {
     const [runtimeTransport, hostTransport] = memoryTransportPair();
     const runtime = new RpcChannel(runtimeTransport, "runtime");
     const host = new RpcChannel(hostTransport, "host");
+    host.onMethod("native.cdpReset", () => ({}));
     host.onMethod("native.listPages", () => ({ pages: [] }));
     host.onMethod("native.cdpVersion", () => ({ version: "154.0.8037.58" }));
     const broker = await NativeCdpBroker.start(runtime, dir);
@@ -119,6 +158,7 @@ describe("Chromium native CDP facade", () => {
     const [runtimeTransport, hostTransport] = memoryTransportPair();
     const runtime = new RpcChannel(runtimeTransport, "runtime");
     const host = new RpcChannel(hostTransport, "host");
+    host.onMethod("native.cdpReset", () => ({}));
     const dispatched: { pageId: string; message: { id: number; method: string; sessionId?: string } }[] = [];
     let listCalls = 0;
     let pages = [
