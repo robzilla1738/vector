@@ -13,6 +13,7 @@ function setup() {
   useStore.setState({ pages, layout, activePageId:'middle', closedTabs:[], reopeningTab:false });
   vi.spyOn(bridge,'overlay').mockResolvedValue(true);
   vi.spyOn(bridge,'invoke').mockResolvedValue({} as never);
+  vi.spyOn(bridge,'bindTabSpace').mockImplementation(async (_pageId, spaceId) => ({ spaceId, workspaceId: `workspace:${spaceId}` }));
   return {pages,layout};
 }
 function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),type:'page.removed',ts:Date.now(),payload:{pageId}}); }

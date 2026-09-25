@@ -297,6 +297,8 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     const latest = pageId ? get().closedTabs.find(tab => tab.pageId === pageId) : get().closedTabs.at(-1);
     if (!latest || get().reopeningTab) return;
     const entries = (!pageId || group) && latest.groupId ? get().closedTabs.filter(tab => tab.groupId === latest.groupId).sort((a, b) => a.index - b.index) : [latest];
+    const selectionBefore = get().activePageId;
+    const spaceBefore = get().layout.activeSpaceId;
     let foreground: string | undefined;
     let lastOpened: string | undefined;
     set({ reopeningTab: true });
@@ -315,9 +317,10 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           get().syncBrowserSpaces(await call("spaces.update", { id: entry.spaceId, archived: false }));
         }
         const destinationSpace = get().layout.spaces.some(space => space.id === entry.spaceId) ? entry.spaceId : get().layout.activeSpaceId;
-        let page = entries.length > 1
-          ? await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId, entry.index)
-          : await get().newTab(entry.url, entry.pageId, entry.index);
+        // Reopen into the recorded Space at the catalog boundary. Opening in
+        // the current Space first lets a later catalog patch overwrite the
+        // restored placement after the renderer assigns it locally.
+        let page = await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId, entry.index);
         if (!page && entry.pageId && await awaitPage(entry.pageId)) {
           // The catalog acknowledged the open while its patch was still in
           // flight — the tab did land, it just wasn't visible yet.
@@ -345,8 +348,12 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           return { layout, closedTabs, splitPageId: splitForPage(layout, state.pages, state.activePageId) };
         });
       }
-      const focus = foreground ?? (entries.length > 1 ? lastOpened : undefined);
-      if (focus && get().pages.some(page => page.pageId === focus)) await get().activate(focus);
+      // Reopen Closed Tab is a foreground command even when the tab was
+      // closed from a background row. For a group, restore its prior active
+      // member when one exists; otherwise show the last reopened member.
+      const focus = foreground ?? lastOpened;
+      if (focus && get().activePageId === selectionBefore && get().layout.activeSpaceId === spaceBefore
+        && get().pages.some(page => page.pageId === focus)) await get().activate(focus);
     } catch (error) { errToast(error); }
     finally { set({ reopeningTab: false }); }
   },

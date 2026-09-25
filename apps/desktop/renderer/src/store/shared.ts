@@ -120,7 +120,8 @@ export function applyRemoval(st: Workspace, id: string, activeHint: string | nul
     ? [...st.closedTabs, {
       pageId: gone.pageId, url: gone.url, title: gone.title,
       spaceId: st.layout.tabSpace[id] ?? st.layout.activeSpaceId,
-      folderId: st.layout.tabFolder[id], index: Math.max(0, st.layout.order.indexOf(id)), closedAt: Date.now(), ...group,
+      folderId: st.layout.tabFolder[id], index: Math.max(0, st.layout.order.indexOf(id)),
+      closedAt: Date.now(), wasActive: st.activePageId === id, ...group,
     }].slice(-CLOSED_TAB_LIMIT) : st.closedTabs;
   if (closedTabs !== st.closedTabs) persistClosedTabs(closedTabs);
   const previewVersion = forgetPreview(id) ? st.previewVersion + 1 : st.previewVersion;
