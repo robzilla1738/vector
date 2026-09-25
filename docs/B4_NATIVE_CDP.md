@@ -10,7 +10,9 @@ The runtime implements `Browser.getVersion` and `Browser.setDownloadBehavior`
 locally. Its `Target` facade supports target discovery, information, automatic
 and explicit attachment, browser sessions, detachment, and activation. Target
 IDs come from `native.listPages`, which enumerates normal tabs of the owning
-Profile. `Target.createTarget` is deliberately unavailable: `native.tabCommand`
+Profile. The native tab catalog sends `native.tabsChanged` after mutations;
+the runtime refreshes its target snapshot on that event and on explicit
+`Target` requests. `Target.createTarget` is deliberately unavailable: `native.tabCommand`
 is the acknowledged tab creation path. Browser download settings remain owned
 by Chromium's Profile download controller.
 
@@ -31,5 +33,6 @@ release build flag separately disables remote debugging server startup.
 Focused validation: `cdp_broker_unittests` checks native method filtering;
 `tests/unit/native-cdp-broker.test.ts` checks Playwright's Unix WebSocket
 connection, Profile catalog filtering, foreign target denial, page dispatch,
-and iframe child routing. The Chromium target requires a native build before
+iframe child routing, event-driven target discovery, and absence of background
+target polling. The Chromium target requires a native build before
 its test can execute.
