@@ -3,13 +3,16 @@
 **Aux is the browser that works with you. Delegate real work, take over whenever
 you want, and know what actually happened.**
 
-The full product roadmap and implementation evidence are maintained in
-[Aux roadmap](docs/ROADMAP.md) and [progress](docs/progress/2026-09.md).
-Remaining founder-Mac work is in
-[local handoff](docs/HANDOFF.md).
-The private Aux development build is ready for founder review; legacy names below
-describe existing compatibility interfaces, not separate products. Unsigned local
-packages are available for review; this is not a signed or external release.
+Start with the [current build handoff](docs/HANDOFF.md), [roadmap](docs/ROADMAP.md),
+[UI implementation record](docs/ui/COMPONENT-TRANSPLANT.md), and [host evidence](docs/M1-HOST-COMPARISON.md).
+Active implementation is on `codex/aux-roadmap-build` in [draft PR #24](https://github.com/robzilla1738/vector/pull/24), not merged to `main`.
+
+Aux targets a Chromium `//chrome` fork, contingent on compatibility and native integration qualification.
+The candidate builds, runs Aux's real shell and has passed Store installation/restart persistence.
+Its agent runtime and several native interactions remain incomplete. Electron is still the development baseline;
+`pnpm dev` launches Electron, not the fork. Follow the [native runbook](experiments/chromium-fork/CONTINUATION.md)
+to resume the existing candidate. No signed or external release is claimed. Hosted CI at the last implementation
+checkpoint was red; see [the recorded failures](docs/evidence/ci-handoff-2026-09-24.md).
 
 `AUX_*` is the only runtime configuration namespace. Process environment overrides
 `.env` files. Runtime data uses `Aux Browser/aux-state.sqlite` under the OS data
@@ -26,7 +29,7 @@ Connection kind is recorded on every page (`backend`, `routeReason`).
 ## Private hands-on preview
 ### Current shell
 
-The [design checkpoint](docs/ui/design-update-2026-09-23.md) records the current
+The [September 23 design checkpoint](docs/ui/design-update-2026-09-23.md) records the earlier
 Aside-inspired shell: horizontal tabs by default, optional vertical tabs, native
 glass, a persistent expanded sidebar and a separate collapsed edge preview,
 chat project folders, inline session actions, and consistent work controls.
@@ -40,9 +43,7 @@ Run `AUX_LOAD_DOTENV=0 pnpm dev` for the current private development build. `pnp
 separate persistent Aux Preview profile. Follow the [local Mac handoff](docs/HANDOFF.md),
 [private build handoff](docs/AUX-PRIVATE-BUILD.md)
 and [first review walkthrough](docs/AUX-FIRST-REVIEW.md) for browsing, tasks,
-development, cloud setup and the known compatibility limits. Founder-device work
-that remains is B1–B7 in the local handoff. Founder feedback now
-defines the next roadmap.
+development, cloud setup and the known compatibility limits. The current handoff separates implemented Electron behavior, partial Chromium integration, and remaining external qualification. The six-batch design transplant remains in progress.
 
 ## Quickstart
 

@@ -1,5 +1,7 @@
 # Aux private desktop review
 
+> Host scope, September 24: this document describes the existing Electron development/package baseline unless explicitly labeled otherwise. Chromium is now the intended architecture with a partial executable proof; these instructions and feature results do not qualify the fork. Start with [the current handoff](HANDOFF.md) and [candidate runbook](../experiments/chromium-fork/CONTINUATION.md). No signed release is claimed.
+
 This is an early hands-on build for evaluating the browser and task experience,
 not the completed founder candidate or an external release.
 

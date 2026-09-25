@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-24",
+  "auxImplementationCommit": "31e7ef95db82abadd0268f42105c22e422efb9a2",
+  "chromiumRevision": "b151276ea2110e74b063c6964bd0a5c14dc42f52",
+  "upstreamPatchSha256": "ed3ac3e3b408ecc8a27f16d59903190ead7b2b2fd625813d2e7976eaf0701189",
+  "nativeSourceSha256": {
+    "aux_shell_view.cc": "d17492e3dbd593ecba806ec214a8232e549bfb82cb878573a20c0b5eaaf7299b",
+    "aux_page_material.h": "1260a1904e589892497c33f0f84f3f8d8414c3e63f52cd6f595c287c19b6b4be",
+    "aux_shell_view.h": "802591e15ab0b00e2be741404d288d0d4c57701bc666392cf9552563939b2f32",
+    "aux-host.js": "c3113bf383a3d9ca6153be22a7a5c264e456cf01d210471d00f158bc294122c7"
+  },
+  "gnArgs": "is_debug = false\nis_component_build = true\nsymbol_level = 0\nuse_lld = false\n",
+  "buildPolicy": {
+    "jobs": 8,
+    "nice": 10
+  },
+  "qualification": "bounded unsigned proof; not release; see docs/HANDOFF.md",
+  "originalBuild": {
+    "actions": 56841,
+    "wallSeconds": 27833.76,
+    "maxProcessRssBytes": 3864412160
+  },
+  "excluded": [
+    "Chromium checkout and object files",
+    "candidate app binary",
+    "browser Profiles and cookies",
+    "credentials",
+    "raw runtime logs",
+    "temporary staged renderer assets"
+  ]
+}

@@ -8,6 +8,8 @@ Status: **implementation in progress; no batch or native qualification is declar
 
 The starting code is `c34f3c2c`. Existing historical screenshots are not baseline evidence. Before-state observations in the current preview established overflowing sidebar sections, three actions per session row, broad checkbox selectors, permanently expanded long Settings editors, and separated composer controls. A complete before screenshot matrix was **not captured**; do not imply one exists.
 
+Current continuation: [HANDOFF.md](../HANDOFF.md). Latest implementation SHA is `31e7ef95`; its hosted CI failed at lint/root typechecking, as recorded in [the CI checkpoint](../evidence/ci-handoff-2026-09-24.md). Historical per-slice focused passes below are not full CI qualification.
+
 ### Implemented foundation in this slice
 
 - Shared material, setting group/row, independent input, menu, list, status, empty, detail and composer primitives. Some primitives are foundations for later ports and are not yet used everywhere.
@@ -81,7 +83,7 @@ This integrity check does not assess visual correctness or replace requirement-b
 | 4. Browser organization | Port suggestion rows/palette grouping, remaining home result types, tab slot geometry, overview/hover cards, Space/Profile pickers, tab groups, library and history to the shared family. Preserve current tab silhouette, drag membership, native bridge and keyboard routes. |
 | 5. Work management | Tasks/projects/routines/memory/files/diffs/console share list/detail structures; preserve filters, schedule/timezone validation, permission scopes, modified state, file saves and view-switch continuity. |
 | 6. Settings and remaining surfaces | Finish other preference subviews; model/service/vault/plugin connection flows; supported importer flow; optional resumable onboarding; downloads, translation, find/zoom, capture entry points, transient/error/recovery states, dialogs and about/update entry points. Do not manufacture unsupported reference capabilities. |
-| Native host | Candidate Store install/restart first; then real shell/native pages, glass/overlays/focus/dragging/traffic lights, Profiles, agent control and native messaging. Provider/native dialogs remain provider-owned. No release before user testing. |
+| Native host | Store install/restart passed; real shell/native tab and glass/toolbar checks have partial evidence. Fix floating-sidebar retention and accessibility/focus, then complete window/split/Profile/agent/native-messaging qualification. Provider/native dialogs remain provider-owned. No release before user testing. |
 
 ## Verification record — September 24
 
@@ -112,7 +114,7 @@ The existing Siso build was observed still running at nice 10, approximately 52,
 - Overview and hover previews share recorded favicon/title/domain, Space/pin identity and loading/crash captions. Hover previews now place the image above the caption, matching overview card anatomy. Capture delays, viewport clamping, bulk operations and grid keyboard logic remain intact.
 - Focused verification: CommandBar 9, palette search 1, chrome tokens 25 and shared search/caption 2 cases passed (single worker, no file parallelism); renderer typecheck passed. Mock UI confirmed literal query emphasis and Down/Down/Enter switching to the existing matching tab, command-only `/overview` matching and Enter execution, plus overview Right/Space selection and selected-tab actions. Screenshots: `evidence/2026-09-24/search-suggestions-light.png`, `evidence/2026-09-24/overview-captions-light.png`, `evidence/2026-09-24/palette-match-light.png`.
 - Evidence limits: screenshots cover the current horizontal/light preview only; hover capture against live pages, full appearance/viewport/text/accessibility matrix and Chromium native overlays remain open. This is another partial port, not qualification of Batch 4.
-- Inventory now includes 127 surfaces and 84 reference routes. The inventory gate checks coverage integrity, not implementation quality or completion.
+- At this historical slice the inventory included 127 surfaces and 84 reference routes; the current audit above includes 128 surfaces. The inventory gate checks coverage integrity, not implementation quality or completion.
 
 
 ### Work lists, Space picker and inspection — 2026-09-24

@@ -1,5 +1,7 @@
 # Aux browser compatibility gate
 
+> Host scope, September 24: this document describes the existing Electron development/package baseline unless explicitly labeled otherwise. Chromium is now the intended architecture with a partial executable proof; these instructions and feature results do not qualify the fork. Start with [the current handoff](HANDOFF.md) and [candidate runbook](../experiments/chromium-fork/CONTINUATION.md). No signed release is claimed.
+
 Updated 2026-09-20. Phase 1 remains active. This record separates measured behavior
 from unqualified product claims. No real accounts or credential stores were accessed.
 

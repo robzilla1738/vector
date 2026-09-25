@@ -1,5 +1,7 @@
 # Aux compatibility register
 
+> Host scope, September 24: this document describes the existing Electron development/package baseline unless explicitly labeled otherwise. Chromium is now the intended architecture with a partial executable proof; these instructions and feature results do not qualify the fork. Start with [the current handoff](HANDOFF.md) and [candidate runbook](../experiments/chromium-fork/CONTINUATION.md). No signed release is claimed.
+
 The development reset completed the Vector→Aux rename. Legacy names are not
 accepted anymore; this register records the canonical surfaces and the
 intentional boundaries that remain. No public namespace availability or
