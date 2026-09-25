@@ -299,8 +299,15 @@ html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, 
   background: transparent;
   isolation: auto;
 }
-:root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }
-:root[data-sidebar-appearance="translucent"] .sidebar.peek { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }
+/* All docked glass surfaces expose the same native window material and tint.
+   Apply tint once, on the panel, rather than stacking it on its contents. */
+:root[data-sidebar-appearance="translucent"] {
+  --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
+}
+:root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail),
+:root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tabs-row {
+  background: var(--window-glass-tint);
+}
 :root[data-sidebar-appearance="translucent"] .stage-card:not(.has-page) { background: transparent; }
 :root[data-sidebar-appearance="solid"] .app-body { background: var(--sb-bg); }
 button, input, textarea, select, .cmdbar, .cb-pop, .main-col, .menu, .sheet, .palette,
