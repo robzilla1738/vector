@@ -1,3 +1,6 @@
 aux/branding/0001-product-identity.patch
 aux/core/0002-shell-buildflag.patch
 aux/branding/0003-app-icon.patch
+aux/shell/0004-enable-webium.patch
+aux/shell/0005-package-aux-webui.patch
+aux/runtime/0006-runtime-socket.patch
