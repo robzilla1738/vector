@@ -8,3 +8,4 @@ aux/tabs/0007-page-identity.patch
 aux/tabs/0008-tab-catalog.patch
 aux/runtime/0009-native-tab-operations.patch
 aux/shell/0010-surface-embed-aux-host.patch
+aux/shell/0011-native-edge-events.patch

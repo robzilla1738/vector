@@ -1,0 +1,149 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index 41cefbef69..abba68f371 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -25,7 +25,8 @@ const remote = new ShellHostRemote();
+ const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
+ const client = new ShellHostClientReceiver({
+   onEvent(eventName: string, payloadJson: string) {
+-    if (eventName !== 'onTabsPatch') {
++    if (eventName !== 'onTabsPatch' && eventName !== 'onSidebarEdge' &&
++        eventName !== 'onToolbarEdge') {
+       return;
+     }
+     let payload: unknown;
+@@ -62,7 +63,8 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+       return JSON.parse(response.resultJson);
+     },
+     subscribe(event, callback) {
+-      if (event !== 'onTabsPatch') {
++      if (event !== 'onTabsPatch' && event !== 'onSidebarEdge' &&
++          event !== 'onToolbarEdge') {
+         return () => {};
+       }
+       const callbacks = listeners.get(event) ?? new Set();
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
+index 3cef2601c8..16767e9b3c 100644
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -144,6 +144,8 @@ source_set("impl") {
+     "//services/network/public/mojom",
+     "//ui/base",
+     "//ui/content_accelerators",
++    "//ui/display",
++    "//ui/events",
+     "//ui/views",
+     "//ui/views/controls/webview",
+     "//ui/webui/tracked_element",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 1df15c5636..d3f8e553d2 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -49,6 +49,10 @@
+ #include "chrome/grit/aux_host_resources_map.h"
+ #include "chrome/grit/aux_resources.h"
+ #include "chrome/grit/aux_resources_map.h"
++#include "ui/display/screen.h"
++#include "ui/events/event.h"
++#include "ui/events/event_observer.h"
++#include "ui/views/event_monitor.h"
+ #endif
+ #include "chrome/grit/webui_toolbar_shared_resources.h"
+ #include "chrome/grit/webui_toolbar_shared_resources_map.h"
+@@ -96,6 +100,48 @@ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
+ 
+ }  // namespace
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++// Observes mouse motion over the entire native browser window, including an
++// embedded page surface. WebUI mousemove cannot see events consumed by the
++// SurfaceEmbed guest, so the shell needs this narrow native edge signal.
++class AuxShellEdgeMonitor : public ui::EventObserver {
++ public:
++  AuxShellEdgeMonitor(WebUIBrowserWindow* window,
++                      base::RepeatingCallback<void(bool, bool)> on_edges)
++      : window_(window), on_edges_(std::move(on_edges)) {
++    monitor_ = views::EventMonitor::CreateWindowMonitor(
++        this, window_->widget()->GetNativeWindow(),
++        {ui::EventType::kMouseMoved});
++  }
++
++  void OnEvent(const ui::Event& event) override {
++    if (!event.IsMouseEvent()) {
++      return;
++    }
++    const gfx::Rect bounds = window_->widget()->GetWindowBoundsInScreen();
++    const gfx::Point cursor =
++        display::Screen::GetScreen()->GetCursorScreenPoint();
++    const bool inside = window_->widget()->IsActive() &&
++                        bounds.Contains(cursor);
++    const bool sidebar = inside && cursor.x() - bounds.x() <= 8;
++    const bool toolbar = inside && cursor.y() - bounds.y() <= 8;
++    if (sidebar == sidebar_ && toolbar == toolbar_) {
++      return;
++    }
++    sidebar_ = sidebar;
++    toolbar_ = toolbar;
++    on_edges_.Run(sidebar, toolbar);
++  }
++
++ private:
++  raw_ptr<WebUIBrowserWindow> window_;
++  base::RepeatingCallback<void(bool, bool)> on_edges_;
++  std::unique_ptr<views::EventMonitor> monitor_;
++  bool sidebar_ = false;
++  bool toolbar_ = false;
++};
++#endif
++
+ WebUIBrowserUIConfig::WebUIBrowserUIConfig()
+     : DefaultWebUIConfig(content::kChromeUIScheme,
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -220,9 +266,25 @@ void WebUIBrowserUI::CreateShellHost(
+   shell_host_receiver_.reset();
+   shell_host_client_.reset();
+   tab_catalog_subscription_ = {};
++  edge_monitor_.reset();
+   if (IsAuthorizedAuxDocument()) {
+     shell_host_receiver_.Bind(std::move(host));
+     shell_host_client_.Bind(std::move(client));
++    edge_monitor_ = std::make_unique<AuxShellEdgeMonitor>(
++        browser_window(),
++        base::BindRepeating(
++            [](base::WeakPtr<WebUIBrowserUI> ui, bool sidebar,
++               bool toolbar) {
++              if (!ui || !ui->IsAuthorizedAuxDocument() ||
++                  !ui->shell_host_client_.is_bound()) {
++                return;
++              }
++              ui->shell_host_client_->OnEvent("onSidebarEdge",
++                                               sidebar ? "true" : "false");
++              ui->shell_host_client_->OnEvent("onToolbarEdge",
++                                               toolbar ? "true" : "false");
++            },
++            weak_factory_.GetWeakPtr()));
+     if (auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile())) {
+       tab_catalog_subscription_ = catalog->ObserveChanges(base::BindRepeating(
+           [](base::WeakPtr<WebUIBrowserUI> ui, const std::string& patch) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index 841e16c5b9..b587646a78 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -49,6 +49,9 @@ class TrackedElementHandler;
+ 
+ class RealboxHandler;
+ class WebUIBrowserUI;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++class AuxShellEdgeMonitor;
++#endif
+ class WebUIBrowserBookmarkBarPageHandler;
+ 
+ class WebUIBrowserUIConfig
+@@ -186,6 +189,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   mojo::Receiver<aux::mojom::ShellHost> shell_host_receiver_{this};
+   mojo::Remote<aux::mojom::ShellHostClient> shell_host_client_;
+   base::CallbackListSubscription tab_catalog_subscription_;
++  std::unique_ptr<AuxShellEdgeMonitor> edge_monitor_;
+ #endif
+ 
+   mojo::Receiver<bookmark_bar::mojom::PageHandlerFactory>
