@@ -241,3 +241,8 @@ The responsive Ask Aux panel used an opaque `--bg-1` fill below 820 CSS px while
 - **Verified after filename refinement:** The local native rebuild passed, and the Save panel suggested “Aux native open fixture” instead of a generic “Page.” The final incremental build after the printing-disabled guard also passed (2 actions, 2m02s). No real document was exported.
 
 Logs: `/tmp/aux-native-pdf-build.log`, `/tmp/aux-native-pdf-refine-build.log`, `/tmp/aux-native-pdf-final-build.log`.
+
+### Rebound shortcut verification and development landing state
+
+- **Verified in AuxDev:** Rebound Command Palette from ⌘K to ⌘⇧K in Settings. The new chord opened the palette over the local fixture page, while ⌘K no longer opened it. Reset restored the original ⌘K binding; no custom binding was left in the development Profile.
+- **Verified:** Patch 46 is the latest committed native integration. The attempted Profiles bridge was exploratory only and was removed before staging or building; the native checkout still contains the committed patch series with no new partial feature. AuxDev remains running on the local fixture page. Quick Ask and native Profiles remain gated off, and the development handoff is not yet complete.
