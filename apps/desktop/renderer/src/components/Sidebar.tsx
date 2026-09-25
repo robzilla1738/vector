@@ -85,6 +85,7 @@ function FolderKids({ collapsed, count, children }: { collapsed: boolean; count:
 interface TabRowProps {
   pageId: string;
   active: boolean;
+  focusable: boolean;
   selected: boolean;
   selecting: boolean;
   onSelectionKey: (event: React.KeyboardEvent) => boolean;
@@ -104,7 +105,7 @@ interface TabRowProps {
   onKeyMove: (folderId: string | null, index: number, dir: -1 | 1) => void;
 }
 
-const TabRow = memo(function TabRow({ pageId, active, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
+const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
   const p = useStore(state => state.pages.find(page => page.pageId === pageId));
   const key = useShortcutLabels();
   const preview = useSidebarTabPreview();
@@ -125,7 +126,7 @@ const TabRow = memo(function TabRow({ pageId, active, selected, selecting, onSel
       className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${sleeping ? "sleeping" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
       role="tab"
       aria-selected={selecting ? selected : active}
-      tabIndex={active ? 0 : -1}
+      tabIndex={focusable ? 0 : -1}
       data-index={index}
       draggable
       onClick={event => { if (!onSelect(p.pageId, event)) onActivate(p.pageId); }}
@@ -444,7 +445,9 @@ export const Sidebar = memo(function Sidebar() {
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
   const folders = useMemo(() => foldersInSpace(layout, space.id), [layout, space.id]);
   const loose = useMemo(() => unfiledTabs(layout, pages, space.id), [layout, pages, space.id]);
-  const selection = useTabSelection([...folders.filter(folder => !folder.collapsed).flatMap(folder => tabsInFolder(layout, pages, folder.id)), ...loose], space.id, activePageId);
+  const visibleTabs = useMemo(() => [...folders.filter(folder => !folder.collapsed).flatMap(folder => tabsInFolder(layout, pages, folder.id)), ...loose], [folders, layout, pages, loose]);
+  const focusablePageId = visibleTabs.some(tab => tab.pageId === activePageId) ? activePageId : visibleTabs[0]?.pageId;
+  const selection = useTabSelection(visibleTabs, space.id, activePageId);
   const pins = layout.pins[space.id] ?? [];
   const visiblePins = pins.length > PIN_ROW_SIZE ? pins.slice(0, PIN_ROW_SIZE - 1) : pins;
   const overflowPins = pins.slice(visiblePins.length);
@@ -601,6 +604,7 @@ export const Sidebar = memo(function Sidebar() {
       index={index}
       folderId={folderId}
       active={p.pageId === activePageId && mode === "focus"}
+      focusable={p.pageId === focusablePageId}
       dragging={drag.folderId === folderId && drag.from === index}
       dropBefore={drag.folderId === folderId && drag.to === index && drag.from !== index && drag.from !== index - 1}
       dropAfter={drag.folderId === folderId && drag.to === index + 1 && index === groupLen - 1 && drag.from !== index}

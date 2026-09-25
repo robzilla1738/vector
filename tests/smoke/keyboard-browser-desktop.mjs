@@ -26,6 +26,10 @@ try{
  await page.keyboard.press('End');assert.match(await focused(),/Keyboard Three/);
  await page.keyboard.press('ArrowDown');assert.match(await focused(),/Keyboard One/);
  await page.keyboard.press('Enter');await page.waitForFunction(()=>document.querySelector('.tab-row.active')?.textContent.includes('Keyboard One'));
+ await page.locator('.sb-more summary').click();await page.getByRole('menuitem',{name:'Tab overview',exact:true}).click();
+ assert.equal(await vertical.locator('.tab-row[tabindex="0"]').count(),1,'overview keeps one browser tab keyboard reachable');
+ await vertical.locator('.tab-row[tabindex="0"]').focus();await page.keyboard.press('Home');assert.match(await focused(),/Keyboard One/);
+ await page.locator('.sb-more summary').click();await page.getByRole('menuitem',{name:'Tab overview',exact:true}).click();
  await page.locator('.space-switch').click();await page.keyboard.press('End');assert.match(await focused(),/Collapse/);await page.keyboard.press('Home');assert.match(await focused(),/Personal/);
  await page.getByRole('menuitem',{name:'New space',exact:false}).click();
  const dialog=page.getByRole('dialog',{name:'New space',exact:true});await dialog.waitFor();
