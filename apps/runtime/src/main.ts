@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { EventTypes, AuxError, OriginRuleSchema, ZapSnapshotParamsSchema, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
+import { EventTypes, AuxError, OriginRuleSchema, ZapSnapshotParamsSchema, auxFeatureEnabled, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
 import { RpcChannel, type Transport } from "@aux/contracts";
 import {
   AttachedChromeDriver,
@@ -122,7 +122,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
   const zap = new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default");
   // Register before service boot so the host can preload styles before restoring tabs.
-  channel?.onMethod("zap.snapshot", params => zap.snapshot(ZapSnapshotParamsSchema.parse(params).profileId));
+  channel?.onMethod("zap.snapshot", params => {
+    const profileId = ZapSnapshotParamsSchema.parse(params).profileId;
+    const host = env.AUX_HOST_SOCKET ? "chromium-fork" : "electron";
+    const overrides = repo.getSetting<import("@aux/contracts").AuxFeatureOverrides>(`auxFeatures:${host}:${profileId}`) ?? {};
+    const snapshot = zap.snapshot(profileId);
+    return auxFeatureEnabled("zapAndUserCss", host, overrides) ? snapshot : [];
+  });
   settings.attachNative(native);
 
   // Register api.invoke immediately — the renderer can call before services

@@ -1,0 +1,952 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 8f16686773..1a1780f438 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1977,6 +1977,10 @@ source_set("core") {
+     deps += [ ":chrome_browser_main_mac" ]
+   }
+ 
++  if (enable_aux_shell) {
++    deps += [ "//chrome/browser/ui/aux:runtime" ]
++  }
++
+   if (is_chrome_for_testing) {
+     deps += [ "//chrome/browser/chrome_for_testing:browser" ]
+   }
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+index 033f22b414..faf941525e 100644
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -217,6 +217,10 @@
+ #include "chrome/browser/webauthn/chrome_web_authentication_delegate_base.h"
+ #include "chrome/browser/webauthn/webauthn_pref_names.h"
+ #include "chrome/common/buildflags.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/zap_controller.h"
++#endif
+ #include "chrome/common/channel_info.h"
+ #include "chrome/common/chrome_constants.h"
+ #include "chrome/common/chrome_content_client.h"
+@@ -5525,6 +5529,11 @@ ChromeContentBrowserClient::CreateCommitDeferringConditionsForNavigation(
+     content::CommitDeferringCondition::NavigationType navigation_type) {
+   std::vector<std::unique_ptr<content::CommitDeferringCondition>> conditions;
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  MaybeAddCondition(aux::MaybeCreateZapCondition(*navigation_handle),
++                    &conditions);
++#endif
++
+ #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+   MaybeAddCondition(
+       safe_browsing::MaybeCreateCommitDeferringCondition(*navigation_handle),
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 3fbacf30f4..fda13a9a86 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -18,9 +18,14 @@ source_set("runtime") {
+     "secret_store_mac.mm",
+     "tab_catalog.cc",
+     "tab_catalog.h",
++    "zap_controller.cc",
++    "zap_controller.h",
+   ]
+   deps = [
+     "//base",
++    "//chrome/common:mojo_bindings",
++    "//crypto",
++    "//mojo/public/cpp/bindings",
+     "//chrome/browser/profiles",
+     "//chrome/browser/ui/browser_window",
+     "//chrome/browser/ui/tabs:tabs_public",
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index dd61c24938..2ed11dfba1 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -36,6 +36,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/secret_store_mac.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -99,6 +100,9 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
+     auto created = std::make_unique<AuxRuntimeHost>(profile);
+     host = created.get();
+     profile->SetUserData(&kAuxRuntimeHostKey, std::move(created));
++    // Queue the policy snapshot before any user API can create pages.
++    aux::ZapController::ForProfile(profile)->EnsureReady(
++        base::BindOnce([](bool) {}));
+   }
+   return host;
+ }
+@@ -131,6 +135,32 @@ void AuxRuntimeHost::CallApi(std::string method,
+           weak_factory_.GetWeakPtr(), std::move(callback)));
+ }
+ 
++void AuxRuntimeHost::CallInternal(std::string method,
++                                  std::string params_json,
++                                  ResponseCallback callback) {
++  worker_.AsyncCall(&Worker::CallInternal)
++      .WithArgs(std::move(method), std::move(params_json))
++      .Then(base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> owner, ResponseCallback callback,
++             Response response) {
++            if (owner)
++              owner->SchedulePump();
++            std::move(callback).Run(std::move(response));
++          }, weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++
++void AuxRuntimeHost::HandleZapInstall(
++    const base::Value::Dict& params,
++    base::OnceCallback<void(base::Value::Dict)> callback) {
++  aux::ZapController* controller = aux::ZapController::ForProfile(profile_);
++  if (!controller) {
++    std::move(callback).Run(NativeFault("backend_unavailable",
++                                        "Zap Profile is unavailable"));
++    return;
++  }
++  controller->Install(params, std::move(callback));
++}
++
+ base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
+     base::RepeatingCallback<void(const std::string&, const std::string&)>
+         callback) {
+@@ -579,6 +609,15 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+                      [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
+                         base::Value::Dict params,
+                         std::shared_ptr<NativeReplyState> state) {
++                       if (owner && method == "native.zapInstallStylesheet") {
++                         owner->HandleZapInstall(params, base::BindOnce(
++                             [](std::shared_ptr<NativeReplyState> state,
++                                base::Value::Dict reply) {
++                               state->reply = std::move(reply);
++                               state->ready.Signal();
++                             }, state));
++                         return;
++                       }
+                        state->reply =
+                            owner ? owner->HandleNativeCall(method, params)
+                                  : NativeFault(
+@@ -724,8 +763,17 @@ bool AuxRuntimeHost::Worker::Pump() {
+ }
+ 
+ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
+-    std::string method,
+-    std::string params_json) {
++    std::string method, std::string params_json) {
++  return CallRequest(std::move(method), std::move(params_json), true);
++}
++
++AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallInternal(
++    std::string method, std::string params_json) {
++  return CallRequest(std::move(method), std::move(params_json), false);
++}
++
++AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallRequest(
++    std::string method, std::string params_json, bool desktop_api) {
+   std::string error;
+   if (!Connect(&error)) {
+     return {false, "", "backend_unavailable", std::move(error)};
+@@ -736,14 +784,17 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
+   }
+   const uint32_t id = next_request_id_++;
+   base::Value::Dict invocation;
+-  invocation.Set("method", std::move(method));
+-  invocation.Set("params", params->Clone());
+-  invocation.Set("desktopUser", true);
++  if (desktop_api) {
++    invocation.Set("method", std::move(method));
++    invocation.Set("params", params->Clone());
++    invocation.Set("desktopUser", true);
++  }
+   base::Value::Dict request;
+   request.Set("kind", "req");
+   request.Set("id", static_cast<int>(id));
+-  request.Set("method", "api.invoke");
+-  request.Set("params", std::move(invocation));
++  request.Set("method", desktop_api ? "api.invoke" : method);
++  request.Set("params", desktop_api ? std::move(invocation)
++                                    : params->GetDict().Clone());
+   const auto request_json = base::WriteJson(request);
+   if (!request_json || !SendFrame(*request_json)) {
+     Disconnect();
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 248245c8c9..fda61cd0cb 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -40,6 +40,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   void CallApi(std::string method,
+                std::string params_json,
+                ResponseCallback callback);
++  // Authenticated host-only RPC, never exposed to WebUI or agents.
++  void CallInternal(std::string method,
++                    std::string params_json,
++                    ResponseCallback callback);
+   base::CallbackListSubscription ObserveEvents(
+       base::RepeatingCallback<void(const std::string&, const std::string&)>
+           callback);
+@@ -53,6 +57,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+            base::WeakPtr<AuxRuntimeHost> owner);
+     ~Worker();
+     Response CallApi(std::string method, std::string params_json);
++    Response CallInternal(std::string method, std::string params_json);
++    Response CallRequest(std::string method, std::string params_json,
++                         bool desktop_api);
+     bool Pump();
+ 
+    private:
+@@ -79,6 +86,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   };
+ 
+   explicit AuxRuntimeHost(Profile* profile);
++  void HandleZapInstall(const base::Value::Dict& params,
++                        base::OnceCallback<void(base::Value::Dict)> callback);
+   base::Value::Dict HandleNativeCall(const std::string& method,
+                                      const base::Value::Dict& params);
+   void OnRuntimeNote(std::string type, std::string payload_json);
+diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
+new file mode 100644
+index 0000000000..0e5cdc6273
+--- /dev/null
++++ b/chrome/browser/ui/aux/zap_controller.cc
+@@ -0,0 +1,504 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/zap_controller.h"
++
++#include <algorithm>
++#include <memory>
++#include <optional>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/common/chrome_render_frame.mojom.h"
++#include "content/public/browser/commit_deferring_condition.h"
++#include "content/public/browser/global_routing_id.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "crypto/sha2.h"
++#include "mojo/public/cpp/bindings/associated_remote.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace aux {
++namespace {
++const char kZapControllerKey = 0;
++constexpr size_t kMaxStylesheetBytes = 80000;
++
++base::Value::Dict Fault(const std::string& message) {
++  base::Value::Dict error;
++  error.Set("code", "invalid_argument");
++  error.Set("message", message);
++  base::Value::Dict response;
++  response.Set("error", std::move(error));
++  return response;
++}
++
++std::string Hash(const std::string& stylesheet) {
++  return base::ToLowerASCII(
++      base::HexEncode(crypto::SHA256HashString(stylesheet)));
++}
++
++}  // namespace
++
++struct ZapController::FrameRequest {
++  mojo::AssociatedRemote<chrome::mojom::ChromeRenderFrame> remote;
++  FrameCallback callback;
++};
++
++ZapController* ZapController::ForProfile(Profile* profile) {
++  if (!profile || profile->IsOffTheRecord()) {
++    return nullptr;
++  }
++  auto* controller =
++      static_cast<ZapController*>(profile->GetUserData(&kZapControllerKey));
++  if (!controller) {
++    auto created = std::unique_ptr<ZapController>(new ZapController(profile));
++    controller = created.get();
++    profile->SetUserData(&kZapControllerKey, std::move(created));
++  }
++  return controller;
++}
++
++ZapController::ZapController(Profile* profile) : profile_(profile) {}
++ZapController::~ZapController() = default;
++
++bool ZapController::Validate(const base::Value::Dict& request) const {
++  const std::string* profile_id = request.FindString("profileId");
++  const std::string* origin = request.FindString("origin");
++  const std::string* stylesheet = request.FindString("stylesheet");
++  const std::string* hash = request.FindString("stylesheetSha256");
++  const std::string* phase = request.FindString("phase");
++  const std::string* scope = request.FindString("frameScope");
++  const std::optional<int> revision = request.FindInt("revision");
++  if (!profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() || !origin ||
++      !stylesheet || !hash || !phase || !scope || !revision || *revision < 0 ||
++      stylesheet->size() > kMaxStylesheetBytes || *phase != "document_start" ||
++      *scope != "matching_origin" || Hash(*stylesheet) != *hash) {
++    return false;
++  }
++  const GURL url(*origin);
++  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
++         url::Origin::Create(url).Serialize() == *origin;
++}
++
++void ZapController::EnsureReady(ReadyCallback callback) {
++  if (ready_) {
++    std::move(callback).Run(true);
++    return;
++  }
++  pending_ready_.push_back(std::move(callback));
++  if (loading_) {
++    return;
++  }
++  loading_ = true;
++  AuxRuntimeHost* host = AuxRuntimeHost::ForProfile(profile_);
++  if (!host) {
++    loading_ = false;
++    auto callbacks = std::move(pending_ready_);
++    for (auto& pending : callbacks) {
++      std::move(pending).Run(false);
++    }
++    return;
++  }
++  base::Value::Dict params;
++  params.Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe());
++  const auto params_json = base::WriteJson(params);
++  host->CallInternal(
++      "zap.snapshot", *params_json,
++      base::BindOnce(
++          [](base::WeakPtr<ZapController> owner,
++             AuxRuntimeHost::Response response) {
++            if (!owner) {
++              return;
++            }
++            bool valid = response.ok;
++            std::map<std::string, Policy> policies;
++            const auto parsed =
++                valid ? base::JSONReader::Read(response.result_json)
++                      : std::nullopt;
++            const base::Value::List* list =
++                parsed ? parsed->GetIfList() : nullptr;
++            valid = list && list->size() <= 100;
++            if (valid) {
++              for (const base::Value& value : *list) {
++                const base::Value::Dict* request = value.GetIfDict();
++                if (!request || !owner->Validate(*request)) {
++                  valid = false;
++                  break;
++                }
++                const std::string& origin = *request->FindString("origin");
++                if (!policies
++                         .emplace(
++                             origin,
++                             Policy{*request->FindInt("revision"),
++                                    *request->FindString("stylesheet"),
++                                    *request->FindString("stylesheetSha256")})
++                         .second) {
++                  valid = false;
++                  break;
++                }
++              }
++            }
++            if (valid) {
++              owner->policies_ = std::move(policies);
++              owner->ready_ = true;
++            }
++            owner->loading_ = false;
++            auto callbacks = std::move(owner->pending_ready_);
++            for (auto& pending : callbacks) {
++              std::move(pending).Run(valid);
++            }
++          },
++          weak_factory_.GetWeakPtr()));
++}
++
++const std::string* ZapController::StyleForOrigin(
++    const std::string& origin) const {
++  auto it = policies_.find(origin);
++  return it == policies_.end() ? nullptr : &it->second.stylesheet;
++}
++
++void ZapController::PrepareFrame(content::RenderFrameHost* frame,
++                                 const std::string& origin,
++                                 FrameCallback callback) {
++  if (!frame) {
++    std::move(callback).Run(false, false);
++    return;
++  }
++  const int request_id = next_frame_request_id_++;
++  auto request = std::make_unique<FrameRequest>();
++  request->callback = std::move(callback);
++  frame->GetRemoteAssociatedInterfaces()->GetInterface(&request->remote);
++  request->remote.set_disconnect_handler(
++      base::BindOnce(&ZapController::OnFrameResult, weak_factory_.GetWeakPtr(),
++                     request_id, false, false));
++  const std::string* stylesheet = StyleForOrigin(origin);
++  frame_requests_.emplace(request_id, std::move(request));
++  frame_requests_.at(request_id)
++      ->remote->SetAuxZapStylesheet(
++          origin, stylesheet ? *stylesheet : "",
++          base::BindOnce(&ZapController::OnFrameResult,
++                         weak_factory_.GetWeakPtr(), request_id));
++  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce(&ZapController::OnFrameResult, weak_factory_.GetWeakPtr(),
++                     request_id, false, false),
++      base::Seconds(10));
++}
++
++void ZapController::OnFrameResult(int request_id, bool accepted, bool applied) {
++  auto it = frame_requests_.find(request_id);
++  if (it == frame_requests_.end()) {
++    return;
++  }
++  auto request = std::move(it->second);
++  frame_requests_.erase(it);
++  std::move(request->callback).Run(accepted, applied);
++}
++
++void ZapController::Install(const base::Value::Dict& request,
++                            InstallCallback callback) {
++  if (!ready_ || !Validate(request)) {
++    std::move(callback).Run(Fault("Invalid Zap stylesheet installation"));
++    return;
++  }
++  const std::string origin = *request.FindString("origin");
++  const std::string stylesheet = *request.FindString("stylesheet");
++  const std::string hash = *request.FindString("stylesheetSha256");
++  const int revision = *request.FindInt("revision");
++  const auto previous_it = policies_.find(origin);
++  if (previous_it != policies_.end() &&
++      previous_it->second.revision > revision) {
++    std::move(callback).Run(Fault("Zap policy revision is stale"));
++    return;
++  }
++  if (previous_it != policies_.end() &&
++      previous_it->second.revision == revision &&
++      previous_it->second.sha256 != hash) {
++    std::move(callback).Run(Fault("Zap revision conflicts with installed CSS"));
++    return;
++  }
++
++  struct Target {
++    std::string page_id;
++    content::GlobalRenderFrameHostId frame_id;
++    int64_t epoch;
++  };
++  std::vector<Target> targets;
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  if (!catalog) {
++    std::move(callback).Run(Fault("Tab catalog is unavailable"));
++    return;
++  }
++  base::Value::Dict snapshot = catalog->Snapshot();
++  const base::Value::List* tabs = snapshot.FindList("tabs");
++  if (!tabs) {
++    std::move(callback).Run(Fault("Tab catalog is unavailable"));
++    return;
++  }
++  for (const base::Value& tab : *tabs) {
++    const std::string* page_id = tab.GetDict().FindString("pageId");
++    content::WebContents* contents =
++        page_id ? catalog->FindPage(*page_id) : nullptr;
++    if (!contents) {
++      continue;
++    }
++    contents->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
++      if (frame->GetLastCommittedOrigin().Serialize() == origin) {
++        targets.push_back(
++            {*page_id, frame->GetGlobalId(), frame->GetNavigationId()});
++      }
++    });
++  }
++  if (targets.size() > 500) {
++    std::move(callback).Run(Fault("Too many active Zap documents"));
++    return;
++  }
++
++  const std::optional<Policy> previous =
++      previous_it == policies_.end()
++          ? std::nullopt
++          : std::optional<Policy>(previous_it->second);
++  policies_[origin] = Policy{revision, stylesheet, hash};
++  struct Pending {
++    size_t remaining = 0;
++    bool failed = false;
++    base::Value::List documents;
++    InstallCallback callback;
++    base::Value::Dict receipt;
++    std::vector<Target> targets;
++    std::optional<Policy> previous;
++    std::string origin;
++    base::WeakPtr<ZapController> owner;
++  };
++  auto pending = std::make_shared<Pending>();
++  pending->remaining = targets.size();
++  pending->targets = std::move(targets);
++  pending->previous = previous;
++  pending->origin = origin;
++  pending->owner = weak_factory_.GetWeakPtr();
++  pending->callback = std::move(callback);
++  pending->receipt.Set("profileId", *request.FindString("profileId"));
++  pending->receipt.Set("origin", origin);
++  pending->receipt.Set("revision", revision);
++  pending->receipt.Set("stylesheetSha256", hash);
++  pending->receipt.Set("phase", "document_start");
++  pending->receipt.Set("futureDocuments", true);
++  pending->receipt.Set(
++      "appliedAt",
++      static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
++
++  if (pending->remaining == 0) {
++    if (stylesheet.empty()) {
++      policies_.erase(origin);
++    }
++    pending->receipt.Set("activeDocuments", base::Value::List());
++    base::Value::Dict response;
++    response.Set("result", std::move(pending->receipt));
++    std::move(pending->callback).Run(std::move(response));
++    return;
++  }
++  for (const Target& target : pending->targets) {
++    content::RenderFrameHost* frame =
++        content::RenderFrameHost::FromID(target.frame_id);
++    PrepareFrame(
++        frame, origin,
++        base::BindOnce(
++            [](std::shared_ptr<Pending> pending, Target target, bool accepted,
++               bool applied) {
++              content::RenderFrameHost* current =
++                  content::RenderFrameHost::FromID(target.frame_id);
++              const bool same_document =
++                  current && current->GetNavigationId() == target.epoch &&
++                  current->GetLastCommittedOrigin().Serialize() ==
++                      pending->origin;
++              if (same_document) {
++                base::Value::Dict document;
++                document.Set("pageId", target.page_id);
++                document.Set(
++                    "documentEpoch",
++                    static_cast<double>(std::max<int64_t>(0, target.epoch)));
++                document.Set("frameOrigin", pending->origin);
++                document.Set("applied", accepted && applied);
++                pending->documents.Append(std::move(document));
++                if (!accepted ||
++                    (!applied && pending->owner &&
++                     !pending->owner->StyleForOrigin(pending->origin)
++                          ->empty())) {
++                  pending->failed = true;
++                }
++              }
++              if (--pending->remaining != 0) {
++                return;
++              }
++              if (!pending->owner) {
++                std::move(pending->callback)
++                    .Run(Fault("Zap Profile closed during installation"));
++                return;
++              }
++              if (!pending->failed) {
++                pending->receipt.Set("activeDocuments",
++                                     std::move(pending->documents));
++                base::Value::Dict response;
++                response.Set("result", std::move(pending->receipt));
++                std::move(pending->callback).Run(std::move(response));
++                return;
++              }
++              // The runtime has not saved this edit. Restore the previous
++              // policy and wait for every surviving active frame to acknowledge
++              // rollback.
++              if (pending->previous) {
++                pending->owner->policies_[pending->origin] = *pending->previous;
++              } else {
++                pending->owner->policies_.erase(pending->origin);
++              }
++              struct Rollback {
++                size_t remaining = 0;
++                InstallCallback callback;
++              };
++              auto rollback = std::make_shared<Rollback>();
++              rollback->callback = std::move(pending->callback);
++              for (const Target& item : pending->targets) {
++                if (content::RenderFrameHost::FromID(item.frame_id)) {
++                  ++rollback->remaining;
++                }
++              }
++              if (!rollback->remaining) {
++                std::move(rollback->callback)
++                    .Run(Fault("Zap active document rejected the stylesheet"));
++                return;
++              }
++              for (const Target& item : pending->targets) {
++                content::RenderFrameHost* current =
++                    content::RenderFrameHost::FromID(item.frame_id);
++                if (!current) {
++                  continue;
++                }
++                pending->owner->PrepareFrame(
++                    current, pending->origin,
++                    base::BindOnce(
++                        [](std::shared_ptr<Rollback> rollback, bool, bool) {
++                          if (--rollback->remaining == 0) {
++                            std::move(rollback->callback)
++                                .Run(Fault("Zap active document rejected the "
++                                           "stylesheet"));
++                          }
++                        },
++                        rollback));
++              }
++            },
++            pending, target));
++  }
++}
++
++namespace {
++
++void StopNavigation(content::WebContents* contents) {
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(
++                     [](base::WeakPtr<content::WebContents> weak_contents) {
++                       if (weak_contents) {
++                         weak_contents->Stop();
++                       }
++                     },
++                     contents->GetWeakPtr()));
++}
++
++class ZapCommitCondition final : public content::CommitDeferringCondition {
++ public:
++  explicit ZapCommitCondition(content::NavigationHandle& navigation)
++      : CommitDeferringCondition(navigation) {}
++  ~ZapCommitCondition() override = default;
++
++  Result WillCommitNavigation(base::OnceClosure resume) override {
++    content::NavigationHandle& navigation = GetNavigationHandle();
++    Profile* profile = Profile::FromBrowserContext(
++        navigation.GetWebContents()->GetBrowserContext());
++    ZapController* controller = ZapController::ForProfile(profile);
++    if (!controller) {
++      return Result::kProceed;
++    }
++    const std::string origin =
++        url::Origin::Create(navigation.GetURL()).Serialize();
++    controller->EnsureReady(base::BindOnce(
++        [](base::WeakPtr<ZapCommitCondition> condition, std::string origin,
++           base::OnceClosure resume, bool ready) {
++          if (!condition) {
++            return;
++          }
++          if (!ready) {
++            // A saved policy may exist: do not commit a document without
++            // loading the authoritative Profile snapshot.
++            StopNavigation(condition->GetNavigationHandle().GetWebContents());
++            return;
++          }
++          ZapController* controller = ZapController::ForProfile(
++              Profile::FromBrowserContext(condition->GetNavigationHandle()
++                                              .GetWebContents()
++                                              ->GetBrowserContext()));
++          content::RenderFrameHost* frame =
++              condition->GetNavigationHandle().GetRenderFrameHost();
++          if (!controller || !frame) {
++            StopNavigation(condition->GetNavigationHandle().GetWebContents());
++            return;
++          }
++          controller->PrepareFrame(
++              frame, origin,
++              base::BindOnce(
++                  [](base::WeakPtr<ZapCommitCondition> condition,
++                     base::OnceClosure resume, bool accepted, bool) {
++                    if (!condition) {
++                      return;
++                    }
++                    if (!accepted) {
++                      StopNavigation(
++                          condition->GetNavigationHandle().GetWebContents());
++                      return;
++                    }
++                    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++                        FROM_HERE, std::move(resume));
++                  },
++                  condition, std::move(resume)));
++        },
++        weak_factory_.GetWeakPtr(), origin, std::move(resume)));
++    return Result::kDefer;
++  }
++
++  const char* TraceEventName() const override {
++    return "AuxZapCommitCondition";
++  }
++
++ private:
++  base::WeakPtrFactory<ZapCommitCondition> weak_factory_{this};
++};
++
++}  // namespace
++
++std::unique_ptr<content::CommitDeferringCondition> MaybeCreateZapCondition(
++    content::NavigationHandle& navigation) {
++  if (navigation.IsSameDocument() ||
++      !navigation.GetURL().SchemeIsHTTPOrHTTPS()) {
++    return nullptr;
++  }
++  Profile* profile = Profile::FromBrowserContext(
++      navigation.GetWebContents()->GetBrowserContext());
++  if (!profile || profile->IsOffTheRecord()) {
++    return nullptr;
++  }
++  return std::make_unique<ZapCommitCondition>(navigation);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/zap_controller.h b/chrome/browser/ui/aux/zap_controller.h
+new file mode 100644
+index 0000000000..7a98a71d32
+--- /dev/null
++++ b/chrome/browser/ui/aux/zap_controller.h
+@@ -0,0 +1,73 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
++
++#include <map>
++#include <memory>
++#include <string>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/supports_user_data.h"
++#include "base/values.h"
++
++class Profile;
++namespace content {
++class RenderFrameHost;
++class NavigationHandle;
++class CommitDeferringCondition;
++}  // namespace content
++
++namespace aux {
++
++// Runtime DB is authoritative. This Profile-scoped cache only holds validated
++// styles delivered over the authenticated Aux Runtime channel.
++std::unique_ptr<content::CommitDeferringCondition> MaybeCreateZapCondition(
++    content::NavigationHandle& navigation);
++
++class ZapController final : public base::SupportsUserData::Data {
++ public:
++  using ReadyCallback = base::OnceCallback<void(bool)>;
++  using InstallCallback = base::OnceCallback<void(base::Value::Dict)>;
++  using FrameCallback = base::OnceCallback<void(bool accepted, bool applied)>;
++
++  static ZapController* ForProfile(Profile* profile);
++  ~ZapController() override;
++
++  void EnsureReady(ReadyCallback callback);
++  void Install(const base::Value::Dict& request, InstallCallback callback);
++  void PrepareFrame(content::RenderFrameHost* frame,
++                    const std::string& origin,
++                    FrameCallback callback);
++  const std::string* StyleForOrigin(const std::string& origin) const;
++  bool ready() const { return ready_; }
++
++ private:
++  explicit ZapController(Profile* profile);
++  bool Validate(const base::Value::Dict& request) const;
++  void OnFrameResult(int request_id, bool accepted, bool applied);
++  struct FrameRequest;
++
++  struct Policy {
++    int revision;
++    std::string stylesheet;
++    std::string sha256;
++  };
++  raw_ptr<Profile> profile_;
++  std::map<std::string, Policy> policies_;
++  std::vector<ReadyCallback> pending_ready_;
++  std::map<int, std::unique_ptr<FrameRequest>> frame_requests_;
++  int next_frame_request_id_ = 1;
++  bool loading_ = false;
++  bool ready_ = false;
++  base::WeakPtrFactory<ZapController> weak_factory_{this};
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
+diff --git a/chrome/common/chrome_render_frame.mojom b/chrome/common/chrome_render_frame.mojom
+index c5b742e2fe..e2c3e82c2b 100644
+--- a/chrome/common/chrome_render_frame.mojom
++++ b/chrome/common/chrome_render_frame.mojom
+@@ -28,6 +28,11 @@ enum ImageFormat {
+ 
+ // Messages sent from chrome to the render frame.
+ interface ChromeRenderFrame {
++  // Queues an exact-origin user stylesheet before commit and updates the active
++  // document when its security origin matches. Empty CSS revokes it.
++  SetAuxZapStylesheet(string origin, string stylesheet)
++      => (bool accepted, bool applied);
++
+   // Updates the window features of the main frame's render view.
+   SetWindowFeatures(blink.mojom.WindowFeatures window_features);
+ 
+diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
+index 1dc2c646c0..24c4c3ee5f 100644
+--- a/chrome/renderer/chrome_render_frame_observer.cc
++++ b/chrome/renderer/chrome_render_frame_observer.cc
+@@ -67,6 +67,7 @@
+ #include "third_party/blink/public/platform/web_url_request.h"
+ #include "third_party/blink/public/web/web_console_message.h"
+ #include "third_party/blink/public/web/web_document.h"
++#include "third_party/blink/public/platform/web_security_origin.h"
+ #include "third_party/blink/public/web/web_document_loader.h"
+ #include "third_party/blink/public/web/web_element.h"
+ #include "third_party/blink/public/web/web_frame_content_dumper.h"
+@@ -82,6 +83,7 @@
+ #include "ui/gfx/codec/webp_codec.h"
+ #include "ui/gfx/geometry/size_f.h"
+ #include "url/gurl.h"
++#include "url/origin.h"
+ 
+ #if !BUILDFLAG(IS_ANDROID)
+ #include "chrome/renderer/accessibility/read_anything/read_anything_app_controller.h"
+@@ -317,7 +319,65 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
+   }
+ }
+ 
++void ChromeRenderFrameObserver::SetAuxZapStylesheet(
++    const std::string& origin,
++    const std::string& stylesheet,
++    SetAuxZapStylesheetCallback callback) {
++  const GURL url(origin);
++  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() ||
++      url::Origin::Create(url).Serialize() != origin ||
++      stylesheet.size() > 80000 ||
++      (!stylesheet.empty() && aux_zap_stylesheets_.size() >= 100 &&
++       !aux_zap_stylesheets_.contains(origin))) {
++    std::move(callback).Run(false, false);
++    return;
++  }
++  if (stylesheet.empty()) {
++    aux_zap_stylesheets_.erase(origin);
++  } else {
++    aux_zap_stylesheets_[origin] = stylesheet;
++  }
++  WebLocalFrame* frame = render_frame()->GetWebFrame();
++  if (!frame || frame->GetDocument().IsNull() ||
++      frame->GetDocument().GetSecurityOrigin().ToString().Utf8() != origin) {
++    std::move(callback).Run(true, false);
++    return;
++  }
++  std::move(callback).Run(true, ApplyAuxZapStylesheet());
++}
++
++bool ChromeRenderFrameObserver::ApplyAuxZapStylesheet() {
++  WebLocalFrame* frame = render_frame()->GetWebFrame();
++  if (!frame)
++    return false;
++  blink::WebDocument document = frame->GetDocument();
++  if (document.IsNull())
++    return false;
++  if (!aux_zap_applied_origin_.empty()) {
++    document.RemoveInsertedStyleSheet(aux_zap_applied_key_,
++                                      blink::WebCssOrigin::kUser);
++    aux_zap_applied_origin_.clear();
++    aux_zap_applied_key_ = blink::WebStyleSheetKey();
++  }
++  const std::string origin =
++      document.GetSecurityOrigin().ToString().Utf8();
++  const auto found = aux_zap_stylesheets_.find(origin);
++  if (found == aux_zap_stylesheets_.end() || found->second.empty())
++    return false;
++  aux_zap_applied_key_ = document.InsertStyleSheet(
++      WebString::FromUTF8(found->second), nullptr,
++      blink::WebCssOrigin::kUser);
++  aux_zap_applied_origin_ = origin;
++  return true;
++}
++
++void ChromeRenderFrameObserver::DidCreateDocumentElement() {
++  ApplyAuxZapStylesheet();
++}
++
+ void ChromeRenderFrameObserver::DidCreateNewDocument() {
++  aux_zap_applied_origin_.clear();
++  aux_zap_applied_key_ = blink::WebStyleSheetKey();
+ #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
+   DCHECK(render_frame());
+   if (!render_frame()->IsMainFrame())
+diff --git a/chrome/renderer/chrome_render_frame_observer.h b/chrome/renderer/chrome_render_frame_observer.h
+index 80e224f9bc..345c4ae68b 100644
+--- a/chrome/renderer/chrome_render_frame_observer.h
++++ b/chrome/renderer/chrome_render_frame_observer.h
+@@ -5,6 +5,9 @@
+ #ifndef CHROME_RENDERER_CHROME_RENDER_FRAME_OBSERVER_H_
+ #define CHROME_RENDERER_CHROME_RENDER_FRAME_OBSERVER_H_
+ 
++#include <map>
++#include <string>
++
+ #include <memory>
+ #include <string>
+ #include <vector>
+@@ -24,6 +27,7 @@
+ #include "pdf/buildflags.h"
+ #include "services/service_manager/public/cpp/binder_registry.h"
+ #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
++#include "third_party/blink/public/web/web_document.h"
+ 
+ class SkBitmap;
+ 
+@@ -100,6 +104,7 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+       blink::BFCacheStateChange bfcache_change) override;
+   void DidFinishLoad() override;
+   void DidCreateNewDocument() override;
++  void DidCreateDocumentElement() override;
+   void DidCommitProvisionalLoad(ui::PageTransition transition) override;
+   void DidClearWindowObject() override;
+   void DidCreateScriptContext(v8::Local<v8::Context> context,
+@@ -109,6 +114,9 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+   void WillDetach(blink::DetachReason detach_reason) override;
+ 
+   // chrome::mojom::ChromeRenderFrame:
++  void SetAuxZapStylesheet(const std::string& origin,
++                           const std::string& stylesheet,
++                           SetAuxZapStylesheetCallback callback) override;
+   void SetWindowFeatures(
+       blink::mojom::WindowFeaturesPtr window_features) override;
+   void ExecuteWebUIJavaScript(const std::u16string& javascript) override;
+@@ -228,6 +236,11 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+   std::unique_ptr<page_content_annotations::PageStabilityMonitor>
+       page_stability_monitor_;
+ 
++  bool ApplyAuxZapStylesheet();
++  std::map<std::string, std::string> aux_zap_stylesheets_;
++  std::string aux_zap_applied_origin_;
++  blink::WebStyleSheetKey aux_zap_applied_key_;
++
+   mojo::AssociatedReceiverSet<chrome::mojom::ChromeRenderFrame> receivers_;
+ 
+   service_manager::BinderRegistry registry_;
