@@ -1,0 +1,4 @@
+# Generated patch syntax includes leading spaces on empty context lines.
+chromium/patches/**/*.patch -whitespace
+# Vite output is byte-pinned and can contain whitespace from dependencies.
+chromium/shell-assets/** -diff -whitespace

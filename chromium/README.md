@@ -18,7 +18,7 @@ chromium/aux-chromium run --flavor dev --profile /tmp/aux-chromium-profile
 
 `AUX_CHROMIUM_SRC` selects the source checkout; the default is `~/aux-chromium-stable/chromium/src`. `AUX_DEPOT_TOOLS` selects depot_tools. Development builds are component builds. Release flags request an official build with ThinLTO and PGO disabled. Build runs at nice 10 with eight jobs. Keep a single native build active.
 
-`pop` removes the series in reverse order. `refresh --patch aux/<area>/<name>.patch <upstream paths...>` records a selected tracked diff, and `format <upstream paths...>` runs Chromium's clang-format. `stage-shell` currently packages the production renderer through the existing proof staging command; its GRD and Mojo integration is tracked in B1/B2, so staged files alone are not a working shell.
+`pop` removes the series in reverse order. `refresh --patch aux/<area>/<name>.patch <upstream paths...>` records a selected tracked diff, and `format <upstream paths...>` runs Chromium's clang-format. `stage-shell` builds the Chromium renderer with SurfaceEmbed's restricted `object-src 'self'` policy, pins every asset with SHA-256 in [shell-assets](shell-assets), then installs the verified assets under `chrome/browser/resources/aux/assets`. Run it before `configure`; the Chromium GRD discovers those pinned assets from its manifest. A capture can be checked independently with `node chromium/stage-shell.mjs capture /tmp/aux-shell-test`. The native Mojo host integration is still required for a working shell.
 
 ## Source and build evidence
 

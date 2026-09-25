@@ -16,7 +16,8 @@ const SHELL_CSP = [
   "media-src 'self' data: blob:",
   // search suggestions and cloud terminal sessions
   "connect-src 'self' https: wss:",
-  "object-src 'none'",
+  // Chromium's SurfaceEmbed plugin has no src. Keep objects disabled in Electron.
+  process.env.AUX_CHROMIUM_SHELL_BUILD === "1" ? "object-src 'self'" : "object-src 'none'",
   "frame-src aux-result:",
   "base-uri 'none'",
   "form-action 'none'",
