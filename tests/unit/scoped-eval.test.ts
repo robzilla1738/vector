@@ -14,6 +14,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     resources: [{ resourceId: "page", kind: "page", locator: "p1", label: "Tab" }] });
   const seen: { allowEval?: boolean; taskId?: string; taskRevision?: number }[] = [];
   const programs: unknown[] = [];
+  const siteReads: unknown[] = [];
   const page = { controller: "none" as "none" | "human" };
   const turnPages = new Map<string, { pageId: string; url: string; ownedByRuntime: boolean; controller: "none" | "human" }>();
   const pages = {
@@ -22,6 +23,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     close: async (pageId: string) => { turnPages.delete(pageId); return { ok: true }; },
     takeover: async (pageId: string) => { page.controller = "human"; return { pageId, controller: "human" }; },
     execute: async (program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); programs.push(program); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; },
+    readSiteContent: async (input: unknown, allowed: (url: URL) => boolean) => { siteReads.push(input); if (!allowed(new URL("https://docs.google.com/"))) throw new Error("missing egress"); return { text: "fixture" }; },
   } as unknown as PageService;
   const pageOwnership = new PageOwnership();
   let operationCalls = 0;
@@ -29,7 +31,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
   const grants = ["effect:read"];
   const settings = { effectGrants: () => grants, searchEngine: () => "https://search.example.com/?q=%s" };
   const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership }, operations, settings } as unknown as Services);
-  return { invoke, seen, programs, tasks, task, workspace, page, grants, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
+  return { invoke, seen, programs, siteReads, tasks, task, workspace, page, grants, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
 }
 
 const program = { program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] } };
@@ -109,6 +111,20 @@ it("inserts virtual clipboard text through a guarded task program and erases it 
   expect(f.programs.at(-1)).toMatchObject({ pageId: "p1", steps: [{ op: "type", target: "r1", value: "Hello Aux" }] });
   await f.invoke("agent.turn.end", ctx, client);
   await expect(f.invoke("agent.turn.clipboard.read", ctx, client)).rejects.toMatchObject({ code: "not_found" });
+});
+
+it("requires exact task, page and origin authority before site adapters run", async () => {
+  const f = fixture();
+  const client = { external: true, connectionId: "c1", scope: f.scope };
+  const request = { taskId: f.task.taskId, expectedRevision: 1, pageId: "p1", expectedDocumentEpoch: 1,
+    expectedUrl: "https://docs.google.com/document/d/document_fixture_id_123456789/edit", kind: "google-docs" };
+  await expect(f.invoke("sites.read", { ...request, pageId: "other" }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.invoke("sites.read", { ...request, expectedRevision: 2 }, client)).rejects.toMatchObject({ code: "conflict" });
+  await expect(f.invoke("sites.read", request, client)).rejects.toMatchObject({ code: "permission_denied" });
+  expect(f.siteReads).toHaveLength(0);
+  f.grants.push("effect:egress");
+  await expect(f.invoke("sites.read", request, client)).resolves.toEqual({ text: "fixture" });
+  expect(f.siteReads).toHaveLength(1);
 });
 
 it("keeps direct operation calls off a tab owned by another agent or a person", async () => {

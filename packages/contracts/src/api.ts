@@ -44,6 +44,7 @@ import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchem
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import { AgentModelRouteSchema } from './model-registry.js';
+import { SiteReadParamsSchema, SiteReadResultSchema } from './site-adapters.js';
 import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema,ProjectEffectNameSchema} from "./local-projects.js";
 
 const id = z.string().min(1);
@@ -602,6 +603,7 @@ export const MethodSchemas = {
   "agent.turn.clipboard.write": AgentTurnContextSchema.extend({ text: z.string().max(256_000) }).strict(),
   "agent.turn.clipboard.read": AgentTurnContextSchema.strict(),
   "agent.turn.clipboard.paste": AgentTurnContextSchema.extend({ pageId: id, target: z.string().min(1).max(2000), documentEpoch: z.number().int().nonnegative().optional() }).strict(),
+  "sites.read": SiteReadParamsSchema,
   "tasks.recordEvidence": EvidenceNoteParams,
   "tasks.captureEvidence": EvidenceCaptureParams,
   "tasks.importDocumentEvidence": EvidenceDocumentParams,
@@ -997,6 +999,7 @@ export const ResultSchemas = {
   "agent.turn.clipboard.write": z.object({ bytes: z.number().int().nonnegative() }),
   "agent.turn.clipboard.read": z.object({ text: z.string() }),
   "agent.turn.clipboard.paste": ProgramResultSchema,
+  "sites.read": SiteReadResultSchema,
   "tasks.recordEvidence": TaskEvidenceSchema,
   "tasks.captureEvidence": TaskEvidenceSchema,
   "tasks.importDocumentEvidence": TaskEvidenceSchema,

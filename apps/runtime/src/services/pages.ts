@@ -11,6 +11,8 @@ import { PageRegistry } from "./pages/registry.js";
 import { TabSessionRestore } from "./pages/session-restore.js";
 import type { PageServiceDeps } from "./pages/types.js";
 import type { Observation } from "@aux/contracts";
+import type { MethodParams } from "@aux/contracts";
+import { SiteAdapters } from "../agent/site-adapters.js";
 
 export type { DriverSet, ExecuteResult, PageServiceDeps } from "./pages/types.js";
 
@@ -104,6 +106,9 @@ export class PageService {
   console: PageDiagnostics["console"] = (...args) => this.diagnostics.console(...args);
   dialog: PageDiagnostics["dialog"] = (...args) => this.diagnostics.dialog(...args);
   network: PageDiagnostics["network"] = (...args) => this.diagnostics.network(...args);
+  readSiteContent(input: MethodParams<"sites.read">, allowOrigin: (url: URL) => boolean) {
+    return new SiteAdapters(this.pages, allowOrigin).read(input);
+  }
   find: PageDiagnostics["find"] = (...args) => this.diagnostics.find(...args);
   stopFind: PageDiagnostics["stopFind"] = (...args) => this.diagnostics.stopFind(...args);
   zoom: PageDiagnostics["zoom"] = (...args) => this.diagnostics.zoom(...args);

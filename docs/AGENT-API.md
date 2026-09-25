@@ -74,6 +74,7 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 | `aux.tabs.cua.capture` | `pages.capture` | cua | model | yes | yes | yes | yes |
 | `aux.tabs.cua.execute` | `pages.cuaExecute` | cua | lookup | yes | yes | yes | yes |
 | `aux.tabs.content.text` | `pages.observe` | content | model | yes | yes | yes | yes |
+| `aux.tabs.content.siteRead` | `sites.read` | content | lookup | yes | yes | yes | yes |
 | `aux.tabs.dialog` | `pages.dialog` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.handoff` | `pages.takeover` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.dev.logs` | `pages.console` | dev | lookup | yes | yes | yes | yes |

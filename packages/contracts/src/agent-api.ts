@@ -50,6 +50,7 @@ export const AgentApiManifest = [
   entry({ path: "tabs.cua.capture", method: "pages.capture", layer: "cua", summary: "Capture a page image with document epoch provenance.", documented: "model", requiredFor: ["visual"] }),
   entry({ path: "tabs.cua.execute", method: "pages.cuaExecute", layer: "cua", summary: "Run pixel actions with a current document epoch and captured viewport.", documented: "lookup", requiredFor: ["visual"] }),
   entry({ path: "tabs.content.text", method: "pages.observe", layer: "content", summary: "Read page text and headings.", documented: "model" }),
+  entry({ path: "tabs.content.siteRead", method: "sites.read", layer: "content", summary: "Export text from an authorized Google Doc, Google Sheet, or YouTube transcript with exact page identity and origin policy.", documented: "lookup", requiredFor: ["research"] }),
   entry({ path: "tabs.dialog", method: "pages.dialog", layer: "management", summary: "List browser dialogs. Scoped/code-mode responses use a guarded typed dialog step.", documented: "lookup" }),
   entry({ path: "tabs.handoff", method: "pages.takeover", layer: "management", summary: "Yield an authorized tab to its human owner and stop automated input.", documented: "lookup" }),
   entry({ path: "tabs.dev.logs", method: "pages.console", layer: "dev", summary: "Read recent page console lines.", documented: "lookup", requiredFor: ["debugging"] }),

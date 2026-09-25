@@ -48,6 +48,7 @@ import { AgentImageTools } from "../agent/image-tools.js";
 import { SpendLedger } from "../store/spend-ledger.js";
 import { authorizeProgram } from "../agent/permissions.js";
 import { AgentTurnTabs } from "../agent/turn-tabs.js";
+import { siteExportUrl } from "../agent/site-adapters.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -270,6 +271,9 @@ export function makeInvoker(s: Services) {
         const task = requireScopedTask(scope, params.taskId);
         if (method !== "agent.turn.end" && task.revision !== params.expectedRevision)
           throw new AuxError("conflict", "Task revision changed; refresh it before using agent tools.");
+      } else if (method === "sites.read") {
+        requireScopedTask(scope, params.taskId);
+        requireScopedPage(scope, params.pageId, client.connectionId);
       } else if (method.startsWith("pages.") && method !== "pages.list") {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
@@ -336,6 +340,26 @@ export function makeInvoker(s: Services) {
         return invoke("pages.execute", { taskId: params.taskId, expectedRevision: params.expectedRevision,
           program: { pageId: params.pageId, ...(params.documentEpoch === undefined ? {} : { documentEpoch: params.documentEpoch }),
             steps: [{ id: "turn-clipboard-paste", op: "type", target: params.target, value: text }] } }, client);
+      }
+      case "sites.read": {
+        const previewGranted = !!client.connectionId && (previewPageGrants.get(client.connectionId)?.get(params.pageId) === params.taskId
+          || turnTabs.owns(client.connectionId, params.taskId, params.pageId));
+        tasks.preparePageAccess(params.taskId, params.expectedRevision, params.pageId, false, previewGranted);
+        const exportUrl = siteExportUrl(params);
+        const grants = s.settings.effectGrants();
+        if (!authorizeProgram([{ id: "site-read", op: "extract", fields: [{ name: "content" }] }], grants, exportUrl.origin).ok
+          || !authorizeProgram([{ id: "site-egress", op: "navigate", url: exportUrl.href }], grants).ok)
+          throw new AuxError("permission_denied", `Site export needs read and egress grants for ${exportUrl.origin}.`);
+        const result = await s.pages.readSiteContent(params, url => {
+          const current = s.settings.effectGrants();
+          return authorizeProgram([{ id: "site-read", op: "extract", fields: [{ name: "content" }] }], current, url.origin).ok
+            && authorizeProgram([{ id: "site-egress", op: "navigate", url: url.href }], current).ok;
+        });
+        tasks.preparePageAccess(params.taskId, params.expectedRevision, params.pageId, false, previewGranted);
+        if (!authorizeProgram([{ id: "site-read", op: "extract", fields: [{ name: "content" }] }], s.settings.effectGrants(), exportUrl.origin).ok
+          || !authorizeProgram([{ id: "site-egress", op: "navigate", url: exportUrl.href }], s.settings.effectGrants()).ok)
+          throw new AuxError("permission_denied", "The site read grant changed during extraction.");
+        return result;
       }
       case "calendar.connections.list":
         if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
