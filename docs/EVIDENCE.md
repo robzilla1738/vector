@@ -24,11 +24,11 @@ A passing fixture, mock UI, or Electron run is never evidence for a native Chrom
 
 ## Program spend
 
-The cap is **$50 total** for Aux and its harnesses across all waves. Planned allocation: Wave 0 smoke ≤$1; Waves 1–2 development smokes ≤$8; Wave 2 planner/code comparison ≤$8; Wave 4 qualification ≤$20; remainder reserved. The runtime's persisted cumulative ledger is the authority for spend after B0 lands. At this documentation reset, prior cumulative spend is **unreconciled**, so no numeric remaining balance is claimed. Reconcile it before the next Gateway run, then record exact USD total, ledger revision, and run IDs here.
+The cap is **$50 total** for Aux and its harnesses across all waves. Planned allocation: Wave 0 smoke ≤$1; Waves 1–2 development smokes ≤$8; Wave 2 planner/code comparison ≤$8; Wave 4 qualification ≤$20; remainder reserved. The persisted SQLite ledger at the default Aux data directory is shared across Profiles and fixture runtimes. Failed calls with unknown usage keep their full projected reservation as charged spend.
 
 | As of | Ledger revision | Recorded cumulative USD | Remaining USD | Runs / notes |
 | --- | --- | ---: | ---: | --- |
-| 2026-09-24 baseline | Pending B0 integration | Unreconciled | Unreconciled | No model smoke result is claimed. |
+| 2026-09-24 B0 smoke | `80816007` | $0.210960221 | $49.789039779 | `SpendLedger.summary()` after live fixture-only smoke; successful responses reported $0.00050892, and failed probes were conservatively charged. No reservations remain outstanding. |
 
 ## Batch record
 
@@ -36,3 +36,4 @@ The cap is **$50 total** for Aux and its harnesses across all waves. Planned all
 | --- | --- | --- | --- |
 | B0 docs reset | **[Verified]** document state | Reviewed plan adopted as the sole roadmap; superseded planning and UI ledgers archived; [reference spec scaffold](reference-specs/README.md) created. | Other B0 gates are tracked by their implementing lanes; do not infer CI or model success from this row. |
 | B2 zero-build / `154` base selection | **[Partial]** | [Webium decision](decisions/host-composition.md): existing candidate loaded Webium, local page input, tabs, context menu and window fullscreen; stock split command failed. Chromium Mac stable `154.0.8037.58` tag resolves to `a65484142514cbb703a2931e07b70a83aedbafd`. | Full critical subset, native Aux W implementation and matrix remain open. |
+| B0 CI and model | **[Verified]** on integrated checkout | `pnpm lint` passes at 387 warnings with the 390 limit unchanged; `pnpm typecheck` passes. The [fixture-only Gateway smoke](../tests/smoke/muse-gateway.mjs) confirmed live catalog ID, streaming JSON, structured output, image input, tool calling and low/medium reasoning. [Official Gateway model metadata](https://vercel.com/ai-gateway/models/muse-spark-1.3-contributor) corroborates ID, context and list prices. | Hosted checks on exact SHA, wave PR and full integrated suite remain to verify. |

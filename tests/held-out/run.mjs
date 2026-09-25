@@ -2,7 +2,7 @@
 /**
  * H1-D2 held-out harness: sealed task hash, 5 trials, live models when keys
  * are present. Writes median / IQR / CI. Mock planner is not used.
- * Live planner is pinned to openai/gpt-5.6-luna-fast (GPT 5.6 Luna).
+ * Live planner is pinned to Meta Muse Spark 1.3 Contributor through AI Gateway.
  */
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
@@ -17,7 +17,7 @@ const root = join(here, "..", "..");
 const tasksPath = join(here, "tasks.json");
 const outPath = process.env.HELDOUT_OUT || join(root, "tests/benchmarks/reports/held-out-latest.json");
 const runtimeEntry = join(root, "apps/runtime/dist/index.js");
-const LUNA = "openai/gpt-5.6-luna-fast";
+const MODEL = "meta/muse-spark-1.3-contributor";
 
 const pages = {
   "increment-the-counter": { file: "increment.html", gold: /Count:\s*3\b/ },
@@ -36,11 +36,7 @@ const sealed = createHash("sha256")
   .update(JSON.stringify(tasks))
   .digest("hex");
 
-const apiKey =
-  process.env.AI_GATEWAY_API_KEY ||
-  process.env.AUX_GATEWAY_API_KEY ||
-  process.env.OPENAI_API_KEY ||
-  process.env.ANTHROPIC_API_KEY;
+const apiKey = process.env.AI_GATEWAY_API_KEY;
 const live = Boolean(apiKey);
 const trials = Number(process.env.HELDOUT_TRIALS || 5);
 const deadlineMs = Number(process.env.HELDOUT_DEADLINE_MS || 90_000);
@@ -75,7 +71,7 @@ function skipEvidence(reason, extra = {}) {
     sealedHash: sealed,
     trialsRequested: trials,
     tasks: tasks.map((t) => t.id),
-    modelId: LUNA,
+    modelId: MODEL,
     artifact: { harness: "tests/held-out/run.mjs" },
     notes: "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used.",
     ...extra,
@@ -83,7 +79,7 @@ function skipEvidence(reason, extra = {}) {
 }
 
 if (!live) {
-  const evidence = skipEvidence("no AUX_GATEWAY_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY");
+  const evidence = skipEvidence("no AI_GATEWAY_API_KEY");
   writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, skippedLive: true, out: outPath, sealedHash: sealed }));
   process.exit(0);
@@ -95,6 +91,15 @@ if (!existsSync(runtimeEntry)) {
   console.log(JSON.stringify({ ok: false, skippedLive: true, reason: evidence.reason, out: outPath }));
   process.exit(1);
 }
+
+const { SpendLedger } = await import(pathToFileURL(runtimeEntry).href);
+const spendLedger = new SpendLedger();
+const forecastUsd = tasks.length * trials * 0.05;
+if (forecastUsd > spendLedger.summary().remainingUsd) {
+  spendLedger.close();
+  throw new Error(`Held-out trials project $${forecastUsd.toFixed(4)} against the remaining AI Gateway program allocation`);
+}
+spendLedger.close();
 
 function serveFixtures() {
   const dir = join(here, "pages");
@@ -157,8 +162,8 @@ async function startRuntimeFor(port) {
     AUX_DATA_DIR: dataDir,
     AUX_ELECTRON_CDP: "",
     AUX_API_TOKEN: "heldout",
-    AUX_PLANNER_MODEL: LUNA,
-    AUX_RECOVERY_MODEL: LUNA,
+    AUX_PLANNER_MODEL: MODEL,
+    AUX_RECOVERY_MODEL: MODEL,
     AUX_GATEWAY_ONLY: "",
     AUX_EGRESS_ALLOWLIST: `127.0.0.1:${port},localhost:${port}`,
     AI_GATEWAY_API_KEY: apiKey,
@@ -226,7 +231,7 @@ async function runTrial(rpc, task, url) {
       taskId: task.id,
       status: r.status,
       verified,
-      modelId: r.config?.modelId ?? LUNA,
+      modelId: r.config?.modelId ?? MODEL,
       modelCalls: r.config?.modelCalls ?? null,
       tokens: usage.tokens,
       modelWaitMs: usage.modelWaitMs ?? Date.now() - started,
@@ -238,7 +243,7 @@ async function runTrial(rpc, task, url) {
       taskId: task.id,
       status: "failed",
       verified: false,
-      modelId: LUNA,
+      modelId: MODEL,
       modelCalls: null,
       tokens: null,
       modelWaitMs: Date.now() - started,
@@ -274,7 +279,7 @@ async function runAdapter(name, port) {
 const { server, port } = await serveFixtures();
 let rows = [];
 try {
-  console.error(`live held-out: ${LUNA} × ${trials} trials on :${port}`);
+  console.error(`live held-out: ${MODEL} × ${trials} trials on :${port}`);
   rows = await runAdapter("aux", port);
 } finally {
   server.close();
@@ -289,14 +294,14 @@ const evidence = {
   skippedLive: false,
   sealedHash: sealed,
   trials,
-  modelId: LUNA,
+  modelId: MODEL,
   rows,
   median: summary.modelWaitMs.median,
   iqr: summary.modelWaitMs.iqr,
   ci95: summary.modelWaitMs.ci95,
   verifiedSuccess: summary,
-  artifact: { harness: "tests/held-out/run.mjs", model: LUNA },
-  notes: "Live GPT 5.6 Luna via AI Gateway. Independent oracle is page observe vs gold regex. Mock is not used.",
+  artifact: { harness: "tests/held-out/run.mjs", model: MODEL },
+  notes: "Live Meta Muse Spark 1.3 Contributor via AI Gateway. Independent oracle is page observe vs gold regex. Mock is not used.",
 };
 writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify({ ok: true, skippedLive: false, out: outPath, sealedHash: sealed, verified: summary.verified, n: summary.n }));
