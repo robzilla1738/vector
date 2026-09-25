@@ -31,5 +31,28 @@ try {
   for(const value of values){assert.ok(value.ratio>=4.5,`${theme} ${value.selector}: ${value.ratio}`);assert.equal(value.opacity,'1');}
   await page.screenshot({path:root+`/release/test-artifacts/tabs/text-contrast-${theme}.png`});
  }
- console.log('PASS project placeholder, section labels and disabled button text contrast on representative dark/light glass backdrops.');
+ await page.emulateMedia({forcedColors:'active'});
+ const forced=await page.evaluate(()=>{
+  const sidebar=getComputedStyle(document.querySelector('.chat-sidebar'));
+  const input=getComputedStyle(document.querySelector('.session-editor input'));
+  const button=getComputedStyle(document.querySelector('.session-editor .btn:disabled'));
+  return {active:matchMedia('(forced-colors: active)').matches,sidebarBlur:sidebar.backdropFilter,sidebarFill:sidebar.backgroundColor,text:input.color,inputFill:input.backgroundColor,buttonText:button.color};
+ });
+ assert.equal(forced.active,true);
+ assert.equal(forced.sidebarBlur,'none');
+ assert.notEqual(forced.sidebarFill,'rgba(0, 0, 0, 0)');
+ assert.notEqual(forced.text,forced.inputFill,'project input text remains visible in forced colors');
+ assert.notEqual(forced.buttonText,forced.inputFill,'disabled action remains legible in forced colors');
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/text-contrast-forced.png'});
+ await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'vertical'}));
+ await page.locator('.app.tabs-vertical').waitFor();
+ if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
+ await page.locator('.sidebar .chat-sessions[aria-busy=false]').waitFor();
+ const vertical=await page.locator('.sidebar').evaluate(el=>({blur:getComputedStyle(el).backdropFilter,fill:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopColor}));
+ assert.equal(vertical.blur,'none');
+ assert.notEqual(vertical.fill,'rgba(0, 0, 0, 0)');
+ assert.notEqual(vertical.fill,vertical.border,'vertical sidebar retains a visible forced-color boundary');
+ await page.screenshot({path:root+'/release/test-artifacts/tabs/text-contrast-forced-vertical.png'});
+ await page.emulateMedia({forcedColors:'none'});
+ console.log('PASS project placeholder, section labels and disabled button text contrast on dark/light glass and forced-color surfaces.');
 } finally {await closeAux(app);}
