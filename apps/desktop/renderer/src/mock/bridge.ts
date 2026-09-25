@@ -1104,13 +1104,28 @@ export function installMockBridge(q: URLSearchParams) {
     cancelDictation:async()=>{},
     onDictation:callback=>{dictationListeners.add(callback);return()=>{dictationListeners.delete(callback);};},
     extensions:async()=>extensions,
+    installStoreExtension:async id=>{
+      const installed:BrowserExtension={key:id,id,name:"Store fixture extension",version:"1.0.0",permissions:["Read and change data on example.test"],enabled:true,loaded:true,managed:true,source:"store"};
+      extensions=[...extensions,installed];return installed;
+    },
+    checkStoreExtensionUpdate:async id=>{
+      const current=extensions.find(item=>item.id===id);if(!current)throw new Error("Extension is not installed");
+      const updated={...current,version:"1.1.0"};extensions=extensions.map(item=>item.id===id?updated:item);return updated;
+    },
+    reloadExtension:async id=>{const current=extensions.find(item=>item.id===id);if(!current)throw new Error("Extension is not installed");return current;},
+    showExtensionAction:async id=>extensions.some(item=>item.id===id&&item.enabled),
     installUnpackedExtension:async()=>null,
     updateUnpackedExtension:async key=>{
       const current=extensions.find(item=>item.key===key);if(!current)return null;
       const updated={...current,version:"2.0.0"};extensions=extensions.map(item=>item.key===key?updated:item);return updated;
     },
-    setExtensionEnabled:async()=>{throw new Error("No mock extension");},
-    removeExtension:async()=>false,
+    setExtensionEnabled:async (key,enabled)=>{
+      const current=extensions.find(item=>item.key===key);if(!current)throw new Error("Extension is not installed");
+      const updated={...current,enabled,loaded:enabled};extensions=extensions.map(item=>item.key===key?updated:item);return updated;
+    },
+    removeExtension:async key=>{
+      const found=extensions.some(item=>item.key===key);extensions=extensions.filter(item=>item.key!==key);return found;
+    },
     dataDir: async () => "/Users/you/Library/Application Support/Aux Browser",
     exportDiagnostics:async()=>null,
     exportRuntimeBackup:async()=>null,

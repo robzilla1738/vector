@@ -1,0 +1,492 @@
+diff --git a/chrome/browser/extensions/api/messaging/launch_context_posix.cc b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+index ebc06e1203..a79d6f9595 100644
+--- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+@@ -16,6 +16,8 @@
+ #include "base/process/launch.h"
+ #include "build/build_config.h"
+ #include "build/chromeos_buildflags.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/extensions/api/messaging/native_messaging_host_manifest.h"
+ #include "chrome/common/chrome_paths.h"
+ #include "net/base/file_stream.h"
+ 
+@@ -34,6 +36,31 @@ base::FilePath FindManifestInDir(int dir_key, const std::string& host_name) {
+   return base::FilePath();
+ }
+ 
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL)
++base::FilePath FindChromeManifest(const std::string& host_name,
++                                  bool allow_user_level_hosts) {
++  if (!NativeMessagingHostManifest::IsValidName(host_name)) {
++    return base::FilePath();
++  }
++  if (allow_user_level_hosts) {
++    const base::FilePath user = base::GetHomeDir()
++                                    .Append(FILE_PATH_LITERAL("Library"))
++                                    .Append(FILE_PATH_LITERAL("Application Support"))
++                                    .Append(FILE_PATH_LITERAL("Google"))
++                                    .Append(FILE_PATH_LITERAL("Chrome"))
++                                    .Append(FILE_PATH_LITERAL("NativeMessagingHosts"))
++                                    .Append(host_name + ".json");
++    if (base::PathExists(user)) {
++      return user;
++    }
++  }
++  const base::FilePath system =
++      base::FilePath(FILE_PATH_LITERAL("/Library/Google/Chrome/NativeMessagingHosts"))
++          .Append(host_name + ".json");
++  return base::PathExists(system) ? system : base::FilePath();
++}
++#endif
++
+ }  // namespace
+ 
+ // static
+@@ -47,6 +74,11 @@ base::FilePath LaunchContext::FindManifest(const std::string& host_name,
+   if (result.empty()) {
+     result = FindManifestInDir(chrome::DIR_NATIVE_MESSAGING, host_name);
+   }
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL)
++  if (result.empty()) {
++    result = FindChromeManifest(host_name, allow_user_level_hosts);
++  }
++#endif
+ 
+   if (result.empty()) {
+     error_message = "Can't find native messaging host " + host_name;
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index ffdfc3bb61..9c86d7339d 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -10,6 +10,7 @@ interface Port {
+   profileId: string;
+   platform: string;
+   privateMode: boolean;
++  featureStages: {extensions: 'on'};
+   request(method: string, args: unknown[]): Promise<unknown>;
+   subscribe(event: string, callback: (...args: unknown[]) => void): () => void;
+ }
+@@ -55,6 +56,7 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+     profileId: identity.profileId,
+     platform: 'darwin',
+     privateMode: identity.privateMode,
++    featureStages: {extensions: 'on'},
+     async request(method, args) {
+       const requestArgs = method === 'tabCommand' ?
+           [crypto.randomUUID(), ...args] : args;
+diff --git a/chrome/browser/ui/aux/extension_bridge.cc b/chrome/browser/ui/aux/extension_bridge.cc
+new file mode 100644
+index 0000000000..e54fa1c2ea
+--- /dev/null
++++ b/chrome/browser/ui/aux/extension_bridge.cc
+@@ -0,0 +1,256 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/extension_bridge.h"
++
++#include <algorithm>
++#include <string>
++#include <string_view>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/memory/ref_counted.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/extensions/updater/extension_updater.h"
++#include "chrome/browser/extensions/updater/extension_updater_factory.h"
++#include "chrome/browser/extensions/webstore_install_with_prompt.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/extensions/extensions_container.h"
++#include "chrome/browser/ui/toolbar/toolbar_action_view_model.h"
++#include "extensions/browser/disable_reason.h"
++#include "extensions/browser/extension_registrar.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/browser/uninstall_reason.h"
++#include "extensions/common/extension.h"
++#include "extensions/common/permissions/permissions_data.h"
++
++namespace aux {
++namespace {
++
++using Reply = ExtensionBridge::Callback;
++
++void Error(Reply callback, const char* code, std::string message) {
++  std::move(callback).Run(false, "", code, std::move(message));
++}
++
++void Result(Reply callback, base::Value value) {
++  const auto json = base::WriteJson(value);
++  if (!json) {
++    Error(std::move(callback), "internal", "Extension result was invalid");
++    return;
++  }
++  std::move(callback).Run(true, *json, "", "");
++}
++
++bool StoreOwned(const extensions::Extension* extension) {
++  return extension && extension->from_webstore() && !extension->is_app();
++}
++
++base::Value::Dict Describe(const extensions::Extension& extension,
++                           extensions::ExtensionRegistry& registry) {
++  const bool enabled =
++      registry.enabled_extensions().Contains(extension.id());
++  base::Value::Dict item;
++  item.Set("key", extension.id());
++  item.Set("id", extension.id());
++  item.Set("name", extension.name());
++  item.Set("version", extension.VersionString());
++  item.Set("enabled", enabled);
++  item.Set("loaded", enabled);
++  item.Set("managed", StoreOwned(&extension));
++  item.Set("source", extension.from_webstore() ? "store" : "environment");
++  base::Value::List permissions;
++  for (const auto& message :
++       extension.permissions_data()->GetPermissionMessages()) {
++    if (permissions.size() == 32) {
++      break;
++    }
++    std::string text = base::UTF16ToUTF8(message.message());
++    if (text.size() > 512) {
++      text.resize(512);
++    }
++    permissions.Append(std::move(text));
++  }
++  item.Set("permissions", std::move(permissions));
++  return item;
++}
++
++const std::string* OneId(const base::Value::List& args) {
++  return args.size() == 1 && args[0].is_string()
++             ? args[0].GetIfString()
++             : nullptr;
++}
++
++}  // namespace
++
++bool ExtensionBridge::Handles(std::string_view method) {
++  return method == "extensions" || method == "installStoreExtension" ||
++         method == "checkStoreExtensionUpdate" ||
++         method == "setExtensionEnabled" || method == "reloadExtension" ||
++         method == "removeExtension" || method == "showExtensionAction";
++}
++
++bool ExtensionBridge::IsStoreId(std::string_view id) {
++  return id.size() == 32 &&
++         std::ranges::all_of(id, [](char c) { return c >= 'a' && c <= 'p'; });
++}
++
++void ExtensionBridge::Handle(Profile* profile, BrowserWindowInterface* browser,
++                             gfx::NativeWindow parent, std::string_view method,
++                             const base::Value::List& args, Callback callback) {
++  if (!profile || profile->IsOffTheRecord() || !browser ||
++      browser->GetProfile() != profile) {
++    Error(std::move(callback), "forbidden", "Extensions require a regular Profile");
++    return;
++  }
++  auto* registry = extensions::ExtensionRegistry::Get(profile);
++  auto* registrar = extensions::ExtensionRegistrar::Get(profile);
++  if (!registry || !registrar || !registrar->IsInitialized()) {
++    Error(std::move(callback), "backend_unavailable", "Extension service is not ready");
++    return;
++  }
++  if (method == "extensions") {
++    if (!args.empty()) {
++      Error(std::move(callback), "invalid_argument", "Unexpected extension arguments");
++      return;
++    }
++    base::Value::List items;
++    for (const auto& extension : registry->GenerateInstalledExtensionsSet()) {
++      if (extension->is_app() || extension->location() ==
++          extensions::mojom::ManifestLocation::kComponent) {
++        continue;
++      }
++      items.Append(Describe(*extension, *registry));
++    }
++    Result(std::move(callback), base::Value(std::move(items)));
++    return;
++  }
++  const std::string* id = OneId(args);
++  if (method == "setExtensionEnabled") {
++    if (args.size() != 2 || !args[0].is_string() || !args[1].is_bool()) {
++      Error(std::move(callback), "invalid_argument", "Invalid extension state");
++      return;
++    }
++    id = args[0].GetIfString();
++  }
++  if (!id || !IsStoreId(*id)) {
++    Error(std::move(callback), "invalid_argument", "Invalid Store extension ID");
++    return;
++  }
++  if (method == "installStoreExtension") {
++    if (registry->GetInstalledExtension(*id)) {
++      Error(std::move(callback), "conflict", "Extension is already installed");
++      return;
++    }
++    auto installer = base::MakeRefCounted<extensions::WebstoreInstallWithPrompt>(
++        *id, profile, parent,
++        base::BindOnce(
++            [](base::WeakPtr<Profile> profile, std::string id,
++               Reply callback, bool success, const std::string& error,
++               extensions::webstore_install::Result) {
++              auto* registry = profile
++                                   ? extensions::ExtensionRegistry::Get(profile.get())
++                                   : nullptr;
++              const auto* installed = registry ? registry->GetInstalledExtension(id) : nullptr;
++              if (!success || !installed) {
++                Error(std::move(callback), "install_failed",
++                      error.empty() ? "Store installation was cancelled or failed" : error);
++                return;
++              }
++              Result(std::move(callback), base::Value(Describe(*installed, *registry)));
++            }, profile->GetWeakPtr(), *id, std::move(callback)));
++    installer->BeginInstall();
++    return;
++  }
++  const extensions::Extension* extension = registry->GetInstalledExtension(*id);
++  if (!StoreOwned(extension)) {
++    Error(std::move(callback), "not_found", "Store extension is not installed in this Profile");
++    return;
++  }
++  if (method == "checkStoreExtensionUpdate") {
++    auto* updater = extensions::ExtensionUpdaterFactory::GetForBrowserContext(profile);
++    if (!updater) {
++      Error(std::move(callback), "backend_unavailable", "Extension updater is unavailable");
++      return;
++    }
++    extensions::ExtensionUpdater::CheckParams params;
++    params.ids.push_back(*id);
++    params.install_immediately = true;
++    params.fetch_priority = extensions::DownloadFetchPriority::kForeground;
++    params.callback = base::BindOnce(
++        [](base::WeakPtr<Profile> profile, std::string id, Reply callback) {
++          auto* registry = profile ? extensions::ExtensionRegistry::Get(profile.get()) : nullptr;
++          const auto* extension = registry ? registry->GetInstalledExtension(id) : nullptr;
++          if (!extension) {
++            Error(std::move(callback), "conflict", "Extension changed during update");
++            return;
++          }
++          Result(std::move(callback), base::Value(Describe(*extension, *registry)));
++        }, profile->GetWeakPtr(), *id, std::move(callback));
++    updater->CheckNow(std::move(params));
++    return;
++  }
++  if (method == "setExtensionEnabled") {
++    if (args[1].GetBool()) {
++      registrar->EnableExtension(*id);
++    } else {
++      registrar->DisableExtension(*id,
++          {extensions::disable_reason::DISABLE_USER_ACTION});
++    }
++    extension = registry->GetInstalledExtension(*id);
++    if (!extension || registry->enabled_extensions().Contains(*id) !=
++                          args[1].GetBool()) {
++      Error(std::move(callback), "conflict", "Extension state could not be changed");
++      return;
++    }
++    Result(std::move(callback), base::Value(Describe(*extension, *registry)));
++    return;
++  }
++  if (method == "reloadExtension") {
++    if (!registry->enabled_extensions().Contains(*id)) {
++      Error(std::move(callback), "conflict", "Enable the extension before reloading it");
++      return;
++    }
++    registrar->ReloadExtension(*id);
++    // Reload may replace the Extension object synchronously.
++    extension = registry->GetInstalledExtension(*id);
++    if (!extension) {
++      Error(std::move(callback), "conflict", "Extension changed during reload");
++      return;
++    }
++    Result(std::move(callback), base::Value(Describe(*extension, *registry)));
++    return;
++  }
++  if (method == "removeExtension") {
++    std::u16string error;
++    if (!registrar->UninstallExtension(
++            *id, extensions::UNINSTALL_REASON_USER_INITIATED, &error)) {
++      Error(std::move(callback), "permission_denied",
++            error.empty() ? "Extension cannot be removed" : base::UTF16ToUTF8(error));
++      return;
++    }
++    Result(std::move(callback), base::Value(true));
++    return;
++  }
++  if (method == "showExtensionAction") {
++    if (!registry->enabled_extensions().Contains(*id)) {
++      Error(std::move(callback), "conflict", "Extension is not enabled");
++      return;
++    }
++    auto* container = ExtensionsContainer::From(*browser);
++    auto* action = container ? container->GetActionForId(*id) : nullptr;
++    if (!action) {
++      Error(std::move(callback), "not_found", "Extension has no toolbar action");
++      return;
++    }
++    action->ExecuteUserAction(ToolbarActionViewModel::InvocationSource::kToolbarButton);
++    Result(std::move(callback), base::Value(true));
++    return;
++  }
++  Error(std::move(callback), "not_found", "Unsupported extension operation");
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/extension_bridge.h b/chrome/browser/ui/aux/extension_bridge.h
+new file mode 100644
+index 0000000000..dec35e8925
+--- /dev/null
++++ b/chrome/browser/ui/aux/extension_bridge.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_EXTENSION_BRIDGE_H_
++#define CHROME_BROWSER_UI_AUX_EXTENSION_BRIDGE_H_
++
++#include <string>
++#include <string_view>
++
++#include "base/functional/callback.h"
++#include "base/values.h"
++#include "ui/gfx/native_ui_types.h"
++
++class BrowserWindowInterface;
++class Profile;
++
++namespace aux {
++
++// Only the authenticated chrome://aux/ browser shell calls this bridge.
++// Chromium's extension registry and updater remain the source of truth.
++class ExtensionBridge {
++ public:
++  using Callback = base::OnceCallback<void(bool ok, std::string result_json,
++                                           std::string error_code,
++                                           std::string error_message)>;
++
++  static bool Handles(std::string_view method);
++  static bool IsStoreId(std::string_view id);
++  static void Handle(Profile* profile, BrowserWindowInterface* browser,
++                     gfx::NativeWindow parent, std::string_view method,
++                     const base::Value::List& args, Callback callback);
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_EXTENSION_BRIDGE_H_
+diff --git a/chrome/browser/ui/aux/extension_bridge_browsertest.cc b/chrome/browser/ui/aux/extension_bridge_browsertest.cc
+new file mode 100644
+index 0000000000..3aeaafdeba
+--- /dev/null
++++ b/chrome/browser/ui/aux/extension_bridge_browsertest.cc
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/extension_bridge.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++
++TEST(ExtensionBridgeTest, AcceptsOnlyCanonicalStoreIds) {
++  EXPECT_TRUE(ExtensionBridge::IsStoreId("abcdefghijklmnopabcdefghijklmnop"));
++  EXPECT_FALSE(ExtensionBridge::IsStoreId("abcdefghijklmnop"));
++  EXPECT_FALSE(ExtensionBridge::IsStoreId("abcdefghijklmnopabcdefghijklmnO"));
++  EXPECT_FALSE(ExtensionBridge::IsStoreId("abcdefghijklmnopabcdefghijklmn0"));
++  EXPECT_FALSE(ExtensionBridge::IsStoreId("../../../../../../../../../../../../"));
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc b/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc
+index 35c6375ac9..305c55b8d2 100644
+--- a/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc
++++ b/chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc
+@@ -249,7 +249,16 @@ void WebUIToolbarExtensionsContainer::CloseExtensionsMenuIfOpen() {
+ bool WebUIToolbarExtensionsContainer::ShowToolbarActionPopupForAPICall(
+     const std::string& action_id,
+     ShowPopupCallback callback) {
+-  NOTIMPLEMENTED();
++  // chrome.action.openPopup() may only target the active browser window. The
++  // action model performs its own visibility/popup checks before reaching us.
++  if (popup_owner_ || popped_out_action_ || !GetWidget()->IsActive()) {
++    return false;
++  }
++  ToolbarActionViewModel* action = GetActionForId(action_id);
++  if (!action) {
++    return false;
++  }
++  action->TriggerPopupForAPI(std::move(callback));
+   return true;
+ }
+ 
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
+index 5c7e183e41..3874683179 100644
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -152,10 +152,17 @@ source_set("impl") {
+   ]
+ 
+   if (enable_aux_shell) {
++    sources += [
++      "../aux/extension_bridge.cc",
++      "../aux/extension_bridge.h",
++    ]
+     deps += [
+       ":shell_host_mojo_bindings",
++      "//chrome/browser/extensions:extensions",
+       "//chrome/browser/ui/aux:runtime",
+       "//components/prefs",
++      "//extensions/browser",
++      "//extensions/common",
+       "//chrome/browser/resources/aux_host:resources",
+       "//chrome/browser/resources/aux:resources",
+     ]
+@@ -211,6 +218,9 @@ source_set("browser_tests") {
+   if (!is_chromeos) {
+     sources += [ "webui_browser_browsertest.cc" ]
+   }
++  if (enable_aux_shell) {
++    sources += [ "../aux/extension_bridge_browsertest.cc" ]
++  }
+ 
+   deps = [
+     ":impl",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index f4b72a0f47..e04b341b27 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -12,6 +12,7 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -377,6 +378,18 @@ void WebUIBrowserUI::Request(const std::string& method,
+                             "Aux shell arguments must be an array");
+     return;
+   }
++  if (aux::ExtensionBridge::Handles(method)) {
++    aux::ExtensionBridge::Handle(
++        browser_->GetProfile(), browser_, browser_window()->GetNativeWindow(),
++        method, *list,
++        base::BindOnce(
++            [](RequestCallback callback, bool ok, std::string result,
++               std::string code, std::string message) {
++              std::move(callback).Run(ok, result, code, message);
++            },
++            std::move(callback)));
++    return;
++  }
+   if (method == "organizationSnapshot" || method == "organizationCommit") {
+     if (browser_->GetProfile()->IsOffTheRecord()) {
+       std::move(callback).Run(false, "", "forbidden",

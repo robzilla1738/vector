@@ -6,6 +6,7 @@ import { useStore, call, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+import { ExtensionActions } from "./ExtensionActions";
 
 export const Toolbar = memo(function Toolbar() {
   const key = useShortcutLabels();
@@ -48,6 +49,7 @@ export const Toolbar = memo(function Toolbar() {
       {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" aria-hidden="true" />}
 
       <div className="tb-right">
+        <ExtensionActions />
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}
         {page?.controller === "human" && (

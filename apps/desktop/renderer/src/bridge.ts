@@ -17,7 +17,7 @@ export interface StageBounds {
 
 export interface BrowserProfile { id:string;name:string;current:boolean;archived?:boolean }
 export interface HttpAuthRequest { id:string; origin:string;  proxy:boolean; realm:string; retry:boolean }
-export interface BrowserExtension { key:string;id?:string;name:string;version:string;permissions:string[];enabled:boolean;loaded:boolean;managed:boolean;source:"managed"|"environment";error?:string }
+export interface BrowserExtension { key:string;id?:string;name:string;version:string;permissions:string[];enabled:boolean;loaded:boolean;managed:boolean;source:"managed"|"environment"|"store";error?:string }
 export interface BrowserSiteInfo {
   pageId:string;url:string;origin:string;title:string;
   security:"secure"|"local"|"insecure";
@@ -185,6 +185,10 @@ export interface AuxBridge {
   cancelDictation(id:string):Promise<void>;
   onDictation(callback:(event:{sessionId:string;type:"recording"|"finishing"|"transcript"|"final"|"error";text?:string;message?:string})=>void):()=>void;
   extensions():Promise<BrowserExtension[]>;
+  installStoreExtension(id:string):Promise<BrowserExtension>;
+  checkStoreExtensionUpdate(id:string):Promise<BrowserExtension>;
+  reloadExtension(id:string):Promise<BrowserExtension>;
+  showExtensionAction(id:string):Promise<boolean>;
   installUnpackedExtension():Promise<BrowserExtension|null>;
   updateUnpackedExtension(key:string):Promise<BrowserExtension|null>;
   setExtensionEnabled(key:string,enabled:boolean):Promise<BrowserExtension>;
@@ -354,6 +358,10 @@ const stub: AuxBridge = {
   cancelDictation:async()=>{},
   onDictation:()=>()=>{},
   extensions:async()=>[],
+  installStoreExtension:async()=>{throw new Error("Store installation requires Aux Browser");},
+  checkStoreExtensionUpdate:async()=>{throw new Error("Store updates require Aux Browser");},
+  reloadExtension:async()=>{throw new Error("Extension reload requires Aux Browser");},
+  showExtensionAction:async()=>false,
   installUnpackedExtension:async()=>{throw new Error("Extension installation requires Aux desktop");},
   updateUnpackedExtension:async()=>{throw new Error("Extension updates require Aux desktop");},
   setExtensionEnabled:async()=>{throw new Error("Extension management requires Aux desktop");},

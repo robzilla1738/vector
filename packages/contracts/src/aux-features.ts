@@ -93,6 +93,11 @@ export function auxFeatureForMethod(method: string): AuxFeature | undefined {
 }
 
 const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
+  extensions: "extensions", installStoreExtension: "extensions",
+  checkStoreExtensionUpdate: "extensions", reloadExtension: "extensions",
+  showExtensionAction: "extensions", setExtensionEnabled: "extensions",
+  removeExtension: "extensions", installUnpackedExtension: "extensions",
+  updateUnpackedExtension: "extensions",
   vaultFill: "vault", vaultSave: "vault", vaultDismiss: "vault",
   vaultExport: "vault", vaultImport: "vault", autofill: "vault",
   exportMigrationLayout: "electronMigration",
