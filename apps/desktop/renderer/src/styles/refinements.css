@@ -234,6 +234,13 @@
 @media (prefers-reduced-motion: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { transition: none !important; } }
 @media (prefers-reduced-transparency: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { background: var(--sb-bg) !important; backdrop-filter: none !important; } }
 .app.tabs-vertical:not(.layout-expanded) .main-col { margin-left: 0; border: 0; border-radius: 0; box-shadow: none; }
+/* Ask Aux creates an interior edge even when the navigation sidebar is hidden.
+   Clip the complete column so the toolbar and page keep one continuous contour. */
+.app.tabs-vertical:not(.layout-expanded).rail-open:not([data-overlay="settings"]):not([data-overlay="tasks"]) .main-col {
+  border-top-right-radius: var(--r-xl);
+  border-bottom-right-radius: var(--r-xl);
+}
+
 
 /* Row actions unfold within one shared surface, rather than a second card. */
 .session-item { border-radius: var(--r-lg); overflow: hidden; transition: background-color var(--t-disclosure) var(--ease-out); }
