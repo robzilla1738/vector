@@ -197,7 +197,19 @@ export async function prepareElectronMigration(input: { sourceDataDir: string; d
         if (table(copied, "vault_grants")) copied.prepare("DELETE FROM vault_grants").run();
         if (table(copied, "vault_items")) { omitted.vaultMetadata = Number((copied.prepare("SELECT count(*) AS n FROM vault_items").get() as {n:number}).n); copied.prepare("DELETE FROM vault_items").run(); }
         for (const name of ["calendar_task_grants", "calendar_connections", "agent_connections", "mcp_connections", "mcp_grants", "mcp_tokens"]) if (table(copied, name)) copied.prepare(`DELETE FROM ${name}`).run();
+        // A copy into a new browser identity cannot inherit standing authority,
+        // pending approvals, or commands that were accepted by the old host.
+        for (const name of ["outbound_mcp_calls", "outbound_mcp_grants", "outbound_mcp_servers",
+          "safety_standing_grants", "safety_approval_requests", "command_escalation_grants",
+          "command_escalation_requests"]) if (table(copied, name)) copied.prepare(`DELETE FROM ${name}`).run();
+        if (table(copied, "safety_send_journal")) copied.prepare("UPDATE safety_send_journal SET state='parked' WHERE state IN ('queued','offline','sending','accepted')").run();
+        if (table(copied, "coordinator_leases")) copied.prepare("DELETE FROM coordinator_leases").run();
+        if (table(copied, "subagents")) copied.prepare("UPDATE subagents SET state='interrupted',ended_at=coalesce(ended_at,created_at) WHERE state IN ('starting','running')").run();
+        if (table(copied, "subagent_groups")) copied.prepare("UPDATE subagent_groups SET state='closed' WHERE state='active'").run();
+        if (table(copied, "hooks")) copied.prepare("UPDATE hooks SET trust='untrusted' WHERE trust='approved'").run();
+        if (table(copied, "hook_invocations")) copied.prepare("UPDATE hook_invocations SET state='uncertain',ended_at=coalesce(ended_at,created_at) WHERE state='invoking'").run();
         copied.prepare("DELETE FROM kv WHERE lower(key) GLOB '*token*' OR lower(key) GLOB '*secret*' OR lower(key) GLOB '*apikey*' OR lower(key) GLOB '*oauth*' OR lower(key) GLOB '*credential*' OR lower(key) GLOB '*vault*' OR lower(key) GLOB '*mcp*' OR lower(key) GLOB '*calendar*' OR lower(key) GLOB '*cloud*'").run();
+        copied.prepare("DELETE FROM kv WHERE key IN ('setting:effectGrants','setting:originPolicies','setting:safetyCeilings','setting:managedOriginPolicies')").run();
         if (table(copied, "routines")) copied.prepare("UPDATE routines SET paused=1").run();
         if (table(copied, "runs")) copied.prepare("UPDATE runs SET status='cancelled',ended_at=coalesce(ended_at,created_at) WHERE status NOT IN ('done','failed','cancelled','needs_input')").run();
         if (table(copied, "run_messages")) copied.prepare("UPDATE run_messages SET status='cancelled' WHERE status IN ('accepted','delivering','needs_attention')").run();
