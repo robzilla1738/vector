@@ -1,18 +1,21 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { z } from "zod";
 import {
   routineOccurrenceIdentity,
+  scheduleOccurrenceIdentity,
   AuxError,
   type Routine,
   type RoutineSuggestion,
-  type RoutineEvent,
   type RoutineAlert,
   type RoutineCompare,
   RoutineShareSchema,
   RoutineRunOutcomeSchema,
+  RoutineSourceEventSchema,
   RoutineSchema,
   type RoutineRun,
   type RoutineRunOutcome,
+  type RoutineInboxItem,
+  type RoutineSourceEvent,
   type RoutineShare,
   type RoutineTrigger,
   type Run,
@@ -172,6 +175,7 @@ export class RoutineService {
       updatedAt: now,
     };
     this.requireCalendarGrants(routine);
+    this.requireTriggerAuthority(routine);
     this.insert(routine);
     this.events.emit("routine.updated", { routine });
     return routine;
@@ -237,7 +241,9 @@ export class RoutineService {
     }
     if (!next.sourceTaskId && !next.paused) throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
     this.requireCalendarGrants(next);
+    this.requireTriggerAuthority(next);
     this.persist(next);
+    if (input.trigger) this.repo.deleteSetting(`routinePageDigest:${next.routineId}`);
     this.events.emit("routine.updated", { routine: next });
     return next;
   }
@@ -322,6 +328,7 @@ export class RoutineService {
     if (source.revision !== routine.sourceTaskRevision) throw new AuxError("conflict", "The source task changed. Review and sync this Skill before running it.");
     this.requireCriteriaMatch(routine);
     this.requireCalendarGrants(routine);
+    this.requireTriggerAuthority(routine);
     const uncertain = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status='uncertain' LIMIT 1").get(routine.routineId);
     if (uncertain) throw new AuxError("conflict", "Reconcile the previous uncertain write before running this routine again.");
     const active = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_id=? AND status IN ('queued','running','needs_review') LIMIT 1").get(routine.routineId);
@@ -365,6 +372,7 @@ export class RoutineService {
     const next = { ...record, status: "completed" as const, reason: reviewNote, endedAt: Date.now() };
     this.updateRun(next);
     this.events.emit("routine.updated", { routine, run: next });
+    this.autoPauseIfNeeded(routine, next);
     return next;
   }
 
@@ -398,8 +406,7 @@ export class RoutineService {
           } else {
             created.push(this.recordMissed(routine, identity, "Missed scheduled run. Consequential work was not started automatically."));
           }
-        }
-      } else if (routine.trigger.kind === "monitor") {
+        }      } else if (routine.trigger.kind === "monitor") {
         const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, Math.floor(now / (routine.trigger.intervalMinutes * 60_000)) * routine.trigger.intervalMinutes * 60_000);
         if (this.hasOccurrence(identity)) continue;
         const missed = this.recentMissedMonitors(routine.routineId);
@@ -415,39 +422,106 @@ export class RoutineService {
     return created;
   }
 
-  /** Called by trusted host event adapters. Stable event IDs make delivery idempotent. */
-  async triggerEvent(event: RoutineEvent): Promise<RoutineRun[]> {
+  /** Trusted host observations only. Event bodies and page text are never stored here. */
+  async ingestEvent(raw: RoutineSourceEvent, now = Date.now()): Promise<RoutineRun[]> {
+    const event = RoutineSourceEventSchema.parse(raw);
+    if (event.observedAt > now + 30_000) throw new AuxError("invalid_params", "An automation event cannot be from the future.");
     this.sync();
-    const now = Date.now();
-    const records: RoutineRun[] = [];
-    for (const routine of this.list({ includeArchived: false, limit: 200 })) {
-      const trigger = routine.trigger;
-      if (routine.paused || trigger.kind !== "event" || trigger.source !== event.source) continue;
-      const matches = trigger.source === "calendar_event"
-        ? !!event.connectionId && event.connectionId === trigger.connectionId && !!routine.sourceTaskId && !!routine.sourceTaskRevision
-          && routine.calendarGrantIds.length > 0 && !!this.repo.db.prepare(`SELECT 1 FROM calendar_task_grants
-            WHERE connection_id=? AND task_id=? AND task_revision=? AND revoked_at IS NULL
-            AND grant_id IN (${routine.calendarGrantIds.map(() => "?").join(",")}) LIMIT 1`)
-            .get(event.connectionId, routine.sourceTaskId, routine.sourceTaskRevision, ...routine.calendarGrantIds)
-        : (() => {
-            try {
-              if (!event.origin) return false;
-              const observed = new URL(event.origin), expected = new URL(trigger.origin!);
-              return ["http:", "https:"].includes(observed.protocol) && observed.origin === expected.origin;
-            }
-            catch { return false; }
-          })();
-      if (!matches) continue;
-      const identity = `event:${routine.routineId}:${event.eventId}`;
-      if (this.hasOccurrence(identity)) continue;
-      if (event.occurredAt > now + 60_000 || now - event.occurredAt > 90_000) {
-        records.push(this.recordMissed(routine, identity, "Event arrived outside the live automation window. Consequential work was not started automatically."));
-      } else {
-        records.push(await this.startOccurrence(routine, identity, event.occurredAt));
+    const created: RoutineRun[] = [];
+    const candidates = this.repo.db.prepare("SELECT * FROM routines WHERE archived_at IS NULL AND paused=0 AND json_extract(json,'$.trigger.kind')=?")
+      .all(event.kind) as Parameters<typeof parseRoutine>[0][];
+    for (const row of candidates) {
+      const routine = parseRoutine(row);
+      if (routine.paused || routine.trigger.kind !== event.kind || !this.eventMatches(routine, event)) continue;
+      if (event.kind === "page_change" && routine.trigger.kind === "page_change") {
+        const key = `routinePageDigest:${routine.routineId}`;
+        const current = { url: event.url, pageId: event.pageId, documentEpoch: event.documentEpoch, contentSha256: event.contentSha256 };
+        const previous = this.repo.getSetting<typeof current>(key);
+        if (previous?.url !== current.url || previous.pageId !== current.pageId || previous.documentEpoch !== current.documentEpoch) {
+          this.repo.setSetting(key, current);
+          continue; // First observation is a baseline, never a synthetic change.
+        }
+        if (previous.contentSha256 === current.contentSha256) continue;
+        this.repo.setSetting(key, current);
+        const last = this.repo.db.prepare("SELECT created_at FROM routine_runs WHERE routine_id=? AND occurrence_identity IS NOT NULL ORDER BY created_at DESC LIMIT 1")
+          .get(routine.routineId) as { created_at: number } | undefined;
+        if (last && now - last.created_at < routine.trigger.minimumIntervalMinutes * 60_000) continue;
       }
+      const sourceKey = event.kind === "calendar_event"
+        ? [event.kind, event.grantId, event.calendarId, event.eventId, event.startAt]
+        : [event.kind, event.kind === "site_notification" ? event.origin : event.pageId, event.eventId];
+      const identity = `${routine.routineId}:event:${createHash("sha256").update(JSON.stringify(sourceKey)).digest("hex")}`;
+      if (this.hasOccurrence(identity)) continue;
+      const dueAt = event.kind === "calendar_event" && routine.trigger.kind === "calendar_event"
+        ? event.startAt - routine.trigger.beforeMinutes * 60_000 : event.observedAt;
+      if (dueAt > now + 30_000) continue;
+      if (now - dueAt > 5 * 60_000) {
+        created.push(this.recordMissed(routine, identity, "Event occurred while Aux was closed or the automation was unavailable; work was not replayed."));
+        continue;
+      }
+      created.push(await this.startOccurrence(routine, identity, dueAt));
     }
-    return records;
+    return created;
   }
+
+  /** One inbox row per automation occurrence, including completed results and missed fires. */
+  inbox(opts: { workspaceId?: string; limit?: number; unreadOnly?: boolean } = {}): RoutineInboxItem[] {
+    this.sync();
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
+    const rows = this.repo.db.prepare(`SELECT rr.*,r.workspace_id,coalesce(rev.json,r.json) AS routine_json,k.value AS read_at
+      FROM routine_runs rr JOIN routines r ON r.routine_id=rr.routine_id
+      LEFT JOIN routine_revisions rev ON rev.routine_id=rr.routine_id AND rev.revision=rr.revision
+      LEFT JOIN kv k ON k.key='setting:routineInboxRead:'||rr.routine_run_id
+      WHERE rr.occurrence_identity IS NOT NULL AND (? IS NULL OR r.workspace_id=?)
+        AND (?=0 OR k.value IS NULL)
+      ORDER BY rr.created_at DESC,rr.routine_run_id DESC LIMIT ?`)
+      .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.unreadOnly ? 1 : 0, limit) as (Record<string, unknown> & { workspace_id: string; routine_json: string; read_at: string | null })[];
+    return rows.map(row => {
+      const definition = JSON.parse(row.routine_json) as { title: string; trigger: RoutineTrigger };
+      return { run: parseRun(row), title: definition.title, workspaceId: row.workspace_id, triggerKind: definition.trigger.kind,
+        ...(row.read_at ? { readAt: Number(JSON.parse(row.read_at)) } : {}) };
+    });
+  }
+
+  markInboxRead(routineRunId: string, now = Date.now()): { readAt: number } {
+    const row = this.repo.db.prepare("SELECT 1 FROM routine_runs WHERE routine_run_id=? AND occurrence_identity IS NOT NULL").get(routineRunId);
+    if (!row) throw new AuxError("not_found", "That automation result was not found.");
+    const key = `routineInboxRead:${routineRunId}`;
+    const readAt = this.repo.getSetting<number>(key) ?? now;
+    this.repo.setSetting(key, readAt);
+    return { readAt };
+  }
+
+  private eventMatches(routine: Routine, event: RoutineSourceEvent): boolean {
+    if (routine.trigger.kind === "site_notification" && event.kind === "site_notification")
+      return routine.trigger.origin === event.origin && routine.siteOrigins.includes(event.origin);
+    if (routine.trigger.kind === "page_change" && event.kind === "page_change") {
+      if (routine.trigger.url !== event.url || !routine.siteOrigins.includes(new URL(event.url).origin)) return false;
+      const page = this.repo.db.prepare("SELECT url,epoch,detached,owned FROM pages WHERE page_id=?").get(event.pageId) as
+        { url: string; epoch: number; detached: number; owned: number } | undefined;
+      if (!page || page.url !== event.url || page.epoch !== event.documentEpoch || page.detached || page.owned) return false;
+      const task = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(routine.sourceTaskId ?? "") as { json: string } | undefined;
+      const resources = (task ? JSON.parse(task.json) as { resources?: { kind: string; locator: string }[] } : {}).resources ?? [];
+      return resources.some(resource => (resource.kind === "page" && resource.locator === event.pageId) || (resource.kind === "url" && resource.locator === event.url));
+    }
+    if (routine.trigger.kind === "calendar_event" && event.kind === "calendar_event") {
+      if (routine.trigger.grantId !== event.grantId || !routine.calendarGrantIds.includes(event.grantId) ||
+          (routine.trigger.calendarId && routine.trigger.calendarId !== event.calendarId)) return false;
+      return !!this.repo.db.prepare(`SELECT 1 FROM calendar_task_grants g JOIN calendar_connections c ON c.connection_id=g.connection_id
+        WHERE g.grant_id=? AND g.connection_id=? AND g.task_id=? AND g.task_revision=?
+          AND g.revoked_at IS NULL AND c.revoked_at IS NULL AND c.state='active'`)
+        .get(event.grantId, event.connectionId, routine.sourceTaskId ?? "", routine.sourceTaskRevision ?? 0);
+    }
+    return false;
+  }
+
+  private requireTriggerAuthority(routine: Routine): void {
+    if (routine.trigger.kind === "site_notification" && !routine.siteOrigins.includes(routine.trigger.origin))
+      throw new AuxError("permission_denied", "Add the notification origin to this routine's reviewed site scope.");
+    if (routine.trigger.kind === "page_change" && !routine.siteOrigins.includes(new URL(routine.trigger.url).origin))
+      throw new AuxError("permission_denied", "Add the watched page origin to this routine's reviewed site scope.");
+    if (routine.trigger.kind === "calendar_event" && !routine.calendarGrantIds.includes(routine.trigger.grantId))
+      throw new AuxError("permission_denied", "Add the Calendar event's task grant to this routine.");  }
 
   private async startOccurrence(routine: Routine, identity: string, scheduledFor: number): Promise<RoutineRun> {
     try {
@@ -475,8 +549,8 @@ export class RoutineService {
         title: routine.title,
         status: row.status as RoutineAlert["status"],
         reason: row.reason ?? undefined,
-        triggerKind: routine.trigger?.kind === "schedule" || routine.trigger?.kind === "monitor" || routine.trigger?.kind === "event" ? routine.trigger.kind : "manual",
-        createdAt: row.created_at,
+        triggerKind: (["schedule", "monitor", "site_notification", "page_change", "calendar_event"] as string[]).includes(routine.trigger?.kind ?? "")
+          ? routine.trigger!.kind as RoutineAlert["triggerKind"] : "manual",        createdAt: row.created_at,
       };
     });
   }
@@ -532,6 +606,7 @@ export class RoutineService {
         const next = { ...record, status: "failed" as const, reason, endedAt: Date.now() };
         this.updateRun(next);
         this.events.emit("routine.updated", { routine, run: next });
+        this.autoPauseIfNeeded(routine, next);
         return next;
       }
     }
@@ -563,8 +638,28 @@ export class RoutineService {
       const next = this.mapRunStatus(record, run);
       if (!next) continue;
       this.updateRun(next);
-      this.events.emit("routine.updated", { routine: this.routine(record.routineId), run: next });
+      const routine = this.routine(record.routineId);
+      this.events.emit("routine.updated", { routine, run: next });
+      if (["completed", "failed"].includes(next.status)) this.autoPauseIfNeeded(routine, next);
     }
+  }
+
+  private autoPauseIfNeeded(routine: Routine, record: RoutineRun): void {
+    if (routine.trigger.kind === "manual" || routine.paused || routine.archivedAt) return;
+    const recent = this.repo.db.prepare("SELECT status FROM routine_runs WHERE routine_id=? AND status IN ('completed','failed') ORDER BY created_at DESC,routine_run_id DESC LIMIT 3")
+      .all(routine.routineId) as { status: string }[];
+    const repeatedFailure = recent.length === 3 && recent.every(row => row.status === "failed");
+    const spend = Number((this.repo.db.prepare(`SELECT coalesce(sum(coalesce(m.cost_usd,0)),0) AS usd
+      FROM model_calls m JOIN routine_runs rr ON rr.run_id=m.run_id WHERE rr.routine_id=?`).get(routine.routineId) as { usd: number }).usd);
+    const overCap = spend >= (routine.spendCapUsd ?? 50);
+    if (!repeatedFailure && !overCap) return;
+    const reason = repeatedFailure ? "Auto-paused after three failed runs. Review the source task and results before resuming."
+      : `Auto-paused after reaching its $${(routine.spendCapUsd ?? 50).toFixed(2)} model spend cap.`;
+    const paused: Routine = { ...routine, paused: true, revision: routine.revision + 1, updatedAt: Date.now() };
+    this.persist(paused);
+    const updated = { ...record, reason: `${record.reason ? `${record.reason} ` : ""}${reason}`.slice(0, 1000) };
+    this.updateRun(updated);
+    this.events.emit("routine.updated", { routine: paused, run: updated });
   }
 
   private mapRunStatus(record: RoutineRun, run: Run): RoutineRun | undefined {
@@ -689,22 +784,8 @@ export class RoutineService {
   }
 
   private updateRun(run: RoutineRun) {
-    const previous = this.repo.db.prepare("SELECT status FROM routine_runs WHERE routine_run_id=?").get(run.routineRunId) as { status: string } | undefined;
     this.repo.db.prepare("UPDATE routine_runs SET status=?,reason=?,chat_id=?,run_id=?,parameters=?,started_at=?,ended_at=? WHERE routine_run_id=?")
       .run(run.status, run.reason ?? null, run.chatId ?? null, run.runId ?? null, JSON.stringify(run.parameters), run.startedAt ?? null, run.endedAt ?? null, run.routineRunId);
-    if (run.status === "failed" && previous?.status !== "failed") {
-      const recent = this.repo.db.prepare(`SELECT status FROM routine_runs WHERE routine_id=?
-        AND status IN ('failed','completed','cancelled','missed') ORDER BY created_at DESC LIMIT 3`)
-        .all(run.routineId) as { status: string }[];
-      if (recent.length === 3 && recent.every(item => item.status === "failed")) {
-        const routine = this.routine(run.routineId);
-        if (!routine.paused) {
-          const paused = { ...routine, paused: true, revision: routine.revision + 1, updatedAt: Date.now() };
-          this.persist(paused);
-          this.events.emit("routine.updated", { routine: paused, reason: "Paused after three consecutive failed runs." });
-        }
-      }
-    }
   }
 }
 

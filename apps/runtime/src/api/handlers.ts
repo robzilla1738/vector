@@ -976,13 +976,16 @@ export function makeInvoker(s: Services) {
       case "routines.outcome":
       case "routines.reconcile":
       case "routines.due":
+      case "routines.ingestEvent":
       case "routines.alerts":
+      case "routines.inbox":
+      case "routines.inboxRead":
       case "routines.export":
       case "routines.exportSkill":
       case "routines.importSkill":
       case "routines.import":
       case "routines.compare": {
-        const routineRead = method === "routines.list" || method === "routines.suggest" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare" || method === "routines.export" || method === "routines.exportSkill";
+        const routineRead = method === "routines.list" || method === "routines.suggest" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.inbox" || method === "routines.compare" || method === "routines.export" || method === "routines.exportSkill";
         if (client.external && (client.scope || !routineRead)) throw new AuxError("permission_denied", "Routines are managed in Aux.");
         if (method === "routines.list") return routines.list(params);
         if (method === "routines.suggest") return routines.suggest(params);
@@ -997,6 +1000,9 @@ export function makeInvoker(s: Services) {
         if (method === "routines.outcome") return routines.outcome(params.routineRunId, taskEvidence);
         if (method === "routines.reconcile") return routines.reconcile(params.routineRunId, params.outcome, params.note);
         if (method === "routines.alerts") return routines.alerts(params.limit);
+        if (method === "routines.inbox") return routines.inbox(params);
+        if (method === "routines.inboxRead") return routines.markInboxRead(params.routineRunId);
+        if (method === "routines.ingestEvent") return routines.ingestEvent(params);
         if (method === "routines.compare") return routines.compare(params.leftRunId, params.rightRunId);
         if (method === "routines.export") return routines.exportRoutines(params.routineIds);
         if (method === "routines.exportSkill") return routines.exportSkillDocument(params.routineId);

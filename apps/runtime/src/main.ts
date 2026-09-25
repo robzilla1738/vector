@@ -401,6 +401,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // denies these projection methods to external and scoped clients.
   channel?.onMethod("history.projectSnapshot", params => invoke("history.projectSnapshot", params, { external: false }));
   channel?.onMethod("history.projectDelta", params => invoke("history.projectDelta", params, { external: false }));
+  // Native notification/page-change/Calendar adapters submit provenance here;
+  // external and scoped API clients cannot mint automation events.
+  channel?.onMethod("routines.ingestEvent", params => invoke("routines.ingestEvent", params, { external: false }));
 
   // ---- loopback API ----
   const token = config.apiToken || randomUUID();

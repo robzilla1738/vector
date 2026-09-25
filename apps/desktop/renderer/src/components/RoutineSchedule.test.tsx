@@ -107,18 +107,15 @@ it("summarizes each trigger and orders days without mutating the saved schedule"
 
 it("uses a labeled, granted Calendar account and never displays its connection ID", () => {
   const connectionId = "11111111-1111-4111-8111-111111111111";
+  const grantId = "22222222-2222-4222-8222-222222222222";
   const account = {
+    grantId,
     connectionId,
-    provider: "google" as const,
     accountKey: "team@example.com",
     label: "Team Calendar",
-    scopes: ["https://www.googleapis.com/auth/calendar.readonly" as const],
-    state: "active" as const,
-    createdAt: 1,
-    updatedAt: 1,
   };
   const onSave = vi.fn();
-  const trigger = { kind: "event" as const, source: "calendar_event" as const, connectionId };
+  const trigger = { kind: "calendar_event" as const, grantId, beforeMinutes: 0 };
   act(() =>
     root.render(
       <RoutineSchedule
@@ -130,11 +127,11 @@ it("uses a labeled, granted Calendar account and never displays its connection I
     ),
   );
   expect(container.querySelector<HTMLSelectElement>(".routine-schedule select[required]")?.value).toBe(
-    connectionId,
+    grantId,
   );
   expect(container.textContent).toContain("Team Calendar · team@example.com");
   expect(container.textContent).not.toContain(connectionId);
-  expect(routineScheduleSummary(trigger)).toBe("Calendar event");
+  expect(routineScheduleSummary(trigger)).toBe("Calendar event · 0 minutes before");
   act(() =>
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
   );
@@ -142,12 +139,12 @@ it("uses a labeled, granted Calendar account and never displays its connection I
 });
 
 it("prevents saving an unavailable Calendar connection and explains how to connect one", () => {
-  const connectionId = "11111111-1111-4111-8111-111111111111";
+  const grantId = "22222222-2222-4222-8222-222222222222";
   const onSave = vi.fn();
   act(() =>
     root.render(
       <RoutineSchedule
-        trigger={{ kind: "event", source: "calendar_event", connectionId }}
+        trigger={{ kind: "calendar_event", grantId, beforeMinutes: 0 }}
         disabled={false}
         calendar={{
           status: "ready",
@@ -161,7 +158,7 @@ it("prevents saving an unavailable Calendar connection and explains how to conne
   expect(container.querySelector("input[placeholder='Connection UUID']")).toBeNull();
   expect(container.querySelector<HTMLButtonElement>(".routine-schedule button.btn")?.disabled).toBe(true);
   expect(container.textContent).toContain("Grant a Calendar account to this task revision.");
-  expect(container.textContent).not.toContain(connectionId);
+  expect(container.textContent).not.toContain(grantId);
   act(() =>
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
   );

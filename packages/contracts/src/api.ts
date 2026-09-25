@@ -47,7 +47,7 @@ import {
   VaultAccessRecordSchema, VaultEncryptedExportParams, VaultEncryptedImportParams, VaultTransferPackageSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineInboxItemSchema, RoutineSourceEventSchema, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
@@ -759,7 +759,10 @@ export const MethodSchemas = {
   "routines.outcome": z.object({routineRunId:id}),
   "routines.reconcile": z.object({routineRunId:id,outcome:z.enum(["applied","not_applied"]),note:z.string().trim().min(1).max(1000)}).strict(),
   "routines.due": z.object({now:z.number().optional()}),
+  "routines.ingestEvent": RoutineSourceEventSchema,
   "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
+  "routines.inbox": z.object({workspaceId:id.optional(),limit:z.number().int().min(1).max(100).default(50),unreadOnly:z.boolean().default(false)}).strict(),
+  "routines.inboxRead": z.object({routineRunId:id}).strict(),
   "routines.compare": z.object({leftRunId:id,rightRunId:id}).strict(),
   "routines.export": z.object({ routineIds: z.array(id).min(1).max(500).optional() }).strict(),
   "routines.exportSkill": z.object({ routineId: id }).strict(),
@@ -1212,7 +1215,10 @@ export const ResultSchemas = {
   "routines.outcome": RoutineRunOutcomeSchema,
   "routines.reconcile": RoutineRunSchema,
   "routines.due": z.array(RoutineRunSchema),
+  "routines.ingestEvent": z.array(RoutineRunSchema),
   "routines.alerts": z.array(RoutineAlertSchema),
+  "routines.inbox": z.array(RoutineInboxItemSchema),
+  "routines.inboxRead": z.object({readAt:z.number().int().nonnegative()}),
   "routines.compare": RoutineCompareSchema,
   "routines.export": RoutineShareEnvelopeSchema,
   "routines.exportSkill": z.object({ filename: z.literal("SKILL.md"), content: z.string().max(64_000) }).strict(),

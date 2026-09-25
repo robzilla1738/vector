@@ -80,23 +80,23 @@ it("round-trips a SKILL.md as an inert portable definition", async () => {
   await expect(f.routines.importSkillDocument(link, other.workspaceId)).rejects.toThrow(/regular SKILL.md/);
 });
 
-it("runs live event Skills once, records stale events as missed, and never matches a lookalike origin", async () => {
+it("runs reviewed site notifications once and records stale delivery as missed", async () => {
   const started: string[] = [];
   const f = fixture(async routine => { started.push(routine.title); return { runId: `event-run-${started.length}` }; });
   const skill = f.routines.create({
-    title: "Page change check", objective: "Review changed pricing", workspaceId: f.workspace.workspaceId,
+    title: "Notification check", objective: "Review the notification", workspaceId: f.workspace.workspaceId,
     sourceTaskId: f.task.taskId, parameters: [], siteOrigins: ["https://example.com"], accountLabels: [],
     reviewRequired: false, cloudCapable: false, consecutive: false, paused: false,
-    trigger: { kind: "event", source: "page_change", origin: "https://example.com" },
+    trigger: { kind: "site_notification", origin: "https://example.com" },
   });
-  const event = { eventId: "change-1", source: "page_change" as const, origin: "https://example.com/pricing", occurredAt: Date.now() };
-  expect(await f.routines.triggerEvent({ ...event, origin: "https://example.com.evil.test/pricing" })).toEqual([]);
-  const first = await f.routines.triggerEvent(event);
+  const event = { kind: "site_notification" as const, eventId: "notice-1", origin: "https://example.com", permissionGranted: true as const, observedAt: Date.now() };
+  expect(await f.routines.ingestEvent({ ...event, origin: "https://example.com.evil.test" })).toEqual([]);
+  const first = await f.routines.ingestEvent(event);
   expect(first).toHaveLength(1);
   expect(first[0]?.status).toBe("running");
-  expect(await f.routines.triggerEvent(event)).toEqual([]);
-  expect(started).toEqual(["Page change check"]);
-  const missed = await f.routines.triggerEvent({ ...event, eventId: "change-2", occurredAt: Date.now() - 100_000 });
+  expect(await f.routines.ingestEvent(event)).toEqual([]);
+  expect(started).toEqual(["Notification check"]);
+  const missed = await f.routines.ingestEvent({ ...event, eventId: "notice-2", observedAt: Date.now() - 6 * 60_000 });
   expect(missed[0]?.status).toBe("missed");
   expect(started).toHaveLength(1);
   expect(f.routines.get(skill.routineId).runs).toHaveLength(2);

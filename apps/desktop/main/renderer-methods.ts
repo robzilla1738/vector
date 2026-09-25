@@ -159,6 +159,8 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "results.saveVersion",
   "results.search",
   "routines.alerts",
+  "routines.inbox",
+  "routines.inboxRead",
   "routines.compare",
   "routines.fromResult",
   "routines.get",

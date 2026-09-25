@@ -2,6 +2,17 @@ import { z } from "zod";
 import { AcceptanceCriterionSchema, TaskReceiptSchema } from "./tasks.js";
 
 const text = z.string().trim().min(1);
+const timezone = z.string().min(1).max(80).refine(value => {
+  try { new Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; }
+}, "Choose a valid IANA time zone");
+const siteOrigin = z.string().url().max(8192).refine(value => {
+  const url = new URL(value);
+  return (url.protocol === "http:" || url.protocol === "https:") && url.origin === value;
+}, "Choose an exact http(s) origin");
+const siteUrl = z.string().url().max(8192).refine(value => {
+  const url = new URL(value);
+  return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+}, "Choose an http(s) page without embedded credentials");
 export const RoutineParameterSchema = z.object({
   name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,40}$/),
   label: text.max(80),
@@ -11,26 +22,25 @@ export const RoutineTriggerSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("manual") }).strict(),
   z.object({
     kind: z.literal("schedule"),
-    timezone: z.string().min(1).max(80),
+    timezone,
     hour: z.number().int().min(0).max(23),
     minute: z.number().int().min(0).max(59),
     days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   }).strict(),
   z.object({
     kind: z.literal("monitor"),
-    timezone: z.string().min(1).max(80),
+    timezone,
     intervalMinutes: z.number().int().min(5).max(24 * 60),
   }).strict(),
-  z.object({
-    kind: z.literal("event"),
-    source: z.enum(["page_change", "site_notification", "calendar_event"]),
-    /** Exact web origin for page/notification events; Calendar events use a connection ID. */
-    origin: z.string().url().optional(),
-    connectionId: z.string().uuid().optional(),
-  }).strict().refine(value => value.source === "calendar_event"
-    ? !!value.connectionId && !value.origin
-    : !!value.origin && !value.connectionId, "Choose the event's exact origin or Calendar connection."),
+  z.object({ kind: z.literal("site_notification"), origin: siteOrigin }).strict(),
+  z.object({ kind: z.literal("page_change"), url: siteUrl, minimumIntervalMinutes: z.number().int().min(5).max(24 * 60).default(5) }).strict(),
+  z.object({ kind: z.literal("calendar_event"), grantId: z.string().uuid(), calendarId: text.max(1024).optional(), beforeMinutes: z.number().int().min(0).max(24 * 60).default(0) }).strict(),
 ]);
+/** Accepted only on the trusted host channel; page content and notification body never enter this payload. */
+export const RoutineSourceEventSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("site_notification"), origin: siteOrigin, eventId: text.max(1024), permissionGranted: z.literal(true), observedAt: z.number().int().nonnegative() }).strict(),
+  z.object({ kind: z.literal("page_change"), eventId: text.max(1024), pageId: text.max(200), url: siteUrl, documentEpoch: z.number().int().nonnegative(), contentSha256: z.string().regex(/^[a-f0-9]{64}$/), observedAt: z.number().int().nonnegative() }).strict(),
+  z.object({ kind: z.literal("calendar_event"), grantId: z.string().uuid(), connectionId: z.string().uuid(), calendarId: text.max(1024), eventId: text.max(1024), startAt: z.number().int().nonnegative(), observedAt: z.number().int().nonnegative() }).strict(),]);
 export const RoutineDefinitionSchema = z.object({
   title: text.max(200),
   objective: text.max(10000),
@@ -55,6 +65,7 @@ export const RoutineDefinitionSchema = z.object({
   reviewRequired: z.boolean().default(true),
   cloudCapable: z.boolean().default(false),
   consecutive: z.boolean().default(false),
+  spendCapUsd: z.number().positive().max(50).optional(),
   trigger: RoutineTriggerSchema.default({ kind: "manual" }),
   paused: z.boolean().default(false),
 });
@@ -71,13 +82,6 @@ export const RoutineSuggestionSchema = z.object({
   title: text.max(200),
   reasons: z.array(z.enum(["keyword", "url"])).min(1).max(2),
 });
-export const RoutineEventSchema = z.object({
-  eventId: text.max(200),
-  source: z.enum(["page_change", "site_notification", "calendar_event"]),
-  origin: z.string().url().optional(),
-  connectionId: z.string().uuid().optional(),
-  occurredAt: z.number().int().nonnegative(),
-}).strict();
 /** Thin plugin: a named bundle of existing capabilities (portable routines). */
 export const AuxPluginManifestSchema = z.object({
   format: z.literal("aux-plugin@1"),
@@ -170,8 +174,14 @@ export const RoutineAlertSchema = z.object({
   title: text.max(200),
   status: RoutineRunSchema.shape.status,
   reason: z.string().max(1000).optional(),
-  triggerKind: z.enum(["manual", "schedule", "monitor", "event"]),
-  createdAt: z.number(),
+  triggerKind: z.enum(["manual", "schedule", "monitor", "site_notification", "page_change", "calendar_event"]),  createdAt: z.number(),
+});
+export const RoutineInboxItemSchema = z.object({
+  run: RoutineRunSchema,
+  title: text.max(200),
+  workspaceId: text,
+  triggerKind: z.enum(["manual", "schedule", "monitor", "site_notification", "page_change", "calendar_event"]),
+  readAt: z.number().int().nonnegative().optional(),
 });
 export const RoutineCompareSchema = z.object({
   routineId: text,
@@ -192,9 +202,10 @@ export type PluginAsset = z.infer<typeof PluginAssetSchema>;
 export type RoutineShare = z.infer<typeof RoutineShareSchema>;
 export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
 export type RoutineSuggestion = z.infer<typeof RoutineSuggestionSchema>;
-export type RoutineEvent = z.infer<typeof RoutineEventSchema>;
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;
 export type RoutineTrigger = z.infer<typeof RoutineTriggerSchema>;
+export type RoutineSourceEvent = z.infer<typeof RoutineSourceEventSchema>;
+export type RoutineInboxItem = z.infer<typeof RoutineInboxItemSchema>;
 export type Routine = z.infer<typeof RoutineSchema>;
 export type RoutineRun = z.infer<typeof RoutineRunSchema>;
 export type RoutineRunOutcome = z.infer<typeof RoutineRunOutcomeSchema>;
@@ -210,3 +221,6 @@ export function routineOccurrenceIdentity(routineId: string, timezone: string, s
   }).formatToParts(new Date(scheduledFor)).map(part => [part.type, part.value]));
   return `${routineId}:${timezone}:${fields.year}-${fields.month}-${fields.day}T${fields.hour}:${fields.minute}`;
 }
+
+/** A wall-clock minute fires once on fall-back day; a nonexistent spring-forward minute is skipped. */
+export const scheduleOccurrenceIdentity = routineOccurrenceIdentity;

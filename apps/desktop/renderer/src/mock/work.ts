@@ -1,4 +1,4 @@
-import { RoutineSchema, TaskSchema, TaskReceiptSchema } from '@aux/contracts';
+import { RoutineInboxItemSchema, RoutineSchema, TaskSchema, TaskReceiptSchema } from '@aux/contracts';
 
 /** Explicit preview fixtures, never installed in the native bridge. */
 export function workFixtures(workspaceId: string, populated: boolean, connectorProject = false) {
@@ -14,6 +14,10 @@ export function workFixtures(workspaceId: string, populated: boolean, connectorP
     ...(i<2 ? {sourceTaskId:connectorProject ? '22222222-2222-4222-8222-222222222222' : 'preview-task-1'} : {}),revision:1,createdAt:now,updatedAt:now,
     paused:i>0,trigger:i===0 ? {kind:'schedule',timezone:'America/Chicago',hour:9,minute:0,days:[1]} : {kind:'manual'},
   })) : [];
+  let inbox = populated ? [RoutineInboxItemSchema.parse({
+    run: {routineRunId:'preview-automation-run',routineId:'preview-routine-0',revision:1,occurrenceIdentity:'preview-weekly',status:'completed',parameters:{},createdAt:now-3600000,endedAt:now-3599000},
+    title:'Weekly research brief',workspaceId,triggerKind:'schedule',
+  })] : [];
   const task = (id: unknown) => { const item=tasks.find(t=>t.taskId===id); if(!item)throw new Error('Preview task not found'); return item; };
   const routine = (id: unknown) => { const item=routines.find(t=>t.routineId===id); if(!item)throw new Error('Preview Skill not found'); return item; };
   return {
@@ -24,6 +28,8 @@ export function workFixtures(workspaceId: string, populated: boolean, connectorP
     'routines.list': async () => routines,
     'routines.suggest': async () => [],
     'routines.alerts': async () => [],
+    'routines.inbox': async (p: Record<string,unknown>) => inbox.filter(item => (!p.workspaceId || item.workspaceId === p.workspaceId) && (!p.unreadOnly || !item.readAt)).slice(0, typeof p.limit === 'number' ? p.limit : 50),
+    'routines.inboxRead': async (p: Record<string,unknown>) => {const item=inbox.find(entry=>entry.run.routineRunId===p.routineRunId);if(!item)throw new Error('Preview automation result not found');const readAt=item.readAt??now;inbox=inbox.map(entry=>entry===item?{...entry,readAt}:entry);return {readAt};},
     'routines.get': async (p: Record<string,unknown>) => ({routine:routine(p.routineId),runs:[]}),
     'routines.exportSkill': async (p: Record<string,unknown>) => ({filename:'SKILL.md',content:`---\nname: ${JSON.stringify(routine(p.routineId).title)}\ndescription: ${JSON.stringify(routine(p.routineId).objective)}\nautoInject: {"keywords":[],"urls":[]}\n---\n\n${routine(p.routineId).objective}\n`}),
     'routines.importSkill': async () => {throw new Error('Importing a SKILL.md requires the Aux desktop app.');},

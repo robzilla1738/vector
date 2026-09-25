@@ -1,11 +1,11 @@
 import { useState } from "react";
-import type { CalendarConnection, RoutineTrigger } from "@aux/contracts";
+import type { RoutineTrigger } from "@aux/contracts";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export type CalendarTriggerAccounts = {
   status: "loading" | "ready" | "error";
-  choices: CalendarConnection[];
+  choices: { grantId: string; connectionId: string; label: string; accountKey: string }[];
   message?: string;
   scopeKey?: string;
 };
@@ -13,11 +13,9 @@ export type CalendarTriggerAccounts = {
 export function routineScheduleSummary(trigger: RoutineTrigger): string {
   if (trigger.kind === "manual") return "On demand";
   if (trigger.kind === "monitor") return `Every ${trigger.intervalMinutes} minutes · ${trigger.timezone}`;
-  if (trigger.kind === "event") {
-    if (trigger.source === "calendar_event") return "Calendar event";
-    const source = trigger.source === "page_change" ? "Page change" : "Site notification";
-    return `${source} · ${trigger.origin ?? "Choose an origin"}`;
-  }
+  if (trigger.kind === "site_notification") return `Site notification · ${trigger.origin}`;
+  if (trigger.kind === "page_change") return `Page change · ${trigger.url}`;
+  if (trigger.kind === "calendar_event") return `Calendar event · ${trigger.beforeMinutes} minutes before`;
   const days = [...trigger.days].sort();
   const label =
     days.length === 7
@@ -40,7 +38,7 @@ export function RoutineSchedule({
   calendar?: CalendarTriggerAccounts;
   onSave: (trigger: RoutineTrigger) => void;
 }) {
-  const [kind, setKind] = useState(trigger.kind);
+  const [kind, setKind] = useState<RoutineTrigger["kind"]>(trigger.kind);
   const [time, setTime] = useState(
     trigger.kind === "schedule"
       ? `${String(trigger.hour).padStart(2, "0")}:${String(trigger.minute).padStart(2, "0")}`
@@ -48,74 +46,70 @@ export function RoutineSchedule({
   );
   const [days, setDays] = useState(trigger.kind === "schedule" ? trigger.days : [1, 2, 3, 4, 5]);
   const [interval, setInterval] = useState(trigger.kind === "monitor" ? trigger.intervalMinutes : 60);
-  const [eventSource, setEventSource] = useState<Extract<RoutineTrigger, { kind: "event" }>["source"]>(
-    trigger.kind === "event" ? trigger.source : "page_change",
+  const [site, setSite] = useState(
+    trigger.kind === "site_notification" ? trigger.origin : trigger.kind === "page_change" ? trigger.url : "",
   );
-  const [origin, setOrigin] = useState(trigger.kind === "event" ? (trigger.origin ?? "") : "");
-  const [connectionId, setConnectionId] = useState(
-    trigger.kind === "event" ? (trigger.connectionId ?? "") : "",
+  const [minimumInterval, setMinimumInterval] = useState(
+    trigger.kind === "page_change" ? trigger.minimumIntervalMinutes : 5,
+  );
+  const [grantId, setGrantId] = useState(trigger.kind === "calendar_event" ? trigger.grantId : "");
+  const [beforeMinutes, setBeforeMinutes] = useState(
+    trigger.kind === "calendar_event" ? trigger.beforeMinutes : 0,
   );
   const timezone =
     trigger.kind === "schedule" || trigger.kind === "monitor"
       ? trigger.timezone
       : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const selectedConnection = calendar?.choices.find((account) => account.connectionId === connectionId);
-  const calendarEvent = kind === "event" && eventSource === "calendar_event";
-  const saveDisabled = (kind === "schedule" && !days.length) || (calendarEvent && !selectedConnection);
-  let summary: string;
-  if (kind === "manual") summary = "Run this routine whenever you need it.";
-  else if (calendarEvent)
-    summary = selectedConnection
-      ? `Calendar event · ${selectedConnection.label} · ${selectedConnection.accountKey}`
-      : "Choose a Calendar account.";
-  else if (kind === "event") summary = routineScheduleSummary({ kind, source: eventSource, origin });
-  else if (kind === "monitor")
-    summary = Number.isFinite(interval)
-      ? routineScheduleSummary({ kind, timezone, intervalMinutes: interval })
-      : "Choose an interval.";
-  else
+  const selectedGrant = calendar?.choices.find((choice) => choice.grantId === grantId);
+  const saveDisabled = (kind === "schedule" && !days.length) || (kind === "calendar_event" && !selectedGrant);
+
+  let summary = "Run this Skill whenever you need it.";
+  if (kind === "schedule")
     summary =
       days.length && time
         ? routineScheduleSummary({
-            kind: "schedule",
+            kind,
             timezone,
             hour: Number(time.split(":")[0]),
             minute: Number(time.split(":")[1]),
             days,
           })
         : "Choose a time and at least one day.";
+  if (kind === "monitor")
+    summary = Number.isFinite(interval)
+      ? routineScheduleSummary({ kind, timezone, intervalMinutes: interval })
+      : "Choose an interval.";
+  if (kind === "site_notification") summary = `Notification from ${site || "an exact site origin"}`;
+  if (kind === "page_change") summary = `Change to ${site || "an exact page URL"}`;
+  if (kind === "calendar_event")
+    summary = selectedGrant
+      ? `Calendar event · ${selectedGrant.label} · ${selectedGrant.accountKey}`
+      : "Choose a Calendar grant.";
 
   return (
     <form
       className="routine-schedule"
       onSubmit={(event) => {
         event.preventDefault();
-        if (kind === "manual") {
-          onSave({ kind });
+        if (kind === "manual") return onSave({ kind });
+        if (kind === "monitor") return onSave({ kind, timezone, intervalMinutes: interval });
+        if (kind === "schedule") {
+          const [hour, minute] = time.split(":").map(Number);
+          if (time && days.length) onSave({ kind, timezone, hour: hour!, minute: minute!, days });
           return;
         }
-        if (kind === "monitor") {
-          onSave({ kind, timezone, intervalMinutes: interval });
+        if (kind === "calendar_event") {
+          if (selectedGrant) onSave({ kind, grantId: selectedGrant.grantId, beforeMinutes });
           return;
         }
-        if (kind === "event") {
-          if (eventSource === "calendar_event") {
-            if (selectedConnection)
-              onSave({ kind, source: eventSource, connectionId: selectedConnection.connectionId });
-          } else {
-            try {
-              const parsed = new URL(origin);
-              if (["http:", "https:"].includes(parsed.protocol))
-                onSave({ kind, source: eventSource, origin: parsed.origin });
-            } catch {
-              /* The field's validation message remains visible. */
-            }
-          }
-          return;
+        try {
+          const parsed = new URL(site);
+          if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return;
+          if (kind === "site_notification") onSave({ kind, origin: parsed.origin });
+          else onSave({ kind, url: parsed.href, minimumIntervalMinutes: minimumInterval });
+        } catch {
+          /* The URL input remains invalid. */
         }
-        const [hour, minute] = time.split(":").map(Number);
-        if (!time || !days.length) return;
-        onSave({ kind, timezone, hour: hour!, minute: minute!, days });
       }}
     >
       <fieldset disabled={disabled}>
@@ -126,75 +120,84 @@ export function RoutineSchedule({
             <option value="manual">On demand</option>
             <option value="schedule">Scheduled time</option>
             <option value="monitor">Recurring monitor</option>
-            <option value="event">Browser or Calendar event</option>
+            <option value="site_notification">Site notification</option>
+            <option value="page_change">Page change</option>
+            <option value="calendar_event">Calendar event</option>
           </select>
         </label>
-        {kind === "event" && (
-          <>
+        {kind === "calendar_event" && (
+          <div className="field">
             <label>
-              Event
+              Calendar task grant
               <select
-                value={eventSource}
-                onChange={(event) => setEventSource(event.target.value as typeof eventSource)}
+                required
+                value={selectedGrant?.grantId ?? ""}
+                disabled={calendar?.status !== "ready" || !calendar.choices.length}
+                onChange={(event) => setGrantId(event.target.value)}
               >
-                <option value="page_change">Page changed</option>
-                <option value="site_notification">Site notification</option>
-                <option value="calendar_event">Calendar event</option>
+                <option value="">Choose a granted Calendar account</option>
+                {calendar?.choices.map((choice) => (
+                  <option key={choice.grantId} value={choice.grantId}>
+                    {choice.label} · {choice.accountKey}
+                  </option>
+                ))}
               </select>
             </label>
-            {eventSource === "calendar_event" ? (
-              <div className="field">
-                <label>
-                  Calendar account
-                  <select
-                    required
-                    value={selectedConnection?.connectionId ?? ""}
-                    disabled={calendar?.status !== "ready" || !calendar.choices.length}
-                    onChange={(event) => setConnectionId(event.target.value)}
-                  >
-                    <option value="">Choose a Calendar account</option>
-                    {calendar?.choices.map((account) => (
-                      <option key={account.connectionId} value={account.connectionId}>
-                        {account.label} · {account.accountKey}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {calendar?.status === "loading" && <p className="hint">Loading Calendar accounts…</p>}
-                {calendar?.message && (
-                  <p
-                    className={calendar.status === "error" ? "field-error" : "hint"}
-                    role={calendar.status === "error" ? "alert" : undefined}
-                  >
-                    {calendar.message}
-                  </p>
-                )}
-                {calendar?.status === "ready" &&
-                  calendar.choices.length > 0 &&
-                  trigger.kind === "event" &&
-                  trigger.source === "calendar_event" &&
-                  trigger.connectionId &&
-                  !selectedConnection && (
-                    <p className="hint">
-                      The previously selected Calendar account is unavailable. Choose another granted account.
-                    </p>
-                  )}
-              </div>
-            ) : (
+            <label>
+              Minutes before event
+              <input
+                type="number"
+                min={0}
+                max={1440}
+                step={1}
+                value={beforeMinutes}
+                onChange={(event) => setBeforeMinutes(event.target.valueAsNumber)}
+              />
+            </label>
+            {calendar?.status === "loading" && <p className="hint">Loading Calendar grants…</p>}
+            {calendar?.message && (
+              <p
+                className={calendar.status === "error" ? "field-error" : "hint"}
+                role={calendar.status === "error" ? "alert" : undefined}
+              >
+                {calendar.message}
+              </p>
+            )}
+            {trigger.kind === "calendar_event" &&
+              trigger.grantId &&
+              calendar?.status === "ready" &&
+              !selectedGrant && (
+                <p className="hint">The previous task grant is unavailable. Choose another reviewed grant.</p>
+              )}
+          </div>
+        )}
+        {(kind === "site_notification" || kind === "page_change") && (
+          <>
+            <label>
+              {kind === "site_notification" ? "Exact site origin" : "Exact page URL"}
+              <input
+                type="url"
+                required
+                value={site}
+                onChange={(event) => setSite(event.target.value)}
+                placeholder="https://example.com"
+              />
+            </label>
+            {kind === "page_change" && (
               <label>
-                Exact site origin
+                Minimum minutes between runs
                 <input
-                  type="url"
-                  required
-                  value={origin}
-                  onChange={(event) => setOrigin(event.target.value)}
-                  placeholder="https://example.com"
+                  type="number"
+                  min={5}
+                  max={1440}
+                  step={1}
+                  value={minimumInterval}
+                  onChange={(event) => setMinimumInterval(event.target.valueAsNumber)}
                 />
               </label>
             )}
             <p className="hint">
-              Events run only while Aux is open. Site notifications require a native site grant and Calendar
-              events require a task grant.
+              Add this site to the Skill’s reviewed site scope. Events are observed only while Aux is open.
             </p>
           </>
         )}

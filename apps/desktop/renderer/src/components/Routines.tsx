@@ -1,6 +1,6 @@
 import { WorkRow } from "./ui";
 import { useEffect, useState } from "react";
-import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, RoutineSuggestion, Task, VaultItem } from "@aux/contracts";
+import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineInboxItem, RoutineParameter, RoutineRun, RoutineRunOutcome, RoutineSuggestion, Task, VaultItem } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
@@ -12,6 +12,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
   const [suggestions, setSuggestions] = useState<RoutineSuggestion[]>([]);
+  const [inbox, setInbox] = useState<RoutineInboxItem[]>([]);
   const [comparison, setComparison] = useState<RoutineCompare | null>(null);
   const [selected, setSelected] = useState<{ routine: Routine; runs: RoutineRun[] } | null>(null);
   const [calendarAccounts, setCalendarAccounts] = useState<CalendarTriggerAccounts>({ status: "loading", choices: [] });
@@ -23,12 +24,14 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   async function refresh(routineId?: string) {
-    const [items, nextAlerts] = await Promise.all([
+    const [items, nextAlerts, nextInbox] = await Promise.all([
       call("routines.list", { workspaceId, includeArchived: true }),
       call("routines.alerts", { limit: 20 }),
+      call("routines.inbox", { workspaceId, limit: 30 }),
     ]);
     setRoutines(items);
     setAlerts(nextAlerts);
+    setInbox(nextInbox);
     if (routineId) setSelected(await call("routines.get", { routineId }));
   }
   useEffect(() => {
@@ -38,13 +41,14 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     void Promise.all([
       call("routines.list", { workspaceId, includeArchived: true }),
       call("routines.alerts", { limit: 20 }),
+      call("routines.inbox", { workspaceId, limit: 30 }),
       target?.workspaceId === workspaceId ? call("routines.get", { routineId: target.routineId }).catch(reason => {
         if (active) setError(reason instanceof Error ? reason.message : String(reason));
         return null;
       }) : Promise.resolve(null),
-    ]).then(([items, nextAlerts, detail]) => {
+    ]).then(([items, nextAlerts, nextInbox, detail]) => {
       if (active) {
-        setRoutines(items); setAlerts(nextAlerts);
+        setRoutines(items); setAlerts(nextAlerts); setInbox(nextInbox);
         if (detail?.routine.workspaceId === workspaceId) setSelected(detail);
         if (target?.workspaceId === workspaceId && useStore.getState().skillSelection?.routineId === target.routineId) useStore.setState({ skillSelection: null });
       }
@@ -63,14 +67,17 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       call("calendar.taskGrants.list", { taskId: routine.sourceTaskId }),
     ]).then(([connections, grants]) => {
       if (!active) return;
-      const allowed = new Set(grants.filter(grant => grant.taskRevision === routine.sourceTaskRevision
-        && !grant.revokedAt && routine.calendarGrantIds.includes(grant.grantId)).map(grant => grant.connectionId));
-      const choices = connections.connections.filter(account => account.state === "active"
-        && allowed.has(account.connectionId));
+      const allowed = grants.filter(grant => grant.taskRevision === routine.sourceTaskRevision
+        && !grant.revokedAt && routine.calendarGrantIds.includes(grant.grantId));
+      const choices = allowed.flatMap(grant => {
+        const account = connections.connections.find(item => item.connectionId === grant.connectionId && item.state === "active");
+        return account ? [{ grantId: grant.grantId, connectionId: account.connectionId,
+          label: account.label, accountKey: account.accountKey }] : [];
+      });
       let message: string | undefined;
       if (!connections.available) message = connections.reason ?? "Calendar is unavailable in this profile.";
       else if (!connections.connections.length) message = "No Calendar account is connected. Connect one in Settings → Connections, then grant it to this task and Skill.";
-      else if (!allowed.size) message = "Grant a Calendar account to this task revision and allow it for this Skill below.";
+      else if (!allowed.length) message = "Grant a Calendar account to this task revision and allow it for this Skill below.";
       else if (!choices.length) message = "Reconnect the Calendar account allowed for this Skill in Settings → Connections.";
       setCalendarAccounts({ status: "ready", choices, message, scopeKey });
     }).catch(reason => {
@@ -100,7 +107,6 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       requestAnimationFrame(() => { if (document.activeElement === document.body && focused?.isConnected) focused.focus(); });
     }
   }
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   let currentOrigin = "";
   try {
     const page = new URL(currentPageUrl ?? "");
@@ -141,6 +147,13 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       })}>Import SKILL.md…</button>
     </div></div>
     <details className="routine-safety"><summary>How Skills run safely</summary><p className="hint">Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until you reconcile an uncertain write.</p></details>
+    <section className="field" aria-label="Automation results inbox"><strong>Automation results</strong><span className="hint">{inbox.filter(item => !item.readAt).length} unread · Runs are recorded only while Aux is open.</span>
+      {inbox.length === 0 && <span className="hint">No automatic runs yet.</span>}
+      {inbox.map(item => <div className="routine-run hint" key={item.run.routineRunId}>
+        <strong>{item.title}</strong> · {item.run.status.replaceAll("_", " ")} · {item.triggerKind.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}{item.run.reason ? ` · ${item.run.reason}` : ""}
+        <div className="row"><button className="btn sm ghost" disabled={busy} onClick={() => void action(() => refresh(item.run.routineId))}>Open Skill</button>{!item.readAt && <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => { await call("routines.inboxRead", { routineRunId: item.run.routineRunId }); await refresh(); })}>Mark read</button>}</div>
+      </div>)}
+    </section>
     {alerts.length > 0 && <section className="field" aria-label="Routine alerts"><strong>Alerts</strong><span className="hint">Local run records only. They do not prove a business outcome.</span>{alerts.map(alert => <div className="hint" key={alert.routineRunId}>{alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}{alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}</div>)}</section>}
     {task && <div className="row"><input aria-label="Skill name" placeholder="Skill name" value={title} onChange={event => setTitle(event.target.value)} /></div>}
     {error && <p className="field-error" role="alert">{error}</p>}
@@ -173,8 +186,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       <h3>{selected.routine.title}</h3><span className="hint">Revision {selected.routine.revision}</span>
       <p className="hint">{selected.routine.objective}</p>
       <dl className="routine-overview"><div><dt>Status</dt><dd>{selected.routine.archivedAt ? "Archived" : selected.routine.paused ? "Paused" : "Ready"}</dd></div><div><dt>Trigger</dt><dd>{selected.routine.trigger.kind}</dd></div><div><dt>Runs</dt><dd>{selected.runs.length}</dd></div></dl>
-      <span className="hint">{selected.routine.reviewRequired ? "Review required before writes." : "May run without extra review."} {selected.routine.trigger.kind === "event" ? "Event delivery needs Aux open." : `Timezone ${selected.routine.trigger.kind === "manual" ? timezone : selected.routine.trigger.timezone}.`} Cloud {selected.routine.cloudCapable ? "can continue if configured" : "needs this Mac"}.</span>
-      {!selected.routine.sourceTaskId && <p className="hint">This imported definition is inactive. Binding it to a saved task gives it that task's current page and grants. Review the task and Accounts below before resuming.</p>}
+      <span className="hint">{selected.routine.reviewRequired ? "Review required before writes." : "May run without extra review."} {(selected.routine.trigger.kind === "schedule" || selected.routine.trigger.kind === "monitor") && `Timezone ${selected.routine.trigger.timezone}. `}Cloud {selected.routine.cloudCapable ? "can continue if configured" : "needs this Mac"}.</span>      {!selected.routine.sourceTaskId && <p className="hint">This imported definition is inactive. Binding it to a saved task gives it that task's current page and grants. Review the task and Accounts below before resuming.</p>}
       <RoutineSourceTask key={`${selected.routine.routineId}-source:${selected.routine.revision}`} routine={selected.routine} disabled={busy || !!selected.routine.archivedAt} onSave={sourceTaskId => void action(async () => {
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, sourceTaskId });
         await refresh(selected.routine.routineId);
