@@ -158,9 +158,11 @@ export class NativeCdpBroker {
 
   private async refresh(): Promise<void> {
     const work = this.refreshQueue.then(async () => {
-      if (!this.client || this.closed) return;
+      const client = this.client;
+      if (!client || this.closed) return;
       const previous = new Set(this.targets.keys());
       const snapshot = await this.channel.call<{ pages: Page[] }>("native.listPages", {}, 10_000);
+      if (this.client !== client || this.closed) return;
       const next = new Map<string, { pageId: string; info: Target }>();
       for (const page of snapshot.pages) {
         if (!page.cdpTargetId || !/^(https?:|about:blank$)/.test(page.url)) continue;
