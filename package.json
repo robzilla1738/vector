@@ -23,6 +23,7 @@
     "smoke:release": "node tests/smoke/run-suite.mjs release",
     "smoke:all": "node tests/smoke/run-suite.mjs all",
     "bench": "node tests/benchmarks/run.mjs",
+    "bench:native": "node tests/benchmarks/native-browser.mjs",
     "bench:observation": "node tests/benchmarks/observation.mjs",
     "budgets": "node scripts/check-budgets.mjs bundle",
     "package": "node scripts/package-local.mjs",

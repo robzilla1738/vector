@@ -77,7 +77,8 @@ if action == "has-button" {
     fail("Cannot encode Aux window bounds.")
   }
   print(text)
-} else if action == "activate" || action == "toggle-sidebar" || action == "move" {
+} else if action == "activate" || action == "toggle-sidebar" ||
+  action == "next-tab" || action == "move" {
   guard app.activate(options: []) else {
     fail("Cannot activate the launched Aux browser window.")
   }
@@ -85,13 +86,16 @@ if action == "has-button" {
   guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
     fail("Aux is not the frontmost app; refusing to send input elsewhere.")
   }
-  if action == "toggle-sidebar" {
-    // The renderer's declared Toggle Sidebar binding is Command-S.
-    let down = CGEvent(keyboardEventSource: nil, virtualKey: 1, keyDown: true)
-    let up = CGEvent(keyboardEventSource: nil, virtualKey: 1, keyDown: false)
-    down?.flags = .maskCommand
-    up?.flags = .maskCommand
-    guard let down, let up else { fail("Cannot create the sidebar shortcut event.") }
+  if action == "toggle-sidebar" || action == "next-tab" {
+    // The renderer declares Command-S for the sidebar and Control-Tab for
+    // next tab. Stock Chromium also accepts Control-Tab.
+    let key: CGKeyCode = action == "next-tab" ? 48 : 1
+    let flags: CGEventFlags = action == "next-tab" ? .maskControl : .maskCommand
+    let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
+    let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
+    down?.flags = flags
+    up?.flags = flags
+    guard let down, let up else { fail("Cannot create the browser shortcut event.") }
     down.post(tap: .cghidEventTap)
     up.post(tap: .cghidEventTap)
   } else if action == "move" {

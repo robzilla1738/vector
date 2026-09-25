@@ -9,6 +9,10 @@ nonparametric 95% bootstrap intervals for p50 and p95 (2,000 resamples). The
 intervals describe measurement uncertainty; a fixture or headless report does
 not qualify the native Chromium shell targets in the reviewed roadmap.
 
+The [native Aux versus same-tag Chromium runner](native-benchmark.md) records
+FirstPaint and input-to-presented-tab-switch UMA samples. It has no published
+result until both benchmark builds complete the 20-trial qualification run.
+
 ## Browser layer (`pnpm bench`)
 
 Records fixture, headless standalone Chromium, darwin arm64, p50. Reports are
