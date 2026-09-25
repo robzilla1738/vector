@@ -69,6 +69,10 @@ if (!signingScript) blockers.push("the generated * Packaging/sign_chrome.py is m
 if (!/\bis_component_build\s*=\s*false\b/.test(args))
   blockers.push("GN build must set is_component_build=false");
 if (!/\bis_debug\s*=\s*false\b/.test(args)) blockers.push("GN build must set is_debug=false");
+if (!/\benable_aux_shell\s*=\s*true\b/.test(args))
+  blockers.push("GN build must enable the Aux shell");
+if (/\baux_allow_remote_debugging_for_tests\s*=\s*true\b/.test(args))
+  blockers.push("Release builds must disable remote debugging test access");
 if (!existsSync(app)) blockers.push("official Aux.app is missing from the build directory");
 else if (process.platform === "darwin") {
   try {

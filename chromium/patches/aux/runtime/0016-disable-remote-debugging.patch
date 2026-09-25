@@ -1,0 +1,61 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 8f16686773..4dd1cff66e 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -93,6 +93,7 @@ buildflag_header("buildflags") {
+   header = "buildflags.h"
+   flags = [
+     "ENABLE_AUX_SHELL=$enable_aux_shell",
++    "AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS=$aux_allow_remote_debugging_for_tests",
+     "ENABLE_UPDATER=$enable_updater",
+     "ENABLE_UPDATE_NOTIFICATIONS=$enable_update_notifications",
+     "USE_MINIKIN_HYPHENATION=$use_minikin_hyphenation",
+diff --git a/chrome/browser/buildflags.gni b/chrome/browser/buildflags.gni
+index f9867a92a5..32857b0a55 100644
+--- a/chrome/browser/buildflags.gni
++++ b/chrome/browser/buildflags.gni
+@@ -11,6 +11,9 @@ import("//build/config/chrome_build.gni")
+ declare_args() {
+   # Aux shell is built only for the Aux distribution.
+   enable_aux_shell = false
++  # Compatibility probes may enable Chromium's remote DevTools endpoint in
++  # local test builds. The release signer rejects this flag.
++  aux_allow_remote_debugging_for_tests = false
+ 
+   # By default, only branded builds allow for platform experience.
+   enable_platform_experience = is_chrome_branded
+diff --git a/chrome/browser/devtools/remote_debugging_server.cc b/chrome/browser/devtools/remote_debugging_server.cc
+index d348e8695e..34050d1e39 100644
+--- a/chrome/browser/devtools/remote_debugging_server.cc
++++ b/chrome/browser/devtools/remote_debugging_server.cc
+@@ -21,6 +21,7 @@
+ #include "base/types/expected.h"
+ #include "build/branding_buildflags.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/devtools/chrome_devtools_manager_delegate.h"
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/devtools/features.h"
+@@ -161,6 +162,11 @@ class TCPServerSocketFactoryWithPortFallback : public TCPServerSocketFactory {
+ base::expected<bool, RemoteDebuggingServer::NotStartedReason>
+ IsRemoteDebuggingAllowed(const std::optional<bool>& is_default_user_data_dir,
+                          PrefService* local_state) {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && \
++    !BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++  return base::unexpected(
++      RemoteDebuggingServer::NotStartedReason::kDisabledByPolicy);
++#endif
+   if (!local_state->GetBoolean(prefs::kDevToolsRemoteDebuggingAllowed)) {
+     return base::unexpected(
+         RemoteDebuggingServer::NotStartedReason::kDisabledByPolicy);
+@@ -335,6 +341,10 @@ void RemoteDebuggingServer::StopPipeHandler() {
+ base::expected<std::unique_ptr<RemoteDebuggingServer>,
+                RemoteDebuggingServer::NotStartedReason>
+ RemoteDebuggingServer::GetInstance(PrefService* local_state) {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && \
++    !BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++  return base::unexpected(NotStartedReason::kDisabledByPolicy);
++#endif
+   if (!local_state->GetBoolean(prefs::kDevToolsRemoteDebuggingAllowed)) {
+     return base::unexpected(NotStartedReason::kDisabledByPolicy);
+   }
