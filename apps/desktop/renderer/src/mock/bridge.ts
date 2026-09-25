@@ -26,7 +26,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
-import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool, ZapRule } from "@aux/contracts";
+import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool, ZapRule, PluginSkillGrant } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
 import type { BrowserExtension, AuxBridge } from "../bridge";
@@ -56,6 +56,7 @@ export function installMockBridge(q: URLSearchParams) {
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
   let spaces: BrowserSpace[] = [{ ...DEFAULT_SPACE, workspaceId: `workspace:${DEFAULT_SPACE.id}`, archived: false }];
+  let pluginSkillGrants: PluginSkillGrant[] = [];
   const scenario = q.get("scenario") ?? "browsing";
   type DictationEvent = Parameters<Parameters<AuxBridge["onDictation"]>[0]>[0];
   const dictationListeners = new Set<(event: DictationEvent) => void>();
@@ -419,6 +420,17 @@ export function installMockBridge(q: URLSearchParams) {
       return [];
     },
     "plugins.assets": async () => [],
+    "plugins.skills.grant": async p => {
+      const grant: PluginSkillGrant = { grantId: crypto.randomUUID(), assetId: String(p.assetId), assetDigest: String(p.expectedDigest),
+        scope: p.scope as PluginSkillGrant["scope"], createdAt: Date.now() };
+      pluginSkillGrants = [grant, ...pluginSkillGrants];
+      return grant;
+    },
+    "plugins.skills.grants": async () => pluginSkillGrants,
+    "plugins.skills.revoke": async p => {
+      pluginSkillGrants = pluginSkillGrants.map(grant => grant.grantId === p.grantId ? { ...grant, revokedAt: Date.now() } : grant);
+      return pluginSkillGrants.find(grant => grant.grantId === p.grantId);
+    },
     "plugins.uninstall": async p => {
       return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
     },

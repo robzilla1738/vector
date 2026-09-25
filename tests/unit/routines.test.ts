@@ -8,9 +8,9 @@ import { AuxError, routineOccurrenceIdentity, type RoutineShare } from "@aux/con
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
 
-function fixture(startWork?: (routine: { title: string }, parameters: Record<string, string>) => Promise<{ chatId?: string; runId?: string }>) {
-  const db = openDb(":memory:");
-  cleanup.push(() => db.close());
+function fixture(startWork?: (routine: { title: string }, parameters: Record<string, string>) => Promise<{ chatId?: string; runId?: string }>, dbPath = ":memory:") {
+  const db = openDb(dbPath);
+  cleanup.push(() => { try { db.close(); } catch { /* restarted during the test */ } });
   const repo = new Repo(db);
   const events = new EventBus(repo);
   const tasks = new TaskService(repo, events);
@@ -23,8 +23,35 @@ function fixture(startWork?: (routine: { title: string }, parameters: Record<str
     resources: [{ resourceId: "site", kind: "url", locator: "https://example.com/pricing", label: "Pricing" }],
   });
   const routines = new RoutineService(repo, events, startWork);
-  return { repo, events, tasks, workspace, task, routines };
+  return { db, repo, events, tasks, workspace, task, routines };
 }
+
+it("reruns a saved Skill with changed parameters after a restart", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "aux-skill-rerun-"));
+  cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "state.sqlite");
+  const dispatched: string[] = [];
+  const start = async (_routine: { title: string }, parameters: Record<string, string>) => {
+    dispatched.push(parameters.topic ?? "");
+    return { runId: `run-${dispatched.length}` };
+  };
+  const f = fixture(start, path);
+  const skill = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check",
+    parameters: [{ name: "topic", label: "Topic", value: "hosting" }] });
+  const first = await f.routines.run({ routineId: skill.routineId, expectedRevision: skill.revision });
+  expect(first).toMatchObject({ status: "running", parameters: { topic: "hosting" } });
+  f.db.prepare("UPDATE routine_runs SET status='completed',ended_at=? WHERE routine_run_id=?").run(Date.now(), first.routineRunId);
+  f.db.close();
+  const reopened = openDb(path);
+  cleanup.push(() => reopened.close());
+  const repo = new Repo(reopened);
+  const routines = new RoutineService(repo, new EventBus(repo), start);
+  const second = await routines.run({ routineId: skill.routineId, expectedRevision: skill.revision,
+    parameters: { topic: "payments" } });
+  expect(second).toMatchObject({ status: "running", parameters: { topic: "payments" } });
+  expect(dispatched).toEqual(["hosting", "payments"]);
+  expect(routines.runs(skill.routineId).map(run => run.parameters.topic)).toEqual(["payments", "hosting"]);
+});
 
 it("searches Skills by name, objective, and output within their Space", () => {
   const f = fixture();
@@ -341,9 +368,10 @@ it("gives the repeated fall DST minute one occurrence identity", () => {
   expect(before).toBe(after);
 });
 
-it("pauses a Skill after three consecutive failed runs", async () => {
+it("pauses an automated Skill after three consecutive failed runs", async () => {
   const f = fixture(async () => { throw new Error("fixture dispatch failure"); });
-  const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Failing Skill" });
+  const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Failing Skill",
+    trigger: { kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] } });
   for (let attempt = 0; attempt < 3; attempt++) {
     const current = f.routines.get(routine.routineId).routine;
     expect((await f.routines.run({ routineId: current.routineId, expectedRevision: current.revision })).status).toBe("failed");

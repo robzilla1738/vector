@@ -112,6 +112,32 @@ export const PluginAssetSchema = z.object({
   authority: z.literal("none"),
   importedAt: z.number(),
 });
+export const PluginSkillGrantScopeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("workspace"), workspaceId: text }).strict(),
+  z.object({ kind: z.literal("task"), taskId: text, revision: z.number().int().positive() }).strict(),
+]);
+export const PluginSkillGrantSchema = z.object({
+  grantId: z.string().uuid(),
+  assetId: z.string().uuid(),
+  assetDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  scope: PluginSkillGrantScopeSchema,
+  createdAt: z.number().int().nonnegative(),
+  revokedAt: z.number().int().nonnegative().optional(),
+});
+export const PluginSkillGrantParams = PluginSkillGrantSchema.pick({ assetId: true, scope: true }).extend({
+  expectedDigest: PluginSkillGrantSchema.shape.assetDigest,
+}).strict();
+export const PluginSkillReadParams = z.object({
+  grantId: z.string().uuid(),
+  taskId: text,
+  expectedRevision: z.number().int().positive(),
+}).strict();
+export const PluginSkillReadSchema = z.object({
+  grant: PluginSkillGrantSchema,
+  name: text.max(200),
+  content: z.string().max(64_000),
+  digest: PluginSkillGrantSchema.shape.assetDigest,
+}).strict();
 export const RoutineSchema = RoutineDefinitionSchema.extend({
   routineId: text,
   revision: z.number().int().positive(),
@@ -199,6 +225,7 @@ export type RoutineCompare = z.infer<typeof RoutineCompareSchema>;
 export type AuxPluginManifest = z.infer<typeof AuxPluginManifestSchema>;
 export type Plugin = z.infer<typeof PluginSchema>;
 export type PluginAsset = z.infer<typeof PluginAssetSchema>;
+export type PluginSkillGrant = z.infer<typeof PluginSkillGrantSchema>;
 export type RoutineShare = z.infer<typeof RoutineShareSchema>;
 export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
 export type RoutineSuggestion = z.infer<typeof RoutineSuggestionSchema>;

@@ -89,6 +89,7 @@ it("reviews Claude Code components, binds install to the digest, and shows zero 
           importedAt: 1000,
         },
       ];
+    if (method === "plugins.skills.grants") return [];
     throw new Error(`Unexpected ${method} ${JSON.stringify(params)}`);
   });
   await act(async () => root.render(<PluginsPanel />));
@@ -106,4 +107,38 @@ it("reviews Claude Code components, binds install to the digest, and shows zero 
   });
   expect(container.textContent).toContain("No authority");
   expect(rpc).not.toHaveBeenCalledWith("mcp.servers.register", expect.anything());
+});
+
+it("grants and revokes one reviewed imported Skill from Settings", async () => {
+  const assetId = "33333333-3333-4333-8333-333333333333";
+  const grantId = "44444444-4444-4444-8444-444444444444";
+  let grant: { grantId: string; assetId: string; assetDigest: string; scope: { kind: "workspace"; workspaceId: string }; createdAt: number; revokedAt?: number } | undefined;
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "workspaces.list") return [{ workspaceId, name: "Research" }];
+    if (method === "plugins.list") return [plugin];
+    if (method === "plugins.assets") return [{ assetId, pluginId, kind: "skill", name: "research",
+      content: "Use cited evidence.", authority: "none", digest, importedAt: 1000 }];
+    if (method === "plugins.skills.grants") return grant ? [grant] : [];
+    if (method === "plugins.skills.grant") {
+      grant = { grantId, assetId, assetDigest: digest, scope: { kind: "workspace", workspaceId }, createdAt: 1000 };
+      return grant;
+    }
+    if (method === "plugins.skills.revoke") {
+      grant = { ...grant!, revokedAt: 2000 };
+      return grant;
+    }
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<PluginsPanel />));
+  await flush();
+  await act(async () => button("research-kit1.0 · 0 Skills").click());
+  await flush();
+  expect(container.textContent).toContain("No authority");
+  await act(async () => button("Grant Skill to this Space").click());
+  expect(rpc).toHaveBeenCalledWith("plugins.skills.grant", { assetId, expectedDigest: digest,
+    scope: { kind: "workspace", workspaceId } });
+  expect(container.textContent).toContain("Granted in this Space");
+  await act(async () => button("Revoke Skill access").click());
+  expect(rpc).toHaveBeenCalledWith("plugins.skills.revoke", { grantId });
+  expect(container.textContent).toContain("No authority");
 });

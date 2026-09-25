@@ -299,6 +299,12 @@ CREATE TABLE plugin_assets(
   name TEXT NOT NULL, description TEXT, content TEXT, digest TEXT NOT NULL,
   imported_at INTEGER NOT NULL);
 CREATE INDEX idx_plugin_assets_plugin ON plugin_assets(plugin_id,kind,name);
+CREATE TABLE plugin_skill_grants(
+  grant_id TEXT PRIMARY KEY, asset_id TEXT NOT NULL REFERENCES plugin_assets(asset_id) ON DELETE CASCADE,
+  asset_digest TEXT NOT NULL, scope_kind TEXT NOT NULL CHECK(scope_kind IN ('workspace','task')),
+  scope_id TEXT NOT NULL, task_revision INTEGER,
+  created_at INTEGER NOT NULL, revoked_at INTEGER);
+CREATE INDEX idx_plugin_skill_grants_asset ON plugin_skill_grants(asset_id,revoked_at);
 CREATE TABLE goals(
   goal_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
   status TEXT NOT NULL, run_id TEXT UNIQUE, body TEXT NOT NULL,
@@ -351,7 +357,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 22;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -558,14 +564,23 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   ],
   // v20 → v21: Profile-owned page customization, separate from website storage.
   20: [
-    `CREATE TABLE site_user_css(
+    `CREATE TABLE IF NOT EXISTS site_user_css(
       profile_id TEXT NOT NULL, origin TEXT NOT NULL, css TEXT NOT NULL, updated_at INTEGER NOT NULL,
       PRIMARY KEY(profile_id,origin))`,
-    `CREATE TABLE site_zap_rules(
+    `CREATE TABLE IF NOT EXISTS site_zap_rules(
       rule_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, origin TEXT NOT NULL,
       selector TEXT NOT NULL, match_count INTEGER NOT NULL, created_at INTEGER NOT NULL,
       UNIQUE(profile_id,origin,selector))`,
     `CREATE INDEX idx_site_zap_rules_profile_origin ON site_zap_rules(profile_id,origin,created_at)`,
+  ],
+  // v21 → v22: explicit, revocable imported Skill access.
+  21: [
+    `CREATE TABLE IF NOT EXISTS plugin_skill_grants(
+      grant_id TEXT PRIMARY KEY, asset_id TEXT NOT NULL REFERENCES plugin_assets(asset_id) ON DELETE CASCADE,
+      asset_digest TEXT NOT NULL, scope_kind TEXT NOT NULL CHECK(scope_kind IN ('workspace','task')),
+      scope_id TEXT NOT NULL, task_revision INTEGER,
+      created_at INTEGER NOT NULL, revoked_at INTEGER)`,
+    `CREATE INDEX idx_plugin_skill_grants_asset ON plugin_skill_grants(asset_id,revoked_at)`,
   ],
 };
 

@@ -49,7 +49,7 @@ import {
   VaultAccessRecordSchema, VaultEncryptedExportParams, VaultEncryptedImportParams, VaultTransferPackageSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineInboxItemSchema, RoutineSourceEventSchema, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineInboxItemSchema, RoutineSourceEventSchema, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema, PluginSkillGrantParams, PluginSkillGrantSchema, PluginSkillReadParams, PluginSkillReadSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
@@ -784,6 +784,10 @@ export const MethodSchemas = {
     expectedDigest: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
   "plugins.list": z.object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) }).strict(),
   "plugins.assets": z.object({ pluginId: id }).strict(),
+  "plugins.skills.grant": PluginSkillGrantParams,
+  "plugins.skills.grants": z.object({ pluginId: id }).strict(),
+  "plugins.skills.revoke": z.object({ grantId: z.string().uuid() }).strict(),
+  "plugins.skills.read": PluginSkillReadParams,
   "plugins.uninstall": z.object({ pluginId: id }).strict(),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
@@ -1263,6 +1267,10 @@ export const ResultSchemas = {
   }),
   "plugins.list": z.array(PluginSchema),
   "plugins.assets": z.array(PluginAssetSchema),
+  "plugins.skills.grant": PluginSkillGrantSchema,
+  "plugins.skills.grants": z.array(PluginSkillGrantSchema),
+  "plugins.skills.revoke": PluginSkillGrantSchema,
+  "plugins.skills.read": PluginSkillReadSchema,
   "plugins.uninstall": z.object({
     plugin: PluginSchema,
     archivedRoutines: z.number().int().nonnegative(),

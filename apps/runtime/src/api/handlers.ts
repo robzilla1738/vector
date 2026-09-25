@@ -336,6 +336,10 @@ export function makeInvoker(s: Services) {
           throw new AuxError("conflict", "The MCP task revision changed. Review the current task.");
         params.context = { workspaceId: scope.workspaceId,
           ...(task ? { taskId: task.taskId, revision: task.revision } : {}) };
+      } else if (method === "plugins.skills.read") {
+        const task = requireScopedTask(scope, params.taskId);
+        if (task.revision !== params.expectedRevision)
+          throw new AuxError("conflict", "Task revision changed; refresh it before reading the Skill.");
       } else if (!["workspaces.list", "tasks.list", "pages.list", "workspace.get", "runs.list", "runtime.describe"].includes(method)) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
       }
@@ -579,6 +583,18 @@ export function makeInvoker(s: Services) {
       case "plugins.assets":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.assets(params.pluginId);
+      case "plugins.skills.grant":
+        if (client.external) throw new AuxError("permission_denied", "Skill access is granted in Aux.");
+        return plugins.grantSkill(params);
+      case "plugins.skills.grants":
+        if (client.external) throw new AuxError("permission_denied", "Skill access is managed in Aux.");
+        return plugins.skillGrants(params.pluginId);
+      case "plugins.skills.revoke":
+        if (client.external) throw new AuxError("permission_denied", "Skill access is revoked in Aux.");
+        return plugins.revokeSkill(params.grantId);
+      case "plugins.skills.read":
+        if (scope) requireScopedTask(scope, params.taskId);
+        return plugins.readSkill(params);
       case "plugins.uninstall":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.uninstall(params.pluginId);
