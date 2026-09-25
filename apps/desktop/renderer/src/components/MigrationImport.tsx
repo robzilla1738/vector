@@ -74,11 +74,7 @@ export function MigrationImport() {
           {error}
         </output>
       )}
-      {message && (
-        <output className="hint" role="status">
-          {message}
-        </output>
-      )}
+      {message && <output className="hint">{message}</output>}
       {review && (
         <NativeDialog
           label="Review Chromium migration"
@@ -122,18 +118,20 @@ export function MigrationImport() {
             profile is left untouched.
           </p>
           {review.status === "interrupted" && (
-            <p role="status">
+            <output className="hint" data-block>
               A previous import stopped. Resume its verified batches or roll back the native changes.
-            </p>
+            </output>
           )}
           {progress && (
-            <p role="status">
+            <output className="hint" data-block>
               Imported {progress.folders}/{review.bookmarkFolders} folders · {progress.bookmarks}/
               {review.bookmarks} bookmarks · {progress.tabs}/{review.tabs} tabs
-            </p>
+            </output>
           )}
           {review.status === "applied" && (
-            <p role="status">This migration was already applied to this Profile.</p>
+            <output className="hint" data-block>
+              This migration was already applied to this Profile.
+            </output>
           )}
           {error && <p role="alert">{error}</p>}
           <div className="row">
