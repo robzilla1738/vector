@@ -33,6 +33,9 @@ function manifestFor(root) {
   if (!html.includes('Content-Security-Policy') || !html.includes('object-src &#39;self&#39;')) {
     throw new Error('Chromium shell CSP must allow only self for SurfaceEmbed objects');
   }
+  if (!html.includes('<script type="module" src="./aux_host_bootstrap.js"></script>')) {
+    throw new Error('Chromium shell must load its packaged Mojo host bootstrap');
+  }
   if (html.includes('aux-host.js')) throw new Error('Legacy proof bootstrap is not a production shell');
   const assets = entries.map(path => {
     const ext = path.slice(path.lastIndexOf('.'));
