@@ -1,3 +1,4 @@
+import { GenerateResultParamsSchema, GeneratedResultSchema, GeneratedResultSummarySchema } from "./generated-results.js";
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
 import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
@@ -354,6 +355,7 @@ export const ConversationArtifactSchema = z.object({
   turnGoal: z.string().max(400),
   sourceArtifactIds: z.array(id).optional(),
   revision: z.number().int().positive().optional(),
+  generatedKind: z.enum(["csv","xlsx","docx","pptx","chart"]).optional(),
   included: z.boolean(),
 });
 export type ConversationArtifact = z.infer<typeof ConversationArtifactSchema>;
@@ -840,6 +842,9 @@ export const MethodSchemas = {
   "conversations.attachments.page": z.object({ chatId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }),
   "conversations.attachments.toggle": ConversationAttachmentToggleParams,
   "conversations.attachments.remove": ConversationAttachmentControlParams,
+  "results.generate": GenerateResultParamsSchema,
+  "results.generated.get": z.object({artifactId:id}),
+  "results.generated.versions": z.object({artifactId:id}),
   "results.search": z.object({query:z.string().trim().min(1).max(300),limit:z.number().int().min(1).max(30).default(12)}),
   "results.read": z.object({artifactId:id}),
   "results.available": z.object({drafts:z.array(z.object({artifactId:id,chatId:id})).max(100)}),
@@ -1306,6 +1311,9 @@ export const ResultSchemas = {
   "conversations.attachments.page": ConversationAttachmentsSchema,
   "conversations.attachments.toggle": ConversationAttachmentsSchema,
   "conversations.attachments.remove": ConversationAttachmentsSchema,
+  "results.generate": GeneratedResultSchema,
+  "results.generated.get": GeneratedResultSchema,
+  "results.generated.versions": z.array(GeneratedResultSummarySchema),
   "results.search": z.array(SavedResultSchema),
   "results.read": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number(),revision:z.number().int().positive().optional(),parentArtifactId:id.optional(),rootArtifactId:id.optional()}),
   "results.available": z.array(id),

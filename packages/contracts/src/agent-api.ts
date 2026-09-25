@@ -57,6 +57,7 @@ export const AgentApiManifest = [
   entry({ path: "history.search", method: "history.list", layer: "management", summary: "Search the derived browser history index.", documented: "lookup" }),
   entry({ path: "web.fetch", method: "agent.web.fetch", layer: "web", summary: "Fetch a public text page under explicit egress grants, with bounded bytes and redirects.", documented: "lookup", requiredFor: ["research"] }),
   entry({ path: "web.search", method: "agent.web.search", layer: "web", summary: "Search with the configured engine under explicit egress grants.", documented: "lookup", requiredFor: ["research"] }),
+  entry({ path: "results.generate", method: "results.generate", layer: "management", summary: "Create or revise a bounded CSV, XLSX, DOCX, PPTX or chart result in the authorized task conversation, with immutable versions and file provenance.", documented: "model" }),
   entry({ path: "images.generate", method: "agent.images.generate", layer: "image", summary: "Generate one image through the capped Gateway ledger and save it as an artifact.", documented: "lookup", requiredFor: ["visual"], unsupportedByDefaultIn: ["code"] }),
 ] as const;
 

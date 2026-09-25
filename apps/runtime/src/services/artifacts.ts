@@ -30,7 +30,7 @@ export class ArtifactStore {
     const safe = opts.label.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 60) || "file";
     const ext = opts.mediaType === "image/png" ? ".png" : opts.mediaType === "image/jpeg" ? ".jpg"
       : opts.mediaType === "image/webp" ? ".webp" : opts.mediaType.includes("json") ? ".json" : "";
-    const filename = `${artifactId}-${safe}${ext}`;
+    const filename = `${artifactId}-${safe}${ext && !safe.toLowerCase().endsWith(ext) ? ext : ""}`;
     return {
       dir,
       artifact: {

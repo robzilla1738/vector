@@ -296,6 +296,24 @@ describe("handler results conform to ResultSchemas", () => {
   });
 });
 
+describe("generated result authority", () => {
+  it("requires a scoped task for agent generation and validates desktop results", async () => {
+    repo.saveRun({runId:"generated-run",goal:"Create an export",status:"completed",pageIds:[],config:{chatId:"generated-chat"},createdAt:Date.now()});
+    const params={chatId:"generated-chat",filename:"report.csv",spec:{kind:"csv",table:{name:"Report",rows:[["Name","Value"],["A",1]]}}};
+    await expect(invoke("results.generate",params,{external:true})).rejects.toMatchObject({code:"permission_denied"});
+    const saved=await invoke("results.generate",params,{external:false});
+    expect(ResultSchemas["results.generate"].parse(saved)).toMatchObject({chatId:"generated-chat",filename:"report.csv",revision:1});
+    const workspace=await invoke("workspaces.create",{name:"Generated exports"},{external:false}) as {workspaceId:string};
+    const task=await invoke("tasks.create",{workspaceId:workspace.workspaceId,title:"Export",objective:"Make a report",criteria:[{criterionId:"file",description:"Create file",verification:"manual"}]},{external:false}) as {taskId:string;revision:number};
+    const taskChatId=`task:${task.taskId}`;
+    repo.saveRun({runId:"task-generated-run",goal:"Make a report",status:"completed",pageIds:[],config:{chatId:taskChatId,taskId:task.taskId},createdAt:Date.now()});
+    const client={external:true,scope:{kind:"task" as const,workspaceId:workspace.workspaceId,taskId:task.taskId}};
+    await expect(invoke("results.generate",{...params,taskId:task.taskId,expectedRevision:task.revision},client)).rejects.toMatchObject({code:"permission_denied"});
+    const authorized=await invoke("results.generate",{...params,chatId:taskChatId,taskId:task.taskId,expectedRevision:task.revision},client);
+    expect(ResultSchemas["results.generate"].parse(authorized)).toMatchObject({chatId:taskChatId,revision:1});
+  });
+});
+
 describe("contracts drift fixes", () => {
   it("runs.start keeps context (max 20k) instead of stripping it", () => {
     const p = RunsStartParams.parse({ goal: "g", pageId: "p1", context: "earlier turns" });

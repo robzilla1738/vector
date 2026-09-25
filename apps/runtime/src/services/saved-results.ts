@@ -16,6 +16,7 @@ export class SavedResults {
   }
   /** Promote a human edit to an immutable result, with source and revision lineage. */
   saveVersion({chatId,sourceArtifactId,content}:{chatId:string;sourceArtifactId:string;content:string}) {
+    if(this.repo.getSetting(`generatedResult:${sourceArtifactId}`))throw new AuxError("invalid_params","Revise this generated file from its structured source.");
     const source=this.read(sourceArtifactId);
     const owner=this.repo.getArtifact(sourceArtifactId);
     const run=owner?.runId?this.repo.getRun(owner.runId):undefined;

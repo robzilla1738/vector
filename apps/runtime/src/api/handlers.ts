@@ -1,3 +1,4 @@
+import { GeneratedResults } from "../services/generated-results.js";
 import { SavedResults } from "../services/saved-results.js";
 import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
 import { ContentMemoryStore } from "../services/content-memory.js";
@@ -290,6 +291,11 @@ export function makeInvoker(s: Services) {
             throw new AuxError("invalid_params", "Scoped page programs require taskId and expectedRevision");
           requireScopedTask(scope,params.taskId);
         }
+      } else if (method === "results.generate") {
+        if (!params.taskId || !params.expectedRevision) throw new AuxError("invalid_params", "Scoped generated results require a task ID and revision.");
+        const task=requireScopedTask(scope,params.taskId);
+        if(task.revision!==params.expectedRevision)throw new AuxError("conflict","Task revision changed; refresh it before generating a result.");
+        if((task.conversationId??`task:${task.taskId}`)!==params.chatId)throw new AuxError("permission_denied","This conversation does not belong to the scoped task.");
       } else if (method.startsWith("runs.") && method !== "runs.list") {
         const run = typeof params.runId === "string" ? s.repo.getRun(params.runId) : undefined;
         if (!run?.config?.taskId) throw new AuxError("permission_denied", "This connection can only access runs belonging to its task scope");
@@ -1146,6 +1152,20 @@ export function makeInvoker(s: Services) {
         s.checkpointDeletedData?.();
         return attachments;
       }
+      case "results.generate":
+        if (client.external) {
+          if (!scope || !params.taskId || !params.expectedRevision) throw new AuxError("permission_denied", "Generated results require a scoped task and revision.");
+          const task=requireScopedTask(scope,params.taskId);
+          if (task.revision!==params.expectedRevision) throw new AuxError("conflict", "Task revision changed; refresh it before generating a result.");
+          if ((task.conversationId ?? `task:${task.taskId}`)!==params.chatId) throw new AuxError("permission_denied", "This conversation does not belong to the scoped task.");
+        }
+        {const generated=await new GeneratedResults(s.repo,s.artifacts).generate(params);s.events.emit("conversation.context.changed",{chatId:params.chatId});return generated;}
+      case "results.generated.get":
+        if (client.external) throw new AuxError("permission_denied", "Preview generated results in Aux.");
+        return new GeneratedResults(s.repo,s.artifacts).get(params.artifactId);
+      case "results.generated.versions":
+        if (client.external) throw new AuxError("permission_denied", "Inspect generated result versions in Aux.");
+        return new GeneratedResults(s.repo,s.artifacts).versions(params.artifactId);
       case "results.search":
         if (client.external) throw new AuxError("permission_denied", "Search saved results in Aux.");
         return new SavedResults(s.repo, s.artifacts).search(params.query, params.limit);

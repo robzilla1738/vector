@@ -11,6 +11,7 @@ import { RunImages } from "./RunImages";
 import { Dictation } from "./Dictation";
 import { ImageSnapshot } from "./ImageSnapshot";
 import { SavedResultPreview } from "./SavedResultPreview";
+import { GeneratedResultPreview } from "./GeneratedResultPreview";
 import { ConversationImages } from "./ConversationImages";
 import { DocumentSnapshot } from "./DocumentSnapshot";
 import { AuxMark } from "./AuxMark";
@@ -689,7 +690,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {splitPlan && <button type="button" className="menu-item" role="menuitem" onClick={() => openPreview("split")}>{I.split}<span>Split view</span></button>}
     </div>}
   </div> : null;
-  const supporting = id && resultPreview ? <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/>
+  const supporting = id && resultPreview ? (generated.find(item=>item.artifactId===resultPreview && item.generatedKind) ? <GeneratedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/> : <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/>)
     : id && imagePreview && images.some(image => image.imageId === imagePreview) ? <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} onClose={() => setImagePreview(null)}/>
     : id && documentPreview ? <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)}/>
     : sourceDetail ? <><SourceRow source={sourceDetail} profileNames={sourceProfileNames} onOpen={() => void openSource(sourceDetail)}/><p className="hint selectable">{sourceDetail.url}</p><button className="btn" onClick={() => void openSource(sourceDetail)}>Open recorded source {I.open}</button></>
