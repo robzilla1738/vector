@@ -17,7 +17,9 @@ export function PluginsPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const selected = plugins.find((plugin) => plugin.pluginId === selectedId && plugin.workspaceId === workspaceId);
+  const selected = plugins.find(
+    (plugin) => plugin.pluginId === selectedId && plugin.workspaceId === workspaceId,
+  );
   const visible = plugins.filter((plugin) => plugin.workspaceId === workspaceId);
 
   const refresh = async () => {
