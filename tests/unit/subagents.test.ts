@@ -6,7 +6,8 @@ function fixture() {
   const db = openDb(":memory:");
   const repo = new Repo(db), events = new EventBus(repo);
   const workspace = new TaskService(repo, events).createWorkspace("Agents");
-  const parent: Run = { runId: "parent", goal: "Research", status: "running", pageIds: ["parent-page"],
+  const parent: Run = { runId: "parent", goal: "Research", status: "running",
+    pageIds: ["parent-page", "one", "two", "three", ...Array.from({ length: 10 }, (_, i) => `page-${i}`)],
     config: { contextWorkspaceId: workspace.workspaceId, context: "Stable shared prompt prefix" }, createdAt: Date.now() };
   repo.saveRun(parent);
   const starts: Record<string, unknown>[] = [];
@@ -36,6 +37,8 @@ it("shares a hard reservation budget across at most eight children and rejects p
   try {
     const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 9000, costBudgetUsd: 1,
       timeBudgetMs: 60_000 });
+    await expect(f.service.spawn({ groupId: group.groupId, goal: "Outside scope", pageIds: ["other-page"],
+      profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.1 })).rejects.toThrow(/page scope/);
     for (let i = 0; i < 8; i++) await f.service.spawn({ groupId: group.groupId, goal: `Research ${i}`,
       pageIds: [`page-${i}`], profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.1 });
     expect(f.service.view(group.groupId).reservedTokens).toBe(8000);

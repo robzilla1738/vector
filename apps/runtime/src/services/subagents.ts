@@ -164,6 +164,8 @@ export class SubagentService {
     const parent = this.repo.getRun(group.parentRunId);
     if (!parent || !RUN_ACTIVE.has(parent.status)) throw new AuxError("conflict", "The parent run is no longer active.");
     if (new Set(input.pageIds).size !== input.pageIds.length) throw new AuxError("invalid_params", "Choose distinct pages for a subagent.");
+    if (input.pageIds.some(pageId => !parent.pageIds.includes(pageId)))
+      throw new AuxError("permission_denied", "A subagent cannot expand its parent's page scope.");
     const sourceRunId = input.sourceRunId ?? group.parentRunId;
     if (sourceRunId !== group.parentRunId && !this.repo.db.prepare("SELECT 1 FROM subagents WHERE group_id=? AND run_id=?")
       .get(group.groupId, sourceRunId)) throw new AuxError("permission_denied", "Fork source must belong to this group.");
