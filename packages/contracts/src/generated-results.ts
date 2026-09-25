@@ -14,6 +14,8 @@ export const GeneratedResultSpecSchema = z.discriminatedUnion("kind", [
 ]);
 export type GeneratedResultSpec = z.infer<typeof GeneratedResultSpecSchema>;
 export const GenerateResultParamsSchema = z.object({ chatId: id, taskId: id.optional(), expectedRevision: z.number().int().positive().optional(), sourceArtifactId: id.optional(), filename: z.string().trim().min(1).max(120), spec: GeneratedResultSpecSchema.refine(value => new TextEncoder().encode(JSON.stringify(value)).length <= 500_000, "A result source may use up to 500 KB.") });
+export const CompletedGeneratedFileSchema = GenerateResultParamsSchema.pick({filename:true,sourceArtifactId:true,spec:true});
+export type CompletedGeneratedFile = z.infer<typeof CompletedGeneratedFileSchema>;
 export const GeneratedResultSchema = z.object({ artifactId: id, chatId: id, filename: z.string(), mediaType: z.string(), byteLength: z.number().int().nonnegative(), createdAt: z.number(), sha256: z.string().length(64), kind: z.enum(["csv", "xlsx", "docx", "pptx", "chart"]), spec: GeneratedResultSpecSchema, revision: z.number().int().min(1).max(20), rootArtifactId: id, parentArtifactId: id, sourceRunId: id, preview: z.object({ title: z.string(), lines: z.array(z.string()).max(24) }) });
 export type GeneratedResult = z.infer<typeof GeneratedResultSchema>;
 export const GeneratedResultSummarySchema = GeneratedResultSchema.omit({spec:true});

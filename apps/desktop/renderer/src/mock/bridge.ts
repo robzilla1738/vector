@@ -1,3 +1,4 @@
+import { GenerateResultParamsSchema, GeneratedResultSpecSchema, type GeneratedResult, type GeneratedResultSpec } from "@aux/contracts";
 import { projectFixture } from "./project";
 import { workFixtures } from "./work";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
@@ -17,6 +18,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   ?scenario=takeover      run scenario with the human holding the page
  *   ?scenario=needs-input   run scenario waiting on a question
  *   ?scenario=set           a set mapping over 12 members
+ *   ?scenario=generated     versioned office or chart result (&generatedKind=csv|xlsx|docx|pptx|chart)
  *   ?scenario=many          45 tabs
  *   ?scenario=disconnected  runtime unreachable → degraded banner
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
@@ -115,8 +117,25 @@ export function installMockBridge(q: URLSearchParams) {
   const resultContent = resultFormat === "csv" ? 'Area,Priority,Notes\nEveryday browsing,High,"Fast, calm navigation"\nHelpful assistance,High,"Clear answers"\n' : resultFormat === "json" ? JSON.stringify({priorities:[{area:"Everyday browsing",priority:"High"},{area:"Helpful assistance",priority:"High"}]}) : "# Browser comparison\n\nA saved report with clear next steps.\n\n| Area | Priority |\n| --- | --- |\n| Everyday browsing | High |\n| Helpful assistance | High |\n\nKeep the browsing experience calm and predictable.";
   const mockResultVersions=new Map<string,typeof resultFixture & {content:string;revision:number;parentArtifactId:string;rootArtifactId:string}>();
   if (scenario === "results") runs.unshift(makeRun({runId:resultFixture.runId,goal:resultFixture.turnGoal,status:"completed",config:{chatId:resultFixture.chatId},result:{answer:`Saved ${resultFixture.filename}`}}));
+  const generatedKind=["csv","xlsx","docx","pptx","chart"].includes(q.get("generatedKind")??"") ? q.get("generatedKind")! : "xlsx";
+  const generatedSpec=GeneratedResultSpecSchema.parse(generatedKind==="csv"?{kind:"csv",table:{name:"Priorities",rows:[["Area","Priority"],["Browsing","High"],["Assistance","High"]]}}
+    :generatedKind==="docx"?{kind:"docx",title:"Browser comparison",paragraphs:["Calm navigation and clear answers."],tables:[]}
+    :generatedKind==="pptx"?{kind:"pptx",slides:[{title:"Browser comparison",bullets:["Calm navigation","Clear answers"]}]}
+    :generatedKind==="chart"?{kind:"chart",title:"Browser priorities",mark:"bar",x:"Area",y:"Score",data:[{Area:"Browsing",Score:4},{Area:"Assistance",Score:5}]}
+    :{kind:"xlsx",sheets:[{name:"Priorities",rows:[["Area","Priority"],["Browsing","High"],["Assistance","High"]]}]});
+  const generatedMedia={csv:"text/csv",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",chart:"image/png"} as const;
+  const generatedExt={csv:"csv",xlsx:"xlsx",docx:"docx",pptx:"pptx",chart:"png"} as const;
+  const generatedPreview=(spec:GeneratedResultSpec)=>({title:spec.kind==="docx"||spec.kind==="chart"?spec.title:spec.kind==="pptx"?`${spec.slides.length} slides`:spec.kind==="xlsx"?`${spec.sheets.length} sheet`:spec.table.name,
+    lines:spec.kind==="docx"?spec.paragraphs.slice(0,20):spec.kind==="chart"?[`${spec.mark} chart · ${spec.data.length} points`]:spec.kind==="pptx"?spec.slides.slice(0,20).map(slide=>slide.title):spec.kind==="xlsx"?spec.sheets.map(sheet=>`${sheet.name} · ${sheet.rows.length} rows`):spec.table.rows.slice(0,20).map(row=>row.join(" · ").slice(0,500))});
+  const generatedFixture:GeneratedResult={artifactId:"mock-generated",chatId:"mock-generated-chat",filename:`comparison.${generatedExt[generatedSpec.kind]}`,mediaType:generatedMedia[generatedSpec.kind],byteLength:2400,createdAt:Date.now(),sha256:"5b73d2cfa82a3c4e65769ee4a54d153a9912d79756eaa60d98a85946328feaa9",kind:generatedSpec.kind,spec:generatedSpec,revision:1,rootArtifactId:"mock-generated",parentArtifactId:"mock-generated",sourceRunId:"mock-generated-run",preview:generatedPreview(generatedSpec)};
+  const generatedVersions=new Map<string,GeneratedResult>();
+  if(scenario==="generated"){
+    generatedVersions.set(generatedFixture.artifactId,generatedFixture);
+    runs.unshift(makeRun({runId:generatedFixture.sourceRunId,goal:"Create a comparison file",status:"completed",config:{chatId:generatedFixture.chatId},result:{answer:`Saved ${generatedFixture.filename}`}}));
+  }
   const chatMetadata = new Map<string,{title:string;archived:boolean;updatedAt:number}>();
   if(scenario==="results"&&q.get("archived")==="1")chatMetadata.set(resultFixture.chatId,{title:resultFixture.conversationTitle,archived:true,updatedAt:Date.now()});
+  if(scenario==="generated"&&q.get("archived")==="1")chatMetadata.set(generatedFixture.chatId,{title:"Generated comparison",archived:true,updatedAt:Date.now()});
   const chatSummaries = ():ConversationSummary[] => {
     const groups = new Map<string,Run[]>();
     for (const run of runs) { const key=run.config?.chatId??run.runId; groups.set(key,[...(groups.get(key)??[]),run]); }
@@ -126,8 +145,9 @@ export function installMockBridge(q: URLSearchParams) {
     }).sort((a,b)=>b.updatedAt-a.updatedAt||b.chatId.localeCompare(a.chatId));
   };
   const documents = new Map<string, {attachmentId:string;filename:string;sourceUrl?:string;sourceTruncated?:boolean;content:string;byteLength:number;createdAt:number;included:boolean}[]>();
-  const artifactChips = new Map<string, {artifactId:string;runId:string;filename:string;mediaType:string;excerpt:string;byteLength:number;createdAt:number;turnGoal:string;included:boolean;revision?:number;sourceArtifactIds?:string[]}[]>();
+  const artifactChips = new Map<string, {artifactId:string;runId:string;filename:string;mediaType:string;excerpt:string;byteLength:number;createdAt:number;turnGoal:string;included:boolean;revision?:number;generatedKind?:GeneratedResultSpec["kind"];sourceArtifactIds?:string[]}[]>();
   if(scenario==="results")artifactChips.set(resultFixture.chatId,[{...resultFixture,excerpt:resultContent.slice(0,1000),included:true}]);
+  if(scenario==="generated")artifactChips.set(generatedFixture.chatId,[{artifactId:generatedFixture.artifactId,runId:generatedFixture.sourceRunId,filename:generatedFixture.filename,mediaType:generatedFixture.mediaType,excerpt:generatedFixture.preview.lines.join(" · "),byteLength:generatedFixture.byteLength,createdAt:generatedFixture.createdAt,turnGoal:"Create a comparison file",included:true,revision:1,generatedKind:generatedFixture.kind}]);
   const documentList = (chatId:string) => ({chatId,attachments:(documents.get(chatId)??[]).map(({content,...item})=>({...item,excerpt:content.slice(0,1000)}))});
   let steps: Record<string, StepRecord[]> = {};
   const settings: Record<string, unknown> = {
@@ -300,6 +320,34 @@ export function installMockBridge(q: URLSearchParams) {
     },
     "runs.context.get": async p => ({chatId:p.chatId,historyEnabled:true,entries:[]}),
     "runs.context.set": async p => ({chatId:p.chatId,historyEnabled:p.historyEnabled ?? true,entries:[]}),
+    "results.generate": async p => {
+      const input=GenerateResultParamsSchema.parse(p);
+      const turns=runs.filter(run=>(run.config?.chatId??run.runId)===input.chatId);
+      if(!turns.length)throw new Error("This conversation is unavailable.");
+      const source=input.sourceArtifactId?generatedVersions.get(input.sourceArtifactId):undefined;
+      if(input.sourceArtifactId&&(!source||source.chatId!==input.chatId||source.kind!==input.spec.kind))throw new Error("The source result is unavailable in this conversation.");
+      const history=source?[...generatedVersions.values()].filter(item=>item.rootArtifactId===source.rootArtifactId):[];
+      const revision=source?Math.max(...history.map(item=>item.revision))+1:1;
+      if(revision>20)throw new Error("This result has reached its 20-version limit.");
+      const run=turns.sort((a,b)=>b.createdAt-a.createdAt)[0]!;
+      const artifactId=`mock-generated-${crypto.randomUUID()}`;
+      const ext=generatedExt[input.spec.kind];
+      const filename=input.filename.toLowerCase().endsWith(`.${ext}`)?input.filename:`${input.filename.replace(/\.[^.]+$/g,"")}.${ext}`;
+      const saved:GeneratedResult={artifactId,chatId:input.chatId,filename,mediaType:generatedMedia[input.spec.kind],byteLength:Math.max(256,JSON.stringify(input.spec).length),createdAt:Date.now(),sha256:"5b73d2cfa82a3c4e65769ee4a54d153a9912d79756eaa60d98a85946328feaa9",kind:input.spec.kind,spec:input.spec,revision,rootArtifactId:source?.rootArtifactId??artifactId,parentArtifactId:source?.artifactId??artifactId,sourceRunId:run.runId,preview:generatedPreview(input.spec)};
+      generatedVersions.set(artifactId,saved);
+      const chips=artifactChips.get(input.chatId)??[];
+      if(source)for(const chip of chips)if(chip.artifactId===source.artifactId)chip.included=false;
+      chips.unshift({artifactId,runId:run.runId,filename,mediaType:saved.mediaType,excerpt:saved.preview.lines.join(" · ").slice(0,1000),byteLength:saved.byteLength,createdAt:saved.createdAt,turnGoal:run.goal,included:true,revision,generatedKind:saved.kind,sourceArtifactIds:source?[source.artifactId]:[]});
+      artifactChips.set(input.chatId,chips);emit("conversation.context.changed",{chatId:input.chatId});
+      return saved;
+    },
+    "results.generated.get": async p => {
+      const item=generatedVersions.get(String(p.artifactId));if(!item)throw new Error("This generated result is unavailable.");return item;
+    },
+    "results.generated.versions": async p => {
+      const item=generatedVersions.get(String(p.artifactId));if(!item)throw new Error("This generated result is unavailable.");
+      return [...generatedVersions.values()].filter(version=>version.rootArtifactId===item.rootArtifactId).sort((a,b)=>a.revision-b.revision).map(({spec:_spec,...summary})=>summary);
+    },
     "results.search": async p => {
       return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture,...mockResultVersions.values()] : [];
     },
@@ -600,6 +648,11 @@ export function installMockBridge(q: URLSearchParams) {
       zoomLevels.set(id, level); if (p.reset || p.direction || p.level !== undefined || p.delta !== undefined) for (const listener of zoomListeners) listener(); return { level };
     },
     "artifacts.read": async p => {
+      const generated=generatedVersions.get(String(p.artifactId));
+      if(generated?.kind==="chart"){
+        const png="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lNsAAAAASUVORK5CYII=";
+        return {artifact:{artifactId:generated.artifactId,runId:generated.sourceRunId,path:"",mediaType:"image/png",size:atob(png).length,status:"complete",createdAt:generated.createdAt},dataBase64:png};
+      }
       return { artifact: { artifactId: p.artifactId, path: "", mediaType: "application/json", size: 0, status: "complete", createdAt: Date.now() }, dataBase64: btoa(unescape(encodeURIComponent(JSON.stringify(OBSERVATION)))) };
     },
     "runs.get": async p => {

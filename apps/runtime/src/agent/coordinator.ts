@@ -65,6 +65,7 @@ export interface CoordinatorDeps {
   saveObservation?: (runId: string, obs: Observation) => string | undefined;
   saveCompletedReport?: (run: Run, markdown: string) => void;
   saveCompletedHtml?: (run: Run, html: string) => void;
+  saveCompletedGenerated?: (run: Run, file: import("@aux/contracts").CompletedGeneratedFile) => Promise<{artifactId:string}>;
   tracer?: {
     start(
       name: string,

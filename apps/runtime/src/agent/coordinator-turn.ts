@@ -1,6 +1,7 @@
 import {
   EventTypes,
   FinalDecisionSchema,
+  CompletedGeneratedFileSchema,
   newStepId,
   TaskPlanChunkSchema,
   RepairChunkSchema,
@@ -258,6 +259,7 @@ export async function tryFinalDecision(
     const memoryEvidence = s.run.config?.contextMemoryIds?.length ? await s.self.deps.memoryReferences?.(s.run) : undefined;
     const verified = verifyDoneAgainstObservation(d.result, observedEvidence(s, verifyObs), s.outcomes, s.run.config?.contextDocumentEvidence, s.run.config?.contextArtifactEvidence, memoryEvidence);
     if (!verified.ok) return "gave_up";
+    if(!await saveTerminalFile(s,d.result))return "done";
     s.self.finish(s.runId, "completed", d.result, undefined, d.message || "Done");
     return "done";
   } catch (e) {
@@ -675,6 +677,24 @@ async function runTerminalSteps(s: TurnState, plan: PlanChunk, obs: Observation,
   return { ...plan, steps: undefined, result };
 }
 
+async function saveTerminalFile(s: TurnState, result: Record<string,unknown>): Promise<boolean> {
+  if(result.file===undefined||s.self.durable.unresolved(s.runId).length)return true;
+  try{
+    const file=CompletedGeneratedFileSchema.parse(result.file);
+    if(!s.self.deps.saveCompletedGenerated)throw new AuxError("backend_unavailable","Generated file storage is unavailable.");
+    const saved=await s.self.deps.saveCompletedGenerated(s.run,file);
+    delete result.file;
+    result.generatedArtifactId=saved.artifactId;
+    return true;
+  }catch(cause){
+    if(s.self.get(s.runId).status==="cancelled")return false;
+    const partial={...result};delete partial.file;
+    s.self.finish(s.runId,"partially_completed",partial,`The generated file could not be saved: ${cause instanceof Error?cause.message:String(cause)}`,
+      "The answer completed, but the file could not be saved");
+    return false;
+  }
+}
+
 export async function settleDonePlan(
   s: TurnState,
   plan: PlanChunk,
@@ -711,6 +731,7 @@ export async function settleDonePlan(
     s.self.finish(s.runId, "failed", plan.result, `done not verified: ${verified.reason}`, "Done was not grounded in observed sources");
     return "return";
   }
+  if(!await saveTerminalFile(s,plan.result??{}))return "return";
   s.self.finish(s.runId, "completed", plan.result, undefined, plan.message || "Done");
   return "return";
 }

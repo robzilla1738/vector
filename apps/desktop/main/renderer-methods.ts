@@ -137,6 +137,9 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "programs.list",
   "programs.run",
   "results.read",
+  "results.generate",
+  "results.generated.get",
+  "results.generated.versions",
   "results.available",
   "results.saveVersion",
   "results.search",
@@ -237,6 +240,7 @@ export const SMOKE_HARNESS_METHODS: ReadonlySet<string> = new Set([
   "pages.activate",
   "pages.close",
   "pages.navigate",
+  "runtime.describe",
   "workspaces.create",
 ]);
 

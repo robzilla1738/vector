@@ -88,21 +88,23 @@ async function render(spec: GeneratedResultSpec): Promise<Buffer> {
 /** Generated files are immutable artifacts; all metadata is derived from their saved bytes and version row. */
 export class GeneratedResults {
   constructor(private repo:Repo,private artifacts:Pick<ArtifactStore,"save"|"read">) {}
-  async generate({chatId,sourceArtifactId,filename:proposed,spec}:{chatId:string;sourceArtifactId?:string;filename:string;spec:GeneratedResultSpec}):Promise<GeneratedResult> {
+  async generate({chatId,sourceArtifactId,filename:proposed,spec,runId:requestedRunId,canCommit}:{chatId:string;sourceArtifactId?:string;filename:string;spec:GeneratedResultSpec;runId?:string;canCommit?:()=>boolean}):Promise<GeneratedResult> {
     const conversation=this.repo.getConversation(chatId);
     if(!conversation)throw new AuxError("not_found","This conversation is unavailable.");
     if(conversation.archived)throw new AuxError("conflict","Restore this conversation before creating a result.");
     const source=sourceArtifactId?this.get(sourceArtifactId):undefined;
     if(source&&source.chatId!==chatId)throw new AuxError("not_found","The source result is unavailable in this conversation.");
     if(source&&source.kind!==spec.kind)throw new AuxError("invalid_params","A revised result must keep its file type.");
-    const runId=source?.sourceRunId??conversation.latestRun.runId;
-    if(!this.repo.getRun(runId)||this.repo.getRun(runId)?.config?.contextMemoryRevoked)throw new AuxError("not_found","The source turn is unavailable.");
+    const runId=requestedRunId??conversation.latestRun.runId;
+    const run=this.repo.getRun(runId);
+    if(!run||run.config?.contextMemoryRevoked||(run.config?.chatId??run.runId)!==chatId)throw new AuxError("not_found","The source turn is unavailable.");
     const rootArtifactId=source?.rootArtifactId;
     const latest=rootArtifactId?this.repo.db.prepare("SELECT max(revision) AS revision FROM result_versions WHERE root_artifact_id=?").get(rootArtifactId) as {revision:number|null}:undefined;
     const revision=(latest?.revision??0)+1;
     if(revision>20)throw new AuxError("conflict","This result has reached its 20-version limit. Start a new result to continue.");
     const buffer=await render(spec);
     if(buffer.length===0||buffer.length>MAX_FILE_BYTES)throw new AuxError("invalid_params","The generated file exceeds the 20 MB limit.");
+    if(canCommit&&!canCommit())throw new AuxError("conflict","The turn changed before the generated file could be saved.");
     const name=filename(proposed,spec.kind),sha256=createHash("sha256").update(buffer).digest("hex"),summary=preview(spec);
     const artifact=this.artifacts.save({runId,label:name,mediaType:MEDIA[spec.kind],buffer},saved=>{
       const root=rootArtifactId??saved.artifactId;

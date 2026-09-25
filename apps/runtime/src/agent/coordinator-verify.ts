@@ -1,5 +1,7 @@
 import {
   PlanChunkSchema,
+  CompletedGeneratedFileSchema,
+  type GeneratedResultSpec,
   AuxError,
   type Observation,
   type PlanChunk,
@@ -116,6 +118,17 @@ function reportClaims(report: string, allowedSourceText: string, citedSources: {
   return claims;
 }
 
+/** File metadata is presentation; verify every substantive cell, paragraph, bullet and chart value. */
+function generatedFileClaims(spec: GeneratedResultSpec): (string | number | boolean | null)[] {
+  switch(spec.kind){
+    case "csv": return spec.table.rows.slice(1).flat();
+    case "xlsx": return spec.sheets.flatMap(sheet=>sheet.rows.slice(1).flat());
+    case "docx": return [...spec.paragraphs,...spec.tables.flatMap(table=>table.rows.slice(1).flat())];
+    case "pptx": return spec.slides.flatMap(slide=>slide.bullets);
+    case "chart": return spec.data.flatMap(point=>Object.values(point));
+  }
+}
+
 const toNumber = (s: string) => Number(s.replace(/[,$€£¥%\s+]/g, ""));
 
 /** Every number that appears in the evidence, plus lengths of extracted lists (counts). */
@@ -174,9 +187,16 @@ export function verifyDoneAgainstObservation(
     ? (result as Record<string, string>).html : undefined;
   if (html && !report && !(result as Record<string, unknown>).answer)
     return { ok: false, reason: "an HTML preview needs a grounded answer or report" };
-  // Executable presentation code is not factual evidence. Ground the answer
-  // and report separately; the preview remains labeled as generated content.
-  const claimsResult = html ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== "html")) : result;
+  const source=result && typeof result==="object" && !Array.isArray(result) ? result as Record<string,unknown> : {};
+  const file=source.file===undefined?undefined:CompletedGeneratedFileSchema.safeParse(source.file);
+  if(file && !file.success)return {ok:false,reason:"the generated file source is invalid or too large"};
+  if(file && !report && typeof source.answer!=="string")return {ok:false,reason:"a generated file needs a grounded answer or report"};
+  // Presentation metadata is not evidence. Substantive file content is checked
+  // against the same observed sources as the answer and report.
+  const claimsResult={...source};
+  delete claimsResult.html;
+  delete claimsResult.file;
+  if(file?.success)claimsResult.fileContent=generatedFileClaims(file.data.spec);
   const claims = report
     ? [...collectClaims(Object.fromEntries(Object.entries(claimsResult as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text, citedSources)]
     : collectClaims(claimsResult);

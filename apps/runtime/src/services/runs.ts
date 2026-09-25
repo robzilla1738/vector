@@ -1,6 +1,7 @@
 import { documentReference, boundedDocumentReference } from "./document-context.js";
 import { isTextResult, isTextResultContent, resultFilename } from "./text-result.js";
 import { GeneratedResults } from "./generated-results.js";
+import { CompletedGeneratedFileSchema } from "@aux/contracts";
 import { readWorkspaceMemory } from "./workspace-memory.js";
 import { BrowsingMemory } from "./browsing-memory.js";
 import { workspaceMemoryText } from "@aux/contracts/memory-context";
@@ -601,6 +602,15 @@ export class RunService {
           mediaType: "application/json",
           buffer: Buffer.from(JSON.stringify(observationEvidence(obs))),
         }).artifactId,
+      saveCompletedGenerated: async (run, raw) => {
+        const file=CompletedGeneratedFileSchema.parse(raw);
+        if(!run.config?.chatId)throw new AuxError("invalid_params","A generated file requires an owning conversation.");
+        return new GeneratedResults(this.deps.repo,this.deps.artifacts).generate({...file,chatId:run.config.chatId,runId:run.runId,
+          canCommit:()=>{
+            const current=this.deps.repo.getRun(run.runId);
+            return !!current && ["running","planning"].includes(current.status) && !this.coordinator.durable.unresolved(run.runId).length;
+          }});
+      },
       saveCompletedReport: (run, markdown) => {
         const buffer = Buffer.from(markdown, "utf8");
         if (buffer.length > 256 * 1024 || markdown.includes("\0")) {
