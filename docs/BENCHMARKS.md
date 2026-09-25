@@ -13,6 +13,8 @@ The [native Aux versus same-tag Chromium runner](native-benchmark.md) records
 FirstPaint and input-to-presented-tab-switch UMA samples. It has no published
 result until both benchmark builds complete the 20-trial qualification run.
 
+The rows below are historical measurements at their named builds. They do not establish v2 native performance or current agent success. New v2 measurements must name the commit, build flavour (component trend or static claim), power state, raw artifact, and p50/p95 bootstrap intervals.
+
 ## Browser layer (`pnpm bench`)
 
 Records fixture, headless standalone Chromium, darwin arm64, p50. Reports are

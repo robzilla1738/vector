@@ -26,6 +26,8 @@ The table below is the current summary. The chronological batch rows that follow
 
 The latest recorded Gateway spend below is a **last audited value**, not a verified current balance. Reconcile the persisted ledger before another model call; no claim that the full $49.789 allocation remains is made.
 
+Historical rows below use the architecture and requirements of their named commits. B0–B12 status and Electron results do not establish completion of v2 S0–S14 or native product journeys.
+
 ## Baseline at `4d01370a`
 
 | Area | Label | Evidence | Remaining gate |

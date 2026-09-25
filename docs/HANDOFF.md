@@ -1,6 +1,6 @@
 # Aux development handoff
 
-Updated September 25, 2026. [ROADMAP.md](ROADMAP.md) is the active product plan; its September 25 scope amendment governs the current work. [EVIDENCE.md](EVIDENCE.md) is the claim ledger, and the [dated native log](evidence/native-aux-live-2026-09-25.md) contains the detailed observations. Earlier rows in those files describe the state at their named commits, not the present app.
+Updated September 25, 2026. [ROADMAP.md](ROADMAP.md) is the active v2 product plan; [v1](archive/2026-09-25-roadmap-v1/ROADMAP.md) is archived. [EVIDENCE.md](EVIDENCE.md) is the claim ledger, and the [dated native log](evidence/native-aux-live-2026-09-25.md) contains the detailed observations. Earlier rows in those files describe the state at their named commits, not the present app.
 
 ## Current goal and boundary
 
@@ -19,10 +19,9 @@ Build and test locally on this Mac. Do not enable paid GitHub Actions billing. T
 
 ## Continue from here
 
-1. Use the [current native runbook](../experiments/chromium-fork/CONTINUATION.md). Preserve the existing checkout and build cache; run only one native build at a time.
-2. Complete missing Chromium bridge services and their live Aux journeys, starting with feature-gated product surfaces. Keep Profile/window identity and trusted WebUI authorization in the browser process. Recheck the two Aside layouts and material after changes that affect them.
-3. Run relevant local typecheck, lint, focused tests, shell budget, native build and fixture journeys after each integrated batch. Update [EVIDENCE.md](EVIDENCE.md) with the exact commit and remaining failure. Avoid rerunning unrelated checks that already passed.
-4. Keep [migration](ELECTRON_MIGRATION.md) on disposable copies and fixtures. Do not use the owner's real Profile as a destination.
-5. Keep the branch and PR #24 in sync after reviewed work. GitHub-hosted checks are not necessary to use the local development build; the required `CI passed` check **is** necessary for a normal protected-main merge. The prior hosted run was blocked by GitHub billing before jobs started. Do not enable billing or claim a green check from an older SHA.
+1. Start S0 and S1 in the [v2 roadmap](ROADMAP.md#6-workstreams-dependency-ordered-executed-by-ai-agents): correct task scoring and spend reservations, inventory bridge coverage, then land the typed host method manifest and generated bindings. Keep the existing Chromium checkout and build cache; run one native build at a time using the [runbook](../experiments/chromium-fork/CONTINUATION.md).
+2. Follow the v2 dependency order. The native host's method and capability manifest must precede Electron removal and feature activation. Keep Profile/window identity and trusted WebUI authorization in the browser process; verify affected features through fixture journeys in both Aside layouts.
+3. Use focused checks for touched modules and at most one native journey per build batch. Record each slice's exact command, commit and outcome in [EVIDENCE.md](EVIDENCE.md). Keep [migration](ELECTRON_MIGRATION.md) on disposable copies and fixtures; never use the owner's real Profile.
+4. Keep branch `codex/aux-roadmap-build` and PR #24 in sync after reviewed work. Do not enable paid Actions billing or claim a green check from an older SHA. A normal protected-main merge still requires its `CI passed` check.
 
 The [historical host comparison](archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md), [UI transplant record](archive/2026-09-24-b0-reset/ui/COMPONENT-TRANSPLANT.md), and [original candidate proof](../experiments/chromium-fork/INTEGRATION.md) remain useful background, not instructions for the current AuxDev checkout. Never commit Profiles, credentials, build caches, raw reference captures or personal-data logs.

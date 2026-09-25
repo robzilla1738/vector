@@ -1,6 +1,6 @@
-# Aux native performance baseline — September 24, 2026
+# Aux Electron performance baseline — September 24, 2026
 
-Development measurement from the current Aux code on branch `codex/aux-roadmap-build` at `a583f834`, after rebuilding the Electron shell and renderer. The test launches ten disposable profiles per condition through `tests/smoke/startup-timing-desktop.mjs`. It records process spawn to shell window, painted home surface, runtime readiness, and completion of the first local fixture page open. Times are wall clock milliseconds; p95 uses nearest rank. The fixture is local HTTP, with no model configured.
+Historical Electron development measurement from Aux code on branch `codex/aux-roadmap-build` at `a583f834`, after rebuilding the Electron shell and renderer. The test launches ten disposable profiles per condition through `tests/smoke/startup-timing-desktop.mjs`. It records process spawn to shell window, painted home surface, runtime readiness, and completion of the first local fixture page open. Times are wall clock milliseconds; p95 uses nearest rank. The fixture is local HTTP, with no model configured.
 
 Host: Mac17,4, 32 GiB, arm64, macOS 27.2 build 26B5091g; Electron 43.6.0; Node 26.7.0. This is an unsigned local development build. The system was already warm from earlier Aux launches; these are application process starts, not cold OS boots.
 
