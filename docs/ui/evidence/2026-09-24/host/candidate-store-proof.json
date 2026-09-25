@@ -1,8 +1,9 @@
 {
   "at": "2026-09-24T23:01:39.913736+00:00",
-  "candidateBinary": "/Users/rcourson/aux-chromium-proof/chromium/src/out/AuxProof/Aux Host Proof.app/Contents/MacOS/Aux Host Proof",
+  "candidateBinary": "out/AuxProof/Aux Host Proof.app/Contents/MacOS/Aux Host Proof",
+  "pathNote": "Local absolute path prefixes were removed from this checked-in proof; paths are relative to the native checkout and Aux repository, respectively.",
   "upstreamRevision": "b151276ea2110e74b063c6964bd0a5c14dc42f52",
-  "profile": "/Users/rcourson/Documents/Vibe/web/release/test-artifacts/chromium-candidate-profile",
+  "profile": "release/test-artifacts/chromium-candidate-profile",
   "storeUrl": "https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh",
   "extensionId": "ddkjiahejlhfcafbddmgiahcphecmpfh",
   "version": "2026.920.1710",
