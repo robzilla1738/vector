@@ -134,3 +134,25 @@ it("builds the move-tab destinations from the Profile catalog without hidden age
   ]);
   expect(request).toHaveBeenCalledWith("tabsSnapshot", []);
 });
+
+it("registers the shared native shortcut bindings and reserves disabled defaults", async () => {
+  const request = vi.fn(async () => true);
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork", windowId: "current", profileId: "profile-1",
+    platform: "darwin", privateMode: false, request, subscribe: vi.fn(() => () => {}),
+  });
+  installChromiumBridge(target);
+  await target.aux!.setShortcutOverrides({
+    palette: [{ key: "k", command: true, shift: true }],
+    sidebar: null,
+  });
+  const [method, args] = request.mock.calls[0] as unknown as [string, [Array<Record<string, unknown>>]];
+  expect(method).toBe("setShortcuts");
+  const bindings = args[0];
+  const chord = (key: string, shift = false) => bindings.filter(row => row.key === key && row.meta && row.shift === shift);
+  expect(chord("k").at(-1)?.commandId).toBe("");
+  expect(chord("k", true).at(-1)?.commandId).toBe("palette");
+  expect(chord("s").at(-1)?.commandId).toBe("");
+  expect(bindings.some(row => row.key === "left" && row.alt && !row.meta)).toBe(false);
+  expect(chord("p").at(-1)?.commandId).toBe("print");
+});

@@ -1,3 +1,4 @@
+import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
 import type { AuxBridge } from "./bridge";
 import { auxFeatureForBridgeMethod, requireAuxFeature, requireAuxMethod, type AuxFeatureOverrides, type TabCatalogSnapshot } from "@aux/contracts";
 
@@ -64,6 +65,23 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
       if (key === "overlay") return async (open: boolean) => {
         if (typeof open !== "boolean") throw new TypeError("Overlay state must be boolean");
         return open;
+      };
+      if (key === "setShortcutOverrides") return async (overrides: ShortcutOverrides) => {
+        const rows = (saved?: ShortcutOverrides) => effectiveShortcuts(saved)
+          .filter(command => command.intercept)
+          .flatMap(command => command.bindings
+            .filter(binding => !binding.platforms || binding.platforms.includes(port.platform))
+            .map(binding => ({
+              commandId: command.id, key: binding.key,
+              meta: !!binding.command && port.platform === "darwin",
+              ctrl: !!binding.ctrl || (!!binding.command && port.platform !== "darwin"),
+              shift: !!binding.shift, alt: !!binding.alt,
+            })));
+        // Reserve defaults even when disabled or rebound, so AppKit's original
+        // browser menu cannot reinterpret them as a different command.
+        return port.request("setShortcuts", [
+          [...rows().map(row => ({ ...row, commandId: "" })), ...rows(overrides)],
+        ]);
       };
       if (key === "windows") return async () => {
         // The native catalog is already scoped to this Profile. Build the

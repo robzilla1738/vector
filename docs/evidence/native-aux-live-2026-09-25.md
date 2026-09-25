@@ -217,3 +217,9 @@ The upstream WebUI host reads content bounds from a tracked Webium DOM element t
 - **Verified:** The command-palette Developer tools action opens a DevTools window attached to `example.com/`; the Elements panel is accessible and closing it returns to Aux.
 - **Open:** Command-K did not open the palette while the embedded page had focus; the sidebar Search button works. Native shortcut forwarding still needs completion.
 - The first background-join trial still triggered the synchronization check because `MayBlock` does not authorize base synchronization waits. The cleanup task now also declares `WithBaseSyncPrimitives`; this permission is limited to the shutdown worker task, never the UI sequence. Build passes (2 actions, 49.37s; `/tmp/aux-dev-shutdown-sync-build.log`). Normal-quit retest passed after connected runtime startup: the Aux browser process exited and no new Crashpad dumps appeared. The prior failing quit produced two new dumps immediately.
+
+### Shared native shortcut registry
+
+- **Verified:** Patch 44 registers the renderer's effective intercept chords with Chromium's Mac focus manager. Saved rebinding and disabled defaults are sent through the same native bridge; default chords are reserved so AppKit does not reinterpret a disabled Aux command. The development app built successfully (31 actions, 1m15s; `/tmp/aux-dev-shortcuts-build.log`). Six focused bridge tests and renderer typechecking passed; the shell bundle remained within its existing budgets.
+- **Verified in AuxDev:** With Example Domain itself focused, ⌘K opens the Aux command palette, ⌘⇧A opens Ask Aux, and ⌘S hides the sidebar. These were previously unresponsive or limited to shell focus. A normal quit and relaunch loaded the new app before testing.
+- **Still open:** Live testing of a user-rebound chord and the remaining page-focused commands. This does not qualify every command action or complete the roadmap's native bridge matrix.

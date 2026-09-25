@@ -1,0 +1,187 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_WINDOW_H_
+ 
+ #include <memory>
++#include "base/values.h"
+ 
+ #include "base/callback_list.h"
+ #include "chrome/browser/buildflags.h"
+@@ -50,6 +51,11 @@
+  public:
+   explicit WebUIBrowserWindow(BrowserWindowInterface* browser);
+   ~WebUIBrowserWindow() override;
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  bool SetAuxShortcuts(const base::ListValue& bindings);
++  bool DispatchAuxAccelerator(const ui::Accelerator& accelerator);
++#endif
++
+ 
+   // Returns the containing browser window for a WebContents that hosts
+   // WebShell.
+@@ -301,6 +307,9 @@
+   // //chrome/app/chrome_command_ids.h.
+   std::map<ui::Accelerator, int> accelerator_table_;
+   ui::AcceleratorManager accelerator_manager_;
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  std::map<ui::Accelerator, std::string> aux_shortcuts_;
++#endif
+ 
+   std::unique_ptr<WebUIBrowserModalDialogHost> modal_dialog_host_;
+   std::unique_ptr<webui_toolbar::IconTable> icon_table_;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -239,14 +239,7 @@
+                               base::Unretained(this)));
+ 
+   LoadAccelerators();
+-#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+-  // macOS's command dispatcher consults the Views focus manager before the
+-  // first responder and native menus. WebContents interception alone cannot
+-  // receive a chord already claimed by an AppKit menu item.
+-  widget_->GetFocusManager()->RegisterAccelerator(
+-      ui::Accelerator(ui::VKEY_S, ui::EF_COMMAND_DOWN),
+-      ui::AcceleratorManager::kHighPriority, this);
+-#endif
++
+ }
+ 
+ WebUIBrowserWindow::~WebUIBrowserWindow() {
+@@ -771,10 +764,7 @@
+ bool WebUIBrowserWindow::AcceleratorPressed(
+     const ui::Accelerator& accelerator) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+-  if (accelerator == ui::Accelerator(ui::VKEY_S, ui::EF_COMMAND_DOWN)) {
+-    WebUIBrowserUI* ui = GetWebUIBrowserUI();
+-    return ui && ui->DispatchAuxShortcut("sidebar");
+-  }
++  if (DispatchAuxAccelerator(accelerator)) return true;
+ #endif
+   int command_id;
+   // Though AcceleratorManager should not send unknown |accelerator| to us, it's
+@@ -1081,11 +1071,8 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+   if (event.GetType() == blink::WebInputEvent::Type::kRawKeyDown &&
+-      accelerator == ui::Accelerator(ui::VKEY_S, ui::EF_COMMAND_DOWN)) {
+-    if (WebUIBrowserUI* ui = GetWebUIBrowserUI();
+-        ui && ui->DispatchAuxShortcut("sidebar")) {
+-      return content::KeyboardEventProcessingResult::HANDLED;
+-    }
++      DispatchAuxAccelerator(accelerator)) {
++    return content::KeyboardEventProcessingResult::HANDLED;
+   }
+ #endif
+ 
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -18,6 +18,10 @@
+ #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
+ #import "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.h"
+ #include "components/input/native_web_keyboard_event.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "ui/events/keycodes/keyboard_code_conversion_mac.h"
++#include "ui/views/focus/focus_manager.h"
+ #import "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
+ #include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
+ #include "ui/views/cocoa/native_widget_mac_ns_window_host.h"
+@@ -138,6 +142,52 @@
+ 
+ }  // namespace
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++bool WebUIBrowserWindow::SetAuxShortcuts(const base::ListValue& bindings) {
++  std::map<ui::Accelerator, std::string> next;
++  for (const auto& value : bindings) {
++    const auto& row = value.GetDict();
++    const std::string& key = *row.FindString("key");
++    ui::KeyboardCode code = ui::VKEY_UNKNOWN;
++    NSString* text = [NSString stringWithUTF8String:key.c_str()];
++    if (text.length == 1) code = ui::KeyboardCodeFromCharCode([text characterAtIndex:0]);
++    const std::map<std::string, ui::KeyboardCode> named = {
++        {"tab", ui::VKEY_TAB}, {"enter", ui::VKEY_RETURN},
++        {"escape", ui::VKEY_ESCAPE}, {"backspace", ui::VKEY_BACK},
++        {"delete", ui::VKEY_DELETE}, {"left", ui::VKEY_LEFT},
++        {"right", ui::VKEY_RIGHT}, {"up", ui::VKEY_UP},
++        {"down", ui::VKEY_DOWN}, {"home", ui::VKEY_HOME},
++        {"end", ui::VKEY_END}, {"pageup", ui::VKEY_PRIOR},
++        {"pagedown", ui::VKEY_NEXT}};
++    if (auto found = named.find(key); found != named.end()) code = found->second;
++    int function = 0;
++    if (key.starts_with("f") && base::StringToInt(key.substr(1), &function) &&
++        function >= 1 && function <= 24)
++      code = static_cast<ui::KeyboardCode>(ui::VKEY_F1 + function - 1);
++    if (code == ui::VKEY_UNKNOWN) return false;
++    const int modifiers = (*row.FindBool("meta") ? ui::EF_COMMAND_DOWN : 0) |
++        (*row.FindBool("ctrl") ? ui::EF_CONTROL_DOWN : 0) |
++        (*row.FindBool("shift") ? ui::EF_SHIFT_DOWN : 0) |
++        (*row.FindBool("alt") ? ui::EF_ALT_DOWN : 0);
++    next[ui::Accelerator(code, modifiers)] = *row.FindString("commandId");
++  }
++  auto* focus = widget_->GetFocusManager();
++  focus->UnregisterAccelerators(this);
++  aux_shortcuts_ = std::move(next);
++  for (const auto& [accelerator, command] : aux_shortcuts_)
++    focus->RegisterAccelerator(accelerator, ui::AcceleratorManager::kHighPriority, this);
++  return true;
++}
++
++bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerator) {
++  auto found = aux_shortcuts_.find(accelerator);
++  if (found == aux_shortcuts_.end()) return false;
++  if (found->second.empty()) return true;
++  auto* shell = GetWebUIBrowserUI();
++  return shell && shell->DispatchAuxShortcut(found->second);
++}
++#endif
++
+ bool WebUIBrowserWindow::HandleKeyboardEvent(
+     const input::NativeWebKeyboardEvent& event) {
+   if (!ShouldHandleKeyboardEvent(event)) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -297,6 +297,7 @@
+ bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id) {
+   if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound())
+     return false;
++  if (command_id == "palette") web_ui()->GetWebContents()->Focus();
+   base::DictValue shortcut;
+   shortcut.Set("commandId", command_id);
+   shortcut.Set("key", "");
+@@ -1240,6 +1241,30 @@
+     std::move(callback).Run(true, "true", "", "");
+     return;
+   }
++  if (method == "setShortcuts") {
++#if BUILDFLAG(IS_MAC)
++    const auto* bindings = list->size() == 1 ? (*list)[0].GetIfList() : nullptr;
++    bool valid = bindings && bindings->size() <= 512;
++    if (valid) for (const auto& value : *bindings) {
++      const auto* row = value.GetIfDict();
++      const auto* key = row ? row->FindString("key") : nullptr;
++      const auto* command = row ? row->FindString("commandId") : nullptr;
++      if (!key || key->empty() || key->size() > 32 || !command ||
++          command->size() > 64 || !row->FindBool("meta").has_value() ||
++          !row->FindBool("ctrl").has_value() || !row->FindBool("shift").has_value() ||
++          !row->FindBool("alt").has_value()) { valid = false; break; }
++    }
++    auto* window = WebUIBrowserWindow::FromBrowser(browser_);
++    if (!valid || !window || !window->SetAuxShortcuts(*bindings)) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid Aux shortcut bindings");
++      return;
++    }
++    std::move(callback).Run(true, "true", "", "");
++#else
++    std::move(callback).Run(false, "", "not_supported", "Native shortcuts require macOS");
++#endif
++    return;
++  }
+   if (method == "focusShell") {
+     if (!list->empty()) {
+       std::move(callback).Run(false, "", "invalid_argument",
