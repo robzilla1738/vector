@@ -209,10 +209,10 @@ index 248245c8c9..fda61cd0cb 100644
    void OnRuntimeNote(std::string type, std::string payload_json);
 diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
 new file mode 100644
-index 0000000000..50559bd009
+index 0000000000..4905de3358
 --- /dev/null
 +++ b/chrome/browser/ui/aux/zap_controller.cc
-@@ -0,0 +1,513 @@
+@@ -0,0 +1,529 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -369,6 +369,9 @@ index 0000000000..50559bd009
 +            }
 +            if (valid) {
 +              owner->policies_ = std::move(policies);
++              for (const auto& [origin, policy] : owner->policies_) {
++                owner->sequence_by_origin_[origin] = ++owner->next_sequence_;
++              }
 +              owner->ready_ = true;
 +            }
 +            owner->loading_ = false;
@@ -401,10 +404,13 @@ index 0000000000..50559bd009
 +      base::BindOnce(&ZapController::OnFrameResult, weak_factory_.GetWeakPtr(),
 +                     request_id, false, false));
 +  const std::string* stylesheet = StyleForOrigin(origin);
++  const auto sequence_it = sequence_by_origin_.find(origin);
++  const uint64_t sequence =
++      sequence_it == sequence_by_origin_.end() ? 0 : sequence_it->second;
 +  frame_requests_.emplace(request_id, std::move(request));
 +  frame_requests_.at(request_id)
 +      ->remote->SetAuxZapStylesheet(
-+          origin, stylesheet ? *stylesheet : "",
++          origin, sequence, stylesheet ? *stylesheet : "",
 +          base::BindOnce(&ZapController::OnFrameResult,
 +                         weak_factory_.GetWeakPtr(), request_id));
 +  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
@@ -456,6 +462,7 @@ index 0000000000..50559bd009
 +    std::string page_id;
 +    content::GlobalRenderFrameHostId frame_id;
 +    int64_t epoch;
++    bool matching_origin;
 +  };
 +  std::vector<Target> targets;
 +  auto* catalog = TabCatalog::GetForProfile(profile_);
@@ -477,13 +484,18 @@ index 0000000000..50559bd009
 +      continue;
 +    }
 +    contents->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
-+      if (frame->GetLastCommittedOrigin().Serialize() == origin) {
-+        targets.push_back(
-+            {*page_id, frame->GetGlobalId(), frame->GetNavigationId()});
++      const bool matching_origin =
++          frame->GetLastCommittedOrigin().Serialize() == origin;
++      if (matching_origin || stylesheet.empty()) {
++        targets.push_back({*page_id, frame->GetGlobalId(),
++                           frame->GetNavigationId(), matching_origin});
 +      }
 +    });
 +  }
-+  if (targets.size() > 500) {
++  const size_t matching_count = std::count_if(
++      targets.begin(), targets.end(),
++      [](const Target& target) { return target.matching_origin; });
++  if (matching_count > 500 || targets.size() > 5000) {
 +    std::move(callback).Run(Fault("Too many active Zap documents"));
 +    return;
 +  }
@@ -493,6 +505,7 @@ index 0000000000..50559bd009
 +          ? std::nullopt
 +          : std::optional<Policy>(previous_it->second);
 +  policies_[origin] = Policy{revision, stylesheet, hash};
++  sequence_by_origin_[origin] = ++next_sequence_;
 +  struct Pending {
 +    size_t remaining = 0;
 +    bool failed = false;
@@ -545,7 +558,7 @@ index 0000000000..50559bd009
 +                  current && current->GetNavigationId() == target.epoch &&
 +                  current->GetLastCommittedOrigin().Serialize() ==
 +                      pending->origin;
-+              if (same_document) {
++              if (same_document && target.matching_origin) {
 +                base::Value::Dict document;
 +                document.Set("pageId", target.page_id);
 +                document.Set(
@@ -560,6 +573,9 @@ index 0000000000..50559bd009
 +                          ->empty())) {
 +                  pending->failed = true;
 +                }
++              }
++              if (current && !accepted) {
++                pending->failed = true;
 +              }
 +              if (--pending->remaining != 0) {
 +                return;
@@ -728,10 +744,10 @@ index 0000000000..50559bd009
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/zap_controller.h b/chrome/browser/ui/aux/zap_controller.h
 new file mode 100644
-index 0000000000..7a98a71d32
+index 0000000000..8bc494e1c3
 --- /dev/null
 +++ b/chrome/browser/ui/aux/zap_controller.h
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,76 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -739,6 +755,7 @@ index 0000000000..7a98a71d32
 +#ifndef CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
 +
++#include <cstdint>
 +#include <map>
 +#include <memory>
 +#include <string>
@@ -794,6 +811,8 @@ index 0000000000..7a98a71d32
 +  };
 +  raw_ptr<Profile> profile_;
 +  std::map<std::string, Policy> policies_;
++  std::map<std::string, uint64_t> sequence_by_origin_;
++  uint64_t next_sequence_ = 0;
 +  std::vector<ReadyCallback> pending_ready_;
 +  std::map<int, std::unique_ptr<FrameRequest>> frame_requests_;
 +  int next_frame_request_id_ = 1;
@@ -806,7 +825,7 @@ index 0000000000..7a98a71d32
 +
 +#endif  // CHROME_BROWSER_UI_AUX_ZAP_CONTROLLER_H_
 diff --git a/chrome/common/chrome_render_frame.mojom b/chrome/common/chrome_render_frame.mojom
-index c5b742e2fe..e2c3e82c2b 100644
+index c5b742e2fe..2cd64ea8eb 100644
 --- a/chrome/common/chrome_render_frame.mojom
 +++ b/chrome/common/chrome_render_frame.mojom
 @@ -28,6 +28,11 @@ enum ImageFormat {
@@ -815,17 +834,141 @@ index c5b742e2fe..e2c3e82c2b 100644
  interface ChromeRenderFrame {
 +  // Queues an exact-origin user stylesheet before commit and updates the active
 +  // document when its security origin matches. Empty CSS revokes it.
-+  SetAuxZapStylesheet(string origin, string stylesheet)
++  SetAuxZapStylesheet(string origin, uint64 sequence, string stylesheet)
 +      => (bool accepted, bool applied);
 +
    // Updates the window features of the main frame's render view.
    SetWindowFeatures(blink.mojom.WindowFeatures window_features);
  
+diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
+index dfdeb86e2e..9f243ff874 100644
+--- a/chrome/renderer/BUILD.gn
++++ b/chrome/renderer/BUILD.gn
+@@ -64,6 +64,7 @@ static_library("renderer") {
+   configs = []
+   configs = [ "//third_party/tflite:tflite_shim_config" ] + _configs
+   sources = [
++    "aux_zap_stylesheet_registry.h",
+     "benchmarking_bindings.cc",
+     "benchmarking_bindings.h",
+     "browser_exposed_renderer_interfaces.cc",
+diff --git a/chrome/renderer/aux_zap_stylesheet_registry.h b/chrome/renderer/aux_zap_stylesheet_registry.h
+new file mode 100644
+index 0000000000..3f699b22fa
+--- /dev/null
++++ b/chrome/renderer/aux_zap_stylesheet_registry.h
+@@ -0,0 +1,98 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
++#define CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
++
++#include <chrono>
++#include <cstddef>
++#include <cstdint>
++#include <map>
++#include <string>
++
++// Renderer processes belong to one BrowserContext. Keep exact-origin styles
++// for inherited-origin documents (about:blank and blob) which may be created
++// without a network navigation. The browser provides monotonic sequence
++// numbers; a late message cannot restore a revoked style.
++class AuxZapStylesheetRegistry {
++ public:
++  enum class Result { kAccepted, kStale, kCapacity };
++  using Clock = std::chrono::steady_clock;
++
++  Result Update(const std::string& origin,
++                uint64_t sequence,
++                const std::string& stylesheet,
++                Clock::time_point now) {
++    Prune(now);
++    auto it = entries_.find(origin);
++    if (it == entries_.end() && stylesheet.empty() && sequence == 0) {
++      return Result::kAccepted;
++    }
++    if (it != entries_.end()) {
++      if (sequence < it->second.sequence ||
++          (sequence == it->second.sequence &&
++           stylesheet != it->second.stylesheet)) {
++        return Result::kStale;
++      }
++    }
++    if (!stylesheet.empty() &&
++        (it == entries_.end() || it->second.stylesheet.empty()) &&
++        live_styles_ >= kMaxLiveStyles) {
++      return Result::kCapacity;
++    }
++    if (it == entries_.end()) {
++      if (stylesheet.empty() && tombstones_ >= kMaxTombstones) {
++        return Result::kCapacity;
++      }
++      it = entries_.emplace(origin, Entry{}).first;
++    } else if (it->second.stylesheet.empty()) {
++      --tombstones_;
++    } else {
++      --live_styles_;
++    }
++    it->second = {
++        sequence, stylesheet,
++        stylesheet.empty() ? now + kTombstoneLifetime : Clock::time_point{}};
++    if (stylesheet.empty()) {
++      ++tombstones_;
++    } else {
++      ++live_styles_;
++    }
++    return Result::kAccepted;
++  }
++
++  const std::string* Find(const std::string& origin) const {
++    auto it = entries_.find(origin);
++    return it == entries_.end() || it->second.stylesheet.empty()
++               ? nullptr
++               : &it->second.stylesheet;
++  }
++
++ private:
++  struct Entry {
++    uint64_t sequence = 0;
++    std::string stylesheet;
++    Clock::time_point expires_at;
++  };
++  static constexpr size_t kMaxLiveStyles = 100;
++  static constexpr size_t kMaxTombstones = 1000;
++  static constexpr auto kTombstoneLifetime = std::chrono::seconds(30);
++
++  void Prune(Clock::time_point now) {
++    for (auto it = entries_.begin(); it != entries_.end();) {
++      if (it->second.stylesheet.empty() && it->second.expires_at <= now) {
++        it = entries_.erase(it);
++        --tombstones_;
++      } else {
++        ++it;
++      }
++    }
++  }
++
++  std::map<std::string, Entry> entries_;
++  size_t live_styles_ = 0;
++  size_t tombstones_ = 0;
++};
++
++#endif  // CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
 diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
-index 1dc2c646c0..24c4c3ee5f 100644
+index 1dc2c646c0..c0e4cb3b90 100644
 --- a/chrome/renderer/chrome_render_frame_observer.cc
 +++ b/chrome/renderer/chrome_render_frame_observer.cc
-@@ -67,6 +67,7 @@
+@@ -31,6 +31,7 @@
+ #include "chrome/common/open_search_description_document_handler.mojom.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "chrome/renderer/actor/chrome_page_stability_monitor_delegate.h"
++#include "chrome/renderer/aux_zap_stylesheet_registry.h"
+ #include "chrome/renderer/actor/journal.h"
+ #include "chrome/renderer/actor/tool_executor.h"
+ #include "chrome/renderer/benchmarking_bindings.h"
+@@ -67,6 +68,7 @@
  #include "third_party/blink/public/platform/web_url_request.h"
  #include "third_party/blink/public/web/web_console_message.h"
  #include "third_party/blink/public/web/web_document.h"
@@ -833,7 +976,7 @@ index 1dc2c646c0..24c4c3ee5f 100644
  #include "third_party/blink/public/web/web_document_loader.h"
  #include "third_party/blink/public/web/web_element.h"
  #include "third_party/blink/public/web/web_frame_content_dumper.h"
-@@ -82,6 +83,7 @@
+@@ -82,6 +84,7 @@
  #include "ui/gfx/codec/webp_codec.h"
  #include "ui/gfx/geometry/size_f.h"
  #include "url/gurl.h"
@@ -841,27 +984,37 @@ index 1dc2c646c0..24c4c3ee5f 100644
  
  #if !BUILDFLAG(IS_ANDROID)
  #include "chrome/renderer/accessibility/read_anything/read_anything_app_controller.h"
-@@ -317,7 +319,65 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
+@@ -129,6 +132,11 @@ const char kImageJpeg[] = "image/jpeg";
+ const char kImagePng[] = "image/png";
+ const char kImageWebp[] = "image/webp";
+ 
++AuxZapStylesheetRegistry& GetAuxZapStylesheets() {
++  static base::NoDestructor<AuxZapStylesheetRegistry> registry;
++  return *registry;
++}
++
+ #if BUILDFLAG(IS_ANDROID)
+ base::Lock& GetFrameHeaderMapLock() {
+   static base::NoDestructor<base::Lock> s;
+@@ -317,7 +325,63 @@ void ChromeRenderFrameObserver::DidFinishLoad() {
    }
  }
  
 +void ChromeRenderFrameObserver::SetAuxZapStylesheet(
 +    const std::string& origin,
++    uint64_t sequence,
 +    const std::string& stylesheet,
 +    SetAuxZapStylesheetCallback callback) {
 +  const GURL url(origin);
 +  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() ||
 +      url::Origin::Create(url).Serialize() != origin ||
 +      stylesheet.size() > 80000 ||
-+      (!stylesheet.empty() && aux_zap_stylesheets_.size() >= 100 &&
-+       !aux_zap_stylesheets_.contains(origin))) {
++      GetAuxZapStylesheets().Update(
++          origin, sequence, stylesheet,
++          AuxZapStylesheetRegistry::Clock::now()) !=
++          AuxZapStylesheetRegistry::Result::kAccepted) {
 +    std::move(callback).Run(false, false);
 +    return;
-+  }
-+  if (stylesheet.empty()) {
-+    aux_zap_stylesheets_.erase(origin);
-+  } else {
-+    aux_zap_stylesheets_[origin] = stylesheet;
 +  }
 +  WebLocalFrame* frame = render_frame()->GetWebFrame();
 +  if (!frame || frame->GetDocument().IsNull() ||
@@ -887,11 +1040,11 @@ index 1dc2c646c0..24c4c3ee5f 100644
 +  }
 +  const std::string origin =
 +      document.GetSecurityOrigin().ToString().Utf8();
-+  const auto found = aux_zap_stylesheets_.find(origin);
-+  if (found == aux_zap_stylesheets_.end() || found->second.empty())
++  const std::string* stylesheet = GetAuxZapStylesheets().Find(origin);
++  if (!stylesheet)
 +    return false;
 +  aux_zap_applied_key_ = document.InsertStyleSheet(
-+      WebString::FromUTF8(found->second), nullptr,
++      WebString::FromUTF8(*stylesheet), nullptr,
 +      blink::WebCssOrigin::kUser);
 +  aux_zap_applied_origin_ = origin;
 +  return true;
@@ -908,16 +1061,16 @@ index 1dc2c646c0..24c4c3ee5f 100644
    DCHECK(render_frame());
    if (!render_frame()->IsMainFrame())
 diff --git a/chrome/renderer/chrome_render_frame_observer.h b/chrome/renderer/chrome_render_frame_observer.h
-index 80e224f9bc..345c4ae68b 100644
+index 80e224f9bc..dbfaa047ab 100644
 --- a/chrome/renderer/chrome_render_frame_observer.h
 +++ b/chrome/renderer/chrome_render_frame_observer.h
 @@ -5,6 +5,9 @@
  #ifndef CHROME_RENDERER_CHROME_RENDER_FRAME_OBSERVER_H_
  #define CHROME_RENDERER_CHROME_RENDER_FRAME_OBSERVER_H_
  
-+#include <map>
 +#include <string>
 +
++#include <cstdint>
  #include <memory>
  #include <string>
  #include <vector>
@@ -937,25 +1090,91 @@ index 80e224f9bc..345c4ae68b 100644
    void DidCommitProvisionalLoad(ui::PageTransition transition) override;
    void DidClearWindowObject() override;
    void DidCreateScriptContext(v8::Local<v8::Context> context,
-@@ -109,6 +114,9 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+@@ -109,6 +114,10 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
    void WillDetach(blink::DetachReason detach_reason) override;
  
    // chrome::mojom::ChromeRenderFrame:
 +  void SetAuxZapStylesheet(const std::string& origin,
++                           uint64_t sequence,
 +                           const std::string& stylesheet,
 +                           SetAuxZapStylesheetCallback callback) override;
    void SetWindowFeatures(
        blink::mojom::WindowFeaturesPtr window_features) override;
    void ExecuteWebUIJavaScript(const std::u16string& javascript) override;
-@@ -228,6 +236,11 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+@@ -228,6 +237,10 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
    std::unique_ptr<page_content_annotations::PageStabilityMonitor>
        page_stability_monitor_;
  
 +  bool ApplyAuxZapStylesheet();
-+  std::map<std::string, std::string> aux_zap_stylesheets_;
 +  std::string aux_zap_applied_origin_;
 +  blink::WebStyleSheetKey aux_zap_applied_key_;
 +
    mojo::AssociatedReceiverSet<chrome::mojom::ChromeRenderFrame> receivers_;
  
    service_manager::BinderRegistry registry_;
+diff --git a/chrome/renderer/chrome_render_frame_observer_unittest.cc b/chrome/renderer/chrome_render_frame_observer_unittest.cc
+index af2a4ac90b..9b5fea0bce 100644
+--- a/chrome/renderer/chrome_render_frame_observer_unittest.cc
++++ b/chrome/renderer/chrome_render_frame_observer_unittest.cc
+@@ -4,8 +4,12 @@
+ 
+ #include "chrome/renderer/chrome_render_frame_observer.h"
+ 
++#include <chrono>
++#include <string>
++
+ #include "base/test/scoped_feature_list.h"
+ #include "chrome/common/chrome_render_frame.mojom.h"
++#include "chrome/renderer/aux_zap_stylesheet_registry.h"
+ #include "components/language_detection/core/features.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+@@ -181,3 +185,48 @@ TEST_P(ChromeRenderFrameObserverTest, IsAnimatedWebp_AnimatedWebp_ReturnsTrue) {
+       0,  23, 1,  0,  60,  0,  0, 3, 86,  80,  56,  76,  251, 1,   0};
+   EXPECT_TRUE(IsAnimatedWebp(animated_webp_image_data));
+ }
++
++TEST(AuxZapStylesheetRegistryTest, ExactOriginAndOrderedRevocation) {
++  AuxZapStylesheetRegistry registry;
++  const auto now = AuxZapStylesheetRegistry::Clock::now();
++  using Result = AuxZapStylesheetRegistry::Result;
++  EXPECT_EQ(Result::kAccepted, registry.Update("https://example.test", 1,
++                                               "p { display: none }", now));
++  ASSERT_NE(nullptr, registry.Find("https://example.test"));
++  EXPECT_EQ("p { display: none }", *registry.Find("https://example.test"));
++  EXPECT_EQ(nullptr, registry.Find("https://other.test"));
++
++  EXPECT_EQ(Result::kAccepted,
++            registry.Update("https://example.test", 2, "", now));
++  EXPECT_EQ(nullptr, registry.Find("https://example.test"));
++  EXPECT_EQ(Result::kStale, registry.Update("https://example.test", 1,
++                                            "p { display: none }", now));
++  EXPECT_EQ(nullptr, registry.Find("https://example.test"));
++
++  EXPECT_EQ(Result::kAccepted, registry.Update("https://example.test", 3,
++                                               "h1 { color: red }", now));
++  EXPECT_EQ("h1 { color: red }", *registry.Find("https://example.test"));
++  EXPECT_EQ(Result::kStale,
++            registry.Update("https://example.test", 3, "old", now));
++  EXPECT_EQ("h1 { color: red }", *registry.Find("https://example.test"));
++}
++
++TEST(AuxZapStylesheetRegistryTest, ExpiredTombstoneAndSiteCapacity) {
++  AuxZapStylesheetRegistry registry;
++  const auto now = AuxZapStylesheetRegistry::Clock::now();
++  using Result = AuxZapStylesheetRegistry::Result;
++  EXPECT_EQ(Result::kAccepted,
++            registry.Update("https://removed.test", 5, "", now));
++  EXPECT_EQ(Result::kStale,
++            registry.Update("https://removed.test", 4, "stale", now));
++  EXPECT_EQ(Result::kAccepted, registry.Update("https://new.test", 1, "fresh",
++                                               now + std::chrono::seconds(31)));
++  for (int index = 0; index < 99; ++index) {
++    EXPECT_EQ(Result::kAccepted,
++              registry.Update("https://site" + std::to_string(index) + ".test",
++                              1, "css", now + std::chrono::seconds(31)));
++  }
++  EXPECT_EQ(Result::kCapacity,
++            registry.Update("https://overflow.test", 1, "css",
++                            now + std::chrono::seconds(31)));
++}
