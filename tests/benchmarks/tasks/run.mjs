@@ -99,6 +99,8 @@ if (has("validate")) {
   ok("scoring: numeric claim must stand alone", scoreAnswer("not 6", { type: "number", value: 6 }) === 0);
   ok("scoring: list set-equality", scoreAnswer("a,b", { type: "list", value: ["b", "a"] }) === 1 && scoreAnswer("a,b,c", { type: "list", value: ["a", "b"] }) === 0);
   ok("scoring: object key-wise", scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1);
+  ok("scoring: failed run with correct answer fails", scoreRun("failed", 1, null) === 0);
+  ok("scoring: completed run with correct answer passes", scoreRun("completed", 1, { pass: true }) === 1);
   ok("extractAnswer unwraps", extractAnswer({ answer: "x" }) === "x" && extractAnswer("y") === "y");
   ok("oracle: correct write required", evaluateOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } },
     { records: [{ id: "rec-04", status: "approved" }], edits: [{ id: "rec-04", fields: { status: "approved" } }] }).pass);
@@ -151,7 +153,8 @@ if (suiteName === "local" || suiteName === "heldout") {
 let tasks = suite.tasks;
 if (only) tasks = tasks.filter((t) => t.id.includes(only));
 if (limit) tasks = tasks.slice(0, limit);
-const { SpendLedger, projectedModelCostUsd } = await import(pathToFileURL(runtimeEntry).href);
+process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";
+const { SpendLedger, estimatedPromptTokens, projectedModelCostUsd } = await import(pathToFileURL(runtimeEntry).href);
 const spendLedger = new SpendLedger();
 // A run-level forecast is a planning check; each actual Gateway request is
 // reserved separately by the runtime client or MCP model middleware below.
@@ -189,7 +192,7 @@ for (const name of adapterNames) {
   const rows = [];
   try {
     for (let trial = 1; trial <= trials; trial++) for (const task of tasks) {
-      if (spendLedger.summary().remainingUsd < projectedModelCostUsd(modelId, 8192))
+      if (spendLedger.summary().remainingUsd < projectedModelCostUsd(modelId, estimatedPromptTokens(task.goal, task.url), 8192))
         throw new Error("Task benchmark stopped at the AI Gateway program spend cap");
       // a write task must not leak state into the next task or trial
       await resetSuiteState(suite);
@@ -203,8 +206,10 @@ for (const name of adapterNames) {
       const wallMs = Math.round(performance.now() - t0);
       const answerScore = out.answer == null ? 0 : scoreAnswer(out.answer, task.expected);
       const oracle = task.oracle ? await checkTaskOracle(task.oracle) : null;
-      const score = answerScore && (oracle?.pass ?? true) ? 1 : 0;
-      const row = { id: task.id, family: task.family, trial, score, answerScore, oracle, wallMs, ...out };
+      const status = out.status ?? (out.error ? "failed" : "completed");
+      const score = scoreRun(status, answerScore, oracle);
+      const row = { id: task.id, family: task.family, trial, score, answerScore, oracle, wallMs, ...out, status,
+        suspensions: out.suspensions ?? null, interventions: out.interventions ?? null, ledgerDuplicates: out.ledgerDuplicates ?? null };
       rows.push(row);
       console.log(
         `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${oracle && !oracle.pass ? `  oracle=${oracle.reason}` : ""}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
@@ -313,13 +318,13 @@ async function runtimeAdapter() {
         }
         const r = rec.run ?? rec;
         const modelCalls = r.config?.modelCalls ?? (rec.modelCalls ?? null);
-        const tokens = await tokensForRun(rpc, runId);
+        const metrics = await metricsForRun(rpc, runId);
         return {
           answer: r.result == null ? null : extractAnswer(r.result),
           status: r.status,
           message: r.statusMessage,
           modelCalls,
-          tokens,
+          ...metrics,
           routeReason,
           backend: page.backend ?? page.identity?.backend,
         };
@@ -333,19 +338,24 @@ async function runtimeAdapter() {
   };
 }
 
-async function tokensForRun(rpc, runId) {
+async function metricsForRun(rpc, runId) {
   try {
     const events = await rpc("runs.events", { runId, limit: 2000 });
     const list = Array.isArray(events) ? events : events.events ?? [];
     let total = 0;
+    let suspensions = 0;
+    let takeovers = 0;
+    let ledgerDuplicates = 0;
     for (const e of list) {
-      if (e.type !== "model.call") continue;
       const p = e.payload ?? {};
-      total += (p.inputTokens ?? 0) + (p.outputTokens ?? 0);
+      if (e.type === "model.call") total += (p.inputTokens ?? 0) + (p.outputTokens ?? 0);
+      if (e.type === "run.status" && p.status === "needs_input") suspensions++;
+      if (e.type === "page.takeover") takeovers++;
+      if (e.type === "step.finished" && /No new action was executed/.test(JSON.stringify(p.error ?? ""))) ledgerDuplicates++;
     }
-    return total || null;
+    return { tokens: total || null, suspensions, interventions: suspensions + takeovers, ledgerDuplicates };
   } catch {
-    return null;
+    return { tokens: null, suspensions: null, interventions: null, ledgerDuplicates: null };
   }
 }
 
@@ -452,7 +462,7 @@ async function mcpAdapter(name, cfg) {
         model: gateway(modelId),
         middleware: {
           wrapGenerate: async ({ doGenerate, params }) => {
-            const reservation = spendLedger.reserve("bench:tasks", modelId, projectedModelCostUsd(modelId, params.maxOutputTokens ?? 2048));
+            const reservation = spendLedger.reserve("bench:tasks", modelId, projectedModelCostUsd(modelId, estimatedPromptTokens(params.prompt), params.maxOutputTokens ?? 2048));
             try {
               const result = await doGenerate();
               spendLedger.settle(reservation, reportedCost(result));
@@ -496,6 +506,10 @@ function reportedCost(result) {
 }
 
 // ---- scoring ----------------------------------------------------------------
+
+export function scoreRun(status, answerScore, oracle) {
+  return status === "completed" && answerScore === 1 && (oracle?.pass ?? true) ? 1 : 0;
+}
 
 function extractAnswer(result) {
   if (result == null) return null;

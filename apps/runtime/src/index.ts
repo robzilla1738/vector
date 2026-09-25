@@ -33,7 +33,7 @@ export { RunCoordinator, verifyDoneAgainstObservation } from "./agent/coordinato
 export { MockModelClient } from "./agent/mock-client.js";
 export { DEFAULT_PLANNER_MODEL, DEFAULT_MAX_MODEL_CALLS, LUNA_FAST_MODEL, FALLBACK_MODELS, modelCallCost, type ModelClient } from "./agent/model-client.js";
 export { GatewayModelClient } from "./agent/gateway-client.js";
-export { SpendLedger, spendLedgerPath, projectedModelCostUsd, PROGRAM_SPEND_LIMIT_USD } from "./store/spend-ledger.js";
+export { SpendLedger, spendLedgerPath, projectedModelCostUsd, estimatedPromptTokens } from "./store/spend-ledger.js";
 export { classifyModelFailure, ModelFailureError, type ClassifiedModelFailure } from "./agent/model-failure.js";
 export { executeProgram } from "./execution/executor.js";
 export { OperationService } from "./services/operations.js";

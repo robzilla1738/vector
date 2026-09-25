@@ -57,7 +57,7 @@ const { ELECTRON_RUN_AS_NODE: _drop, ...parentEnv } = process.env;
 const app = spawn(electronBin, [".", ...process.argv.slice(2).filter(arg => arg === "--use-mock-keychain")], {
   cwd: join(root, "apps/desktop"),
   stdio: "inherit",
-  env: { ...parentEnv, VITE_DEV_SERVER_URL: "http://127.0.0.1:5197" },
+  env: { ...parentEnv, AUX_PROGRAM_SPEND_CAP_USD: parentEnv.AUX_PROGRAM_SPEND_CAP_USD ?? "50", VITE_DEV_SERVER_URL: "http://127.0.0.1:5197" },
 });
 procs.push(app);
 app.on("error", error => { console.error(`Aux could not start: ${error.message}`); stop(); process.exit(1); });

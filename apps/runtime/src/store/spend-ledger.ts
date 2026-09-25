@@ -5,10 +5,15 @@ import { DatabaseSync } from "node:sqlite";
 import { resolveDataDirectory } from "@aux/contracts/installation";
 import { modelCapabilities } from "@aux/contracts/model-registry";
 
-/** The program limit includes calls from the app and every live model harness. */
-export const PROGRAM_SPEND_LIMIT_USD = 50;
 const NANODOLLARS_PER_USD = 1_000_000_000;
-const LIMIT = PROGRAM_SPEND_LIMIT_USD * NANODOLLARS_PER_USD;
+
+function spendCap(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.AUX_PROGRAM_SPEND_CAP_USD;
+  if (raw === undefined || raw === "") return Number.POSITIVE_INFINITY;
+  const cap = Number(raw);
+  if (!Number.isFinite(cap) || cap <= 0) throw new Error("AUX_PROGRAM_SPEND_CAP_USD must be a positive USD amount");
+  return cap;
+}
 
 /** A single file shared across profiles and temporary fixture runtimes. */
 export function spendLedgerPath(env: NodeJS.ProcessEnv = process.env): string {
@@ -26,15 +31,18 @@ function nanos(usd: number): number {
 }
 
 /** Fail closed when a Gateway model has no bounded context or list prices. */
-export function projectedModelCostUsd(modelId: string, maxOutputTokens: number): number {
+export function estimatedPromptTokens(...parts: unknown[]): number {
+  return Math.max(1, Math.ceil(Buffer.byteLength(parts.map(part => typeof part === "string" ? part : JSON.stringify(part) ?? "").join("\n"), "utf8") / 3));
+}
+
+export function projectedModelCostUsd(modelId: string, promptTokens: number, maxOutputTokens: number): number {
   const model = modelCapabilities(modelId);
   if (!model?.contextTokens || model.inputUsdPerMTok === undefined || model.outputUsdPerMTok === undefined) {
     throw new Error(`AI spend projection unavailable for ${modelId}; configure a priced model before calling Gateway`);
   }
+  if (!Number.isSafeInteger(promptTokens) || promptTokens <= 0) throw new Error("A positive promptTokens estimate is required");
   if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0) throw new Error("A positive maxOutputTokens is required for a bounded Gateway call");
-  // The full context is reserved because an image or provider tokenizer can make
-  // a character-based prompt estimate unsafe. A 2x margin covers price drift.
-  return 2 * (model.contextTokens * model.inputUsdPerMTok + maxOutputTokens * model.outputUsdPerMTok) / 1_000_000;
+  return 2 * (promptTokens * model.inputUsdPerMTok + maxOutputTokens * model.outputUsdPerMTok) / 1_000_000;
 }
 
 export interface SpendSummary {
@@ -47,8 +55,10 @@ export interface SpendSummary {
 /** Transactional reservations prevent concurrent app and harness calls from oversubscribing the cap. */
 export class SpendLedger {
   readonly db: DatabaseSync;
+  private readonly capUsd: number;
 
-  constructor(path = spendLedgerPath()) {
+  constructor(path = spendLedgerPath(), env: NodeJS.ProcessEnv = process.env) {
+    this.capUsd = spendCap(env);
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
     this.db.exec(`PRAGMA busy_timeout=5000;
@@ -70,10 +80,10 @@ export class SpendLedger {
       COALESCE(SUM(CASE WHEN settled_at IS NULL THEN reserved_nanos ELSE 0 END),0) AS reserved
       FROM ai_spend`).get() as { committed: number; reserved: number };
     return {
-      limitUsd: PROGRAM_SPEND_LIMIT_USD,
+      limitUsd: this.capUsd,
       committedUsd: row.committed / NANODOLLARS_PER_USD,
       reservedUsd: row.reserved / NANODOLLARS_PER_USD,
-      remainingUsd: Math.max(0, (LIMIT - row.committed - row.reserved) / NANODOLLARS_PER_USD),
+      remainingUsd: Math.max(0, this.capUsd - (row.committed + row.reserved) / NANODOLLARS_PER_USD),
     };
   }
 
@@ -82,8 +92,8 @@ export class SpendLedger {
     this.db.exec("BEGIN IMMEDIATE");
     try {
       const { remainingUsd } = this.summary();
-      if (amount > nanos(remainingUsd)) {
-        throw new Error(`AI Gateway $${PROGRAM_SPEND_LIMIT_USD} program cap reached; ${remainingUsd.toFixed(4)} USD remains, ${projectedUsd.toFixed(4)} USD projected`);
+      if (Number.isFinite(remainingUsd) && amount > nanos(remainingUsd)) {
+        throw new Error(`AI Gateway $${this.capUsd} program cap reached; ${remainingUsd.toFixed(4)} USD remains, ${projectedUsd.toFixed(4)} USD projected`);
       }
       const id = randomUUID();
       this.db.prepare("INSERT INTO ai_spend(reservation_id,source,model_id,reserved_nanos,created_at) VALUES(?,?,?,?,?)")

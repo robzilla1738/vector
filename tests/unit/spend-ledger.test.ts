@@ -7,10 +7,11 @@ import { MockLanguageModelV4 } from "../../apps/runtime/node_modules/ai/dist/tes
 import { GatewayModelClient } from "../../apps/runtime/src/agent/gateway-client.js";
 
 describe("AI Gateway program spend", () => {
+  const cap = { AUX_PROGRAM_SPEND_CAP_USD: "50" };
   it("persists reservations across readers and stops before the cumulative $50 cap", () => {
     const path = join(mkdtempSync(join(tmpdir(), "aux-spend-test-")), "ledger.sqlite");
-    const first = new SpendLedger(path);
-    const second = new SpendLedger(path);
+    const first = new SpendLedger(path, cap);
+    const second = new SpendLedger(path, cap);
     const reservation = first.reserve("smoke", "meta/muse-spark-1.3-contributor", 49.5);
     expect(second.summary().reservedUsd).toBe(49.5);
     expect(() => second.reserve("bench", "meta/muse-spark-1.3-contributor", 0.51)).toThrow(/program cap/);
@@ -22,21 +23,33 @@ describe("AI Gateway program spend", () => {
     expect(() => first.reserve("smoke", "meta/muse-spark-1.3-contributor", 0.000001)).toThrow(/program cap/);
     first.close();
     second.close();
-    const reopened = new SpendLedger(path);
+    const reopened = new SpendLedger(path, cap);
     expect(reopened.summary().committedUsd).toBe(50);
     reopened.close();
   });
 
   it("requires known prices and a bounded output before allowing a Gateway call", () => {
-    expect(projectedModelCostUsd("meta/muse-spark-1.3-contributor", 2048)).toBeGreaterThan(0.2);
-    expect(() => projectedModelCostUsd("unknown/model", 2048)).toThrow(/projection unavailable/);
-    expect(() => projectedModelCostUsd("meta/muse-spark-1.3-contributor", 0)).toThrow(/maxOutputTokens/);
+    const estimated = (10_000 * 0.10 + 2048 * 0.20) / 1_000_000;
+    expect(projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 2048)).toBeLessThanOrEqual(2 * estimated);
+    expect(() => projectedModelCostUsd("unknown/model", 10_000, 2048)).toThrow(/projection unavailable/);
+    expect(() => projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 0)).toThrow(/maxOutputTokens/);
+  });
+
+  it("uses an explicit cap without discarding existing ledger history", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "aux-spend-config-")), "ledger.sqlite");
+    const uncapped = new SpendLedger(path, {});
+    const id = uncapped.reserve("user", "meta/muse-spark-1.3-contributor", 0.5);
+    uncapped.settle(id, 0.25);
+    uncapped.close();
+    const capped = new SpendLedger(path, cap);
+    expect(capped.summary()).toMatchObject({ limitUsd: 50, committedUsd: 0.25, remainingUsd: 49.75 });
+    capped.close();
   });
 
   it("blocks the model SDK before a call when the remaining program cap is too small", async () => {
     const path = join(mkdtempSync(join(tmpdir(), "aux-spend-gateway-")), "ledger.sqlite");
-    const ledger = new SpendLedger(path);
-    ledger.reserve("other-run", "meta/muse-spark-1.3-contributor", 49.9);
+    const ledger = new SpendLedger(path, cap);
+    ledger.reserve("other-run", "meta/muse-spark-1.3-contributor", 49.99999);
     const model = new MockLanguageModelV4({ doGenerate: {
       content: [{ type: "text", text: "hello" }],
       finishReason: { unified: "stop", raw: "stop" },

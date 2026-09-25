@@ -14,6 +14,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { get } from "node:https";
 import { tmpdir } from "node:os";
@@ -98,6 +99,8 @@ try {
   run("pnpm", ["exec", "tsc", "-b", "tsconfig.json"]);
   const payload = join(staging, "aux-runtime");
   await bundleRuntime(payload, "node26");
+  const entry = join(payload, "dist", "main.js");
+  writeFileSync(entry, `process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";\n${readFileSync(entry, "utf8")}`);
   run(node, ["--check", join(payload, "dist", "main.js")]);
   run(node, ["--check", join(payload, "dist", "privacy-checkpoint-worker.js")]);
 

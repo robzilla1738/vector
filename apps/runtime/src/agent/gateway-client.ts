@@ -16,7 +16,7 @@ import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
 import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { extractJson } from "./json-text.js";
 import { DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
-import { projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
+import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
 export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
@@ -203,10 +203,10 @@ export class GatewayModelClient implements ModelClient {
   }
 
   private async billed<T extends { usage?: unknown; providerMetadata?: unknown }>(
-    modelId: string, maxOutputTokens: number, call: () => Promise<T>,
+    modelId: string, promptTokens: number, maxOutputTokens: number, call: () => Promise<T>,
   ): Promise<T> {
     if (!this.spendLedger) return call();
-    const reservation = this.spendLedger.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, maxOutputTokens));
+    const reservation = this.spendLedger.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, promptTokens, maxOutputTokens));
     try {
       const result = await call();
       const cost = modelCallCost(modelId, { ...usageFields(result.usage), providerMetadata: result.providerMetadata as Record<string, unknown> | undefined });
@@ -245,7 +245,7 @@ export class GatewayModelClient implements ModelClient {
     // still use structured output.
     if (!schemaNeedsJsonFallback(opts.schema)) {
       try {
-        const res = await this.billed(opts.modelId, opts.maxOutputTokens ?? 2000, () => generateObject({
+        const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, z.toJSONSchema(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, () => generateObject({
           ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
           schema: opts.schema,
           system: opts.system,
@@ -275,7 +275,7 @@ export class GatewayModelClient implements ModelClient {
   async streamStructured<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
-    const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, opts.maxOutputTokens ?? 2000));
+    const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000));
     const stream = streamText({
       ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
       system: `${opts.system}${schemaHint(opts.schema)}`,
@@ -350,7 +350,7 @@ export class GatewayModelClient implements ModelClient {
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
-    const res = await this.billed(opts.modelId, opts.maxOutputTokens ?? 1200, () => generateText({
+    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system ?? "", opts.prompt) + images.length * 8192, opts.maxOutputTokens ?? 1200, () => generateText({
       ...this.sdkOptions({ ...opts, system: opts.system ?? "" }, opts.maxOutputTokens ?? 1200),
       system: opts.system,
       messages: imageReferenceMessage(opts.prompt, images),

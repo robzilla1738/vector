@@ -5,10 +5,11 @@ import { fileURLToPath } from "node:url";
 import { createGateway } from "@ai-sdk/gateway";
 import { generateText, stepCountIs, tool, wrapLanguageModel } from "ai";
 import { z } from "zod";
-import { GatewayModelClient, SpendLedger, loadDotEnv, modelCallCost, projectedModelCostUsd } from "@aux/runtime";
+import { GatewayModelClient, SpendLedger, estimatedPromptTokens, loadDotEnv, modelCallCost, projectedModelCostUsd } from "@aux/runtime";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const env = loadDotEnv(process.env, [process.env.AUX_SMOKE_DOTENV || join(root, ".env")]);
+process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";
 const key = env.AI_GATEWAY_API_KEY;
 if (!key) throw new Error("AI_GATEWAY_API_KEY unavailable; live smoke skipped");
 const modelId = "meta/muse-spark-1.3-contributor";
@@ -49,7 +50,7 @@ try {
   const toolResult = await generateText({
     model: wrapLanguageModel({ model: gateway(modelId), middleware: {
       wrapGenerate: async ({ doGenerate, params }) => {
-        const reservation = ledger.reserve("muse-smoke-tools", modelId, projectedModelCostUsd(modelId, params.maxOutputTokens ?? 512));
+        const reservation = ledger.reserve("muse-smoke-tools", modelId, projectedModelCostUsd(modelId, estimatedPromptTokens(params.prompt), params.maxOutputTokens ?? 512));
         try {
           const result = await doGenerate();
           const usage = result.usage ?? {};
