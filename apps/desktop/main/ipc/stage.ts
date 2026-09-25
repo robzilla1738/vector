@@ -3,6 +3,8 @@ import { splitRatio } from "@aux/contracts/split-layout";
 import { ipcMain } from "electron";
 import { handleShell, stateForShell } from "../windows/registry.js";
 import { applyStage, deliverPagePointer, stageWebContents } from "../windows/stage.js";
+import { registry } from "../app/services.js";
+import { PRIMARY_WINDOW_ID } from "../app/bootstrap.js";
 
 import { sidebarGlassBounds, syncSidebarGlass } from "../sidebar-glass.js";
 import { toolbarTone, revealToolbarGlass } from "../toolbar-glass.js";
@@ -26,7 +28,14 @@ export function wireStageIpc() {
     applyStage(state);
     return true;
   });
-  handleShell("ui.sidebarGlass", (state, bounds: unknown) => { syncSidebarGlass(state.id, stageWebContents(state)[0], sidebarGlassBounds(bounds, state.stageBounds ?? { x: 0, y: 0 })); return true; });
+  handleShell("ui.sidebarGlass", (state, bounds: unknown) => {
+    const entry = registry.get(state.stagePageId ?? "");
+    const page = entry && !entry.popup && (entry.windowId ?? PRIMARY_WINDOW_ID) === state.id
+      ? entry.view.webContents
+      : undefined;
+    syncSidebarGlass(state.id, page, sidebarGlassBounds(bounds, state.stageBounds ?? { x: 0, y: 0 }));
+    return true;
+  });
   handleShell("ui.toolbarGlass", (state, visible: unknown) => { revealToolbarGlass(state.id, visible === true); return true; });
   handleShell("ui.toolbarTone", state => toolbarTone(stageWebContents(state)[0]));
   handleShell("ui.toolbarOverlay", (state, open: unknown, ticket: unknown) => {

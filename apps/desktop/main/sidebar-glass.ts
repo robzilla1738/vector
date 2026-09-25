@@ -1,6 +1,21 @@
 import type { Rectangle, WebContents } from "electron";
 const ID = 'aux-sidebar-glass';
 const shown = new Map<string, { page: WebContents; bounds: Rectangle }>();
+const watched = new WeakSet<WebContents>();
+
+function paint(page: WebContents, bounds: Rectangle) {
+  if (page.isDestroyed()) return;
+  const css = `position:fixed;z-index:2147483645;pointer-events:none;left:${bounds.x}px;top:${bounds.y}px;width:${bounds.width}px;height:${bounds.height}px;border-radius:16px;backdrop-filter:blur(28px) saturate(1.15);-webkit-backdrop-filter:blur(28px) saturate(1.15);transition:opacity 220ms ease-out;`;
+  void page.executeJavaScript(`(()=>{let el=document.getElementById('${ID}');if(!el){el=document.createElement('div');el.id='${ID}';document.documentElement.append(el)}el.style.cssText=${JSON.stringify(css)};if(matchMedia('(prefers-reduced-motion: reduce)').matches)el.style.transition='none';el.style.opacity='1'})()`).catch(() => {});
+}
+
+function watch(page: WebContents) {
+  if (watched.has(page)) return;
+  watched.add(page);
+  page.on('dom-ready', () => {
+    for (const item of shown.values()) if (item.page === page) paint(page, item.bounds);
+  });
+}
 
 /** The page supplies the live blur; the shell supplies the sidebar's tint and controls. */
 export function syncSidebarGlass(owner: string, page: WebContents | undefined, bounds: Rectangle | null) {
@@ -11,8 +26,8 @@ export function syncSidebarGlass(owner: string, page: WebContents | undefined, b
   }
   if (!page || page.isDestroyed() || !bounds) return;
   shown.set(owner, { page, bounds });
-  const css = `position:fixed;z-index:2147483645;pointer-events:none;left:${bounds.x}px;top:${bounds.y}px;width:${bounds.width}px;height:${bounds.height}px;border-radius:16px;backdrop-filter:blur(28px) saturate(1.15);-webkit-backdrop-filter:blur(28px) saturate(1.15);transition:opacity 220ms ease-out;`;
-  void page.executeJavaScript(`(()=>{let el=document.getElementById('${ID}');if(!el){el=document.createElement('div');el.id='${ID}';document.documentElement.append(el)}el.style.cssText=${JSON.stringify(css)};if(matchMedia('(prefers-reduced-motion: reduce)').matches)el.style.transition='none';el.style.opacity='1'})()`).catch(() => {});
+  watch(page);
+  paint(page, bounds);
 }
 
 export function sidebarGlassBounds(value: unknown, origin: { x: number; y: number }): Rectangle | null {

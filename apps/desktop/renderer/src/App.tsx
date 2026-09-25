@@ -243,7 +243,7 @@ export function App() {
     observer.observe(panel);
     reduced.addEventListener("change", report);
     report();
-    return () => { observer.disconnect(); reduced.removeEventListener("change", report); void bridge.sidebarGlass(null).catch(() => {}); };
+    return () => { observer.disconnect(); reduced.removeEventListener("change", report); };
   }, [floatingSidebar, nativeShowing, activePageId, activePageLoading]);
 
   // Native vibrancy and transparent renderer layers must change together.
