@@ -19,7 +19,7 @@ Build and test locally on this Mac. Do not enable paid GitHub Actions billing. T
 
 ## Continue from here
 
-1. Start S0 and S1 in the [v2 roadmap](ROADMAP.md#6-workstreams-dependency-ordered-executed-by-ai-agents): correct task scoring and spend reservations, inventory bridge coverage, then land the typed host method manifest and generated bindings. Keep the existing Chromium checkout and build cache; run one native build at a time using the [runbook](../experiments/chromium-fork/CONTINUATION.md).
+1. S0 source fixes are at `d90381ac`; start S1 in the [v2 roadmap](ROADMAP.md#6-workstreams-dependency-ordered-executed-by-ai-agents): land the typed host method manifest and generated bindings. Restage AuxDev before using its new $50 development cap; no live model run has used this revision. Keep the existing Chromium checkout and build cache; run one native build at a time using the [runbook](../experiments/chromium-fork/CONTINUATION.md).
 2. Follow the v2 dependency order. The native host's method and capability manifest must precede Electron removal and feature activation. Keep Profile/window identity and trusted WebUI authorization in the browser process; verify affected features through fixture journeys in both Aside layouts.
 3. Use focused checks for touched modules and at most one native journey per build batch. Record each slice's exact command, commit and outcome in [EVIDENCE.md](EVIDENCE.md). Keep [migration](ELECTRON_MIGRATION.md) on disposable copies and fixtures; never use the owner's real Profile.
 4. Keep branch `codex/aux-roadmap-build` and PR #24 in sync after reviewed work. Do not enable paid Actions billing or claim a green check from an older SHA. A normal protected-main merge still requires its `CI passed` check.

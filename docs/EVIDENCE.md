@@ -11,6 +11,10 @@ Updated September 25, 2026. This ledger records what the current code or a recor
 
 A passing fixture, mock UI, or Electron run is never evidence for a native Chromium journey. Record failures as failures. For any speed claim, add raw data and a row to [BENCHMARKS.md](BENCHMARKS.md).
 
+## V2 implementation slices
+
+- **S0 measurement truth, `d90381ac` [Verified in source and focused checks].** `node tests/benchmarks/tasks/run.mjs --validate` passed, including failed-status scoring; `pnpm typecheck`, `pnpm lint`, and `pnpm exec vitest run tests/unit/spend-ledger.test.ts --project unit` passed (4 ledger tests). `node scripts/check-bridge-coverage.mjs` inventories 106 missing native methods/event producers against the current checkout. The new $50 cap is set by the harnesses and AuxDev staging script; the native app has not been restaged or used for a live model run on this slice.
+
 ## Current development checkpoint — September 25
 
 The table below is the current summary. The chronological batch rows that follow preserve what was known **at those earlier commits**; their old “pending build” statements do not override this checkpoint. The current deliverable is AuxDev, not an official static app or DMG.
