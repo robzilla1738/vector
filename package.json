@@ -33,7 +33,7 @@
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs",
     "preview": "node scripts/preview.mjs",
     "lint": "oxlint apps packages tests scripts --max-warnings=390",
-    "format:check": "prettier --check apps/desktop/renderer/src/floating-sidebar.ts apps/desktop/renderer/src/floating-sidebar.test.ts apps/desktop/renderer/src/command-results.ts apps/desktop/renderer/src/command-results.test.ts apps/desktop/renderer/src/components/PageSurface.tsx apps/desktop/renderer/src/components/PageSurface.test.tsx apps/desktop/renderer/src/components/PageSurface.css apps/desktop/renderer/src/components/NativeDialog.tsx apps/desktop/renderer/src/components/NativeDialog.css apps/desktop/renderer/src/components/CommandBar.css apps/desktop/renderer/src/components/SpaceEditor.tsx apps/desktop/renderer/src/styles/space-grain.css",
+    "format:check": "node scripts/check-renderer-format.mjs",
     "smoke:design": "node tests/smoke/run-suite.mjs design",
     "host:compare": "node tests/host/compare.mjs"
   },
