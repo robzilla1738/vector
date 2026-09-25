@@ -231,8 +231,11 @@ export class NativeCdpBroker {
     const { method, params, sessionId } = request;
     if (sessionId && this.sessions.has(sessionId)) {
       const targetId = this.sessions.get(sessionId)!;
-      await this.refresh();
-      const target = this.targets.get(targetId);
+      let target = this.targets.get(targetId);
+      if (!target) {
+        await this.refresh();
+        target = this.targets.get(targetId);
+      }
       if (!target) throw new Error("Target is not an Aux tab in this Profile");
       if (method === "Target.getTargetInfo") {
         if (params.targetId && params.targetId !== targetId) throw new Error("Target is not an Aux tab");
