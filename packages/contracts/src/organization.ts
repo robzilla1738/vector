@@ -23,6 +23,7 @@ const Folder = z
   })
   .strict();
 const Pin = z.object({ url: z.string().min(1).max(2048), title: z.string().max(500) }).strict();
+const TabName = z.object({ title: z.string().min(2).max(60), url: z.string().min(1).max(8192) }).strict();
 export const MAX_ORGANIZATION_LAYOUT_BYTES = 256 * 1024;
 
 /** The native host chooses the Profile and window; neither ID comes from renderer arguments. */
@@ -44,6 +45,7 @@ export const OrganizationLayoutSchema = z
         tabSpace: z.record(Id, Id),
         order: z.array(Id).max(5000),
         tabFolder: z.record(Id, Id),
+        tabNames: z.record(Id, TabName).optional(),
         splits: z.record(Id, Id),
       })
       .strict(),

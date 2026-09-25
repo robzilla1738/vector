@@ -159,3 +159,20 @@ it("adopts a completed native migration without writing stale tab changes over i
   await renderer.flush();
   expect(store.snapshot("window-a").layout?.window.order).toEqual(["imported-tab"]);
 });
+
+it("keeps URL-bound custom tab labels through Profile persistence and renderer mapping", () => {
+  const profileDir = directory();
+  const store = new OrganizationHostStore(profileDir);
+  const withLabel = toOrganizationLayout({
+    ...emptyLayout(),
+    order: ["imported-tab"],
+    tabSpace: { "imported-tab": "space-personal" },
+    tabNames: { "imported-tab": { title: "Project brief", url: "https://example.com/brief" } },
+  });
+  store.commit("window-a", { expectedRevision: 0, layout: withLabel });
+  const reopened = new OrganizationHostStore(profileDir);
+  expect(reopened.snapshot("window-a").layout?.window.tabNames?.["imported-tab"])
+    .toEqual({ title: "Project brief", url: "https://example.com/brief" });
+  expect(fromOrganizationLayout(reopened.snapshot("window-a").layout!).tabNames?.["imported-tab"]?.title)
+    .toBe("Project brief");
+});
