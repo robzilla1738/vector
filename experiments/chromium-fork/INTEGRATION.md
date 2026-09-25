@@ -1,8 +1,8 @@
 # Aux shell and host proof map
 
-This maps the **current Aux checkout** to the isolated `//chrome` candidate. It is a source-inspection plan, not evidence that the candidate already contains Aux's shell. Keep the running identity-only build intact. First finish the live Store install/restart proof in that executable. Only then add the narrow host integration and rebuild the same checkout.
+This maps the **current Aux checkout** to the existing isolated `//chrome` candidate. The original identity build and live Store install/restart proof completed on September 24. The candidate now executes Aux's production shell with real tabs; dated evidence and unresolved failures are in `docs/M1-HOST-COMPARISON.md`. This remains a bounded proof, not a full migration or release.
 
-The running first compile is protected by a one-shot macOS launch-job watcher using [`watch-build.py`](watch-build.py). It leaves the current Siso process alone and resumes from the same output objects only if that process exits without recording completion. Its status is in `/tmp/aux-chromium-build-guard/guard.log`; the build log and metadata remain under `out/AuxProof`. This guard is process continuity, not proof that the binary passed a test.
+The original process-continuity watcher completed without restarting the baseline build. Native iterations reuse the same checkout/output at nice 10 and run detached. Apply native patches only after the active incremental build finishes, then restart the candidate to load the new binary. Renderer production assets are staged independently; HMR is not yet established.
 
 ## Implemented host boundary in Aux source
 

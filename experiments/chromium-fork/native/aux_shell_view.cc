@@ -8,7 +8,17 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
 #include "ui/views/controls/webview/web_contents_set_background_color.h"
+#include "components/input/native_web_keyboard_event.h"
+#include "ui/events/event.h"
+#include "ui/events/keycodes/keyboard_codes.h"
+#include <algorithm>
+#include "chrome/app/chrome_command_ids.h"
+#include <cmath>
 #include <map>
+#include "content/public/browser/render_widget_host.h"
+#include "content/public/browser/render_widget_host_view.h"
+#include "third_party/blink/public/common/input/web_mouse_wheel_event.h"
+#include "base/time/time.h"
 #include <memory>
 #include "base/command_line.h"
 #include "base/files/file_util.h"
@@ -130,6 +140,9 @@ AuxShellView::AuxShellView(BrowserView* browser) : views::WebView(browser->GetPr
 AuxShellView::~AuxShellView() { Shells().erase(web_contents()); }
 void AuxShellView::ApplyLayout() {
   SetBoundsRect(browser_->GetLocalBounds());
+  if (!pointer_monitor_ && GetWidget()) {
+    pointer_monitor_ = views::EventMonitor::CreateWindowMonitor(this, GetWidget()->GetNativeWindow(), {ui::EventType::kMouseMoved});
+  }
   auto* top = browser_->top_container();
   if (!top->layer()) top->SetPaintToLayer();
   top->layer()->SetOpacity(0);
@@ -151,6 +164,44 @@ void AuxShellView::ApplyLayout() {
   browser_->ReorderChildView(this, browser_->children().size() - 1);
   if (stage_visible_ && !overlay_) browser_->ReorderChildView(native, browser_->children().size() - 1);
 }
+void AuxShellView::Emit(const std::string& event, base::Value payload) {
+  auto* frame = web_contents()->GetPrimaryMainFrame();
+  if (!frame || frame->GetLastCommittedOrigin() != url::Origin::Create(GURL("chrome://aux/"))) return;
+  frame->ExecuteJavaScriptMethod(u"window", u"auxHostEvent", base::ListValue().Append(event).Append(std::move(payload)), base::NullCallback());
+}
+void AuxShellView::OnEvent(const ui::Event& event) {
+  if (!event.IsMouseEvent() || !stage_visible_) return;
+  const auto point = pointer_monitor_->GetLastMouseLocation();
+  const auto bounds = GetBoundsInScreen();
+  const bool near = bounds.Contains(point) && point.y() - bounds.y() < (near_edge_ ? 80 : 8);
+  if (near != near_edge_) { near_edge_ = near; Emit("onToolbarEdge", base::Value(near)); }
+}
+bool AuxShellView::HandleBrowserCommand(BrowserWindowInterface* browser, int command_id) {
+  if (command_id != IDC_NEW_TAB && command_id != IDC_FOCUS_LOCATION) return false;
+  for (const auto& entry : Shells()) {
+    auto* shell = entry.second;
+    if (shell->browser_->browser() != browser) continue;
+    shell->RequestFocus();
+    shell->Emit("onShortcut", base::Value(base::DictValue()
+      .Set("commandId", command_id == IDC_NEW_TAB ? "new-tab" : "open-address")
+      .Set("key", command_id == IDC_NEW_TAB ? "t" : "l")
+      .Set("meta", true).Set("shift", false).Set("alt", false).Set("ctrl", false)));
+    return true;
+  }
+  return false;
+}
+bool AuxShellView::HandleKey(const input::NativeWebKeyboardEvent& event) {
+  if (event.GetType() != blink::WebInputEvent::Type::kRawKeyDown ||
+      !(event.GetModifiers() & blink::WebInputEvent::kMetaKey) ||
+      (event.GetModifiers() & (blink::WebInputEvent::kAltKey | blink::WebInputEvent::kControlKey))) return false;
+  if (event.GetModifiers() & blink::WebInputEvent::kShiftKey) return false;
+  const int key = event.windows_key_code;
+  if (key != ui::VKEY_K && key != ui::VKEY_L && key != ui::VKEY_S && key != ui::VKEY_T && key != ui::VKEY_W) return false;
+  RequestFocus();
+  Emit("onShortcut", base::Value(base::DictValue().Set("key", std::string(1, static_cast<char>(key + 'a' - 'A')))
+      .Set("meta", true).Set("shift", !!(event.GetModifiers() & blink::WebInputEvent::kShiftKey)).Set("alt", false).Set("ctrl", false)));
+  return true;
+}
 base::Value AuxShellView::Request(const std::string& method, const base::ListValue& args) {
   auto* model = browser_->browser()->GetTabStripModel();
   if (method == "state") {
@@ -162,7 +213,7 @@ base::Value AuxShellView::Request(const std::string& method, const base::ListVal
         wc->GetController().LoadURL(GURL("about:blank"), content::Referrer(), ui::PAGE_TRANSITION_AUTO_TOPLEVEL, std::string());
       }
       tabs.Append(base::DictValue().Set("pageId", PageId(wc)).Set("targetId", content::DevToolsAgentHost::GetOrCreateFor(wc)->GetId())
-        .Set("url", wc->GetVisibleURL().spec()).Set("title", base::UTF16ToUTF8(wc->GetTitle()))
+        .Set("url", wc->GetVisibleURL().spec()).Set("title", wc->GetVisibleURL() == GURL("about:blank") ? "New Tab" : base::UTF16ToUTF8(wc->GetTitle()))
         .Set("loading", wc->IsLoading()).Set("muted", wc->IsAudioMuted()).Set("audible", wc->IsCurrentlyAudible())
         .Set("canGoBack", wc->GetController().CanGoBack()).Set("canGoForward", wc->GetController().CanGoForward()).Set("crashed", wc->IsCrashed()));
     }
@@ -178,13 +229,73 @@ base::Value AuxShellView::Request(const std::string& method, const base::ListVal
     // Theme is applied. Native backdrop materials/window buttons remain unqualified.
     return base::Value(false);
   }
+  if (method == "toolbarTone") {
+    auto* wc = model->GetActiveWebContents();
+    const auto color = wc ? wc->GetBackgroundColor().value_or(SK_ColorWHITE) : SK_ColorWHITE;
+    const double luminance = .2126 * SkColorGetR(color) + .7152 * SkColorGetG(color) + .0722 * SkColorGetB(color);
+    return base::Value(luminance > 140 ? "light" : "dark");
+  }
+  if (method == "forwardPagePointer") {
+    if (!stage_visible_ || args.size() != 1 || !args[0].is_dict()) return Error("No native pointer stage");
+    const auto& message = args[0].GetDict();
+    const auto* kind = message.FindString("kind");
+    const auto x = message.FindDouble("x"), y = message.FindDouble("y");
+    if (!kind || !x || !y || !std::isfinite(*x) || !std::isfinite(*y) ||
+        !stage_.Contains(gfx::Point(*x, *y))) return Error("Pointer outside native stage");
+    auto* wc = model->GetActiveWebContents();
+    if (!wc || PageId(wc) != stage_page_id_) return Error("Native stage changed before pointer delivery");
+    auto* view = wc->GetRenderWidgetHostView();
+    if (!view) return Error("Native page view unavailable");
+    int modifiers = 0;
+    if (const auto* list = message.FindList("modifiers")) for (const auto& item : *list) {
+      if (!item.is_string()) return Error("Invalid pointer modifier");
+      const auto& value = item.GetString();
+      if (value == "shift") modifiers |= blink::WebInputEvent::kShiftKey;
+      else if (value == "control") modifiers |= blink::WebInputEvent::kControlKey;
+      else if (value == "alt") modifiers |= blink::WebInputEvent::kAltKey;
+      else if (value == "meta") modifiers |= blink::WebInputEvent::kMetaKey;
+      else if (value == "leftbuttondown") modifiers |= blink::WebInputEvent::kLeftButtonDown;
+      else if (value == "middlebuttondown") modifiers |= blink::WebInputEvent::kMiddleButtonDown;
+      else if (value == "rightbuttondown") modifiers |= blink::WebInputEvent::kRightButtonDown;
+      else return Error("Unknown pointer modifier");
+    }
+    auto* host = view->GetRenderWidgetHost();
+    const gfx::PointF position(*x - stage_.x(), *y - stage_.y());
+    if (*kind == "wheel") {
+      const auto dx = message.FindDouble("deltaX"), dy = message.FindDouble("deltaY");
+      if (!dx || !dy || !std::isfinite(*dx) || !std::isfinite(*dy)) return Error("Invalid wheel delta");
+      blink::WebMouseWheelEvent event(blink::WebInputEvent::Type::kMouseWheel, modifiers, base::TimeTicks::Now());
+      event.SetPositionInWidget(position); event.SetPositionInScreen(GetBoundsInScreen().x() + *x, GetBoundsInScreen().y() + *y);
+      event.delta_x = -*dx; event.delta_y = -*dy;
+      event.event_action = blink::WebMouseWheelEvent::EventAction::kScroll;
+      host->ForwardWheelEvent(event);
+    } else {
+      const auto* button = message.FindString("button");
+      if (!button || (*button != "left" && *button != "middle" && *button != "right")) return Error("Invalid pointer button");
+      auto type = blink::WebInputEvent::Type::kMouseMove;
+      if (*kind == "down") type = blink::WebInputEvent::Type::kMouseDown;
+      else if (*kind == "up") type = blink::WebInputEvent::Type::kMouseUp;
+      else if (*kind != "move") return Error("Invalid pointer action");
+      blink::WebMouseEvent event(type, modifiers, base::TimeTicks::Now());
+      event.SetPositionInWidget(position); event.SetPositionInScreen(GetBoundsInScreen().x() + *x, GetBoundsInScreen().y() + *y);
+      event.button = *button == "left" ? blink::WebPointerProperties::Button::kLeft : *button == "middle" ? blink::WebPointerProperties::Button::kMiddle : blink::WebPointerProperties::Button::kRight;
+      event.click_count = std::clamp(message.FindInt("clickCount").value_or(1), 0, 3);
+      if (*kind == "down") view->Focus();
+      host->ForwardMouseEvent(event);
+    }
+    return base::Value(true);
+  }
   if (method == "setStage") {
     if (args.size() < 2 || !args[1].is_dict()) return Error("Invalid stage bounds");
     if (args.size() > 2 && args[2].is_string() && !args[2].GetString().empty()) return Error("Split native panes are not integrated yet");
+    if (!args[0].is_none() && !args[0].is_string()) return Error("Invalid stage identity");
+    if (args[0].is_string() && !args[0].GetString().empty() &&
+        (!model->GetActiveWebContents() || PageId(model->GetActiveWebContents()) != args[0].GetString())) return Error("Stage is not the active native tab");
     const auto& bounds = args[1].GetDict();
     auto number = [&](const char* name) { return bounds.FindDouble(name).value_or(bounds.FindInt(name).value_or(0)); };
     stage_ = gfx::Rect(number("x"), number("y"), number("width"), number("height"));
     stage_.Intersect(browser_->GetLocalBounds());
+    stage_page_id_ = args[0].is_string() ? args[0].GetString() : "";
     stage_visible_ = args[0].is_string() && !args[0].GetString().empty() && !stage_.IsEmpty();
     ApplyLayout(); return base::Value(true);
   }
@@ -213,6 +324,7 @@ base::Value AuxShellView::Request(const std::string& method, const base::ListVal
     }
     if (!wc) return Error("Tab is not owned by this window");
     wc->GetController().LoadURL(url, content::Referrer(), ui::PAGE_TRANSITION_TYPED, std::string());
+    if (url == GURL("about:blank") && !command.FindBool("background").value_or(false)) RequestFocus();
   } else if (!wc) return Error("Tab is not owned by this window");
   else if (*kind == "activate") model->ActivateTabAt(index);
   else if (*kind == "close") { if (model->count() == 1) return Error("Closing the final native tab requires the window-lifecycle integration"); model->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE); wc = nullptr; }

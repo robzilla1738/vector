@@ -2453,7 +2453,7 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: var(--r-pill); }
 :root { --toolbar-glass: rgb(23 23 23 / .18); --toolbar-ink: #f1f1f1; }
 :root[data-toolbar-tone="light"] { --toolbar-glass: rgb(255 255 255 / .18); --toolbar-ink: #292929; }
 .app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar { color: var(--toolbar-ink); }
-.app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar :is(.icon-btn, .cb-display, .cb-title, .cb-placeholder, .cb-ico) { color: var(--toolbar-ink); }
+.app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar :is(.icon-btn, .cb-display, .cb-title, .cb-placeholder, .cb-ico, input:not(.ghost)) { color: var(--toolbar-ink); }
 .app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar :is(button, input, select, .cmdbar, .ctl-chip) { -webkit-app-region: no-drag; }
 
 .tab-preview-image { height: 158px; background: var(--bg-2); overflow: hidden; }

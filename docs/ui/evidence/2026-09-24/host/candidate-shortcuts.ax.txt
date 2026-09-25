@@ -1,0 +1,64 @@
+Window: "Example Domain", App: Aux Host Proof.
+0 standard window Example Domain - Chromium, URL: example.org/, Secondary Actions: Raise
+	1 container Example Domain - Chromium, URL: example.org/
+		2 container
+			3 scroll area
+				4 HTML content Aux, URL: chrome://aux/?window=A6A9E5943E6849AE3C4A08EC32921FB8&profile=3300546665
+					5 container
+						6 container Sidebar
+							7 container
+								8 button Collapse sidebar, Help: Collapse sidebar (⌘S)
+								9 container Bookmarks
+									10 button Bookmarks
+									11 text Drag tabs here to add bookmarks
+								12 container Chats
+									13 button Chats
+									14 container
+										15 button New chat
+										16 text Recent
+										17 pop up button Chat options
+										18 container
+											19 text Aux runtime operation not integrated: conversations.list
+											20 button Retry
+								21 container Tabs
+									22 button Tabs
+									23 tab group Tabs
+										24 button New Tab
+										25 tab (selected) Example Domain Close Example Domain, Value: 1
+								26 pop up button Personal, Help: Switch space
+								27 button Search browser, Help: Search (⌘K)
+								28 toggle button Toggle agent rail, Help: Agent (⌘⇧A), Value: 0
+								29 disclosure triangle More
+							30 splitter Sidebar width, Help: Drag to resize · double-click resets, Value: 280
+						31 container
+							32 button Hide sidebar, Help: Hide sidebar (⌘S)
+							33 button Back, Help: Back (⌘[) · Right-click for history
+							34 button (disabled) Forward, Help: Forward (⌘]) · Right-click for history
+							35 button Reload, Help: Reload (⌘R) · Shift-click to reload without cache
+							36 container
+								37 button Site controls
+								38 combo box (settable) Address, search, and agent prompt
+							39 toggle button Tab overview, Help: Tab overview (⌘⇧O), Value: 0
+							40 toggle button Bookmark this page, Help: Bookmark this page (⌘D), Value: 0
+							41 toggle button Toggle agent rail, Help: Agent (⌘⇧A), Value: 0
+			42 container
+				43 scroll area
+					44 HTML content Example Domain, URL: example.org/
+						45 heading Example Domain, Value: 1
+							46 text Example Domain
+						47 text This domain is for use in documentation examples without needing permission. Avoid use in operations.
+						48 link Learn more, Value: iana.org/domains/example
+	49 menu button Window sharing
+50 menu bar
+	51 Aux Host Proof
+	52 File
+	53 Edit
+	54 View
+	55 History
+	56 Bookmarks
+	57 Profiles
+	58 Tab
+	59 Window
+	60 Help
+
+The focused UI element is 4 HTML content Aux, URL: chrome://aux/?window=A6A9E5943E6849AE3C4A08EC32921FB8&profile=3300546665

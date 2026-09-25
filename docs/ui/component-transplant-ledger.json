@@ -499,13 +499,14 @@
         "keyboard-focus"
       ],
       "visualEvidence": [
-        "docs/ui/evidence/2026-09-24/search-suggestions-light.png"
+        "docs/ui/evidence/2026-09-24/search-suggestions-light.png",
+        "docs/ui/evidence/2026-09-24/host/candidate-toolbar-native-page.png"
       ],
       "functionalEvidence": [
         "Home Ask lazily loads the real composer; default controls are Search/Ask, plus and Send. Plus opens an anchored tool panel without expanding the composer. Native visual verification pending in this record until captured.",
         "Shared 36px-minimum SearchResultRow with literal query highlighting, aligned identity/detail/action slots. Existing keyboard and async privacy contracts preserved: CommandBar 9, palette search 1, chrome tokens 25 tests passed. Mock address Down/Down/Enter switched to the matching existing tab."
       ],
-      "nativeHostVerification": "pending Chromium candidate",
+      "nativeHostVerification": "Partial candidate proof: production chrome://aux shell navigates real native tabs; Cmd+L from page focus selects the current address; revealed address editing navigates; translucent toolbar composes over a visible page. Native pointer forwarding, contrast, hidden-control accessibility, dragging and full visual matrix remain open. See docs/M1-HOST-COMPARISON.md.",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
         "Run the full appearance, size, input, accessibility, and host matrix.",
@@ -2795,9 +2796,11 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/host/candidate-toolbar-native-page.png"
+      ],
       "functionalEvidence": [],
-      "nativeHostVerification": "pending Chromium candidate",
+      "nativeHostVerification": "Partial candidate proof: production chrome://aux shell navigates real native tabs; Cmd+L from page focus selects the current address; revealed address editing navigates; translucent toolbar composes over a visible page. Native pointer forwarding, contrast, hidden-control accessibility, dragging and full visual matrix remain open. See docs/M1-HOST-COMPARISON.md.",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
         "Run the full appearance, size, input, accessibility, and host matrix."

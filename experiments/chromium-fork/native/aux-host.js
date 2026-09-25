@@ -18,6 +18,7 @@
   });
   const emit = (event,...args) => subscriptions.get(event)?.forEach(fn=>fn(...args));
   let overlayOpen = false, toolbarOpen = false, toolbarTicket = 0;
+  window.auxHostEvent = (event, payload) => emit(event, payload);
   const createdAt = Date.now();
   const placements = new Map();
   const refresh = () => refreshing ??= native('state').then(state => {
@@ -54,10 +55,10 @@
       if (method === 'tabCommand') { const outcome=await native(method,args);const state=await refresh();return {...outcome,commandId:`proof-${requestId}`,catalogVersion:state.version,windowId}; }
       if (method === 'bindTabSpace') { if(!(await refresh()).tabs.some(t=>t.pageId===args[0]))throw new Error('Unknown tab'); if(!readSpaces().some(s=>s.id===args[1]))throw new Error('Unknown Space');placements.set(args[0],args[1]);await refresh();return {spaceId:args[1],workspaceId:`candidate:${args[1]}`}; }
       if (method === 'migrateTabSpaces') { for(const item of args[0]){if(catalog.tabs.some(t=>t.pageId===item.pageId)&&readSpaces().some(s=>s.id===item.spaceId))placements.set(item.pageId,item.spaceId);}await refresh();return {migrated:placements.size}; }
-      if (method === 'toolbarTone') return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+      if (method === 'toolbarTone') return native(method,args);
       if (method === 'overlay') { overlayOpen = args[0]; return native('overlay',[overlayOpen || toolbarOpen]); }
       if (method === 'toolbarOverlay') { if (args[1] < toolbarTicket) return false; toolbarTicket = args[1]; toolbarOpen = args[0]; await native('overlay',[overlayOpen || toolbarOpen]); return true; }
-      if (['setStage','focusShell','setAppearance'].includes(method)) return native(method,args);
+      if (['setStage','focusShell','setAppearance','forwardPagePointer'].includes(method)) return native(method,args);
       throw new Error(`Aux native operation not integrated: ${method}`);
     }
   };

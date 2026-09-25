@@ -32,6 +32,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
       for (const t of ["--bg-0", "--ink-0", "--accent", "--agent", "--engine", "--ok", "--warn", "--err", "--wait", "--diff-add", "--find-match", "--ring"]) expect(b, `${theme} ${t}`).toMatch(new RegExp(`${t}\\s*:`));
     }
     expect(tokens).toMatch(/--surface-panel:\s*var\(--bg-1\)/);
+    expect(styles).toContain(".app.native-host .main-col.has-page { --page-shell-background: transparent; --stage-bg: transparent; }");
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
   });
 
@@ -87,7 +88,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
 
   it("keeps native material visible and provides a solid menu fallback", () => {
     expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .app-body { background: transparent; }');
-    expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .main-col { background: color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent); }');
+    expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .main-col { background: var(--page-shell-background, color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent)); }');
     expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }');
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
     expect(tokens).toMatch(/--hairline:\s*0\.5px/);
