@@ -200,6 +200,13 @@ CREATE TABLE safety_challenge_recovery(
   run_id TEXT NOT NULL, origin TEXT NOT NULL, attempts INTEGER NOT NULL, updated_at INTEGER NOT NULL,
   PRIMARY KEY(run_id,origin));
 CREATE TABLE safety_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, payload TEXT NOT NULL, recorded_at INTEGER NOT NULL);
+CREATE TABLE command_escalation_requests(
+  request_id TEXT PRIMARY KEY, body TEXT NOT NULL,
+  state TEXT NOT NULL CHECK(state IN ('pending','approved','declined')), decided_at INTEGER);
+CREATE TABLE command_escalation_grants(
+  request_id TEXT PRIMARY KEY REFERENCES command_escalation_requests(request_id),
+  body TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('once','prefix')), consumed_at INTEGER);
+CREATE INDEX idx_command_escalation_state ON command_escalation_requests(state);
 CREATE TABLE workspaces(workspace_id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE tasks(task_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), revision INTEGER NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('open','archived')), updated_at INTEGER NOT NULL, json TEXT NOT NULL);
@@ -290,7 +297,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -423,6 +430,16 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
     `CREATE TABLE IF NOT EXISTS history_projection_staging(
       url TEXT NOT NULL, title TEXT NOT NULL, visited_at REAL NOT NULL,
       PRIMARY KEY(url, visited_at))`,
+  ],
+  // v14 → v15: durable project command escalation requests and grants.
+  14: [
+    `CREATE TABLE IF NOT EXISTS command_escalation_requests(
+      request_id TEXT PRIMARY KEY, body TEXT NOT NULL,
+      state TEXT NOT NULL CHECK(state IN ('pending','approved','declined')), decided_at INTEGER)`,
+    `CREATE TABLE IF NOT EXISTS command_escalation_grants(
+      request_id TEXT PRIMARY KEY REFERENCES command_escalation_requests(request_id),
+      body TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('once','prefix')), consumed_at INTEGER)`,
+    `CREATE INDEX IF NOT EXISTS idx_command_escalation_state ON command_escalation_requests(state)`,
   ],
 };
 

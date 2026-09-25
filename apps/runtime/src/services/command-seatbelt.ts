@@ -56,16 +56,7 @@ type GrantRow = { request_id: string; body: string; mode: "once" | "prefix"; con
 
 /** Durable local decisions. The model can request escalation but cannot decide it. */
 export class CommandEscalationStore {
-  constructor(private readonly db: DatabaseSync) {
-    db.exec(`CREATE TABLE IF NOT EXISTS command_escalation_requests(
-      request_id TEXT PRIMARY KEY, body TEXT NOT NULL,
-      state TEXT NOT NULL CHECK(state IN ('pending','approved','declined')),
-      decided_at INTEGER);
-      CREATE TABLE IF NOT EXISTS command_escalation_grants(
-      request_id TEXT PRIMARY KEY REFERENCES command_escalation_requests(request_id),
-      body TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('once','prefix')),
-      consumed_at INTEGER);`);
-  }
+  constructor(private readonly db: DatabaseSync) {}
 
   request(input: Omit<CommandEscalationRequest, "requestId" | "createdAt" | "expiresAt" | "commandSha256" | "commandPreview"> & { command: string }, now = Date.now()): CommandEscalationRequest {
     if (!input.command.trim() || input.command.length > 8000) throw new AuxError("invalid_params", "The command must be 1 to 8,000 characters.");

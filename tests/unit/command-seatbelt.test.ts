@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { openDb } from "@aux/runtime";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CommandEscalationStore, commandDigest, defaultCommandSeatbelt,
@@ -13,7 +13,7 @@ afterEach(() => { for (const close of cleanup.splice(0)) close(); });
 
 function fixture() {
   const path = mkdtempSync(join(tmpdir(), "aux-seatbelt-"));
-  const db = new DatabaseSync(":memory:");
+  const db = openDb(":memory:");
   cleanup.push(() => { db.close(); rmSync(path, { recursive: true, force: true }); });
   const store = new CommandEscalationStore(db);
   const profile = defaultCommandSeatbelt({ sessionId: "session", projectId: "project", projectPath: path,
