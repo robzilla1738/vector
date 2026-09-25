@@ -28,6 +28,13 @@ export function wireFilesIpc() {
     const r = await dialog.showOpenDialog(state.win, { title: "Open File", properties: ["openFile"] });
     return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
   });
+  handleShell("ui.openPluginDirectory", async state => {
+    const r = await dialog.showOpenDialog(state.win, {
+      title: "Choose a Claude Code plugin directory",
+      properties: ["openDirectory"],
+    });
+    return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0];
+  });
   const openRoots = () => [DATA_DIR, downloadLocation.status().path, app.getPath("downloads")];
   handleShell("ui.revealPath", (_, p: unknown) => {
     const target = openablePath(p, openRoots()) ?? (typeof p === "string" && isAbsolute(p) ? p : null);

@@ -771,7 +771,8 @@ export const MethodSchemas = {
   }).strict().refine(value => (value.routines === undefined) !== (value.path === undefined), { message: "Pass routines or a file path, not both" }),
 
   "plugins.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
-  "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
+  "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id,
+    expectedDigest: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
   "plugins.list": z.object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) }).strict(),
   "plugins.assets": z.object({ pluginId: id }).strict(),
   "plugins.uninstall": z.object({ pluginId: id }).strict(),
@@ -1230,6 +1231,7 @@ export const ResultSchemas = {
     routineTitles: z.array(z.string()),
     format: z.enum(["aux-plugin@1", "claude-code"]),
     assets: z.array(z.object({ kind: z.enum(["skill", "mcp_server", "hook"]), name: z.string() })),
+    digest: z.string().regex(/^[a-f0-9]{64}$/),
   }),
   "plugins.install": z.object({
     plugin: PluginSchema,

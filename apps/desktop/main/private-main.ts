@@ -586,6 +586,7 @@ function registerIpc() {
   ipcMain.handle("ui.contextMenu",(event,pageId:string|null)=>{requireShell(event);const wc=pageId?pages.get(pageId)?.view.webContents:shellView?.webContents;Menu.buildFromTemplate([{role:"cut"},{role:"copy"},{role:"paste"},{role:"selectAll"},...(pageId?[{type:"separator" as const},{label:"Back",enabled:!!wc?.navigationHistory.canGoBack(),click:()=>wc?.goBack()},{label:"Forward",enabled:!!wc?.navigationHistory.canGoForward(),click:()=>wc?.goForward()},{label:"Reload",click:()=>wc?.reload()}]:[])]).popup();return true;});
   ipcMain.handle("ui.openExternal",()=>false);
   ipcMain.handle("ui.openFile",async event=>{requireShell(event);if(!win)return null;const result=await dialog.showOpenDialog(win,{title:"Open File",properties:["openFile"]});return result.canceled?null:result.filePaths[0]??null;});
+  ipcMain.handle("ui.openPluginDirectory",async event=>{requireShell(event);if(!win)return null;const result=await dialog.showOpenDialog(win,{title:"Choose a Claude Code plugin directory",properties:["openDirectory"]});return result.canceled?null:result.filePaths[0]??null;});
   ipcMain.handle("ui.saveWorkbook",(event,content:unknown,format:unknown)=>{requireShell(event);if(!win)throw new Error("This window is unavailable.");return saveWorkbookSnapshot(win,content,true,format);});
   ipcMain.handle("ui.saveFile", async (event, name: unknown, content: unknown) => {
     requireShell(event);

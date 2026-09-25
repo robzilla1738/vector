@@ -1,15 +1,17 @@
 import { WorkRow } from "./ui";
 import { useEffect, useState } from "react";
-import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, Task, VaultItem } from "@aux/contracts";
+import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineParameter, RoutineRun, RoutineRunOutcome, RoutineSuggestion, Task, VaultItem } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
 import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts } from "./RoutineSchedule";
+import { SkillMetadata } from "./SkillMetadata";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore(state => state.pages.find(page => page.pageId === state.activePageId)?.url);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
+  const [suggestions, setSuggestions] = useState<RoutineSuggestion[]>([]);
   const [comparison, setComparison] = useState<RoutineCompare | null>(null);
   const [selected, setSelected] = useState<{ routine: Routine; runs: RoutineRun[] } | null>(null);
   const [calendarAccounts, setCalendarAccounts] = useState<CalendarTriggerAccounts>({ status: "loading", choices: [] });
@@ -77,6 +79,17 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     });
     return () => { active = false; };
   }, [selected]);
+  useEffect(() => {
+    let active = true;
+    setSuggestions([]);
+    if (!workspaceId || (!task?.objective && !currentPageUrl)) return;
+    void call("routines.suggest", {
+      workspaceId,
+      ...(task?.objective ? { text: task.objective.slice(0, 4000) } : {}),
+      ...(currentPageUrl && currentPageUrl.length <= 2048 ? { pageUrl: currentPageUrl } : {}),
+    }).then(items => { if (active) setSuggestions(items); }).catch(() => { if (active) setSuggestions([]); });
+    return () => { active = false; };
+  }, [workspaceId, task?.objective, currentPageUrl, selected?.routine.revision]);
   async function action(work: () => Promise<void>) {
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusy(true); setError(""); setNotice("");
@@ -119,6 +132,13 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         setNotice(`Imported ${result.imported} inactive Skill${result.imported === 1 ? "" : "s"}${result.skipped ? ` · ${result.skipped} duplicates skipped` : ""}. Bind each one to a saved task before use.`);
         await refresh();
       })}>Import…</button>
+      <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
+        const path = await bridge.openFile();
+        if (!path) return;
+        const result = await call("routines.importSkill", { path, workspaceId });
+        setNotice(`Imported ${result.imported} inactive Skill${result.imported === 1 ? "" : "s"}${result.skipped ? ` · ${result.skipped} duplicate skipped` : ""}. Review and bind it to a saved task before use.`);
+        await refresh();
+      })}>Import SKILL.md…</button>
     </div></div>
     <details className="routine-safety"><summary>How Skills run safely</summary><p className="hint">Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until you reconcile an uncertain write.</p></details>
     {alerts.length > 0 && <section className="field" aria-label="Routine alerts"><strong>Alerts</strong><span className="hint">Local run records only. They do not prove a business outcome.</span>{alerts.map(alert => <div className="hint" key={alert.routineRunId}>{alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}{alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}</div>)}</section>}
@@ -126,6 +146,14 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     {error && <p className="field-error" role="alert">{error}</p>}
     {notice && <output className="hint" data-block>{notice}</output>}
     {!selected && <>
+      {suggestions.length > 0 && <section className="field" aria-label="Suggested Skills">
+        <strong>Suggested for this context</strong>
+        <p className="hint">Suggestions never start a Skill. Open one to review its scope and run it yourself.</p>
+        <div className="row">{suggestions.map(item => <button className="btn sm ghost" key={item.routineId}
+          disabled={busy} onClick={() => void action(() => refresh(item.routineId))}>
+          {item.title} · {item.reasons.join(" and ")}
+        </button>)}</div>
+      </section>}
       <label className="routine-search">{I.search}<input aria-label="Search Skills" placeholder="Search Skills…" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Skill status">{(["all", "ready", "paused", "archived"] as const).map(filter => <button key={filter} className={status === filter ? "active" : ""} aria-pressed={status === filter} onClick={() => setStatus(filter)}>{filter[0]!.toUpperCase() + filter.slice(1)}</button>)}</div><output className="hint">{visibleRoutines.length} {visibleRoutines.length === 1 ? "Skill" : "Skills"}</output></div>
       {loading ? <output className="hint" data-block>Loading Skills…</output> : <div className="ui-work-list">
@@ -162,8 +190,20 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       })} />
       <div className="row">
         <button className="btn sm" disabled={busy || (selected.routine.paused && !selected.routine.sourceTaskId)} onClick={() => void action(async () => { await call("routines.pause", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, paused: !selected.routine.paused }); await refresh(selected.routine.routineId); })}>{selected.routine.paused ? "Resume" : "Pause"}</button>
+        <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
+          const document = await call("routines.exportSkill", { routineId: selected.routine.routineId });
+          const path = await bridge.saveFile(document.filename, document.content);
+          if (path) setNotice(`Saved ${document.filename}.`);
+        })}>Save as SKILL.md…</button>
         {selected.runs.length >= 2 && <button className="btn sm" disabled={busy} onClick={() => void action(async () => { setComparison(await call("routines.compare", { leftRunId: selected.runs[1]!.routineRunId, rightRunId: selected.runs[0]!.routineRunId })); })}>Compare latest two runs</button>}
       </div>
+      <SkillMetadata key={`${selected.routine.routineId}-metadata:${selected.routine.revision}`}
+        routine={selected.routine} disabled={busy || !!selected.routine.archivedAt}
+        onSave={metadata => void action(async () => {
+          await call("routines.update", { routineId: selected.routine.routineId,
+            expectedRevision: selected.routine.revision, ...metadata });
+          await refresh(selected.routine.routineId);
+        })} />
       <RoutineSchedule key={`${selected.routine.routineId}:${selected.routine.revision}`} trigger={selected.routine.trigger} disabled={busy || !!selected.routine.archivedAt} calendar={selectedCalendar} onSave={trigger => void action(async () => {
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, trigger });
         await refresh(selected.routine.routineId);

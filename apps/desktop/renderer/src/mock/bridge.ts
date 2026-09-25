@@ -404,7 +404,8 @@ export function installMockBridge(q: URLSearchParams) {
     },
     ...connectors,
     "plugins.inspect": async () => {
-      return { name: "Example bundle", version: "1.0", routineCount: 1, routineTitles: ["Weekly digest"] };
+      return { name: "Example bundle", version: "1.0", routineCount: 1,
+        routineTitles: ["Weekly digest"], format: "aux-plugin@1", assets: [], digest: "a".repeat(64) };
     },
     "plugins.install": async p => {
       return { plugin: { pluginId: "plg-1", name: "Example bundle", workspaceId: p.workspaceId, routineIds: [], installedAt: Date.now() }, imported: 0, skipped: 1 };
@@ -412,6 +413,7 @@ export function installMockBridge(q: URLSearchParams) {
     "plugins.list": async () => {
       return [];
     },
+    "plugins.assets": async () => [],
     "plugins.uninstall": async p => {
       return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
     },
@@ -1020,6 +1022,7 @@ export function installMockBridge(q: URLSearchParams) {
     windows: async () => [],
     closeWindow: async () => true,
     openFile: async () => null,
+    openPluginDirectory: async () => null,
     selectRepository: async () => null,
     createProject: async () => { throw new Error("Local projects require Aux desktop"); },
     createBlankProject: async () => { throw new Error("Local projects require Aux desktop"); },

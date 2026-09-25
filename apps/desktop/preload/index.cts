@@ -175,6 +175,7 @@ const aux = {
   pickEvidenceImage: () => ipcRenderer.invoke("ui.pickEvidenceImage") as Promise<{ filename: string; dataUrl: string } | null>,
   pickEvidenceDocument: () => ipcRenderer.invoke("ui.pickEvidenceDocument") as Promise<{ filename: string; content: string } | null>,
   openFile: () => ipcRenderer.invoke("ui.openFile") as Promise<string | null>,
+  openPluginDirectory: () => ipcRenderer.invoke("ui.openPluginDirectory") as Promise<string | null>,
   agentConfig: (input:unknown) => ipcRenderer.invoke("app.agentConfig",input),
   agentConnections:()=>ipcRenderer.invoke("app.agentConnections"),
   agentClients:()=>ipcRenderer.invoke("app.agentClients"),

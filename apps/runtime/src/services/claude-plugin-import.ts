@@ -69,7 +69,8 @@ export async function readClaudePlugin(root: string): Promise<ImportedPlugin> {
   const skillsInfo = await lstat(skillsDir).catch(() => undefined);
   if (skillsInfo && !skillsInfo.isDirectory()) throw new AuxError("invalid_params", "Plugin skills must be a regular directory.");
   if (skillsInfo) {
-    const entries = await readdir(skillsDir, { withFileTypes: true });
+    const entries = (await readdir(skillsDir, { withFileTypes: true }))
+      .sort((left, right) => left.name.localeCompare(right.name));
     if (entries.length > 64) throw new AuxError("invalid_params", "Plugin has too many skills.");
     for (const entry of entries) {
       if (!validName(entry.name) || !entry.isDirectory()) throw new AuxError("invalid_params", "Plugin skills must use regular named directories.");

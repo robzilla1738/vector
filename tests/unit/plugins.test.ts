@@ -42,6 +42,19 @@ it("inspects a bundle without installing it", async () => {
   expect(f.routines.list({ workspaceId: f.workspace.workspaceId })).toHaveLength(0);
 });
 
+it("binds a reviewed plugin import to the inspected digest", async () => {
+  const f = fixture();
+  const path = f.manifest();
+  const inspected = await f.plugins.inspect(path);
+  expect(inspected.digest).toMatch(/^[a-f0-9]{64}$/);
+  writeFileSync(path, JSON.stringify({ format: "aux-plugin@1", name: "Research pack",
+    routines: [{ title: "Changed task", objective: "Different work" }] }));
+  await expect(f.plugins.install(path, f.workspace.workspaceId, inspected.digest))
+    .rejects.toThrow(/changed after review/);
+  expect(f.plugins.list()).toEqual([]);
+  expect(f.routines.list({ workspaceId: f.workspace.workspaceId })).toEqual([]);
+});
+
 it("rejects files that are not aux-plugin@1 bundles", async () => {
   const f = fixture();
   await expect(f.plugins.inspect(f.bundle({ format: "aux-routine@1", routines: [] }))).rejects.toThrow(/aux-plugin@1/);

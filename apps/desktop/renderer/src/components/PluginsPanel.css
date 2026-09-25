@@ -1,0 +1,99 @@
+.plugin-review {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plugin-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.plugin-review-actions label {
+  display: grid;
+  min-width: 10rem;
+  gap: var(--space-1);
+}
+
+.plugin-review-preview,
+.plugin-review-list,
+.plugin-review-detail {
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--surface-primary) 86%, transparent);
+  box-shadow: var(--highlight-inset);
+  backdrop-filter: blur(18px);
+}
+
+.plugin-review-preview {
+  padding: var(--space-3);
+}
+
+.plugin-review-preview ul {
+  max-height: 10rem;
+  overflow: auto;
+}
+
+.plugin-review-layout {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.9fr) minmax(0, 1.5fr);
+  gap: var(--space-2);
+  min-height: 12rem;
+}
+
+.plugin-review-list,
+.plugin-review-detail {
+  min-width: 0;
+  padding: var(--space-2);
+}
+
+.plugin-review-list button {
+  display: grid;
+  width: 100%;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--r-md);
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plugin-review-list button[aria-current="true"] {
+  background: var(--surface-secondary);
+}
+
+.plugin-review-list button span {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.plugin-review-detail {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.plugin-review-asset {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-top: 1px solid var(--accent-line);
+}
+
+@media (max-width: 660px) {
+  .plugin-review-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .plugin-review-preview,
+  .plugin-review-list,
+  .plugin-review-detail {
+    background: var(--surface-primary);
+    backdrop-filter: none;
+  }
+}

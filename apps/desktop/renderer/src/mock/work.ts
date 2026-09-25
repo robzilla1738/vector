@@ -22,8 +22,11 @@ export function workFixtures(workspaceId: string, populated: boolean, connectorP
     'tasks.receipt': async (p: Record<string,unknown>) => { const t=task(p.taskId); return TaskReceiptSchema.parse({taskId:t.taskId,taskRevision:t.revision,objective:t.objective,generatedAt:now,status:'needs_review',criteria:t.criteria.map(criterion=>({criterion,status:'unverified',evidence:[]})),unresolvedActions:[],runs:[],modelCalls:0,knownCostUsd:0,costComplete:true}); },
     'tasks.archive': async (p: Record<string,unknown>) => {const t=task(p.taskId); if(t.revision!==p.expectedRevision)throw new Error('Preview revision changed'); const next={...t,state:p.archived?'archived' as const:'open' as const,revision:t.revision+1};tasks=tasks.map(item=>item===t?next:item);return next;},
     'routines.list': async () => routines,
+    'routines.suggest': async () => [],
     'routines.alerts': async () => [],
     'routines.get': async (p: Record<string,unknown>) => ({routine:routine(p.routineId),runs:[]}),
+    'routines.exportSkill': async (p: Record<string,unknown>) => ({filename:'SKILL.md',content:`---\nname: ${JSON.stringify(routine(p.routineId).title)}\ndescription: ${JSON.stringify(routine(p.routineId).objective)}\nautoInject: {"keywords":[],"urls":[]}\n---\n\n${routine(p.routineId).objective}\n`}),
+    'routines.importSkill': async () => {throw new Error('Importing a SKILL.md requires the Aux desktop app.');},
     'routines.pause': async (p: Record<string,unknown>) => {const r=routine(p.routineId);if(r.revision!==p.expectedRevision)throw new Error('Preview revision changed');const next={...r,paused:!!p.paused,revision:r.revision+1};routines=routines.map(item=>item===r?next:item);return next;},
   };
 }

@@ -1,5 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { lstat, readFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { constants } from "node:fs";
+import { lstat, open } from "node:fs/promises";
 import { AuxError, AuxPluginManifestSchema, PluginAssetSchema, PluginSchema, type AuxPluginManifest, type Plugin, type PluginAsset } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { RoutineService } from "./routines.js";
@@ -22,6 +23,9 @@ const record = (row: Row): Plugin =>
     uninstalledAt: row.uninstalled_at ?? undefined,
   });
 
+const bundleDigest = (bundle: AuxPluginManifest | ImportedPlugin): string =>
+  createHash("sha256").update(JSON.stringify(bundle)).digest("hex");
+
 /**
  * Thin plugins bundle existing capabilities. aux-plugin@1 carries portable
  * routines; installing recreates them in one Space through the same import
@@ -35,9 +39,16 @@ export class PluginService {
     const info = await lstat(path).catch(() => undefined);
     if (info?.isDirectory()) return readClaudePlugin(path);
     if (!info?.isFile()) throw new AuxError("invalid_params", "Choose a regular plugin file or directory.");
+    if (info.size > 8_000_000) throw new AuxError("invalid_params", "Plugin bundle exceeds 8 MB.");
     let raw: unknown;
     try {
-      raw = JSON.parse(await readFile(path, "utf8"));
+      const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        const current = await file.stat();
+        if (!current.isFile() || current.size > 8_000_000)
+          throw new AuxError("invalid_params", "Plugin bundle exceeds 8 MB or changed while opening.");
+        raw = JSON.parse(await file.readFile("utf8"));
+      } finally { await file.close(); }
     } catch (error) {
       throw new AuxError("invalid_params", `Couldn't read the plugin file. ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -51,7 +62,7 @@ export class PluginService {
       throw new AuxError("not_found", "Space does not exist");
   }
 
-  inspect(path: string): Promise<{ name: string; version?: string; description?: string; routineCount: number; routineTitles: string[]; format: string; assets: { kind: PluginAsset["kind"]; name: string }[] }> {
+  inspect(path: string): Promise<{ name: string; version?: string; description?: string; routineCount: number; routineTitles: string[]; format: string; assets: { kind: PluginAsset["kind"]; name: string }[]; digest: string }> {
     return this.manifest(path).then(bundle => ({
       name: bundle.name,
       version: bundle.version,
@@ -60,28 +71,31 @@ export class PluginService {
       routineTitles: bundle.format === "aux-plugin@1" ? bundle.routines.map(routine => routine.title) : [],
       format: bundle.format,
       assets: bundle.format === "claude-code" ? bundle.assets.map(({ kind, name }) => ({ kind, name })) : [],
+      digest: bundleDigest(bundle),
     }));
   }
 
-  async install(path: string, workspaceId: string): Promise<{ plugin: Plugin; imported: number; skipped: number }> {
+  async install(path: string, workspaceId: string, expectedDigest?: string): Promise<{ plugin: Plugin; imported: number; skipped: number }> {
     const bundle = await this.manifest(path);
+    if (expectedDigest && bundleDigest(bundle) !== expectedDigest)
+      throw new AuxError("conflict", "Plugin contents changed after review. Inspect it again.");
     this.requireWorkspace(workspaceId);
-    const existing = this.repo.db.prepare("SELECT 1 FROM plugins WHERE name=? AND workspace_id=? AND uninstalled_at IS NULL").get(bundle.name, workspaceId);
-    if (existing) throw new AuxError("conflict", `"${bundle.name}" is already installed in this space. Uninstall it first.`);
-    const { imported, skipped, routineIds } = bundle.format === "aux-plugin@1"
-      ? this.routines.importRoutines(bundle.routines, workspaceId)
-      : { imported: 0, skipped: 0, routineIds: [] };
-    const plugin: Plugin = PluginSchema.parse({
-      pluginId: randomUUID(),
-      name: bundle.name,
-      version: bundle.version,
-      description: bundle.description,
-      workspaceId,
-      routineIds,
-      installedAt: Date.now(),
-    });
     this.repo.db.exec("BEGIN IMMEDIATE");
     try {
+      const existing = this.repo.db.prepare("SELECT 1 FROM plugins WHERE name=? AND workspace_id=? AND uninstalled_at IS NULL").get(bundle.name, workspaceId);
+      if (existing) throw new AuxError("conflict", `"${bundle.name}" is already installed in this space. Uninstall it first.`);
+      const { imported, skipped, routineIds } = bundle.format === "aux-plugin@1"
+        ? this.routines.importRoutines(bundle.routines, workspaceId)
+        : { imported: 0, skipped: 0, routineIds: [] };
+      const plugin: Plugin = PluginSchema.parse({
+        pluginId: randomUUID(),
+        name: bundle.name,
+        version: bundle.version,
+        description: bundle.description,
+        workspaceId,
+        routineIds,
+        installedAt: Date.now(),
+      });
       this.repo.db.prepare(
         "INSERT INTO plugins(plugin_id,name,version,description,workspace_id,routine_ids,created_at) VALUES(?,?,?,?,?,?,?)"
       ).run(plugin.pluginId, plugin.name, plugin.version ?? null, plugin.description ?? null, workspaceId, JSON.stringify(routineIds), plugin.installedAt);
@@ -93,11 +107,11 @@ export class PluginService {
         }
       }
       this.repo.db.exec("COMMIT");
+      return { plugin, imported, skipped };
     } catch (error) {
       this.repo.db.exec("ROLLBACK");
       throw error;
     }
-    return { plugin, imported, skipped };
   }
 
   /** Inspect imported components. They have no execution path or grant at import time. */

@@ -169,6 +169,7 @@ export interface AuxBridge {
   pickEvidenceImage(): Promise<{ filename: string; dataUrl: string } | null>;
   pickEvidenceDocument(): Promise<{ filename: string; content: string } | null>;
   openFile(): Promise<string | null>;
+  openPluginDirectory(): Promise<string | null>;
   agentConfig(input:{name:string;client:"codex"|"claude";scope:AgentConnectionScope}): Promise<{ command: string; args: string[]; env: Record<string, string>; connection: AgentConnection }>;
   agentConnections():Promise<AgentConnection[]>;
   agentClients():Promise<{client:"codex"|"claude";installed:boolean;version?:string;error?:string}[]>;
@@ -309,6 +310,7 @@ const stub: AuxBridge = {
   closeWindow: async () => true,
   windows: async () => [],
   openFile: async () => null,
+  openPluginDirectory: async () => null,
     selectRepository: async () => null,
     createProject: async () => { throw new Error("Local projects require Aux desktop"); },
     createBlankProject: async () => { throw new Error("Local projects require Aux desktop"); },
