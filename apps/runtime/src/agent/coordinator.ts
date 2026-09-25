@@ -12,6 +12,7 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
+import type { AgentModelCategory, AgentModelRoute } from "@aux/contracts/model-registry";
 import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
@@ -48,6 +49,7 @@ export interface CoordinatorDeps {
   defaultModel: () => string;
   recoveryModel: () => string | undefined;
   visionModel?: () => string | undefined;
+  routeModel?: (category: AgentModelCategory) => AgentModelRoute;
   recordModelCall: (c: {
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final";

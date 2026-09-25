@@ -33,6 +33,7 @@ The SDK, MCP and CLI project this manifest. Code mode exposes only entries suppo
 - aux.tabs.dom_cua.observe(params): Alias for Aux ref observation.
 - aux.tabs.dom_cua.execute(params): Alias for guarded Aux ref actions.
 - aux.tabs.content.text(params): Read page text and headings.
+- aux.tabs.handoff(params): Yield an authorized tab to its human owner and stop automated input.
 - aux.history.search(params): Search the derived browser history index.
 
 ## Transport availability
@@ -60,6 +61,7 @@ The SDK, MCP and CLI project this manifest. Code mode exposes only entries suppo
 | `aux.tabs.cua.execute` | `pages.cuaExecute` | cua | lookup | yes | yes | yes | yes |
 | `aux.tabs.content.text` | `pages.observe` | content | model | yes | yes | yes | yes |
 | `aux.tabs.dialog` | `pages.dialog` | management | lookup | yes | yes | yes | — |
+| `aux.tabs.handoff` | `pages.takeover` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.dev.logs` | `pages.console` | dev | lookup | yes | yes | yes | yes |
 | `aux.history.search` | `history.list` | management | lookup | yes | yes | yes | yes |
 

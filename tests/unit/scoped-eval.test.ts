@@ -16,6 +16,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
   const page = { controller: "none" as "none" | "human" };
   const pages = {
     get: () => page,
+    takeover: async (pageId: string) => { page.controller = "human"; return { pageId, controller: "human" }; },
     execute: async (_program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; },
   } as unknown as PageService;
   const pageOwnership = new PageOwnership();
@@ -54,6 +55,15 @@ it("keeps a human-held tab out of external page programs", async () => {
     { external: true, connectionId: "c1", scope: f.scope })).rejects.toMatchObject({ code: "conflict" });
   expect(f.seen).toHaveLength(0);
   expect(f.pageOwnership.snapshot().p1).toBeUndefined();
+});
+
+it("lets a scoped agent hand its authorized tab to a person without granting resume", async () => {
+  const f = fixture();
+  const client = { external: true, connectionId: "c1", scope: f.scope };
+  await expect(f.invoke("pages.takeover", { pageId: "other" }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.invoke("pages.takeover", { pageId: "p1" }, client)).resolves.toMatchObject({ controller: "human" });
+  expect(f.page.controller).toBe("human");
+  await expect(f.invoke("pages.resume", { pageId: "p1" }, client)).rejects.toMatchObject({ code: "permission_denied" });
 });
 
 it("keeps direct operation calls off a tab owned by another agent or a person", async () => {

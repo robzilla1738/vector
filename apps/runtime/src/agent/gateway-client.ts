@@ -345,6 +345,7 @@ export class GatewayModelClient implements ModelClient {
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    reasoning?: CallOpts["reasoning"];
   }): Promise<TextCallResult> {
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];

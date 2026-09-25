@@ -46,6 +46,7 @@ export const AgentApiManifest = [
   entry({ path: "tabs.cua.execute", method: "pages.cuaExecute", layer: "cua", summary: "Run pixel actions with a current document epoch and captured viewport.", documented: "lookup", requiredFor: ["visual"] }),
   entry({ path: "tabs.content.text", method: "pages.observe", layer: "content", summary: "Read page text and headings.", documented: "model" }),
   entry({ path: "tabs.dialog", method: "pages.dialog", layer: "management", summary: "List or respond to a typed browser dialog.", documented: "lookup", unsupportedByDefaultIn: ["code"] }),
+  entry({ path: "tabs.handoff", method: "pages.takeover", layer: "management", summary: "Yield an authorized tab to its human owner and stop automated input.", documented: "lookup" }),
   entry({ path: "tabs.dev.logs", method: "pages.console", layer: "dev", summary: "Read recent page console lines.", documented: "lookup", requiredFor: ["debugging"] }),
   entry({ path: "history.search", method: "history.list", layer: "management", summary: "Search the derived browser history index.", documented: "lookup" }),
 ] as const;

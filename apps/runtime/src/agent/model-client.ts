@@ -73,6 +73,7 @@ export interface ModelClient {
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    reasoning?: "low" | "medium" | "xhigh";
     /** Bound provider attempts for shared-budget callers; 1 disables corrective retries. */
     maxAttempts?: number;
   }): Promise<StructuredCallResult<T>>;
@@ -92,6 +93,7 @@ export interface ModelClient {
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    reasoning?: "low" | "medium" | "xhigh";
     onText: (delta: string) => void;
   }): Promise<StructuredCallResult<T>>;
 
@@ -104,6 +106,7 @@ export interface ModelClient {
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    reasoning?: "low" | "medium" | "xhigh";
   }): Promise<TextCallResult>;
 
   listModels(): Promise<{ id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[]>;

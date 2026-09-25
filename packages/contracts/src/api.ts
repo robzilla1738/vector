@@ -42,6 +42,7 @@ import {
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
+import { AgentModelRouteSchema } from './model-registry.js';
 import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema,ProjectEffectNameSchema} from "./local-projects.js";
 
 const id = z.string().min(1);
@@ -452,6 +453,10 @@ export const SettingsSetParams = z.object({
   plannerModel: z.string().optional(),
   recoveryModel: z.string().optional(),
   visionModel: z.string().optional(),
+  agentModelRoutes: z.object({
+    fast: AgentModelRouteSchema.optional(), standard: AgentModelRouteSchema.optional(),
+    deep: AgentModelRouteSchema.optional(), visual: AgentModelRouteSchema.optional(),
+  }).strict().optional(),
   searchEngine: SearchEngineTemplateSchema.optional(),
   /** `kw query` engines — user entries merge over the built-in list. */
   searchEngines: z.array(z.object({

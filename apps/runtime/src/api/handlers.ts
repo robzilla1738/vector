@@ -227,7 +227,7 @@ export function makeInvoker(s: Services) {
       if (method === "agent.js.run" || method === "agent.js.reset") {
         // The code-mode host calls this same invoker with the same client.
         // Each nested method is checked against the connection's scope.
-      } else if (["pages.close","pages.moveToWindow","pages.navigate","pages.back","pages.forward","pages.reload","pages.stop","pages.takeover","pages.resume"].includes(method)
+      } else if (["pages.close","pages.moveToWindow","pages.navigate","pages.back","pages.forward","pages.reload","pages.stop","pages.resume"].includes(method)
         || method === "pages.dialog" && params.action && params.action !== "list")
         throw new AuxError("permission_denied", "Use a task-bound pages.execute program for browser actions");
       if (method === "workspaces.create" || method === "pages.open" || method === "runs.start") {

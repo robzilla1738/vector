@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { EffectSchema, ModelProviderSchema, OriginRuleSchema, SidebarMaterialSchema, type Effect, type ModelProvider, type OriginRule, type ShortcutOverrides } from "@aux/contracts";
 import { z } from "zod";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
-import { MODEL_REGISTRY, mergeModelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
+import { MODEL_REGISTRY, mergeModelCapabilities, agentModelRoute, AgentModelRouteSchema, type AgentModelCategory, type AgentModelRoute, type ModelCapability } from "@aux/contracts/model-registry";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
 import { DEFAULT_MAX_MODEL_CALLS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { DIRECT_PROVIDERS, PROVIDER_ENV, directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint, providerEndpoint } from "../agent/direct-providers.js";
@@ -27,6 +27,7 @@ export interface Settings {
   plannerModel?: string;
   recoveryModel?: string;
   visionModel?: string;
+  agentModelRoutes?: Partial<Record<AgentModelCategory, AgentModelRoute>>;
   searchEngine?: string;
   searchEngines?: { keyword: string; name: string; template: string }[];
   searchSuggestions?: boolean;
@@ -169,6 +170,10 @@ export class SettingsService {
       plannerModel: this.plannerModel(),
       recoveryModel: this.recoveryModel(),
       visionModel: this.visionModel(),
+      agentModelRoutes: {
+        fast: this.agentRoute("fast"), standard: this.agentRoute("standard"),
+        deep: this.agentRoute("deep"), visual: this.agentRoute("visual"),
+      },
       searchEngine: this.searchEngine(),
       searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
       searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,
@@ -433,6 +438,15 @@ export class SettingsService {
   visionModel(): string | undefined {
     if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.visionModel || undefined;
     return (this.get("visionModel") as string) || this.env.AUX_VISION_MODEL || this.plannerModel();
+  }
+  /** Existing model choices remain the category defaults; explicit routes can tune model and effort. */
+  agentRoute(category: AgentModelCategory): AgentModelRoute {
+    const explicit = (this.get("agentModelRoutes") as Settings["agentModelRoutes"] | undefined)?.[category];
+    const valid = AgentModelRouteSchema.safeParse(explicit);
+    if (valid.success) return valid.data;
+    const baseline = agentModelRoute(category);
+    const modelId = category === "visual" ? this.visionModel() : category === "deep" ? this.recoveryModel() : this.plannerModel();
+    return { ...baseline, modelId: modelId || baseline.modelId };
   }
   searchEngine(): string {
     return (this.get("searchEngine") as string) ?? DEFAULT_SEARCH_ENGINE;

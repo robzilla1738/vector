@@ -571,9 +571,10 @@ export class RunService {
         return records.map(record => ({ url: record!.url, title: record!.title, capturedAt: record!.capturedAt, text: record!.text.slice(0, 8_000) }));
       },
       model: () => deps.settings.model(),
-      defaultModel: () => deps.settings.plannerModel(),
-      recoveryModel: () => deps.settings.recoveryModel(),
-      visionModel: () => deps.settings.visionModel(),
+      defaultModel: () => deps.settings.agentRoute("standard").modelId,
+      recoveryModel: () => deps.settings.agentRoute("deep").modelId,
+      visionModel: () => deps.settings.agentRoute("visual").modelId,
+      routeModel: category => deps.settings.agentRoute(category),
       recordModelCall: (c) => this.recordModelCall(c),
       // step recording is unified in PageService.recordStep (wired in main.ts)
       // — every execution, agent or program, lands in the same step ledger

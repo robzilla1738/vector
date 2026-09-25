@@ -15,6 +15,7 @@ import { buildVisionPrompt, VISION_SYSTEM } from "./planner.js";
 import { DurableWriteLedger } from "./durable.js";
 import type { CompiledSkill } from "./skills.js";
 import type { CoordinatorDeps } from "./coordinator.js";
+import { agentModelRoute } from "@aux/contracts/model-registry";
 
 export const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set([
   "completed",
@@ -223,6 +224,7 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
       imageDataUrl: shot.dataUrl,
       signal: args.signal,
       maxOutputTokens: 8192,
+      reasoning: self.deps.routeModel?.("visual").reasoning ?? agentModelRoute("visual").reasoning,
     });
     args.onModelCall?.();
     self.deps.recordModelCall({

@@ -40,6 +40,22 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
+  it("routes fast, standard, deep and visual calls with validated overrides", async () => {
+    const { dir, settings } = harness({}, { plannerModel: "fixture-standard", recoveryModel: "fixture-deep", visionModel: "fixture-visual" });
+    try {
+      expect(settings.agentRoute("standard")).toEqual({ modelId: "fixture-standard", reasoning: "medium" });
+      expect(settings.agentRoute("deep")).toEqual({ modelId: "fixture-deep", reasoning: "xhigh" });
+      expect(settings.agentRoute("visual")).toEqual({ modelId: "fixture-visual", reasoning: "medium" });
+      expect(settings.agentRoute("fast")).toEqual({ modelId: "fixture-standard", reasoning: "low" });
+      const patch = MethodSchemas["settings.set"].parse({ agentModelRoutes: { fast: { modelId: "fixture-fast", reasoning: "low" } } });
+      await settings.set(patch);
+      expect(settings.agentRoute("fast").modelId).toBe("fixture-fast");
+      expect(MethodSchemas["settings.set"].safeParse({ agentModelRoutes: { fast: { modelId: "x", reasoning: "unsupported" } } }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("falls back to AUX_PLANNER_MODEL then the Qwen default", () => {
     const { dir, settings } = harness({ AUX_PLANNER_MODEL: "alibaba/qwen3.8-27b-custom" });
     try {
