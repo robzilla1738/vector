@@ -46,3 +46,5 @@ The ID above is a placeholder; use the actual Store listing ID. The script requi
 The probe ran against the already compiled isolated `AuxProof` executable at Chromium 156. The stable `AuxDev` build and signed distribution are separate candidates; rerun the same matrix against their exact binaries. Do not transfer an AuxProof pass to the stable-tag or signed candidate. The Store harness has not been run in this slice, because no test Store extension ID or operator UI session was supplied; the prior manual Store/restart proof remains a distinct, bounded artifact in the host comparison record.
 
 The separate [virtual WebAuthn probe](passkey-compatibility-probes.md) covers synthetic passkey protocol behavior; it does not qualify platform or synced credentials.
+
+The [native-messaging readiness check](native-messaging-readiness.md) validates macOS host manifests and synthetic origin grants; 1Password desktop integration remains a signed-build and test-account gate.

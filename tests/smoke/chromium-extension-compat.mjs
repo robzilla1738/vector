@@ -6,6 +6,8 @@ import { createRequire } from "node:module";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { macNativeMessagingLocations, scanNativeMessagingLocations,
+  validateNativeMessagingManifest } from "./native-messaging-manifests.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const { chromium } = createRequire(join(root, "packages/chromium-driver/package.json"))("playwright-core");
@@ -171,15 +173,33 @@ try {
     results.actionPopup.status = "partial";
 
   const hosts = join(profile, "NativeMessagingHosts"); mkdirSync(hosts, { recursive: true });
-  writeFileSync(join(hosts, "aux.synthetic_echo.json"), JSON.stringify({
+  const echoManifest = join(hosts, "aux.synthetic_echo.json");
+  writeFileSync(echoManifest, JSON.stringify({
     name: "aux.synthetic_echo", description: "Local synthetic echo host", path: hostScript,
     type: "stdio", allowed_origins: [`chrome-extension://${extensionId}/`],
   }));
+  assert.equal(validateNativeMessagingManifest(echoManifest).valid, true);
+  const deniedManifest = join(hosts, "aux.synthetic_denied.json");
+  const otherId = extensionId === "a".repeat(32) ? "b".repeat(32) : "a".repeat(32);
+  writeFileSync(deniedManifest, JSON.stringify({
+    name: "aux.synthetic_denied", description: "Denied synthetic host", path: hostScript,
+    type: "stdio", allowed_origins: [`chrome-extension://${otherId}/`],
+  }));
+  assert.equal(validateNativeMessagingManifest(deniedManifest).valid, true);
   await record("nativeMessaging", async () => {
     const result = await probe.evaluate(() => chrome.runtime.sendNativeMessage("aux.synthetic_echo", { probe: "roundtrip" }));
     assert.deepEqual(result, { echo: "roundtrip", host: "aux.synthetic_echo" });
     return result;
   });
+  await record("nativeMessagingOriginGrant", async () => {
+    const result = await probe.evaluate(async () => {
+      try { await chrome.runtime.sendNativeMessage("aux.synthetic_denied", { probe: "should_not_launch" });
+        return "accepted"; }
+      catch { return "rejected"; }
+    });
+    assert.equal(result, "rejected"); return "unlisted extension origin denied";
+  });
+  const hostDiscovery = scanNativeMessagingLocations(macNativeMessagingLocations(profile));
 
   await context.close(); context = undefined;
   await record("devTools", async () => {
@@ -204,7 +224,7 @@ try {
   results.storeLifecycle = { status: "manual_gate", reason: "Live Chrome Web Store UI install, permission prompt, restart, update, and uninstall need a candidate UI review; unpacked loading does not prove Store lifecycle." };
   const evidence = { at: new Date().toISOString(), scope: candidate ? "AuxProof/AuxDev compiled candidate" : "Chrome for Testing reference",
     binary: candidate ? realpathSync(candidate) : undefined, browser: browserVersion,
-    extensionId, profile: "disposable", results };
+    extensionId, profile: "disposable", hostDiscovery, results };
   const artifact = join(root, "release/test-artifacts", candidate ? "aux-candidate-extension-compat.json" : "chrome-reference-extension-compat.json");
   mkdirSync(join(root, "release/test-artifacts"), { recursive: true });
   writeFileSync(artifact, JSON.stringify(evidence, null, 2) + "\n");
@@ -213,5 +233,5 @@ try {
 } finally {
   await context?.close().catch(() => {});
   server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
-  rmSync(temporary, { recursive: true, force: true });
+  rmSync(temporary, { recursive: true, force: true, maxRetries: 30, retryDelay: 200 });
 }
