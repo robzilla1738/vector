@@ -1,4 +1,4 @@
-// Profile isolation and session restore against the official Aux.app. All
+// Profile isolation and session restore against a built Aux.app (development or official). All
 // pages and cookies belong to disposable Profiles on a loopback fixture.
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";

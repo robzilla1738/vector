@@ -123,3 +123,13 @@ The set-results panel and recent-conversation list now load when selected in the
 - **[Pending]** These renderer changes and the cookie-import cleanup have not been staged into the running native build. The official build remains on its frozen source, compiling without a reported failure at approximately 15,278 completed actions. Queued patches 37/38 and the matching runtime still require the subsequent native rebuild and live persisted-session recovery test.
 
 Local logs: `/tmp/aux-deferred-panel-{types,build,budget,tests,lint}.log`. No hosted Actions, Linux VM, model calls or publishing were used for this batch.
+
+### Development handoff scope and resumed integration
+
+The owner revised the current scope on September 25: complete product features/native integration and hand over a working development build. Final DMG, release signing/notarization, full release qualification and takeover packaging are deferred. Migration code remains in scope; real data migration is not authorized.
+
+- **[Verified]** Stopped the release-only `out/AuxRelease` Siso process with SIGINT. The live build handle ended; its log records **15,708 completed, 0 failed, 56,360 remaining, interrupted by signal**. No output/cache directories were removed.
+- **[Verified]** Applied queued patches 37 and 38 to the native checkout and built the component app successfully: 20 actions, 1m46s. The app plist now reports `CrProductDirName=Aux`, and its staged runtime contains the matching native CDP reset protocol. This is implementation/build evidence; recovery still requires a live fixture run.
+- **[Verified]** Fixed the tab-menu/overview `windows` bridge method by deriving other-window destinations from the existing Profile-scoped catalog, excluding popup and runtime-owned tabs from counts. Five bridge tests and renderer typecheck pass. The updated shell is staged for its native resource rebuild.
+
+Logs: `/tmp/aux-official-build-20260925.log`, `/tmp/aux-dev-build-38.log`, `/tmp/aux-dev-window-menu-build.log`, `/tmp/aux-window-menu-{tests,types,lint}.log`.

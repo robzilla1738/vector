@@ -107,3 +107,30 @@ describe("Chromium Aux shell bridge", () => {
     ]);
   });
 });
+
+it("builds the move-tab destinations from the Profile catalog without hidden agent tabs", async () => {
+  const request = vi.fn(async () => ({
+    version: 1,
+    windows: [
+      { windowId: "current", activePageId: "a", order: ["a"] },
+      { windowId: "other", activePageId: "b", order: ["b", "agent", "popup"] },
+      { windowId: "empty", activePageId: null, order: [] },
+    ],
+    tabs: [
+      { pageId: "a", windowId: "current", title: "Current" },
+      { pageId: "b", windowId: "other", title: "Other window" },
+      { pageId: "agent", windowId: "other", title: "Agent", runtimeOwned: true },
+      { pageId: "popup", windowId: "other", title: "Popup", popup: true },
+    ],
+  }));
+  const target = fakeWindow("chrome://aux/", {
+    host: "chromium-fork", windowId: "current", profileId: "profile-1",
+    platform: "darwin", privateMode: false, request, subscribe: vi.fn(() => () => {}),
+  });
+  installChromiumBridge(target);
+  expect(await target.aux!.windows()).toEqual([
+    { id: "other", title: "Other window", tabCount: 1 },
+    { id: "empty", title: "Aux", tabCount: 0 },
+  ]);
+  expect(request).toHaveBeenCalledWith("tabsSnapshot", []);
+});

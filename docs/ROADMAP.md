@@ -22,6 +22,14 @@ isProject: false
 
 # Aux: reviewed roadmap from proof to a testable pre-release build
 
+## Current scope amendment — September 25, 2026
+
+The owner's latest instruction makes a **working development build** the current handoff goal. Finish the product features and native Chromium integration in this roadmap, preserving Aux branding, liquid glass and both Aside layouts. Verify the development build through the relevant live product journeys.
+
+Defer the final DMG, release signing/notarization, full release qualification and takeover package. These later deliverables in B11/B12 are retained below as future work, not current completion gates. Keep migration implementation and fixture qualification; **do not migrate the owner's real data**. Release-only official/static builds may be stopped safely with their build cache preserved. The current development component build is authoritative for ongoing product integration.
+
+This amendment supersedes conflicting release-delivery requirements elsewhere in this document. Local builds, no paid Actions billing, notification before a Linux VM, and the model/spend/data constraints remain in effect.
+
 ## 0. Fixed decisions and how to read this
 
 - **Supersedes** `docs/ROADMAP.md`, the next-work list in `docs/HANDOFF.md`, the `docs/ui/COMPONENT-TRANSPLANT.md` program and ledger, the "Aside parity" framing in `docs/AUX-DESIGN-DIRECTION.md`, and the "next proof" list in `docs/M1-HOST-COMPARISON.md`. Batch B0 writes this plan into the repo as the single roadmap.

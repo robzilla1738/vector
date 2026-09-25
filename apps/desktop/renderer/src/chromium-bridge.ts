@@ -1,5 +1,5 @@
 import type { AuxBridge } from "./bridge";
-import { auxFeatureForBridgeMethod, requireAuxFeature, requireAuxMethod, type AuxFeatureOverrides } from "@aux/contracts";
+import { auxFeatureForBridgeMethod, requireAuxFeature, requireAuxMethod, type AuxFeatureOverrides, type TabCatalogSnapshot } from "@aux/contracts";
 
 /**
  * Browser-process endpoint installed only in Aux's trusted chrome://aux/ WebUI.
@@ -64,6 +64,16 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
       if (key === "overlay") return async (open: boolean) => {
         if (typeof open !== "boolean") throw new TypeError("Overlay state must be boolean");
         return open;
+      };
+      if (key === "windows") return async () => {
+        // The native catalog is already scoped to this Profile. Build the
+        // move-tab menu from it instead of introducing a second window list.
+        const catalog = await port.request("tabsSnapshot", []) as TabCatalogSnapshot;
+        return catalog.windows.filter(window => window.windowId !== port.windowId).map(window => {
+          const tabs = catalog.tabs.filter(tab => tab.windowId === window.windowId && !tab.popup && !tab.runtimeOwned);
+          const active = tabs.find(tab => tab.pageId === window.activePageId) ?? tabs[0];
+          return { id: window.windowId, title: active?.title || "Aux", tabCount: tabs.length };
+        });
       };
       const bridgeFeature = auxFeatureForBridgeMethod(key);
       if (fireAndForgetMethods.has(key)) {
