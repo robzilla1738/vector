@@ -39,7 +39,7 @@ try {
  await add.hover();
  assert.ok((await add.evaluate(el=>getComputedStyle(el).transitionDuration)).split(',').every(value=>parseFloat(value)===0));
  await page.locator('.horizontal-tab-select').last().click({button:'right'});
- assert.equal(await page.locator('.ctx-menu').evaluate(el=>getComputedStyle(el).animationName),'none');
+ await page.waitForFunction(()=>{const menu=document.querySelector('.ctx-menu');return menu?.isConnected&&getComputedStyle(menu).animationName==='none';});
  await page.keyboard.press('Escape');
  await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'vertical'}));
  if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();

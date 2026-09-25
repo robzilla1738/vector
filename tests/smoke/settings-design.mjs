@@ -25,7 +25,7 @@ try {
  assert.equal(await search.inputValue(),'');
  await page.getByRole('navigation',{name:'Settings categories'}).getByRole('button',{name:'Connections',exact:true}).click();
  await page.getByRole('tab',{name:'Models',exact:true}).click();
- assert.equal(await page.getByRole('textbox',{name:'Planner model',exact:true}).inputValue(),'meta/muse-spark-1.3-contributor');
+ assert.equal(await page.getByRole('combobox',{name:'Planner model',exact:true}).inputValue(),'meta/muse-spark-1.3-contributor');
  await page.getByText('Contributor data use.',{exact:false}).waitFor();
  await page.getByRole('tab',{name:'Services',exact:true}).click();
  await page.getByRole('tab',{name:'Services',exact:true}).press('ArrowRight');

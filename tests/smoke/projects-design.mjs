@@ -32,7 +32,7 @@ try {
  const skillRow=skills.locator('.ui-work-row').filter({hasText:'Weekly research review'});
  await skillRow.locator('.ui-list-open').click();
  await page.getByRole('button',{name:'Weekdays',exact:true}).click();
- await page.getByRole('button',{name:'Save schedule',exact:true}).click();
+ await page.locator('.routine-schedule').getByRole('button',{name:/^Save (schedule|trigger)$/}).click();
  await page.waitForFunction(()=>document.querySelector('.routine-schedule-summary')?.textContent==='Weekdays at 09:00 · America/Chicago');
  await page.locator('.routine-detail').scrollIntoViewIfNeeded();
  await page.screenshot({path:root+'/release/test-artifacts/tabs/routine-detail.png'});
