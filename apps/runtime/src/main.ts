@@ -180,7 +180,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     };
   };
   const nativeCdp = env.AUX_HOST_SOCKET && channel
-    ? await NativeCdpBroker.start(channel, env.AUX_HOST_SOCKET)
+    ? await NativeCdpBroker.start(channel)
     : null;
   const hostCdp = nativeCdp?.endpoint() ?? (env.AUX_INTERNAL_CDP === "1" && channel
     ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
@@ -590,6 +590,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   process.on("unhandledRejection", onUnhandledRejection);
   process.on("uncaughtException", onUncaughtException);
+  // The native host owns this helper. A closed authenticated socket means its
+  // owner has exited; finish the journal and release the Profile database.
+  hostSocket?.onClose?.(() => {
+    if (!closed) void shutdown().finally(() => process.exit(0));
+  });
 
   // recover from an unclean stop: anything still "live" never completed.
   // Invocation rows persisted 'running' before dispatch (§13.3) reconcile

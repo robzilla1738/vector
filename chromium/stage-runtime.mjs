@@ -99,6 +99,7 @@ try {
   const payload = join(staging, "aux-runtime");
   await bundleRuntime(payload, "node26");
   run(node, ["--check", join(payload, "dist", "main.js")]);
+  run(node, ["--check", join(payload, "dist", "privacy-checkpoint-worker.js")]);
 
   const helper = join(appRoot, "Contents", "Helpers", "Aux Runtime");
   const resources = join(appRoot, "Contents", "Resources", "aux-runtime");

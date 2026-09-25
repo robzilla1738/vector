@@ -134,7 +134,11 @@ export function rebaseOrganizationLayout(
       tabSpace: mergeRecord(base.window.tabSpace, local.window.tabSpace, remote.window.tabSpace),
       order: mergeOrder(base.window.order, local.window.order, remote.window.order),
       tabFolder: mergeRecord(base.window.tabFolder, local.window.tabFolder, remote.window.tabFolder),
-      tabNames: mergeRecord(base.window.tabNames ?? {}, local.window.tabNames ?? {}, remote.window.tabNames ?? {}),
+      tabNames: mergeRecord(
+        base.window.tabNames ?? {},
+        local.window.tabNames ?? {},
+        remote.window.tabNames ?? {},
+      ),
       splits: mergeRecord(base.window.splits, local.window.splits, remote.window.splits),
     },
   };

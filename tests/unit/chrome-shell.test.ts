@@ -9,6 +9,13 @@ import {
   toUrl,
 } from "../../apps/desktop/renderer/src/chrome";
 
+describe("Aux Home native aliases", () => {
+  it.each(["", "about:blank", "chrome://newtab", "chrome://newtab/", "chrome://new-tab-page/"])("keeps %s in the Aux shell", url => {
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: "home", url })).toBeNull();
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: "home", url, showBlankDocument: true })).toBe("home");
+  });
+});
+
 describe("address rules — URL vs search", () => {
   it("turns a URL-like input into an http(s) navigate URL", () => {
     expect(toUrl("https://example.com/path")).toBe("https://example.com/path");

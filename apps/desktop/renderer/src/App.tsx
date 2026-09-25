@@ -17,7 +17,7 @@ import type { PageTarget } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
 import { bridge, hostKind, inNativeHost, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
-import { nativePageId } from "./chrome";
+import { isHomeAddress, nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
 import { usePagePointerForward } from "./page-pointer";
 import { onStageReport, requestStageReport, stageAvoiding } from "./stage-obstruction";
@@ -165,7 +165,7 @@ export function App() {
   const activePage = useStore(useShallow((s) => placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined)));
   const pageChrome = inNativeHost && !horizontal && !quickAsk && !!activePage && activePage.backend !== "chrome"
     && activePage.viewStatus !== "crashed" && !activePage.navigationError
-    && (!!activePage.showBlankDocument || (!!activePage.url && activePage.url !== "about:blank"));
+    && (!!activePage.showBlankDocument || (!isHomeAddress(activePage.url)));
   const toolbarReveal = useToolbarReveal(pageChrome, sidebarPeek);
   const [toolbarHole, setToolbarHole] = useState(false);
   const [toolbarReady, setToolbarReady] = useState(false);
@@ -271,7 +271,7 @@ export function App() {
       document.documentElement.style.setProperty("--sidebar-tint", `${Number(settings.sidebarTint ?? 0)}%`);
       document.documentElement.style.setProperty("--content-opacity", `${Number(settings.contentOpacity ?? 95)}%`);
       const material = settings.sidebarMaterial === "sidebar" || settings.sidebarMaterial === "under-window" || settings.sidebarMaterial === "titlebar" ? settings.sidebarMaterial : "liquid-glass";
-      if (hostKind === "electron") void bridge.setAppearance(settings.theme === "system" ? "system" : theme, glass, true, material).catch(errToast);
+      if (inNativeHost) void bridge.setAppearance(settings.theme === "system" ? "system" : theme, glass, true, material).catch(errToast);
     };
     apply(); dark.addEventListener("change", apply); reduced.addEventListener("change", apply);
     return () => { dark.removeEventListener("change", apply); reduced.removeEventListener("change", apply); };

@@ -20,7 +20,10 @@ export async function bundleRuntime(rtOut, target) {
   const desktopRequire = createRequire(join(desktopDir, "package.json"));
   const { build, transformSync } = desktopRequire("esbuild");
   const runtimeBuild = await build({
-    entryPoints: [join(root, "apps/runtime/dist/main.js")],
+    entryPoints: [
+      join(root, "apps/runtime/dist/main.js"),
+      join(root, "apps/runtime/dist/store/privacy-checkpoint-worker.js"),
+    ],
     outdir: join(rtOut, "dist"),
     entryNames: "[name]",
     chunkNames: "chunks/[name]-[hash]",

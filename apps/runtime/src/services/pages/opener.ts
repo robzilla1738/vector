@@ -40,7 +40,14 @@ export class PageOpener {
           windowId: windowId ?? "main",
           command: { kind: "open", pageId, url: initialUrl, background, activate: !background, runtimeOwned: ownedByRuntime },
         });
-        if (ack.status === "rejected") throw new AuxError((ack.error?.code ?? "unavailable") as AuxErrorCode, ack.error?.message ?? "The tab could not be opened.");
+        if (ack.status === "rejected") {
+          const raw = ack.error?.code;
+          const code: AuxErrorCode = raw === "forbidden" ? "permission_denied"
+            : raw === "stale_tab" ? "conflict"
+            : raw === "invalid_params" || raw === "not_found" || raw === "backend_unavailable" ? raw
+            : "backend_unavailable";
+          throw new AuxError(code, ack.error?.message ?? "The tab could not be opened.");
+        }
         return { targetId: marker, nativeCreated: true, cdpTargetId: ack.targetId };
       }
       if (driver.createTarget) {

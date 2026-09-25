@@ -190,6 +190,10 @@ def format_sources(paths: list[str]) -> None:
 
 
 def stage_shell() -> None:
+    # Workspace packages export compiled modules; build them before Vite reads
+    # feature gates and bridge contracts to avoid packaging stale behavior.
+    run("pnpm", "exec", "tsc", "-b", "packages/contracts", cwd=REPO)
+    run("pnpm", "--filter", "@aux/desktop", "exec", "tsc", "-p", "tsconfig.renderer.json", "--noEmit", cwd=REPO)
     build_env = ENV.copy()
     build_env["AUX_CHROMIUM_SHELL_BUILD"] = "1"
     subprocess.run(["pnpm", "--filter", "@aux/desktop", "exec", "vite", "build"],

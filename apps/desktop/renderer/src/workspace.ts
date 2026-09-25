@@ -1,4 +1,4 @@
-import { nativePageId } from "./chrome";
+import { isHomeAddress, nativePageId } from "./chrome";
 import { splitRatio } from "@aux/contracts/split-layout";
 /**
  * Pure reducers for the sidebar's local organisation: spaces, tab order,
@@ -63,9 +63,9 @@ export function spaceGrain(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : 0;
 }
 
-export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url" | "title">): string {
+export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url" | "title" | "showBlankDocument">): string {
   const saved = layout.tabNames?.[page.pageId];
-  return saved?.url === page.url ? saved.title : page.title || (page.url && page.url !== "about:blank" ? hostOf(page.url) : "New Tab");
+  return saved?.url === page.url ? saved.title : isHomeAddress(page.url) && !page.showBlankDocument ? "New Tab" : page.title || hostOf(page.url);
 }
 
 export function emptyLayout(): Layout {

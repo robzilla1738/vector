@@ -1,3 +1,4 @@
+import { isHomeAddress } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
 import { isScrimOverlay, nativePageId } from "../chrome";
 import { deferSurface } from "./DeferredSurface";
@@ -74,7 +75,7 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
   const mode = useStore((s) => s.mode);
   const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
   const overlay = useStore(s => s.overlay);
-  const hasUrl = !!page && (!!page.showBlankDocument || (!!page.url && page.url !== "about:blank"));
+  const hasUrl = !!page && (!!page.showBlankDocument || (!isHomeAddress(page.url)));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
   const splitVisible = mode === "focus" && page && companion && companion.pageId !== page.pageId

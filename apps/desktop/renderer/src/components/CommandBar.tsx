@@ -3,7 +3,7 @@ import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useId, useLay
 import { useShallow } from "zustand/react/shallow";
 import type { CommandRankingEntry, ConversationSummary, HistoryEntry, Routine, Run, SavedProgram, SavedResult } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
-import { toUrl } from "../chrome";
+import { isHomeAddress, toUrl } from "../chrome";
 import { detectIntent, intentLabel, type Intent } from "../intent";
 import { engineList, parseSuggestResponse, suggestEndpoint } from "../engines";
 import { isPrivateAddress } from "../suggest";
@@ -55,7 +55,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const agentDraft = useStore((s) => s.agentDraft);
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const pageAddress = page?.navigationError?.url ?? page?.url ?? "";
-  const hasPage = !!page?.showBlankDocument || (!!pageAddress && pageAddress !== "about:blank");
+  const hasPage = !!page?.showBlankDocument || (!isHomeAddress(pageAddress));
   const searchEngine = settings.searchEngine as string | undefined;
   const searchEngines = useMemo(() => engineList(settings.searchEngines as { keyword: string; name: string; template: string }[] | undefined), [settings.searchEngines]);
 

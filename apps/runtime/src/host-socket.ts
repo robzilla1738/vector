@@ -26,7 +26,7 @@ export function connectHostSocket(path: string, token: string, timeoutMs = 15_00
     let authenticated = false;
     let closed = false;
     let messageCallback: ((message: unknown) => void) | null = null;
-    let closeCallback: (() => void) | null = null;
+    const closeCallbacks = new Set<() => void>();
     const pending: unknown[] = [];
     const timer = setTimeout(() => fail(new Error("Aux host socket handshake timed out")), timeoutMs);
 
@@ -47,8 +47,8 @@ export function connectHostSocket(path: string, token: string, timeoutMs = 15_00
         for (const message of pending.splice(0)) callback(message);
       },
       onClose(callback) {
-        closeCallback = callback;
         if (closed) queueMicrotask(callback);
+        else closeCallbacks.add(callback);
       },
       close() { socket.end(); },
     };
@@ -91,7 +91,8 @@ export function connectHostSocket(path: string, token: string, timeoutMs = 15_00
       clearTimeout(timer);
       closed = true;
       if (!authenticated) reject(new Error("Aux host socket closed before authentication"));
-      closeCallback?.();
+      for (const callback of closeCallbacks) callback();
+      closeCallbacks.clear();
     });
   });
 }

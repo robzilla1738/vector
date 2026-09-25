@@ -33,3 +33,4 @@ aux/runtime/0032-native-dictation.patch
 aux/runtime/0033-native-migration-import.patch
 aux/runtime/0034-native-find-stage.patch
 aux/runtime/0035-profile-tab-labels.patch
+aux/runtime/0036-live-native-integration.patch

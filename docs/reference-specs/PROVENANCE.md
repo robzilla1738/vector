@@ -7,3 +7,4 @@ Before any literal copy enters the repository, add one row for each destination 
 | Vendor / reference | Source path or capture ID | Aux destination | Material and transformation | Authorization reference | License / exclusion check | Commit |
 | --- | --- | --- | --- | --- | --- | --- |
 | _No literal transfers recorded at scaffold creation_ | — | — | — | — | — | — |
+| Chromium 154.0.8037.58 | `chrome/browser/ui/views/frame/browser_native_widget_mac.mm` at `a654841425914cbb703a2931e07b70a83aedbafd` | `chromium/patches/aux/runtime/0036-live-native-integration.patch` → `webui_browser_window_mac.mm` | Adapted native glass underlay, non-interactive hit testing, autoresizing, regular material and nearly transparent backing; keeps the WebUI window’s content view intact. | Reviewed roadmap B2/B7, upstream reuse | Chromium BSD notice retained in destination | Current integration batch |

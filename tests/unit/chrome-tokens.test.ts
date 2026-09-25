@@ -159,7 +159,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).toContain(".app.native-host .sidebar.expanded .sb-head.native-host,");
     expect(styles).toContain(".app.native-host .sidebar.peek .sb-head.native-host { padding-left: var(--traffic-inset); }");
     expect(styles).toContain(".app.native-host .sidebar.fully-hidden.peek { width: var(--sb-w, var(--sidebar-w)); pointer-events: auto; }");
-    expect(styles).toContain(".app.native-host:is(.layout-hidden, .layout-rail):not(.sidebar-peek) .conversation:not(.conversation-embedded) > .conversation-head { padding-left: var(--traffic-inset); }");
+    expect(styles).toContain(".app.native-host.tabs-vertical:is(.layout-hidden, .layout-rail) .conversation:not(.conversation-embedded) > .conversation-head { padding-left: var(--traffic-inset); }");
     expect(styles).not.toContain(".sidebar.peek { position: absolute");
     // shell state comes from classes React already sets, not document-wide :has() matching
     expect(styles).not.toMatch(/(?:html|:root|\.app|\.main-col|\.stage-wrap):has\(/);

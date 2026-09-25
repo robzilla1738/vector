@@ -1,3 +1,4 @@
+import { isHomeAddress } from "../chrome";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { errToast, useStore } from "../store";
@@ -45,7 +46,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
         }
         if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); onMove(pageId, event.key === "ArrowLeft" ? -1 : 1); }
       }}>
-      {page.viewStatus === "crashed" ? I.alert : page.loading ? <output className="spin" aria-label="Loading" /> : page.url === "about:blank" ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
+      {page.viewStatus === "crashed" ? I.alert : page.loading ? <output className="spin" aria-label="Loading" /> : isHomeAddress(page.url) ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
       <span className="horizontal-tab-title">{title}</span>
     </button>
     <TabAudioButton pageId={pageId} title={title} />

@@ -27,7 +27,7 @@ index 35e5b2e185..e44fe7e538 100644
 +  sources = [ "native_find_unittest.cc" ]
 +  deps = [
 +    ":runtime",
-+    "//content/public/test:test_support",
++    "//content/test:test_support",
 +    "//testing/gtest",
 +  ]
 +}

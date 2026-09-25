@@ -1,3 +1,4 @@
+import { config as configureZod } from "zod/v4/core";
 import { createRoot } from "react-dom/client";
 import { Component, type ReactNode } from "react";
 import "@fontsource-variable/geist";
@@ -29,6 +30,9 @@ async function boot() {
   try {
     const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
     if (chromiumShell) {
+      // The packaged WebUI forbids dynamic scripts. Configure Zod before any
+      // contract parser runs so its lazy JIT probe never trips Trusted Types.
+      configureZod({ jitless: true });
       const ready = (window as Window & { auxChromiumHostReady?: Promise<void> }).auxChromiumHostReady;
       if (!ready) throw new Error("Aux's Chromium host bootstrap is unavailable.");
       await ready;

@@ -171,7 +171,10 @@ parentPort.postMessage(rules);`;
       if (!source.enabled || source.kind !== "hosts") continue;
       try {
         if (statSync(this.listPath(source.id)).size > MAX_FILTER_BYTES) continue;
-        for (const host of parseHostsList(readFileSync(this.listPath(source.id), "utf8"))) {
+        const text = readFileSync(this.listPath(source.id), "utf8");
+        const digest = this.meta(source.id)?.sha256;
+        if (!digest || createHash("sha256").update(text).digest("hex") !== digest) continue;
+        for (const host of parseHostsList(text)) {
           hosts.add(host);
           if (hosts.size >= MAX_FILTER_HOSTS) return hosts;
         }

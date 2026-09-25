@@ -1,5 +1,5 @@
 import { bridge } from "../bridge";
-import { isScrimOverlay } from "../chrome";
+import { isHomeAddress, isScrimOverlay } from "../chrome";
 import { nextSidebarMode, readSidebarMode, sidebarFocusSelector } from "../sidebar-mode";
 import { conversationFinder, readerFinder } from "../text-surface-find";
 import { storage } from "./persistence";
@@ -86,7 +86,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   focusCommandBar: (slot) => {
     const s = get();
     const page = s.pages.find((p) => p.pageId === s.activePageId);
-    const onStart = s.mode === "focus" && !s.overlay && !page?.showBlankDocument && (!page?.url || page.url === "about:blank");
+    const onStart = s.mode === "focus" && !s.overlay && !page?.showBlankDocument && isHomeAddress(page?.url);
     const requested = slot ?? (onStart ? "hero" : "toolbar");
     const resolved: CommandSlot = requested === "sidebar" ? "toolbar" : requested;
     set((st) => ({ focusRequest: st.focusRequest + 1, focusSlot: resolved }));

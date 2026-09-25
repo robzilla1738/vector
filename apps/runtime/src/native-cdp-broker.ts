@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { chmodSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:http";
-import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import type { RpcChannel } from "@aux/contracts";
 
@@ -54,6 +55,8 @@ function pageMethodAllowed(method: string): boolean {
  * comes from native.listPages; native.cdpDispatch repeats ownership checks.
  */
 export class NativeCdpBroker {
+  private readonly socketDirectory: string;
+  private readonly ownsSocketDirectory: boolean;
   private readonly socketPath: string;
   private readonly path = `/aux-cdp/${randomBytes(32).toString("hex")}`;
   private readonly server: Server = createServer();
@@ -77,9 +80,12 @@ export class NativeCdpBroker {
 
   private constructor(
     private readonly channel: RpcChannel,
-    hostSocketPath: string,
+    socketDirectory?: string,
   ) {
-    this.socketPath = join(dirname(hostSocketPath), `c-${randomBytes(4).toString("hex")}.s`);
+    this.ownsSocketDirectory = !socketDirectory;
+    this.socketDirectory = socketDirectory ?? mkdtempSync(join(process.platform === "win32" ? tmpdir() : "/tmp", "aux-cdp-"));
+    chmodSync(this.socketDirectory, 0o700);
+    this.socketPath = join(this.socketDirectory, `c-${randomBytes(4).toString("hex")}.s`);
     channel.onNotify((type, payload) => {
       if (type === "native.cdpMessage") this.forwardNative(payload);
       if (type === "native.tabsChanged") {
@@ -90,8 +96,8 @@ export class NativeCdpBroker {
     });
   }
 
-  static async start(channel: RpcChannel, hostSocketPath: string): Promise<NativeCdpBroker> {
-    const broker = new NativeCdpBroker(channel, hostSocketPath);
+  static async start(channel: RpcChannel, socketDirectory?: string): Promise<NativeCdpBroker> {
+    const broker = new NativeCdpBroker(channel, socketDirectory);
     broker.ws.on("connection", broker.onConnection);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -422,7 +428,14 @@ export class NativeCdpBroker {
       this.childOwners.delete(params.sessionId);
       if (this.autoAttachSessions.get(targetId) === params.sessionId)
         this.autoAttachSessions.delete(targetId);
-      this.notify("Target.detachedFromTarget", { sessionId: params.sessionId, targetId });
+      // A browser-level CDP session owns this explicit attachment. Reporting
+      // its detach on the root session makes Playwright discard the tab's
+      // independent auto-attached page session during navigation.
+      this.send({
+        method: "Target.detachedFromTarget",
+        params: { sessionId: params.sessionId, targetId },
+        ...(sessionId ? { sessionId } : {}),
+      });
       return {};
     }
     if (method === "Target.activateTarget") {
@@ -441,5 +454,6 @@ export class NativeCdpBroker {
     this.ws.close();
     if (this.server.listening) await new Promise<void>((resolve) => this.server.close(() => resolve()));
     rmSync(this.socketPath, { force: true });
+    if (this.ownsSocketDirectory) rmSync(this.socketDirectory, { recursive: true, force: true });
   }
 }

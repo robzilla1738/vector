@@ -12,6 +12,11 @@ const DOMAIN_LIKE = /^[\p{L}\p{N}_-]+(?:\.[\p{L}\p{N}_-]+)*\.([\p{L}\p{N}_-]+)(:
 const TLD_LIKE = /^[\p{L}][\p{L}\p{N}-]*$|^xn--/iu;
 const IPV6_LIKE = /^\[[0-9a-f:]+\](:\d+)?(\/\S*)?$|^[0-9a-f:]*::[0-9a-f:]*(:\d+)?(\/\S*)?$/i;
 
+/** Native new-tab aliases and empty tabs all host Aux Home in the shell. */
+export function isHomeAddress(url: string | null | undefined): boolean {
+  return !url || url === "about:blank" || /^chrome:\/\/(?:newtab|new-tab-page)\/?$/.test(url);
+}
+
 export function isUrlLike(v: string): boolean {
   if (/^(https?:\/\/|about:|chrome:\/\/|file:\/\/|view-source:|data:)/i.test(v)) return true;
   if (IPV6_LIKE.test(v)) return true;
@@ -60,7 +65,7 @@ export function nativePageId(input: {
   if (isScrimOverlay(input.overlay)) return null;
   if (!input.activePageId) return null;
   const url = input.url?.trim() ?? "";
-  if ((!url || url === "about:blank") && !input.showBlankDocument) return null;
+  if (isHomeAddress(url) && !input.showBlankDocument) return null;
   if (input.backend === "chrome") return null;
   return input.activePageId;
 }

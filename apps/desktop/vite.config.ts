@@ -9,7 +9,9 @@ import { join } from "node:path";
  */
 const SHELL_CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  process.env.AUX_CHROMIUM_SHELL_BUILD === "1"
+    ? "script-src 'self' chrome://resources"
+    : "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https: http:",
   "font-src 'self' data:",
@@ -33,7 +35,7 @@ const chromiumHostBootstrap = (): Plugin => ({
   name: "aux-chromium-host-bootstrap",
   apply: "build",
   transformIndexHtml: () => process.env.AUX_CHROMIUM_SHELL_BUILD === "1"
-    ? [{ tag: "script", attrs: { type: "module", src: "./aux_host_bootstrap.js" }, injectTo: "head" }]
+    ? [{ tag: "script", attrs: { type: "module", src: "./aux_host_bootstrap.js" }, injectTo: "head-prepend" }]
     : [],
 });
 
@@ -64,7 +66,7 @@ export default defineConfig({
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [react(), shellCsp(), chromiumHostBootstrap(), preloadApp()],
+  plugins: [react(), chromiumHostBootstrap(), shellCsp(), preloadApp()],
   build: {
     outDir: join(import.meta.dirname, "dist", "renderer"),
     emptyOutDir: true,

@@ -54,6 +54,21 @@ describe("Chromium host socket", () => {
     expect(hello).toMatchObject({ token });
   });
 
+  it("notifies both RPC and owner shutdown listeners when the host closes", async () => {
+    await withHost(message => ({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: message.nonce }), async path => {
+      const transport = await connectHostSocket(path, token);
+      const channel = new RpcChannel(transport, "test-host");
+      const closed = new Promise<void>(resolve => transport.onClose?.(resolve));
+      transport.close();
+      await closed;
+      await expect(channel.call("echo")).rejects.toThrow("channel closed");
+      let late = false;
+      transport.onClose?.(() => { late = true; });
+      await Promise.resolve();
+      expect(late).toBe(true);
+    });
+  });
+
   it("rejects a host that does not acknowledge the matching handshake", async () => {
     await withHost(() => ({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: "wrong" }), async path => {
       await expect(connectHostSocket(path, token)).rejects.toThrow("authentication failed");

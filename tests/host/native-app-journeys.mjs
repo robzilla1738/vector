@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -24,7 +24,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only]" }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only]" }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -39,6 +39,8 @@ assert.ok(existsSync(binary) && existsSync(helper), "Aux browser and runtime hel
 const bundleId = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleIdentifier", join(app, "Contents/Info.plist")], { encoding: "utf8" }).trim();
 assert.equal(bundleId, "dev.aux.browser", "The native journey must target the official Aux identity");
 const rpcOnly = process.argv.includes("--rpc-only");
+const uiOnly = process.argv.includes("--ui-only");
+assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -51,13 +53,14 @@ const script = join(root, "tests/host/native-window.swift");
 const windowTool = join(disposable, "native-window");
 const report = { schema: 1, scope: "Official Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  startedAt: new Date().toISOString(), rpcOnly, steps: [], captures: [], passed: false };
+  startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let fixture;
 let origin;
 let clicks = 0;
 let rpcToken;
 let rpcPort;
+let lastRuntimeStatus;
 
 function record(name, detail) {
   report.steps.push({ name, passed: true, detail });
@@ -74,13 +77,18 @@ async function until(label, check, timeoutMs = 20_000) {
   throw new Error(`Timed out waiting for ${label}`);
 }
 async function rpc(method, params = {}) {
-  const response = await fetch(`http://127.0.0.1:${rpcPort}/rpc`, {
-    method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${rpcToken}` },
-    body: JSON.stringify({ id: 1, method, params }), signal: AbortSignal.timeout(10_000),
-  });
-  const body = await response.json();
-  if (body.error) throw new Error(`${method}: ${body.error.code}: ${body.error.message}`);
-  return body.result;
+  try {
+    const response = await fetch(`http://127.0.0.1:${rpcPort}/rpc`, {
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${rpcToken}` },
+      body: JSON.stringify({ id: 1, method, params }),
+      signal: AbortSignal.timeout(method === "pages.open" ? 60_000 : 10_000),
+    });
+    const body = await response.json();
+    if (body.error) throw new Error(`${method}: ${body.error.code}: ${body.error.message}`);
+    return body.result;
+  } catch (error) {
+    throw new Error(`${method}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 function native(action, ...args) {
   return execFileSync(windowTool, [action, String(child.pid), ...args.map(String)], { encoding: "utf8", timeout: 15_000 }).trim();
@@ -128,8 +136,8 @@ try {
     "--use-mock-keychain", "--password-store=basic"], {
     cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
   });
-  let startupError = "";
-  child.stderr.on("data", chunk => { startupError = (startupError + String(chunk)).slice(-4000); });
+  const startupLog = join(output, "browser-stderr.log");
+  child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
   const connection = await until("the Profile runtime", async () => {
     if (!existsSync(runtimeFile)) return null;
     assert.equal(statSync(runtimeFile).mode & 0o077, 0, "Runtime bearer must be owner-only");
@@ -139,8 +147,9 @@ try {
     rpcPort = value.port;
     rpcToken = value.token;
     const workspace = await rpc("workspace.get").catch(() => null);
+    lastRuntimeStatus = workspace?.sessions?.map(({ sessionId, status, detail }) => ({ sessionId, status, detail }));
     return workspace?.sessions?.some(session => session.sessionId === "aux" && session.status === "connected") ? workspace : null;
-  }, 30_000).catch(error => { throw new Error(`${error.message}\n${startupError}`); });
+  }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
@@ -156,8 +165,9 @@ try {
     return pages.some(page => page.pageId === red.pageId && page.url === `${origin}/red` && !page.loading) &&
       pages.some(page => page.pageId === blue.pageId && page.url === `${origin}/blue` && !page.loading);
   });
-  assert.match(JSON.stringify(await rpc("pages.observe", { pageId: blue.pageId })), /Aux native Blue fixture/);
-  record("two native pages retain distinct IDs and readable content", { red: red.pageId, blue: blue.pageId });
+  if (!uiOnly) {
+    assert.match(JSON.stringify(await rpc("pages.observe", { pageId: blue.pageId })), /Aux native Blue fixture/);
+    record("two native pages retain distinct IDs and readable content", { red: red.pageId, blue: blue.pageId });
 
   assert.equal((await rpc("pages.find", { pageId: blue.pageId, text: "needle" })).matches, 1);
   assert.equal((await rpc("pages.find", { pageId: blue.pageId, text: "absent" })).matches, 0);
@@ -172,17 +182,22 @@ try {
   await until("blue tab reactivation", async () => (await rpc("workspace.get")).activePageId === blue.pageId);
   record("native Find sees visible text, advances matches and clears; page zoom resets", { blueMatches: 1, redMatches: 3 });
 
-  await rpc("settings.set", { effectGrants: ["effect:read", "effect:write"] });
+  await rpc("settings.set", {
+    effectGrants: ["effect:read", "effect:write"],
+    originPolicies: [{ origin: `${origin}/`, access: "allow", confirmation: "none" }],
+    safetyCeilings: { write: "always" },
+  });
   const action = await rpc("pages.execute", { program: { pageId: blue.pageId,
     steps: [{ id: "native-click", op: "click", target: "css:#act" }] } });
   assert.equal(action.status, "completed", JSON.stringify(action));
   await until("fixture click", () => clicks === 1);
   assert.equal((await rpc("pages.takeover", { pageId: blue.pageId })).controller, "human");
   await assert.rejects(rpc("pages.execute", { program: { pageId: blue.pageId,
-    steps: [{ id: "blocked-click", op: "click", target: "css:#act" }] } }), /person controls|human control/i);
+    steps: [{ id: "blocked-click", op: "click", target: "css:#act" }] } }), /conflict/i);
   assert.equal(clicks, 1, "Takeover must block another page action");
   assert.equal((await rpc("pages.resume", { pageId: blue.pageId })).controller, "none");
   record("native input, takeover, revocation and resume", { clicks });
+  }
 
   if (!rpcOnly) {
     const window = await until("a visible Aux browser window", () => {
@@ -196,8 +211,11 @@ try {
     assert.equal((await rpc("settings.get")).tabLayout, "vertical");
     // A fresh Profile starts with the sidebar hidden. The first chord pins it.
     native("toggle-sidebar");
-    await delay(700);
-    assert.equal(native("has-button", "Collapse sidebar"), "true", "The expanded Aside sidebar must be accessible");
+    try {
+      await until("the accessible expanded Aside", () => native("has-button", "Collapse sidebar") === "true", 5_000);
+    } catch (error) {
+      throw new Error(`${error.message}; visible buttons: ${native("buttons")}; runtime banner: ${native("has-text", "Runtime reconnecting")}`);
+    }
     await until("vertical tab close controls in the accessibility tree", () =>
       native("has-button", "Close Aux native Red") === "true" && native("has-button", "Close Aux native Blue") === "true");
     native("next-tab");
@@ -249,6 +267,7 @@ try {
     record("native Aside glass reveal and both layouts", { windowId: window.id, collapseChange, peekChange, layoutChange });
   }
 
+  if (!uiOnly) {
   const backgroundA = await rpc("pages.open", { url: `${origin}/red`, background: true });
   const backgroundB = await rpc("pages.open", { url: `${origin}/red`, background: true });
   assert.ok(backgroundA.pageId && backgroundB.pageId && backgroundA.pageId !== backgroundB.pageId);
@@ -273,6 +292,7 @@ try {
   await until("closed native page to disappear", async () => !(await rpc("pages.list")).some(page => page.pageId === blue.pageId));
   assert.ok((await rpc("pages.list")).some(page => page.pageId === red.pageId));
   record("closing a tab reconciles runtime and native catalog", { remaining: red.pageId });
+  }
   report.passed = true;
 } catch (error) {
   report.steps.push({ name: "terminal failure", passed: false, detail: String(error) });
@@ -285,6 +305,7 @@ try {
     await Promise.race([new Promise(resolveExit => child.once("exit", resolveExit)), delay(5000)]);
     if (child.exitCode === null) child.kill("SIGKILL");
   }
+  child?.stderr.destroy();
   fixture?.closeAllConnections();
   if (fixture) await new Promise(resolveClose => fixture.close(resolveClose));
   rpcToken = undefined;

@@ -575,3 +575,24 @@ index d55db4f82a..8f0b86ed40 100644
    "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/bluetooth_internals/resources.grd": {
      "META": {"sizes": {"includes": [50],}},
      "includes": [2880],
+diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
+index 6008e03a89..8debaf7ee6 100644
+--- a/chrome/chrome_paks.gni
++++ b/chrome/chrome_paks.gni
+@@ -182,6 +182,16 @@ template("chrome_extra_paks") {
+       "//ui/resources:ui_lottie_resources_grd",
+       "//ui/webui/resources",
+     ]
++    if (enable_aux_shell) {
++      sources += [
++        "$root_gen_dir/chrome/aux_resources.pak",
++        "$root_gen_dir/chrome/aux_host_resources.pak",
++      ]
++      deps += [
++        "//chrome/browser/resources/aux:resources",
++        "//chrome/browser/resources/aux_host:resources",
++      ]
++    }
+     if (defined(invoker.deps)) {
+       deps += invoker.deps
+     }

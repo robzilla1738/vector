@@ -40,7 +40,7 @@ describe("Chromium native CDP facade", () => {
         ],
       };
     });
-    const broker = await NativeCdpBroker.start(runtime, join(dir, "host.sock"));
+    const broker = await NativeCdpBroker.start(runtime, dir);
     const oldClient = new WebSocket(broker.endpoint());
     let newClient: InstanceType<typeof WebSocket> | undefined;
     try {
@@ -101,7 +101,7 @@ describe("Chromium native CDP facade", () => {
     const host = new RpcChannel(hostTransport, "host");
     host.onMethod("native.listPages", () => ({ pages: [] }));
     host.onMethod("native.cdpVersion", () => ({ version: "154.0.8037.58" }));
-    const broker = await NativeCdpBroker.start(runtime, join(dir, "host.sock"));
+    const broker = await NativeCdpBroker.start(runtime, dir);
     const driver = new ManagedChromiumDriver(broker.endpoint(), { trustedPages: async () => [] });
     try {
       await driver.connect();
@@ -161,7 +161,7 @@ describe("Chromium native CDP facade", () => {
       );
       return { accepted: true };
     });
-    const broker = await NativeCdpBroker.start(runtime, join(dir, "host.sock"));
+    const broker = await NativeCdpBroker.start(runtime, dir);
     const socket = new WebSocket(broker.endpoint());
     const frames: Record<string, unknown>[] = [];
     socket.on("message", (raw) => frames.push(JSON.parse(String(raw)) as Record<string, unknown>));

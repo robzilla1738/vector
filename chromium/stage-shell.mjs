@@ -36,6 +36,12 @@ function manifestFor(root) {
   if (!html.includes('<script type="module" src="./aux_host_bootstrap.js"></script>')) {
     throw new Error('Chromium shell must load its packaged Mojo host bootstrap');
   }
+  const csp = html.indexOf('Content-Security-Policy');
+  const bootstrap = html.indexOf('<script type="module" src="./aux_host_bootstrap.js"></script>');
+  const entry = html.search(/<script type="module"[^>]+src="\.\/assets\/index-[^\"]+\.js"/);
+  if (entry < 0 || !(csp < bootstrap && bootstrap < entry)) {
+    throw new Error('Chromium shell must load its CSP and Mojo bootstrap before the app entry');
+  }
   if (html.includes('aux-host.js')) throw new Error('Legacy proof bootstrap is not a production shell');
   const assets = entries.map(path => {
     const ext = path.slice(path.lastIndexOf('.'));

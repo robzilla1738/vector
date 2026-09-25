@@ -7,8 +7,9 @@ describe("AuxFeature staging", () => {
     expect(new Set(Object.values(AUX_FEATURES))).toEqual(new Set(["B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11"]));
   });
 
-  it("starts the Chromium fork closed and keeps the legacy vault closed", () => {
-    expect(auxFeatureStage("spaces", "chromium-fork")).toBe("off");
+  it("enables shell Space hydration while unqualified native features remain closed", () => {
+    expect(auxFeatureStage("spaces", "chromium-fork")).toBe("on");
+    expect(() => requireAuxMethod("spaces.import", "chromium-fork")).not.toThrow();
     expect(auxFeatureStage("passwordManager", "chromium-fork")).toBe("off");
     expect(auxFeatureStage("vault", "electron")).toBe("on");
     expect(auxFeatureStage("vault", "chromium-fork")).toBe("off");

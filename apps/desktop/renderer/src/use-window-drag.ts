@@ -1,5 +1,5 @@
 import { useEffect, useRef, type PointerEvent } from "react";
-import { bridge, inNativeHost } from "./bridge";
+import { bridge, hostKind } from "./bridge";
 
 const controls = 'button, summary, label, input, textarea, select, a, [role="button"], [role="tab"], [draggable="true"], [contenteditable="true"], .resize-handle';
 function finishDrag() {
@@ -21,7 +21,7 @@ export function useWindowDrag(holdToolbar = false) {
   }, []);
   return {
     onPointerDown(event: PointerEvent<HTMLElement>) {
-      if (!inNativeHost || event.button !== 0 || (event.target as Element).closest(controls)) return;
+      if (hostKind !== "electron" || event.button !== 0 || (event.target as Element).closest(controls)) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
       active.current = true;

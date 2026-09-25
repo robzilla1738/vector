@@ -58,6 +58,13 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
       if (eventMethods.has(key)) {
         return (callback: (...args: unknown[]) => void) => port.subscribe(key, callback);
       }
+      // SurfaceEmbed participates in the shell's DOM stacking and visibility.
+      // Electron needs an imperative WebContentsView overlay transition;
+      // Chromium applies it when the renderer mounts the overlay.
+      if (key === "overlay") return async (open: boolean) => {
+        if (typeof open !== "boolean") throw new TypeError("Overlay state must be boolean");
+        return open;
+      };
       const bridgeFeature = auxFeatureForBridgeMethod(key);
       if (fireAndForgetMethods.has(key)) {
         return (...args: unknown[]) => {

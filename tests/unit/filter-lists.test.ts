@@ -54,13 +54,13 @@ describe("FilterLists", () => {
     expect(new FilterLists(dataDir).sources()).toHaveLength(0);
   });
 
-  it("merges hosts from enabled lists only and survives missing downloads", () => {
-    const { dataDir, lists } = setup();
-    const [a, b] = lists.addSource("A", "https://a.example/hosts") && lists.addSource("B", "https://b.example/hosts") && lists.sources();
+  it("merges hosts from enabled lists only and survives missing downloads", async () => {
+    const { lists } = setup();
+    const [, b] = lists.addSource("A", "https://a.example/hosts") && lists.addSource("B", "https://b.example/hosts") && lists.sources();
     // Not downloaded yet → empty merge, no throw.
     expect(lists.loadHosts().size).toBe(0);
-    writeFileSync(join(dataDir, "filters", `${a!.id}.txt`), "0.0.0.0 a1.example\n0.0.0.0 a2.example\n");
-    writeFileSync(join(dataDir, "filters", `${b!.id}.txt`), "0.0.0.0 b1.example\n0.0.0.0 a2.example\n");
+    await lists.update(async url => ({ status: 200, text: async () => url.includes("a.example")
+      ? "0.0.0.0 a1.example\n0.0.0.0 a2.example\n" : "0.0.0.0 b1.example\n0.0.0.0 a2.example\n" }));
     lists.saveSources(lists.sources().map(s => s.id === b!.id ? { ...s, enabled: false } : s));
     expect(lists.loadHosts()).toEqual(new Set(["a1.example", "a2.example"]));
     lists.setEnabled(b!.id, true);
@@ -81,8 +81,13 @@ describe("FilterLists", () => {
     const { dataDir, lists } = setup();
     expect(await lists.loadHostsOffThread()).toEqual([]);
     const [a] = lists.addSource("A", "https://a.example/hosts");
-    writeFileSync(join(dataDir, "filters", `${a!.id}.txt`), "# comment\n0.0.0.0 a1.example\n127.0.0.1 localhost\na2.example # trailing\n");
+    await lists.update(async () => ({ status: 200, text: async () =>
+      "# comment\n0.0.0.0 a1.example\n127.0.0.1 localhost\na2.example # trailing\n" }));
+    expect(new Set(await lists.loadHostsOffThread())).toEqual(new Set(["a1.example", "a2.example"]));
     expect(new Set(await lists.loadHostsOffThread())).toEqual(lists.loadHosts());
+    writeFileSync(join(dataDir, "filters", `${a!.id}.txt`), "0.0.0.0 modified.example\n");
+    expect(await lists.loadHostsOffThread()).toEqual([]);
+    expect(lists.loadHosts()).toEqual(new Set());
   });
 
   it("downloads atomically, honours etags and keeps the old list on failures", async () => {

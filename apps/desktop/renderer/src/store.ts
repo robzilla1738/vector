@@ -23,6 +23,7 @@ export { call, decodeBase64Json, lastEventSeq, pagePreview, pageRevision } from 
  * events apply through per-domain reducers plus one effects pass.
  */
 let organizationHydrated = false;
+let lastRefreshError = "";
 export const useStore = create<Workspace>((set, get, api) => ({
   ...createUiSlice(set, get, api),
   ...createDraftsSlice(set, get, api),
@@ -85,6 +86,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
           : (remembered && ws.pages.some(page => page.pageId === remembered) ? remembered : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
         return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
       });
+      lastRefreshError = "";
       if (!bridge.privateMode && !bridge.quickAskMode) setTimeout(() => {
         void bridge.tabsSnapshot().then(async catalog => {
           get().syncTabsSnapshot(catalog);
@@ -99,7 +101,12 @@ export const useStore = create<Workspace>((set, get, api) => ({
         }).catch(() => { /* The next runtime refresh can retry old placements. */ });
       }, 0);
       void bridge.setShortcutOverrides(settings.shortcutOverrides ?? {}).catch(() => {});
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message !== lastRefreshError) {
+        console.error("Aux workspace refresh failed:", error);
+        lastRefreshError = message;
+      }
       set({ connected: false });
       setTimeout(() => void get().refresh(), 1500);
     }

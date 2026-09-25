@@ -40,7 +40,7 @@ export type AuxFeatureOverrides = Partial<Record<AuxFeature, AuxFeatureStage>>;
 /** Legacy Electron remains usable during migration; the new fork starts closed. */
 export const AUX_FEATURE_DEFAULTS: Readonly<Record<AuxFeatureHost, AuxFeatureOverrides>> = {
   electron: { passwordManager: "off", passkeys: "off", codeMode: "off", fourLayerTabApi: "off", webMcp: "off", outboundMcp: "off", updates: "off", crashReporting: "off" },
-  "chromium-fork": {},
+  "chromium-fork": { spaces: "on" },
 };
 
 export function auxFeatureStage(

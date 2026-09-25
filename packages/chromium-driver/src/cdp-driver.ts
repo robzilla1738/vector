@@ -53,7 +53,13 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
       // The internal broker's URL carries a generation capability. Playwright
       // includes its endpoint in connection errors, which can be persisted by
       // the runtime or shown in the UI; do not let that token escape IPC.
-      if (endpoint.includes("/aux-cdp/")) throw new AuxError("backend_unavailable", "Internal browser connection failed");
+      if (endpoint.includes("/aux-cdp/")) {
+        const diagnostic = String(error instanceof Error ? error.message : error)
+          .replaceAll(endpoint, "[internal CDP endpoint]")
+          .replace(/\/aux-cdp\/[a-f0-9]+/g, "/aux-cdp/[redacted]");
+        console.error("Aux internal browser connection failed:", diagnostic);
+        throw new AuxError("backend_unavailable", "Internal browser connection failed");
+      }
       throw error;
     });
     this.browser = browser;
