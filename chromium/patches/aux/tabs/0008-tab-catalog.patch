@@ -1,0 +1,847 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index c970865015..41cefbef69 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -2,7 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-import {ShellHostFactory, ShellHostRemote} from './shell_host.mojom-webui.js';
++import {ShellHostClientReceiver, ShellHostFactory, ShellHostRemote} from './shell_host.mojom-webui.js';
+ 
+ interface Port {
+   host: 'chromium-fork';
+@@ -22,8 +22,25 @@ declare global {
+ }
+ 
+ const remote = new ShellHostRemote();
++const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
++const client = new ShellHostClientReceiver({
++  onEvent(eventName: string, payloadJson: string) {
++    if (eventName !== 'onTabsPatch') {
++      return;
++    }
++    let payload: unknown;
++    try {
++      payload = JSON.parse(payloadJson);
++    } catch {
++      return;
++    }
++    for (const listener of listeners.get(eventName) ?? []) {
++      listener(payload);
++    }
++  },
++});
+ ShellHostFactory.getRemote().createShellHost(
+-    remote.$.bindNewPipeAndPassReceiver());
++    remote.$.bindNewPipeAndPassReceiver(), client.$.bindNewPipeAndPassRemote());
+ 
+ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+   if (!identity.windowId || !identity.profileId) {
+@@ -36,15 +53,27 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+     platform: 'darwin',
+     privateMode: identity.privateMode,
+     async request(method, args) {
+-      const response = await remote.request(method, JSON.stringify(args));
++      const requestArgs = method === 'tabCommand' ?
++          [crypto.randomUUID(), ...args] : args;
++      const response = await remote.request(method, JSON.stringify(requestArgs));
+       if (!response.ok) {
+         throw new Error(`${response.errorCode}: ${response.errorMessage}`);
+       }
+       return JSON.parse(response.resultJson);
+     },
+-    subscribe() {
+-      // The browser-side event stream is established by the runtime host.
+-      return () => {};
++    subscribe(event, callback) {
++      if (event !== 'onTabsPatch') {
++        return () => {};
++      }
++      const callbacks = listeners.get(event) ?? new Set();
++      callbacks.add(callback);
++      listeners.set(event, callbacks);
++      return () => {
++        callbacks.delete(callback);
++        if (callbacks.size === 0) {
++          listeners.delete(event);
++        }
++      };
+     },
+   };
+ });
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 6d7f7697bb..a1e13494fd 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -14,10 +14,17 @@ source_set("runtime") {
+     "runtime_host.h",
+     "secret_store_mac.h",
+     "secret_store_mac.mm",
++    "tab_catalog.cc",
++    "tab_catalog.h",
+   ]
+   deps = [
+     "//base",
+     "//chrome/browser/profiles",
++    "//chrome/browser/ui/browser_window",
++    "//chrome/browser/ui/tabs:tabs_public",
++    "//components/keyed_service/content",
++    "//components/sessions:session_id",
++    "//content/public/browser",
+   ]
+   frameworks = [ "Security.framework" ]
+ }
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+new file mode 100644
+index 0000000000..b93ce1365a
+--- /dev/null
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -0,0 +1,454 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/tab_catalog.h"
++
++#include <algorithm>
++#include <memory>
++#include <utility>
++
++#include "base/json/json_writer.h"
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_keyed_service_factory.h"
++#include "chrome/browser/profiles/profile_selections.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/browser_manager_service_factory.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
++#include "components/sessions/core/session_id.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/reload_type.h"
++#include "content/public/browser/web_contents.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++class TabCatalogFactory final : public ProfileKeyedServiceFactory {
++ public:
++  static TabCatalogFactory* GetInstance() {
++    static base::NoDestructor<TabCatalogFactory> factory;
++    return factory.get();
++  }
++
++  TabCatalogFactory(const TabCatalogFactory&) = delete;
++  TabCatalogFactory& operator=(const TabCatalogFactory&) = delete;
++
++  TabCatalog* Get(Profile* profile) {
++    return static_cast<TabCatalog*>(
++        GetServiceForBrowserContext(profile, /*create=*/true));
++  }
++
++ private:
++  friend base::NoDestructor<TabCatalogFactory>;
++
++  TabCatalogFactory()
++      : ProfileKeyedServiceFactory(
++            "AuxTabCatalog",
++            ProfileSelections::BuildForRegularAndIncognito()) {
++    DependsOn(BrowserManagerServiceFactory::GetInstance());
++  }
++  ~TabCatalogFactory() override = default;
++
++  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
++      content::BrowserContext* context) const override {
++    return std::make_unique<TabCatalog>(Profile::FromBrowserContext(context));
++  }
++};
++
++int64_t NowMs() {
++  return base::Time::Now().InMillisecondsSinceUnixEpoch();
++}
++
++}  // namespace
++
++TabCatalog* TabCatalog::GetForProfile(Profile* profile) {
++  return profile ? TabCatalogFactory::GetInstance()->Get(profile) : nullptr;
++}
++
++TabCatalog::TabCatalog(Profile* profile)
++    : profile_(profile),
++      browsers_(ProfileBrowserCollection::GetForProfile(profile)) {
++  if (browsers_) {
++    browser_observation_.Observe(browsers_);
++    browsers_->ForEach([this](BrowserWindowInterface* browser) {
++      ObserveBrowser(browser);
++      return true;
++    });
++  }
++  base::Value::Dict initial = Snapshot();
++  for (const base::Value& value : *initial.FindList("tabs")) {
++    published_pages_.insert(*value.GetDict().FindString("pageId"));
++  }
++}
++
++TabCatalog::~TabCatalog() {
++  Shutdown();
++}
++
++void TabCatalog::Shutdown() {
++  browser_observation_.Reset();
++  for (TabStripModel* model : observed_) {
++    model->RemoveObserver(this);
++  }
++  observed_.clear();
++  browsers_ = nullptr;
++  profile_ = nullptr;
++}
++
++void TabCatalog::ObserveBrowser(BrowserWindowInterface* browser) {
++  if (!browser || browser->GetProfile() != profile_ ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
++    return;
++  }
++  TabStripModel* model = browser->GetTabStripModel();
++  if (model && observed_.insert(model).second) {
++    model->AddObserver(this);
++  }
++}
++
++void TabCatalog::ForgetBrowser(BrowserWindowInterface* browser) {
++  TabStripModel* model = browser->GetTabStripModel();
++  if (model && observed_.erase(model)) {
++    model->RemoveObserver(this);
++  }
++}
++
++void TabCatalog::Changed() {
++  const int previous_version = version_;
++  ++version_;
++  base::Value::Dict snapshot = Snapshot();
++  base::Value::List ops;
++  std::set<std::string> current_pages;
++  for (const base::Value& value : *snapshot.FindList("tabs")) {
++    const base::Value::Dict& tab = value.GetDict();
++    current_pages.insert(*tab.FindString("pageId"));
++    base::Value::Dict operation;
++    operation.Set("op", "upsert");
++    operation.Set("tab", tab.Clone());
++    ops.Append(std::move(operation));
++  }
++  for (const std::string& page_id : published_pages_) {
++    if (!current_pages.contains(page_id)) {
++      base::Value::Dict operation;
++      operation.Set("op", "remove");
++      operation.Set("pageId", page_id);
++      ops.Append(std::move(operation));
++    }
++  }
++  published_pages_ = std::move(current_pages);
++  for (const base::Value& value : *snapshot.FindList("windows")) {
++    base::Value::Dict operation;
++    operation.Set("op", "window");
++    operation.Set("window", value.GetDict().Clone());
++    ops.Append(std::move(operation));
++  }
++  if (ops.empty()) {
++    return;
++  }
++  base::Value::Dict patch;
++  patch.Set("version", version_);
++  patch.Set("baseVersion", previous_version);
++  patch.Set("ops", std::move(ops));
++  patch.Set("ts", static_cast<double>(NowMs()));
++  if (auto json = base::WriteJson(patch)) {
++    observers_.Notify(*json);
++  }
++}
++
++base::CallbackListSubscription TabCatalog::ObserveChanges(
++    base::RepeatingCallback<void(const std::string&)> callback) {
++  return observers_.Add(std::move(callback));
++}
++
++void TabCatalog::OnBrowserCreated(BrowserWindowInterface* browser) {
++  ObserveBrowser(browser);
++  Changed();
++}
++
++void TabCatalog::OnBrowserClosed(BrowserWindowInterface* browser) {
++  ForgetBrowser(browser);
++  Changed();
++}
++
++void TabCatalog::OnTabStripModelChanged(
++    TabStripModel* model,
++    const TabStripModelChange& change,
++    const TabStripSelectionChange& selection) {
++  if (const auto* replacement = change.GetReplace()) {
++    if (auto* identity =
++            PageIdentity::FromWebContents(replacement->old_contents)) {
++      ++generations_[identity->id()];
++    }
++    PageIdentity::Transfer(replacement->old_contents,
++                           replacement->new_contents);
++  }
++  Changed();
++}
++
++void TabCatalog::OnTabChangedAt(tabs::TabInterface* tab,
++                                TabChangeType change_type) {
++  Changed();
++}
++
++void TabCatalog::OnTabStripModelDestroyed(TabStripModel* model) {
++  observed_.erase(model);
++  Changed();
++}
++
++std::string TabCatalog::WindowId(const BrowserWindowInterface* browser) const {
++  return base::NumberToString(browser->GetSessionID().id());
++}
++
++base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
++                                        content::WebContents* contents) {
++  const std::string id = PageIdentity::GetOrCreate(profile_, contents);
++  const int64_t now = NowMs();
++  created_at_.try_emplace(id, now);
++  if (browser->GetTabStripModel()->GetActiveWebContents() == contents) {
++    last_active_at_[id] = now;
++  }
++  base::Value::Dict tab;
++  tab.Set("pageId", id);
++  tab.Set("windowId", WindowId(browser));
++  tab.Set("url", contents->GetLastCommittedURL().spec());
++  tab.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
++  tab.Set("loading", contents->IsLoading());
++  tab.Set("muted", contents->IsAudioMuted());
++  tab.Set("audible", contents->IsCurrentlyAudible());
++  tab.Set("canGoBack", contents->GetController().CanGoBack());
++  tab.Set("canGoForward", contents->GetController().CanGoForward());
++  tab.Set("popup", false);
++  tab.Set("crashed", contents->IsCrashed());
++  tab.Set("runtimeOwned", false);
++  tab.Set("generation", generations_[id]);
++  tab.Set("createdAt", static_cast<double>(created_at_.at(id)));
++  tab.Set(
++      "lastActiveAt",
++      static_cast<double>(last_active_at_.try_emplace(id, now).first->second));
++  return tab;
++}
++
++base::Value::Dict TabCatalog::Snapshot() {
++  base::Value::List tabs;
++  base::Value::List windows;
++  if (browsers_) {
++    browsers_->ForEach([&](BrowserWindowInterface* browser) {
++      if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
++        return true;
++      }
++      TabStripModel* model = browser->GetTabStripModel();
++      base::Value::List order;
++      base::Value active;
++      for (int index = 0; index < model->count(); ++index) {
++        content::WebContents* contents = model->GetWebContentsAt(index);
++        base::Value::Dict record = TabRecord(browser, contents);
++        const std::string* id = record.FindString("pageId");
++        order.Append(*id);
++        if (index == model->active_index()) {
++          active = base::Value(*id);
++        }
++        tabs.Append(std::move(record));
++      }
++      base::Value::Dict window;
++      window.Set("windowId", WindowId(browser));
++      window.Set("order", std::move(order));
++      window.Set("activePageId", std::move(active));
++      windows.Append(std::move(window));
++      return true;
++    });
++  }
++  base::Value::Dict snapshot;
++  snapshot.Set("version", version_);
++  snapshot.Set("tabs", std::move(tabs));
++  snapshot.Set("windows", std::move(windows));
++  return snapshot;
++}
++
++content::WebContents* TabCatalog::FindPage(const std::string& page_id,
++                                           BrowserWindowInterface** owner) {
++  content::WebContents* found = nullptr;
++  if (!browsers_) {
++    return nullptr;
++  }
++  browsers_->ForEach([&](BrowserWindowInterface* browser) {
++    if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
++      return true;
++    }
++    TabStripModel* model = browser->GetTabStripModel();
++    for (int index = 0; index < model->count(); ++index) {
++      content::WebContents* contents = model->GetWebContentsAt(index);
++      if (PageIdentity::GetOrCreate(profile_, contents) == page_id) {
++        found = contents;
++        if (owner) {
++          *owner = browser;
++        }
++        return false;
++      }
++    }
++    return true;
++  });
++  return found;
++}
++
++base::Value::Dict TabCatalog::Reject(const std::string& command_id,
++                                     std::string code,
++                                     std::string message) const {
++  base::Value::Dict error;
++  error.Set("code", std::move(code));
++  error.Set("message", std::move(message));
++  base::Value::Dict ack;
++  ack.Set("commandId", command_id);
++  ack.Set("status", "rejected");
++  ack.Set("catalogVersion", version_);
++  ack.Set("error", std::move(error));
++  return ack;
++}
++
++base::Value::Dict TabCatalog::Command(BrowserWindowInterface* issuer,
++                                      const std::string& command_id,
++                                      const base::Value::Dict& command,
++                                      std::optional<int> expected_version) {
++  if (auto existing = command_acks_.find(command_id);
++      existing != command_acks_.end()) {
++    base::Value::Dict ack = existing->second.Clone();
++    ack.Set("status", "duplicate");
++    return ack;
++  }
++  if (!issuer || issuer->GetProfile() != profile_ ||
++      issuer->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
++    return Reject(command_id, "forbidden",
++                  "The tab command has no owning window");
++  }
++  if (expected_version && *expected_version != version_) {
++    return Reject(command_id, "stale_tab",
++                  "The tab catalog changed; refresh before retrying");
++  }
++  const std::string* kind = command.FindString("kind");
++  if (!kind) {
++    return Reject(command_id, "invalid_params", "Missing tab command kind");
++  }
++  TabStripModel* model = issuer->GetTabStripModel();
++  std::string result_page_id;
++  if (*kind == "open") {
++    const std::string* url_text = command.FindString("url");
++    const GURL url(url_text ? *url_text : "");
++    if (url_text && !url_text->empty() && !url.is_valid()) {
++      return Reject(command_id, "invalid_params", "Invalid tab URL");
++    }
++    std::set<content::WebContents*> before;
++    for (int index = 0; index < model->count(); ++index) {
++      before.insert(model->GetWebContentsAt(index));
++    }
++    const int position = command.FindInt("index").value_or(-1);
++    const bool foreground =
++        command.FindBool("activate")
++            .value_or(!command.FindBool("background").value_or(false));
++    model->delegate()->AddTabAt(url, position, foreground);
++    for (int index = 0; index < model->count(); ++index) {
++      content::WebContents* candidate = model->GetWebContentsAt(index);
++      if (!before.contains(candidate)) {
++        result_page_id = PageIdentity::GetOrCreate(profile_, candidate);
++        break;
++      }
++    }
++    if (result_page_id.empty()) {
++      return Reject(command_id, "backend_unavailable",
++                    "Chromium did not create the tab");
++    }
++  } else if (*kind == "reorder") {
++    const base::Value::List* order = command.FindList("order");
++    if (!order || order->size() != static_cast<size_t>(model->count())) {
++      return Reject(command_id, "invalid_params",
++                    "Tab order must contain every tab in this window");
++    }
++    std::set<std::string> unique;
++    for (const base::Value& value : *order) {
++      if (!value.is_string() || !unique.insert(value.GetString()).second) {
++        return Reject(command_id, "invalid_params",
++                      "Duplicate or invalid tab in order");
++      }
++      BrowserWindowInterface* owner = nullptr;
++      if (!FindPage(value.GetString(), &owner) || owner != issuer) {
++        return Reject(command_id, "forbidden", "Tab order crosses a window");
++      }
++    }
++    for (size_t destination = 0; destination < order->size(); ++destination) {
++      content::WebContents* contents =
++          FindPage((*order)[destination].GetString());
++      const int source = model->GetIndexOfWebContents(contents);
++      if (source != static_cast<int>(destination)) {
++        model->MoveWebContentsAt(source, static_cast<int>(destination), false);
++      }
++    }
++  } else {
++    const std::string* page_id = command.FindString("pageId");
++    BrowserWindowInterface* owner = nullptr;
++    content::WebContents* contents =
++        page_id ? FindPage(*page_id, &owner) : nullptr;
++    if (!contents || !owner || owner != issuer) {
++      return Reject(command_id, "not_found", "Tab is not in this window");
++    }
++    result_page_id = *page_id;
++    const int index = model->GetIndexOfWebContents(contents);
++    if (*kind == "activate") {
++      model->ActivateTabAt(index);
++    } else if (*kind == "close") {
++      model->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
++    } else if (*kind == "navigate") {
++      const std::string* url_text = command.FindString("url");
++      const GURL url(url_text ? *url_text : "");
++      if (!url.is_valid()) {
++        return Reject(command_id, "invalid_params", "Invalid navigation URL");
++      }
++      content::NavigationController::LoadURLParams load(url);
++      contents->GetController().LoadURLWithParams(load);
++    } else if (*kind == "back") {
++      if (contents->GetController().CanGoBack()) {
++        contents->GetController().GoBack();
++      }
++    } else if (*kind == "forward") {
++      if (contents->GetController().CanGoForward()) {
++        contents->GetController().GoForward();
++      }
++    } else if (*kind == "reload") {
++      contents->GetController().Reload(
++          command.FindBool("hard").value_or(false)
++              ? content::ReloadType::BYPASSING_CACHE
++              : content::ReloadType::NORMAL,
++          true);
++    } else if (*kind == "stop") {
++      contents->Stop();
++    } else if (*kind == "setMuted") {
++      const std::optional<bool> muted = command.FindBool("muted");
++      if (!muted) {
++        return Reject(command_id, "invalid_params", "Missing muted state");
++      }
++      contents->SetAudioMuted(*muted);
++    } else {
++      return Reject(command_id, "not_found", "Unsupported tab command");
++    }
++  }
++  base::Value::Dict ack;
++  ack.Set("commandId", command_id);
++  ack.Set("status", "applied");
++  ack.Set("catalogVersion", version_);
++  ack.Set("pageId", result_page_id);
++  command_acks_[command_id] = ack.Clone();
++  ack_order_.push_back(command_id);
++  if (ack_order_.size() > 1024) {
++    command_acks_.erase(ack_order_.front());
++    ack_order_.pop_front();
++  }
++  return ack;
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
+new file mode 100644
+index 0000000000..938a63f232
+--- /dev/null
++++ b/chrome/browser/ui/aux/tab_catalog.h
+@@ -0,0 +1,95 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_TAB_CATALOG_H_
++#define CHROME_BROWSER_UI_AUX_TAB_CATALOG_H_
++
++#include <cstdint>
++#include <deque>
++#include <map>
++#include <optional>
++#include <set>
++#include <string>
++
++#include "base/callback_list.h"
++#include "base/memory/raw_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/values.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "components/keyed_service/core/keyed_service.h"
++
++class BrowserWindowInterface;
++class Profile;
++class ProfileBrowserCollection;
++
++namespace content {
++class WebContents;
++}
++
++namespace aux {
++
++// Chromium tab state for one Profile. All reads and commands run on the UI
++// sequence, and IDs belong to the tab rather than a DevTools target.
++class TabCatalog final : public KeyedService,
++                         public BrowserCollectionObserver,
++                         public TabStripModelObserver {
++ public:
++  static TabCatalog* GetForProfile(Profile* profile);
++
++  explicit TabCatalog(Profile* profile);
++  ~TabCatalog() override;
++  TabCatalog(const TabCatalog&) = delete;
++  TabCatalog& operator=(const TabCatalog&) = delete;
++
++  base::Value::Dict Snapshot();
++  base::Value::Dict Command(BrowserWindowInterface* issuer,
++                            const std::string& command_id,
++                            const base::Value::Dict& command,
++                            std::optional<int> expected_version);
++  content::WebContents* FindPage(const std::string& page_id,
++                                 BrowserWindowInterface** owner = nullptr);
++  base::CallbackListSubscription ObserveChanges(
++      base::RepeatingCallback<void(const std::string&)> callback);
++
++  void Shutdown() override;
++  void OnBrowserCreated(BrowserWindowInterface* browser) override;
++  void OnBrowserClosed(BrowserWindowInterface* browser) override;
++  void OnTabStripModelChanged(
++      TabStripModel* model,
++      const TabStripModelChange& change,
++      const TabStripSelectionChange& selection) override;
++  void OnTabChangedAt(tabs::TabInterface* tab,
++                      TabChangeType change_type) override;
++  void OnTabStripModelDestroyed(TabStripModel* model) override;
++
++ private:
++  void ObserveBrowser(BrowserWindowInterface* browser);
++  void ForgetBrowser(BrowserWindowInterface* browser);
++  void Changed();
++  std::string WindowId(const BrowserWindowInterface* browser) const;
++  base::Value::Dict TabRecord(BrowserWindowInterface* browser,
++                              content::WebContents* contents);
++  base::Value::Dict Reject(const std::string& command_id,
++                           std::string code,
++                           std::string message) const;
++
++  raw_ptr<Profile> profile_;
++  raw_ptr<ProfileBrowserCollection> browsers_ = nullptr;
++  base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
++      browser_observation_{this};
++  std::set<TabStripModel*> observed_;
++  std::map<std::string, int64_t> created_at_;
++  std::map<std::string, int64_t> last_active_at_;
++  std::map<std::string, int> generations_;
++  std::map<std::string, base::Value::Dict> command_acks_;
++  std::deque<std::string> ack_order_;
++  std::set<std::string> published_pages_;
++  base::RepeatingCallbackList<void(const std::string&)> observers_;
++  int version_ = 0;
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_TAB_CATALOG_H_
+diff --git a/chrome/browser/ui/webui_browser/shell_host.mojom b/chrome/browser/ui/webui_browser/shell_host.mojom
+index 47d65d45e2..3b4bd80026 100644
+--- a/chrome/browser/ui/webui_browser/shell_host.mojom
++++ b/chrome/browser/ui/webui_browser/shell_host.mojom
+@@ -8,7 +8,12 @@ module aux.mojom;
+ // browser process validates the frame, Profile, method and arguments again on
+ // every request; a renderer-held remote is never treated as authority.
+ interface ShellHostFactory {
+-  CreateShellHost(pending_receiver<ShellHost> host);
++  CreateShellHost(pending_receiver<ShellHost> host,
++                  pending_remote<ShellHostClient> client);
++};
++
++interface ShellHostClient {
++  OnEvent(string event_name, string payload_json);
+ };
+ 
+ interface ShellHost {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index b620f86165..1df15c5636 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -13,6 +13,8 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
+ #endif
+ #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -213,10 +215,24 @@ void WebUIBrowserUI::BindInterface(
+ }
+ 
+ void WebUIBrowserUI::CreateShellHost(
+-    mojo::PendingReceiver<aux::mojom::ShellHost> host) {
++    mojo::PendingReceiver<aux::mojom::ShellHost> host,
++    mojo::PendingRemote<aux::mojom::ShellHostClient> client) {
+   shell_host_receiver_.reset();
++  shell_host_client_.reset();
++  tab_catalog_subscription_ = {};
+   if (IsAuthorizedAuxDocument()) {
+     shell_host_receiver_.Bind(std::move(host));
++    shell_host_client_.Bind(std::move(client));
++    if (auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile())) {
++      tab_catalog_subscription_ = catalog->ObserveChanges(base::BindRepeating(
++          [](base::WeakPtr<WebUIBrowserUI> ui, const std::string& patch) {
++            if (ui && ui->IsAuthorizedAuxDocument() &&
++                ui->shell_host_client_.is_bound()) {
++              ui->shell_host_client_->OnEvent("onTabsPatch", patch);
++            }
++          },
++          weak_factory_.GetWeakPtr()));
++    }
+   }
+ }
+ 
+@@ -247,18 +263,98 @@ void WebUIBrowserUI::GetIdentity(GetIdentityCallback callback) {
+ void WebUIBrowserUI::Request(const std::string& method,
+                              const std::string& args_json,
+                              RequestCallback callback) {
+-  if (!IsAuthorizedAuxDocument() || browser_->GetProfile()->IsOffTheRecord()) {
++  if (!IsAuthorizedAuxDocument()) {
+     std::move(callback).Run(false, "", "forbidden",
+-                            "This Aux shell has no access to the runtime.");
++                            "This Aux shell document is not authorized.");
+     return;
+   }
+-  if (method != "invoke" || args_json.size() > 1024 * 1024) {
+-    std::move(callback).Run(false, "", "not_found",
+-                            "Unsupported Aux shell method");
++  if (args_json.size() > 1024 * 1024) {
++    std::move(callback).Run(false, "", "invalid_argument",
++                            "Aux shell arguments are too large");
+     return;
+   }
+   const auto args = base::JSONReader::Read(args_json);
+   const base::Value::List* list = args ? args->GetIfList() : nullptr;
++  if (!list) {
++    std::move(callback).Run(false, "", "invalid_argument",
++                            "Aux shell arguments must be an array");
++    return;
++  }
++  if (method == "tabsSnapshot" || method == "tabsSince") {
++    if ((method == "tabsSnapshot" && !list->empty()) ||
++        (method == "tabsSince" &&
++         (list->size() != 1 || !(*list)[0].is_int()))) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid tab catalog request");
++      return;
++    }
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    base::Value::Dict result;
++    if (method == "tabsSnapshot") {
++      result = catalog->Snapshot();
++    } else {
++      result.Set("kind", "snapshot");
++      result.Set("snapshot", catalog->Snapshot());
++    }
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
++  if (method == "tabCommand") {
++    if (list->size() < 2 || list->size() > 3 || !(*list)[0].is_string() ||
++        !(*list)[1].is_dict() ||
++        (list->size() == 3 && !(*list)[2].is_int())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid tab command envelope");
++      return;
++    }
++    const std::string& command_id = (*list)[0].GetString();
++    if (command_id.size() < 8 || command_id.size() > 128) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid tab command identifier");
++      return;
++    }
++    const std::optional<int> expected_version =
++        list->size() == 3 ? std::optional<int>((*list)[2].GetInt())
++                          : std::nullopt;
++    base::Value::Dict ack =
++        aux::TabCatalog::GetForProfile(browser_->GetProfile())
++            ->Command(browser_, command_id, (*list)[1].GetDict(),
++                      expected_version);
++    std::move(callback).Run(true, *base::WriteJson(ack), "", "");
++    return;
++  }
++  if (method == "surfaceContentId") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid page identifier");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    content::WebContents* contents =
++        aux::TabCatalog::GetForProfile(browser_->GetProfile())
++            ->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "Page is outside this browser window");
++      return;
++    }
++    guest_contents::GuestContentsHandle::CreateForWebContents(contents);
++    auto* handle =
++        guest_contents::GuestContentsHandle::FromWebContents(contents);
++    std::move(callback).Run(true, *base::WriteJson(base::Value(handle->id().ToString())),
++                            "", "");
++    return;
++  }
++  if (method != "invoke") {
++    std::move(callback).Run(false, "", "not_found",
++                            "Unsupported Aux shell method");
++    return;
++  }
++  if (browser_->GetProfile()->IsOffTheRecord()) {
++    std::move(callback).Run(false, "", "forbidden",
++                            "Private windows have no Aux runtime");
++    return;
++  }
+   if (!list || list->size() < 1 || list->size() > 2 ||
+       !(*list)[0].is_string() || (*list)[0].GetString().empty() ||
+       (*list)[0].GetString().size() > 128) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index 7e9da47c87..841e16c5b9 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -7,6 +7,7 @@
+ 
+ #include <memory>
+ 
++#include "base/callback_list.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/webui_browser/shell_host.mojom.h"
+@@ -126,7 +127,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   // aux::mojom::ShellHostFactory and aux::mojom::ShellHost.
+   void CreateShellHost(
+-      mojo::PendingReceiver<aux::mojom::ShellHost> host) override;
++      mojo::PendingReceiver<aux::mojom::ShellHost> host,
++      mojo::PendingRemote<aux::mojom::ShellHostClient> client) override;
+   void GetIdentity(GetIdentityCallback callback) override;
+   void Request(const std::string& method,
+                const std::string& args_json,
+@@ -182,6 +184,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   mojo::Receiver<aux::mojom::ShellHostFactory> shell_host_factory_receiver_{
+       this};
+   mojo::Receiver<aux::mojom::ShellHost> shell_host_receiver_{this};
++  mojo::Remote<aux::mojom::ShellHostClient> shell_host_client_;
++  base::CallbackListSubscription tab_catalog_subscription_;
+ #endif
+ 
+   mojo::Receiver<bookmark_bar::mojom::PageHandlerFactory>
