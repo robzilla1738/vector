@@ -11,7 +11,7 @@ import { ImportDataSetting } from "./ImportDataSetting";
 import { ShortcutsSetting } from "./ShortcutsSetting";
 import type { AutofillProfile, ShortcutOverrides } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
-import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
+import { DEFAULT_PLANNER_MODEL_ID, MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
 import { ClearHistory } from "./ClearHistory";
 import { MemorySettings } from "./MemorySettings";
 import type { ModelProvider } from "@aux/contracts";
@@ -38,6 +38,12 @@ interface ModelEntry { id: string; name?: string }
 const KNOWN_PLANNER_MODELS: ModelEntry[] = modelPickerEntries(MODEL_REGISTRY);
 
 const TURN_OPTIONS = [8, 16, 32, 64, 128, 0];
+
+function plannerModelSelection(settings: Record<string, unknown>, provider: ModelProvider): string {
+  return typeof settings.plannerModel === "string"
+    ? settings.plannerModel
+    : provider === "gateway" ? DEFAULT_PLANNER_MODEL_ID : "";
+}
 
 function mergeModelOptions(models: ModelEntry[], current?: string): ModelEntry[] {
   const out: ModelEntry[] = [];
@@ -88,7 +94,7 @@ const categoryDescriptions: Record<string, string> = {
 type ConnectionTab = "Models" | "Services" | "Agents" | "Vault" | "Plugins";
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
-  const initialCategory = useRef(useStore.getState().settingsCategory).current;
+  const [initialCategory] = useState(() => useStore.getState().settingsCategory);
   const [category, setCategory] = useState(connectionCategories.includes(initialCategory) ? "Connections" : initialCategory);
   const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : initialCategory === "Vault" ? "Vault" : "Models");
   const [subview, setSubview] = useState<string | null>(null);
@@ -125,7 +131,7 @@ export function Settings() {
   const provider = (settings.modelProvider as ModelProvider) ?? "gateway";
   const providerNames: Record<ModelProvider, string> = { gateway: "Vercel AI Gateway", openai: "OpenAI", anthropic: "Anthropic", google: "Google", "openai-compatible": "OpenAI-compatible" };
   const [connectionError, setConnectionError] = useState("");
-  const [modelDraft, setModelDraft] = useState(String(settings.plannerModel ?? ""));
+  const [modelDraft, setModelDraft] = useState(() => plannerModelSelection(settings, provider));
   const [endpointDraft, setEndpointDraft] = useState(String(settings.compatibleEndpoint ?? ""));
   const probeSequence = useRef(0);
   const [saved, setSaved] = useState(false);
@@ -221,7 +227,7 @@ export function Settings() {
     return()=>{++modelsSequence.current;};
   },[category,connectionTab,searching,provider,settings.compatibleEndpoint,settings.modelApiKey]);
 
-  useEffect(() => { setModelDraft(String(settings.plannerModel ?? "")); }, [settings.plannerModel, provider]);
+  useEffect(() => { setModelDraft(plannerModelSelection(settings, provider)); }, [settings.plannerModel, provider]);
   useEffect(() => { setEndpointDraft(String(settings.compatibleEndpoint ?? "")); }, [settings.compatibleEndpoint, provider]);
   useEffect(() => () => { probeSequence.current++; }, []);
 
@@ -298,7 +304,8 @@ export function Settings() {
   };
 
   const theme = (settings.theme as string) ?? "dark";
-  const plannerModel = (settings.plannerModel as string) ?? "meta/muse-spark-1.3-contributor";
+  const plannerModel = plannerModelSelection(settings, provider);
+  const contributorSelected = plannerModel === DEFAULT_PLANNER_MODEL_ID || modelDraft.trim() === DEFAULT_PLANNER_MODEL_ID;
   const plannerOptions: ModelEntry[] = provider === "gateway" ? mergeModelOptions(models, plannerModel)
     : [...models, ...[plannerModel, String(settings.visionModel ?? "")].filter(Boolean).map(id => ({ id }))]
       .filter((model, index, all) => all.findIndex(item => item.id === model.id) === index);
@@ -389,12 +396,13 @@ export function Settings() {
         {connectionError && <p className="field" role="alert">{connectionError}</p>}
         <Field label="Planner model" hint="Enter the exact model ID for the selected provider. Availability depends on your account.">
           <div className="row">
-            <input className="grow" aria-label="Planner model" list="agent-model-options" value={modelDraft} disabled={probing || savingKey || switchingProvider}
+            <input className="grow" aria-label="Planner model" aria-describedby={contributorSelected ? "contributor-data-use" : undefined} list="agent-model-options" value={modelDraft} disabled={probing || savingKey || switchingProvider}
               onChange={event => { setModelDraft(event.target.value); setProbe(null); }} />
             <datalist id="agent-model-options">{plannerOptions.map(model => <option key={model.id} value={model.id}>{model.name ?? model.id}</option>)}</datalist>
             <button className="btn sm" disabled={probing || savingKey || switchingProvider || !modelDraft.trim() || modelDraft.trim() === plannerModel} onClick={() => void set({ plannerModel: modelDraft.trim() })}>Save model</button>
             <button className="btn sm" disabled={probing || savingKey || switchingProvider || !modelDraft.trim() || !connectionReady || !!key.trim() || modelDraft.trim() !== plannerModel} onClick={() => void runProbe()}>{probing ? "Testing…" : "Test connection"}</button>
           </div>
+          {contributorSelected && <p className="hint" id="contributor-data-use"><strong>Contributor data use.</strong> This tier lets Meta use prompts and completions sent to it to improve its models.</p>}
           {probe && <output className={`hint model-probe-status ${probe.ok ? "ok" : "err"}`}>
             {probe.ok ? `Connection tested${probe.latencyMs == null ? "" : ` · ${probe.latencyMs} ms`}${probe.vision === true ? " · vision" : probe.vision === false ? " · no vision" : ""}` : `Failed — ${probe.error}`}{probe.checkedAt ? ` · ${new Date(probe.checkedAt).toLocaleString()}` : ""}
           </output>}

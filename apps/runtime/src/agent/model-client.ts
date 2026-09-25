@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { MODEL_REGISTRY, modelPickerEntries, registryCostUsd } from "@aux/contracts/model-registry";
+import { DEFAULT_PLANNER_MODEL_ID, MODEL_REGISTRY, modelPickerEntries, registryCostUsd } from "@aux/contracts/model-registry";
 
 /** Usage of one provider round trip. Every attempt a client makes is reported, including hidden retries. */
 export interface ModelAttempt {
@@ -113,7 +113,7 @@ export interface ModelClient {
 }
 
 /** Static fallback list used until the Gateway catalog is reachable. */
-export const DEFAULT_PLANNER_MODEL = "meta/muse-spark-1.3-contributor";
+export const DEFAULT_PLANNER_MODEL = DEFAULT_PLANNER_MODEL_ID;
 export const LUNA_FAST_MODEL = "openai/gpt-5.6-luna-fast";
 export const FALLBACK_MODELS = modelPickerEntries(MODEL_REGISTRY);
 

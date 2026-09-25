@@ -29,6 +29,7 @@ export const settingsDestinations: SettingsDestination[] = [
   entry('Models', 'Model provider', 'Choose an AI provider or a compatible local endpoint.'),
   entry('Models', 'API key', 'Manage the selected provider’s encrypted credential.', 'Model provider'),
   entry('Models', 'Planner model', 'Choose a model and test the connection.'),
+  entry('Models', 'Contributor data use', 'Meta may use prompts and completions sent to the Contributor tier to improve its models.', 'Planner model'),
   entry('Models', 'Vision model', 'Model for screenshots and visual recovery.'),
   entry('Models', 'Parallel worker pages', 'Number of browser pages agents can work on.'),
   entry('Models', 'Max model turns per run', 'Limit planner calls or keep working until finished.'),

@@ -32,6 +32,8 @@ export const ModelCapabilitySchema = z
   .strict();
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
 
+export const DEFAULT_PLANNER_MODEL_ID = "meta/muse-spark-1.3-contributor";
+
 export const AgentModelCategorySchema = z.enum(["fast", "standard", "deep", "visual"]);
 export type AgentModelCategory = z.infer<typeof AgentModelCategorySchema>;
 export const AgentModelRouteSchema = z.object({
@@ -42,10 +44,10 @@ export type AgentModelRoute = z.infer<typeof AgentModelRouteSchema>;
 
 /** One Contributor model for every role; only effort changes by default. */
 export const DEFAULT_AGENT_MODEL_ROUTES: Readonly<Record<AgentModelCategory, AgentModelRoute>> = {
-  fast: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "low" },
-  standard: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "medium" },
-  deep: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "xhigh" },
-  visual: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "medium" },
+  fast: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "low" },
+  standard: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "medium" },
+  deep: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "xhigh" },
+  visual: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "medium" },
 };
 
 export function agentModelRoute(category: AgentModelCategory, overrides?: Partial<Record<AgentModelCategory, AgentModelRoute>>): AgentModelRoute {
@@ -59,7 +61,7 @@ export function agentModelRoute(category: AgentModelCategory, overrides?: Partia
  */
 export const MODEL_REGISTRY: readonly ModelCapability[] = [
   {
-    id: "meta/muse-spark-1.3-contributor",
+    id: DEFAULT_PLANNER_MODEL_ID,
     name: "Meta Muse Spark 1.3 Contributor",
     provider: "meta",
     contextTokens: 1_048_576,
