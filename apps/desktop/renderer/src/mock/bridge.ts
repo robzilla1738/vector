@@ -26,7 +26,8 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
-import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, ZapRule } from "@aux/contracts";
+import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool, ZapRule } from "@aux/contracts";
+import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -47,6 +48,7 @@ export function installMockBridge(q: URLSearchParams) {
   const inlineCaptures = new Map<string, { pageId: string; url: string; documentEpoch: number; drafted: boolean }>();
   const customCss = new Map<string, { css: string; updatedAt: number }>();
   let zapRules: ZapRule[] = [];
+  let rankingChoices: CommandRankingEntry[] = [];
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
@@ -466,6 +468,16 @@ export function installMockBridge(q: URLSearchParams) {
     "results.search": async p => {
       return scenario === "results" && `${resultFixture.filename} ${resultFixture.conversationTitle}`.toLowerCase().includes(String(p.query).toLowerCase()) ? [resultFixture,...mockResultVersions.values()] : [];
     },
+    "command.ranking.list": async () => rankingChoices,
+    "command.ranking.record": async p => {
+      const input = p as { query: string; candidateKey: string; source: CommandRankingEntry["source"] };
+      const query = normalizeCommandRankingQuery(input.query);
+      const prior = rankingChoices.find(item => item.query === query && item.candidateKey === input.candidateKey);
+      const entry = { query, candidateKey: input.candidateKey, source: input.source, uses: Math.min(1000, (prior?.uses ?? 0) + 1), lastUsedAt: Date.now() };
+      rankingChoices = [entry, ...rankingChoices.filter(item => item.query !== query || item.candidateKey !== input.candidateKey)].slice(0, 400);
+      return entry;
+    },
+    "command.ranking.clear": async () => { const removed = rankingChoices.length; rankingChoices = []; return { removed }; },
     "results.read": async p => {
       if(scenario!=="results")throw new Error("Saved result is unavailable.");
       if(p.artifactId===resultFixture.artifactId)return {...resultFixture,content:resultContent};

@@ -190,4 +190,36 @@ describe("CommandBar keyboard contract", () => {
     await act(async () => host.querySelector<HTMLElement>(".cb-opt.results")!.click());
     expect(useStore.getState().resultPreview).toBe("artifact-new");
   });
+
+  it("keeps scoped pills keyboard reachable and records a chosen tab", async () => {
+    useStore.setState({ pages: [{ ...page }, { ...page, pageId: "p2", title: "GitLab project", url: "https://gitlab.com/project" }] } as never);
+    const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => method === "command.ranking.list" ? [] as never :
+      method === "command.ranking.record" ? { query: "git", candidateKey: "gitlab project\u0000gitlab.com", source: "tabs", uses: 1, lastUsedAt: Date.now() } as never : [] as never);
+    const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "git"));
+    await act(async () => key(input, "2", { altKey: true }));
+    expect(host.querySelector<HTMLButtonElement>('.cb-provider-scopes button[aria-pressed="true"]')?.textContent).toBe("Tabs");
+    expect(host.textContent).toContain("GitLab project");
+    expect(host.textContent).not.toContain("Search for “git”");
+    await act(async () => key(input, "Enter"));
+    await settle();
+    expect(command.mock.calls.some(([c]) => c.kind === "activate" && (c as { pageId?: string }).pageId === "p2")).toBe(true);
+    expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(true);
+  });
+
+  it("keeps the provider picker open while keyboard focus moves through its pills", async () => {
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "unmatched"));
+    const sites = [...host.querySelectorAll<HTMLButtonElement>(".cb-provider-scopes button")].find(button => button.textContent === "Sites")!;
+    await act(async () => sites.focus());
+    await settle();
+    expect(host.querySelector(".cb-provider-scopes")).not.toBeNull();
+    await act(async () => sites.click());
+    expect(host.querySelector<HTMLButtonElement>('.cb-provider-scopes button[aria-pressed="true"]')?.textContent).toBe("Sites");
+  });
 });

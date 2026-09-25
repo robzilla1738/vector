@@ -3,6 +3,7 @@ import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js
 import { z } from "zod";
 import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
 import { CommandEscalationDecisionSchema, CommandEscalationRequestSchema } from "./command-seatbelt.js";
+import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
@@ -946,6 +947,13 @@ export const MethodSchemas = {
   "sentry.projects": z.object({organization:z.string().min(1).max(200)}).strict(),
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
+  "command.ranking.list": z.object({}).strict(),
+  "command.ranking.record": z.object({
+    query: z.string().trim().min(1).max(160),
+    candidateKey: z.string().min(1).max(300),
+    source: CommandRankingSourceSchema,
+  }).strict(),
+  "command.ranking.clear": z.object({}).strict(),
   "browser.recovery.list": z.object({}),
   "browser.recovery.retry": z.object({pageId:id}),
   "history.list": HistoryListParams,
@@ -1461,6 +1469,9 @@ export const ResultSchemas = {
   "sentry.projects": z.array(z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()})),
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
+  "command.ranking.list": z.array(CommandRankingEntrySchema),
+  "command.ranking.record": CommandRankingEntrySchema,
+  "command.ranking.clear": z.object({ removed: z.number().int().nonnegative() }),
   "browser.recovery.list": z.array(z.object({pageId:id,url:z.string(),title:z.string(),windowId:id,error:z.string().optional(),retrying:z.boolean()})),
   "browser.recovery.retry": z.object({ok:z.boolean(),pageId:id}),
   "history.list": z.array(HistoryEntrySchema),

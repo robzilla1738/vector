@@ -59,6 +59,7 @@ import { ConnectorCatalogService } from "../services/connectors.js";
 import type { MemoryPipeline } from "../services/memory-pipeline.js";
 import { SubagentService } from "../services/subagents.js";
 import { SiteCustomization } from "../services/site-customization.js";
+import { CommandRankingStore } from "../services/command-ranking.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -113,6 +114,7 @@ export function makeInvoker(s: Services) {
   const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
   const subagents = new SubagentService(s.repo, s.events, s.runs);
   const customization = new SiteCustomization(s.repo.db, s.featureProfileId ?? "default");
+  const commandRanking = new CommandRankingStore(s.repo, s.featureProfileId ?? "default");
   const tasks = new TaskService(s.repo, s.events);
   const connectorCatalog = new ConnectorCatalogService({ repo: s.repo, tasks, settings: s.settings,
     calendar: s.calendar, mcp: outboundMcp });
@@ -254,6 +256,7 @@ export function makeInvoker(s: Services) {
     const scope = client.external ? client.scope : undefined;
     if (client.external && method.startsWith("conversations.images.")) throw new AuxError("permission_denied", "Image context is managed in Aux.");
     if (client.external && method.startsWith("customization.")) throw new AuxError("permission_denied", "Page customization is managed by the Aux browser UI.");
+    if (client.external && method.startsWith("command.ranking.")) throw new AuxError("permission_denied", "Command ranking belongs to the Aux browser UI.");
     if (client.external && method.startsWith("spaces.")) {
       throw new AuxError("permission_denied", "Browser spaces are managed in Aux.");
     }
@@ -1447,6 +1450,9 @@ export function makeInvoker(s: Services) {
       case "sentry.probe": return s.settings.probeSentry();
       case "sentry.projects": return s.settings.sentryProjects(params.organization);
       case "settings.get": return s.settings.all();
+      case "command.ranking.list": return commandRanking.list();
+      case "command.ranking.record": return commandRanking.record(params.query, params.candidateKey, params.source);
+      case "command.ranking.clear": return commandRanking.clear();
       case "settings.set": {
         const r = await s.settings.set(params as never);
         // worker limits apply live — no restart needed

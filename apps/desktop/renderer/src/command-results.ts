@@ -1,8 +1,24 @@
+import type { CommandRankingSource } from "@aux/contracts";
+
 export interface CommandCandidate {
   id: string;
   title: string;
   url?: string;
 }
+
+export type RankedCommandCandidate = CommandCandidate & { section: CommandRankingSource };
+export interface CommandRank<T> {
+  candidate: T;
+  key: string;
+  base: number;
+  adjustment: number;
+  score: number;
+}
+
+export function commandCandidateKey(candidate: RankedCommandCandidate): string {
+  return titleHostKey(candidate) ?? `${candidate.section}\u0000${candidate.id}`;
+}
+
 export interface DroppedCommand {
   droppedId: string;
   keptId: string;
