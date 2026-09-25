@@ -58,6 +58,7 @@ import { OutboundMcpService, type McpTransportProvider } from "../services/outbo
 import { ConnectorCatalogService } from "../services/connectors.js";
 import type { MemoryPipeline } from "../services/memory-pipeline.js";
 import { SubagentService } from "../services/subagents.js";
+import { SiteCustomization } from "../services/site-customization.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -111,6 +112,7 @@ export function makeInvoker(s: Services) {
   const commandEscalations = new CommandEscalationStore(s.repo.db);
   const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
   const subagents = new SubagentService(s.repo, s.events, s.runs);
+  const customization = new SiteCustomization(s.repo.db, s.featureProfileId ?? "default");
   const tasks = new TaskService(s.repo, s.events);
   const connectorCatalog = new ConnectorCatalogService({ repo: s.repo, tasks, settings: s.settings,
     calendar: s.calendar, mcp: outboundMcp });
@@ -251,6 +253,7 @@ export function makeInvoker(s: Services) {
 
     const scope = client.external ? client.scope : undefined;
     if (client.external && method.startsWith("conversations.images.")) throw new AuxError("permission_denied", "Image context is managed in Aux.");
+    if (client.external && method.startsWith("customization.")) throw new AuxError("permission_denied", "Page customization is managed by the Aux browser UI.");
     if (client.external && method.startsWith("spaces.")) {
       throw new AuxError("permission_denied", "Browser spaces are managed in Aux.");
     }
@@ -1163,6 +1166,21 @@ export function makeInvoker(s: Services) {
       case "pages.pickElement": {
         if (client.external) throw new AuxError("permission_denied", "Element picks are interactive and run in Aux.");
         return s.pages.pickElement(params.pageId, { timeoutMs: params.timeoutMs });
+      }
+      case "customization.zap.pick": return s.pages.pickZap(params.pageId, params.expectedDocumentEpoch, params.timeoutMs);
+      case "customization.zap.list": return customization.list(params.origin);
+      case "customization.zap.add": {
+        const count = await s.pages.countZapMatches(params.pageId, params.expectedDocumentEpoch, params.origin, params.selector);
+        return customization.add(params.origin, params.selector, count);
+      }
+      case "customization.zap.remove": return { removed: customization.remove(params.ruleId) };
+      case "customization.css.get": return customization.getCss(params.origin);
+      case "customization.css.set": return customization.setCss(params.origin, params.css);
+      case "customization.css.effective": return { origin: params.origin, css: customization.effectiveCss(params.origin) };
+      case "customization.css.apply": {
+        const page = s.pages.get(params.pageId);
+        const origin = new URL(page.url).origin;
+        return s.pages.applyUserCss(params.pageId, params.expectedDocumentEpoch, customization.effectiveCss(origin));
       }
       case "pages.resume": return s.pages.resume(params.pageId);
       case "pages.openLive": {

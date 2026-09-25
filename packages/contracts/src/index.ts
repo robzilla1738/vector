@@ -19,6 +19,7 @@ export * from "./routines.js";
 export * from "./goals.js";
 export * from "./hooks.js";
 export * from "./outbound-mcp.js";
+export * from "./customization.js";
 export * from "./memory-pipeline.js";
 export * from "./subagents.js";
 export * from "./identity.js";

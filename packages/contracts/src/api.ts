@@ -38,6 +38,7 @@ import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, Work
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import { OutboundMcpRegisterParams, OutboundMcpGrantParams, OutboundMcpServerSchema, OutboundMcpGrantSchema, OutboundMcpToolSchema, OutboundMcpCallResultSchema, OutboundMcpBundleInspectionSchema } from "./outbound-mcp.js";
+import { SiteOriginSchema, ZapSelectorSchema, ZapPickResultSchema, ZapRuleSchema, SiteCssSchema, EffectiveSiteCssSchema } from "./customization.js";
 import { MemoryPipelinePolicySchema, MemoryPipelineOverviewSchema, MemoryPipelineForgetParams, MemoryPipelineForgetResultSchema, MemoryClaimSchema } from "./memory-pipeline.js";
 import { SubagentGroupCreateParams, SubagentGroupSchema, SubagentGroupViewSchema, SubagentSpawnParams, SubagentSchema, SubagentMessageParams } from "./subagents.js";
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
@@ -840,6 +841,14 @@ export const MethodSchemas = {
   "pages.zoom": PagesZoomParams,
   "pages.takeover": PagesTakeoverParams,
   "pages.pickElement": PagesPickElementParams,
+  "customization.zap.pick": z.object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), timeoutMs: z.number().int().min(1000).max(120000).optional() }).strict(),
+  "customization.zap.list": z.object({ origin: SiteOriginSchema }).strict(),
+  "customization.zap.add": z.object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), origin: SiteOriginSchema, selector: ZapSelectorSchema }).strict(),
+  "customization.zap.remove": z.object({ ruleId: z.string().uuid() }).strict(),
+  "customization.css.get": z.object({ origin: SiteOriginSchema }).strict(),
+  "customization.css.set": z.object({ origin: SiteOriginSchema, css: SiteCssSchema.shape.css }).strict(),
+  "customization.css.effective": z.object({ origin: SiteOriginSchema }).strict(),
+  "customization.css.apply": z.object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }).strict(),
   "pages.resume": PagesResumeParams,
   "pages.openLive": PagesOpenLiveParams,
   "sets.create": SetsCreateParams,
@@ -1329,6 +1338,14 @@ export const ResultSchemas = {
   "pages.zoom": z.object({ level: z.number() }),
   "pages.takeover": PageTargetSchema,
   "pages.pickElement": PagesPickElementResult,
+  "customization.zap.pick": ZapPickResultSchema,
+  "customization.zap.list": z.array(ZapRuleSchema),
+  "customization.zap.add": ZapRuleSchema,
+  "customization.zap.remove": z.object({ removed: z.boolean() }),
+  "customization.css.get": SiteCssSchema,
+  "customization.css.set": SiteCssSchema,
+  "customization.css.effective": EffectiveSiteCssSchema,
+  "customization.css.apply": z.object({ applied: z.boolean(), origin: SiteOriginSchema }),
   "pages.resume": PageTargetSchema,
   "pages.openLive": z.object({ ok: z.boolean() }),
   "sets.create": PageSetSchema,

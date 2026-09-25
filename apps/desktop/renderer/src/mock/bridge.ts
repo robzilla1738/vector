@@ -24,7 +24,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
-import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool } from "@aux/contracts";
+import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool, ZapRule } from "@aux/contracts";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -43,6 +43,8 @@ export function installMockBridge(q: URLSearchParams) {
   const browsingMemory = new Map<string, {workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[]}>();
   const contentMemory = new Map<string, ContentMemoryPolicy>();
   const inlineCaptures = new Map<string, { pageId: string; url: string; documentEpoch: number; drafted: boolean }>();
+  const customCss = new Map<string, { css: string; updatedAt: number }>();
+  let zapRules: ZapRule[] = [];
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
@@ -284,6 +286,61 @@ export function installMockBridge(q: URLSearchParams) {
       return { pages: source.map(item => ({ pageId: item.pageId, url: item.url, title: item.title })),
         groups: [{ name: "Research", pageIds: pageIds.slice(0, 2) }, ...(pageIds.length >= 4 ? [{ name: "More reading", pageIds: pageIds.slice(2, 4) }] : [])],
         modelId: "meta/muse-spark-1.3-contributor", createdAt: Date.now() };
+    },
+    "customization.zap.pick": async p => {
+      const current = page(String(p.pageId));
+      if (current.documentEpoch !== p.expectedDocumentEpoch) throw new Error("The page changed. Start Zap again.");
+      const origin = new URL(current.url).origin;
+      return new Promise(resolve => {
+        const finish = (result: object) => { clearTimeout(timer); document.removeEventListener("click", clicked, true); document.removeEventListener("keydown", key, true); resolve(result); };
+        const clicked = (event: MouseEvent) => {
+          const target = event.target instanceof Element ? event.target.closest(".mock-page *") : null;
+          if (!target) return;
+          event.preventDefault(); event.stopPropagation();
+          const element = target.closest(".mp-card") ?? target;
+          const klass = [...element.classList][0];
+          const broad = klass ? `.${klass}` : element.tagName.toLowerCase();
+          const siblings = element.parentElement ? [...element.parentElement.children].filter(item => item.tagName === element.tagName) : [];
+          const exact = `${broad}:nth-of-type(${siblings.indexOf(element) + 1})`;
+          const count = document.querySelectorAll(broad).length;
+          finish({picked:true,pageId:current.pageId,documentEpoch:current.documentEpoch,origin,tag:element.tagName.toLowerCase(),text:(element.textContent??"").trim().slice(0,160),candidates:[
+            {selector:exact,matchCount:1,targetLevel:0,score:25,related:false},
+            ...(count > 1 && count <= 100 ? [{selector:broad,matchCount:count,targetLevel:0,score:20,related:true}] : []),
+          ]});
+        };
+        const key = (event: KeyboardEvent) => { if (event.key === "Escape") finish({picked:false}); };
+        const timer = setTimeout(() => finish({picked:false}), Number(p.timeoutMs ?? 60_000));
+        document.addEventListener("click", clicked, true);
+        document.addEventListener("keydown", key, true);
+      });
+    },
+    "customization.zap.list": async p => zapRules.filter(rule => rule.origin === p.origin),
+    "customization.zap.add": async p => {
+      const current = page(String(p.pageId));
+      if (current.documentEpoch !== p.expectedDocumentEpoch || new URL(current.url).origin !== p.origin) throw new Error("The page changed before Zap was saved.");
+      const selector = String(p.selector);
+      const count = document.querySelectorAll(selector).length;
+      if (count < 1 || count > 100) throw new Error("Zap selector must match between 1 and 100 elements on this page.");
+      const existing = zapRules.find(rule => rule.origin === p.origin && rule.selector === selector);
+      if (existing) return existing;
+      const rule: ZapRule = {ruleId:crypto.randomUUID(),origin:String(p.origin),selector,matchCount:count,createdAt:Date.now()};
+      zapRules = [rule,...zapRules]; return rule;
+    },
+    "customization.zap.remove": async p => { const before=zapRules.length; zapRules=zapRules.filter(rule=>rule.ruleId!==p.ruleId); return {removed:zapRules.length<before}; },
+    "customization.css.get": async p => ({origin:p.origin,css:customCss.get(String(p.origin))?.css??"",updatedAt:customCss.get(String(p.origin))?.updatedAt??null}),
+    "customization.css.set": async p => {
+      const origin=String(p.origin),css=String(p.css);
+      if(css.trim())customCss.set(origin,{css,updatedAt:Date.now()});else customCss.delete(origin);
+      return {origin,css:customCss.get(origin)?.css??"",updatedAt:customCss.get(origin)?.updatedAt??null};
+    },
+    "customization.css.apply": async p => {
+      const current=page(String(p.pageId));
+      if(current.documentEpoch!==p.expectedDocumentEpoch)throw new Error("The page changed before CSS was applied.");
+      const origin=new URL(current.url).origin;
+      const css=[...zapRules.filter(rule=>rule.origin===origin).map(rule=>`${rule.selector} { display: none !important; }`),customCss.get(origin)?.css??""].filter(Boolean).join("\n");
+      let style=document.querySelector<HTMLStyleElement>('style[data-aux-user-css="mock"]');
+      if(!css)style?.remove();else {if(!style){style=document.createElement("style");style.dataset.auxUserCss="mock";document.head.append(style);}style.textContent=css;}
+      return {applied:true,origin};
     },
     "workspace.get": async () => {
       return workspace();

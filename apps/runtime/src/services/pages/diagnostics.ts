@@ -1,6 +1,7 @@
-import { AuxError, newStepId } from "@aux/contracts";
+import { AuxError, SiteOriginSchema, ZapPickResultSchema, ZapSelectorSchema, newStepId, type ZapPickResult } from "@aux/contracts";
 import { limitCapturePng } from "../capture-size.js";
 import { ELEMENT_PICK_TIMEOUT_MS, type PickedElement, pickElementInPage } from "../../execution/element-picker.js";
+import { pickZapInPage } from "../../execution/zap-picker.js";
 import type { ProgramExecutor } from "./executor.js";
 import type { ObservationService } from "./observation.js";
 import type { PageRegistry } from "./registry.js";
@@ -32,6 +33,64 @@ export class PageDiagnostics {
     } finally {
       this.pickInFlight.delete(pageId);
     }
+  }
+
+  private customizationPage(pageId: string, expectedDocumentEpoch: number) {
+    const page = this.pages.get(pageId);
+    if (page.documentEpoch !== expectedDocumentEpoch) throw new AuxError("conflict", "The page changed. Start Zap again.");
+    let origin: string;
+    try { origin = SiteOriginSchema.parse(new URL(page.url).origin); }
+    catch { throw new AuxError("invalid_params", "Zap works on HTTP and HTTPS pages only."); }
+    const live = this.pages.live.get(pageId);
+    if (!live?.driver || !live.driver.isAttached()) throw new AuxError("target_detached", "The page is not attached.");
+    return { page, origin, driver: live.driver };
+  }
+
+  async pickZap(pageId: string, expectedDocumentEpoch: number, timeoutMs = ELEMENT_PICK_TIMEOUT_MS): Promise<ZapPickResult> {
+    const { page, origin, driver } = this.customizationPage(pageId, expectedDocumentEpoch);
+    if (page.controller === "agent") throw new AuxError("conflict", "Take control of this page before using Zap.");
+    if (this.pickInFlight.has(pageId)) throw new AuxError("conflict", "An element picker is already open on this page.");
+    const bounded = Math.min(Math.max(timeoutMs, 1_000), 120_000);
+    this.pickInFlight.add(pageId);
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const expression = `(${pickZapInPage.toString()})(${bounded})`;
+      const picked = await Promise.race([
+        driver.evaluate(expression),
+        new Promise((resolve) => { watchdog = setTimeout(() => resolve({ picked: false }), bounded + 5_000); }),
+      ]);
+      this.customizationPage(pageId, expectedDocumentEpoch);
+      if (!picked || typeof picked !== "object" || !("picked" in picked) || picked.picked !== true)
+        return ZapPickResultSchema.parse(picked ?? { picked: false });
+      return ZapPickResultSchema.parse({ ...picked, pageId, documentEpoch: expectedDocumentEpoch, origin });
+    } finally {
+      if (watchdog) clearTimeout(watchdog);
+      this.pickInFlight.delete(pageId);
+    }
+  }
+
+  async countZapMatches(pageId: string, expectedDocumentEpoch: number, origin: string, selector: string): Promise<number> {
+    const current = this.customizationPage(pageId, expectedDocumentEpoch);
+    if (current.origin !== origin) throw new AuxError("conflict", "The site changed before Zap was saved.");
+    const safe = ZapSelectorSchema.parse(selector);
+    const count = await current.driver.evaluate(`(() => { try { return document.querySelectorAll(${JSON.stringify(safe)}).length; } catch { return -1; } })()`);
+    this.customizationPage(pageId, expectedDocumentEpoch);
+    if (typeof count !== "number" || !Number.isInteger(count) || count < 1 || count > 100)
+      throw new AuxError("invalid_params", "Zap selector must match between 1 and 100 elements on this page.");
+    return count;
+  }
+
+  async applyUserCss(pageId: string, expectedDocumentEpoch: number, css: string): Promise<{ applied: boolean; origin: string }> {
+    const { origin, driver } = this.customizationPage(pageId, expectedDocumentEpoch);
+    await driver.evaluate(`(() => {
+      let style = document.querySelector('style[data-aux-user-css="profile"]');
+      if (!${JSON.stringify(css)}.length) { style?.remove(); return true; }
+      if (!style) { style = document.createElement('style'); style.setAttribute('data-aux-user-css','profile'); (document.head || document.documentElement).append(style); }
+      style.textContent = ${JSON.stringify(css)};
+      return true;
+    })()`);
+    this.customizationPage(pageId, expectedDocumentEpoch);
+    return { applied: true, origin };
   }
 
   /** Page console lines: the page's event log merged with the driver buffer (same timestamps, so no duplicates). */

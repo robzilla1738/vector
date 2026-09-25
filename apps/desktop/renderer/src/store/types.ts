@@ -7,7 +7,7 @@ import type { SidebarMode } from "../sidebar-mode";
 import type { Layout, Pin, SpaceColor } from "../workspace";
 
 export type Mode = "focus" | "overview" | "table" | "conversation";
-export type Overlay = null | "reader" | "palette" | "settings" | "find" | "downloads" | "inline-assist" | "history" | "clear-history" | "observe" | "tasks" | "bookmarks" | "site" | "capture";
+export type Overlay = null | "reader" | "palette" | "settings" | "find" | "downloads" | "inline-assist" | "history" | "clear-history" | "observe" | "tasks" | "bookmarks" | "site" | "zap" | "capture";
 export type { SidebarMode } from "../sidebar-mode";
 export type CommandSlot = "sidebar" | "hero" | "toolbar";
 export type RailView = { kind: "home" } | { kind: "draft"; chatId: string } | { kind: "run"; runId: string } | { kind: "set"; setId: string };

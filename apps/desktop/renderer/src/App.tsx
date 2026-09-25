@@ -42,6 +42,7 @@ const Palette = deferSurface(async () => { const module = await import("./compon
 const Downloads = deferSurface(async () => { const module = await import("./components/Downloads"); return {default:module.Downloads}; }, "Downloads");
 const InlineAssist = deferSurface(async () => { const module = await import("./components/InlineAssist"); return {default:module.InlineAssist}; }, "Assist writing");
 const SiteControls = deferSurface(async () => { const module = await import("./components/SiteControls"); return {default:module.SiteControls}; }, "Site controls");
+const SiteCustomization = deferSurface(async () => { const module = await import("./components/SiteCustomization"); return {default:module.SiteCustomization}; }, "Site customization");
 const QuickAsk = deferSurface(async () => { const module = await import("./components/QuickAsk"); return {default:module.QuickAsk}; }, "Quick Ask", true, true);
 const HorizontalTabs = deferSurface(async () => { const module = await import("./components/HorizontalTabs"); return {default:module.HorizontalTabs}; }, "Tabs", true, true);
 const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
@@ -159,6 +160,7 @@ export function App() {
   const settings = useStore(useShallow((s) => ({ tabLayout: s.settings.tabLayout, theme: s.settings.theme, sidebarAppearance: s.settings.sidebarAppearance, sidebarMaterial: s.settings.sidebarMaterial, sidebarTint: s.settings.sidebarTint, contentOpacity: s.settings.contentOpacity })));
   const horizontal = (settings.tabLayout ?? "horizontal") === "horizontal";
   const activePageId = useStore((s) => s.activePageId);
+  const activePageEpoch = useStore((s) => s.pages.find((p) => p.pageId === s.activePageId)?.documentEpoch);
   const activePageLoading = useStore(s => s.pages.find(p => p.pageId === s.activePageId)?.loading);
   const activePage = useStore(useShallow((s) => placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined)));
   const pageChrome = inNativeHost && !horizontal && !quickAsk && !!activePage && activePage.backend !== "chrome"
@@ -573,6 +575,7 @@ export function App() {
       {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && <Library key={overlay} initialView={overlay === "bookmarks" ? "bookmarks" : "history"} confirmClear={overlay === "clear-history"} />}
       {overlay === "observe" && <Inspector />}
       {overlay === "site" && <SiteControls />}
+      {overlay === "zap" && <SiteCustomization key={`${activePageId}:${activePage?.url}:${activePageEpoch}`} />}
       <HttpAuthPrompt />
       {vaultOffer && <VaultOfferBanner />}
       <Toasts top={sidebar === "hidden" || sidebar === "rail"} />

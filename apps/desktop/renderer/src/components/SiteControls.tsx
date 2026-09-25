@@ -290,6 +290,20 @@ export function SiteControls() {
               </p>
             )}
           </section>
+          {!bridge.privateMode && /^https?:\/\//.test(info.origin) && (
+            <section className="site-controls-group" aria-label="Page customization">
+              <div>
+                <span className="site-row-icon">{I.code}</span>
+                <div>
+                  <strong>Customize this site</strong>
+                  <span>Hide page elements or add CSS for this Profile</span>
+                </div>
+                <button className="btn sm" disabled={!!busy} onClick={() => setOverlay("zap")}>
+                  Open…
+                </button>
+              </div>
+            </section>
+          )}
           {notice && (
             <output className="site-controls-notice" data-block>
               {notice}

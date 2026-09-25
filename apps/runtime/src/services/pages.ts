@@ -106,6 +106,9 @@ export class PageService {
   releaseAgent: ControlAuthority["releaseAgent"] = (...args) => this.control.releaseAgent(...args);
 
   pickElement: PageDiagnostics["pickElement"] = (...args) => this.diagnostics.pickElement(...args);
+  pickZap: PageDiagnostics["pickZap"] = (...args) => this.diagnostics.pickZap(...args);
+  countZapMatches: PageDiagnostics["countZapMatches"] = (...args) => this.diagnostics.countZapMatches(...args);
+  applyUserCss: PageDiagnostics["applyUserCss"] = (...args) => this.diagnostics.applyUserCss(...args);
   console: PageDiagnostics["console"] = (...args) => this.diagnostics.console(...args);
   dialog: PageDiagnostics["dialog"] = (...args) => this.diagnostics.dialog(...args);
   network: PageDiagnostics["network"] = (...args) => this.diagnostics.network(...args);

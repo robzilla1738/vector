@@ -339,11 +339,19 @@ CREATE TABLE subagents(
   state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','cancelled','interrupted')),
   body TEXT NOT NULL, created_at INTEGER NOT NULL, ended_at INTEGER);
 CREATE INDEX idx_subagents_group_state ON subagents(group_id,state);
+CREATE TABLE site_user_css(
+  profile_id TEXT NOT NULL, origin TEXT NOT NULL, css TEXT NOT NULL, updated_at INTEGER NOT NULL,
+  PRIMARY KEY(profile_id,origin));
+CREATE TABLE site_zap_rules(
+  rule_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, origin TEXT NOT NULL,
+  selector TEXT NOT NULL, match_count INTEGER NOT NULL, created_at INTEGER NOT NULL,
+  UNIQUE(profile_id,origin,selector));
+CREATE INDEX idx_site_zap_rules_profile_origin ON site_zap_rules(profile_id,origin,created_at);
 ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -547,6 +555,17 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','cancelled','interrupted')),
       body TEXT NOT NULL, created_at INTEGER NOT NULL, ended_at INTEGER)`,
     `CREATE INDEX IF NOT EXISTS idx_subagents_group_state ON subagents(group_id,state)`,
+  ],
+  // v20 → v21: Profile-owned page customization, separate from website storage.
+  20: [
+    `CREATE TABLE site_user_css(
+      profile_id TEXT NOT NULL, origin TEXT NOT NULL, css TEXT NOT NULL, updated_at INTEGER NOT NULL,
+      PRIMARY KEY(profile_id,origin))`,
+    `CREATE TABLE site_zap_rules(
+      rule_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, origin TEXT NOT NULL,
+      selector TEXT NOT NULL, match_count INTEGER NOT NULL, created_at INTEGER NOT NULL,
+      UNIQUE(profile_id,origin,selector))`,
+    `CREATE INDEX idx_site_zap_rules_profile_origin ON site_zap_rules(profile_id,origin,created_at)`,
   ],
 };
 

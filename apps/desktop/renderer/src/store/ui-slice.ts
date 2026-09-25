@@ -43,7 +43,9 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   setNarrow: (narrow) => set({ narrow }),
   setOverlay: (overlay) => {
     if (overlay !== "find") findSequence++;
-    void bridge.overlay(isScrimOverlay(overlay));
+    // Zap keeps stage geometry live for the picker; its editor covers the
+    // native page until picking begins.
+    void bridge.overlay(isScrimOverlay(overlay) || overlay === "zap");
     if (overlay !== "reader") readerFinder.clear();
     set({ overlay, readerFindOpen: false });
   },
