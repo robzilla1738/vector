@@ -17,6 +17,8 @@ const files = [
   "apps/desktop/renderer/src/components/NativeDialog.css",
   "apps/desktop/renderer/src/components/CommandBar.css",
   "apps/desktop/renderer/src/components/SpaceEditor.tsx",
+  "apps/desktop/renderer/src/components/ResizeHandle.tsx",
+  "apps/desktop/renderer/src/components/ResizeHandle.test.tsx",
   "apps/desktop/renderer/src/styles/space-grain.css",
 ];
 

@@ -89,10 +89,10 @@ fieldset.field { min-inline-size: 0; margin: 0; padding: 0; border: none; }
   transition: height var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out), width var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 .resize-handle:hover::after {
-  width: 4px; height: 44px; opacity: 0.9; background: var(--ink-2);
+  width: 5px; height: 44px; opacity: 0.9; background: var(--ink-2);
 }
 body.resizing .resize-handle::after {
-  width: 4px; height: 64px; opacity: 1; background: var(--ink-1);
+  width: 5px; height: 64px; opacity: 1; background: var(--ink-1);
 }
 body.resizing { cursor: col-resize !important; user-select: none !important; }
 body.resizing * { pointer-events: none !important; }
