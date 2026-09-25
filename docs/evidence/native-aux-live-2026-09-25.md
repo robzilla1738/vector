@@ -133,3 +133,11 @@ The owner revised the current scope on September 25: complete product features/n
 - **[Verified]** Fixed the tab-menu/overview `windows` bridge method by deriving other-window destinations from the existing Profile-scoped catalog, excluding popup and runtime-owned tabs from counts. Five bridge tests and renderer typecheck pass. The updated shell is staged for its native resource rebuild.
 
 Logs: `/tmp/aux-official-build-20260925.log`, `/tmp/aux-dev-build-38.log`, `/tmp/aux-dev-window-menu-build.log`, `/tmp/aux-window-menu-{tests,types,lint}.log`.
+
+### Restored-session investigation after the development rebuild
+
+- **[Verified]** Updated development app still passes two-Profile HttpOnly cookie/authority isolation. Saved-session recovery still fails: Playwright connects to the broker and discovers the restored page, but all page initialization requests remain unanswered (`Page.enable`, `Page.getFrameTree`, `Runtime.enable`, and related setup). Automatic retries and native attachment resets run but do not cure this first-attachment failure.
+- **[Verified]** A trial `LoadIfNecessary()` call in Webium's active-tab handler compiled, but the same fixture still timed out. The trial was removed from source and from the patch series; it is not retained as a claimed fix.
+- **[Investigating]** A temporary native broker diagnostic build is being used to distinguish unavailable renderer state from replies dropped by ownership/URL validation. Diagnostics emit only method names, sizes and Boolean state, never page payloads. They must be removed before the working development build is handed over.
+
+Logs: `/tmp/aux-dev-profile-reset-journey.log`, `/tmp/aux-dev-profile-protocol-journey.log`, `/tmp/aux-dev-restored-tab-journey.log`. Protocol traces are local, owner-only fixture logs; they are not committed. No real profile was migrated.
