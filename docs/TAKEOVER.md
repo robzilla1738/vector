@@ -70,5 +70,5 @@ Use a fresh regular Profile and a separate private Profile. Record build hash, m
 
 - The official static Aux build, ad-hoc DMG and native release verification are still required.
 - Developer ID, notarization, stable Keychain signature, 1Password and passkey tests depend on the owner and external services.
-- Sparkle N→N+1/rollback, crash reporting consent, Electron profile migration, complete native journeys and performance measurements must be recorded before release.
+- Sparkle N→N+1/rollback, [Crashpad consent](crashpad-consent.md), Electron profile migration, complete native journeys and performance measurements must be recorded before release.
 - No publication, production feed hosting or personal-data migration occurs at this stop line.

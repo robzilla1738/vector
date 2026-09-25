@@ -70,6 +70,26 @@ export const cases = {
       "cancel/install/rollback observations",
     ],
   },
+  crashpad: {
+    title: "Crashpad local capture and explicit upload consent",
+    inputs: [
+      "Aux build with patch 0022 and default empty crash upload URL",
+      "disposable macOS user, Profile, and Crashpad directory",
+      "owner-controlled HTTPS Crashpad endpoint for the upload phase",
+    ],
+    steps: [
+      "In the offline build, launch with BREAKPAD_DUMP_LOCATION pointing to a disposable directory and a fresh --user-data-dir; open chrome://crash and run crashpad-local-check.mjs with --require-report true.",
+      "Build a second fixture with the exact owner-controlled HTTPS endpoint. At first launch choose Keep on This Mac, crash a tab, and verify the endpoint receives no request.",
+      "Choose Share Crash Reports from Aux → Crash Reports…, crash another tab, and verify the endpoint receives a request.",
+      "Revoke consent from the same menu, crash a third tab, and verify no further request; cold restart and verify the revoked choice persists.",
+    ],
+    evidence: [
+      "app Info.plist endpoint and signature",
+      "local dump counts",
+      "redacted endpoint request counts",
+      "consent and revocation observations",
+    ],
+  },
   notarization: {
     title: "Developer ID notarization and Gatekeeper",
     inputs: [

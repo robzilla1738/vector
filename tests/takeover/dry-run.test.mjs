@@ -47,7 +47,7 @@ test("all owner takeover cases dry-run without qualification", () => {
   assert.equal(plan.qualified, false);
   assert.deepEqual(
     plan.cases.map((entry) => entry.id),
-    ["keychain", "onepassword", "passkey", "sparkle", "notarization"],
+    ["keychain", "onepassword", "passkey", "sparkle", "crashpad", "notarization"],
   );
   assert.notEqual(invoke("tests/takeover/run.mjs", ["--execute"]).status, 0);
 });

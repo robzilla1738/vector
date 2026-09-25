@@ -1,0 +1,479 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+index ddfbb218a0..23e48b4df5 100644
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -514,17 +514,23 @@ if (is_win) {
+   }
+ 
+   tweak_info_plist("chrome_app_plist") {
++    if (enable_aux_shell || enable_aux_sparkle) {
++      info_plists = [ "app/app-Info.plist" ]
++      deps = []
++      if (enable_aux_shell) {
++        info_plists += [ "$target_gen_dir/aux-crash-Info.plist" ]
++        deps += [ ":aux_crash_info_plist" ]
++      }
++    }
+     if (enable_aux_sparkle) {
+       assert(enable_aux_shell && chrome_mac_bundle_id == "dev.aux.browser",
+              "Sparkle requires the Aux shell and bundle ID")
+       assert(aux_sparkle_feed_url != "" && aux_sparkle_public_ed_key != "",
+              "Sparkle requires a feed URL and EdDSA public key")
+-      info_plists = [
+-        "app/app-Info.plist",
+-        "$target_gen_dir/aux-sparkle-Info.plist",
+-      ]
+-      deps = [ ":aux_sparkle_info_plist" ]
+-    } else {
++      info_plists += [ "$target_gen_dir/aux-sparkle-Info.plist" ]
++      deps += [ ":aux_sparkle_info_plist" ]
++    }
++    if (!enable_aux_shell && !enable_aux_sparkle) {
+       info_plist = "app/app-Info.plist"
+     }
+     args = [
+@@ -547,6 +553,17 @@ if (is_win) {
+     }
+   }
+ 
++  if (enable_aux_shell) {
++    assert(chrome_mac_bundle_id == "dev.aux.browser",
++           "Aux crash reporting metadata requires the Aux bundle ID")
++    compile_plist("aux_crash_info_plist") {
++      plist_templates = [ "app/aux-crash-Info.plist" ]
++      format = "xml1"
++      substitutions = [ "AUX_CRASH_UPLOAD_URL=$aux_crash_upload_url" ]
++      output_name = "$target_gen_dir/aux-crash-Info.plist"
++    }
++  }
++
+   if (enable_aux_sparkle) {
+     compile_plist("aux_sparkle_info_plist") {
+       plist_templates = [ "app/aux-sparkle-Info.plist" ]
+@@ -1350,6 +1367,7 @@ if (is_win) {
+     ]
+ 
+     sources = [
++      "app/aux_crash_reporting_mac.h",
+       "app/chrome_crash_reporter_client.cc",
+       "app/chrome_crash_reporter_client.h",
+       "app/chrome_crash_reporter_client_mac.mm",
+@@ -2099,6 +2117,7 @@ if (enable_separate_renderer_binary) {
+     "//base",
+     "//base:i18n",
+     "//build/config/compiler:compiler_buildflags",
++    "//chrome/browser:buildflags",
+     "//chrome/common",
+     "//chrome/common:version_header",
+     "//chrome/renderer",
+diff --git a/chrome/app/BUILD.gn b/chrome/app/BUILD.gn
+index e0bc13decc..5412cf151c 100644
+--- a/chrome/app/BUILD.gn
++++ b/chrome/app/BUILD.gn
+@@ -23,7 +23,10 @@ if (is_posix) {
+   # without depending on the target that compiles it (//chrome/browser:browser
+   # on non-Mac, //chrome:chrome_dll on Mac).
+   source_set("chrome_crash_reporter_client") {
+-    public = [ "chrome_crash_reporter_client.h" ]
++    public = [
++      "aux_crash_reporting_mac.h",
++      "chrome_crash_reporter_client.h",
++    ]
+     public_deps = [
+       "//base",
+       "//build:buildflag_header_h",
+diff --git a/chrome/app/aux-crash-Info.plist b/chrome/app/aux-crash-Info.plist
+new file mode 100644
+index 0000000000..b3a0a64abf
+--- /dev/null
++++ b/chrome/app/aux-crash-Info.plist
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++  <key>AuxCrashUploadURL</key>
++  <string>${AUX_CRASH_UPLOAD_URL}</string>
++</dict>
++</plist>
+diff --git a/chrome/app/aux_crash_reporting_mac.h b/chrome/app/aux_crash_reporting_mac.h
+new file mode 100644
+index 0000000000..b563dc1ff5
+--- /dev/null
++++ b/chrome/app/aux_crash_reporting_mac.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_APP_AUX_CRASH_REPORTING_MAC_H_
++#define CHROME_APP_AUX_CRASH_REPORTING_MAC_H_
++
++// Browser-process controls for Aux's explicit crash-report upload choice.
++namespace aux_crash_reporting {
++
++bool HasConfiguredEndpoint();
++bool HasUserChoice();
++bool HasConsent();
++bool SetConsent(bool consent);
++
++}  // namespace aux_crash_reporting
++
++#endif  // CHROME_APP_AUX_CRASH_REPORTING_MAC_H_
+diff --git a/chrome/app/chrome_crash_reporter_client.cc b/chrome/app/chrome_crash_reporter_client.cc
+index 64912e538f..89d7f3e988 100644
+--- a/chrome/app/chrome_crash_reporter_client.cc
++++ b/chrome/app/chrome_crash_reporter_client.cc
+@@ -17,6 +17,11 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include <CoreFoundation/CoreFoundation.h>
++#include "base/strings/sys_string_conversions.h"
++#include "chrome/browser/buildflags.h"
++#endif
+ #include "chrome/common/channel_info.h"
+ #include "chrome/common/chrome_paths.h"
+ #include "chrome/common/chrome_paths_internal.h"
+@@ -172,6 +177,34 @@ bool ChromeCrashReporterClient::IsRunningUnattended() {
+ }
+ 
+ bool ChromeCrashReporterClient::GetCollectStatsConsent() {
++#if BUILDFLAG(IS_MAC)
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Crashpad starts before the browser UI. Only an explicit Aux choice and a
++  // configured endpoint may enable uploads; Chromium's metrics choice does not.
++  CFPropertyListRef choice = CFPreferencesCopyAppValue(
++      CFSTR("AuxCrashReportsOptIn"), CFSTR("dev.aux.browser"));
++  CFPropertyListRef consent_endpoint = CFPreferencesCopyAppValue(
++      CFSTR("AuxCrashConsentEndpoint"), CFSTR("dev.aux.browser"));
++  const std::string upload_url = GetUploadUrl();
++  const bool opted_in = choice && CFGetTypeID(choice) == CFBooleanGetTypeID() &&
++                        CFBooleanGetValue(static_cast<CFBooleanRef>(choice));
++  const bool endpoint_matches =
++      consent_endpoint && CFGetTypeID(consent_endpoint) == CFStringGetTypeID() &&
++      base::SysCFStringRefToUTF8(static_cast<CFStringRef>(consent_endpoint)) ==
++          upload_url;
++  if (choice) {
++    CFRelease(choice);
++  }
++  if (consent_endpoint) {
++    CFRelease(consent_endpoint);
++  }
++  return opted_in && endpoint_matches && !upload_url.empty() &&
++         !CFPreferencesAppValueIsForced(CFSTR("AuxCrashReportsOptIn"),
++                                        CFSTR("dev.aux.browser")) &&
++         !CFPreferencesAppValueIsForced(CFSTR("AuxCrashConsentEndpoint"),
++                                        CFSTR("dev.aux.browser"));
++#endif
++#endif
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   bool is_official_chrome_build = true;
+ #else
+diff --git a/chrome/app/chrome_crash_reporter_client.h b/chrome/app/chrome_crash_reporter_client.h
+index 7f6390504c..22a4a838cf 100644
+--- a/chrome/app/chrome_crash_reporter_client.h
++++ b/chrome/app/chrome_crash_reporter_client.h
+@@ -10,6 +10,7 @@
+ #if !BUILDFLAG(IS_WIN)
+ 
+ #include <memory>
++#include <string>
+ 
+ #include "base/no_destructor.h"
+ #include "components/crash/core/app/crash_reporter_client.h"
+@@ -54,6 +55,7 @@ class ChromeCrashReporterClient : public crash_reporter::CrashReporterClient {
+ 
+ #if BUILDFLAG(IS_MAC)
+   bool ReportingIsEnforcedByPolicy(bool* breakpad_enabled) override;
++  std::string GetUploadUrl() override;
+ #endif
+ 
+ #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+diff --git a/chrome/app/chrome_crash_reporter_client_mac.mm b/chrome/app/chrome_crash_reporter_client_mac.mm
+index fd615c8608..3372ff4152 100644
+--- a/chrome/app/chrome_crash_reporter_client_mac.mm
++++ b/chrome/app/chrome_crash_reporter_client_mac.mm
+@@ -3,20 +3,130 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/app/chrome_crash_reporter_client.h"
++#include "chrome/app/aux_crash_reporting_mac.h"
+ 
+ #include <CoreFoundation/CoreFoundation.h>
++#import <Foundation/Foundation.h>
+ 
+ #include "base/apple/scoped_cftyperef.h"
+ #include "base/path_service.h"
+ #include "base/rand_util.h"
+ #include "base/strings/sys_string_conversions.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/channel_info.h"
+ #include "chrome/common/chrome_paths.h"
+ #include "components/policy/policy_constants.h"
+ #include "components/version_info/version_info.h"
++#include "components/crash/core/app/crashpad.h"
++
++namespace {
++
++NSString* const kAuxCrashUploadURLKey = @"AuxCrashUploadURL";
++CFStringRef const kAuxCrashConsentKey = CFSTR("AuxCrashReportsOptIn");
++CFStringRef const kAuxCrashConsentEndpointKey =
++    CFSTR("AuxCrashConsentEndpoint");
++CFStringRef const kAuxPreferencesDomain = CFSTR("dev.aux.browser");
++
++std::string ConfiguredUploadURL();
++
++bool HasBooleanChoice() {
++  base::apple::ScopedCFTypeRef<CFPropertyListRef> value(
++      CFPreferencesCopyAppValue(kAuxCrashConsentKey, kAuxPreferencesDomain));
++  return value && CFGetTypeID(value.get()) == CFBooleanGetTypeID();
++}
++
++bool ConsentChoiceIsTrue() {
++  base::apple::ScopedCFTypeRef<CFPropertyListRef> value(
++      CFPreferencesCopyAppValue(kAuxCrashConsentKey, kAuxPreferencesDomain));
++  return value && CFGetTypeID(value.get()) == CFBooleanGetTypeID() &&
++         CFBooleanGetValue(static_cast<CFBooleanRef>(value.get()));
++}
++
++bool ConsentEndpointMatches() {
++  base::apple::ScopedCFTypeRef<CFPropertyListRef> value(
++      CFPreferencesCopyAppValue(kAuxCrashConsentEndpointKey,
++                                kAuxPreferencesDomain));
++  return value && CFGetTypeID(value.get()) == CFStringGetTypeID() &&
++         base::SysCFStringRefToUTF8(
++             static_cast<CFStringRef>(value.get())) == ConfiguredUploadURL();
++}
++
++std::string ConfiguredUploadURL() {
++  id value = [[NSBundle mainBundle] objectForInfoDictionaryKey:kAuxCrashUploadURLKey];
++  if (![value isKindOfClass:NSString.class] || [value length] == 0) {
++    return {};
++  }
++  NSURLComponents* url = [NSURLComponents componentsWithString:value];
++  if (!url || ![url.scheme.lowercaseString isEqualToString:@"https"] ||
++      url.host.length == 0 || url.user || url.password || url.fragment ||
++      !url.URL) {
++    return {};
++  }
++  return base::SysNSStringToUTF8(url.URL.absoluteString);
++}
++
++}  // namespace
++
++namespace aux_crash_reporting {
++
++bool HasConfiguredEndpoint() {
++  return !ConfiguredUploadURL().empty();
++}
++
++bool HasUserChoice() {
++  return HasBooleanChoice() && ConsentEndpointMatches();
++}
++
++bool HasConsent() {
++  return HasConfiguredEndpoint() && HasUserChoice() && ConsentChoiceIsTrue() &&
++         !CFPreferencesAppValueIsForced(kAuxCrashConsentKey,
++                                        kAuxPreferencesDomain) &&
++         !CFPreferencesAppValueIsForced(kAuxCrashConsentEndpointKey,
++                                        kAuxPreferencesDomain);
++}
++
++bool SetConsent(bool consent) {
++  if (CFPreferencesAppValueIsForced(kAuxCrashConsentKey,
++                                    kAuxPreferencesDomain) ||
++      CFPreferencesAppValueIsForced(kAuxCrashConsentEndpointKey,
++                                    kAuxPreferencesDomain)) {
++    crash_reporter::SetUploadConsent(false);
++    return false;
++  }
++  if (!HasConfiguredEndpoint()) {
++    consent = false;
++  }
++  CFPreferencesSetAppValue(kAuxCrashConsentKey,
++                           consent ? kCFBooleanTrue : kCFBooleanFalse,
++                           kAuxPreferencesDomain);
++  base::apple::ScopedCFTypeRef<CFStringRef> consent_endpoint =
++      base::SysUTF8ToCFStringRef(ConfiguredUploadURL());
++  CFPreferencesSetAppValue(kAuxCrashConsentEndpointKey,
++                           consent_endpoint.get(), kAuxPreferencesDomain);
++  if (!CFPreferencesAppSynchronize(kAuxPreferencesDomain)) {
++    crash_reporter::SetUploadConsent(false);
++    return false;
++  }
++  crash_reporter::SetUploadConsent(HasConsent());
++  return HasUserChoice() && ConsentChoiceIsTrue() == consent;
++}
++
++}  // namespace aux_crash_reporting
++
++std::string ChromeCrashReporterClient::GetUploadUrl() {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  return ConfiguredUploadURL();
++#else
++  return CrashReporterClient::GetUploadUrl();
++#endif
++}
+ 
+ bool ChromeCrashReporterClient::ReportingIsEnforcedByPolicy(
+     bool* breakpad_enabled) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Enterprise metrics policy cannot substitute for Aux's explicit choice.
++  return false;
++#else
+   base::apple::ScopedCFTypeRef<CFStringRef> key =
+       base::SysUTF8ToCFStringRef(policy::key::kMetricsReportingEnabled);
+   Boolean key_valid;
+@@ -28,6 +138,7 @@ bool ChromeCrashReporterClient::ReportingIsEnforcedByPolicy(
+     return true;
+   }
+   return false;
++#endif
+ }
+ 
+ bool ChromeCrashReporterClient::ShouldMonitorCrashHandlerExpensively() {
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 67729e4b8d..7ec9fc3e09 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1538,6 +1538,10 @@ source_set("core") {
+       ]
+     }
+ 
++    if (enable_aux_shell) {
++      deps += [ "//chrome/app:chrome_crash_reporter_client" ]
++    }
++
+     deps += [
+       ":app_controller_mac",
+       ":chrome_browser_application_mac",
+diff --git a/chrome/browser/app_controller_mac.mm b/chrome/browser/app_controller_mac.mm
+index bbb4c5f9e9..c4fa9db8e5 100644
+--- a/chrome/browser/app_controller_mac.mm
++++ b/chrome/browser/app_controller_mac.mm
+@@ -136,6 +136,9 @@
+ #include "extensions/browser/extension_registry.h"
+ #include "extensions/browser/extension_system.h"
+ #include "extensions/buildflags/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/app/aux_crash_reporting_mac.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SPARKLE)
+ #import "chrome/browser/aux_sparkle_updater.h"
+ #endif
+@@ -1304,6 +1307,14 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+   }
+ 
+   [self setUpdateCheckInterval];
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (aux_crash_reporting::HasConfiguredEndpoint() &&
++      !aux_crash_reporting::HasUserChoice()) {
++    [self performSelector:@selector(auxCrashReportPreferences:)
++               withObject:nil
++               afterDelay:0];
++  }
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SPARKLE)
+   _auxSparkleUpdater = [[AuxSparkleUpdater alloc] init];
+ #endif
+@@ -1587,6 +1598,41 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+ }
+ 
+ // Aux updates are app-wide. Sparkle owns the update UI and its preference state.
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++- (void)auxCrashReportPreferences:(id)sender {
++  NSAlert* alert = [[NSAlert alloc] init];
++  alert.alertStyle = NSAlertStyleInformational;
++  if (!aux_crash_reporting::HasConfiguredEndpoint()) {
++    alert.messageText = @"Crash Report Sharing Is Unavailable";
++    alert.informativeText =
++        @"This Aux build has no crash report destination. Crashes are kept "
++         @"on this Mac.";
++    [alert addButtonWithTitle:@"OK"];
++    [alert runModal];
++    return;
++  }
++
++  alert.messageText = @"Share Crash Reports with Aux?";
++  alert.informativeText =
++      @"Crash reports can contain diagnostic information such as URLs and "
++       @"process memory. They stay on this Mac unless you choose to share "
++       @"them. You can change this choice from the Aux menu.";
++  [alert addButtonWithTitle:@"Keep on This Mac"];
++  [alert addButtonWithTitle:@"Share Crash Reports"];
++  BOOL consent = [alert runModal] == NSAlertSecondButtonReturn;
++  if (!aux_crash_reporting::SetConsent(consent)) {
++    NSAlert* error = [[NSAlert alloc] init];
++    error.alertStyle = NSAlertStyleWarning;
++    error.messageText = @"Crash Report Choice Could Not Be Saved";
++    error.informativeText =
++        @"Crash report uploads are off for this session. Try again from "
++         @"the Aux menu.";
++    [error addButtonWithTitle:@"OK"];
++    [error runModal];
++  }
++}
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_SPARKLE)
+ - (void)auxCheckForUpdates:(id)sender {
+   [_auxSparkleUpdater checkForUpdates:sender];
+@@ -1609,12 +1655,22 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+ // browser).
+ - (BOOL)validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>)item {
+   SEL action = [item action];
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (action == @selector(auxCrashReportPreferences:)) {
++    if ([(id)item isKindOfClass:NSMenuItem.class]) {
++      ((NSMenuItem*)item).state = aux_crash_reporting::HasConsent()
++                                       ? NSControlStateValueOn
++                                       : NSControlStateValueOff;
++    }
++    return YES;
++  }
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SPARKLE)
+   if (action == @selector(auxCheckForUpdates:) ||
+       action == @selector(auxToggleAutomaticUpdateChecks:) ||
+       action == @selector(auxSelectStableUpdates:) ||
+       action == @selector(auxSelectBetaUpdates:)) {
+-    if ([item isKindOfClass:NSMenuItem.class]) {
++    if ([(id)item isKindOfClass:NSMenuItem.class]) {
+       NSMenuItem* menuItem = (NSMenuItem*)item;
+       if (action == @selector(auxToggleAutomaticUpdateChecks:)) {
+         menuItem.state = _auxSparkleUpdater.automaticallyChecksForUpdates
+diff --git a/chrome/browser/buildflags.gni b/chrome/browser/buildflags.gni
+index 92c79c8f5a..bf67b25003 100644
+--- a/chrome/browser/buildflags.gni
++++ b/chrome/browser/buildflags.gni
+@@ -17,6 +17,9 @@ declare_args() {
+   aux_sparkle_feed_url = ""
+   aux_sparkle_public_ed_key = ""
+ 
++  # Empty by default: Aux records local crashes but cannot upload them.
++  aux_crash_upload_url = ""
++
+   # Compatibility probes may enable Chromium's remote DevTools endpoint in
+   # local test builds. The release signer rejects this flag.
+   aux_allow_remote_debugging_for_tests = false
+diff --git a/chrome/browser/ui/cocoa/main_menu_builder.mm b/chrome/browser/ui/cocoa/main_menu_builder.mm
+index 9d46cff156..64255f7408 100644
+--- a/chrome/browser/ui/cocoa/main_menu_builder.mm
++++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
+@@ -144,6 +144,17 @@ NSMenuItem* BuildAppMenu(NSApplication* nsapp,
+   }
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (!is_pwa) {
++    NSMenuItem* crash_item =
++        [[NSMenuItem alloc] initWithTitle:@"Crash Reports…"
++                                   action:@selector(auxCrashReportPreferences:)
++                            keyEquivalent:@""];
++    crash_item.target = app_delegate;
++    [item.submenu insertItem:crash_item atIndex:4];
++  }
++#endif
++
+   NSMenuItem* services_item = [item.submenu itemWithTag:-1];
+   services_item.tag = 0;
+ 

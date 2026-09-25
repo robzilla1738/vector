@@ -19,6 +19,7 @@ import {
   validatePasskeySigning,
 } from "./lib/passkey-signing.mjs";
 import { SPARKLE_NESTED_PATHS, SPARKLE_VERSION, validateSparkleSigning } from "./lib/sparkle-signing.mjs";
+import { validateCrashpadDistribution } from "./lib/crashpad-signing.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const flags = new Map();
@@ -134,6 +135,7 @@ blockers.push(
     localFeedRehearsal,
   }),
 );
+blockers.push(...validateCrashpadDistribution({ args, appInfo }));
 if (existsSync(sparkleFramework)) {
   try {
     const frameworkInfo = plist(join(sparkleFramework, "Resources", "Info.plist"));
@@ -217,6 +219,7 @@ const plan = {
   passkeyProvisioning: passkeyProfile ? "approved profile supplied" : "omitted",
   sparkle: existsSync(sparkleFramework) ? SPARKLE_VERSION : "omitted",
   updateFeed: appInfo?.SUFeedURL ?? null,
+  crashUploadEndpoint: appInfo?.AuxCrashUploadURL || null,
   localFeedRehearsal,
   ready: blockers.length === 0,
   blockers,
