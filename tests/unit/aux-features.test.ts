@@ -20,6 +20,11 @@ describe("AuxFeature staging", () => {
   it("returns a typed registry error for disabled runtime and bridge features", () => {
     expect(auxFeatureForMethod("vault.fill")).toBe("vault");
     expect(auxFeatureForBridgeMethod("vaultFill")).toBe("vault");
+    for (const method of ["dictationStatus", "startDictation", "stopDictation", "cancelDictation"]) {
+      expect(auxFeatureForBridgeMethod(method)).toBe("dictation");
+    }
+    expect(() => requireAuxFeature("dictation", "chromium-fork")).toThrowError(AuxError);
+    expect(() => requireAuxFeature("dictation", "chromium-fork", { dictation: "on" })).not.toThrow();
     expect(() => requireAuxMethod("vault.fill", "chromium-fork")).toThrowError(AuxError);
     expect(() => requireAuxFeature("spaces", "chromium-fork", { spaces: "preview" })).toThrowError(/preview/);
     expect(() => requireAuxMethod("pages.list", "chromium-fork")).not.toThrow();

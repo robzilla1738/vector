@@ -107,6 +107,8 @@ const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
   filterLists: "contentBlocking", updateFilters: "contentBlocking",
   addFilterSource: "contentBlocking", removeFilterSource: "contentBlocking",
   translatePage: "aiTranslate", showOriginal: "aiTranslate",
+  dictationStatus: "dictation", startDictation: "dictation",
+  stopDictation: "dictation", cancelDictation: "dictation",
 };
 
 export function auxFeatureForBridgeMethod(method: string): AuxFeature | undefined {
