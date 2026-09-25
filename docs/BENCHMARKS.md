@@ -4,11 +4,18 @@ Every published performance number has a row here. Numbers without a row are not
 claims. Engine-era rows (the removed custom engine, Speedometer, frame gates) are
 frozen in [archive/perf-engine](archive/perf-engine/).
 
+New browser-layer reports retain each raw sample and include deterministic
+nonparametric 95% bootstrap intervals for p50 and p95 (2,000 resamples). The
+intervals describe measurement uncertainty; a fixture or headless report does
+not qualify the native Chromium shell targets in the reviewed roadmap.
+
 ## Browser layer (`pnpm bench`)
 
 Records fixture, headless standalone Chromium, darwin arm64, p50. Reports are
 written to `tests/benchmarks/reports/` (gitignored). CI runs
 `pnpm bench --repeats 5 --check-budgets` against `scripts/budgets.json`.
+That five-trial run is a regression smoke; the qualification run uses at least
+20 trials under the section 8 controls.
 
 | Metric | Value | Build | n | Notes |
 |---|---:|---|---:|---|

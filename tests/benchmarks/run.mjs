@@ -22,7 +22,7 @@
  *
  * Prints a table and writes tests/benchmarks/reports/<timestamp>.json.
  *
- *   node tests/benchmarks/run.mjs [--repeats 10] [--warmup 1] [--label name]
+ *   node tests/benchmarks/run.mjs [--repeats 20] [--warmup 1] [--label name]
  *        [--runtime path/to/apps/runtime/dist/index.js] [--out dir]
  *        [--transport inproc|http] [--check-budgets]
  *
@@ -39,6 +39,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { execSync, spawnSync } from "node:child_process";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import { findChromium } from "../../scripts/chromium.mjs";
+import { summarizeSamples } from "./statistics.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const RECORDS = "http://127.0.0.1:4810";
@@ -49,8 +50,18 @@ const opt = (name, fallback) => {
   const i = argv.indexOf(`--${name}`);
   return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : fallback;
 };
-const repeats = Number(opt("repeats", 10));
+const repeats = Number(opt("repeats", 20));
 const warmup = Number(opt("warmup", 1));
+if (
+  !Number.isInteger(repeats) ||
+  repeats < 1 ||
+  repeats > 1000 ||
+  !Number.isInteger(warmup) ||
+  warmup < 0 ||
+  warmup > 100
+) {
+  throw new Error("Benchmarks require 1–1,000 measured repeats and 0–100 warmup runs.");
+}
 const runtimeEntry = resolve(opt("runtime", join(root, "apps/runtime/dist/index.js")));
 const outDir = resolve(opt("out", join(root, "tests/benchmarks/reports")));
 const label = opt("label", "");
@@ -58,7 +69,9 @@ const transport = opt("transport", "inproc");
 
 const sha = (dir) => {
   try {
-    return execSync("git rev-parse --short HEAD", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync("git rev-parse --short HEAD", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
   } catch {
     return "unknown";
   }
@@ -71,18 +84,6 @@ const chromiumPath = findChromium();
 if (chromiumPath && !process.env.AUX_BROWSER_PATH) process.env.AUX_BROWSER_PATH = chromiumPath;
 
 // ---- metrics ----
-const stats = (xs) => {
-  const s = xs.slice().sort((a, b) => a - b);
-  const q = (p) => s[Math.min(s.length - 1, Math.floor(s.length * p))];
-  return {
-    n: s.length,
-    mean: +(s.reduce((a, b) => a + b, 0) / s.length).toFixed(1),
-    p50: q(0.5),
-    p95: q(0.95),
-    min: s[0],
-    max: s[s.length - 1],
-  };
-};
 const now = () => performance.now();
 const J = (v) => JSON.stringify(v).length;
 
@@ -122,10 +123,18 @@ async function runBench() {
     // the product default remains read-only.
     await rpc("settings.set", { effectGrants: ["effect:read", "effect:write", "effect:egress"] });
     const sessions = await rpc("sessions.list").catch(() => []);
-    info.sessions = Array.isArray(sessions) ? sessions.map((s) => ({ backend: s.backend, status: s.status, detail: s.detail })) : [];
+    info.sessions = Array.isArray(sessions)
+      ? sessions.map((s) => ({ backend: s.backend, status: s.status, detail: s.detail }))
+      : [];
     const session = info.sessions.find((s) => s.backend === "aux");
     if (session && session.status !== "connected") {
-      return { ...info, skipped: `Chromium backend not connected: ${session.detail ?? session.status}`, metrics: {}, failures, unsupported: [] };
+      return {
+        ...info,
+        skipped: `Chromium backend not connected: ${session.detail ?? session.status}`,
+        metrics: {},
+        failures,
+        unsupported: [],
+      };
     }
 
     async function iteration(measure) {
@@ -156,14 +165,20 @@ async function runBench() {
         const applyRef = full.content.elements.find((e) => /apply filter/i.test(e.name ?? ""))?.ref;
         if (applyRef) {
           t = now();
-          const r = await rpc("pages.execute", { program: { pageId, steps: [{ id: "c", op: "click", target: applyRef }] } });
+          const r = await rpc("pages.execute", {
+            program: { pageId, steps: [{ id: "c", op: "click", target: applyRef }] },
+          });
           R("click.nav.rpc.ms", now() - t);
           if (r.steps[0]?.status === "ok") R("click.nav.step.ms", r.steps[0].durationMs);
           else failures.push(`click: ${r.steps[0]?.error?.message}`);
           const w = await rpc("pages.execute", {
-            program: { pageId, steps: [{ id: "w", op: "waitFor", condition: { kind: "urlMatches", pattern: "status=" } }] },
+            program: {
+              pageId,
+              steps: [{ id: "w", op: "waitFor", condition: { kind: "urlMatches", pattern: "status=" } }],
+            },
           });
-          if (w.steps[0]?.status !== "ok") failures.push(`click did not navigate: ${w.steps[0]?.error?.message}`);
+          if (w.steps[0]?.status !== "ok")
+            failures.push(`click did not navigate: ${w.steps[0]?.error?.message}`);
           // compact on the freshly navigated document — nothing cached yet
           t = now();
           const fresh = await rpc("pages.observe", { pageId, format: "compact" });
@@ -180,10 +195,14 @@ async function runBench() {
         R("navigate+observe.ms", navMs + (now() - t));
 
         // fill via ref
-        const titleRef = obs2.content.elements.find((e) => e.tag === "input" && /title/i.test(e.name ?? ""))?.ref;
+        const titleRef = obs2.content.elements.find(
+          (e) => e.tag === "input" && /title/i.test(e.name ?? ""),
+        )?.ref;
         if (titleRef) {
           t = now();
-          const c = await rpc("pages.execute", { program: { pageId, steps: [{ id: "c2", op: "click", target: titleRef }] } });
+          const c = await rpc("pages.execute", {
+            program: { pageId, steps: [{ id: "c2", op: "click", target: titleRef }] },
+          });
           R("click.nonav.rpc.ms", now() - t);
           if (c.steps[0]?.status === "ok") R("click.nonav.step.ms", c.steps[0].durationMs);
           else failures.push(`click.nonav: ${c.steps[0]?.error?.message}`);
@@ -199,7 +218,10 @@ async function runBench() {
           // act + observe in one round trip
           t = now();
           const ao = await rpc("pages.execute", {
-            program: { pageId, steps: [{ id: "f2", op: "fill", target: titleRef, value: "Benchmark title 2" }] },
+            program: {
+              pageId,
+              steps: [{ id: "f2", op: "fill", target: titleRef, value: "Benchmark title 2" }],
+            },
             returnObservation: { format: "compact" },
           });
           if (ao && ao.observation) R("act+observe.ms", now() - t);
@@ -238,8 +260,11 @@ async function runBench() {
     "act+observe.ms",
   ];
   const metrics = {};
-  for (const name of order) if (samples.has(name)) metrics[name] = { ...stats(samples.get(name)), samples: samples.get(name) };
-  for (const [name, xs] of samples) if (!metrics[name]) metrics[name] = { ...stats(xs), samples: xs };
+  for (const name of order)
+    if (samples.has(name))
+      metrics[name] = { ...summarizeSamples(samples.get(name)), samples: samples.get(name) };
+  for (const [name, xs] of samples)
+    if (!metrics[name]) metrics[name] = { ...summarizeSamples(xs), samples: xs };
   return { ...info, metrics, failures, unsupported: [...unsupported] };
 }
 
@@ -285,15 +310,24 @@ const table = (cols, rows) => {
   for (const r of rows) console.log(line(r, width));
 };
 
-console.log(`\naux bench — ${label || "runtime"} @ ${report.runtime.sha} — ${repeats} repeats (${warmup} warmup) on ${report.fixture}`);
-const rows = Object.entries(result.metrics).map(([name, m]) => [name, m.n, m.mean, m.p50, m.p95, m.min, m.max].map(String));
+console.log(
+  `\naux bench — ${label || "runtime"} @ ${report.runtime.sha} — ${repeats} repeats (${warmup} warmup) on ${report.fixture}`,
+);
+const rows = Object.entries(result.metrics).map(([name, m]) =>
+  [name, m.n, m.mean, m.p50, m.p95, m.min, m.max].map(String),
+);
 table(["metric", "n", "mean", "p50", "p95", "min", "max"], rows);
 if (result.unsupported?.length) console.log(`unsupported: ${result.unsupported.join(", ")}`);
-if (result.failures?.length) console.log(`failures (${result.failures.length}): ${[...new Set(result.failures)].slice(0, 5).join(" | ")}`);
+if (result.failures?.length)
+  console.log(
+    `failures (${result.failures.length}): ${[...new Set(result.failures)].slice(0, 5).join(" | ")}`,
+  );
 console.log(`\nreport: ${reportPath}`);
 let budgetFailed = false;
 if (argv.includes("--check-budgets")) {
-  const r = spawnSync(process.execPath, [join(root, "scripts/check-budgets.mjs"), "bench", reportPath], { stdio: "inherit" });
+  const r = spawnSync(process.execPath, [join(root, "scripts/check-budgets.mjs"), "bench", reportPath], {
+    stdio: "inherit",
+  });
   budgetFailed = r.status !== 0;
 }
 process.exit((result.failures?.length ?? 0) > 0 || budgetFailed ? 1 : 0);
