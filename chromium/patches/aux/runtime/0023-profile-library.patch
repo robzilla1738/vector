@@ -69,23 +69,23 @@ index 0000000000..61695c45dc
 +constexpr char kReadingListKey[] = "aux.readingList";
 +constexpr char kReadAtKey[] = "aux.readAt";
 +
-+base::Value::Dict Fault(std::string code, std::string message) {
-+  base::Value::Dict error;
++base::DictValue Fault(std::string code, std::string message) {
++  base::DictValue error;
 +  error.Set("code", std::move(code));
 +  error.Set("message", std::move(message));
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +  reply.Set("error", std::move(error));
 +  return reply;
 +}
 +
-+base::Value::Dict Result(base::Value value) {
-+  base::Value::Dict reply;
++base::DictValue Result(base::Value value) {
++  base::DictValue reply;
 +  reply.Set("result", std::move(value));
 +  return reply;
 +}
 +
-+base::Value::Dict Okay() {
-+  base::Value::Dict result;
++base::DictValue Okay() {
++  base::DictValue result;
 +  result.Set("ok", true);
 +  return Result(base::Value(std::move(result)));
 +}
@@ -96,9 +96,9 @@ index 0000000000..61695c45dc
 +         !url.has_username() && !url.has_password();
 +}
 +
-+base::Value::Dict VisitValue(const std::string &url, const std::string &title,
++base::DictValue VisitValue(const std::string &url, const std::string &title,
 +                             int64_t visited_at) {
-+  base::Value::Dict visit;
++  base::DictValue visit;
 +  visit.Set("url", url);
 +  visit.Set("title", title);
 +  visit.Set("visitedAt", static_cast<double>(visited_at));
@@ -205,14 +205,14 @@ index 0000000000..61695c45dc
 +  if (!snapshotting_ || !runtime_available_) {
 +    return;
 +  }
-+  base::Value::List visits;
++  base::ListValue visits;
 +  const size_t end =
 +      std::min(offset + kHistoryBatchSize, snapshot_visits_.size());
 +  for (size_t index = offset; index < end; ++index) {
 +    const Visit &visit = snapshot_visits_[index];
 +    visits.Append(VisitValue(visit.url, visit.title, visit.visited_at));
 +  }
-+  base::Value::Dict request;
++  base::DictValue request;
 +  request.Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe());
 +  request.Set("sourceGeneration", generation_);
 +  request.Set("sequence", static_cast<int>(sequence_));
@@ -252,7 +252,7 @@ index 0000000000..61695c45dc
 +                weak_factory_.GetWeakPtr(), end, batch_index));
 +}
 +
-+void ProfileLibrary::EnqueueDelta(base::Value::Dict delta) {
++void ProfileLibrary::EnqueueDelta(base::DictValue delta) {
 +  if (!runtime_available_) {
 +    return;
 +  }
@@ -273,7 +273,7 @@ index 0000000000..61695c45dc
 +    return;
 +  }
 +  delta_in_flight_ = true;
-+  base::Value::Dict request = pending_deltas_.front().Clone();
++  base::DictValue request = pending_deltas_.front().Clone();
 +  request.Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe());
 +  request.Set("sourceGeneration", generation_);
 +  request.Set("sequence", static_cast<int>(sequence_ + 1));
@@ -313,10 +313,10 @@ index 0000000000..61695c45dc
 +  if (url.empty() || url.size() > 8192 || at < 0) {
 +    return;
 +  }
-+  base::Value::List upserts;
++  base::ListValue upserts;
 +  upserts.Append(VisitValue(
 +      url, base::UTF16ToUTF8(info.url_row.title().substr(0, 4096)), at));
-+  base::Value::Dict delta;
++  base::DictValue delta;
 +  delta.Set("upserts", std::move(upserts));
 +  EnqueueDelta(std::move(delta));
 +}
@@ -327,10 +327,10 @@ index 0000000000..61695c45dc
 +    return;
 +  }
 +  for (size_t offset = 0; offset < rows.size(); offset += kHistoryBatchSize) {
-+    base::Value::List updates;
++    base::ListValue updates;
 +    for (size_t index = offset;
 +         index < std::min(offset + kHistoryBatchSize, rows.size()); ++index) {
-+      base::Value::Dict update;
++      base::DictValue update;
 +      if (rows[index].url().spec().size() > 8192) {
 +        continue;
 +      }
@@ -339,7 +339,7 @@ index 0000000000..61695c45dc
 +                 base::UTF16ToUTF8(rows[index].title().substr(0, 4096)));
 +      updates.Append(std::move(update));
 +    }
-+    base::Value::Dict delta;
++    base::DictValue delta;
 +    delta.Set("titleUpdates", std::move(updates));
 +    EnqueueDelta(std::move(delta));
 +  }
@@ -454,16 +454,16 @@ index 0000000000..61695c45dc
 +  return roots;
 +}
 +
-+base::Value::List ProfileLibrary::ListBookmarks() const {
-+  base::Value::List result;
++base::ListValue ProfileLibrary::ListBookmarks() const {
++  base::ListValue result;
 +  if (!bookmarks_ || !bookmarks_->loaded()) {
 +    return result;
 +  }
 +  auto walk = [&](auto &&self, const bookmarks::BookmarkNode *node,
-+                  const base::Value::List &path) -> void {
++                  const base::ListValue &path) -> void {
 +    for (const auto &child : node->children()) {
 +      if (child->is_folder()) {
-+        base::Value::List next = path.Clone();
++        base::ListValue next = path.Clone();
 +        next.Append(base::UTF16ToUTF8(child->GetTitle()));
 +        self(self, child.get(), next);
 +        continue;
@@ -471,7 +471,7 @@ index 0000000000..61695c45dc
 +      if (!child->url().SchemeIsHTTPOrHTTPS()) {
 +        continue;
 +      }
-+      base::Value::Dict bookmark;
++      base::DictValue bookmark;
 +      bookmark.Set("nodeId", base::NumberToString(child->id()));
 +      bookmark.Set("url", child->url().spec());
 +      bookmark.Set("title", base::UTF16ToUTF8(child->GetTitle()));
@@ -492,35 +492,35 @@ index 0000000000..61695c45dc
 +      result.Append(std::move(bookmark));
 +    }
 +  };
-+  walk(walk, bookmarks_->bookmark_bar_node(), base::Value::List());
++  walk(walk, bookmarks_->bookmark_bar_node(), base::ListValue());
 +  for (const auto &[root, name] : RootAliases()) {
-+    base::Value::List path;
++    base::ListValue path;
 +    path.Append(name);
 +    walk(walk, root, path);
 +  }
 +  return result;
 +}
 +
-+base::Value::List ProfileLibrary::ListFolders() const {
-+  base::Value::List result;
++base::ListValue ProfileLibrary::ListFolders() const {
++  base::ListValue result;
 +  if (!bookmarks_ || !bookmarks_->loaded()) {
 +    return result;
 +  }
 +  auto walk = [&](auto &&self, const bookmarks::BookmarkNode *node,
-+                  const base::Value::List &path) -> void {
++                  const base::ListValue &path) -> void {
 +    for (const auto &child : node->children()) {
 +      if (!child->is_folder()) {
 +        continue;
 +      }
-+      base::Value::List next = path.Clone();
++      base::ListValue next = path.Clone();
 +      next.Append(base::UTF16ToUTF8(child->GetTitle()));
 +      result.Append(next.Clone());
 +      self(self, child.get(), next);
 +    }
 +  };
-+  walk(walk, bookmarks_->bookmark_bar_node(), base::Value::List());
++  walk(walk, bookmarks_->bookmark_bar_node(), base::ListValue());
 +  for (const auto &[root, name] : RootAliases()) {
-+    base::Value::List path;
++    base::ListValue path;
 +    path.Append(name);
 +    result.Append(path.Clone());
 +    walk(walk, root, path);
@@ -529,7 +529,7 @@ index 0000000000..61695c45dc
 +}
 +
 +const bookmarks::BookmarkNode *
-+ProfileLibrary::FindFolder(const base::Value::List &path, bool create) {
++ProfileLibrary::FindFolder(const base::ListValue &path, bool create) {
 +  if (!bookmarks_ || !bookmarks_->loaded() || path.size() > 32) {
 +    return nullptr;
 +  }
@@ -572,7 +572,7 @@ index 0000000000..61695c45dc
 +}
 +
 +const bookmarks::BookmarkNode *
-+ProfileLibrary::FindBookmark(const base::Value::Dict &params,
++ProfileLibrary::FindBookmark(const base::DictValue &params,
 +                             const std::string &url_key) const {
 +  if (!bookmarks_ || !bookmarks_->loaded()) {
 +    return nullptr;
@@ -600,7 +600,7 @@ index 0000000000..61695c45dc
 +  return bookmarks_->GetMostRecentlyAddedUserNodeForURL(GURL(*url));
 +}
 +
-+base::Value::List
++base::ListValue
 +ProfileLibrary::FolderPath(const bookmarks::BookmarkNode *node) const {
 +  std::vector<std::string> names;
 +  const bookmarks::BookmarkNode *parent = node->parent();
@@ -614,16 +614,16 @@ index 0000000000..61695c45dc
 +      break;
 +    }
 +  }
-+  base::Value::List path;
++  base::ListValue path;
 +  for (auto it = names.rbegin(); it != names.rend(); ++it) {
 +    path.Append(*it);
 +  }
 +  return path;
 +}
 +
-+base::Value::Dict
++base::DictValue
 +ProfileLibrary::BookmarkCall(const std::string &method,
-+                             const base::Value::Dict &params) {
++                             const base::DictValue &params) {
 +  if (!bookmarks_ || !bookmarks_->loaded()) {
 +    return Fault("backend_unavailable", "Chromium bookmarks are still loading");
 +  }
@@ -637,7 +637,7 @@ index 0000000000..61695c45dc
 +  if (method == "bookmarks.folders.create" ||
 +      method == "bookmarks.folders.rename" ||
 +      method == "bookmarks.folders.remove") {
-+    const base::Value::List *path = params.FindList("path");
++    const base::ListValue *path = params.FindList("path");
 +    if (!path || path->empty() || path->size() > 32) {
 +      return Fault("invalid_argument", "Choose a bookmark folder");
 +    }
@@ -645,7 +645,7 @@ index 0000000000..61695c45dc
 +      if (FindFolder(*path, false)) {
 +        return Fault("conflict", "That folder already exists");
 +      }
-+      base::Value::List parent_path = path->Clone();
++      base::ListValue parent_path = path->Clone();
 +      const std::string *name = parent_path.back().GetIfString();
 +      if (!name || name->empty() || name->size() > 200) {
 +        return Fault("invalid_argument", "Invalid folder name");
@@ -705,7 +705,7 @@ index 0000000000..61695c45dc
 +      if (!title || title->size() > 1000) {
 +        return Fault("invalid_argument", "A title is required");
 +      }
-+      const base::Value::List *path = params.FindList("folderPath");
++      const base::ListValue *path = params.FindList("folderPath");
 +      const bookmarks::BookmarkNode *folder =
 +          path ? FindFolder(*path, true) : bookmarks_->bookmark_bar_node();
 +      if (!folder) {
@@ -718,7 +718,7 @@ index 0000000000..61695c45dc
 +        bookmarks_->SetTitle(node, base::UTF8ToUTF16(*title),
 +                             bookmarks::metrics::BookmarkEditSource::kUser);
 +      }
-+      if (const base::Value::List *path = params.FindList("folderPath")) {
++      if (const base::ListValue *path = params.FindList("folderPath")) {
 +        const bookmarks::BookmarkNode *folder = FindFolder(*path, true);
 +        if (!folder) {
 +          return Fault("invalid_argument", "Invalid bookmark folder");
@@ -769,16 +769,16 @@ index 0000000000..61695c45dc
 +    if (!node) {
 +      return Fault("not_found", "This bookmark was removed");
 +    }
-+    const base::Value::Dict *expected = params.FindDict("expected");
++    const base::DictValue *expected = params.FindDict("expected");
 +    const std::string *title = params.FindString("title");
 +    const std::string *url = params.FindString("url");
-+    const base::Value::List *path = params.FindList("folderPath");
++    const base::ListValue *path = params.FindList("folderPath");
 +    if (!expected || !title || title->empty() || title->size() > 1000 || !url ||
 +        !ValidWebUrl(*url)) {
 +      return Fault("invalid_argument", "Invalid bookmark edit");
 +    }
 +    const std::string *old_title = expected->FindString("title");
-+    const base::Value::List *old_path = expected->FindList("folderPath");
++    const base::ListValue *old_path = expected->FindList("folderPath");
 +    if (!old_title || base::UTF16ToUTF8(node->GetTitle()) != *old_title ||
 +        (old_path && FolderPath(node) != *old_path)) {
 +      return Fault("conflict", "Bookmark changed in another window");
@@ -808,8 +808,8 @@ index 0000000000..61695c45dc
 +  }
 +
 +  if (method == "bookmarks.move") {
-+    const base::Value::List *selections = params.FindList("bookmarks");
-+    const base::Value::List *path = params.FindList("folderPath");
++    const base::ListValue *selections = params.FindList("bookmarks");
++    const base::ListValue *path = params.FindList("folderPath");
 +    if (!selections || !path || selections->empty() ||
 +        selections->size() > 10000) {
 +      return Fault("invalid_argument", "Invalid bookmark selection");
@@ -817,10 +817,10 @@ index 0000000000..61695c45dc
 +    std::vector<const bookmarks::BookmarkNode *> nodes;
 +    nodes.reserve(selections->size());
 +    for (const base::Value &item : *selections) {
-+      const base::Value::Dict *entry = item.GetIfDict();
++      const base::DictValue *entry = item.GetIfDict();
 +      const bookmarks::BookmarkNode *node =
 +          entry ? FindBookmark(*entry, "url") : nullptr;
-+      const base::Value::List *expected =
++      const base::ListValue *expected =
 +          entry ? entry->FindList("folderPath") : nullptr;
 +      if (!node || !expected || FolderPath(node) != *expected) {
 +        return Fault("conflict", "A selected bookmark moved or was removed");
@@ -842,17 +842,17 @@ index 0000000000..61695c45dc
 +        ++moved;
 +      }
 +    }
-+    base::Value::Dict result;
++    base::DictValue result;
 +    result.Set("moved", moved);
 +    return Result(base::Value(std::move(result)));
 +  }
 +
 +  if (method == "bookmarks.import" || method == "bookmarks.saveFolder") {
-+    const base::Value::List *items = params.FindList("bookmarks");
++    const base::ListValue *items = params.FindList("bookmarks");
 +    if (!items || items->size() > 10000) {
 +      return Fault("invalid_argument", "Invalid bookmark import");
 +    }
-+    base::Value::List folder_prefix;
++    base::ListValue folder_prefix;
 +    if (method == "bookmarks.saveFolder") {
 +      const std::string *name = params.FindString("name");
 +      if (!name || name->empty() || name->size() > 200) {
@@ -863,9 +863,9 @@ index 0000000000..61695c45dc
 +        return Fault("conflict", "That folder already exists");
 +      }
 +    }
-+    if (const base::Value::List *folders = params.FindList("folders")) {
++    if (const base::ListValue *folders = params.FindList("folders")) {
 +      for (const base::Value &value : *folders) {
-+        const base::Value::List *path = value.GetIfList();
++        const base::ListValue *path = value.GetIfList();
 +        if (!path || !FindFolder(*path, true)) {
 +          return Fault("invalid_argument", "Invalid imported folder");
 +        }
@@ -873,7 +873,7 @@ index 0000000000..61695c45dc
 +    }
 +    int added = 0;
 +    for (const base::Value &value : *items) {
-+      const base::Value::Dict *entry = value.GetIfDict();
++      const base::DictValue *entry = value.GetIfDict();
 +      if (!entry) {
 +        return Fault("invalid_argument", "Invalid bookmark entry");
 +      }
@@ -885,7 +885,7 @@ index 0000000000..61695c45dc
 +      if (!bookmarks_->GetNodesByURL(GURL(*url)).empty()) {
 +        continue;
 +      }
-+      const base::Value::List *path = entry->FindList("folderPath");
++      const base::ListValue *path = entry->FindList("folderPath");
 +      const bookmarks::BookmarkNode *folder =
 +          method == "bookmarks.saveFolder" ? FindFolder(folder_prefix, true)
 +          : path                           ? FindFolder(*path, true)
@@ -897,7 +897,7 @@ index 0000000000..61695c45dc
 +                            base::UTF8ToUTF16(*title), GURL(*url));
 +      ++added;
 +    }
-+    base::Value::Dict result;
++    base::DictValue result;
 +    result.Set("added", added);
 +    result.Set("skipped", static_cast<int>(items->size()) - added);
 +    return Result(base::Value(std::move(result)));
@@ -906,8 +906,8 @@ index 0000000000..61695c45dc
 +}
 +
 +void ProfileLibrary::ClearHistory(
-+    const base::Value::Dict &params,
-+    base::OnceCallback<void(base::Value::Dict)> callback) {
++    const base::DictValue &params,
++    base::OnceCallback<void(base::DictValue)> callback) {
 +  if (!history_) {
 +    std::move(callback).Run(
 +        Fault("backend_unavailable", "Chromium HistoryService is unavailable"));
@@ -936,7 +936,7 @@ index 0000000000..61695c45dc
 +      base::BindOnce(
 +          [](base::WeakPtr<ProfileLibrary> self, base::Time begin,
 +             base::Time end,
-+             base::OnceCallback<void(base::Value::Dict)> callback,
++             base::OnceCallback<void(base::DictValue)> callback,
 +             history::QueryResults rows) {
 +            if (!self || !self->history_) {
 +              std::move(callback).Run(
@@ -947,9 +947,9 @@ index 0000000000..61695c45dc
 +            self->history_->ExpireHistoryBetween(
 +                {}, std::nullopt, begin, end, true,
 +                base::BindOnce(
-+                    [](base::OnceCallback<void(base::Value::Dict)> callback,
++                    [](base::OnceCallback<void(base::DictValue)> callback,
 +                       int count) {
-+                      base::Value::Dict result;
++                      base::DictValue result;
 +                      result.Set("removed", count);
 +                      std::move(callback).Run(
 +                          Result(base::Value(std::move(result))));
@@ -962,8 +962,8 @@ index 0000000000..61695c45dc
 +}
 +
 +void ProfileLibrary::RemoveVisit(
-+    const base::Value::Dict &params,
-+    base::OnceCallback<void(base::Value::Dict)> callback) {
++    const base::DictValue &params,
++    base::OnceCallback<void(base::DictValue)> callback) {
 +  if (!history_) {
 +    std::move(callback).Run(
 +        Fault("backend_unavailable", "Chromium HistoryService is unavailable"));
@@ -988,7 +988,7 @@ index 0000000000..61695c45dc
 +      base::BindOnce(
 +          [](base::WeakPtr<ProfileLibrary> self, GURL url, base::Time begin,
 +             base::Time end,
-+             base::OnceCallback<void(base::Value::Dict)> callback,
++             base::OnceCallback<void(base::DictValue)> callback,
 +             history::QueryResults rows) {
 +            if (!self || !self->history_) {
 +              std::move(callback).Run(
@@ -1000,7 +1000,7 @@ index 0000000000..61695c45dc
 +                  return row.url() == url && row.visit_time() == begin;
 +                });
 +            if (!found) {
-+              base::Value::Dict result;
++              base::DictValue result;
 +              result.Set("removed", false);
 +              std::move(callback).Run(Result(base::Value(std::move(result))));
 +              return;
@@ -1008,8 +1008,8 @@ index 0000000000..61695c45dc
 +            self->history_->ExpireHistoryBetween(
 +                {url}, std::nullopt, begin, end, true,
 +                base::BindOnce(
-+                    [](base::OnceCallback<void(base::Value::Dict)> callback) {
-+                      base::Value::Dict result;
++                    [](base::OnceCallback<void(base::DictValue)> callback) {
++                      base::DictValue result;
 +                      result.Set("removed", true);
 +                      std::move(callback).Run(
 +                          Result(base::Value(std::move(result))));
@@ -1078,12 +1078,12 @@ index 0000000000..f4218e004b
 +
 +  void OnRuntimeAvailable();
 +  void OnRuntimeDisconnected();
-+  base::Value::Dict BookmarkCall(const std::string &method,
-+                                 const base::Value::Dict &params);
-+  void ClearHistory(const base::Value::Dict &params,
-+                    base::OnceCallback<void(base::Value::Dict)> callback);
-+  void RemoveVisit(const base::Value::Dict &params,
-+                   base::OnceCallback<void(base::Value::Dict)> callback);
++  base::DictValue BookmarkCall(const std::string &method,
++                                 const base::DictValue &params);
++  void ClearHistory(const base::DictValue &params,
++                    base::OnceCallback<void(base::DictValue)> callback);
++  void RemoveVisit(const base::DictValue &params,
++                   base::OnceCallback<void(base::DictValue)> callback);
 +
 +  // history::HistoryServiceObserver:
 +  void OnURLVisited(history::HistoryService *,
@@ -1122,16 +1122,16 @@ index 0000000000..f4218e004b
 +  void RefreshHistory();
 +  void OnHistoryQuery(history::QueryResults results);
 +  void SendSnapshotBatch(size_t offset, size_t batch_index);
-+  void EnqueueDelta(base::Value::Dict delta);
++  void EnqueueDelta(base::DictValue delta);
 +  void FlushDelta();
 +  void NotifyBookmarks();
-+  base::Value::List ListBookmarks() const;
-+  base::Value::List ListFolders() const;
-+  const bookmarks::BookmarkNode *FindFolder(const base::Value::List &path,
++  base::ListValue ListBookmarks() const;
++  base::ListValue ListFolders() const;
++  const bookmarks::BookmarkNode *FindFolder(const base::ListValue &path,
 +                                            bool create);
-+  const bookmarks::BookmarkNode *FindBookmark(const base::Value::Dict &params,
++  const bookmarks::BookmarkNode *FindBookmark(const base::DictValue &params,
 +                                              const std::string &url_key) const;
-+  base::Value::List FolderPath(const bookmarks::BookmarkNode *node) const;
++  base::ListValue FolderPath(const bookmarks::BookmarkNode *node) const;
 +  std::vector<std::pair<const bookmarks::BookmarkNode *, std::string>>
 +  RootAliases() const;
 +
@@ -1150,7 +1150,7 @@ index 0000000000..f4218e004b
 +  std::string generation_;
 +  uint64_t sequence_ = 0;
 +  std::vector<Visit> snapshot_visits_;
-+  std::deque<base::Value::Dict> pending_deltas_;
++  std::deque<base::DictValue> pending_deltas_;
 +  base::WeakPtrFactory<ProfileLibrary> weak_factory_{this};
 +};
 +
@@ -1247,7 +1247,7 @@ index cd426c39de..7908680848 100644
  
  void AuxRuntimeHost::HandleZapInstall(
 @@ -163,8 +193,8 @@ void AuxRuntimeHost::HandleZapInstall(
-     base::OnceCallback<void(base::Value::Dict)> callback) {
+     base::OnceCallback<void(base::DictValue)> callback) {
    aux::ZapController* controller = aux::ZapController::ForProfile(profile_);
    if (!controller) {
 -    std::move(callback).Run(NativeFault("backend_unavailable",
@@ -1263,8 +1263,8 @@ index cd426c39de..7908680848 100644
  
 +void AuxRuntimeHost::HandleHistoryMutation(
 +    const std::string& method,
-+    const base::Value::Dict& params,
-+    base::OnceCallback<void(base::Value::Dict)> callback) {
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback) {
 +  if (!profile_library_) {
 +    std::move(callback).Run(
 +        NativeFault("backend_unavailable", "Profile library is unavailable"));
@@ -1297,13 +1297,13 @@ index cd426c39de..7908680848 100644
    }
  }
  
-@@ -285,6 +331,14 @@ base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+@@ -285,6 +331,14 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
      const std::string& method,
-     const base::Value::Dict& params,
+     const base::DictValue& params,
      uint64_t connection_generation) {
 +  if (method == "native.bookmarksInvoke") {
 +    const std::string* bookmark_method = params.FindString("method");
-+    const base::Value::Dict* bookmark_params = params.FindDict("params");
++    const base::DictValue* bookmark_params = params.FindDict("params");
 +    if (!bookmark_method || !bookmark_params) {
 +      return NativeFault("invalid_argument", "Invalid bookmark request");
 +    }
@@ -1312,7 +1312,7 @@ index cd426c39de..7908680848 100644
    auto* catalog = aux::TabCatalog::GetForProfile(profile_);
    if (!catalog) {
      return NativeFault("backend_unavailable", "Tab catalog is unavailable");
-@@ -295,8 +349,7 @@ base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+@@ -295,8 +349,7 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
      if (!page_id || !message) {
        return NativeFault("invalid_argument", "Invalid CDP dispatch envelope");
      }
@@ -1321,8 +1321,8 @@ index cd426c39de..7908680848 100644
 +    return cdp_broker_->Dispatch(*page_id, *message, connection_generation);
    }
    if (method == "native.cdpVersion") {
-     base::Value::Dict result;
-@@ -412,7 +465,8 @@ base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+     base::DictValue result;
+@@ -412,7 +465,8 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
    }
    if (method == "native.setZoom" || method == "native.stopFind") {
      const std::string* page_id = params.FindString("pageId");
@@ -1332,7 +1332,7 @@ index cd426c39de..7908680848 100644
      if (!contents) {
        return NativeFault("not_found", "Page is not in this Profile");
      }
-@@ -736,6 +790,17 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+@@ -736,6 +790,17 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                               }, state));
                           return;
                         }
@@ -1341,7 +1341,7 @@ index cd426c39de..7908680848 100644
 +                         owner->HandleHistoryMutation(
 +                             method, params, base::BindOnce(
 +                                 [](std::shared_ptr<NativeReplyState> state,
-+                                    base::Value::Dict reply) {
++                                    base::DictValue reply) {
 +                                   state->reply = std::move(reply);
 +                                   state->ready.Signal();
 +                                 }, state));
@@ -1352,7 +1352,7 @@ index cd426c39de..7908680848 100644
                                         method, params, connection_generation)
 @@ -797,9 +862,9 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
    if (!reply.Find("result") && !reply.Find("error")) {
-     base::Value::Dict fault;
+     base::DictValue fault;
      fault.Set("code", native_error.empty() ? "invalid_argument"
 -                                            : "backend_unavailable");
 -    fault.Set("message", native_error.empty() ? "Invalid native request"
@@ -1371,20 +1371,20 @@ index cd426c39de..7908680848 100644
 +  if (connection_fd_ < 0) {
 +    return;
 +  }
-+  base::Value::Dict note;
++  base::DictValue note;
 +  note.Set("kind", "note");
 +  note.Set("type", "native.bookmarksChanged");
-+  note.Set("payload", base::Value::Dict());
++  note.Set("payload", base::DictValue());
 +  const auto json = base::WriteJson(note);
 +  if (!json || !SendFrame(*json)) {
 +    Disconnect();
 +  }
 +}
 +
- void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
+ void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
    const std::string* type = data.FindString("type");
    const base::Value* payload = data.Find("payload");
-@@ -836,15 +915,15 @@ void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
+@@ -836,15 +915,15 @@ void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
      return;
    }
    ui_runner_->PostTask(
@@ -1486,15 +1486,15 @@ index be75a9cd02..0cbd09b9f4 100644
     private:
      bool Connect(std::string* error);
 @@ -98,6 +101,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
-                         base::OnceCallback<void(base::Value::Dict)> callback);
-   void HandleReadableCapture(const base::Value::Dict& params,
-                              base::OnceCallback<void(base::Value::Dict)> callback);
+                         base::OnceCallback<void(base::DictValue)> callback);
+   void HandleReadableCapture(const base::DictValue& params,
+                              base::OnceCallback<void(base::DictValue)> callback);
 +  void HandleHistoryMutation(
 +      const std::string& method,
-+      const base::Value::Dict& params,
-+      base::OnceCallback<void(base::Value::Dict)> callback);
-   base::Value::Dict HandleNativeCall(const std::string& method,
-                                      const base::Value::Dict& params,
++      const base::DictValue& params,
++      base::OnceCallback<void(base::DictValue)> callback);
+   base::DictValue HandleNativeCall(const std::string& method,
+                                      const base::DictValue& params,
                                       uint64_t connection_generation);
 @@ -112,6 +119,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
    raw_ptr<Profile> profile_;
