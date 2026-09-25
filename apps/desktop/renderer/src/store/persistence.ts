@@ -70,6 +70,12 @@ export const reloadOrganizationLayout = async () => {
   queuePending(store);
   return store.refresh();
 };
+export const adoptImportedOrganization = async () => {
+  clearTimeout(layoutTimer);
+  layoutTimer = undefined;
+  pendingLayout = null;
+  return (await organization()).adoptNativeImport();
+};
 export const flushLayout = async () => {
   clearTimeout(layoutTimer);
   layoutTimer = undefined;

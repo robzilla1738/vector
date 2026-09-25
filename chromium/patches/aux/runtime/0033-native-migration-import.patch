@@ -28,10 +28,10 @@ index 35e5b2e185..05e1441661 100644
    deps = [
 diff --git a/chrome/browser/ui/aux/migration_import.cc b/chrome/browser/ui/aux/migration_import.cc
 new file mode 100644
-index 0000000000..c69caabf93
+index 0000000000..e583dbf84e
 --- /dev/null
 +++ b/chrome/browser/ui/aux/migration_import.cc
-@@ -0,0 +1,809 @@
+@@ -0,0 +1,814 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -219,6 +219,11 @@ index 0000000000..c69caabf93
 +
 +MigrationImport::MigrationImport(Profile* profile) : profile_(profile) {}
 +MigrationImport::~MigrationImport() = default;
++
++bool MigrationImport::InProgress() const {
++  return base::PathExists(JournalPath(profile_)) &&
++         !base::PathExists(CompletionPath(profile_));
++}
 +
 +bool MigrationImport::ValidateManifestForTest(const base::DictValue& manifest,
 +                                               std::string* error) {
@@ -843,10 +848,10 @@ index 0000000000..c69caabf93
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/migration_import.h b/chrome/browser/ui/aux/migration_import.h
 new file mode 100644
-index 0000000000..88621b1d64
+index 0000000000..11735ccca8
 --- /dev/null
 +++ b/chrome/browser/ui/aux/migration_import.h
-@@ -0,0 +1,64 @@
+@@ -0,0 +1,65 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -871,8 +876,9 @@ index 0000000000..88621b1d64
 +// browser Profile owns this object and its immutable, verified manifest.
 +class MigrationImport final : public base::SupportsUserData::Data {
 + public:
-+ static MigrationImport* ForProfile(Profile* profile);
++  static MigrationImport* ForProfile(Profile* profile);
 +  ~MigrationImport() override;
++  bool InProgress() const;
 +  static bool ValidateManifestForTest(const base::DictValue& manifest,
 +                                      std::string* error);
 +
@@ -1003,7 +1009,7 @@ index 0000000000..617cb04a8d
 +}  // namespace
 +}  // namespace aux
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 49c76a5d7a..c6dcbc5dff 100644
+index 49c76a5d7a..df6e1dcfdd 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 @@ -16,6 +16,7 @@
@@ -1045,3 +1051,16 @@ index 49c76a5d7a..c6dcbc5dff 100644
    if (method == "createResultPreview") {
      if (browser_->GetProfile()->IsOffTheRecord() || list->size() != 1 ||
          !(*list)[0].is_string()) {
+@@ -831,6 +856,12 @@ void WebUIBrowserUI::Request(const std::string& method,
+                               "Private windows do not persist organization");
+       return;
+     }
++    if (method == "organizationCommit" &&
++        aux::MigrationImport::ForProfile(browser_->GetProfile())->InProgress()) {
++      std::move(callback).Run(false, "", "conflict",
++                              "Profile migration owns organization until it finishes");
++      return;
++    }
+     const std::string window_id =
+         base::NumberToString(browser_->GetSessionID().id());
+     std::string error;

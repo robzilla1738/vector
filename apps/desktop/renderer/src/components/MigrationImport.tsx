@@ -2,6 +2,8 @@ import { useState } from "react";
 import { bridge, type MigrationProgress, type MigrationReview } from "../bridge";
 import { applyReviewedMigration } from "../migration-import";
 import { NativeDialog } from "./NativeDialog";
+import { adoptImportedOrganization } from "../store/persistence";
+import { useStore } from "../store";
 
 /** Explicit human review for a seed already staged in this Chromium Profile. */
 export function MigrationImport() {
@@ -30,6 +32,7 @@ export function MigrationImport() {
     try {
       const result = await applyReviewedMigration(bridge, review, setProgress);
       setReview(result);
+      useStore.setState({ layout: await adoptImportedOrganization() });
       setMessage(
         "Chromium tabs, Spaces, and bookmarks were imported. The encrypted vault package still needs its separate OS-backed import.",
       );
@@ -50,6 +53,7 @@ export function MigrationImport() {
     setError("");
     try {
       setReview(await bridge.migrationRollback({ ...token, confirmed: true }));
+      useStore.setState({ layout: await adoptImportedOrganization() });
       setProgress(null);
       setMessage("The interrupted native import was rolled back.");
     } catch (cause) {

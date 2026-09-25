@@ -72,6 +72,21 @@ export class OrganizationPersistence {
     return fromOrganizationLayout(merged);
   }
 
+  /** A native Profile import replaces the entire reviewed layout. Local tab
+   * patches observed during import must not be rebased back over it. */
+  async adoptNativeImport(): Promise<Layout> {
+    await this.flushing?.catch(() => {});
+    const latest = await this.host.organizationSnapshot();
+    this.pending = null;
+    if (!latest.layout) {
+      this.base = null;
+      this.hydratePromise = null;
+      return this.hydrate();
+    }
+    this.base = latest;
+    return fromOrganizationLayout(latest.layout);
+  }
+
   flush(): Promise<void> {
     return (this.flushing ??= this.write().finally(() => {
       this.flushing = null;

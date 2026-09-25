@@ -142,3 +142,20 @@ it("preserves separate pin edits in the same Space and bounds native payloads", 
   });
   expect(OrganizationLayoutSchema.safeParse(oversized).success).toBe(false);
 });
+
+it("adopts a completed native migration without writing stale tab changes over it", async () => {
+  const store = new OrganizationHostStore(directory());
+  const host = {
+    organizationSnapshot: async () => store.snapshot("window-a"),
+    organizationCommit: async (input: Parameters<OrganizationHostStore["commit"]>[1]) =>
+      store.commit("window-a", input),
+  };
+  const renderer = new OrganizationPersistence(host, emptyLayout());
+  const initial = await renderer.hydrate();
+  renderer.persist({ ...initial, order: ["stale-tab"], tabSpace: { "stale-tab": "space-personal" } });
+  const native = toOrganizationLayout({ ...initial, order: ["imported-tab"], tabSpace: { "imported-tab": "space-personal" } });
+  store.commit("window-a", { expectedRevision: 1, layout: native });
+  expect((await renderer.adoptNativeImport()).order).toEqual(["imported-tab"]);
+  await renderer.flush();
+  expect(store.snapshot("window-a").layout?.window.order).toEqual(["imported-tab"]);
+});
