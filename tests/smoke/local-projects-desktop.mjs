@@ -27,6 +27,16 @@ const desktopRequire=createRequire(join(root,'apps/desktop/package.json'));
 const viteCli=join(dirname(desktopRequire.resolve('vite/package.json')),'bin/vite.js');
 const tscCli=join(dirname(desktopRequire.resolve('typescript/package.json')),'bin/tsc');
 const quote=value=>"'"+value.replaceAll("'","'\\''")+"'";
+async function openProjectFile(editor,path){
+ const search=editor.getByRole('textbox',{name:'Find project file',exact:true});
+ await search.fill(path);
+ await editor.getByRole('treeitem',{name:path.split('/').at(-1),exact:true}).click();
+ await search.fill('');
+}
+async function projectFileAction(editor,label){
+ await editor.getByRole('button',{name:/^Actions for /}).click();
+ await page.getByRole('menuitem',{name:label,exact:true}).click();
+}
 
 const temp=mkdtempSync(join(tmpdir(),'aux-project-ui-'));const source=join(temp,'fixture-app');mkdirSync(source);
 const git=(...args)=>execFileSync('/usr/bin/git',['-C',source,...args],{encoding:'utf8',env:{PATH:'/usr/bin:/bin',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null'}}).trim();
@@ -162,7 +172,7 @@ try{
  await previews.getByLabel('Local preview URL',{exact:true}).fill(`http://127.0.0.1:${port}/`);await previews.getByRole('button',{name:'Check & open preview',exact:true}).click();await until(()=>previewText('TypeScript preview'));
  await sidebarAction(page,'Tasks');await tasks.locator('.local-projects > summary').click();await tasks.getByRole('button',{name:'Workspace',exact:true}).click();
  await tasks.getByRole('tab',{name:'Files',exact:true}).click();
- const liveEditor=tasks.getByRole('region',{name:'Project file editor',exact:true});await liveEditor.getByRole('button',{name:'site/main.ts',exact:true}).click();
+ const liveEditor=tasks.getByRole('region',{name:'Project file editor',exact:true});await openProjectFile(liveEditor,'site/main.ts');
  await liveEditor.getByRole('textbox',{name:'File contents',exact:true}).fill("const message: string = 'Updated TypeScript preview'; document.querySelector('h1')!.textContent = message; console.warn('AUX_DIAGNOSTIC_UPDATED');\n");
  await liveEditor.getByRole('button',{name:'Save file',exact:true}).click();await liveEditor.getByText('File saved. Refresh checkout status to review the diff.',{exact:true}).waitFor();
  await until(()=>previewText('Updated TypeScript preview'));
@@ -175,13 +185,13 @@ try{
  await until(async()=>{const runs=await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId);return runs.filter(run=>run.mode==='service'&&run.state==='canceled').length===3;});
  await tasks.getByRole('tab',{name:'Files',exact:true}).click();
  let editor=tasks.getByRole('region',{name:'Project file editor',exact:true});
- await editor.getByRole('button',{name:'index.html',exact:true}).click();
+ await openProjectFile(editor,'index.html');
  await editor.getByRole('textbox',{name:'File contents',exact:true}).fill('<h1>Draft that must survive a conflict</h1>\n');
  writeFileSync(join(project.path,'index.html'),'<h1>External conflict</h1>\n');
  await editor.getByRole('button',{name:'Save file',exact:true}).click();await editor.getByRole('alert').filter({hasText:'changed outside Aux'}).waitFor();
  assert.equal(readFileSync(join(project.path,'index.html'),'utf8'),'<h1>External conflict</h1>\n');
  assert.match(await editor.getByRole('textbox',{name:'File contents',exact:true}).inputValue(),/Draft that must survive/);
- await editor.getByRole('button',{name:'Reload disk and discard draft',exact:true}).click();
+ await projectFileAction(editor,'Reload disk and discard draft');
  await until(async()=>/External conflict/.test(await editor.getByRole('textbox',{name:'File contents',exact:true}).inputValue()));
  await editor.getByRole('textbox',{name:'File contents',exact:true}).fill('<h1>Edited in Aux</h1>\n');
  await editor.getByRole('button',{name:'Save file',exact:true}).click();await editor.getByText('File saved. Refresh checkout status to review the diff.',{exact:true}).waitFor();
@@ -199,12 +209,12 @@ try{
  await editor.getByRole('button',{name:'New file',exact:true}).click();await editor.getByRole('textbox',{name:'New file path',exact:true}).fill('src/components/created.ts');await editor.getByRole('button',{name:'Create file',exact:true}).click();await editor.getByRole('alert').filter({hasText:'already exists'}).waitFor();
  await editor.getByRole('textbox',{name:'New file path',exact:true}).fill('node_modules/ignored.ts');await editor.getByRole('button',{name:'Create file',exact:true}).click();await editor.getByRole('alert').filter({hasText:'ignored by Git'}).waitFor();
  assert.equal(existsSync(join(project.path,'node_modules/ignored.ts')),false);
- await editor.getByRole('button',{name:'Cancel',exact:true}).click();await editor.getByRole('button',{name:'src/components/created.ts',exact:true}).click();
+ await editor.getByRole('button',{name:'Cancel',exact:true}).click();await openProjectFile(editor,'src/components/created.ts');
  await app.evaluate(({shell})=>{shell.openPath=async path=>{globalThis.__auxOpenedProjectFile=path;return '';};});
  const attachedTask=(await page.evaluate(()=>window.aux.invoke('tasks.list',{})))[0];
  await assert.rejects(page.evaluate(({projectId,taskId})=>window.aux.openProjectFileExternal(projectId,'src/components/created.ts',{taskId,expectedRevision:1}),{projectId:project.projectId,taskId:attachedTask.taskId}),/task revision changed/i);
  assert.equal(await app.evaluate(()=>globalThis.__auxOpenedProjectFile),undefined,'A stale task revision cannot open the checkout file');
- await editor.getByRole('button',{name:'Open externally',exact:true}).click();await editor.getByText(/Opened for external editing/).waitFor();
+ await projectFileAction(editor,'Open externally');await editor.getByText(/Opened for external editing/).waitFor();
  assert.equal(await app.evaluate(()=>globalThis.__auxOpenedProjectFile),join(project.path,'src/components/created.ts'));
  writeFileSync(join(project.path,'src/components/created.ts'),'export const createdInAux = "external";\n');
  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await editor.getByText('Loaded changes made outside Aux.',{exact:true}).waitFor();
@@ -219,15 +229,15 @@ try{
  await externalConflict.scrollIntoViewIfNeeded();await page.screenshot({path:join(root,'release/test-artifacts/aux-external-editor-conflict.png')});
  await externalConflict.getByRole('button',{name:'Replace disk with Aux draft',exact:true}).click();await editor.getByText('Kept the Aux draft. The external version is available in recovery history.',{exact:true}).waitFor();
  assert.equal(readFileSync(join(project.path,'src/components/created.ts'),'utf8'),'export const createdInAux = "merged in Aux";\n');
- await editor.getByRole('button',{name:'Rename',exact:true}).click();await editor.getByRole('textbox',{name:'Renamed file path',exact:true}).fill('src/components/renamed.ts');await editor.getByRole('button',{name:'Rename file',exact:true}).click();
+ await projectFileAction(editor,'Rename');await editor.getByRole('textbox',{name:'Renamed file path',exact:true}).fill('src/components/renamed.ts');await editor.getByRole('button',{name:'Rename file',exact:true}).click();
  await editor.getByText('Renamed to src/components/renamed.ts. Refresh checkout status to review the change.',{exact:true}).waitFor();
  assert.equal(existsSync(join(project.path,'src/components/created.ts')),false);assert.equal(readFileSync(join(project.path,'src/components/renamed.ts'),'utf8'),'export const createdInAux = "merged in Aux";\n');assert.equal(existsSync(join(source,'src/components/renamed.ts')),false);
  await editor.getByRole('button',{name:'New file',exact:true}).click();await editor.getByRole('textbox',{name:'New file path',exact:true}).fill('delete-me.txt');await editor.getByRole('button',{name:'Create file',exact:true}).click();await editor.getByRole('textbox',{name:'File contents',exact:true}).fill('recoverable deletion\n');await editor.getByRole('button',{name:'Save file',exact:true}).click();
  await app.evaluate(({dialog})=>{dialog.showMessageBox=async(_window,options)=>{if(options.title!=='Delete checkout file'||!options.detail.includes('recovery copy'))throw new Error('Missing delete recovery disclosure');return {response:1,checkboxChecked:false};};});
- await editor.getByRole('button',{name:'Delete',exact:true}).click();await editor.getByText('Deleted delete-me.txt from this checkout. A recovery copy was retained.',{exact:true}).waitFor();assert.equal(existsSync(join(project.path,'delete-me.txt')),false);assert.equal(existsSync(join(source,'delete-me.txt')),false);
- await editor.getByRole('button',{name:'src/components/renamed.ts',exact:true}).click();
+ await projectFileAction(editor,'Delete');await editor.getByText('Deleted delete-me.txt from this checkout. A recovery copy was retained.',{exact:true}).waitFor();assert.equal(existsSync(join(project.path,'delete-me.txt')),false);assert.equal(existsSync(join(source,'delete-me.txt')),false);
+ await openProjectFile(editor,'src/components/renamed.ts');
  await editor.evaluate(element=>element.scrollIntoView({block:'start'}));await page.screenshot({path:join(root,'release/test-artifacts/aux-create-file.png')});
- await editor.getByRole('button',{name:'index.html',exact:true}).click();await editor.getByText('Restored your unsaved draft.',{exact:true}).waitFor();
+ await openProjectFile(editor,'index.html');await editor.getByText('Restored your unsaved draft.',{exact:true}).waitFor();
  await editor.evaluate(element=>element.scrollIntoView({block:'start'}));await page.screenshot({path:join(root,'release/test-artifacts/aux-project-editor.png')});
  await tasks.getByRole('button',{name:'Import command result',exact:true}).click();
  const commandEvidence=tasks.getByRole('region',{name:'Command evidence preview',exact:true});await commandEvidence.waitFor();
@@ -291,21 +301,21 @@ try{
  const restoredProject=(await page.evaluate(()=>window.aux.listProjects()))[0];assert.equal(restoredProject.preview.state,'responding');assert.ok(restoredProject.preview.checkedAt<Date.now());
  const savedRuns=await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId);assert.ok(savedRuns.some(r=>r.state==='succeeded'&&r.output==='AUX_COMMAND_OK'));assert.ok(savedRuns.some(r=>r.output==='COORDINATED_CHECK'&&r.state==='succeeded'));assert.ok(savedRuns.some(r=>r.command==="npm run 'check'"&&r.output.includes('JS_ENV_CHECK')));assert.ok(savedRuns.some(r=>r.command==="npm --prefix 'site' run 'check'"&&r.output.includes('WORKSPACE_CHECK')));assert.ok(savedRuns.some(r=>r.command==='.venv/bin/python manage.py check'&&r.output.includes('DJANGO_SYSTEM_CHECK_OK')));assert.ok(savedRuns.some(r=>r.command.includes('python3 -m venv .venv')&&r.state==='succeeded'));assert.equal(savedRuns.filter(r=>r.state==='interrupted'&&r.mode==='service').length,1);assert.equal(savedRuns.length,14);assert.equal(savedRuns.filter(run=>run.mode==='service'&&run.state==='canceled').length,4);assert.ok(savedRuns.every(run=>run.task.taskRevision===2&&run.task.taskId===successful.task.taskId));assert.equal(savedRuns.some(r=>r.state==='running'),false);
  await tasks.getByRole('tab',{name:'Files',exact:true}).click();editor=tasks.getByRole('region',{name:'Project file editor',exact:true});
- await editor.getByRole('button',{name:'src/components/renamed.ts',exact:true}).click();
+ await openProjectFile(editor,'src/components/renamed.ts');
  assert.equal(await editor.getByRole('textbox',{name:'File contents',exact:true}).inputValue(),'export const createdInAux = "merged in Aux";\n');
- await editor.getByRole('button',{name:'index.html',exact:true}).click();await editor.getByText('Restored your unsaved draft.',{exact:true}).waitFor();
+ await openProjectFile(editor,'index.html');await editor.getByText('Restored your unsaved draft.',{exact:true}).waitFor();
  assert.match(await editor.getByRole('textbox',{name:'File contents',exact:true}).inputValue(),/Draft for restart/);
- await editor.getByRole('button',{name:'Reload disk and discard draft',exact:true}).click();await until(async()=>/Edited in Aux/.test(await editor.getByRole('textbox',{name:'File contents',exact:true}).inputValue()));
- await editor.getByRole('button',{name:'Recovery history',exact:true}).click();
+ await projectFileAction(editor,'Reload disk and discard draft');await until(async()=>/Edited in Aux/.test(await editor.getByRole('textbox',{name:'File contents',exact:true}).inputValue()));
+ await projectFileAction(editor,'Recovery history');
  let recovery=editor.getByRole('region',{name:'File recovery history',exact:true});await recovery.waitFor();
  await recovery.getByRole('button',{name:/^Preview /}).first().click();assert.match(await recovery.getByLabel('Recovery version contents',{exact:true}).textContent(),/External conflict/);
  await editor.getByRole('textbox',{name:'File contents',exact:true}).fill('<h1>Protected draft</h1>\n');assert.equal(await recovery.getByRole('button',{name:'Restore this version',exact:true}).isDisabled(),true);
- await editor.getByRole('button',{name:'Reload disk and discard draft',exact:true}).click();await editor.getByRole('button',{name:'Recovery history',exact:true}).click();
+ await projectFileAction(editor,'Reload disk and discard draft');await projectFileAction(editor,'Recovery history');
  recovery=editor.getByRole('region',{name:'File recovery history',exact:true});await recovery.getByRole('button',{name:/^Preview /}).first().click();
  await recovery.scrollIntoViewIfNeeded();await page.screenshot({path:join(root,'release/test-artifacts/aux-file-recovery.png')});
  await recovery.getByRole('button',{name:'Restore this version',exact:true}).click();await editor.getByText('Version restored. The previous file is retained in recovery history.',{exact:true}).waitFor();
  assert.equal(readFileSync(join(project.path,'index.html'),'utf8'),'<h1>External conflict</h1>\n');
- await editor.getByRole('button',{name:'Recovery history',exact:true}).click();recovery=editor.getByRole('region',{name:'File recovery history',exact:true});await recovery.getByRole('button',{name:/^Preview /}).first().click();
+ await projectFileAction(editor,'Recovery history');recovery=editor.getByRole('region',{name:'File recovery history',exact:true});await recovery.getByRole('button',{name:/^Preview /}).first().click();
  assert.match(await recovery.getByLabel('Recovery version contents',{exact:true}).textContent(),/Edited in Aux/);await recovery.getByRole('button',{name:'Restore this version',exact:true}).click();await editor.getByText('Version restored. The previous file is retained in recovery history.',{exact:true}).waitFor();
  assert.equal(readFileSync(join(project.path,'index.html'),'utf8'),'<h1>Edited in Aux</h1>\n');
  const resource=tasks.getByRole('article').filter({hasText:project.branch});await resource.getByRole('button',{name:'Remove reference',exact:true}).click();await tasks.getByText('Revision 3',{exact:true}).waitFor();

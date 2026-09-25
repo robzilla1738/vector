@@ -31,6 +31,7 @@ async function shell() {
 }
 async function history(page) { await sidebarAction(page, "Chats"); await page.getByRole("heading", { name: "Chats" }).waitFor(); }
 async function actions(page, title) { await page.getByRole("button", { name: `Conversation actions for ${title}` }).click(); }
+const historyTitle = page => page.locator('[data-chat-id="lifecycle-chat"] .history-conversation strong');
 async function openRepo(dbPath) {
   for (let attempt = 0; attempt < 100; attempt++) {
     try { return new Repo(openDb(dbPath)); }
@@ -68,26 +69,26 @@ try {
   const title = page.getByRole("textbox", { name: "Conversation title" });
   await title.fill("Autumn weekend planning");
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
+  await historyTitle(page).filter({ hasText: "Autumn weekend planning" }).waitFor();
   await actions(page, "Autumn weekend planning");
   await page.getByRole("menuitem", { name: /Archive/ }).click();
   await page.getByRole("region", { name: "Conversation history", exact: true }).getByRole("button", { name: "Archived", exact: true }).click();
-  await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
+  await historyTitle(page).filter({ hasText: "Autumn weekend planning" }).waitFor();
   await page.screenshot({ path: join(artifactOutput, "aux-conversation-lifecycle-archived.png") });
   await app.close(); app = undefined;
 
   app = await launch(); page = await shell(); await history(page);
   await page.getByRole("region", { name: "Conversation history", exact: true }).getByRole("button", { name: "Archived", exact: true }).click();
-  await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
+  await historyTitle(page).filter({ hasText: "Autumn weekend planning" }).waitFor();
   await actions(page, "Autumn weekend planning");
   await page.getByRole("menuitem", { name: /Restore/ }).click();
   await page.getByRole("region", { name: "Conversation history", exact: true }).getByRole("button", { name: "Active", exact: true }).click();
-  await page.getByText("Autumn weekend planning", { exact: true }).waitFor();
+  await historyTitle(page).filter({ hasText: "Autumn weekend planning" }).waitFor();
   await actions(page, "Autumn weekend planning");
   await page.getByRole("menuitem", { name: /Delete/ }).click();
   await page.getByText("Delete permanently?", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await page.getByText("Autumn weekend planning", { exact: true }).waitFor({ state: "detached" });
+  await historyTitle(page).waitFor({ state: "detached" });
   assert.equal((await page.evaluate(() => window.aux.invoke("pages.list", {}))).some(item => item.url.includes("/kept")), true, "browser tab should survive conversation deletion");
   await app.close(); app = undefined;
 

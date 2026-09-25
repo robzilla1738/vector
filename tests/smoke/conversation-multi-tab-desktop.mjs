@@ -62,7 +62,8 @@ try {
   await page.getByRole("menuitem", { name: "Open beside current tab" }).click();
   await sidebarAction(page, "Chats");
   await page.getByRole("button", { name: "New chat", exact: true }).click();
-  await page.getByRole("combobox", { name: "Browser context" }).selectOption(first.pageId);
+  await page.getByRole("button", { name: "Browser context", exact: true }).click();
+  await page.getByRole("dialog", { name: "Browser context", exact: true }).getByRole("button", { name: /^first\b/i }).click();
   await page.getByRole("button", { name: "Add split tab", exact: true }).click();
   assert.equal(await page.locator('.conversation-browser-sources[aria-label="Selected browser tabs"]').getByText("second", { exact: true }).count(), 1);
   await app.close(); app = undefined;
@@ -70,7 +71,7 @@ try {
   app = await launch(); page = await shell();
   await sidebarAction(page, "Chats");
   await page.getByRole("button", { name: "New chat", exact: true }).click();
-  assert.equal(await page.getByRole("combobox", { name: "Browser context" }).inputValue(), first.pageId);
+  assert.match(await page.getByRole("button", { name: "Browser context", exact: true }).textContent(), /first/i);
   await page.locator('.conversation-browser-sources[aria-label="Selected browser tabs"]').getByText("second", { exact: true }).waitFor();
   const before = await page.evaluate(async ids => (await window.aux.invoke("pages.list", {})).filter(item => ids.includes(item.pageId)), [first.pageId, second.pageId]);
   const refs = before.map(item => ({ pageId: item.pageId, url: item.url, documentEpoch: item.documentEpoch, sessionId: item.sessionId }));
