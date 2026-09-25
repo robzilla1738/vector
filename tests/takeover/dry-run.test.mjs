@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -50,4 +50,23 @@ test("all owner takeover cases dry-run without qualification", () => {
     ["keychain", "onepassword", "passkey", "sparkle", "crashpad", "notarization"],
   );
   assert.notEqual(invoke("tests/takeover/run.mjs", ["--execute"]).status, 0);
+});
+
+test("takeover report accepts a symlinked workspace path and refuses replacement", () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "aux-takeover-alias-"));
+  const alias = join(directory, "checkout");
+  const filename = `alias-${process.pid}-${Date.now()}.json`;
+  const output = join(alias, "release/test-artifacts", filename);
+  const actual = join(root, "release/test-artifacts", filename);
+  try {
+    symlinkSync(root, alias, "dir");
+    const first = invoke("tests/takeover/run.mjs", ["--output", output]);
+    assert.equal(first.status, 0, first.stderr);
+    assert.ok(existsSync(actual));
+    const second = invoke("tests/takeover/run.mjs", ["--output", output]);
+    assert.notEqual(second.status, 0);
+  } finally {
+    rmSync(actual, { force: true });
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { cases } from "./cases.mjs";
 
@@ -48,8 +48,16 @@ export function run(caseOverride = "") {
     throw new Error(`Missing supplied file paths: ${report.missingFiles.join(", ")}`);
   if (output) {
     const destination = resolve(output);
-    if (!destination.startsWith(`${artifactRoot}/`))
+    let ancestor = dirname(destination);
+    const missing = [];
+    while (!existsSync(ancestor)) {
+      missing.unshift(basename(ancestor));
+      ancestor = dirname(ancestor);
+    }
+    const actualParent = resolve(realpathSync(ancestor), ...missing);
+    if (!actualParent.startsWith(`${artifactRoot}/`) && actualParent !== artifactRoot)
       throw new Error("Takeover reports must stay under release/test-artifacts (local, ignored output).");
+    if (existsSync(destination)) throw new Error("Takeover report already exists; choose a new output path.");
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(destination, `${JSON.stringify(report, null, 2)}\n`);
   }
