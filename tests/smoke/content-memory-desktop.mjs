@@ -145,6 +145,11 @@ try {
   const migration = await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:space.id});
   assert.equal(migration.migrated, 1);
   assert.equal((await record(other.workspaceId)).recorded, false);
+  await app.evaluate(({BaseWindow}) => BaseWindow.getAllWindows()[0].focus());
+  await poll(app, ({BaseWindow},url) => {
+    const window = BaseWindow.getAllWindows()[0];
+    return window.isFocused() && window.contentView.children.some(view => view.webContents?.getURL() === url && view.getVisible());
+  }, legacy.url);
   assert.equal((await record(workspaceId)).recorded, true);
   const bound = await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)), legacy.pageId);
   assert.equal(bound.workspaceId, workspaceId);
