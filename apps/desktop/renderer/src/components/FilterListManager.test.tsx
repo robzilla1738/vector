@@ -144,3 +144,18 @@ it("offers only installed native host filtering in Chromium", async () => {
   expect(cosmetic.disabled).toBe(true);
   expect(container.textContent).toContain("Chromium applies downloaded domain lists");
 });
+
+it("offers cookie-banner lists when Chromium attests document-start stylesheets", async () => {
+  api.filterLists.mockResolvedValue({
+    sources: [],
+    hosts: 0,
+    cookieSelectors: 0,
+    builtinHosts: 88,
+    backend: "subresource_filter",
+    cosmeticBackend: "document_start_stylesheet",
+  });
+  await act(async () => root.render(<FilterListManager />));
+  await flush();
+  expect(container.querySelector<HTMLOptionElement>('option[value="cookie_banner"]')!.disabled).toBe(false);
+  expect(container.textContent).not.toContain("native stylesheet backend");
+});

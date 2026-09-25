@@ -15,6 +15,21 @@ export interface FilterSourceDefinition {
 
 export interface CookieBannerRule { domains: string[]; selector: string }
 
+/** The wire digest uses one canonical line per rule so Chromium can verify chunks. */
+export function canonicalCookieRules(rules: readonly CookieBannerRule[]): CookieBannerRule[] {
+  const sorted = [...rules].map(rule => ({ domains: [...new Set(rule.domains)].sort(), selector: rule.selector }))
+    .sort((a, b) => {
+      const left = `${a.domains.join(",")}##${a.selector}`;
+      const right = `${b.domains.join(",")}##${b.selector}`;
+      return left < right ? -1 : left > right ? 1 : 0;
+    });
+  return sorted.filter((rule, index) => index === 0 ||
+    `${rule.domains.join(",")}##${rule.selector}` !== `${sorted[index - 1]!.domains.join(",")}##${sorted[index - 1]!.selector}`);
+}
+export function cookieRuleDigestInput(rules: readonly CookieBannerRule[]): string {
+  return canonicalCookieRules(rules).map(rule => `${rule.domains.join(",")}##${rule.selector}`).join("\n");
+}
+
 /** A deliberately small cosmetic subset. Scriptlets, procedural rules and arbitrary CSS are ignored. */
 export function parseCookieBannerList(text: string, maxRules = 10_000): CookieBannerRule[] {
   // Self-contained because the desktop parses downloaded lists in a worker.
@@ -140,6 +155,8 @@ export interface ChromiumCookieBannerReceipt {
   generation: number;
   rulesDigest: string;
   installedRules: number;
+  phase: "document_start";
+  futureDocuments: true;
 }
 export interface ChromiumCookieBannerPort {
   apply(snapshot: ChromiumCookieBannerSnapshot): Promise<ChromiumCookieBannerReceipt>;
@@ -149,8 +166,9 @@ export function assertCookieBannerReceipt(snapshot: ChromiumCookieBannerSnapshot
       !/^[a-f0-9]{64}$/.test(snapshot.rulesDigest) || snapshot.rules.length > MAX_COOKIE_SELECTORS ||
       receipt.backend !== "isolated_world_stylesheet" || receipt.profileId !== snapshot.profileId ||
       receipt.private !== snapshot.private || receipt.generation !== snapshot.generation ||
-      receipt.rulesDigest !== snapshot.rulesDigest || !Number.isSafeInteger(receipt.installedRules) ||
-      receipt.installedRules < 0 || (snapshot.enabled && snapshot.rules.length > 0 && receipt.installedRules === 0))
+      receipt.rulesDigest !== snapshot.rulesDigest || receipt.phase !== "document_start" ||
+      receipt.futureDocuments !== true || !Number.isSafeInteger(receipt.installedRules) ||
+      receipt.installedRules !== snapshot.rules.length)
     throw new Error("Chromium did not attest the reviewed cookie-banner snapshot.");
 }
 export function assertContentBlockReceipt(snapshot: ContentBlockSnapshot, receipt: ChromiumContentBlockReceipt): void {

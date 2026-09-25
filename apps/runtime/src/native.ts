@@ -1,4 +1,4 @@
-import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken, type ChromiumContentBlockReceipt } from "@aux/contracts";
+import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken, type ChromiumContentBlockReceipt, type ChromiumCookieBannerReceipt, type CookieBannerRule } from "@aux/contracts";
 
 export interface ContentBlockBegin {
   profileId: string; generation: number; hostsDigest: string; hostCount: number;
@@ -7,6 +7,9 @@ export interface ContentBlockBegin {
 }
 export interface ContentBlockAppend { profileId: string; generation: number; offset: number; hosts: readonly string[] }
 export interface ContentBlockCommit { profileId: string; generation: number; hostsDigest: string }
+export interface CosmeticBegin { profileId: string; generation: number; rulesDigest: string; ruleCount: number; enabled: boolean; allowedSiteHosts: readonly string[]; siteGuard?: ContentBlockBegin["siteGuard"] }
+export interface CosmeticAppend { profileId: string; generation: number; offset: number; rules: readonly CookieBannerRule[] }
+export interface CosmeticCommit { profileId: string; generation: number; rulesDigest: string }
 
 import { CredentialHandoffResultSchema, type CredentialHandoffRequest, type CredentialHandoffResult } from "@aux/contracts";
 
@@ -21,6 +24,9 @@ export interface NativeBridge {
   contentBlockBegin?(request: ContentBlockBegin): Promise<{ accepted: true }>;
   contentBlockAppend?(request: ContentBlockAppend): Promise<{ accepted: true }>;
   contentBlockCommit?(request: ContentBlockCommit): Promise<ChromiumContentBlockReceipt>;
+  cosmeticBegin?(request: CosmeticBegin): Promise<{ accepted: true }>;
+  cosmeticAppend?(request: CosmeticAppend): Promise<{ accepted: true }>;
+  cosmeticCommit?(request: CosmeticCommit): Promise<ChromiumCookieBannerReceipt>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
   historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
@@ -90,6 +96,15 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   contentBlockCommit(request: ContentBlockCommit) {
     return this.channel.call<ChromiumContentBlockReceipt>("native.contentBlockCommit", request);
+  }
+  cosmeticBegin(request: CosmeticBegin) {
+    return this.channel.call<{ accepted: true }>("native.cosmeticBegin", request);
+  }
+  cosmeticAppend(request: CosmeticAppend) {
+    return this.channel.call<{ accepted: true }>("native.cosmeticAppend", request);
+  }
+  cosmeticCommit(request: CosmeticCommit) {
+    return this.channel.call<ChromiumCookieBannerReceipt>("native.cosmeticCommit", request);
   }
   available() {
     return true;

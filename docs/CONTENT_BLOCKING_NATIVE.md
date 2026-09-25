@@ -43,11 +43,27 @@ rechecks them at begin and commit and rejects a stale action. Cookie counts
 come from that Profile's CookieManager and are rechecked against the same
 navigation before display.
 
-Chromium's native cosmetic stylesheet backend is separate from this network
-filter. The shell disables cookie-banner-list selection for the
-`subresource_filter` backend, and the runtime rejects cosmetic-list activation
-instead of reporting selectors as installed. B8 still requires that native
-document-start cosmetic backend and a packaged browser journey against a real
-filter endpoint. The standalone C++ policy test covers host parsing, suffixes,
-site exceptions and main-frame behavior; the TypeScript fixture tests cover
-receipt matching, restart replay, cache tampering and stale-page rejection.
+Patch `0031-cosmetic-document-start.patch` adds a separate Profile cosmetic
+snapshot under `Profile/Aux Blocking/cosmetic.json`. User-selected cookie-banner
+lists use the same bounded HTTPS downloader. The runtime parses at most 10,000
+declarative selectors off-thread and sends canonical, sorted rules through
+authenticated `native.cosmeticBegin`, chunks of at most 128 rules, and
+`native.cosmeticCommit`. Chromium independently rejects CSS punctuation,
+scriptlets, procedural selectors, malformed domains, oversized rules, stale
+generations, mismatched site policy, or an incorrect SHA-256. It persists the
+verified snapshot atomically; corrupt startup data is ignored.
+
+The Zap commit gate now composes exact-origin cosmetic rules with a user's Zap
+CSS and sends them to the renderer before each HTTP(S) document commit. The
+renderer inserts user-origin CSS when the document element is created, also
+covering inherited-origin frames through its versioned origin registry. Rules
+never enter privileged pages or another frame origin. Network site exceptions
+and temporary private-window overrides govern cosmetic hiding too. A cosmetic
+update refreshes active regular and private frames, rolls back if a surviving
+document rejects the stylesheet, and returns a separate `document_start`
+receipt only after successful refresh. The Settings UI offers cookie-banner
+lists only when the runtime has attested that backend. The fixture tests cover
+reviewed selection, restart replay, revocation, receipt matching and the safe
+selector subset; `cosmetic_controller_unittests` checks native parsing and
+domain matching. A packaged first-paint journey against a real endpoint remains
+a final release qualification gate after the patch is built into Chromium.

@@ -20,7 +20,8 @@ export function FilterListManager() {
   const [notice, setNotice] = useState("");
   const selected = status?.sources.find((source) => source.id === selectedId);
   const preview = status?.backend === "preview";
-  const nativeHostsOnly = status?.backend === "subresource_filter";
+  const nativeHostsOnly =
+    status?.backend === "subresource_filter" && status.cosmeticBackend !== "document_start_stylesheet";
 
   const refresh = async () => {
     const next = await bridge.filterLists();

@@ -28,3 +28,4 @@ aux/runtime/0027-native-window-transfer.patch
 aux/runtime/0028-content-blocking.patch
 aux/runtime/0029-profile-searchbox.patch
 aux/runtime/0030-aux-result-isolation.patch
+aux/runtime/0031-cosmetic-document-start.patch

@@ -4,6 +4,9 @@ import { join } from "node:path";
 import { FilterLists, type FilterListStatus, type FilterSource } from "@aux/filter-lists";
 import {
   assertContentBlockReceipt,
+  assertCookieBannerReceipt,
+  canonicalCookieRules,
+  cookieRuleDigestInput,
   filterSourceUrl,
   isAuxError,
   MAX_FILTER_HOSTS,
@@ -13,12 +16,17 @@ import {
   type FilterSourceKind,
 } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
+import type { ContentBlockBegin } from "../native.js";
 
 type BlockingNativeBridge = Pick<
   NativeBridge,
-  "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit"
+  | "contentBlockBegin"
+  | "contentBlockAppend"
+  | "contentBlockCommit"
+  | "cosmeticBegin"
+  | "cosmeticAppend"
+  | "cosmeticCommit"
 >;
-import type { ContentBlockBegin } from "../native.js";
 
 interface BlockingSettings {
   generation: number;
@@ -34,6 +42,8 @@ export class ContentBlockingService {
   private readonly settingsPath: string;
   private settings: BlockingSettings;
   private busy = false;
+  private cosmeticReady = false;
+  private installedCookieSelectors = 0;
 
   constructor(
     private readonly dataDir: string,
@@ -73,15 +83,16 @@ export class ContentBlockingService {
     const state = this.lists.status(TRACKER_HOSTS.size);
     return {
       ...state,
-      cookieSelectors: 0,
+      cookieSelectors: this.installedCookieSelectors,
+      cosmeticBackend: this.cosmeticReady ? "document_start_stylesheet" : "unavailable",
       sources: state.sources.map((source) =>
-        source.kind === "cookie_banner"
+        source.kind === "cookie_banner" && !this.cosmeticReady
           ? {
               ...source,
               enabled: false,
               meta: {
                 ...(source.meta ?? { fetchedAt: 0, hosts: 0, sha256: "" }),
-                error: "Chromium has no native cosmetic filter backend.",
+                error: "Chromium cosmetic filtering is unavailable in this browser build.",
               },
             }
           : source,
@@ -135,6 +146,48 @@ export class ContentBlockingService {
       throw new Error("Chromium reported the wrong filter backend.");
     if (receipt.installedRules !== hosts.length)
       throw new Error("Chromium installed a partial filter snapshot.");
+    if (this.native.cosmeticBegin && this.native.cosmeticAppend && this.native.cosmeticCommit) {
+      const rules = canonicalCookieRules(await this.lists.loadCookieRulesOffThread());
+      const rulesDigest = createHash("sha256").update(cookieRuleDigestInput(rules)).digest("hex");
+      const cosmetic = {
+        profileId: this.profileId,
+        private: false,
+        generation,
+        rulesDigest,
+        rules,
+        allowedSiteHosts: snapshot.allowedSiteHosts,
+        enabled: snapshot.enabled,
+      };
+      await this.native.cosmeticBegin({
+        profileId: this.profileId,
+        generation,
+        rulesDigest,
+        ruleCount: rules.length,
+        allowedSiteHosts: snapshot.allowedSiteHosts,
+        enabled: snapshot.enabled,
+        ...(siteGuard ? { siteGuard } : {}),
+      });
+      for (let offset = 0; offset < rules.length; offset += 128)
+        await this.native.cosmeticAppend({
+          profileId: this.profileId,
+          generation,
+          offset,
+          rules: rules.slice(offset, offset + 128),
+        });
+      const cosmeticReceipt = await this.native.cosmeticCommit({
+        profileId: this.profileId,
+        generation,
+        rulesDigest,
+      });
+      assertCookieBannerReceipt(cosmetic, cosmeticReceipt);
+      this.installedCookieSelectors = rules.length;
+      this.cosmeticReady = true;
+    } else {
+      this.cosmeticReady = false;
+      this.installedCookieSelectors = 0;
+      if (this.lists.sources().some((source) => source.enabled && source.kind === "cookie_banner"))
+        throw new Error("Chromium cosmetic filtering is unavailable in this browser build.");
+    }
     return receipt;
   }
 
@@ -143,9 +196,7 @@ export class ContentBlockingService {
   }
 
   async maintain() {
-    const sources = this.lists
-      .status(TRACKER_HOSTS.size)
-      .sources.filter((source) => source.enabled && source.kind === "hosts");
+    const sources = this.lists.status(TRACKER_HOSTS.size).sources.filter((source) => source.enabled);
     if (
       !sources.length ||
       this.busy ||
@@ -169,7 +220,7 @@ export class ContentBlockingService {
 
   async update(): Promise<FilterListStatus> {
     return this.mutate(async () => {
-      await this.lists.update(this.fetchText, ["hosts"]);
+      await this.lists.update(this.fetchText);
       await this.installSnapshot();
       return this.status();
     });
@@ -177,10 +228,10 @@ export class ContentBlockingService {
 
   async add(name: string, url: string, kind: FilterSourceKind): Promise<FilterSource[]> {
     return this.mutate(async () => {
-      if (kind !== "hosts")
-        throw new Error("Cookie-banner selectors need the native cosmetic filter backend.");
+      if (kind === "cookie_banner" && !this.cosmeticReady)
+        throw new Error("Chromium cosmetic filtering is unavailable in this browser build.");
       this.lists.addSource(name, filterSourceUrl(url), kind);
-      await this.lists.update(this.fetchText, ["hosts"]);
+      await this.lists.update(this.fetchText, [kind]);
       await this.installSnapshot();
       return this.status().sources;
     });
@@ -197,10 +248,10 @@ export class ContentBlockingService {
   async setSourceEnabled(id: string, enabled: boolean): Promise<FilterSource[]> {
     return this.mutate(async () => {
       const source = this.lists.sources().find((item) => item.id === id);
-      if (enabled && source?.kind === "cookie_banner")
-        throw new Error("Cookie-banner selectors need the native cosmetic filter backend.");
+      if (enabled && source?.kind === "cookie_banner" && !this.cosmeticReady)
+        throw new Error("Chromium cosmetic filtering is unavailable in this browser build.");
       this.lists.setEnabled(id, enabled);
-      if (enabled) await this.lists.update(this.fetchText, ["hosts"]);
+      if (enabled && source) await this.lists.update(this.fetchText, [source.kind]);
       await this.installSnapshot();
       return this.status().sources;
     });

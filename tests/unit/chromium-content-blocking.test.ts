@@ -4,11 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContentBlockingService } from "../../apps/runtime/src/services/content-blocking.js";
-import { AuxError } from "@aux/contracts";
+import { AuxError, cookieRuleDigestInput, type CookieBannerRule } from "@aux/contracts";
 import type {
   ContentBlockAppend,
   ContentBlockBegin,
   ContentBlockCommit,
+  CosmeticAppend,
+  CosmeticBegin,
+  CosmeticCommit,
   NativeBridge,
 } from "../../apps/runtime/src/native.js";
 
@@ -75,6 +78,83 @@ function fixture() {
 }
 
 describe("Chromium content blocking snapshots", () => {
+  it("installs, replays, and revokes reviewed cookie selectors with document-start receipts", async () => {
+    const { directory, native: network } = fixture();
+    let header: CosmeticBegin | undefined;
+    let rules: CookieBannerRule[] = [];
+    const applied: { rules: CookieBannerRule[]; enabled: boolean; allowed: string[] }[] = [];
+    const native = {
+      ...network,
+      async cosmeticBegin(input: CosmeticBegin) {
+        header = input;
+        rules = [];
+        return { accepted: true as const };
+      },
+      async cosmeticAppend(input: CosmeticAppend) {
+        expect(input.offset).toBe(rules.length);
+        expect(input.rules.length).toBeLessThanOrEqual(128);
+        rules.push(...input.rules);
+        return { accepted: true as const };
+      },
+      async cosmeticCommit(input: CosmeticCommit) {
+        expect(input.generation).toBe(header?.generation);
+        expect(input.rulesDigest).toBe(
+          createHash("sha256").update(cookieRuleDigestInput(rules)).digest("hex"),
+        );
+        expect(rules).toHaveLength(header!.ruleCount);
+        applied.push({ rules: [...rules], enabled: header!.enabled, allowed: [...header!.allowedSiteHosts] });
+        return {
+          backend: "isolated_world_stylesheet" as const,
+          profileId: "Profile 1",
+          private: false,
+          generation: input.generation,
+          rulesDigest: input.rulesDigest,
+          installedRules: rules.length,
+          phase: "document_start" as const,
+          futureDocuments: true as const,
+        };
+      },
+    } satisfies Pick<
+      NativeBridge,
+      | "contentBlockBegin"
+      | "contentBlockAppend"
+      | "contentBlockCommit"
+      | "cosmeticBegin"
+      | "cosmeticAppend"
+      | "cosmeticCommit"
+    >;
+    const service = new ContentBlockingService(directory, native, "Profile 1", async () => ({
+      status: 200,
+      etag: undefined,
+      text: async () =>
+        [
+          "##.cookie-banner",
+          "shop.fixture.test##[data-cookie-consent]",
+          "##.cookie-banner{color:red}",
+          "##.cookie-banner:has(script)",
+        ].join("\n"),
+    }));
+    await service.boot();
+    expect(service.status().cosmeticBackend).toBe("document_start_stylesheet");
+    expect(applied.at(-1)!.rules).toEqual([]);
+    const [source] = await service.add("Cookies", "https://lists.fixture.test/cookies", "cookie_banner");
+    expect(applied.at(-1)!.rules).toEqual([
+      { domains: [], selector: ".cookie-banner" },
+      { domains: ["shop.fixture.test"], selector: "[data-cookie-consent]" },
+    ]);
+    expect(service.status().cookieSelectors).toBe(2);
+    await service.setSiteAllowed("shop.fixture.test", true);
+    expect(applied.at(-1)!.allowed).toEqual(["shop.fixture.test"]);
+    await service.setEnabled(false);
+    expect(applied.at(-1)!.enabled).toBe(false);
+    const restarted = new ContentBlockingService(directory, native, "Profile 1");
+    await restarted.boot();
+    expect(applied.at(-1)!.rules).toHaveLength(2);
+    await restarted.remove(source!.id);
+    expect(applied.at(-1)!.rules).toEqual([]);
+    expect(restarted.status().cookieSelectors).toBe(0);
+  });
+
   it("applies the built-in seed then a reviewed downloaded list with a native receipt", async () => {
     const { service, receipts } = fixture();
     await service.boot();
@@ -131,7 +211,7 @@ describe("Chromium content blocking snapshots", () => {
     await expect(service.boot()).rejects.toThrow(/attest/);
     await expect(
       service.add("Cosmetic", "https://lists.fixture.test/cosmetic.txt", "cookie_banner"),
-    ).rejects.toThrow(/native cosmetic/);
+    ).rejects.toThrow(/cosmetic filtering is unavailable/);
   });
 
   it("requires the selected page and navigation epoch for site-control writes", async () => {

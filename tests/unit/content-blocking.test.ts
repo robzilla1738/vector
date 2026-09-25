@@ -40,7 +40,8 @@ describe("host-neutral content blocking policy", () => {
     const snapshot = { profileId: "profile-a", private: true, generation: 4, rulesDigest: "a".repeat(64),
       rules: [{ domains: ["example.test"], selector: ".cookie-banner" }], allowedSiteHosts: [], enabled: true };
     const receipt = { backend: "isolated_world_stylesheet" as const, profileId: "profile-a", private: true,
-      generation: 4, rulesDigest: snapshot.rulesDigest, installedRules: 1 };
+      generation: 4, rulesDigest: snapshot.rulesDigest, installedRules: 1,
+      phase: "document_start" as const, futureDocuments: true as const };
     expect(() => assertCookieBannerReceipt(snapshot, receipt)).not.toThrow();
     expect(() => assertCookieBannerReceipt(snapshot, { ...receipt, profileId: "profile-b" })).toThrow(/attest/);
     expect(() => assertCookieBannerReceipt(snapshot, { ...receipt, private: false })).toThrow(/attest/);

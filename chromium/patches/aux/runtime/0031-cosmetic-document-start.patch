@@ -1,0 +1,1294 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 7eee9c4d4f..f45e4434b8 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -15,6 +15,8 @@ source_set("runtime") {
+     "content_blocking_controller.h",
+     "content_blocking_policy.cc",
+     "content_blocking_policy.h",
++    "cosmetic_controller.cc",
++    "cosmetic_controller.h",
+     "cookie_import.cc",
+     "cookie_import.h",
+     "credential_fill.cc",
+@@ -90,6 +92,14 @@ test("content_blocking_unittests") {
+   ]
+ }
+ 
++test("cosmetic_controller_unittests") {
++  sources = [ "cosmetic_controller_unittest.cc" ]
++  deps = [
++    ":runtime",
++    "//testing/gtest",
++  ]
++}
++
+ test("cdp_broker_unittests") {
+   sources = [ "cdp_broker_unittest.cc" ]
+   deps = [
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
+index 30748a798a..6bd7c94fc3 100644
+--- a/chrome/browser/ui/aux/content_blocking_controller.cc
++++ b/chrome/browser/ui/aux/content_blocking_controller.cc
+@@ -475,16 +475,23 @@ void ContentBlockingController::NoteBlocked(std::string site_host) {
+   if (!site_host.empty() &&
+       (by_site_.contains(site_host) || by_site_.size() < kMaxAllowed)) {
+     int& count = by_site_[site_host];
+-    if (count < std::numeric_limits<int>::max()) ++count;
++    if (count < std::numeric_limits<int>::max()) {
++      ++count;
++    }
+   }
+ }
+ 
+-bool ContentBlockingController::enabled() const {
++bool ContentBlockingController::enabled() {
++  SyncPrivateRules();
+   return rules_->enabled;
+ }
+-bool ContentBlockingController::IsAllowed(std::string_view site_host) const {
++bool ContentBlockingController::IsAllowed(std::string_view site_host) {
++  SyncPrivateRules();
+   return BlockingHostMatches(rules_->allowed, site_host);
+ }
++double ContentBlockingController::generation() const {
++  return rules_->generation;
++}
+ int ContentBlockingController::blocked_count() const {
+   return static_cast<int>(
+       std::min<uint64_t>(total_blocked_, std::numeric_limits<int>::max()));
+@@ -494,8 +501,10 @@ int ContentBlockingController::BlockedForSite(
+   auto it = by_site_.find(std::string(site_host));
+   return it == by_site_.end() ? 0 : it->second;
+ }
+-std::vector<std::string> ContentBlockingController::allowed_hosts() const {
+-  std::vector<std::string> hosts(rules_->allowed.begin(), rules_->allowed.end());
++std::vector<std::string> ContentBlockingController::allowed_hosts() {
++  SyncPrivateRules();
++  std::vector<std::string> hosts(rules_->allowed.begin(),
++                                 rules_->allowed.end());
+   std::sort(hosts.begin(), hosts.end());
+   return hosts;
+ }
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
+index 76e9cf8947..1168d0f2d7 100644
+--- a/chrome/browser/ui/aux/content_blocking_controller.h
++++ b/chrome/browser/ui/aux/content_blocking_controller.h
+@@ -46,11 +46,12 @@ class ContentBlockingController final : public base::SupportsUserData::Data {
+   std::unique_ptr<blink::URLLoaderThrottle> CreateKeepAliveThrottle(
+       std::string top_site_host);
+ 
+-  bool enabled() const;
+-  bool IsAllowed(std::string_view site_host) const;
++  bool enabled();
++  bool IsAllowed(std::string_view site_host);
++  double generation() const;
+   int blocked_count() const;
+   int BlockedForSite(std::string_view site_host) const;
+-  std::vector<std::string> allowed_hosts() const;
++  std::vector<std::string> allowed_hosts();
+   bool SetPrivateSiteAllowed(std::string_view host, bool allowed);
+   bool SetPrivateEnabled(bool enabled);
+ 
+diff --git a/chrome/browser/ui/aux/cosmetic_controller.cc b/chrome/browser/ui/aux/cosmetic_controller.cc
+new file mode 100644
+index 0000000000..95698f37b3
+--- /dev/null
++++ b/chrome/browser/ui/aux/cosmetic_controller.cc
+@@ -0,0 +1,518 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
++
++#include <algorithm>
++#include <cmath>
++#include <ranges>
++#include <string_view>
++#include <utility>
++
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/content_blocking_policy.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "crypto/sha2.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace aux {
++namespace {
++const char kCosmeticKey = 0;
++constexpr size_t kMaxRules = 10000;
++constexpr size_t kMaxRulesFileBytes = 8 * 1024 * 1024;
++constexpr size_t kMaxStyleBytes = 4 * 1024 * 1024;
++
++std::string RuleLine(const CosmeticRule& rule) {
++  std::string line;
++  for (const auto& domain : rule.domains) {
++    if (!line.empty()) {
++      line.push_back(',');
++    }
++    line.append(domain);
++  }
++  line.append("##");
++  line.append(rule.selector);
++  return line;
++}
++
++bool Alpha(char c) {
++  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
++}
++bool Alnum(char c) {
++  return Alpha(c) || (c >= '0' && c <= '9');
++}
++bool NameChar(char c) {
++  return Alnum(c) || c == '_' || c == '-';
++}
++
++bool ValidSelector(std::string_view selector) {
++  if (selector.empty() || selector.size() > 300) {
++    return false;
++  }
++  size_t i = 0;
++  int terms = 0;
++  while (i < selector.size()) {
++    if (++terms > 4) {
++      return false;
++    }
++    if (selector[i] == '.' || selector[i] == '#') {
++      ++i;
++      if (i == selector.size() || !Alpha(selector[i++])) {
++        return false;
++      }
++      while (i < selector.size() && NameChar(selector[i])) {
++        ++i;
++      }
++    } else if (selector.substr(i, 6) == "[data-") {
++      i += 6;
++      if (i == selector.size() || !Alpha(selector[i++])) {
++        return false;
++      }
++      while (i < selector.size() && NameChar(selector[i])) {
++        ++i;
++      }
++      if (i < selector.size() && selector[i] != ']') {
++        if (selector[i] == '~' || selector[i] == '|' || selector[i] == '^' ||
++            selector[i] == '$' || selector[i] == '*') {
++          ++i;
++        }
++        if (i == selector.size() || selector[i++] != '=') {
++          return false;
++        }
++        char quote = 0;
++        if (i < selector.size() &&
++            (selector[i] == '\'' || selector[i] == '"')) {
++          quote = selector[i++];
++        }
++        size_t value_start = i;
++        while (i < selector.size() &&
++               (Alnum(selector[i]) || selector[i] == '_' ||
++                selector[i] == '-' || selector[i] == ' ')) {
++          ++i;
++        }
++        if (i == value_start || i - value_start > 80) {
++          return false;
++        }
++        if (quote && (i == selector.size() || selector[i++] != quote)) {
++          return false;
++        }
++      }
++      if (i == selector.size() || selector[i++] != ']') {
++        return false;
++      }
++    } else {
++      return false;
++    }
++    if (i == selector.size()) {
++      return true;
++    }
++    if (selector[i] != ' ' && selector[i] != '>') {
++      return false;
++    }
++    while (i < selector.size() && selector[i] == ' ') {
++      ++i;
++    }
++    if (i < selector.size() && selector[i] == '>') {
++      ++i;
++      while (i < selector.size() && selector[i] == ' ') {
++        ++i;
++      }
++    }
++    if (i == selector.size() || (selector[i] != '.' && selector[i] != '#' &&
++                                 selector.substr(i, 6) != "[data-")) {
++      return false;
++    }
++  }
++  return false;
++}
++
++bool ValidDigest(std::string_view digest) {
++  return digest.size() == 64 && std::ranges::all_of(digest, [](char c) {
++           return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++         });
++}
++
++bool ValidGeneration(std::optional<double> value) {
++  return value && std::isfinite(*value) && *value >= 1 &&
++         *value <= 9007199254740991.0 && std::floor(*value) == *value;
++}
++
++base::FilePath SnapshotPath(Profile* profile) {
++  return profile->GetPath()
++      .Append(FILE_PATH_LITERAL("Aux Blocking"))
++      .Append(FILE_PATH_LITERAL("cosmetic.json"));
++}
++
++std::optional<CosmeticRule> ReadRule(const base::Value& value) {
++  const base::DictValue* object = value.GetIfDict();
++  if (!object) {
++    return std::nullopt;
++  }
++  const base::ListValue* domains = object->FindList("domains");
++  const std::string* selector = object->FindString("selector");
++  if (!domains || !selector || domains->size() > 16) {
++    return std::nullopt;
++  }
++  CosmeticRule rule;
++  rule.selector = *selector;
++  for (const base::Value& item : *domains) {
++    const std::string* domain = item.GetIfString();
++    if (!domain) {
++      return std::nullopt;
++    }
++    rule.domains.push_back(*domain);
++  }
++  return ValidCosmeticRule(rule) ? std::optional(std::move(rule))
++                                 : std::nullopt;
++}
++
++base::ListValue WriteRules(const std::vector<CosmeticRule>& rules) {
++  base::ListValue list;
++  for (const auto& rule : rules) {
++    base::DictValue value;
++    base::ListValue domains;
++    for (const auto& domain : rule.domains) {
++      domains.Append(domain);
++    }
++    value.Set("domains", std::move(domains));
++    value.Set("selector", rule.selector);
++    list.Append(std::move(value));
++  }
++  return list;
++}
++
++bool SiteGuardMatches(Profile* profile, const base::DictValue& guard) {
++  const std::string* page_id = guard.FindString("pageId");
++  const std::string* expected_url = guard.FindString("expectedUrl");
++  const auto navigation_id = guard.FindInt("navigationId");
++  if (!page_id || !expected_url || !navigation_id || page_id->size() > 128 ||
++      !GURL(*expected_url).SchemeIsHTTPOrHTTPS()) {
++    return false;
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile);
++  auto* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
++  return contents && contents->GetLastCommittedURL() == GURL(*expected_url) &&
++         contents->GetPrimaryMainFrame()->GetNavigationId() == *navigation_id;
++}
++
++base::DictValue Accepted() {
++  base::DictValue result;
++  result.Set("accepted", true);
++  return result;
++}
++
++}  // namespace
++
++bool ValidCosmeticRule(const CosmeticRule& rule) {
++  if (!ValidSelector(rule.selector) || rule.domains.size() > 16 ||
++      RuleLine(rule).size() > 512) {
++    return false;
++  }
++  std::string previous;
++  for (const auto& domain : rule.domains) {
++    if (!IsBlockingHost(domain) || (!previous.empty() && previous >= domain)) {
++      return false;
++    }
++    previous = domain;
++  }
++  return true;
++}
++
++std::string CosmeticRulesDigest(const std::vector<CosmeticRule>& rules) {
++  std::string lines;
++  for (const auto& rule : rules) {
++    if (!lines.empty()) {
++      lines.push_back('\n');
++    }
++    lines.append(RuleLine(rule));
++  }
++  return base::ToLowerASCII(base::HexEncode(crypto::SHA256HashString(lines)));
++}
++
++std::string CosmeticStyleForHost(const std::vector<CosmeticRule>& rules,
++                                 std::string_view host) {
++  std::string style;
++  for (const auto& rule : rules) {
++    bool matches = rule.domains.empty();
++    for (const auto& domain : rule.domains) {
++      if (host == domain ||
++          (host.size() > domain.size() && host.ends_with("." + domain))) {
++        matches = true;
++        break;
++      }
++    }
++    if (!matches) {
++      continue;
++    }
++    if (style.size() + rule.selector.size() + 25 > kMaxStyleBytes) {
++      return {};
++    }
++    style.append(rule.selector).append("{display:none!important}\n");
++  }
++  return style;
++}
++
++struct CosmeticController::Staging {
++  double generation = 0;
++  std::string digest;
++  int rule_count = 0;
++  std::vector<CosmeticRule> rules;
++  std::optional<base::DictValue> site_guard;
++};
++struct CosmeticController::Previous {
++  std::vector<CosmeticRule> rules;
++  double generation;
++  std::string digest;
++};
++
++CosmeticController* CosmeticController::ForProfile(Profile* profile) {
++  if (!profile) {
++    return nullptr;
++  }
++  auto* controller =
++      static_cast<CosmeticController*>(profile->GetUserData(&kCosmeticKey));
++  if (!controller) {
++    auto created =
++        std::unique_ptr<CosmeticController>(new CosmeticController(profile));
++    controller = created.get();
++    profile->SetUserData(&kCosmeticKey, std::move(created));
++  }
++  return controller;
++}
++
++CosmeticController::CosmeticController(Profile* profile) : profile_(profile) {
++  if (!profile_->IsOffTheRecord()) {
++    Load();
++  }
++}
++CosmeticController::~CosmeticController() = default;
++
++const std::vector<CosmeticRule>& CosmeticController::ActiveRules() const {
++  if (profile_->IsOffTheRecord()) {
++    return ForProfile(profile_->GetOriginalProfile())->rules_;
++  }
++  return rules_;
++}
++
++std::string CosmeticController::StyleForOrigin(
++    const std::string& origin) const {
++  const GURL url(origin);
++  if (!url.SchemeIsHTTPOrHTTPS() ||
++      url::Origin::Create(url).Serialize() != origin) {
++    return {};
++  }
++  auto* blocker = ContentBlockingController::ForProfile(profile_);
++  if (!blocker || !blocker->enabled() || blocker->IsAllowed(url.host())) {
++    return {};
++  }
++  return CosmeticStyleForHost(ActiveRules(), url.host());
++}
++
++void CosmeticController::Load() {
++  std::string text;
++  if (!base::ReadFileToStringWithMaxSize(SnapshotPath(profile_), &text,
++                                         kMaxRulesFileBytes)) {
++    return;
++  }
++  auto root = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++  if (!root) {
++    return;
++  }
++  const auto generation = root->FindDouble("generation");
++  const std::string* digest = root->FindString("rulesDigest");
++  const base::ListValue* list = root->FindList("rules");
++  if (!ValidGeneration(generation) || !digest || !ValidDigest(*digest) ||
++      !list || list->size() > kMaxRules) {
++    return;
++  }
++  std::vector<CosmeticRule> parsed;
++  std::string previous;
++  for (const auto& value : *list) {
++    auto rule = ReadRule(value);
++    if (!rule || (!previous.empty() && previous >= RuleLine(*rule))) {
++      return;
++    }
++    previous = RuleLine(*rule);
++    parsed.push_back(std::move(*rule));
++  }
++  if (CosmeticRulesDigest(parsed) != *digest) {
++    return;
++  }
++  rules_ = std::move(parsed);
++  generation_ = *generation;
++  digest_ = *digest;
++}
++
++std::optional<base::DictValue> CosmeticController::Begin(
++    const base::DictValue& params,
++    std::string* error) {
++  const auto generation = params.FindDouble("generation");
++  const auto count = params.FindInt("ruleCount");
++  const std::string* profile_id = params.FindString("profileId");
++  const std::string* digest = params.FindString("rulesDigest");
++  const auto enabled = params.FindBool("enabled");
++  const base::ListValue* allowed = params.FindList("allowedSiteHosts");
++  const base::Value* guard_value = params.Find("siteGuard");
++  const base::DictValue* guard = params.FindDict("siteGuard");
++  auto* blocker = ContentBlockingController::ForProfile(profile_);
++  if (profile_->IsOffTheRecord() || previous_ || !blocker || !profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++      !ValidGeneration(generation) || *generation <= generation_ ||
++      *generation != blocker->generation() || !count || *count < 0 ||
++      *count > static_cast<int>(kMaxRules) || !digest ||
++      !ValidDigest(*digest) || !enabled || *enabled != blocker->enabled() ||
++      !allowed || allowed->size() != blocker->allowed_hosts().size()) {
++    *error = "Invalid cosmetic snapshot header";
++    return std::nullopt;
++  }
++  const auto expected = blocker->allowed_hosts();
++  for (size_t i = 0; i < expected.size(); ++i) {
++    if (!(*allowed)[i].is_string() ||
++        (*allowed)[i].GetString() != expected[i]) {
++      *error = "Cosmetic site policy does not match network policy";
++      return std::nullopt;
++    }
++  }
++  if (guard_value && (!guard || !SiteGuardMatches(profile_, *guard))) {
++    *error = "Content blocking page changed";
++    return std::nullopt;
++  }
++  staging_ = std::make_unique<Staging>();
++  staging_->generation = *generation;
++  staging_->digest = *digest;
++  staging_->rule_count = *count;
++  if (guard) {
++    staging_->site_guard = guard->Clone();
++  }
++  return Accepted();
++}
++
++std::optional<base::DictValue> CosmeticController::Append(
++    const base::DictValue& params,
++    std::string* error) {
++  const auto generation = params.FindDouble("generation");
++  const auto offset = params.FindInt("offset");
++  const std::string* profile_id = params.FindString("profileId");
++  const base::ListValue* list = params.FindList("rules");
++  if (!staging_ || !generation || *generation != staging_->generation ||
++      !profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() || !offset ||
++      *offset != static_cast<int>(staging_->rules.size()) || !list ||
++      list->empty() || list->size() > 128 ||
++      staging_->rules.size() + list->size() >
++          static_cast<size_t>(staging_->rule_count)) {
++    staging_.reset();
++    *error = "Invalid cosmetic snapshot chunk";
++    return std::nullopt;
++  }
++  for (const auto& value : *list) {
++    auto rule = ReadRule(value);
++    if (!rule || (!staging_->rules.empty() &&
++                  RuleLine(staging_->rules.back()) >= RuleLine(*rule))) {
++      staging_.reset();
++      *error = "Invalid cosmetic rule or rule order";
++      return std::nullopt;
++    }
++    staging_->rules.push_back(std::move(*rule));
++  }
++  return Accepted();
++}
++
++bool CosmeticController::Persist(const std::vector<CosmeticRule>& rules,
++                                 double generation,
++                                 const std::string& digest,
++                                 std::string* error) {
++  base::DictValue root;
++  root.Set("generation", generation);
++  root.Set("rulesDigest", digest);
++  root.Set("rules", WriteRules(rules));
++  const auto encoded = base::WriteJson(root);
++  const auto path = SnapshotPath(profile_);
++  const auto temp = path.AddExtension(FILE_PATH_LITERAL("tmp"));
++  if (!encoded || encoded->size() > kMaxRulesFileBytes ||
++      !base::CreateDirectory(path.DirName()) ||
++      !base::SetPosixFilePermissions(path.DirName(), 0700) ||
++      !base::WriteFile(temp, *encoded) ||
++      !base::SetPosixFilePermissions(temp, 0600) ||
++      !base::ReplaceFile(temp, path, nullptr)) {
++    base::DeleteFile(temp);
++    *error = "Chromium could not persist the cosmetic snapshot";
++    return false;
++  }
++  return true;
++}
++
++std::optional<base::DictValue> CosmeticController::Commit(
++    const base::DictValue& params,
++    std::string* error) {
++  const auto generation = params.FindDouble("generation");
++  const std::string* digest = params.FindString("rulesDigest");
++  const std::string* profile_id = params.FindString("profileId");
++  if (!staging_ || !generation || *generation != staging_->generation ||
++      !digest || *digest != staging_->digest || !profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++      staging_->rules.size() != static_cast<size_t>(staging_->rule_count) ||
++      CosmeticRulesDigest(staging_->rules) != *digest ||
++      (staging_->site_guard &&
++       !SiteGuardMatches(profile_, *staging_->site_guard))) {
++    staging_.reset();
++    *error = "Cosmetic snapshot digest or page review mismatch";
++    return std::nullopt;
++  }
++  if (!Persist(staging_->rules, *generation, *digest, error)) {
++    staging_.reset();
++    return std::nullopt;
++  }
++  previous_ =
++      std::make_unique<Previous>(Previous{rules_, generation_, digest_});
++  rules_ = std::move(staging_->rules);
++  generation_ = *generation;
++  digest_ = *digest;
++  staging_.reset();
++  base::DictValue receipt;
++  receipt.Set("backend", "isolated_world_stylesheet");
++  receipt.Set("profileId", *profile_id);
++  receipt.Set("private", false);
++  receipt.Set("generation", *generation);
++  receipt.Set("rulesDigest", *digest);
++  receipt.Set("installedRules", static_cast<int>(rules_.size()));
++  receipt.Set("phase", "document_start");
++  receipt.Set("futureDocuments", true);
++  return receipt;
++}
++
++bool CosmeticController::Rollback(std::string* error) {
++  if (!previous_) {
++    return false;
++  }
++  if (previous_->generation == 0) {
++    if (!base::DeleteFile(SnapshotPath(profile_))) {
++      *error = "Chromium could not remove the failed cosmetic snapshot";
++      return false;
++    }
++  } else if (!Persist(previous_->rules, previous_->generation,
++                      previous_->digest, error)) {
++    return false;
++  }
++  rules_ = std::move(previous_->rules);
++  generation_ = previous_->generation;
++  digest_ = std::move(previous_->digest);
++  previous_.reset();
++  return true;
++}
++
++void CosmeticController::Confirm() {
++  previous_.reset();
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/cosmetic_controller.h b/chrome/browser/ui/aux/cosmetic_controller.h
+new file mode 100644
+index 0000000000..01b545bec9
+--- /dev/null
++++ b/chrome/browser/ui/aux/cosmetic_controller.h
+@@ -0,0 +1,71 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_COSMETIC_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_COSMETIC_CONTROLLER_H_
++
++#include <map>
++#include <memory>
++#include <optional>
++#include <string>
++#include <string_view>
++#include <vector>
++
++#include "base/memory/raw_ptr.h"
++#include "base/supports_user_data.h"
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++struct CosmeticRule {
++  std::vector<std::string> domains;
++  std::string selector;
++};
++
++// The native parser is independent of the runtime parser. A compromised worker
++// cannot turn a downloaded selector into script or arbitrary CSS.
++bool ValidCosmeticRule(const CosmeticRule& rule);
++std::string CosmeticRulesDigest(const std::vector<CosmeticRule>& rules);
++std::string CosmeticStyleForHost(const std::vector<CosmeticRule>& rules,
++                                 std::string_view host);
++
++class CosmeticController final : public base::SupportsUserData::Data {
++ public:
++  static CosmeticController* ForProfile(Profile* profile);
++  ~CosmeticController() override;
++
++  std::optional<base::DictValue> Begin(const base::DictValue& params,
++                                       std::string* error);
++  std::optional<base::DictValue> Append(const base::DictValue& params,
++                                        std::string* error);
++  std::optional<base::DictValue> Commit(const base::DictValue& params,
++                                        std::string* error);
++  bool Rollback(std::string* error);
++  void Confirm();
++  std::string StyleForOrigin(const std::string& origin) const;
++
++ private:
++  struct Staging;
++  struct Previous;
++  explicit CosmeticController(Profile* profile);
++  void Load();
++  bool Persist(const std::vector<CosmeticRule>& rules,
++               double generation,
++               const std::string& digest,
++               std::string* error);
++  const std::vector<CosmeticRule>& ActiveRules() const;
++
++  raw_ptr<Profile> profile_;
++  std::vector<CosmeticRule> rules_;
++  double generation_ = 0;
++  std::string digest_;
++  std::unique_ptr<Staging> staging_;
++  std::unique_ptr<Previous> previous_;
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_COSMETIC_CONTROLLER_H_
+diff --git a/chrome/browser/ui/aux/cosmetic_controller_unittest.cc b/chrome/browser/ui/aux/cosmetic_controller_unittest.cc
+new file mode 100644
+index 0000000000..cd862015b8
+--- /dev/null
++++ b/chrome/browser/ui/aux/cosmetic_controller_unittest.cc
+@@ -0,0 +1,42 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++
++TEST(CosmeticControllerTest, AcceptsOnlyBoundedDeclarativeSelectors) {
++  EXPECT_TRUE(ValidCosmeticRule({{"example.test"}, ".cookie-banner"}));
++  EXPECT_TRUE(ValidCosmeticRule({{"example.test"},
++                                 "[data-cookie-consent] > .notice"}));
++  EXPECT_FALSE(ValidCosmeticRule({{}, "body"}));
++  EXPECT_FALSE(ValidCosmeticRule({{}, ".cookie-banner, body"}));
++  EXPECT_FALSE(ValidCosmeticRule({{}, ".cookie-banner{color:red}"}));
++  EXPECT_FALSE(ValidCosmeticRule({{}, ".cookie-banner:has(script)"}));
++  EXPECT_FALSE(ValidCosmeticRule({{"example.test", "a.example.test"},
++                                  ".cookie-banner"}));
++  EXPECT_FALSE(ValidCosmeticRule({{"localhost"}, ".cookie-banner"}));
++  EXPECT_FALSE(ValidCosmeticRule({{"example.test"}, "." + std::string(300, 'a')}));
++}
++
++TEST(CosmeticControllerTest, MatchesOnlySelectedSiteAndSubdomains) {
++  const std::vector<CosmeticRule> rules = {
++      {{}, ".global-cookie"},
++      {{"example.test"}, "[data-cookie-consent]"},
++      {{"shop.example.test"}, ".checkout-overlay"},
++  };
++  EXPECT_EQ(CosmeticStyleForHost(rules, "shop.example.test"),
++            ".global-cookie{display:none!important}\n"
++            "[data-cookie-consent]{display:none!important}\n"
++            ".checkout-overlay{display:none!important}\n");
++  EXPECT_EQ(CosmeticStyleForHost(rules, "notexample.test"),
++            ".global-cookie{display:none!important}\n");
++  EXPECT_EQ(CosmeticRulesDigest(rules).size(), 64u);
++  EXPECT_NE(CosmeticRulesDigest(rules),
++            CosmeticRulesDigest({{{}, ".different"}}));
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index a7cf3878a4..cc5182cc93 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -19,6 +19,7 @@
+ #include <memory>
+ #include <optional>
+ #include <utility>
++#include <vector>
+ 
+ #include "base/base_paths.h"
+ #include "base/command_line.h"
+@@ -36,6 +37,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/cdp_broker.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
+ #include "chrome/browser/ui/aux/credential_fill.h"
+ #include "chrome/browser/ui/aux/cookie_import.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+@@ -93,6 +95,29 @@ base::DictValue NativeResult(base::Value value) {
+   return reply;
+ }
+ 
++void RefreshCosmeticProfiles(Profile* profile,
++                             base::OnceCallback<void(bool)> callback) {
++  std::vector<Profile*> profiles = profile->GetAllOffTheRecordProfiles();
++  profiles.push_back(profile);
++  struct Pending {
++    size_t remaining = 0;
++    bool applied = true;
++    base::OnceCallback<void(bool)> callback;
++  };
++  auto pending = std::make_shared<Pending>();
++  pending->remaining = profiles.size();
++  pending->callback = std::move(callback);
++  for (Profile* current : profiles) {
++    aux::ZapController::ForProfile(current)->RefreshCosmetic(base::BindOnce(
++        [](std::shared_ptr<Pending> pending, bool applied) {
++          pending->applied &= applied;
++          if (--pending->remaining == 0) {
++            std::move(pending->callback).Run(pending->applied);
++          }
++        }, pending));
++  }
++}
++
+ bool IsOwnerOnlyDirectory(const base::FilePath& path) {
+   struct stat metadata;
+   return lstat(path.value().c_str(), &metadata) == 0 &&
+@@ -214,6 +239,55 @@ void AuxRuntimeHost::HandleZapInstall(
+   controller->Install(params, std::move(callback));
+ }
+ 
++void AuxRuntimeHost::HandleCosmeticCommit(
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  auto* cosmetic = aux::CosmeticController::ForProfile(profile_);
++  if (!cosmetic) {
++    std::move(callback).Run(NativeFault("backend_unavailable",
++                                        "Cosmetic filtering is unavailable"));
++    return;
++  }
++  std::string error;
++  auto receipt = cosmetic->Commit(params, &error);
++  if (!receipt) {
++    std::move(callback).Run(NativeFault("invalid_argument", std::move(error)));
++    return;
++  }
++  RefreshCosmeticProfiles(profile_, base::BindOnce(
++      [](base::WeakPtr<AuxRuntimeHost> owner, base::DictValue receipt,
++         base::OnceCallback<void(base::DictValue)> callback, bool applied) {
++        if (!owner) {
++          return;
++        }
++        auto* cosmetic = aux::CosmeticController::ForProfile(owner->profile_);
++        if (applied) {
++          cosmetic->Confirm();
++          std::move(callback).Run(
++              NativeResult(base::Value(std::move(receipt))));
++          return;
++        }
++        std::string rollback_error;
++        if (!cosmetic->Rollback(&rollback_error)) {
++          std::move(callback).Run(
++              NativeFault("backend_unavailable",
++                          "Cosmetic rollback could not be persisted"));
++          return;
++        }
++        RefreshCosmeticProfiles(owner->profile_, base::BindOnce(
++                [](base::OnceCallback<void(base::DictValue)> callback,
++                   bool restored) {
++                  std::move(callback).Run(NativeFault(
++                      restored ? "backend_unavailable" : "conflict",
++                      restored ? "An active document rejected cosmetic styles"
++                               : "Cosmetic rollback could not refresh an "
++                                 "active document"));
++                },
++                std::move(callback)));
++      },
++      weak_factory_.GetWeakPtr(), std::move(*receipt), std::move(callback)));
++}
++
+ namespace {
+ 
+ bool CaptureAllowed(Profile* profile, const base::DictValue& params,
+@@ -445,6 +519,22 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+                                     : "invalid_argument",
+                                 std::move(error));
+   }
++  if (method == "native.cosmeticBegin" || method == "native.cosmeticAppend") {
++    auto* cosmetic = aux::CosmeticController::ForProfile(profile_);
++    if (!cosmetic) {
++      return NativeFault("backend_unavailable",
++                         "Cosmetic filtering is unavailable");
++    }
++    std::string error;
++    auto result = method == "native.cosmeticBegin"
++                      ? cosmetic->Begin(params, &error)
++                      : cosmetic->Append(params, &error);
++    return result ? NativeResult(base::Value(std::move(*result)))
++                  : NativeFault(error == "Content blocking page changed"
++                                    ? "conflict"
++                                    : "invalid_argument",
++                                std::move(error));
++  }
+   auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+   if (!catalog) {
+     return NativeFault("backend_unavailable", "Tab catalog is unavailable");
+@@ -1012,6 +1102,17 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                              }, state));
+                          return;
+                        }
++                       if (owner && method == "native.cosmeticCommit") {
++                         owner->HandleCosmeticCommit(
++                             params, base::BindOnce(
++                                         [](std::shared_ptr<NativeReplyState> state,
++                                            base::DictValue reply) {
++                                           state->reply = std::move(reply);
++                                           state->ready.Signal();
++                                         },
++                                         state));
++                         return;
++                       }
+                        if (owner && (method == "native.historyClear" ||
+                                      method == "native.historyRemove")) {
+                          owner->HandleHistoryMutation(
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 7b56ff3dfc..bd2c70bcb9 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -5,8 +5,8 @@
+ #ifndef CHROME_BROWSER_UI_AUX_RUNTIME_HOST_H_
+ #define CHROME_BROWSER_UI_AUX_RUNTIME_HOST_H_
+ 
+-#include <cstdint>
+ #include <atomic>
++#include <cstdint>
+ #include <memory>
+ #include <string>
+ 
+@@ -81,7 +81,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+     bool SendFrame(const std::string& frame);
+     bool ReadFrame(std::string* frame, int timeout_ms);
+     base::DictValue DispatchNative(const std::string& method,
+-                                     base::DictValue params);
++                                   base::DictValue params);
+     bool HandleNativeRequest(const base::DictValue& data);
+     void ForwardNote(const base::DictValue& data);
+ 
+@@ -102,8 +102,11 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   explicit AuxRuntimeHost(Profile* profile);
+   void HandleZapInstall(const base::DictValue& params,
+                         base::OnceCallback<void(base::DictValue)> callback);
+-  void HandleReadableCapture(const base::DictValue& params,
+-                             base::OnceCallback<void(base::DictValue)> callback);
++  void HandleCosmeticCommit(const base::DictValue& params,
++                            base::OnceCallback<void(base::DictValue)> callback);
++  void HandleReadableCapture(
++      const base::DictValue& params,
++      base::OnceCallback<void(base::DictValue)> callback);
+   void HandleHistoryMutation(
+       const std::string& method,
+       const base::DictValue& params,
+diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
+index c8f911762d..94dc6d877d 100644
+--- a/chrome/browser/ui/aux/zap_controller.cc
++++ b/chrome/browser/ui/aux/zap_controller.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
++#include <set>
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
+@@ -17,6 +18,7 @@
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ #include "chrome/common/chrome_render_frame.mojom.h"
+@@ -58,7 +60,7 @@ struct ZapController::FrameRequest {
+ };
+ 
+ ZapController* ZapController::ForProfile(Profile* profile) {
+-  if (!profile || profile->IsOffTheRecord()) {
++  if (!profile) {
+     return nullptr;
+   }
+   auto* controller =
+@@ -99,6 +101,11 @@ void ZapController::EnsureReady(ReadyCallback callback) {
+     std::move(callback).Run(true);
+     return;
+   }
++  if (profile_->IsOffTheRecord()) {
++    ready_ = true;
++    std::move(callback).Run(true);
++    return;
++  }
+   pending_ready_.push_back(std::move(callback));
+   if (loading_) {
+     return;
+@@ -127,7 +134,8 @@ void ZapController::EnsureReady(ReadyCallback callback) {
+             bool valid = response.ok;
+             std::map<std::string, Policy> policies;
+             const auto parsed =
+-                valid ? base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC)
++                valid ? base::JSONReader::Read(response.result_json,
++                                               base::JSON_PARSE_RFC)
+                       : std::nullopt;
+             const base::ListValue* list =
+                 parsed ? parsed->GetIfList() : nullptr;
+@@ -188,14 +196,18 @@ void ZapController::PrepareFrame(content::RenderFrameHost* frame,
+   request->remote.set_disconnect_handler(
+       base::BindOnce(&ZapController::OnFrameResult, weak_factory_.GetWeakPtr(),
+                      request_id, false, false));
+-  const std::string* stylesheet = StyleForOrigin(origin);
++  const std::string* zap_stylesheet = StyleForOrigin(origin);
++  std::string stylesheet = zap_stylesheet ? *zap_stylesheet : "";
++  if (auto* cosmetic = CosmeticController::ForProfile(profile_)) {
++    stylesheet.append(cosmetic->StyleForOrigin(origin));
++  }
+   const auto sequence_it = sequence_by_origin_.find(origin);
+   const uint64_t sequence =
+       sequence_it == sequence_by_origin_.end() ? 0 : sequence_it->second;
+   frame_requests_.emplace(request_id, std::move(request));
+   frame_requests_.at(request_id)
+       ->remote->SetAuxZapStylesheet(
+-          origin, sequence, stylesheet ? *stylesheet : "",
++          origin, sequence, stylesheet,
+           base::BindOnce(&ZapController::OnFrameResult,
+                          weak_factory_.GetWeakPtr(), request_id));
+   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+@@ -205,6 +217,82 @@ void ZapController::PrepareFrame(content::RenderFrameHost* frame,
+       base::Seconds(10));
+ }
+ 
++void ZapController::RefreshCosmetic(base::OnceCallback<void(bool)> callback) {
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  if (!catalog) {
++    std::move(callback).Run(false);
++    return;
++  }
++  const base::DictValue snapshot = catalog->Snapshot();
++  const base::ListValue* tabs = snapshot.FindList("tabs");
++  if (!tabs) {
++    std::move(callback).Run(false);
++    return;
++  }
++  std::vector<std::pair<content::GlobalRenderFrameHostId, std::string>> targets;
++  for (const base::Value& tab : *tabs) {
++    const std::string* page_id = tab.GetDict().FindString("pageId");
++    content::WebContents* contents =
++        page_id ? catalog->FindPage(*page_id) : nullptr;
++    if (!contents) {
++      continue;
++    }
++    contents->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
++      const std::string origin = frame->GetLastCommittedOrigin().Serialize();
++      const GURL url(origin);
++      if (url.SchemeIsHTTPOrHTTPS()) {
++        targets.emplace_back(frame->GetGlobalId(), origin);
++      }
++    });
++  }
++  if (targets.size() > 5000) {
++    std::move(callback).Run(false);
++    return;
++  }
++  std::set<std::string> origins;
++  for (const auto& target : targets) {
++    origins.insert(target.second);
++  }
++  for (const auto& origin : origins) {
++    sequence_by_origin_[origin] = ++next_sequence_;
++  }
++  if (targets.empty()) {
++    std::move(callback).Run(true);
++    return;
++  }
++  struct Pending {
++    size_t remaining;
++    bool valid = true;
++    base::OnceCallback<void(bool)> callback;
++  };
++  auto pending = std::make_shared<Pending>();
++  pending->remaining = targets.size();
++  pending->callback = std::move(callback);
++  for (const auto& [frame_id, origin] : targets) {
++    const std::string* zap_style = StyleForOrigin(origin);
++    const bool expect_style = (zap_style && !zap_style->empty()) ||
++                              !CosmeticController::ForProfile(profile_)
++                                   ->StyleForOrigin(origin)
++                                   .empty();
++    PrepareFrame(content::RenderFrameHost::FromID(frame_id), origin,
++                 base::BindOnce(
++                     [](std::shared_ptr<Pending> pending,
++                        content::GlobalRenderFrameHostId frame_id,
++                        std::string origin, bool expect_style, bool accepted,
++                        bool applied) {
++                       auto* current = content::RenderFrameHost::FromID(frame_id);
++                       if (current &&
++                           current->GetLastCommittedOrigin().Serialize() == origin) {
++                         pending->valid &= accepted && (!expect_style || applied);
++                       }
++                       if (--pending->remaining == 0) {
++                         std::move(pending->callback).Run(pending->valid);
++                       }
++                     },
++                     pending, frame_id, origin, expect_style));
++  }
++}
++
+ void ZapController::OnFrameResult(int request_id, bool accepted, bool applied) {
+   auto it = frame_requests_.find(request_id);
+   if (it == frame_requests_.end()) {
+@@ -407,13 +495,13 @@ void ZapController::Install(const base::DictValue& request,
+                 return;
+               }
+               for (const Target& item : pending->targets) {
+-                content::RenderFrameHost* current =
++                content::RenderFrameHost* rollback_frame =
+                     content::RenderFrameHost::FromID(item.frame_id);
+-                if (!current) {
++                if (!rollback_frame) {
+                   continue;
+                 }
+                 pending->owner->PrepareFrame(
+-                    current, pending->origin,
++                    rollback_frame, pending->origin,
+                     base::BindOnce(
+                         [](std::shared_ptr<Rollback> rollback, bool, bool) {
+                           if (--rollback->remaining == 0) {
+@@ -520,7 +608,7 @@ std::unique_ptr<content::CommitDeferringCondition> MaybeCreateZapCondition(
+   }
+   Profile* profile = Profile::FromBrowserContext(
+       navigation.GetWebContents()->GetBrowserContext());
+-  if (!profile || profile->IsOffTheRecord()) {
++  if (!profile) {
+     return nullptr;
+   }
+   return std::make_unique<ZapCommitCondition>(navigation);
+diff --git a/chrome/browser/ui/aux/zap_controller.h b/chrome/browser/ui/aux/zap_controller.h
+index f2de735b32..4d32c0c1b4 100644
+--- a/chrome/browser/ui/aux/zap_controller.h
++++ b/chrome/browser/ui/aux/zap_controller.h
+@@ -45,6 +45,7 @@ class ZapController final : public base::SupportsUserData::Data {
+   void PrepareFrame(content::RenderFrameHost* frame,
+                     const std::string& origin,
+                     FrameCallback callback);
++  void RefreshCosmetic(base::OnceCallback<void(bool)> callback);
+   const std::string* StyleForOrigin(const std::string& origin) const;
+   bool ready() const { return ready_; }
+ 
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 7bbf75a5d4..9bc3f451f8 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -20,6 +20,7 @@
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_service.h"
+@@ -429,15 +430,43 @@ void WebUIBrowserUI::Request(const std::string& method,
+     if (method == "setSiteTrackers") {
+       const bool allowed = (*list)[1].GetBool();
+       if (browser_->GetProfile()->IsOffTheRecord()) {
++        const bool previous = blocker->IsAllowed(url.host());
+         if (!blocker->SetPrivateSiteAllowed(url.host(), allowed)) {
+           std::move(callback).Run(false, "", "invalid_argument",
+                                   "Invalid private site exception");
+           return;
+         }
+-        base::DictValue result;
+-        result.Set("hostname", url.host());
+-        result.Set("allowed", allowed);
+-        std::move(callback).Run(true, *base::WriteJson(result), "", "");
++        aux::ZapController::ForProfile(browser_->GetProfile())
++            ->RefreshCosmetic(base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> owner, std::string page_id,
++                   GURL url, int navigation_id, bool previous, bool allowed,
++                   RequestCallback callback, bool applied) {
++                  if (!owner) return;
++                  auto* profile = owner->browser_->GetProfile();
++                  auto* catalog = aux::TabCatalog::GetForProfile(profile);
++                  auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
++                  const auto* entry = page
++                      ? page->GetController().GetLastCommittedEntry() : nullptr;
++                  if (!page || page->GetLastCommittedURL() != url || !entry ||
++                      entry->GetUniqueID() != navigation_id) applied = false;
++                  if (!applied) {
++                    aux::ContentBlockingController::ForProfile(profile)
++                        ->SetPrivateSiteAllowed(url.host(), previous);
++                    aux::ZapController::ForProfile(profile)->RefreshCosmetic(
++                        base::BindOnce(
++                            [](RequestCallback callback, bool) {
++                              std::move(callback).Run(
++                                  false, "", "conflict",
++                                  "The page changed or rejected the cosmetic rule");
++                            }, std::move(callback)));
++                    return;
++                  }
++                  base::DictValue result;
++                  result.Set("hostname", url.host());
++                  result.Set("allowed", allowed);
++                  std::move(callback).Run(true, *base::WriteJson(result), "", "");
++                }, weak_factory_.GetWeakPtr(), page_id, url, navigation_id,
++                previous, allowed, std::move(callback)));
+         return;
+       }
+       base::DictValue params;
+@@ -534,32 +563,72 @@ void WebUIBrowserUI::Request(const std::string& method,
+            (*list)[0].is_bool()) ||
+           (method == "removeAllowedHost" && list->size() == 1 &&
+            (*list)[0].is_string())) {
+-        if (method == "setTrackerBlock") {
+-          blocker->SetPrivateEnabled((*list)[0].GetBool());
+-        } else if (method == "removeAllowedHost" &&
+-                   !blocker->SetPrivateSiteAllowed((*list)[0].GetString(),
+-                                                   false)) {
++        const bool previous_enabled = blocker->enabled();
++        const std::string changed_host = method == "removeAllowedHost"
++            ? (*list)[0].GetString() : "";
++        const bool previous_allowed = !changed_host.empty() &&
++            blocker->IsAllowed(changed_host);
++        if (method == "setTrackerBlock" &&
++            !blocker->SetPrivateEnabled((*list)[0].GetBool())) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Invalid private blocking preference");
++          return;
++        }
++        if (method == "removeAllowedHost" &&
++            !blocker->SetPrivateSiteAllowed(changed_host, false)) {
+           std::move(callback).Run(false, "", "invalid_argument",
+                                   "Invalid private site exception");
+           return;
+         }
++        std::string result_json;
+         if (method == "removeAllowedHost") {
+           base::ListValue allowed;
+           for (const auto& host : blocker->allowed_hosts()) {
+             allowed.Append(host);
+           }
+-          std::move(callback).Run(true, *base::WriteJson(allowed), "", "");
+-          return;
++          result_json = *base::WriteJson(allowed);
++        } else {
++          base::DictValue privacy;
++          privacy.Set("trackerBlock", blocker->enabled());
++          privacy.Set("blocked", blocker->blocked_count());
++          base::ListValue allowed;
++          for (const auto& host : blocker->allowed_hosts()) {
++            allowed.Append(host);
++          }
++          privacy.Set("allowedHosts", std::move(allowed));
++          result_json = *base::WriteJson(privacy);
+         }
+-        base::DictValue privacy;
+-        privacy.Set("trackerBlock", blocker->enabled());
+-        privacy.Set("blocked", blocker->blocked_count());
+-        base::ListValue allowed;
+-        for (const auto& host : blocker->allowed_hosts()) {
+-          allowed.Append(host);
++        if (method == "privacy") {
++          std::move(callback).Run(true, result_json, "", "");
++          return;
+         }
+-        privacy.Set("allowedHosts", std::move(allowed));
+-        std::move(callback).Run(true, *base::WriteJson(privacy), "", "");
++        aux::ZapController::ForProfile(browser_->GetProfile())
++            ->RefreshCosmetic(base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> owner,
++                   std::string changed_host, bool previous_allowed,
++                   bool previous_enabled, std::string result_json,
++                   RequestCallback callback, bool applied) {
++                  if (!owner) return;
++                  if (applied) {
++                    std::move(callback).Run(true, result_json, "", "");
++                    return;
++                  }
++                  auto* profile = owner->browser_->GetProfile();
++                  auto* blocker = aux::ContentBlockingController::ForProfile(profile);
++                  if (changed_host.empty())
++                    blocker->SetPrivateEnabled(previous_enabled);
++                  else
++                    blocker->SetPrivateSiteAllowed(changed_host, previous_allowed);
++                  aux::ZapController::ForProfile(profile)->RefreshCosmetic(
++                      base::BindOnce(
++                          [](RequestCallback callback, bool) {
++                            std::move(callback).Run(
++                                false, "", "backend_unavailable",
++                                "An active document rejected cosmetic styles");
++                          }, std::move(callback)));
++                }, weak_factory_.GetWeakPtr(), changed_host,
++                previous_allowed, previous_enabled, std::move(result_json),
++                std::move(callback)));
+         return;
+       }
+       std::move(callback).Run(false, "", "forbidden",
+diff --git a/chrome/renderer/aux_zap_stylesheet_registry.h b/chrome/renderer/aux_zap_stylesheet_registry.h
+index 3f699b22fa..33d805b414 100644
+--- a/chrome/renderer/aux_zap_stylesheet_registry.h
++++ b/chrome/renderer/aux_zap_stylesheet_registry.h
+@@ -75,8 +75,8 @@ class AuxZapStylesheetRegistry {
+     std::string stylesheet;
+     Clock::time_point expires_at;
+   };
+-  static constexpr size_t kMaxLiveStyles = 100;
+-  static constexpr size_t kMaxTombstones = 1000;
++  static constexpr size_t kMaxLiveStyles = 512;
++  static constexpr size_t kMaxTombstones = 5000;
+   static constexpr auto kTombstoneLifetime = std::chrono::seconds(30);
+ 
+   void Prune(Clock::time_point now) {
+diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
+index c0e4cb3b90..a1439d45d7 100644
+--- a/chrome/renderer/chrome_render_frame_observer.cc
++++ b/chrome/renderer/chrome_render_frame_observer.cc
+@@ -333,7 +333,7 @@ void ChromeRenderFrameObserver::SetAuxZapStylesheet(
+   const GURL url(origin);
+   if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() ||
+       url::Origin::Create(url).Serialize() != origin ||
+-      stylesheet.size() > 80000 ||
++      stylesheet.size() > 4 * 1024 * 1024 ||
+       GetAuxZapStylesheets().Update(
+           origin, sequence, stylesheet,
+           AuxZapStylesheetRegistry::Clock::now()) !=

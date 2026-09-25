@@ -22,6 +22,7 @@ export interface FilterListStatus {
   cookieSelectors: number;
   builtinHosts: number;
   backend: "electron_web_request" | "subresource_filter";
+  cosmeticBackend?: "document_start_stylesheet" | "unavailable";
 }
 
 const sourceId = (url: string) => createHash("sha256").update(url).digest("hex").slice(0, 12);

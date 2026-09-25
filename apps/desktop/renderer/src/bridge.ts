@@ -28,7 +28,8 @@ export interface BrowserSiteInfo {
 }
 export interface FilterSourceStatus { id:string;name:string;url:string;enabled:boolean;kind:"hosts"|"cookie_banner";meta?:{fetchedAt:number;etag?:string;hosts:number;selectors?:number;sha256:string;error?:string} }
 export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;cookieSelectors:number;builtinHosts:number;
-  backend:"electron_web_request"|"subresource_filter"|"declarative_net_request"|"preview" }
+  backend:"electron_web_request"|"subresource_filter"|"declarative_net_request"|"preview";
+  cosmeticBackend?:"document_start_stylesheet"|"unavailable" }
 export interface BrowserHealthSummary {
   recordingSince?:number;latestAt?:number;samples:number;sessions:number;observedMinutes:number;spanDays:number;sevenDaySpan:boolean;startupMs?:number;
   cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;swallowed?:Record<string,number>;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
