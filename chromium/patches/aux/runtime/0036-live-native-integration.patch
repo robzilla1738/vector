@@ -2069,7 +2069,20 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/br
    int command_id;
    // Though AcceleratorManager should not send unknown |accelerator| to us, it's
    // still possible the command cannot be executed now.
-@@ -1020,6 +1055,16 @@
+@@ -847,6 +882,12 @@
+ }
+ 
+ void WebUIBrowserWindow::SetFocusToLocationBar(bool is_user_initiated) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI();
++      ui && ui->DispatchAuxShortcut("open-address")) {
++    return;
++  }
++#endif
+   if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
+     ui->page()->SetFocusToLocationBar(is_user_initiated);
+   }
+@@ -1020,6 +1061,16 @@
  
    ui::Accelerator accelerator =
        ui::GetAcceleratorFromNativeWebKeyboardEvent(event);

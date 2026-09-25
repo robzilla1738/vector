@@ -101,3 +101,35 @@ it("opens a search through the current Profile provider", async () => {
   expect(resolved).toHaveBeenCalledWith("aux browser");
   expect(navigate).toHaveBeenCalledWith("current", "https://selected.example/?q=aux+browser");
 });
+
+it.each(["chrome://version", "https://example.test/path"])(
+  "opens %s directly from Home Search",
+  async (url) => {
+    useStore.setState({
+      pages: [{ pageId: "current", url: "about:blank", title: "New Tab", ownedByRuntime: false }],
+      activePageId: "current",
+      bookmarks: [],
+      closedTabs: [],
+      runs: [],
+      programs: [],
+      settings: {},
+    } as never);
+    const resolved = vi
+      .spyOn(bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> }, "resolveSearch")
+      .mockResolvedValue("https://search.example/");
+    const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
+    vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+    vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+    root = createRoot(host);
+    await act(async () => root.render(<CommandBar hero />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, url);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(resolved).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("current", url);
+  },
+);

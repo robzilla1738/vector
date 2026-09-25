@@ -78,3 +78,11 @@ The initial material wrapper described above was superseded after inspecting Chr
 ### Verified default sidebar shortcut
 
 After consolidating the bootstrap’s separate delivery/subscription allowlists into `hostEvents`, and registering Cmd-S in Chromium’s native Views focus manager, the live horizontal shell changed from `Hide sidebar` to `Show sidebar` on Cmd-S. The final native build passed in 15 seconds. This verifies the default shortcut in the shell; custom rebinding and guest-focus coverage remain separate gates.
+
+### Direct Home navigation and address focus
+
+- **[Verified]** Home Search preserves explicit URL intent; the 15 command-bar tests include direct web and chrome addresses. Renderer typechecking and shell staging succeeded.
+- **[Verified]** The native component app rebuilt successfully (local log: /tmp/aux-build-home-shell.log). Live CUA navigation from Home to chrome://version displayed the native About Version page.
+- **[Verified]** Cmd-L selected the current address in Aux's field. Cmd-S expanded the 280 px sidebar with a native page control focused.
+- **[Partial]** Glass appearance remains unqualified; window screenshots are not evidence of the desktop backdrop effect. The P6 design extraction and liquid-glass layer reference were reviewed again against the user's request.
+- Official AuxRelease compilation started locally with eight jobs and nice priority 10. No hosted Actions or Linux VM used.
