@@ -1,0 +1,129 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index c0c45ac901..f5f1a65918 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -24,7 +24,9 @@ source_set("runtime") {
+     "//chrome/browser/ui/tabs:tabs_public",
+     "//components/keyed_service/content",
+     "//components/sessions:session_id",
++    "//components/zoom",
+     "//content/public/browser",
++    "//content/public/common",
+     "//url",
+   ]
+   frameworks = [ "Security.framework" ]
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index e8601431a5..a551b4052e 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -11,8 +11,10 @@
+ #include <sys/un.h>
+ #include <unistd.h>
+ 
++#include <algorithm>
+ #include <array>
+ #include <cerrno>
++#include <cmath>
+ #include <cstring>
+ #include <memory>
+ #include <optional>
+@@ -38,9 +40,11 @@
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "components/sessions/core/session_id.h"
++#include "components/zoom/zoom_controller.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/common/stop_find_action.h"
+ #include "url/gurl.h"
+ 
+ namespace {
+@@ -48,6 +52,12 @@ namespace {
+ constexpr size_t kMaxFrameBytes = 16 * 1024 * 1024;
+ constexpr int kConnectTimeoutMs = 15000;
+ constexpr int kRequestTimeoutMs = 30000;
++constexpr double kZoomBase = 1.2;
++constexpr double kMinZoomFactor = 0.25;
++constexpr double kMaxZoomFactor = 5.0;
++constexpr std::array<int, 16> kZoomPercentages = {
++    25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400,
++    500};
+ const char kAuxRuntimeHostKey = 0;
+ 
+ struct NativeReplyState {
+@@ -227,6 +237,74 @@ base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+     result.Set("ok", true);
+     return NativeResult(base::Value(std::move(result)));
+   }
++  if (method == "native.setZoom" || method == "native.stopFind") {
++    const std::string* page_id = params.FindString("pageId");
++    content::WebContents* contents = page_id ? catalog->FindPage(*page_id) : nullptr;
++    if (!contents) {
++      return NativeFault("not_found", "Page is not in this Profile");
++    }
++    if (method == "native.stopFind") {
++      const std::string* action = params.FindString("action");
++      if (action && *action != "clear" && *action != "keep") {
++        return NativeFault("invalid_argument", "Invalid find action");
++      }
++      contents->StopFinding(action && *action == "keep"
++                                ? content::STOP_FIND_ACTION_KEEP_SELECTION
++                                : content::STOP_FIND_ACTION_CLEAR_SELECTION);
++      base::Value::Dict result;
++      result.Set("ok", true);
++      return NativeResult(base::Value(std::move(result)));
++    }
++
++    auto* zoom_controller = zoom::ZoomController::FromWebContents(contents);
++    if (!zoom_controller) {
++      return NativeFault("backend_unavailable", "Page zoom is unavailable");
++    }
++    const double current = zoom_controller->GetZoomLevel();
++    double next = current;
++    bool requested = false;
++    if (params.FindBool("reset").value_or(false)) {
++      requested = true;
++      next = zoom_controller->GetDefaultZoomLevel();
++    } else if (const std::string* direction = params.FindString("direction")) {
++      requested = true;
++      if (*direction != "in" && *direction != "out") {
++        return NativeFault("invalid_argument", "Invalid zoom direction");
++      }
++      const int current_percent =
++          static_cast<int>(std::round(100.0 * std::pow(kZoomBase, current)));
++      int stepped = *direction == "in" ? 500 : 25;
++      for (int percentage : kZoomPercentages) {
++        if (*direction == "in" && percentage > current_percent) {
++          stepped = percentage;
++          break;
++        }
++        if (*direction == "out" && percentage < current_percent) {
++          stepped = percentage;
++        }
++      }
++      next = std::log(stepped / 100.0) / std::log(kZoomBase);
++    } else if (const std::optional<double> level = params.FindDouble("level")) {
++      requested = true;
++      next = *level;
++    } else if (const std::optional<double> delta = params.FindDouble("delta")) {
++      requested = true;
++      next += *delta;
++    }
++    if (!std::isfinite(next)) {
++      return NativeFault("invalid_argument", "Invalid page zoom");
++    }
++    if (requested) {
++      next = std::clamp(next, std::log(kMinZoomFactor) / std::log(kZoomBase),
++                        std::log(kMaxZoomFactor) / std::log(kZoomBase));
++    }
++    if (requested && next != current && !zoom_controller->SetZoomLevel(next)) {
++      return NativeFault("backend_unavailable", "Page zoom is disabled");
++    }
++    base::Value::Dict result;
++    result.Set("level", zoom_controller->GetZoomLevel());
++    return NativeResult(base::Value(std::move(result)));
++  }
+   return NativeFault("backend_unavailable",
+                      "Native method is unavailable in this build");
+ }
