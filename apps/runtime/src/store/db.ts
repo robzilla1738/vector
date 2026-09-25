@@ -299,11 +299,16 @@ CREATE TABLE plugin_assets(
   name TEXT NOT NULL, description TEXT, content TEXT, digest TEXT NOT NULL,
   imported_at INTEGER NOT NULL);
 CREATE INDEX idx_plugin_assets_plugin ON plugin_assets(plugin_id,kind,name);
+CREATE TABLE goals(
+  goal_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+  status TEXT NOT NULL, run_id TEXT UNIQUE, body TEXT NOT NULL,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX idx_goals_workspace ON goals(workspace_id,updated_at);
 ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -455,6 +460,14 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       name TEXT NOT NULL, description TEXT, content TEXT, digest TEXT NOT NULL,
       imported_at INTEGER NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_plugin_assets_plugin ON plugin_assets(plugin_id,kind,name)`,
+  ],
+  // v16 → v17: durable, budgeted long-running goals.
+  16: [
+    `CREATE TABLE IF NOT EXISTS goals(
+      goal_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+      status TEXT NOT NULL, run_id TEXT UNIQUE, body TEXT NOT NULL,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS idx_goals_workspace ON goals(workspace_id,updated_at)`,
   ],
 };
 

@@ -41,6 +41,7 @@ import {
   RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
+import { GoalCreateParams, GoalSchema } from "./goals.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import { AgentModelRouteSchema } from './model-registry.js';
@@ -716,6 +717,13 @@ export const MethodSchemas = {
   "vault.update": VaultUpdateParams,
   "vault.secretMatches": VaultSecretMatchParams,
   "routines.list": z.object({workspaceId:id.optional(),query:z.string().trim().max(200).optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
+  "goals.create": GoalCreateParams,
+  "goals.get": z.object({ goalId: z.string().uuid() }).strict(),
+  "goals.list": z.object({ workspaceId: id.optional(), limit: z.number().int().min(1).max(200).default(100) }).strict(),
+  "goals.start": z.object({ goalId: z.string().uuid(), pageIds: z.array(id).min(1).max(8) }).strict(),
+  "goals.pause": z.object({ goalId: z.string().uuid() }).strict(),
+  "goals.resume": z.object({ goalId: z.string().uuid() }).strict(),
+  "goals.cancel": z.object({ goalId: z.string().uuid() }).strict(),
   "routines.suggest": z.object({workspaceId:id.optional(),text:z.string().max(4000).optional(),pageUrl:z.string().max(2048).optional(),limit:z.number().int().min(1).max(20).default(5)}).strict(),
   "routines.get": z.object({routineId:id}),
   "routines.create": RoutineCreateParams,
@@ -1112,6 +1120,13 @@ export const ResultSchemas = {
   "vault.update": VaultItemSchema,
   "vault.secretMatches": z.object({ matches: z.boolean() }),
   "routines.list": z.array(RoutineSchema),
+  "goals.create": GoalSchema,
+  "goals.get": GoalSchema,
+  "goals.list": z.array(GoalSchema),
+  "goals.start": GoalSchema,
+  "goals.pause": GoalSchema,
+  "goals.resume": GoalSchema,
+  "goals.cancel": GoalSchema,
   "routines.suggest": z.array(RoutineSuggestionSchema),
   "routines.get": z.object({routine:RoutineSchema,runs:z.array(RoutineRunSchema)}),
   "routines.create": RoutineSchema,

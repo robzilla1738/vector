@@ -37,6 +37,7 @@ import {cancelRuntimeRestore,createRuntimeBackup,deleteRuntimeBackup,listRuntime
 import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
 import { PluginService } from "../services/plugins.js";
+import { GoalService } from "../services/goals.js";
 import { TranslateService } from "../services/translate.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
@@ -151,6 +152,7 @@ export function makeInvoker(s: Services) {
     return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
   });
   const plugins = new PluginService(s.repo, routines);
+  const goals = new GoalService(s.repo, s.runs);
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{
     const criteria=new Set(task.criteria.map(item=>item.criterionId));
     if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new AuxError('conflict','The cloud task result references a criterion outside this task revision.');
@@ -408,6 +410,22 @@ export function makeInvoker(s: Services) {
       case "plugins.inspect":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.inspect(params.path);
+      case "goals.create":
+      case "goals.get":
+      case "goals.list":
+      case "goals.start":
+      case "goals.pause":
+      case "goals.resume":
+      case "goals.cancel": {
+        if (client.external) throw new AuxError("permission_denied", "Goals are managed in Aux.");
+        if (method === "goals.create") return goals.create(params);
+        if (method === "goals.get") return goals.get(params.goalId);
+        if (method === "goals.list") return goals.list(params.workspaceId, params.limit);
+        if (method === "goals.start") return goals.start(params.goalId, params.pageIds);
+        if (method === "goals.pause") return goals.pause(params.goalId);
+        if (method === "goals.resume") return goals.resume(params.goalId);
+        return goals.cancel(params.goalId);
+      }
       case "plugins.install":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.install(params.path, params.workspaceId);
