@@ -108,6 +108,7 @@ export class PageService {
   stopFind: PageDiagnostics["stopFind"] = (...args) => this.diagnostics.stopFind(...args);
   zoom: PageDiagnostics["zoom"] = (...args) => this.diagnostics.zoom(...args);
   capture: PageDiagnostics["capture"] = (...args) => this.diagnostics.capture(...args);
+  viewport: PageDiagnostics["viewport"] = (...args) => this.diagnostics.viewport(...args);
 
   syncCatalog: NativeViewSync["syncCatalog"] = (...args) => this.nativeSync.syncCatalog(...args);
   onNativeRemoved: NativeViewSync["onNativeRemoved"] = (...args) => this.nativeSync.onNativeRemoved(...args);

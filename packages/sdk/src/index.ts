@@ -1,5 +1,5 @@
 import {existsSync,readFileSync} from 'node:fs';
-import {MethodSchemas,ResultSchemas,type MethodName,type MethodParams,type MethodResult,type AuxEvent} from '@aux/contracts';
+import {MethodSchemas,ResultSchemas,supportedAgentApi,createAgentApi,type AgentApiPath,type AgentApiParams,type AgentApiResult,type AgentApiSupportOverrides,type MethodName,type MethodParams,type MethodResult,type AuxEvent} from '@aux/contracts';
 import {resolveRuntimeDescriptor} from '@aux/contracts/installation';
 
 export interface AuxConnection{port:number;token:string;pid?:number}
@@ -34,6 +34,15 @@ export class AuxClient{
   private readonly validateResults?:boolean;
   constructor(private readonly connection:AuxConnection,options:AuxClientOptions={}){this.timeoutMs=options.timeoutMs??120_000;this.fetchImpl=options.fetch??fetch;this.validateResults=options.validateResults;}
   static running(options:AuxClientOptions&{descriptorPath?:string;token?:string}={}){const connection=readRuntimeDescriptor(options.descriptorPath);return new AuxClient({...connection,...(options.token?{token:options.token}:{})},options);}
+  /** Manifest-generated, capability-filtered nested agent surface. */
+  agentApi(options:{capabilities?:ReadonlySet<string>;apiSupportOverrides?:AgentApiSupportOverrides}={}){
+    return createAgentApi((method,params)=>this.call(method,params),{surface:'sdk',...options});
+  }
+  async agentCall<P extends AgentApiPath>(path:P,params:AgentApiParams<P>):Promise<AgentApiResult<P>>{
+    const entry=supportedAgentApi({surface:'sdk'}).find(item=>item.path===path);
+    if(!entry)throw new AuxRpcError(`Unsupported Aux API member: ${path}`,'not_found');
+    return this.call(entry.method,params as never) as Promise<AgentApiResult<P>>;
+  }
   async call<M extends MethodName>(method:M,params:MethodParams<M>):Promise<MethodResult<M>>{
     const request=MethodSchemas[method].parse(params);
     let response:Response;try{response=await this.fetchImpl(`http://127.0.0.1:${this.connection.port}/rpc`,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${this.connection.token}`},body:JSON.stringify({method,params:request}),signal:AbortSignal.timeout(this.timeoutMs)});}catch(error){throw new AuxRpcError(error instanceof Error?error.message:String(error),'transport_error');}

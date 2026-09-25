@@ -9,6 +9,7 @@ evidence for those claims.
 ```bash
 pnpm bench:tasks --validate                       # offline self-check (no API key); runs in CI
 pnpm bench:tasks --suite local --adapter aux,aux-mcp,playwright-mcp
+pnpm bench:tasks --suite heldout --adapter aux --trials 3
 pnpm bench:tasks --suite assistantbench --adapter aux,playwright-mcp --limit 10
 pnpm bench:tasks --list-adapters
 ```
@@ -17,11 +18,14 @@ Needs `AI_GATEWAY_API_KEY` in `.env`. Reports: `tests/benchmarks/reports/tasks-*
 
 ## Suites
 
-- `local` — `manifest.json`, 15 tasks across records, forms, and an embedded
+- `local` — `manifest.json`, 50 tasks (23 multi-step) across records, forms, and an embedded
   frame. Fixtures start automatically and mutable state resets before every
   attempt. Write and download tasks require both the answer and an independent
   server-side outcome check. Duplicate effects fail. The truth endpoint is not
   linked from the site UI, but these deterministic tasks are not held out.
+- `heldout` — `heldout.json`, ten disjoint record variants. These stay outside
+  the default local corpus for comparison runs; they remain deterministic
+  fixture tasks and do not establish real-site performance.
 - `assistantbench` — the 33-task AssistantBench validation split (live web,
   downloaded on first use through the Hugging Face datasets server).
 
@@ -41,7 +45,7 @@ semantics, manifest minimum, and fixture reachability without an API key.
 
 ## Historical baseline (2026-09-15, old 8-task suite)
 
-These results predate the 15-task corpus and independent effect oracles. They
+These results predate the 50-task corpus and independent effect oracles. They
 are retained for history and cannot be compared directly with a new run.
 
 | Adapter | Pass | p50 wall | Model calls (mean) | Tokens (mean) |

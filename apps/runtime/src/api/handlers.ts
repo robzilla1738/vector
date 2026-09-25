@@ -17,6 +17,7 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 
 import { wireObservation } from "../services/observation-wire.js";
+import { accessibilityHtml } from "../services/observation-render.js";
 import { chromeBookmarkFiles, readChromeBookmarksFile } from "../services/chrome-bookmarks.js";
 import { BrowserImporter } from "../services/browser-import.js";
 import type { DriverSet } from "../services/pages.js";
@@ -39,6 +40,8 @@ import { PluginService } from "../services/plugins.js";
 import { TranslateService } from "../services/translate.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
+import { AgentCodeMode } from "../agent/code-mode.js";
+import { HistoryProjection } from "../services/history-projection.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -203,7 +206,9 @@ export function makeInvoker(s: Services) {
   const requireScopedPage = (scope: AgentConnectionScope, pageId: string,connectionId?:string) => {
     if (!scopedPageIds(scope,connectionId).has(pageId)) throw new AuxError("permission_denied", "Attach this page to the authorized task before using it");
   };
-  return async function invoke(method: string, rawParams: unknown, client: { external: boolean; connectionId?: string; scope?: AgentConnectionScope } = { external: true }): Promise<unknown> {
+  const codeMode = new AgentCodeMode((method, params, client) => invoke(method, params, client as { external: boolean; connectionId?: string; scope?: AgentConnectionScope; codeMode?: true }));
+  const historyProjection = new HistoryProjection(s.repo, s.featureProfileId ?? "default");
+  async function invoke(method: string, rawParams: unknown, client: { external: boolean; connectionId?: string; scope?: AgentConnectionScope; codeMode?: true } = { external: true }): Promise<unknown> {
     const schema = MethodSchemas[method as MethodName];
     if (!schema) throw new AuxError("not_found", `unknown method ${method}`);
     const host = s.featureHost ?? "electron";
@@ -219,7 +224,10 @@ export function makeInvoker(s: Services) {
       throw new AuxError("permission_denied", "Browser spaces are managed in Aux.");
     }
     if (scope) {
-      if (["pages.close","pages.moveToWindow","pages.navigate","pages.back","pages.forward","pages.reload","pages.stop","pages.takeover","pages.resume"].includes(method)
+      if (method === "agent.js.run" || method === "agent.js.reset") {
+        // The code-mode host calls this same invoker with the same client.
+        // Each nested method is checked against the connection's scope.
+      } else if (["pages.close","pages.moveToWindow","pages.navigate","pages.back","pages.forward","pages.reload","pages.stop","pages.takeover","pages.resume"].includes(method)
         || method === "pages.dialog" && params.action && params.action !== "list")
         throw new AuxError("permission_denied", "Use a task-bound pages.execute program for browser actions");
       if (method === "workspaces.create" || method === "pages.open" || method === "runs.start") {
@@ -248,7 +256,7 @@ export function makeInvoker(s: Services) {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
         requireScopedPage(scope, pageId,client.connectionId);
-        if(method==="pages.execute"){
+        if(method==="pages.execute" || method==="pages.cuaExecute"){
           if(typeof params.taskId!=="string"||typeof params.expectedRevision!=="number")
             throw new AuxError("invalid_params", "Scoped page programs require taskId and expectedRevision");
           requireScopedTask(scope,params.taskId);
@@ -277,6 +285,8 @@ export function makeInvoker(s: Services) {
     };
 
     switch (method as MethodName) {
+      case "agent.js.run": return codeMode.run(params, client);
+      case "agent.js.reset": return codeMode.reset(client, params.sessionId);
       case "calendar.connections.list":
         if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
         if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
@@ -741,6 +751,15 @@ export function makeInvoker(s: Services) {
         const { format, ...req } = params as { format?: "full" | "compact" } & Record<string, unknown>;
         return wireObservation(await s.pages.observe(params.pageId, req as never), format);
       }
+      case "pages.cuaExecute": {
+        const current = await s.pages.viewport(params.program.pageId);
+        const expected = params.expectedViewport;
+        if (current.documentEpoch !== params.program.documentEpoch ||
+            current.width !== expected.width || current.height !== expected.height || current.scale !== expected.scale)
+          throw new AuxError("conflict", "The viewport changed since capture. Capture the page again before pixel actions.");
+        const { expectedViewport: _expectedViewport, ...request } = params;
+        return invoke("pages.execute", request, client);
+      }
       case "pages.execute": {
         // `call` nodes dispatch through PageService's operation-registry
         // hook ("host/name" explicitly, or bare name → page's host).
@@ -749,7 +768,7 @@ export function makeInvoker(s: Services) {
         // never gets evaluate/eval: page access is not code-execution authority.
         const p = params as { program: Parameters<PageService["execute"]>[0]; taskId?: string; expectedRevision?: number; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown>; safety?: import("../execution/executor.js").ExecContext["safety"] };
         if (client.external && p.safety) throw new AuxError("permission_denied", "Final approval metadata comes from the Aux interface.");
-        if(scope&&programContainsOperationCalls(p.program))throw new AuxError("permission_denied","Use the task-scoped operation API for operation calls");
+        if((scope || client.codeMode) && programContainsOperationCalls(p.program))throw new AuxError("permission_denied","Code mode and scoped connections use typed page steps, not operation calls");
         const consequential=programHasConsequentialSteps(p.program);
         const previewGranted=!!client.connectionId&&previewPageGrants.get(client.connectionId)?.get(p.program.pageId)===p.taskId;
         let validateBeforeJournal: (()=>void)|undefined;
@@ -766,7 +785,7 @@ export function makeInvoker(s: Services) {
         // (PageService.execute).
         const { format, ...req } = p.returnObservation ?? {};
         const { observation, ...result } = await withExternalPage(p.program.pageId, () => s.pages.execute(p.program,
-          { allowEval: !scope, taskId:p.taskId,taskRevision:p.expectedRevision,safety:p.safety,
+          { allowEval: !scope && !client.codeMode, taskId:p.taskId,taskRevision:p.expectedRevision,safety:p.safety,
             beforeJournal:validateBeforeJournal,checkValid:validateDuringExecution },
           { returnObservation: p.returnObservation ? (req as never) : undefined }), p.taskId);
         if (!p.returnObservation) return result;
@@ -776,6 +795,38 @@ export function makeInvoker(s: Services) {
       case "pages.extract": {
         const p = params as { pageId: string; fields?: Array<string | { name: string; selector?: string; attribute?: string; all?: boolean }> };
         return s.pages.extract(p.pageId, p.fields);
+      }
+      case "pages.elementInfo": {
+        const obs = await s.pages.observe(params.pageId, {});
+        if (params.expectedDocumentEpoch !== undefined && obs.documentEpoch !== params.expectedDocumentEpoch)
+          throw new AuxError("conflict", "The page changed since capture. Observe it again.");
+        const candidates = obs.content.elements.filter(element => {
+          const rect = element.rect;
+          return rect && params.x >= rect.x && params.x <= rect.x + rect.w && params.y >= rect.y && params.y <= rect.y + rect.h;
+        }).sort((a, b) => (a.rect!.w * a.rect!.h) - (b.rect!.w * b.rect!.h));
+        const element = candidates[0];
+        return { pageId: params.pageId, documentEpoch: obs.documentEpoch, revision: obs.revision,
+          element: element ? { ...element, ...(element.type === "password" ? { value: undefined } : {}) } : null };
+      }
+      case "pages.accessibilityHtml": {
+        const { pageId, ...options } = params;
+        const obs = await s.pages.observe(pageId, options);
+        return { pageId, documentEpoch: obs.documentEpoch, revision: obs.revision, text: accessibilityHtml(obs) };
+      }
+      case "pages.read": {
+        const obs = await s.pages.observe(params.pageId, {});
+        const query = params.query;
+        let value: unknown;
+        if (query.kind === "title") value = obs.content.title;
+        else if (query.kind === "url") value = obs.content.url;
+        else if (query.kind === "text") value = obs.content.text;
+        else {
+          const extracted = await s.pages.extract(params.pageId, [{ name: "value", selector: query.selector,
+            ...(query.kind === "attribute" ? { attribute: query.name } : { all: true }) }]);
+          if (extracted.documentEpoch !== obs.documentEpoch) throw new AuxError("conflict", "The page changed while reading it.");
+          value = query.kind === "count" ? (Array.isArray(extracted.fields.value) ? extracted.fields.value.length : 0) : extracted.fields.value;
+        }
+        return { pageId: params.pageId, documentEpoch: obs.documentEpoch, revision: obs.revision, value };
       }
       case "pages.waitFor": {
         const p = params as { pageId: string; condition: Condition };
@@ -1075,21 +1126,47 @@ export function makeInvoker(s: Services) {
         return method==="browser.recovery.list"?s.pages.recoveryTabs():s.pages.retryRestore(params.pageId);
       }
       // history / bookmarks
+      case "history.projectSnapshot": {
+        if (client.external) throw new AuxError("permission_denied", "Only the native HistoryService can project browsing history.");
+        const result = historyProjection.snapshot(params);
+        if (result.accepted && result.committed) {
+          s.checkpointDeletedData?.();
+          s.events.emit("history.changed", {});
+        }
+        return result;
+      }
+      case "history.projectDelta": {
+        if (client.external) throw new AuxError("permission_denied", "Only the native HistoryService can project browsing history.");
+        const result = historyProjection.delta(params);
+        if (result.accepted) {
+          if (params.removals.length || params.clearRange) s.checkpointDeletedData?.();
+          s.events.emit("history.changed", {});
+        }
+        return result;
+      }
       case "history.list": {
         return s.repo.listHistory(params.query, params.limit, params);
       }
       case "history.clear": {
         if (client.external) throw new AuxError("permission_denied", "Manage browsing history in Aux Library.");
-        const removed = s.repo.clearHistory(params);
-        if (removed) s.checkpointDeletedData?.();
-        s.events.emit("history.changed", {});
+        let removed: number;
+        if (historyProjection.isAuthoritative()) {
+          if (!s.native?.historyClear) throw new AuxError("backend_unavailable", "Chromium HistoryService is unavailable.");
+          removed = (await s.native.historyClear(params)).removed;
+        } else removed = s.repo.clearHistory(params);
+        if (removed && !historyProjection.isAuthoritative()) s.checkpointDeletedData?.();
+        if (!historyProjection.isAuthoritative()) s.events.emit("history.changed", {});
         return { ok: true, removed };
       }
       case "history.remove": {
         if (client.external) throw new AuxError("permission_denied", "Manage browsing history in Aux Library.");
-        const removed = s.repo.removeHistory(params.url, params.visitedAt);
-        if (removed) s.checkpointDeletedData?.();
-        s.events.emit("history.changed", {});
+        let removed: boolean;
+        if (historyProjection.isAuthoritative()) {
+          if (!s.native?.historyRemove) throw new AuxError("backend_unavailable", "Chromium HistoryService is unavailable.");
+          removed = (await s.native.historyRemove(params.url, params.visitedAt)).removed;
+        } else removed = s.repo.removeHistory(params.url, params.visitedAt);
+        if (removed && !historyProjection.isAuthoritative()) s.checkpointDeletedData?.();
+        if (!historyProjection.isAuthoritative()) s.events.emit("history.changed", {});
         return { removed };
       }
       case "bookmarks.list": return s.repo.listBookmarks();
@@ -1358,5 +1435,6 @@ export function makeInvoker(s: Services) {
         };
       }
     }
-  };
+  }
+  return invoke;
 }

@@ -731,7 +731,14 @@ export class Repo {
   }
 
   // ---- history / bookmarks / downloads ----
+  nativeHistoryAuthoritative(): boolean {
+    // Legacy import databases can contain history without the runtime KV table.
+    // Treat those as local history until the full runtime schema is installed.
+    if (!this.q("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='kv'").get()) return false;
+    return !!this.getSetting("historyProjection:cursor");
+  }
   importHistory(rows: { url: string; title: string; visitedAt: number }[]) {
+    if (this.nativeHistoryAuthoritative()) throw new AuxError("permission_denied", "Import browsing history through Chromium HistoryService.");
     return this.transaction(() => {
       const insert = this.q("INSERT OR IGNORE INTO history(url,title,page_id,visited_at) VALUES(?,?,NULL,?)");
       let added = 0;
@@ -743,10 +750,12 @@ export class Repo {
     });
   }
   addHistory(url: string, title: string, pageId?: string) {
+    if (this.nativeHistoryAuthoritative()) return;
     this.q("INSERT OR REPLACE INTO history(url,title,page_id,visited_at) VALUES(?,?,?,?)").run(url, title, pageId ?? null, now());
   }
   /** A page visit: the same URL within `withinMs` updates the recent row's title instead of adding one. */
   recordVisit(url: string, title: string, pageId?: string, withinMs = 30_000) {
+    if (this.nativeHistoryAuthoritative()) return;
     const recent = this.q("UPDATE history SET title=?,page_id=coalesce(?,page_id) WHERE url=? AND visited_at>=?").run(title, pageId ?? null, url, now() - withinMs);
     if (!Number(recent.changes)) this.addHistory(url, title, pageId);
   }

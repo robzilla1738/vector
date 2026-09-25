@@ -1,0 +1,116 @@
+import { newAsyncContext, type QuickJSAsyncContext } from "quickjs-emscripten";
+import {
+  AgentJsRunParams, MethodSchemas, ResultSchemas,
+  supportedAgentApi, AuxError, type AgentApiSupport,
+} from "@aux/contracts";
+
+type Client = { external: boolean; connectionId?: string; scope?: unknown; codeMode?: true };
+type Invoke = (method: string, params: unknown, client: Client) => Promise<unknown>;
+type Session = { context: QuickJSAsyncContext; queue: Promise<void>; client: Client; deadline: number; touchedAt: number };
+
+const MAX_HEAP_BYTES = 128 * 1024 * 1024;
+const MAX_SESSIONS = 8;
+const IDLE_MS = 30 * 60_000;
+
+/** An isolated QuickJS context per caller/session. Only manifest-backed handles cross it. */
+export class AgentCodeMode {
+  private sessions = new Map<string, Session>();
+  constructor(private invoke: Invoke, private support: AgentApiSupport = { surface: "code" }) {}
+
+  private key(client: Client, sessionId: string) {
+    return `${client.connectionId ?? (client.external ? "external" : "internal")}:${sessionId}`;
+  }
+
+  private dispose(key: string) {
+    const session = this.sessions.get(key);
+    if (!session) return;
+    this.sessions.delete(key);
+    session.context.dispose();
+  }
+
+  async reset(client: Client, sessionId = "default") {
+    const key = this.key(client, sessionId);
+    await this.sessions.get(key)?.queue;
+    this.dispose(key);
+    return { reset: true as const };
+  }
+
+  disposeAll() {
+    for (const key of this.sessions.keys()) this.dispose(key);
+  }
+
+  private async makeSession(client: Client): Promise<Session> {
+    const context = await newAsyncContext();
+    context.runtime.setMemoryLimit(MAX_HEAP_BYTES);
+    context.runtime.setMaxStackSize(2 * 1024 * 1024);
+    const session: Session = { context, queue: Promise.resolve(), client, deadline: 0, touchedAt: Date.now() };
+    context.runtime.setInterruptHandler(() => Date.now() >= session.deadline);
+    const available = supportedAgentApi(this.support);
+    const byPath = new Map(available.map(item => [item.path, item]));
+    const handle = context.newAsyncifiedFunction("aux_call", async (pathHandle, paramsHandle) => {
+      const path = context.getString(pathHandle);
+      const entry = byPath.get(path);
+      if (!entry) return context.newString(JSON.stringify({ ok: false, error: `Unsupported Aux API member: ${path}` }));
+      if (Date.now() >= session.deadline) return context.newString(JSON.stringify({ ok: false, error: "Code mode deadline expired" }));
+      try {
+        const params = MethodSchemas[entry.method].parse(JSON.parse(context.getString(paramsHandle))) as never;
+        const result = await this.invoke(entry.method, params, { ...session.client, codeMode: true });
+        return context.newString(JSON.stringify({ ok: true, value: ResultSchemas[entry.method].parse(result) }));
+      } catch (error) {
+        return context.newString(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+      }
+    });
+    handle.consume(fn => context.setProp(context.global, "aux_call", fn));
+    const paths = available.map(item => item.path);
+    const bootstrap = `
+      const aux = Object.create(null);
+      for (const path of ${JSON.stringify(paths)}) {
+        const names = path.split('.');
+        let parent = aux;
+        for (const name of names.slice(0, -1)) parent = parent[name] ??= Object.create(null);
+        parent[names.at(-1)] = (params = {}) => {
+          const response = JSON.parse(aux_call(path, JSON.stringify(params)));
+          if (!response.ok) throw new Error(response.error);
+          return response.value;
+        };
+      }
+      Object.freeze(aux);
+    `;
+    session.deadline = Date.now() + 10_000;
+    const initialized = await context.evalCodeAsync(bootstrap);
+    context.unwrapResult(initialized).dispose();
+    return session;
+  }
+
+  async run(raw: unknown, client: Client) {
+    const params = AgentJsRunParams.parse(raw);
+    const key = this.key(client, params.sessionId);
+    for (const [id, session] of this.sessions) if (Date.now() - session.touchedAt > IDLE_MS) this.dispose(id);
+    let session = this.sessions.get(key);
+    if (!session) {
+      if (this.sessions.size >= MAX_SESSIONS) throw new AuxError("conflict", "Too many active code-mode sessions; reset an old session.");
+      session = await this.makeSession(client);
+      this.sessions.set(key, session);
+    }
+    const current = session;
+    let release!: () => void;
+    const previous = current.queue;
+    current.queue = new Promise<void>(resolve => { release = resolve; });
+    await previous;
+    const started = Date.now();
+    current.client = client;
+    current.deadline = started + params.deadlineMs;
+    current.touchedAt = started;
+    try {
+      const result = await current.context.evalCodeAsync(params.code);
+      const value = current.context.unwrapResult(result).consume(handle => current.context.dump(handle));
+      const json = JSON.stringify(value ?? null);
+      if (json.length > 1_000_000) throw new AuxError("invalid_params", "Code mode output exceeds 1 MB; return a smaller result.");
+      return { value: JSON.parse(json) as unknown, durationMs: Date.now() - started };
+    } catch (error) {
+      throw new AuxError("invalid_params", `Code mode failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      release();
+    }
+  }
+}

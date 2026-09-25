@@ -13,7 +13,9 @@
     "@ai-sdk/gateway": "4.0.75",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@types/node": "catalog:",
+    "@types/pngjs": "^6.0.5",
     "ai": "7.0.93",
+    "pngjs": "^7.0.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

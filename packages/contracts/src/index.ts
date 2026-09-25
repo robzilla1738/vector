@@ -20,6 +20,7 @@ export * from "./mcp-catalog.js";
 export * from "./events.js";
 export * from "./tabs.js";
 export * from "./api.js";
+export * from "./agent-api.js";
 export * from "./bridge.js";
 export * from "./ipc-channel.js";
 

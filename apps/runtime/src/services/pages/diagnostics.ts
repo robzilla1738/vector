@@ -1,4 +1,5 @@
 import { AuxError, newStepId } from "@aux/contracts";
+import { limitCapturePng } from "../capture-size.js";
 import { ELEMENT_PICK_TIMEOUT_MS, type PickedElement, pickElementInPage } from "../../execution/element-picker.js";
 import type { ProgramExecutor } from "./executor.js";
 import type { ObservationService } from "./observation.js";
@@ -100,6 +101,13 @@ export class PageDiagnostics {
     if (!this.pages.deps.native.available()) throw new AuxError("backend_unavailable", "zoom requires the desktop shell");
     return this.pages.deps.native.setZoom(pageId, level, delta, reset, direction);
   }
+  async viewport(pageId: string): Promise<{ width: number; height: number; scale: number; documentEpoch: number }> {
+    const dp = this.pages.driverPageLenient(pageId);
+    const epoch = this.pages.get(pageId).documentEpoch;
+    const value = await dp.evaluate("({width:innerWidth,height:innerHeight,scale:devicePixelRatio||1})") as { width: number; height: number; scale: number };
+    if (this.pages.get(pageId).documentEpoch !== epoch) throw new AuxError("conflict", "The page changed while checking its viewport.");
+    return { ...value, documentEpoch: epoch };
+  }
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact"; expectedDocumentEpoch?: number }) {
     const dp = this.pages.driverPageLenient(pageId);
     const before = this.pages.get(pageId);
@@ -116,15 +124,21 @@ export class PageDiagnostics {
       throw new AuxError("conflict", "The page changed during capture. Capture it again.");
     if (!shot.buffer.length || shot.width <= 0 || shot.height <= 0)
       throw new AuxError("backend_unavailable", "The page has no image available yet. Open the tab and try again.");
+    const limited = limitCapturePng(shot.buffer);
+    const { buffer, width: imageWidth, height: imageHeight } = limited;
+    const scale = shot.scale * limited.ratio;
+    const provenance = { documentEpoch: epoch, url, capturedAt: Date.now(), viewport: { width: shot.width, height: shot.height, scale: shot.scale }, imageWidth, imageHeight };
     if (opts?.format === "artifact") {
-      const a = this.pages.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });
-      return { artifactId: a?.artifactId, width: shot.width, height: shot.height, scale: shot.scale };
+      const a = this.pages.deps.artifacts?.save({ pageId, label: "capture", buffer, mediaType: "image/png" });
+      return { artifactId: a?.artifactId, dataUrl: undefined, width: shot.width, height: shot.height, scale, ...provenance };
     }
     return {
-      dataUrl: `data:image/png;base64,${shot.buffer.toString("base64")}`,
+      dataUrl: `data:image/png;base64,${buffer.toString("base64")}`,
+      artifactId: undefined,
       width: shot.width,
       height: shot.height,
-      scale: shot.scale,
+      scale,
+      ...provenance,
     };
   }
 }

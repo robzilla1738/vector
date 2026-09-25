@@ -6,6 +6,9 @@ import { AuxError, type RpcChannel, type LocalProject, type ProjectInspection, t
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
+  /** Chromium HistoryService owns writes once a native history projection is active. */
+  historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
+  historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
   listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>;
   /** Scoped agent tab commands (§7.3) — same controller humans use, deduplicated + ack'd. */
   tabCommand(envelope: TabCommandEnvelope): Promise<TabCommandAck>;
@@ -53,6 +56,12 @@ export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
   available() {
     return true;
+  }
+  historyClear(range: { since?: number; before?: number }) {
+    return this.channel.call<{ removed: number }>("native.historyClear", range);
+  }
+  historyRemove(url: string, visitedAt: number) {
+    return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt });
   }
   listPages() {
     return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>("native.listPages", {});

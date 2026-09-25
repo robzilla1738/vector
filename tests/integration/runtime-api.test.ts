@@ -109,15 +109,30 @@ describe("pages", () => {
 
   it("captures screenshots and stores artifacts", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
-    const shot = await invoke<{ dataUrl?: string; artifactId?: string; width: number }>("pages.capture", {
+    const shot = await invoke<{ dataUrl?: string; artifactId?: string; width: number; imageWidth: number; imageHeight: number; documentEpoch: number; viewport: { width: number; height: number; scale: number } }>("pages.capture", {
       pageId: page.pageId,
       format: "artifact",
     });
     expect(shot.artifactId).toBeTruthy();
+    expect(Math.max(shot.imageWidth, shot.imageHeight)).toBeLessThanOrEqual(1568);
+    expect(shot.imageWidth * shot.imageHeight).toBeLessThanOrEqual(1_150_000);
+    expect(shot.documentEpoch).toBeGreaterThanOrEqual(page.documentEpoch);
     const list = await invoke<{ artifactId: string; mediaType: string }[]>("artifacts.list", { pageId: page.pageId });
     expect(list.some((a) => a.artifactId === shot.artifactId)).toBe(true);
     const read = await invoke<{ dataBase64: string; artifact: { mediaType: string } }>("artifacts.read", { artifactId: shot.artifactId });
     expect(read.dataBase64.length).toBeGreaterThan(100);
+  }, 60_000);
+
+  it("provides read-only element queries and refuses pixel actions after viewport drift", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
+    const read = await invoke<{ value: unknown }>("pages.read", { pageId: page.pageId, query: { kind: "count", selector: "#records-table tbody tr" } });
+    expect(read.value).toBe(10);
+    const html = await invoke<{ text: string }>("pages.accessibilityHtml", { pageId: page.pageId });
+    expect(html.text).toContain("<page ");
+    expect(html.text).toContain("ref=");
+    const shot = await invoke<{ documentEpoch: number; viewport: { width: number; height: number; scale: number } }>("pages.capture", { pageId: page.pageId, format: "artifact" });
+    await expect(invoke("pages.cuaExecute", { program: { pageId: page.pageId, documentEpoch: shot.documentEpoch,
+      steps: [{ id: "click", op: "clickPoint", x: 10, y: 10 }] }, expectedViewport: { ...shot.viewport, width: shot.viewport.width + 1 } })).rejects.toThrow(/viewport changed/);
   }, 60_000);
 
   it("reference invalidation: stale refs fail after navigation", async () => {

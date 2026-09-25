@@ -18,6 +18,7 @@
  *   auxctl doctor
  */
 import { readFileSync } from "node:fs";
+import { agentApiDocs, AgentApiManifest } from "@aux/contracts";
 import { rpc, events, readDescriptor } from "./client.js";
 
 const out = (v: unknown) => process.stdout.write(JSON.stringify(v, null, 2) + "\n");
@@ -106,6 +107,9 @@ async function main() {
   cloud commands|files|result <taskId> <revision> <environmentId> [path]
   cloud read <taskId> <revision> <environmentId> <path>
   get <method> [params-json]             raw method call
+  js <code|@file> [--session id]          run restricted QuickJS code mode
+  js-reset [--session id]                 discard a code-mode session
+  api-docs [--mode included|model|lookup] manifest-generated agent API docs
   events | bench | doctor
 `);
       return;
@@ -456,6 +460,25 @@ async function main() {
       const [method, paramsJson] = args;
       if (!method) fail("usage: auxctl get <method> [params-json]");
       out(await rpc(method!, paramsJson ? readJson(paramsJson) : {}));
+      return;
+    }
+
+    case "js": {
+      const source = args[0];
+      if (!source) fail("usage: auxctl js <code|@file> [--session id]");
+      const code = source!.startsWith("@") ? readFileSync(source!.slice(1), "utf8") : source!;
+      const method = AgentApiManifest.find(item => item.path === "js.run")!.method;
+      out(await rpc(method, { code, sessionId: flags.session || "default" }));
+      return;
+    }
+    case "js-reset": {
+      const method = AgentApiManifest.find(item => item.path === "js.reset")!.method;
+      out(await rpc(method, { sessionId: flags.session || "default" }));
+      return;
+    }
+    case "api-docs": {
+      const mode = flags.mode === "lookup" || flags.mode === "included" ? flags.mode : "model";
+      process.stdout.write(agentApiDocs({ surface: "cli" }, mode) + "\n");
       return;
     }
 

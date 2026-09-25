@@ -373,6 +373,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         dir: config.benchmarksDir,
       }),
   });
+  // Authenticated Chromium host messages are internal; the loopback API still
+  // denies these projection methods to external and scoped clients.
+  channel?.onMethod("history.projectSnapshot", params => invoke("history.projectSnapshot", params, { external: false }));
+  channel?.onMethod("history.projectDelta", params => invoke("history.projectDelta", params, { external: false }));
 
   // ---- loopback API ----
   const token = config.apiToken || randomUUID();

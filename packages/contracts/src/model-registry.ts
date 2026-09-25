@@ -32,6 +32,26 @@ export const ModelCapabilitySchema = z
   .strict();
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
 
+export const AgentModelCategorySchema = z.enum(["fast", "standard", "deep", "visual"]);
+export type AgentModelCategory = z.infer<typeof AgentModelCategorySchema>;
+export const AgentModelRouteSchema = z.object({
+  modelId: z.string().min(1),
+  reasoning: z.enum(["low", "medium", "xhigh"]),
+}).strict();
+export type AgentModelRoute = z.infer<typeof AgentModelRouteSchema>;
+
+/** One Contributor model for every role; only effort changes by default. */
+export const DEFAULT_AGENT_MODEL_ROUTES: Readonly<Record<AgentModelCategory, AgentModelRoute>> = {
+  fast: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "low" },
+  standard: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "medium" },
+  deep: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "xhigh" },
+  visual: { modelId: "meta/muse-spark-1.3-contributor", reasoning: "medium" },
+};
+
+export function agentModelRoute(category: AgentModelCategory, overrides?: Partial<Record<AgentModelCategory, AgentModelRoute>>): AgentModelRoute {
+  return AgentModelRouteSchema.parse(overrides?.[category] ?? DEFAULT_AGENT_MODEL_ROUTES[category]);
+}
+
 /**
  * Known-good offline snapshot. Only entries verified against the live Gateway
  * catalog (2026-09-22 review) carry status "verified"; both were present in

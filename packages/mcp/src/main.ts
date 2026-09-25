@@ -7,7 +7,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { CalendarTaskEventsInputSchema, MethodSchemas, errorAdvice, toErrorPayload, AuxError, requireScopedAuxMcpCatalog } from "@aux/contracts";
+import { AgentApiManifest, supportedAgentApi, CalendarTaskEventsInputSchema, MethodSchemas, errorAdvice, toErrorPayload, AuxError, requireScopedAuxMcpCatalog } from "@aux/contracts";
 import { rpc } from "./client.js";
 import { McpStepInputSchema, parseMcpSteps, summarizeExecute } from "./steps.js";
 
@@ -438,6 +438,26 @@ const developmentTools = [
 if(projectTools)for(const [name,method,description,annotation] of developmentTools){
   server.registerTool(name,{description,annotations:ANNOTATIONS[annotation],inputSchema:MethodSchemas[method].shape},async(params:unknown)=>{
     try{return text(await rpc(method,params));}catch(error){return err(error);}
+  });
+}
+
+/** Manifest projection: new API members become MCP tools from one contract. */
+for (const item of supportedAgentApi({ surface: "mcp" })) {
+  if (item.method === "agent.js.run" || item.method === "agent.js.reset") continue;
+  const name = `aux_api_${item.path.replaceAll(".", "_")}`;
+  const annotations = ["pages.list", "pages.observe", "pages.accessibilityHtml", "pages.elementInfo", "pages.read", "pages.extract", "pages.waitFor", "pages.capture", "pages.console", "history.list"].includes(item.method) ? RO : WRITE;
+  server.registerTool(name, {
+    description: item.summary,
+    annotations,
+    inputSchema: MethodSchemas[item.method].shape,
+  }, async (params: unknown) => {
+    try { return text(await rpc(item.method, params)); } catch (error) { return err(error); }
+  });
+}
+for (const [name, method] of [["aux_js", "agent.js.run"], ["aux_js_reset", "agent.js.reset"]] as const) {
+  const description = AgentApiManifest.find(item => item.method === method)!.summary;
+  server.registerTool(name, { description, annotations: method === "agent.js.run" ? WRITE : RO, inputSchema: MethodSchemas[method].shape }, async (params: unknown) => {
+    try { return text(await rpc(method, params)); } catch (error) { return err(error); }
   });
 }
 

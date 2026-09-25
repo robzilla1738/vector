@@ -26,7 +26,7 @@ import {
   StepRecordSchema,
 } from "./entities.js";
 import { EventSchema } from "./events.js";
-import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
+import { CompactObservationSchema, ElementRefSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
 import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, ContentMemoryPolicySchema, ContentMemoryMatchSchema, ContentMemoryDocumentSchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
@@ -96,6 +96,10 @@ export const PagesExecuteParams = z.object({
     }).strict()).optional(),
   }).strict().optional(),
 });
+export const PagesCuaExecuteParams = PagesExecuteParams.extend({
+  program: ProgramSchema.extend({ documentEpoch: z.number().int().nonnegative() }),
+  expectedViewport: z.object({ width: z.number().positive(), height: z.number().positive(), scale: z.number().positive() }).strict(),
+}).strict();
 /**
  * Human/owner reconciliation of a direct (non-run) write on a page whose outcome
  * is uncertain. Scoped agent connections cannot call it: an agent must not
@@ -121,6 +125,19 @@ export const PagesExtractParams = z.object({
   pageId: id,
   fields: z.array(ExtractFieldSchema).optional(),
 });
+export const PagesElementInfoParams = z.object({ pageId: id, x: z.number().finite().nonnegative(), y: z.number().finite().nonnegative(), expectedDocumentEpoch: z.number().int().nonnegative().optional() }).strict();
+export const PagesAccessibilityHtmlParams = z.object({ pageId: id, maxElements: z.number().int().positive().max(1000).optional(), maxTextChars: z.number().int().positive().max(50000).optional() }).strict();
+/** Deliberately declarative: no authored JavaScript enters the logged-in page. */
+export const PagesReadParams = z.object({
+  pageId: id,
+  query: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("title") }),
+    z.object({ kind: z.literal("url") }),
+    z.object({ kind: z.literal("text") }),
+    z.object({ kind: z.literal("count"), selector: z.string().min(1).max(2000) }),
+    z.object({ kind: z.literal("attribute"), selector: z.string().min(1).max(2000), name: z.string().min(1).max(200) }),
+  ]),
+}).strict();
 export const PagesWaitForParams = z.object({
   pageId: id,
   condition: ConditionSchema,
@@ -488,6 +505,28 @@ export const HistoryListParams = z.object({
   since: z.number().finite().nonnegative().optional(),
   before: z.object({ visitedAt: z.number().finite().nonnegative(), url: z.string().min(1) }).optional(),
 });
+/** Chromium HistoryService is authoritative; these internal messages maintain a derived FTS index. */
+export const HistoryProjectionVisitSchema = z.object({
+  url: z.string().url().max(8192),
+  title: z.string().max(4096),
+  visitedAt: z.number().int().nonnegative(),
+}).strict();
+export const HistoryProjectSnapshotParams = z.object({
+  profileId: z.string().min(1).max(200),
+  sourceGeneration: z.string().min(1).max(200),
+  sequence: z.number().int().nonnegative(),
+  batchIndex: z.number().int().nonnegative(),
+  complete: z.boolean(),
+  visits: z.array(HistoryProjectionVisitSchema).max(1000),
+}).strict();
+export const HistoryProjectDeltaParams = z.object({
+  profileId: z.string().min(1).max(200),
+  sourceGeneration: z.string().min(1).max(200),
+  sequence: z.number().int().nonnegative(),
+  upserts: z.array(HistoryProjectionVisitSchema).max(1000).default([]),
+  removals: z.array(HistoryProjectionVisitSchema.pick({ url: true, visitedAt: true })).max(1000).default([]),
+  clearRange: z.object({ since: z.number().int().nonnegative().optional(), before: z.number().int().nonnegative().optional() }).optional(),
+}).strict();
 const WebBookmarkSchema = z.object({
   url: z.string().url().max(8192).refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
   title: z.string().max(1000), folderPath: BookmarkFolderPathSchema.optional(),
@@ -522,6 +561,15 @@ export const EventsSinceParams = RunsEventsParams;
 /** workspace snapshot for renderer sync */
 export const WorkspaceGetParams = z.object({});
 
+/** Host-neutral QuickJS code mode. A session is scoped to one authenticated caller. */
+export const AgentJsRunParams = z.object({
+  code: z.string().min(1).max(100_000),
+  sessionId: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).default("default"),
+  deadlineMs: z.number().int().min(100).max(30_000).default(10_000),
+}).strict();
+export const AgentJsResetParams = AgentJsRunParams.pick({ sessionId: true });
+export const AgentJsResult = z.object({ value: z.unknown(), durationMs: z.number().nonnegative() });
+
 /** browser-data import */
 export const ImportCategorySchema = z.enum(["bookmarks", "history", "tabs"]);
 export type ImportCategory = z.infer<typeof ImportCategorySchema>;
@@ -534,6 +582,8 @@ export type ImportCategoryResult = z.infer<typeof ImportCategoryResultSchema>;
 export type ImportReport = z.infer<typeof ImportReportSchema>;
 
 export const MethodSchemas = {
+  "agent.js.run": AgentJsRunParams,
+  "agent.js.reset": AgentJsResetParams,
   "tasks.recordEvidence": EvidenceNoteParams,
   "tasks.captureEvidence": EvidenceCaptureParams,
   "tasks.importDocumentEvidence": EvidenceDocumentParams,
@@ -690,8 +740,12 @@ export const MethodSchemas = {
   "pages.stop": PagesCloseParams,
   "pages.observe": PagesObserveParams,
   "pages.execute": PagesExecuteParams,
+  "pages.cuaExecute": PagesCuaExecuteParams,
   "pages.reconcileWrite": PagesReconcileWriteParams,
   "pages.extract": PagesExtractParams,
+  "pages.elementInfo": PagesElementInfoParams,
+  "pages.accessibilityHtml": PagesAccessibilityHtmlParams,
+  "pages.read": PagesReadParams,
   "pages.waitFor": PagesWaitForParams,
   "pages.console": PagesConsoleParams,
   "pages.dialog": PagesDialogParams,
@@ -796,6 +850,8 @@ export const MethodSchemas = {
   "browser.recovery.list": z.object({}),
   "browser.recovery.retry": z.object({pageId:id}),
   "history.list": HistoryListParams,
+  "history.projectSnapshot": HistoryProjectSnapshotParams,
+  "history.projectDelta": HistoryProjectDeltaParams,
   "history.clear": z.object({
     since: z.number().finite().nonnegative().optional(),
     before: z.number().finite().nonnegative().optional(),
@@ -906,6 +962,8 @@ export type MethodName = keyof typeof MethodSchemas;
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
+  "agent.js.run": AgentJsResult,
+  "agent.js.reset": z.object({ reset: z.literal(true) }),
   "tasks.recordEvidence": TaskEvidenceSchema,
   "tasks.captureEvidence": TaskEvidenceSchema,
   "tasks.importDocumentEvidence": TaskEvidenceSchema,
@@ -1078,6 +1136,9 @@ export const ResultSchemas = {
     /** present when the request carried returnObservation; full or compact per its format */
     observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
   }),
+  "pages.cuaExecute": ProgramResultSchema.extend({
+    observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
+  }),
   "pages.reconcileWrite": z.object({ reconciled: z.array(z.string()) }),
   "pages.extract": z.object({
     pageId: z.string(),
@@ -1085,6 +1146,9 @@ export const ResultSchemas = {
     revision: z.number(),
     fields: z.record(z.string(), z.unknown()),
   }),
+  "pages.elementInfo": z.object({ pageId: id, documentEpoch: z.number().int().nonnegative(), revision: z.number().int().positive(), element: ElementRefSchema.nullable() }),
+  "pages.accessibilityHtml": z.object({ pageId: id, documentEpoch: z.number().int().nonnegative(), revision: z.number().int().positive(), text: z.string() }),
+  "pages.read": z.object({ pageId: id, documentEpoch: z.number().int().nonnegative(), revision: z.number().int().positive(), value: z.unknown() }),
   "pages.waitFor": z.object({
     ok: z.boolean(),
     timedOut: z.boolean(),
@@ -1107,6 +1171,12 @@ export const ResultSchemas = {
     width: z.number(),
     height: z.number(),
     scale: z.number(),
+    documentEpoch: z.number().int().nonnegative().optional(),
+    url: z.string().optional(),
+    capturedAt: z.number().optional(),
+    viewport: z.object({ width: z.number(), height: z.number(), scale: z.number() }).optional(),
+    imageWidth: z.number().optional(),
+    imageHeight: z.number().optional(),
   }),
   "pages.find": z.object({ matches: z.number(), activeMatch: z.number().optional() }),
   "pages.stopFind": z.object({ ok: z.boolean() }),
@@ -1220,6 +1290,8 @@ export const ResultSchemas = {
   "browser.recovery.list": z.array(z.object({pageId:id,url:z.string(),title:z.string(),windowId:id,error:z.string().optional(),retrying:z.boolean()})),
   "browser.recovery.retry": z.object({ok:z.boolean(),pageId:id}),
   "history.list": z.array(HistoryEntrySchema),
+  "history.projectSnapshot": z.object({ accepted: z.boolean(), committed: z.boolean(), nextBatchIndex: z.number().int().nonnegative() }),
+  "history.projectDelta": z.object({ accepted: z.boolean(), sequence: z.number().int().nonnegative() }),
   "history.clear": z.object({ ok: z.boolean(), removed: z.number().int().nonnegative() }),
   "history.remove": z.object({ removed: z.boolean() }),
   "bookmarks.list": z.array(BookmarkSchema),

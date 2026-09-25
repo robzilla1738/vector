@@ -9,6 +9,15 @@
       "scoped": true,
       "note": "Aux's MCP server over the loopback API; the harness starts a runtime, mints a workspace-scoped connection and saves one task per benchmark task with its start page attached."
     },
+    "aux-code": {
+      "kind": "mcp",
+      "command": ["node", "packages/mcp/dist/main.js"],
+      "needsRuntime": true,
+      "scoped": true,
+      "codeMode": true,
+      "onlyTools": ["aux_js", "aux_js_reset", "aux_pages_list"],
+      "note": "QuickJS code mode through the same scoped runtime and model loop; compare against aux planner on fixture tasks without changing the model."
+    },
     "playwright-mcp": {
       "kind": "mcp",
       "command": ["npx", "-y", "@playwright/mcp@latest", "--headless"],

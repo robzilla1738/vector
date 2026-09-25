@@ -22,15 +22,18 @@
     "@ai-sdk/gateway": "4.0.75",
     "@ai-sdk/google": "4.0.64",
     "@ai-sdk/openai": "4.0.60",
-    "@aux/contracts": "workspace:*",
     "@aux/chromium-driver": "workspace:*",
+    "@aux/contracts": "workspace:*",
     "@vercel/sandbox": "3.3.0",
     "ai": "7.0.93",
+    "pngjs": "^7.0.0",
+    "quickjs-emscripten": "0.31.0",
     "ws": "8.21.3",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pngjs": "^6.0.5",
     "@types/ws": "8.18.1",
     "typescript": "catalog:"
   }

@@ -114,6 +114,9 @@ CREATE TABLE history(
   url TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', page_id TEXT, visited_at REAL NOT NULL,
   PRIMARY KEY(url, visited_at));
 CREATE INDEX idx_history_recent ON history(visited_at DESC, url DESC);
+CREATE TABLE history_projection_staging(
+  url TEXT NOT NULL, title TEXT NOT NULL, visited_at REAL NOT NULL,
+  PRIMARY KEY(url, visited_at));
 CREATE TABLE bookmarks(
   url TEXT PRIMARY KEY, title TEXT NOT NULL, created_at REAL NOT NULL,
   folder_path TEXT NOT NULL DEFAULT '[]',
@@ -287,7 +290,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -414,6 +417,12 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       PRIMARY KEY(run_id,origin))`,
     `CREATE TABLE IF NOT EXISTS safety_audit(
       seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, payload TEXT NOT NULL, recorded_at INTEGER NOT NULL)`,
+  ],
+  // v13 → v14: atomic, restartable snapshot projection from Chromium history.
+  13: [
+    `CREATE TABLE IF NOT EXISTS history_projection_staging(
+      url TEXT NOT NULL, title TEXT NOT NULL, visited_at REAL NOT NULL,
+      PRIMARY KEY(url, visited_at))`,
   ],
 };
 

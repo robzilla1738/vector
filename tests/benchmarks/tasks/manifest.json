@@ -230,6 +230,391 @@
       },
       "family": "interaction",
       "multiStep": false
+    },
+    {
+      "id": "L16-owner-rec-01",
+      "url": "http://127.0.0.1:4810/records/rec-01",
+      "goal": "Read the owner shown on rec-01. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Sam Chen"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L17-owner-rec-02",
+      "url": "http://127.0.0.1:4810/records/rec-02",
+      "goal": "Read the owner shown on rec-02. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Jordan Lee"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L18-owner-rec-03",
+      "url": "http://127.0.0.1:4810/records/rec-03",
+      "goal": "Read the owner shown on rec-03. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Priya Patel"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L19-owner-rec-04",
+      "url": "http://127.0.0.1:4810/records/rec-04",
+      "goal": "Read the owner shown on rec-04. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Morgan Diaz"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L20-owner-rec-05",
+      "url": "http://127.0.0.1:4810/records/rec-05",
+      "goal": "Read the owner shown on rec-05. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Alex Rivera"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L21-owner-rec-06",
+      "url": "http://127.0.0.1:4810/records/rec-06",
+      "goal": "Read the owner shown on rec-06. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Sam Chen"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L22-owner-rec-07",
+      "url": "http://127.0.0.1:4810/records/rec-07",
+      "goal": "Read the owner shown on rec-07. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Jordan Lee"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L23-owner-rec-08",
+      "url": "http://127.0.0.1:4810/records/rec-08",
+      "goal": "Read the owner shown on rec-08. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Priya Patel"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L24-owner-rec-09",
+      "url": "http://127.0.0.1:4810/records/rec-09",
+      "goal": "Read the owner shown on rec-09. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Morgan Diaz"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L25-owner-rec-10",
+      "url": "http://127.0.0.1:4810/records/rec-10",
+      "goal": "Read the owner shown on rec-10. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Alex Rivera"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L26-owner-rec-11",
+      "url": "http://127.0.0.1:4810/records/rec-11",
+      "goal": "Read the owner shown on rec-11. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Sam Chen"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L27-owner-rec-12",
+      "url": "http://127.0.0.1:4810/records/rec-12",
+      "goal": "Read the owner shown on rec-12. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Jordan Lee"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L28-owner-rec-13",
+      "url": "http://127.0.0.1:4810/records/rec-13",
+      "goal": "Read the owner shown on rec-13. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Priya Patel"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L29-owner-rec-14",
+      "url": "http://127.0.0.1:4810/records/rec-14",
+      "goal": "Read the owner shown on rec-14. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Morgan Diaz"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L30-owner-rec-15",
+      "url": "http://127.0.0.1:4810/records/rec-15",
+      "goal": "Read the owner shown on rec-15. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Alex Rivera"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L31-owner-rec-16",
+      "url": "http://127.0.0.1:4810/records/rec-16",
+      "goal": "Read the owner shown on rec-16. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Sam Chen"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L32-owner-rec-17",
+      "url": "http://127.0.0.1:4810/records/rec-17",
+      "goal": "Read the owner shown on rec-17. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Jordan Lee"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L33-owner-rec-18",
+      "url": "http://127.0.0.1:4810/records/rec-18",
+      "goal": "Read the owner shown on rec-18. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Priya Patel"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L34-owner-rec-19",
+      "url": "http://127.0.0.1:4810/records/rec-19",
+      "goal": "Read the owner shown on rec-19. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Morgan Diaz"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L35-owner-rec-20",
+      "url": "http://127.0.0.1:4810/records/rec-20",
+      "goal": "Read the owner shown on rec-20. Answer with the full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Alex Rivera"
+      },
+      "family": "records",
+      "multiStep": false
+    },
+    {
+      "id": "L36-modal-rec-11",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-11, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-11"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L37-modal-rec-12",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-12, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-12"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L38-modal-rec-13",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-13, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-13"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L39-modal-rec-14",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-14, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-14"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L40-modal-rec-15",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-15, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-15"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L41-modal-rec-16",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-16, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-16"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L42-modal-rec-17",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-17, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-17"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L43-modal-rec-18",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-18, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-18"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L44-modal-rec-19",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-19, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-19"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L45-modal-rec-20",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-20, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-20"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L46-attachment-rec-03",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-03, open it and report the notes attachment file name exactly.",
+      "expected": {
+        "type": "text",
+        "value": "rec-03-notes.txt"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L47-attachment-rec-06",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-06, open it and report the notes attachment file name exactly.",
+      "expected": {
+        "type": "text",
+        "value": "rec-06-notes.txt"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L48-attachment-rec-12",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-12, open it and report the notes attachment file name exactly.",
+      "expected": {
+        "type": "text",
+        "value": "rec-12-notes.txt"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L49-attachment-rec-21",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-21, open it and report the notes attachment file name exactly.",
+      "expected": {
+        "type": "text",
+        "value": "rec-21-notes.txt"
+      },
+      "family": "records",
+      "multiStep": true
+    },
+    {
+      "id": "L50-attachment-rec-24",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Find rec-24, open it and report the notes attachment file name exactly.",
+      "expected": {
+        "type": "text",
+        "value": "rec-24-notes.txt"
+      },
+      "family": "records",
+      "multiStep": true
     }
   ],
   "reset": [

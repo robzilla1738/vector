@@ -103,6 +103,31 @@ export function compactObservation(obs: Observation): CompactObservation {
   };
 }
 
+/** P1-style viewport-clipped accessibility HTML for observer comparisons. */
+export function accessibilityHtml(obs: Observation): string {
+  const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  const { width, height } = obs.content.viewport;
+  const lines = [`<page url="${escape(obs.content.url)}" title="${escape(obs.content.title)}">`];
+  for (const element of obs.content.elements) {
+    if (element.offscreen || element.hidden) continue;
+    const rect = element.rect;
+    if (rect && (rect.x + rect.w <= 0 || rect.y + rect.h <= 0 || rect.x >= width || rect.y >= height)) continue;
+    const role = element.role ?? element.tag;
+    const attributes = [
+      `ref="${escape(element.ref)}"`,
+      `role="${escape(role)}"`,
+      ...(element.name ? [`name="${escape(element.name)}"`] : []),
+      ...(element.href ? [`href="${escape(element.href)}"`] : []),
+      ...(element.frame !== "main" ? [`frame="${escape(element.frame)}"`] : []),
+      ...(element.disabled ? ["disabled"] : []),
+    ];
+    const value = element.type === "password" ? "{handle}" : element.value ?? element.text ?? "";
+    lines.push(`  <element ${attributes.join(" ")}>${escape(value.slice(0, 500))}</element>`);
+  }
+  lines.push("</page>");
+  return lines.join("\n");
+}
+
 /**
  * Collapse runs of near-identical text lines (virtualized rows, repeated
  * items) into a count — small models drown in 300 near-duplicate lines and
