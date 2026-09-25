@@ -27,3 +27,7 @@ The unit jobs stopped at lint: **16 errors, 488 warnings, limit 390**. Other job
 ## Repair and qualification
 
 Fix the type declaration/environment issue and the lint errors; reduce warnings to the existing limit rather than raising it. Run `pnpm typecheck` and `pnpm lint`, then relevant focused tests. Let required hosted jobs run on the exact pushed SHA and inspect any remaining failures. Do not remove or make gates optional. The current handoff is cleanly documented, **not CI-green**.
+
+## Documentation-head recheck
+
+GitHub and the local branch both matched `271f22edfc3d8d317d146559918d7b00234bb801` at the handoff recheck. [Run 36084050031](https://github.com/robzilla1738/vector/actions/runs/36084050031) had failed both unit/typecheck jobs, integration and design regressions; Electron e2e and release smoke were still running when checked. No green result is claimed for that SHA. This status observation does not replace the diagnosed implementation failures above.
