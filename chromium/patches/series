@@ -23,3 +23,5 @@ aux/runtime/0022-crashpad-consent.patch
 aux/runtime/0023-profile-library.patch
 aux/runtime/0024-event-driven-cdp-targets.patch
 aux/runtime/0025-store-extension-shell.patch
+aux/runtime/0026-profile-password-handoff.patch
+aux/runtime/0027-native-window-transfer.patch
