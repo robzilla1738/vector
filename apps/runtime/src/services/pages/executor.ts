@@ -72,6 +72,8 @@ export class ProgramExecutor {
       };
       const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
+        const documentEpoch = lp.target.documentEpoch;
+        const topOrigin = liveOrigin();
         const targets = ["target" in step && typeof step.target === "string" ? step.target : undefined,
           step.op === "dragTo" ? step.to : undefined].filter((target): target is string => !!target);
         const ambiguousInput = step.op === "clickPoint" || step.op === "dialog" || step.op === "press" && targets.length === 0;
@@ -106,6 +108,18 @@ export class ProgramExecutor {
               },
             });
             if (provenance) authorized = provenance;
+          }
+        }
+        if (phase === "dispatch" && classifyStep(step.op) !== "read") {
+          // Guardian and target-origin resolution can await. A navigation or
+          // frame swap during that window invalidates the authorization.
+          if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
+            throw new AuxError("ref_stale", "The document changed while authorizing this action. Observe it again.");
+          if (targets.length && lp.driver!.originForTarget) {
+            const fresh = await Promise.all(targets.map(target => lp.driver!.originForTarget!(target)));
+            if (fresh.some((value, index) => value !== origins[index]) ||
+                lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
+              throw new AuxError("ref_stale", "The target frame changed while authorizing this action. Observe it again.");
           }
         }
         return authorized;

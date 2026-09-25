@@ -49,20 +49,30 @@ export function evaluateOriginPolicy(input: {
   now?: number;
 }): OriginPolicyDecision {
   const normalized = exactOrigin(input.url);
-  const managed = normalized ? input.managed?.map(rule => OriginRuleSchema.parse(rule)).find(rule => rule.origin === `${normalized}/`) : undefined;
-  const user = normalized ? input.user?.map(rule => OriginRuleSchema.parse(rule)).find(rule => rule.origin === `${normalized}/`) : undefined;
-  const managedAccess = ruleAccess(managed, input.effect);
-  const userAccess = ruleAccess(user, input.effect);
+  const matching = (rules?: readonly OriginRule[]) => normalized
+    ? rules?.map(rule => OriginRuleSchema.parse(rule)).filter(rule => rule.origin === `${normalized}/`) ?? [] : [];
+  const managed = matching(input.managed);
+  const user = matching(input.user);
+  const accessFor = (rules: readonly OriginRule[]) => rules.reduce<OriginAccess | undefined>(
+    (current, rule) => mostRestrictive(current, ruleAccess(rule, input.effect), ACCESS_RANK, "deny"), undefined);
+  const managedAccess = accessFor(managed);
+  const userAccess = accessFor(user);
   const access = normalized
     ? mostRestrictive(managedAccess, userAccess, ACCESS_RANK, "deny")
     : "deny";
   const source: PolicySource = managedAccess && (!userAccess || ACCESS_RANK[managedAccess] <= ACCESS_RANK[userAccess])
     ? "managed" : userAccess ? "user" : "default";
+  const all = [...managed, ...user];
+  const confirmation = all.reduce<OriginPolicyDecision["confirmation"] | undefined>(
+    (current, rule) => rule.confirmation === undefined ? current
+      : mostRestrictive(current, rule.confirmation, CONFIRM_RANK, "action"), undefined) ?? "action";
   const decision: OriginPolicyDecision = {
     access,
-    confirmation: mostRestrictive(managed?.confirmation, user?.confirmation, CONFIRM_RANK, "action"),
-    approvalLifetime: managed?.approvalLifetime === "turn" || user?.approvalLifetime === "turn" ? "turn" : managed?.approvalLifetime ?? user?.approvalLifetime ?? "turn",
-    grantLifetime: managed?.grantLifetime === "session" || user?.grantLifetime === "session" ? "session" : managed?.grantLifetime ?? user?.grantLifetime ?? "session",
+    confirmation,
+    approvalLifetime: all.some(rule => rule.approvalLifetime === "turn") ? "turn"
+      : all.some(rule => rule.approvalLifetime === "thread") ? "thread" : "turn",
+    grantLifetime: all.some(rule => rule.grantLifetime === "session") ? "session"
+      : all.some(rule => rule.grantLifetime === "always") ? "always" : "session",
     source,
     reason: !normalized ? "invalid_origin" : !managedAccess && !userAccess ? "no_matching_rule" : access === "deny" ? "explicit_deny" : "matched_rule",
     origin: normalized ?? "invalid",

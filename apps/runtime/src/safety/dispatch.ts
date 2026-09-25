@@ -75,17 +75,24 @@ export class SafetyDispatchGate {
       sensitiveData: input.context.sensitiveData || sensitiveStep(input.step),
     });
     if (level === "handoff") throw new AuxError("needs_input", "Complete this action directly in the site.");
-    if (level === "action" || level === "preapprovable") {
+    const requiresApproval = level === "action" || level === "preapprovable";
+    if (requiresApproval) {
       const confirmation = decideConfirmation({
         level, action, review: input.context.review,
         turnToolCallCount: input.context.turnToolCallCount ?? 0,
       });
       if (confirmation.status === "invalid") throw new AuxError("needs_input", `A review artifact is required: ${confirmation.reason}`);
     }
-    const authorize = (currentPolicy: typeof policy, consume: boolean) => this.deps.approvals.authorize({
-      action, policy: currentPolicy, ceiling: this.deps.localCeiling(action), sessionId: input.context.sessionId,
-      approvalId: input.context.approvalId, consume,
-    });
+    const authorize = (currentPolicy: typeof policy, consume: boolean) => {
+      const localCeiling = this.deps.localCeiling(action);
+      return this.deps.approvals.authorize({
+        action, policy: currentPolicy,
+        // A permissive local ceiling never substitutes for action-time consent.
+        ceiling: requiresApproval && localCeiling === "always" ? "ask" : localCeiling,
+        approvalOnly: level === "action",
+        sessionId: input.context.sessionId, approvalId: input.context.approvalId, consume,
+      });
+    };
     const authorization = authorize(policy, false);
     if (authorization.status === "denied") throw new AuxError("permission_denied", authorization.guidance);
     if (authorization.status === "ask") {

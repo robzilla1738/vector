@@ -34,6 +34,22 @@ describe("B5 safety core", () => {
     expect(audits).toHaveLength(5);
   });
 
+  it("combines duplicate exact-origin rules conservatively in either order", () => {
+    const permissive: OriginRule = { origin: rule.origin, access: "allow", confirmation: "none",
+      approvalLifetime: "thread", grantLifetime: "always" };
+    const restricted: OriginRule = { origin: rule.origin, access: "deny", confirmation: "action",
+      approvalLifetime: "turn", grantLifetime: "session" };
+    for (const rules of [[permissive, restricted], [restricted, permissive]]) {
+      const decision = evaluateOriginPolicy({ url: "https://example.test/form", effect: "write",
+        action: "submit", managed: [], user: rules, audit: () => {} });
+      expect(decision).toMatchObject({ access: "deny", confirmation: "action",
+        approvalLifetime: "turn", grantLifetime: "session" });
+    }
+    const effectDeny: OriginRule = { ...permissive, effects: { write: "deny" } };
+    expect(evaluateOriginPolicy({ url: "https://example.test/form", effect: "write", action: "submit",
+      managed: [permissive, effectDeny], user: [], audit: () => {} }).access).toBe("deny");
+  });
+
   it("rejects forged and stale approvals and rechecks revocation at dispatch", () => {
     const db = new DatabaseSync(":memory:");
     try {
@@ -59,6 +75,23 @@ describe("B5 safety core", () => {
       store.revoke({ profileId: action.profileId, scope: action.scope, grantId: grant.grantId }, 106);
       expect(store.authorize({ action, policy: allowed, ceiling: "ask", now: 107 }).status).toBe("ask");
       expect(store.authorize({ action, policy: { ...allowed, access: "deny" }, ceiling: "always", now: 108 }).status).toBe("denied");
+    } finally { db.close(); }
+  });
+
+  it("does not transfer approvals or standing grants across Profiles", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      const store = new ApprovalStore(db);
+      const otherProfile = { ...action, profileId: "other-profile" };
+      const approvalId = store.issue(action, "turn", 100);
+      store.recordLocalDecision({ decision: "accept", approvalId }, action, 101);
+      expect(store.authorize({ action: otherProfile, policy: allowed, ceiling: "ask", approvalId, now: 102 }).status).toBe("ask");
+      const grant = store.grant(action, "always", undefined, 102);
+      expect(store.authorize({ action: otherProfile, policy: allowed, ceiling: "ask", now: 103 }).status).toBe("ask");
+      expect(store.revoke({ profileId: otherProfile.profileId, grantId: grant.grantId }, 104)).toBe(0);
+      expect(store.authorize({ action, policy: allowed, ceiling: "ask", now: 105 })).toMatchObject({
+        status: "authorized", provenance: { authorizedBy: "standing", grantId: grant.grantId },
+      });
     } finally { db.close(); }
   });
 

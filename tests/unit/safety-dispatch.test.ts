@@ -1,21 +1,22 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { EventBus, NullNativeBridge, PageService, Repo, openDb } from "@aux/runtime";
-import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
+import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { Step } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
-import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
+import { SafetyDispatchGate, type SafetyDispatchDeps } from "../../apps/runtime/src/safety/dispatch.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
 
-function fixture() {
+function fixture(judge?: SafetyDispatchDeps["judge"]) {
   const db = openDb(":memory:"); databases.push(db);
   const repo = new Repo(db);
   const events = new EventBus(repo);
   const approvals = new ApprovalStore(db);
   const calls: string[] = [];
   let current = "https://allowed.test/form";
+  let driverEvents: DriverPageEvents = {};
   let access: "allow" | "deny" = "allow";
   const gate = new SafetyDispatchGate({
     approvals,
@@ -23,6 +24,7 @@ function fixture() {
     userRules: () => [{ origin: "https://allowed.test/", access, confirmation: "none" }],
     localCeiling: () => "always",
     audit: () => {},
+    judge,
   });
   const driver: BrowserDriver = {
     backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
@@ -36,13 +38,14 @@ function fixture() {
         scroll: { x: 0, y: 0, maxY: 0 }, frames: [{ frame: "main", url: current, sameOrigin: true }],
         text: "Form", headings: [], elements: [], formFields: [], tables: [], links: [], dialogs: [], console: [],
         truncated: false, stats: { elementsTotal: 0, elementsShown: 0, textChars: 4, approxTokens: 1 } }),
-      setEvents: () => {}, dispose: async () => {},
+      setEvents: (value: DriverPageEvents) => { driverEvents = value; }, dispose: async () => {},
     }) as unknown as DriverPage,
   };
   const pages = new PageService({ repo, events, native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read", "effect:write"],
     profileId: "profile-1", safetyGate: gate });
-  return { pages, calls, approvals, gate, setAccess: (value: "allow" | "deny") => { access = value; } };
+  return { pages, calls, approvals, gate, setAccess: (value: "allow" | "deny") => { access = value; },
+    navigateExternally: (url: string, epoch: number) => { current = url; driverEvents.onNavigated?.(url, epoch); } };
 }
 
 describe("B5 live dispatch gate", () => {
@@ -91,6 +94,48 @@ describe("B5 live dispatch gate", () => {
     approvals.revoke({ profileId: context.profileId, grantId: grant.grantId });
     release();
     await expect(dispatch).rejects.toMatchObject({ code: "needs_input" });
+  });
+
+  it("does not click a replaced same-origin document after Guardian awaits", async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const judging = new Promise<void>(resolve => { entered = resolve; });
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const { pages, calls, navigateExternally } = fixture(async () => { entered(); await pending; return []; });
+    const page = await pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });
+    const run = pages.execute({ pageId: page.pageId, steps: [{ id: "step-stale", op: "click", target: "#submit" }] },
+      { safety: { steps: { "step-stale": { restrictedRetry: true } } } });
+    await judging;
+    navigateExternally("https://allowed.test/next-document", (pages.get(page.pageId).documentEpoch ?? 0) + 1);
+    release();
+    const result = await run;
+    expect(calls).toEqual([]);
+    expect(result.steps[0]).toMatchObject({ status: "failed", error: { code: "ref_stale" } });
+  });
+
+  it("requires an exact action approval even with an always ceiling or standing grant", async () => {
+    const db = openDb(":memory:"); databases.push(db);
+    const approvals = new ApprovalStore(db);
+    const gate = new SafetyDispatchGate({ approvals, managedRules: () => [],
+      userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "action" }],
+      localCeiling: () => "always", audit: () => {} });
+    const step: Step = { id: "step-consent", op: "click", target: "#submit" };
+    const digest = createHash("sha256").update(JSON.stringify(step)).digest("hex");
+    const context = { profileId: "profile-1", scope: { kind: "task" as const, id: "task-1" },
+      turnId: "turn-1", threadId: "thread-1", sessionId: "session-1", turnToolCallCount: 1,
+      review: { artifactId: "review-1", turnId: "turn-1", action: "click", effect: "write" as const,
+        invocationDigest: digest, dataDescription: "Form fields", destination: "allowed.test",
+        consequence: "Submit", createdAt: Date.now() } };
+    approvals.grant({ profileId: context.profileId, scope: context.scope, turnId: context.turnId,
+      threadId: context.threadId, effect: "write", action: "click", invocationDigest: digest,
+      origin: "https://allowed.test/", requestedAt: 1 }, "always");
+    const input = { step, origin: "https://allowed.test/form", context, phase: "dispatch" as const };
+    const pending = await gate.check(input).catch(error => error) as { detail?: { requestId?: string } };
+    const approvalId = pending.detail?.requestId;
+    expect(approvalId).toBeTruthy();
+    approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
+    expect(await gate.check({ ...input, context: { ...context, approvalId } })).toMatchObject({ authorizedBy: "approval", approvalId });
+    await expect(gate.check({ ...input, context: { ...context, approvalId } })).rejects.toMatchObject({ code: "needs_input" });
   });
 
   it("binds an action-time review and one-time approval to the exact invocation", async () => {
