@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { TabNameSchema, type PageTarget, type TabNameSuggestion } from "@aux/contracts";
+import type { PageTarget, TabNameSuggestion } from "@aux/contracts";
+import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge, inNativeHost } from "../bridge";
 import { requestStageReport } from "../stage-obstruction";
 import { call, errToast, tabCommand, toast, useStore } from "../store";
@@ -195,14 +196,14 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
       <p className="menu-empty">Use a short label in your tab strip. The page title stays unchanged.</p>
       <input ref={nameInput} className="tab-menu-search" aria-label="Tab label" maxLength={60} value={nameDraft} disabled={nameBusy}
         placeholder={tabLabel(layout, page)} onChange={event => { setNameDraft(event.target.value); setSuggestion(null); }}
-        onKeyDown={event => { if (event.key === "Enter" && TabNameSchema.safeParse(nameDraft).success && !nameBusy) {
+        onKeyDown={event => { if (event.key === "Enter" && normalizeTabName(nameDraft) && !nameBusy) {
           event.preventDefault(); saveName();
         } }} />
       <p className="menu-empty">AI sees this page title and site domain. Review its suggestion before saving.</p>
       {nameError && <p className="menu-empty" role="alert">{nameError}</p>}
       {suggestion && <p className="menu-empty">Suggested from “{suggestion.sourceTitle}” · {hostOf(suggestion.sourceUrl)}</p>}
       <button className="menu-item" role="menuitem" disabled={nameBusy} onClick={() => void suggestName()}>{I.agentSm}<span className="t">{nameBusy ? "Suggesting…" : "Suggest with AI"}</span></button>
-      <button className="menu-item" role="menuitem" disabled={nameBusy || !TabNameSchema.safeParse(nameDraft).success} onClick={saveName}>Save tab label</button>
+      <button className="menu-item" role="menuitem" disabled={nameBusy || !normalizeTabName(nameDraft)} onClick={saveName}>Save tab label</button>
       {layout.tabNames?.[page.pageId]?.url === page.url && <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().setTabName(page.pageId, page.url, null))}>Use page title again</button>}
     </> : remembering ? <>
       <div className="menu-label">Remember page content</div>

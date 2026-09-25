@@ -220,8 +220,21 @@ export function connectorFixtures(
       grants = grants.filter((item) => item.grantId !== params.grantId || item.taskId !== params.taskId);
       return { ok: true };
     },
-    "mcp.bundles.inspect": async () => {
-      throw new Error("Bundle inspection requires the Aux desktop app.");
+    "mcp.bundles.inspect": async (params: Record<string, unknown>) => {
+      const path = String(params.path);
+      const format = path.toLowerCase().endsWith(".dxt")
+        ? "dxt"
+        : path.toLowerCase().endsWith(".mcpb")
+          ? "mcpb"
+          : null;
+      if (!format) throw new Error("Choose a .mcpb or .dxt bundle.");
+      return {
+        path,
+        sha256: "b".repeat(64),
+        format,
+        name: "Research bundle",
+        server: { type: "node", entry_point: "server.js" },
+      };
     },
     "mcp.servers.list": async (params: Record<string, unknown>) =>
       servers.filter((item) => item.workspaceId === params.workspaceId),
@@ -264,16 +277,21 @@ export function connectorFixtures(
       return server(item.serverId);
     },
     "mcp.tools.list": async (params: Record<string, unknown>) => {
-      if (server(params.serverId).state !== "approved") throw new Error("Approve this server first.");
-      return [{ name: "search", description: "Search synthetic preview notes", inputSchema: {} }];
+      if (server(params.serverId).state !== "approved")
+        throw new Error("Approve the server before loading tools.");
+      return [
+        { name: "search", description: "Search synthetic preview notes", inputSchema: {} },
+        { name: "summarize", description: "Summarize a synthetic preview note", inputSchema: {} },
+      ];
     },
     "mcp.grants.list": async (params: Record<string, unknown>) =>
       tools.filter((item) => item.serverId === params.serverId),
     "mcp.grants.create": async (params: Record<string, unknown>) => {
       const input = OutboundMcpGrantParams.parse(params);
       const item = server(input.serverId);
-      if (item.state !== "approved") throw new Error("Approve this server first.");
-      if (input.toolName !== "search") throw new Error("Preview tool is unavailable.");
+      if (item.state !== "approved") throw new Error("Approve the server before granting tools.");
+      if (input.toolName !== "search" && input.toolName !== "summarize")
+        throw new Error("Tool is unavailable on this mock server.");
       if (input.scope.kind === "workspace" && input.scope.workspaceId !== workspaceId)
         throw new Error("Preview Space is unavailable.");
       if (input.scope.kind === "task") {

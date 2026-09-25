@@ -1,5 +1,5 @@
 import { splitRatio } from "@aux/contracts/split-layout";
-import { TabNameSchema } from "@aux/contracts";
+import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge } from "../bridge";
 import { errToast, toast } from "../store";
 import { assignFolder, assignSpace, canSplitPage, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder } from "../workspace";
@@ -84,9 +84,9 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     const tabNames = { ...state.layout.tabNames };
     if (name === null) delete tabNames[pageId];
     else {
-      const parsed = TabNameSchema.safeParse(name);
-      if (!parsed.success) throw new Error("Use a tab label of 2–60 characters without control characters.");
-      tabNames[pageId] = { title: parsed.data, url: expectedUrl };
+      const normalized = normalizeTabName(name);
+      if (!normalized) throw new Error("Use a tab label of 2–60 characters without control characters.");
+      tabNames[pageId] = { title: normalized, url: expectedUrl };
     }
     const layout = { ...state.layout, tabNames };
     persistLayout(layout);

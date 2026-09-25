@@ -68,8 +68,8 @@ export default defineConfig({
   build: {
     outDir: join(import.meta.dirname, "dist", "renderer"),
     emptyOutDir: true,
-    // Electron 43 ships Chromium 150 — no syntax lowering or legacy polyfills.
-    target: "chrome150",
+    // Match the packaged browser. Electron preview still targets its Chromium 150.
+    target: process.env.AUX_CHROMIUM_SHELL_BUILD === "1" ? "chrome154" : "chrome150",
     // scripts/check-budgets.mjs walks the manifest to measure startup bytes
     manifest: true,
   },
