@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 8f16686773..1a1780f438 100644
+index 4dd1cff66e..5602392701 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -1977,6 +1977,10 @@ source_set("core") {
+@@ -1978,6 +1978,10 @@ source_set("core") {
      deps += [ ":chrome_browser_main_mac" ]
    }
  
@@ -60,7 +60,7 @@ index 3fbacf30f4..fda13a9a86 100644
      "//chrome/browser/ui/browser_window",
      "//chrome/browser/ui/tabs:tabs_public",
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index dd61c24938..2ed11dfba1 100644
+index 0bc5303d09..1d131311ac 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -36,6 +36,7 @@
@@ -114,7 +114,7 @@ index dd61c24938..2ed11dfba1 100644
  base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
      base::RepeatingCallback<void(const std::string&, const std::string&)>
          callback) {
-@@ -579,6 +609,15 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+@@ -581,6 +611,15 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                       [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
                          base::DictValue params,
                          std::shared_ptr<NativeReplyState> state) {
@@ -130,7 +130,7 @@ index dd61c24938..2ed11dfba1 100644
                         state->reply =
                             owner ? owner->HandleNativeCall(method, params)
                                   : NativeFault(
-@@ -724,8 +763,17 @@ bool AuxRuntimeHost::Worker::Pump() {
+@@ -726,8 +765,17 @@ bool AuxRuntimeHost::Worker::Pump() {
  }
  
  AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
@@ -150,7 +150,7 @@ index dd61c24938..2ed11dfba1 100644
    std::string error;
    if (!Connect(&error)) {
      return {false, "", "backend_unavailable", std::move(error)};
-@@ -736,14 +784,17 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
+@@ -738,14 +786,17 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
    }
    const uint32_t id = next_request_id_++;
    base::DictValue invocation;
@@ -174,7 +174,7 @@ index dd61c24938..2ed11dfba1 100644
    if (!request_json || !SendFrame(*request_json)) {
      Disconnect();
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
-index 248245c8c9..fda61cd0cb 100644
+index 1b0673c70e..0d37796df5 100644
 --- a/chrome/browser/ui/aux/runtime_host.h
 +++ b/chrome/browser/ui/aux/runtime_host.h
 @@ -40,6 +40,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
@@ -209,7 +209,7 @@ index 248245c8c9..fda61cd0cb 100644
    void OnRuntimeNote(std::string type, std::string payload_json);
 diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
 new file mode 100644
-index 0000000000..4905de3358
+index 0000000000..6ae9193ce5
 --- /dev/null
 +++ b/chrome/browser/ui/aux/zap_controller.cc
 @@ -0,0 +1,529 @@
@@ -744,7 +744,7 @@ index 0000000000..4905de3358
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/zap_controller.h b/chrome/browser/ui/aux/zap_controller.h
 new file mode 100644
-index 0000000000..8bc494e1c3
+index 0000000000..f2de735b32
 --- /dev/null
 +++ b/chrome/browser/ui/aux/zap_controller.h
 @@ -0,0 +1,76 @@
@@ -841,23 +841,38 @@ index c5b742e2fe..2cd64ea8eb 100644
    SetWindowFeatures(blink.mojom.WindowFeatures window_features);
  
 diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
-index dfdeb86e2e..9f243ff874 100644
+index dfdeb86e2e..3eb88fe50c 100644
 --- a/chrome/renderer/BUILD.gn
 +++ b/chrome/renderer/BUILD.gn
-@@ -64,6 +64,7 @@ static_library("renderer") {
+@@ -64,6 +64,8 @@ static_library("renderer") {
    configs = []
    configs = [ "//third_party/tflite:tflite_shim_config" ] + _configs
    sources = [
++    "aux_zap_stylesheet_registry.cc",
 +    "aux_zap_stylesheet_registry.h",
      "benchmarking_bindings.cc",
      "benchmarking_bindings.h",
      "browser_exposed_renderer_interfaces.cc",
+diff --git a/chrome/renderer/aux_zap_stylesheet_registry.cc b/chrome/renderer/aux_zap_stylesheet_registry.cc
+new file mode 100644
+index 0000000000..e593816a71
+--- /dev/null
++++ b/chrome/renderer/aux_zap_stylesheet_registry.cc
+@@ -0,0 +1,8 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/renderer/aux_zap_stylesheet_registry.h"
++
++AuxZapStylesheetRegistry::AuxZapStylesheetRegistry() = default;
++AuxZapStylesheetRegistry::~AuxZapStylesheetRegistry() = default;
 diff --git a/chrome/renderer/aux_zap_stylesheet_registry.h b/chrome/renderer/aux_zap_stylesheet_registry.h
 new file mode 100644
-index 0000000000..3f699b22fa
+index 0000000000..c1e802aefa
 --- /dev/null
 +++ b/chrome/renderer/aux_zap_stylesheet_registry.h
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,101 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -879,6 +894,9 @@ index 0000000000..3f699b22fa
 + public:
 +  enum class Result { kAccepted, kStale, kCapacity };
 +  using Clock = std::chrono::steady_clock;
++
++  AuxZapStylesheetRegistry();
++  ~AuxZapStylesheetRegistry();
 +
 +  Result Update(const std::string& origin,
 +                uint64_t sequence,
@@ -957,7 +975,7 @@ index 0000000000..3f699b22fa
 +
 +#endif  // CHROME_RENDERER_AUX_ZAP_STYLESHEET_REGISTRY_H_
 diff --git a/chrome/renderer/chrome_render_frame_observer.cc b/chrome/renderer/chrome_render_frame_observer.cc
-index 1dc2c646c0..c0e4cb3b90 100644
+index 1dc2c646c0..8b683d0dd6 100644
 --- a/chrome/renderer/chrome_render_frame_observer.cc
 +++ b/chrome/renderer/chrome_render_frame_observer.cc
 @@ -31,6 +31,7 @@
@@ -1044,7 +1062,7 @@ index 1dc2c646c0..c0e4cb3b90 100644
 +  if (!stylesheet)
 +    return false;
 +  aux_zap_applied_key_ = document.InsertStyleSheet(
-+      WebString::FromUTF8(*stylesheet), nullptr,
++      WebString::FromUtf8(*stylesheet), nullptr,
 +      blink::WebCssOrigin::kUser);
 +  aux_zap_applied_origin_ = origin;
 +  return true;

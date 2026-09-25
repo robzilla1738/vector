@@ -1078,23 +1078,6 @@ index c8f911762d..94dc6d877d 100644
  void ZapController::OnFrameResult(int request_id, bool accepted, bool applied) {
    auto it = frame_requests_.find(request_id);
    if (it == frame_requests_.end()) {
-@@ -407,13 +495,13 @@ void ZapController::Install(const base::DictValue& request,
-                 return;
-               }
-               for (const Target& item : pending->targets) {
--                content::RenderFrameHost* current =
-+                content::RenderFrameHost* rollback_frame =
-                     content::RenderFrameHost::FromID(item.frame_id);
--                if (!current) {
-+                if (!rollback_frame) {
-                   continue;
-                 }
-                 pending->owner->PrepareFrame(
--                    current, pending->origin,
-+                    rollback_frame, pending->origin,
-                     base::BindOnce(
-                         [](std::shared_ptr<Rollback> rollback, bool, bool) {
-                           if (--rollback->remaining == 0) {
 @@ -520,7 +608,7 @@ std::unique_ptr<content::CommitDeferringCondition> MaybeCreateZapCondition(
    }
    Profile* profile = Profile::FromBrowserContext(

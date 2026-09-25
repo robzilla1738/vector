@@ -15,13 +15,14 @@ index 23e48b4df5..d7c80d877e 100644
        }
      }
      if (enable_aux_sparkle) {
-@@ -562,6 +566,11 @@ if (is_win) {
+@@ -562,6 +566,12 @@ if (is_win) {
        substitutions = [ "AUX_CRASH_UPLOAD_URL=$aux_crash_upload_url" ]
        output_name = "$target_gen_dir/aux-crash-Info.plist"
      }
 +    compile_plist("aux_dictation_info_plist") {
 +      plist_templates = [ "app/aux-dictation-Info.plist" ]
 +      format = "xml1"
++      substitutions = []
 +      output_name = "$target_gen_dir/aux-dictation-Info.plist"
 +    }
    }
