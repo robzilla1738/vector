@@ -438,7 +438,7 @@ index 1c81b67991..820314c9b8 100644
        bookmark_bar_page_factory_receiver_{this};
    mojo::Receiver<extensions_bar::mojom::PageHandlerFactory>
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
-index e664f20912..086b2c1edb 100644
+index e664f20912..7733649205 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
 @@ -8,6 +8,7 @@
@@ -461,6 +461,88 @@ index e664f20912..086b2c1edb 100644
    web_view_ = widget_->SetClientContentsView(std::move(web_view));
    // Set the ColorProviderSource after attaching to the WebView otherwise
    // attaching overwrites it.
+@@ -321,8 +326,8 @@ void WebUIBrowserWindow::PaintAsActiveChanged() {
+   } else {
+     BrowserActiveStateManager::From(browser_)->DidBecomeInactive();
+   }
+-  if (webui_browser::mojom::Page* page = GetWebUIBrowserUI()->page()) {
+-    page->OnPaintAsActiveChanged(widget_->ShouldPaintAsActive());
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
++    ui->page()->OnPaintAsActiveChanged(widget_->ShouldPaintAsActive());
+   }
+ }
+ 
+@@ -645,8 +650,8 @@ void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
+   }
+ 
+   // Notify the WebUI about the fullscreen mode.
+-  if (webui_browser::mojom::Page* page = GetWebUIBrowserUI()->page()) {
+-    page->OnFullscreenModeChanged(fullscreen, context);
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
++    ui->page()->OnFullscreenModeChanged(fullscreen, context);
+   }
+ 
+   browser_->GetFeatures()
+@@ -756,7 +761,9 @@ void WebUIBrowserWindow::UpdateTitleBar() {
+ 
+ void WebUIBrowserWindow::OnBookmarkBarStateChanged(
+     BookmarkBar::AnimateChangeType change_type) {
+-  GetWebUIBrowserUI()->BookmarkBarStateChanged(change_type);
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI()) {
++    ui->BookmarkBarStateChanged(change_type);
++  }
+ }
+ 
+ void WebUIBrowserWindow::UpdateLoadingAnimations(bool is_visible) {
+@@ -840,14 +847,14 @@ LocationBar* WebUIBrowserWindow::GetLocationBar() const {
+ }
+ 
+ void WebUIBrowserWindow::SetFocusToLocationBar(bool is_user_initiated) {
+-  if (webui_browser::mojom::Page* page = GetWebUIBrowserUI()->page()) {
+-    page->SetFocusToLocationBar(is_user_initiated);
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
++    ui->page()->SetFocusToLocationBar(is_user_initiated);
+   }
+ }
+ 
+ void WebUIBrowserWindow::UpdateReloadStopState(bool is_loading, bool force) {
+-  if (webui_browser::mojom::Page* page = GetWebUIBrowserUI()->page()) {
+-    page->SetReloadStopState(is_loading);
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
++    ui->page()->SetReloadStopState(is_loading);
+   }
+ }
+ 
+@@ -1319,18 +1326,23 @@ bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(
+ }
+ 
+ WebUIBrowserUI* WebUIBrowserWindow::GetWebUIBrowserUI() const {
+-  return web_contents_delegate_->web_contents()
+-      ->GetWebUI()
+-      ->GetController()
+-      ->GetAs<WebUIBrowserUI>();
++  content::WebContents* contents = web_contents_delegate_->web_contents();
++  content::WebUI* web_ui = contents ? contents->GetWebUI() : nullptr;
++  content::WebUIController* controller =
++      web_ui ? web_ui->GetController() : nullptr;
++  return controller ? controller->GetAs<WebUIBrowserUI>() : nullptr;
+ }
+ 
+ void WebUIBrowserWindow::ShowSidePanel(SidePanelEntryKey side_panel_entry_key) {
+-  GetWebUIBrowserUI()->ShowSidePanel(side_panel_entry_key);
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
++    ui->ShowSidePanel(side_panel_entry_key);
++  }
+ }
+ 
+ void WebUIBrowserWindow::CloseSidePanel() {
+-  GetWebUIBrowserUI()->CloseSidePanel();
++  if (WebUIBrowserUI* ui = GetWebUIBrowserUI(); ui && ui->page()) {
++    ui->CloseSidePanel();
++  }
+ }
+ 
+ WebUIBrowserSidePanelUI* WebUIBrowserWindow::GetWebUIBrowserSidePanelUI() {
 diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
 index 23b1c1220e..67e15d9147 100644
 --- a/chrome/common/webui_url_constants.h
