@@ -15,6 +15,85 @@ const WebSocket = requireRuntime("ws") as new (url: string) => {
 };
 
 describe("Chromium native CDP facade", () => {
+  it("does not carry a disconnected client's target reply into a new connection", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "aux-cdp-reconnect-"));
+    const [runtimeTransport, hostTransport] = memoryTransportPair();
+    const runtime = new RpcChannel(runtimeTransport, "runtime");
+    const host = new RpcChannel(hostTransport, "host");
+    let releaseFirst!: (value: { pages: unknown[] }) => void;
+    let markFirstStarted!: () => void;
+    const firstSnapshot = new Promise<{ pages: unknown[] }>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    let calls = 0;
+    host.onMethod("native.listPages", () => {
+      if (++calls === 1) {
+        markFirstStarted();
+        return firstSnapshot;
+      }
+      return {
+        pages: [
+          { pageId: "new", cdpTargetId: "new-target", url: "https://new.test/", title: "New", active: true },
+        ],
+      };
+    });
+    const broker = await NativeCdpBroker.start(runtime, join(dir, "host.sock"));
+    const oldClient = new WebSocket(broker.endpoint());
+    let newClient: InstanceType<typeof WebSocket> | undefined;
+    try {
+      await new Promise<void>((resolve) => oldClient.on("open", () => resolve()));
+      oldClient.send(JSON.stringify({ id: 1, method: "Target.getTargets", params: {} }));
+      await firstStarted;
+      const closed = new Promise<void>((resolve) => oldClient.on("close", () => resolve()));
+      oldClient.terminate();
+      await closed;
+      newClient = new WebSocket(broker.endpoint());
+      const frames: Record<string, unknown>[] = [];
+      newClient.on("message", (raw) => frames.push(JSON.parse(String(raw)) as Record<string, unknown>));
+      await new Promise<void>((resolve) => newClient!.on("open", () => resolve()));
+      newClient.send(
+        JSON.stringify({
+          id: 2,
+          method: "Target.setAutoAttach",
+          params: { autoAttach: true, flatten: true },
+        }),
+      );
+      releaseFirst({
+        pages: [
+          { pageId: "old", cdpTargetId: "old-target", url: "https://old.test/", title: "Old", active: true },
+        ],
+      });
+      for (let attempt = 0; attempt < 200 && !frames.some((frame) => frame.id === 2); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(frames.some((frame) => frame.id === 1)).toBe(false);
+      expect(
+        frames.some(
+          (frame) =>
+            frame.method === "Target.attachedToTarget" &&
+            (frame.params as { targetInfo?: { targetId?: string } }).targetInfo?.targetId === "old-target",
+        ),
+      ).toBe(false);
+      expect(
+        frames.some(
+          (frame) =>
+            frame.method === "Target.attachedToTarget" &&
+            (frame.params as { targetInfo?: { targetId?: string } }).targetInfo?.targetId === "new-target",
+        ),
+      ).toBe(true);
+      expect(frames.find((frame) => frame.id === 2)?.result).toEqual({});
+    } finally {
+      releaseFirst({ pages: [] });
+      oldClient.terminate();
+      newClient?.terminate();
+      await broker.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("connects Playwright over the private Unix socket", async () => {
     const dir = mkdtempSync(join(tmpdir(), "aux-cdp-playwright-"));
     const [runtimeTransport, hostTransport] = memoryTransportPair();

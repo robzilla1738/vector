@@ -33,6 +33,6 @@ release build flag separately disables remote debugging server startup.
 Focused validation: `cdp_broker_unittests` checks native method filtering;
 `tests/unit/native-cdp-broker.test.ts` checks Playwright's Unix WebSocket
 connection, Profile catalog filtering, foreign target denial, page dispatch,
-iframe child routing, event-driven target discovery, and absence of background
-target polling. The Chromium target requires a native build before
+iframe child routing, event-driven target discovery, absence of background
+target polling, and stale-reply rejection across reconnects. The Chromium target requires a native build before
 its test can execute.

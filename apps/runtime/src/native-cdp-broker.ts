@@ -300,20 +300,25 @@ export class NativeCdpBroker {
       return;
     }
     try {
-      const result = await this.execute(request);
+      const result = await this.execute(request, socket);
+      if (socket !== this.client) return;
       if (result !== null) this.reply(request, result);
     } catch (error) {
-      this.fail(request, error);
+      if (socket === this.client) this.fail(request, error);
     }
   }
 
-  private async execute(request: Request): Promise<unknown | null> {
+  private async execute(request: Request, socket: WebSocket): Promise<unknown | null> {
     const { method, params, sessionId } = request;
+    const refreshCurrent = async () => {
+      await this.refresh();
+      if (socket !== this.client) throw new Error("CDP connection closed");
+    };
     if (sessionId && this.sessions.has(sessionId)) {
       const targetId = this.sessions.get(sessionId)!;
       let target = this.targets.get(targetId);
       if (!target) {
-        await this.refresh();
+        await refreshCurrent();
         target = this.targets.get(targetId);
       }
       if (!target) throw new Error("Target is not an Aux tab in this Profile");
@@ -374,7 +379,7 @@ export class NativeCdpBroker {
     if (method === "Target.getTargetInfo") {
       if (!params.targetId)
         return { targetInfo: { targetId: "aux-internal-root", type: "browser", title: "Aux", url: "" } };
-      await this.refresh();
+      await refreshCurrent();
       const target = this.targets.get(String(params.targetId));
       if (!target) throw new Error("Target is not an Aux tab in this Profile");
       return { targetInfo: target.info };
@@ -385,11 +390,11 @@ export class NativeCdpBroker {
       return { sessionId: child };
     }
     if (method === "Target.getTargets") {
-      await this.refresh();
+      await refreshCurrent();
       return { targetInfos: [...this.targets.values()].map((value) => value.info) };
     }
     if (method === "Target.setDiscoverTargets") {
-      await this.refresh();
+      await refreshCurrent();
       this.discover = params.discover === true;
       if (this.discover)
         for (const { info } of this.targets.values())
@@ -398,13 +403,13 @@ export class NativeCdpBroker {
     }
     if (method === "Target.setAutoAttach") {
       this.autoAttach = params.autoAttach === true;
-      await this.refresh();
+      await refreshCurrent();
       if (this.autoAttach)
         for (const id of this.targets.keys()) if (!this.sessionsHasTarget(id)) this.attach(id, true);
       return {};
     }
     if (method === "Target.attachToTarget") {
-      await this.refresh();
+      await refreshCurrent();
       if (typeof params.targetId !== "string") throw new Error("Target ID required");
       return { sessionId: this.attach(params.targetId, false) };
     }
@@ -421,7 +426,7 @@ export class NativeCdpBroker {
       return {};
     }
     if (method === "Target.activateTarget") {
-      await this.refresh();
+      await refreshCurrent();
       const target = this.targets.get(String(params.targetId));
       if (!target) throw new Error("Target is not an Aux tab in this Profile");
       return this.channel.call("native.focusPage", { pageId: target.pageId });
