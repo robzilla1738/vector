@@ -271,10 +271,6 @@ export function Palette() {
       { id: "attach", section: "chrome", t: "Attach Chrome", d: "your signed-in Chrome, port 9222", icon: I.chromeSm, run: async () => { await call("chrome.attach", { port: 9222 }); toast("Chrome attached"); } },
       ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", icon: I.chromeSm, keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
       { id: "detach", section: "chrome", t: "Detach Chrome", icon: I.unplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
-      { id: "cookies", section: "chrome", t: "Import cookies from Chrome", d: chromeConnected ? "via attached Chrome" : "from your Chrome profile", icon: I.cookie, run: async () => {
-        const r = await call("chrome.importCookies", { source: "auto" });
-        toast(`${r.imported} cookies imported from ${r.domains} domains`);
-      } },
       ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", icon: I.external, run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),
     ];
     for (const s of layout.spaces) {

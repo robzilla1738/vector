@@ -64,7 +64,6 @@ interface VercelProbe {user:{id:string;name:string;email:string};teams:{id:strin
 interface VercelProject {id:string;name:string;framework:string|null;updatedAt:number;teamId:string|null}
 interface SentryProbe {organizations:{id:string;name:string;slug:string;regionUrl:string}[];checkedAt:number}
 interface SentryProject {id:string;name:string;slug:string;platform:string|null;organization:string}
-interface CookieImportResult { ok: boolean; source: string; imported: number; skipped: number; domains: number; detail?: string }
 
 function projectScope(settings:Record<string,unknown>,service:"vercel"|"sentry",scope?:string){
   return JSON.stringify([scope??String(settings[service==="vercel"?"vercelTeamId":"sentryOrganization"]??""),settings[`${service}Probe`],settings[`${service}Credential`]]);
@@ -168,7 +167,6 @@ export function Settings() {
   const [backupKeep,setBackupKeep]=useState<3|5|10|20>(10);
   const [health,setHealth]=useState<BrowserHealthSummary>(()=>emptyBrowserHealthSummary());
   const [healthBusy,setHealthBusy]=useState(false);
-  const [cookieImport, setCookieImport] = useState<{ busy: boolean; result?: CookieImportResult; error?: string }>({ busy: false });
 
   const [githubToken,setGithubToken]=useState('');
   const [githubBusy,setGithubBusy]=useState(false);
@@ -549,25 +547,6 @@ export function Settings() {
         </Field>
 
         <Field compact label="Keyword engines" hint="Manage shortcuts for searching individual sites."><button className="btn sm ghost" data-settings-editor="Keyword engines" onClick={event=>openEditor("Keyword engines",event.currentTarget)} aria-label="Manage keyword engines">Manage {I.right}</button></Field>
-
-        <Field label="Import Chrome sign-ins" hint={cookieImport.result?.detail ?? "Import available sign-in cookies from Chrome. macOS may ask for keychain access; some sites may require you to sign in again."}>
-          <div className="row">
-            <button
-              className="btn sm"
-              disabled={cookieImport.busy}
-              onClick={() => {
-                setCookieImport({ busy: true });
-                void call("chrome.importCookies", { source: "auto" })
-                  .then((r) => setCookieImport({ busy: false, result: r }))
-                  .catch((e) => setCookieImport({ busy: false, error: e instanceof Error ? e.message : String(e) }));
-              }}
-            >
-              {cookieImport.busy ? "Importing…" : "Import from Chrome"}
-            </button>
-            {cookieImport.result && <span className="hint ok">{cookieImport.result.imported} imported · {cookieImport.result.domains} domains</span>}
-            {cookieImport.error && <span className="hint err">{cookieImport.error}</span>}
-          </div>
-        </Field>
 
         <Field label="Import browser data" hint="Preview what each installed browser can share — bookmarks and folders, history, and live tabs from an attached Chrome — then import what you choose. Source profiles are only ever read, never changed.">
           <ImportDataSetting />

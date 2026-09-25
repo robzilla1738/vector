@@ -7,7 +7,6 @@ export const settingsDestinations: SettingsDestination[] = [
   entry('General', 'Default browser', 'Open links in Aux by default.'),
   entry('General', 'Personal info', 'Fill addresses, email and phone fields from your stored profile.'),
   entry('General', 'Import browser data', 'Preview and import bookmarks, history and live tabs from Chrome, Arc, Safari or Firefox.'),
-  entry('General', 'Import Chrome sign-ins', 'Bring available cookies and website sessions from Chrome.'),
   entry('General', 'Quick Ask', 'Keyboard shortcut for the global assistant popup.'),
   entry('General', 'Keyboard shortcuts', 'Reassign any browser or app shortcut; collisions are explained before saving.'),
   entry('General', 'Browser profiles', 'Separate accounts, sign-ins and browsing data.'),

@@ -86,3 +86,9 @@ After consolidating the bootstrap’s separate delivery/subscription allowlists 
 - **[Verified]** Cmd-L selected the current address in Aux's field. Cmd-S expanded the 280 px sidebar with a native page control focused.
 - **[Partial]** Glass appearance remains unqualified; window screenshots are not evidence of the desktop backdrop effect. The P6 design extraction and liquid-glass layer reference were reviewed again against the user's request.
 - Official AuxRelease compilation started locally with eight jobs and nice priority 10. No hosted Actions or Linux VM used.
+
+### Aside layout continuation
+
+- **[Verified]** Switching from horizontal to vertical kept the same native About Version page. Cmd-L then navigated to example.com, which rendered inside the vertical layout.
+- **[Verified]** Removed legacy cookie-import entries from Settings, settings search and command palette to match the roadmap. Renderer typecheck and the palette search test pass. These source changes await the next shell staging batch.
+- **[Partial]** The disposable Profile qualification timed out before runtime connection at its normal 30-second startup deadline during the official compilation. No isolation/restore pass is claimed. The harness now retains fixture-only failure data and owner-only browser logs for diagnosis, and supports an explicit startup deadline override for correctness runs under build load; the default deadline is unchanged.
