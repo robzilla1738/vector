@@ -239,7 +239,14 @@ export function SiteCustomization() {
                 </div>
                 <button
                   className="btn sm"
-                  disabled={!origin || !pageId || epoch === undefined || busy || page?.controller === "agent"}
+                  disabled={
+                    !origin ||
+                    !pageId ||
+                    epoch === undefined ||
+                    busy ||
+                    page?.controller === "agent" ||
+                    page?.backend === "chrome"
+                  }
                   onClick={() => void startPick()}
                 >
                   Pick element…

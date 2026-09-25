@@ -290,7 +290,7 @@ export function SiteControls() {
               </p>
             )}
           </section>
-          {!bridge.privateMode && /^https?:\/\//.test(info.origin) && (
+          {!bridge.privateMode && page?.backend !== "chrome" && /^https?:\/\//.test(info.origin) && (
             <section className="site-controls-group" aria-label="Page customization">
               <div>
                 <span className="site-row-icon">{I.code}</span>
