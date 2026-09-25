@@ -24,9 +24,11 @@ export interface BrowserSiteInfo {
   cookieCount:number;
   permissions:Record<string,"allow"|"deny">;
   trackersAllowed:boolean;
+  blockedCount:number;
 }
 export interface FilterSourceStatus { id:string;name:string;url:string;enabled:boolean;meta?:{fetchedAt:number;etag?:string;hosts:number;sha256:string;error?:string} }
-export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;builtinHosts:number }
+export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;builtinHosts:number;
+  backend:"electron_web_request"|"subresource_filter"|"declarative_net_request"|"preview" }
 export interface BrowserHealthSummary {
   recordingSince?:number;latestAt?:number;samples:number;sessions:number;observedMinutes:number;spanDays:number;sevenDaySpan:boolean;startupMs?:number;
   cpuPercent:{p50:number;p95:number;max:number};memoryMb:{p50:number;p95:number;max:number};eventLoopLagMs:{p50:number;p95:number;max:number};maxWindows:number;maxPages:number;maxSuspendedPages:number;swallowed?:Record<string,number>;pageCrashes:number;pageUnresponsive:number;suspensionFailures:number;
@@ -211,6 +213,7 @@ export interface AuxBridge {
   updateFilters(): Promise<FilterListStatus>;
   addFilterSource(name: string, url: string): Promise<FilterSourceStatus[]>;
   removeFilterSource(id: string): Promise<FilterSourceStatus[]>;
+  setFilterSourceEnabled(id: string, enabled: boolean): Promise<FilterSourceStatus[]>;
   proceedInsecure(url: string): Promise<boolean>;
   useHttp(pageId: string, url: string): Promise<boolean>;
   translatePage(pageId: string): Promise<{ lang: string; count: number; truncated: boolean }>;
@@ -372,10 +375,11 @@ const stub: AuxBridge = {
   setHttpsUpgrade: async () => true,
   setSiteTrackers: async () => { throw new Error("Site controls require Aux desktop"); },
   removeAllowedHost: async () => { throw new Error("Site controls require Aux desktop"); },
-  filterLists: async () => ({ sources: [], hosts: 0, builtinHosts: 0 }),
-  updateFilters: async () => ({ sources: [], hosts: 0, builtinHosts: 0 }),
+  filterLists: async () => ({ sources: [], hosts: 0, builtinHosts: 0, backend: "preview" }),
+  updateFilters: async () => { throw new Error("Filter updates require Aux desktop"); },
   addFilterSource: async () => { throw new Error("Filter lists require Aux desktop"); },
   removeFilterSource: async () => { throw new Error("Filter lists require Aux desktop"); },
+  setFilterSourceEnabled: async () => { throw new Error("Filter lists require Aux desktop"); },
   proceedInsecure: async () => true,
   useHttp: async () => true,
   translatePage: async () => { throw new Error("Translation requires Aux desktop"); },

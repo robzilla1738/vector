@@ -220,6 +220,7 @@ const aux = {
   updateFilters: () => ipcRenderer.invoke("app.updateFilters"),
   addFilterSource: (name: string, url: string) => ipcRenderer.invoke("app.addFilterSource", name, url),
   removeFilterSource: (id: string) => ipcRenderer.invoke("app.removeFilterSource", id),
+  setFilterSourceEnabled: (id: string, enabled: boolean) => ipcRenderer.invoke("app.setFilterSourceEnabled", id, enabled),
   proceedInsecure: (url: string) => ipcRenderer.invoke("app.proceedInsecure", url) as Promise<boolean>,
   useHttp: (pageId: string, url: string) => ipcRenderer.invoke("app.useHttp", pageId, url) as Promise<boolean>,
   translatePage: (pageId: string) => ipcRenderer.invoke("ui.translatePage", pageId),

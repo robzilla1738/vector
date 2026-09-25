@@ -8,6 +8,7 @@ export interface PrivacySettings { trackerBlock: boolean; allowedHosts: string[]
 export interface PrivacyStore {
   settings(): PrivacySettings;
   blocked(): number;
+  blockedForSite(hostname: string): number;
   update(next: PrivacySettings): void;
   httpsFirst: HttpsFirst;
   insecureBypass: ReturnType<typeof createInsecureBypass>;
@@ -16,7 +17,8 @@ export interface PrivacyStore {
   applyCosmetic(): void;
   permissions(): PermissionDecisions;
   savePermissions(next: PermissionDecisions): void;
-  filters: { status(): unknown; update(): Promise<unknown>; add(name: unknown, url: unknown): Promise<unknown>; remove(id: unknown): unknown };
+  filters: { status(): unknown; update(): Promise<unknown>; add(name: unknown, url: unknown): Promise<unknown>;
+    remove(id: unknown): unknown; setEnabled(id: unknown, enabled: unknown): Promise<unknown> };
   broadcast(channel: string, payload: unknown): void;
   clearSiteDataPrompt: { title: string; detail: string };
 }
@@ -57,6 +59,7 @@ export function wirePrivacyHandlers(handle: Handle, store: PrivacyStore) {
       cookieCount: cookies.length,
       permissions: { ...store.permissions()[url.origin] },
       trackersAllowed: store.trackersAllowed(url.hostname),
+      blockedCount: store.blockedForSite(url.hostname),
     };
   });
   handle("app.sitePermissions", () => store.permissions());
@@ -97,6 +100,7 @@ export function wirePrivacyHandlers(handle: Handle, store: PrivacyStore) {
   handle("app.updateFilters", () => store.filters.update());
   handle("app.addFilterSource", (_, name: unknown, url: unknown) => store.filters.add(name, url));
   handle("app.removeFilterSource", (_, id: unknown) => store.filters.remove(id));
+  handle("app.setFilterSourceEnabled", (_, id: unknown, enabled: unknown) => store.filters.setEnabled(id, enabled));
   handle("app.proceedInsecure", (_, url: unknown) => {
     if (typeof url !== "string") throw new Error("An HTTPS address is required.");
     store.insecureBypass.proceed(url);

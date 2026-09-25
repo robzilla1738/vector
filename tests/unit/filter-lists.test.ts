@@ -63,6 +63,18 @@ describe("FilterLists", () => {
     writeFileSync(join(dataDir, "filters", `${b!.id}.txt`), "0.0.0.0 b1.example\n0.0.0.0 a2.example\n");
     lists.saveSources(lists.sources().map(s => s.id === b!.id ? { ...s, enabled: false } : s));
     expect(lists.loadHosts()).toEqual(new Set(["a1.example", "a2.example"]));
+    lists.setEnabled(b!.id, true);
+    expect(lists.loadHosts()).toEqual(new Set(["a1.example", "a2.example", "b1.example"]));
+  });
+
+  it("ignores forged source IDs before using them as cache paths", () => {
+    const { dataDir, lists } = setup();
+    writeFileSync(join(dataDir, "filters", "sources.json"), JSON.stringify([
+      { id: "../escape", name: "Forged", url: "https://lists.example.test/hosts", enabled: true },
+    ]));
+    expect(lists.sources()).toEqual([]);
+    expect(() => lists.removeSource("../escape")).toThrow(/saved filter list/);
+    expect(() => lists.setEnabled("../escape", true)).toThrow(/saved filter list/);
   });
 
   it("parses lists off the main thread with the same merge", async () => {
@@ -100,6 +112,15 @@ describe("FilterLists", () => {
     expect(lists.loadHosts()).toEqual(new Set(["good.example"]));
     expect(lists.meta(id)?.error).toMatch(/hosts filter list/);
     expect(existsSync(join(dataDir, "filters", `${id}.txt`))).toBe(true);
+  });
+
+  it("does not accept a 304 when no cached list exists", async () => {
+    const { lists } = setup();
+    lists.addSource("A", "https://a.example/hosts");
+    const id = lists.sources()[0]!.id;
+    await lists.update(async () => ({ status: 304, text: async () => "" }));
+    expect(lists.meta(id)?.error).toMatch(/cached filter list is unavailable/);
+    expect(lists.loadHosts().size).toBe(0);
   });
 
   it("reports per-source status for the settings surface", async () => {

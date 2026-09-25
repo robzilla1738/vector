@@ -241,7 +241,7 @@ export function SiteControls() {
                 <span>
                   {info.trackersAllowed
                     ? "Paused on this site"
-                    : "Blocking — turn off if this site looks broken"}
+                    : `${info.blockedCount} request${info.blockedCount === 1 ? "" : "s"} blocked for this site this session`}
                 </span>
               </div>
               <button

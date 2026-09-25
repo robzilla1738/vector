@@ -8,6 +8,7 @@ import { FilterLists } from "../filter-lists.js";
 import { HttpsFirst } from "../https-first.js";
 import { createInsecureBypass } from "../insecure-bypass.js";
 import { TRACKER_HOSTS } from "../tracker-hosts.js";
+import { BlockedCountState } from "@aux/contracts";
 
 export const SITE_PERMISSIONS_FILE = join(DATA_DIR, "site-permissions.json");
 export type PermissionDecision = "allow" | "deny";
@@ -42,7 +43,11 @@ export let privacy: PrivacyState = (() => {
   }
 })();
 export let blockedRequests = 0;
-export const noteBlockedRequest = () => { blockedRequests += 1; };
+export const blockedCounts = new BlockedCountState();
+export const noteBlockedRequest = (_url: string, siteHost: string) => {
+  blockedCounts.note(siteHost);
+  blockedRequests = blockedCounts.total;
+};
 export const insecureBypass = createInsecureBypass();
 export const httpsFirst = new HttpsFirst();
 httpsFirst.enabled = privacy.httpsUpgrade;
@@ -70,7 +75,14 @@ export const filterOps = {
   remove: (id: unknown) => {
     if (typeof id !== "string") throw new Error("Choose a filter list to remove.");
     const sources = filterLists.removeSource(id);
-    void refreshBlockedHosts();
+    return refreshBlockedHosts().then(() => sources);
+  },
+  setEnabled: async (id: unknown, enabled: unknown) => {
+    if (typeof id !== "string" || typeof enabled !== "boolean")
+      throw new Error("Choose a filter list and whether it is enabled.");
+    const sources = filterLists.setEnabled(id, enabled);
+    if (enabled) await filterLists.update(fetchFilterText);
+    await refreshBlockedHosts();
     return sources;
   },
 };
@@ -109,11 +121,11 @@ export function trackersAllowed(hostname: string): boolean {
 // First run seeds one maintained list; afterwards lists refresh in the
 // background when the newest copy is over a day old. Startup never waits —
 // the built-in seed plus whatever is already cached always applies.
-export const DEFAULT_FILTER_SOURCE = { name: "StevenBlack unified hosts", url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts" };
 export const FILTER_STALE_MS = 24 * 60 * 60 * 1000;
 export function maintainFilterLists() {
   try {
-    if (!filterLists.sources().length) filterLists.addSource(DEFAULT_FILTER_SOURCE.name, DEFAULT_FILTER_SOURCE.url);
+    // Network lists are installed only after the user selects them in Settings.
+    if (!filterLists.sources().some(source => source.enabled)) return;
     const stale = filterLists.status(TRACKER_HOSTS.size).sources
       .every(source => !source.enabled || !source.meta?.fetchedAt || Date.now() - source.meta.fetchedAt > FILTER_STALE_MS);
     if (!stale) return;

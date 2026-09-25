@@ -4,6 +4,7 @@ import { saveWorkbookSnapshot } from "./save-workbook.js";
 import { trafficLights } from "./traffic-lights.js";
 import { showNavigationMenu } from "./navigation-menu.js";
 import { splitRatio as normalizeSplitRatio, splitWidths } from "@aux/contracts/split-layout";
+import { BlockedCountState } from "@aux/contracts";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SiteZoomPreferences } from "./site-zoom.js";
 import { installSitePermissions } from "./site-permissions.js";
@@ -145,6 +146,7 @@ const privateDataDir = process.env.AUX_PRIVATE_DATA_DIR ?? "";
 const privateFilterLists = privateDataDir ? new FilterLists(privateDataDir) : null;
 let privateTrackerBlock = process.env.AUX_PRIVATE_TRACKER_BLOCK !== "0";
 let privateBlockedCount = 0;
+const privateBlockedCounts = new BlockedCountState();
 const privateAllowed = new Set((process.env.AUX_PRIVATE_ALLOWED ?? "").split(",").map(host => host.trim().toLowerCase()).filter(Boolean));
 let privateBlockedHosts = new Set<string>(TRACKER_HOSTS);
 const privateHttpsFirst = new HttpsFirst();
@@ -416,7 +418,10 @@ function configurePermissions() {
     blockingEnabled: () => privateTrackerBlock,
     blockedHosts: () => privateBlockedHosts,
     hostAllowed: privateTrackersAllowed,
-    onBlocked: () => { privateBlockedCount += 1; },
+    onBlocked: (_url, siteHost) => {
+      privateBlockedCounts.note(siteHost);
+      privateBlockedCount = privateBlockedCounts.total;
+    },
   });
   // Same per-host, session-only certificate bypass as regular browsing —
   // decisions stay in this process's memory and die with the window.
@@ -617,6 +622,7 @@ function registerIpc() {
   wirePrivacyHandlers(<A extends unknown[]>(channel: string, fn: (scope: PrivacyScope, ...args: A) => unknown) => ipcMain.handle(channel, (event, ...args) => { requireShell(event); return fn(privateScope, ...(args as A)); }), {
     settings: () => ({ trackerBlock: privateTrackerBlock, allowedHosts: [...privateAllowed], httpsUpgrade: privateHttpsFirst.enabled }),
     blocked: () => privateBlockedCount,
+    blockedForSite: hostname => privateBlockedCounts.forSite(hostname),
     update: next => { privateTrackerBlock = next.trackerBlock; privateAllowed.clear(); for (const host of next.allowedHosts) privateAllowed.add(host); privateHttpsFirst.enabled = next.httpsUpgrade; },
     httpsFirst: privateHttpsFirst,
     insecureBypass: privateInsecureBypass,
@@ -625,10 +631,12 @@ function registerIpc() {
     permissions: () => permissionDecisions,
     savePermissions: next => { permissionDecisions = next; },
     filters: {
-      status: () => privateFilterLists ? privateFilterLists.status(TRACKER_HOSTS.size) : { sources: [], hosts: 0, builtinHosts: TRACKER_HOSTS.size },
+      status: () => privateFilterLists ? privateFilterLists.status(TRACKER_HOSTS.size) :
+        { sources: [], hosts: 0, builtinHosts: TRACKER_HOSTS.size, backend: "electron_web_request" },
       update: () => privateFilterOp({ action: "update" }, true),
       add: (name, url) => privateFilterOp({ action: "add", args: { name, url } }),
       remove: id => privateFilterOp({ action: "remove", args: { id } }),
+      setEnabled: (id, enabled) => privateFilterOp({ action: "setEnabled", args: { id, enabled } }),
     },
     broadcast: (channel, payload) => shellView?.webContents.send(channel, payload),
     clearSiteDataPrompt: {

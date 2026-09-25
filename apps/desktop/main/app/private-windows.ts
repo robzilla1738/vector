@@ -59,7 +59,9 @@ export function openPrivateWindow() {
         try {
           if (action === "update") payload = { ok: true, result: await filterOps.update() };
           else if (action === "add") payload = { ok: true, result: await filterOps.add(payloadArgs.name, payloadArgs.url) };
-          else if (action === "remove") payload = { ok: true, result: filterOps.remove(payloadArgs.id) };
+          else if (action === "remove") payload = { ok: true, result: await filterOps.remove(payloadArgs.id) };
+          else if (action === "setEnabled") payload = { ok: true,
+            result: await filterOps.setEnabled(payloadArgs.id, payloadArgs.enabled) };
           else throw new Error("Unsupported filter action.");
         } catch (error) {
           payload = { ok: false, error: error instanceof Error ? error.message : String(error) };

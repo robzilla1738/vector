@@ -1,6 +1,6 @@
 import { registry } from "../app/services.js";
 import { type PrivacyScope, wirePrivacyHandlers } from "../privacy/ipc.js";
-import { applyCosmeticAll, blockedRequests, filterOps, httpsFirst, insecureBypass, privacy, savePrivacy, saveSitePermissions, sitePermissions, trackersAllowed } from "../privacy/state.js";
+import { applyCosmeticAll, blockedCounts, blockedRequests, filterOps, httpsFirst, insecureBypass, privacy, savePrivacy, saveSitePermissions, sitePermissions, trackersAllowed } from "../privacy/state.js";
 import { type RegularWindowState, broadcastToShells, handleShell, requireOwnedEntry } from "../windows/registry.js";
 
 const scope = (state: RegularWindowState): PrivacyScope => ({
@@ -15,6 +15,7 @@ export function wirePrivacyIpc() {
   wirePrivacyHandlers(<A extends unknown[]>(channel: string, fn: (scope: PrivacyScope, ...args: A) => unknown) => handleShell<A>(channel, (state, ...args) => fn(scope(state), ...args)), {
     settings: () => privacy,
     blocked: () => blockedRequests,
+    blockedForSite: hostname => blockedCounts.forSite(hostname),
     update: next => { savePrivacy(next); httpsFirst.enabled = next.httpsUpgrade; },
     httpsFirst,
     insecureBypass,

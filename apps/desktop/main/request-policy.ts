@@ -16,7 +16,7 @@ export interface PolicyHooks {
   blockedHosts(): ReadonlySet<string>;
   /** Site hosts where the user allowed trackers/ads. */
   hostAllowed(hostname: string): boolean;
-  onBlocked?(url: string): void;
+  onBlocked?(url: string, siteHost: string): void;
 }
 
 /** Suffix matcher: a host is blocked when it equals, or sits under, a listed domain. */
@@ -91,7 +91,7 @@ export function decideRequest(details: OnBeforeRequestListenerDetails, hooks: Po
   if (!host || !blockedCached(hooks.blockedHosts(), host)) return {};
   const site = siteHost(details);
   if (site && hooks.hostAllowed(site)) return {};
-  hooks.onBlocked?.(url);
+  hooks.onBlocked?.(url, site);
   return { cancel: true };
 }
 
