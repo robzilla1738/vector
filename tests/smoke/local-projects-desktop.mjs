@@ -322,14 +322,16 @@ try{
  assert.equal(readFileSync(join(project.path,'index.html'),'utf8'),'<h1>Edited in Aux</h1>\n','Removing a reference must not delete work');
  await tasks.locator('.local-projects > summary').click();await tasks.getByRole('button',{name:'Attach to task',exact:true}).click();await tasks.getByText('Revision 4',{exact:true}).waitFor();
  const contextTask=savedRuns[0].task.taskId;
- await assert.rejects(page.evaluate(({id,taskId})=>window.aux.runProjectCommand(id,'printf NEVER',{taskId,expectedRevision:2}),{id:project.projectId,taskId:contextTask}),/revision changed/);
+ const commandCountBeforeStale=(await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId)).length;
+ await assert.rejects(page.evaluate(({id,taskId})=>window.aux.runProjectCommand(id,'printf NEVER',{taskId,expectedRevision:2}),{id:project.projectId,taskId:contextTask}),/The state changed before this action completed\./);
+ assert.equal((await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId)).length,commandCountBeforeStale,'Stale task revisions must not launch a command');
  await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>new Promise(resolve=>{globalThis.__auxPendingApproval=resolve;});});
  const pending=page.evaluate(({id,taskId})=>window.aux.runProjectCommand(id,'printf NEVER',{taskId,expectedRevision:4}),{id:project.projectId,taskId:contextTask});
  const rejected=pending.then(()=>({rejected:false}),error=>({rejected:true,message:String(error)}));
  await until(()=>app.evaluate(()=>typeof globalThis.__auxPendingApproval==='function'));
  await page.evaluate(taskId=>window.aux.invoke('tasks.update',{taskId,expectedRevision:4,objective:'Revised while approval is open'}),contextTask);
  await app.evaluate(()=>{globalThis.__auxPendingApproval({response:1,checkboxChecked:false});delete globalThis.__auxPendingApproval;});
- const result=await rejected;assert.equal(result.rejected,true);assert.match(result.message,/revision changed/);
+ const result=await rejected;assert.equal(result.rejected,true);assert.match(result.message,/The state changed before this action completed\./);
  assert.equal((await page.evaluate(id=>window.aux.listProjectCommands(id),project.projectId)).length,savedRuns.length,'Approval must not launch a command after the task changed');
  console.log('PASS: native selection/cancel, reviewed dirty source, isolated checkout, attachment, refresh, restart, detach/re-attach without file loss');
 }catch(error){console.error('Project UI error',error,await page?.getByRole('alert').allTextContents(),await page?.evaluate(()=>window.aux.listProjects()).catch(()=>[]),await describeFailure());throw error;}finally{if(app)await app.close();for(let i=0;;i++){try{rmSync(temp,{recursive:true,force:true});break;}catch(cleanupError){if(i>=9)throw cleanupError;await new Promise(r=>setTimeout(r,300));}}}
