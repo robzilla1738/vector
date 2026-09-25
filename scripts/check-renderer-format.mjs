@@ -19,6 +19,8 @@ const files = [
   "apps/desktop/renderer/src/components/SpaceEditor.tsx",
   "apps/desktop/renderer/src/components/ResizeHandle.tsx",
   "apps/desktop/renderer/src/components/ResizeHandle.test.tsx",
+  "apps/desktop/renderer/src/components/RoutineSchedule.tsx",
+  "apps/desktop/renderer/src/components/RoutineSchedule.test.tsx",
   "apps/desktop/renderer/src/styles/space-grain.css",
 ];
 

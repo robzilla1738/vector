@@ -4,7 +4,7 @@ import type { CalendarTaskGrant, Routine, RoutineAlert, RoutineCompare, RoutineP
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
-import { RoutineSchedule, routineScheduleSummary } from "./RoutineSchedule";
+import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts } from "./RoutineSchedule";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore(state => state.pages.find(page => page.pageId === state.activePageId)?.url);
@@ -12,6 +12,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
   const [comparison, setComparison] = useState<RoutineCompare | null>(null);
   const [selected, setSelected] = useState<{ routine: Routine; runs: RoutineRun[] } | null>(null);
+  const [calendarAccounts, setCalendarAccounts] = useState<CalendarTriggerAccounts>({ status: "loading", choices: [] });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState("");
@@ -49,6 +50,33 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [workspaceId]);
+  useEffect(() => {
+    const routine = selected?.routine;
+    if (!routine) return;
+    const scopeKey = `${routine.routineId}:${routine.revision}`;
+    if (!routine.sourceTaskId || !routine.sourceTaskRevision) return;
+    let active = true;
+    void Promise.all([
+      call("calendar.connections.list", {}),
+      call("calendar.taskGrants.list", { taskId: routine.sourceTaskId }),
+    ]).then(([connections, grants]) => {
+      if (!active) return;
+      const allowed = new Set(grants.filter(grant => grant.taskRevision === routine.sourceTaskRevision
+        && !grant.revokedAt && routine.calendarGrantIds.includes(grant.grantId)).map(grant => grant.connectionId));
+      const choices = connections.connections.filter(account => account.state === "active"
+        && allowed.has(account.connectionId));
+      let message: string | undefined;
+      if (!connections.available) message = connections.reason ?? "Calendar is unavailable in this profile.";
+      else if (!connections.connections.length) message = "No Calendar account is connected. Connect one in Settings → Connections, then grant it to this task and Skill.";
+      else if (!allowed.size) message = "Grant a Calendar account to this task revision and allow it for this Skill below.";
+      else if (!choices.length) message = "Reconnect the Calendar account allowed for this Skill in Settings → Connections.";
+      setCalendarAccounts({ status: "ready", choices, message, scopeKey });
+    }).catch(reason => {
+      if (active) setCalendarAccounts({ status: "error", choices: [], scopeKey,
+        message: `Calendar accounts could not be loaded. ${reason instanceof Error ? reason.message : String(reason)}` });
+    });
+    return () => { active = false; };
+  }, [selected]);
   async function action(work: () => Promise<void>) {
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusy(true); setError(""); setNotice("");
@@ -68,6 +96,10 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const matchesCurrentSite = (item: Routine) => !!currentOrigin && !!item.sourceTaskId && !item.archivedAt && item.siteOrigins.includes(currentOrigin);
   const visibleRoutines = routines.filter(item => (status === "all" || (status === "archived" ? !!item.archivedAt : !item.archivedAt && (status === "paused" ? item.paused : !item.paused))) && `${item.title} ${item.objective} ${item.outputHint ?? ""}`.toLowerCase().includes(query.toLowerCase()))
     .sort((left, right) => Number(matchesCurrentSite(right)) - Number(matchesCurrentSite(left)) || right.updatedAt - left.updatedAt);
+  const selectedCalendar: CalendarTriggerAccounts = !selected?.routine.sourceTaskId || !selected.routine.sourceTaskRevision
+    ? { status: "ready", choices: [], message: "Bind this Skill to a saved task before choosing a Calendar account." }
+    : calendarAccounts.scopeKey === `${selected.routine.routineId}:${selected.routine.revision}`
+      ? calendarAccounts : { status: "loading", choices: [] };
   return <section className="routines-section" aria-label="Skills" aria-busy={loading || busy}>
     <div className="routines-heading"><div><h4>Skills</h4><p className="hint">Saved work you can revise, rerun, or schedule.</p></div><div className="row">{task && <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
       const routine = await call("routines.fromResult", { taskId: task.taskId, title: title || task.title, parameters: [] });
@@ -132,7 +164,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         <button className="btn sm" disabled={busy || (selected.routine.paused && !selected.routine.sourceTaskId)} onClick={() => void action(async () => { await call("routines.pause", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, paused: !selected.routine.paused }); await refresh(selected.routine.routineId); })}>{selected.routine.paused ? "Resume" : "Pause"}</button>
         {selected.runs.length >= 2 && <button className="btn sm" disabled={busy} onClick={() => void action(async () => { setComparison(await call("routines.compare", { leftRunId: selected.runs[1]!.routineRunId, rightRunId: selected.runs[0]!.routineRunId })); })}>Compare latest two runs</button>}
       </div>
-      <RoutineSchedule key={`${selected.routine.routineId}:${selected.routine.revision}`} trigger={selected.routine.trigger} disabled={busy || !!selected.routine.archivedAt} onSave={trigger => void action(async () => {
+      <RoutineSchedule key={`${selected.routine.routineId}:${selected.routine.revision}`} trigger={selected.routine.trigger} disabled={busy || !!selected.routine.archivedAt} calendar={selectedCalendar} onSave={trigger => void action(async () => {
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, trigger });
         await refresh(selected.routine.routineId);
       })} />
