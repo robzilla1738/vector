@@ -70,7 +70,10 @@ export function nextScheduledTime(trigger: Extract<RoutineTrigger, { kind: "sche
     const candidate = from + offset * 60_000;
     const day = weekdayInZone(candidate, trigger.timezone);
     const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
-    if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute) return candidate - (candidate % 60_000);
+    if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute) {
+      const occurrence = candidate - (candidate % 60_000);
+      if (occurrence >= from) return occurrence;
+    }
   }
   throw new AuxError("invalid_params", "Could not compute the next scheduled occurrence.");
 }

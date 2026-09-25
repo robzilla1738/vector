@@ -253,6 +253,13 @@ it("does not mark a dispatch in progress in this service as orphaned", async () 
   expect((await pending).status).toBe("running");
 });
 
+it("schedules the next future minute when created inside the matching minute", () => {
+  const trigger = { kind: "schedule" as const, timezone: "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] };
+  const fridayStart = Date.UTC(2026, 8, 25, 9, 0);
+  expect(nextScheduledTime(trigger, fridayStart)).toBe(fridayStart);
+  expect(nextScheduledTime(trigger, fridayStart + 30_000)).toBe(Date.UTC(2026, 8, 28, 9, 0));
+});
+
 it("does not dispatch a reviewed schedule after its task scope changes", async () => {
   let calls = 0;
   const f = fixture(async () => { calls += 1; return { runId: "unexpected" }; });
