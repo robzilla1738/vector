@@ -55,6 +55,7 @@ import { authorizeProgram } from "../agent/permissions.js";
 import { AgentTurnTabs } from "../agent/turn-tabs.js";
 import { siteExportUrl } from "../agent/site-adapters.js";
 import { OutboundMcpService, type McpTransportProvider } from "../services/outbound-mcp.js";
+import { ConnectorCatalogService } from "../services/connectors.js";
 import type { MemoryPipeline } from "../services/memory-pipeline.js";
 import { SubagentService } from "../services/subagents.js";
 
@@ -111,6 +112,8 @@ export function makeInvoker(s: Services) {
   const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
   const subagents = new SubagentService(s.repo, s.events, s.runs);
   const tasks = new TaskService(s.repo, s.events);
+  const connectorCatalog = new ConnectorCatalogService({ repo: s.repo, tasks, settings: s.settings,
+    calendar: s.calendar, mcp: outboundMcp });
   const browsingMemory = new BrowsingMemory(s.repo);
   browsingMemory.prune();
   const revokeWorkspaceContext = (workspaceId: string, browsingOnly: boolean) => {
@@ -446,6 +449,9 @@ export function makeInvoker(s: Services) {
         if (client.external && !scope) throw new AuxError("permission_denied", "Calendar task reads require a scoped connection.");
         if (!s.operations) throw new AuxError("backend_unavailable", "Calendar operations are unavailable.");
         return (await s.operations.invokeCalendarTaskEvents(params)).result;
+      case "connectors.catalog":
+        if (client.external) throw new AuxError("permission_denied", "Connector accounts and grants are reviewed in Aux.");
+        return connectorCatalog.list(params);
       case "agentConnections.list":
         if (client.external) throw new AuxError("permission_denied", "Connections can only be managed in Aux Settings");
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
@@ -717,8 +723,9 @@ export function makeInvoker(s: Services) {
       }
       case 'development.inspect':tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().inspectProject(params.projectId);
       case 'development.githubStatus':{
-        tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);const status=await s.settings.githubRepository(await developmentNative().githubProject(params.projectId));
-        tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);return developmentNative().recordGithubStatus(params.projectId,status);
+        if (!s.operations) throw new AuxError('backend_unavailable','Connector operation journal is unavailable.');
+        return s.operations.invokeGithubProjectStatus({ taskId: params.taskId, taskRevision: params.expectedRevision,
+          projectId: params.projectId }, { settings: s.settings, native: developmentNative() });
       }
       case 'development.operationsStatus':{
         tasks.prepareProjectAccess(params.taskId,params.expectedRevision,params.projectId);const status=await s.settings.operationsStatus();

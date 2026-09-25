@@ -13,6 +13,7 @@ export * from "./tasks.js";
 export * from "./spaces.js";
 export * from "./agent-connections.js";
 export * from "./calendar.js";
+export * from "./connectors.js";
 export * from "./vault.js";
 export * from "./routines.js";
 export * from "./goals.js";

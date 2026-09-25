@@ -40,6 +40,7 @@ import { OutboundMcpRegisterParams, OutboundMcpGrantParams, OutboundMcpServerSch
 import { MemoryPipelinePolicySchema, MemoryPipelineOverviewSchema, MemoryPipelineForgetParams, MemoryPipelineForgetResultSchema, MemoryClaimSchema } from "./memory-pipeline.js";
 import { SubagentGroupCreateParams, SubagentGroupSchema, SubagentGroupViewSchema, SubagentSpawnParams, SubagentSchema, SubagentMessageParams } from "./subagents.js";
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
+import { ConnectorCatalogSchema } from "./connectors.js";
 import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
@@ -802,6 +803,9 @@ export const MethodSchemas = {
   "calendar.taskGrants.create": z.object({ taskId: z.string().uuid(), expectedRevision: z.number().int().positive(), connectionId: z.string().uuid() }).strict(),
   "calendar.taskGrants.revoke": z.object({ taskId: z.string().uuid(), grantId: z.string().uuid() }).strict(),
   "calendar.taskEvents.list": CalendarTaskEventsQuerySchema,
+  "connectors.catalog": z.object({ workspaceId: id, taskId: z.string().uuid().optional(),
+    expectedRevision: z.number().int().positive().optional() }).strict().refine(value =>
+      (value.taskId === undefined) === (value.expectedRevision === undefined), "Task and revision must be supplied together."),
   "pages.list": PagesListParams,
   "pages.open": PagesOpenParams,
   "pages.close": PagesCloseParams,
@@ -1253,6 +1257,7 @@ export const ResultSchemas = {
   "calendar.taskGrants.create": CalendarTaskGrantSchema,
   "calendar.taskGrants.revoke": z.object({ ok: z.literal(true) }),
   "calendar.taskEvents.list": z.object({ events: z.array(CalendarEventSchema), nextPageToken: z.string().optional(), fetchedAt: z.number().int().nonnegative() }),
+  "connectors.catalog": ConnectorCatalogSchema,
   "pages.list": z.array(PageTargetSchema),
   "pages.open": PageTargetSchema,
   "pages.close": z.object({ ok: z.boolean() }),

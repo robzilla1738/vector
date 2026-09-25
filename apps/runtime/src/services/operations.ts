@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AuxError, type CalendarTaskEventsQuery, type Observation, type Predicate, type Program, type ProgramResult, type ProjectEffectName, type Step } from "@aux/contracts";
+import { AuxError, type CalendarTaskEventsQuery, type Observation, type Predicate, type Program, type ProgramResult, type ProjectEffectName, type ProjectGithubStatus, type Step } from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
 import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
@@ -9,6 +9,8 @@ import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
+import type { SettingsService } from "./settings.js";
+import type { NativeBridge } from "../native.js";
 import { TaskService } from "./tasks.js";
 import { operationInputFingerprint } from "@aux/contracts/operation-input-stats";
 import { PROJECT_EFFECT_ACCESS } from "./project-effects.js";
@@ -58,7 +60,12 @@ const CONNECTOR_SITE = "aux.connector.google-calendar";
 const CONNECTOR_NAME = "events.list";
 const CONNECTOR_OPERATION_ID = "aux-connector-google-calendar-events-list";
 const CONNECTOR_IMPL_ID = "aux-connector-google-calendar-readonly";
+const GITHUB_CONNECTOR_SITE = "aux.connector.github";
+const GITHUB_CONNECTOR_NAME = "repository.status";
+const GITHUB_CONNECTOR_OPERATION_ID = "aux-connector-github-repository-status";
+const GITHUB_CONNECTOR_IMPL_ID = "aux-connector-github-repository-readonly";
 const PROJECT_SITE = "aux.project";
+const reservedSystemSite = (siteKey: string) => siteKey.startsWith("aux.connector.") || siteKey === PROJECT_SITE;
 const PROJECT_EFFECT: Record<ProjectEffectName, "write" | "destructive" | "egress"> = {
   "file.write": "write", "file.create": "write", "file.rename": "write", "file.delete": "destructive",
   "command.start": "destructive", "command.stop": "destructive", "commit.create": "write",
@@ -118,15 +125,20 @@ export class OperationService {
     },
   ) {}
 
-  private connectorOperation() {
-    const existing = this.deps.repo.getOperation(CONNECTOR_SITE, CONNECTOR_NAME);
-    if (existing && existing.operationId !== CONNECTOR_OPERATION_ID)
-      throw new AuxError("conflict", "The reserved Calendar operation key is already in use.");
-    if (!existing) this.deps.repo.saveOperation({ operationId: CONNECTOR_OPERATION_ID, siteKey: CONNECTOR_SITE,
-      name: CONNECTOR_NAME, description: "Read events from one task-granted Google Calendar account", effectClass: "read" });
-    if (!this.deps.repo.listImplementations(CONNECTOR_OPERATION_ID).some(impl => impl.implId === CONNECTOR_IMPL_ID))
-      this.deps.repo.saveImplementation({ implId: CONNECTOR_IMPL_ID, operationId: CONNECTOR_OPERATION_ID,
-        kind: "connector-read", executable: JSON.stringify({ provider: "google-calendar", method: "events.list" }), state: "validated" });
+  private connectorOperation(spec: { site: string; name: string; operationId: string; implId: string;
+    description: string; provider: string; method: string }) {
+    const existing = this.deps.repo.getOperation(spec.site, spec.name);
+    if (existing && (existing.operationId !== spec.operationId || existing.effectClass !== "read"))
+      throw new AuxError("conflict", "The reserved connector operation key is already in use.");
+    if (!existing) this.deps.repo.saveOperation({ operationId: spec.operationId, siteKey: spec.site,
+      name: spec.name, description: spec.description, effectClass: "read" });
+    const impl = this.deps.repo.listImplementations(spec.operationId).find(item => item.implId === spec.implId);
+    if (impl && (impl.kind !== "connector-read" || impl.state !== "validated" ||
+      impl.executable !== JSON.stringify({ provider: spec.provider, method: spec.method })))
+      throw new AuxError("conflict", "The reserved connector implementation changed.");
+    if (!impl)
+      this.deps.repo.saveImplementation({ implId: spec.implId, operationId: spec.operationId,
+        kind: "connector-read", executable: JSON.stringify({ provider: spec.provider, method: spec.method }), state: "validated" });
   }
 
   /** A sealed provider route. Task authority is rechecked immediately before and after the network read. */
@@ -140,7 +152,9 @@ export class OperationService {
       (!run || item.taskRevision === run.config?.taskRevision));
     if (!grant) throw new AuxError("permission_denied", "That Calendar account is not granted to this task revision.");
     if (opts.signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
-    this.connectorOperation();
+    this.connectorOperation({ site: CONNECTOR_SITE, name: CONNECTOR_NAME, operationId: CONNECTOR_OPERATION_ID,
+      implId: CONNECTOR_IMPL_ID, description: "Read events from one task-granted Google Calendar account",
+      provider: "google-calendar", method: "events.list" });
     const invocationId = newId("inv"), startedAt = Date.now();
     const record = (status: string, error?: string, effectOutcome = "not-applicable", endedAt?: number) =>
       this.deps.repo.saveInvocation({ invocationId, operationId: CONNECTOR_OPERATION_ID, implId: CONNECTOR_IMPL_ID,
@@ -156,6 +170,50 @@ export class OperationService {
       const safe = error instanceof AuxError ? error : new AuxError("backend_unavailable", "Calendar read failed.");
       record(safe.code === "cancelled" ? "interrupted" : "failed", safe.message, "not-applicable", Date.now());
       this.deps.events.emit("operation.invoked", { invocationId, operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`, kind: "connector-read", status: "failed", error: safe.message });
+      throw safe;
+    }
+  }
+
+  /** GitHub shares the sealed connector journal; the task's reviewed project remains its only resource grant. */
+  async invokeGithubProjectStatus(input: { taskId: string; taskRevision: number; projectId: string },
+    deps: { settings: SettingsService; native: Pick<NativeBridge, "githubProject" | "recordGithubStatus"> }): Promise<ProjectGithubStatus> {
+    const tasks = new TaskService(this.deps.repo, this.deps.events);
+    const check = () => tasks.prepareProjectAccess(input.taskId, input.taskRevision, input.projectId);
+    check();
+    const github = deps.settings.githubConnector();
+    if (!github.connected) throw new AuxError("needs_input", "Connect GitHub in Settings before checking this repository.");
+    const checkCredential = () => {
+      const current = deps.settings.githubConnector();
+      if (!current.connected || current.credentialVersion !== github.credentialVersion)
+        throw new AuxError("conflict", "The GitHub connection changed during this check. Try again.");
+    };
+    if (!deps.native.githubProject || !deps.native.recordGithubStatus)
+      throw new AuxError("backend_unavailable", "GitHub project checks require the Aux desktop app.");
+    this.connectorOperation({ site: GITHUB_CONNECTOR_SITE, name: GITHUB_CONNECTOR_NAME,
+      operationId: GITHUB_CONNECTOR_OPERATION_ID, implId: GITHUB_CONNECTOR_IMPL_ID,
+      description: "Read GitHub status for a task-attached local project", provider: "github", method: "repository.status" });
+    const invocationId = newId("inv"), startedAt = Date.now();
+    const inputs = { taskId: input.taskId, taskRevision: input.taskRevision, projectId: input.projectId };
+    const record = (status: string, error?: string, effectOutcome = "not-applicable", endedAt?: number) =>
+      this.deps.repo.saveInvocation({ invocationId, operationId: GITHUB_CONNECTOR_OPERATION_ID, implId: GITHUB_CONNECTOR_IMPL_ID,
+        inputs, status, effectOutcome, routeReason: "saved GitHub credential and task-attached project", startedAt, endedAt, error });
+    record("running");
+    try {
+      const identity = await deps.native.githubProject(input.projectId);
+      check(); checkCredential();
+      const status = await deps.settings.githubRepository(identity);
+      check(); checkCredential();
+      const result = await deps.native.recordGithubStatus(input.projectId, status);
+      check(); checkCredential();
+      record("completed", undefined, "observed", Date.now());
+      this.deps.events.emit("operation.invoked", { invocationId, operation: `${GITHUB_CONNECTOR_SITE}/${GITHUB_CONNECTOR_NAME}`,
+        kind: "connector-read", status: "completed" });
+      return result;
+    } catch (error) {
+      const safe = error instanceof AuxError ? error : new AuxError("backend_unavailable", "GitHub repository check failed.");
+      record("failed", safe.message, "not-applicable", Date.now());
+      this.deps.events.emit("operation.invoked", { invocationId, operation: `${GITHUB_CONNECTOR_SITE}/${GITHUB_CONNECTOR_NAME}`,
+        kind: "connector-read", status: "failed", error: safe.message });
       throw safe;
     }
   }
@@ -219,7 +277,7 @@ export class OperationService {
     effectClass?: "read" | "write" | "destructive";
     guards?: Record<string, unknown>;
   }) {
-    if (opts.siteKey === CONNECTOR_SITE || opts.siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "System operations are managed by Aux.");
+    if (reservedSystemSite(opts.siteKey)) throw new AuxError("permission_denied", "System operations are managed by Aux.");
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
     this.deps.repo.saveOperation({
@@ -268,7 +326,7 @@ export class OperationService {
     guards?: Record<string, unknown>;
     validated?: boolean;
   }) {
-    if (opts.siteKey === CONNECTOR_SITE || opts.siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "System operations are managed by Aux.");
+    if (reservedSystemSite(opts.siteKey)) throw new AuxError("permission_denied", "System operations are managed by Aux.");
     let destination:URL;try{destination=new URL(opts.url);}catch{throw new AuxError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
     if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new AuxError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
     if(destination.host!==opts.siteKey)throw new AuxError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
@@ -353,7 +411,7 @@ export class OperationService {
   }
 
   forget(siteKey: string, name: string) {
-    if (siteKey === CONNECTOR_SITE || siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "System operations are managed by Aux.");
+    if (reservedSystemSite(siteKey)) throw new AuxError("permission_denied", "System operations are managed by Aux.");
     const op = this.get(siteKey, name);
     this.deps.repo.deleteOperation(op.operationId);
     return { ok: true as const };
@@ -501,7 +559,7 @@ export class OperationService {
     implId?: string; // explicit override — bypasses route selection
     requestKey?: string; // §16.4 idempotency key
   }): Promise<{ invocationId: string; status: string; route: RouteDecision; result?: ProgramResult | unknown; error?: string; deduplicated?: boolean }> {
-    if (opts.siteKey === CONNECTOR_SITE || opts.siteKey === PROJECT_SITE) throw new AuxError("permission_denied", "Use the task-scoped system route for this operation.");
+    if (reservedSystemSite(opts.siteKey)) throw new AuxError("permission_denied", "Use the task-scoped system route for this operation.");
     const op = this.deps.repo.getOperation(opts.siteKey, opts.name);
     if (!op) throw new AuxError("not_found", `no operation ${opts.siteKey}/${opts.name}`);
 

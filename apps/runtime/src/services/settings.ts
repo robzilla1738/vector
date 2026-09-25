@@ -93,6 +93,7 @@ export class SettingsService {
   private directErrors: Partial<Record<ModelProvider, string>> = {};
   private credentialError: string | undefined;
   private githubKey: string | undefined;
+  private githubCredentialVersion = 0;
   private githubError: string | undefined;
   private vercelKey: string | undefined;
   private vercelError: string | undefined;
@@ -132,8 +133,8 @@ export class SettingsService {
         delete this.directErrors[provider];
       } catch { this.directErrors[provider] = "Saved credential is unavailable. Re-enter this provider's key in Settings."; }
     }
-    try { this.githubKey=(await this.native.readSecret('githubToken')).value;this.githubError=undefined; }
-    catch { this.githubError='Saved GitHub credential is unavailable. Re-enter it in Settings.'; }
+    try { this.githubKey=(await this.native.readSecret('githubToken')).value;this.githubCredentialVersion++;this.githubError=undefined; }
+    catch { this.githubKey=undefined;this.githubCredentialVersion++;this.githubError='Saved GitHub credential is unavailable. Re-enter it in Settings.'; }
     try { this.vercelKey=(await this.native.readSecret('vercelToken')).value;this.vercelError=undefined; }
     catch { this.vercelError='Saved Vercel credential is unavailable. Re-enter it in Settings.'; }
     try { this.sentryKey=(await this.native.readSecret('sentryToken')).value;this.sentryError=undefined; }
@@ -262,7 +263,7 @@ export class SettingsService {
     if(next.githubCredential!==undefined){
       if(!this.native?.available())throw new Error('Secure GitHub credential storage requires the Aux desktop app.');
       if(next.githubCredential==='••••••••')throw new Error('Enter the actual token; the masked placeholder cannot be saved.');
-      const token=next.githubCredential.trim();await this.native.storeSecret('githubToken',token);this.githubKey=token||undefined;this.githubError=undefined;
+      const token=next.githubCredential.trim();await this.native.storeSecret('githubToken',token);this.githubKey=token||undefined;this.githubCredentialVersion++;this.githubError=undefined;
       this.repo.deleteSetting('githubProbe');delete next.githubCredential;
     }
     if(next.vercelCredential!==undefined){await this.saveServiceCredential('Vercel','vercelToken',next.vercelCredential,value=>{this.vercelKey=value;this.vercelError=undefined;});this.repo.deleteSetting('vercelProbe');delete next.vercelCredential;}
@@ -314,10 +315,18 @@ export class SettingsService {
     finally{clearTimeout(timeout);}
   }
 
+  /** Non-secret identity for the reviewed connector catalog. A saved token is required for use. */
+  githubConnector(): { connected: boolean; account?: string; credentialVersion: number } {
+    const probe = this.get('githubProbe') as GithubProbeRecord | undefined;
+    return { connected: !!this.githubKey, credentialVersion: this.githubCredentialVersion,
+      ...(this.githubKey && probe?.login ? { account: probe.login } : {}) };
+  }
+
   async githubRepository(identity:GithubProjectIdentity):Promise<GithubRepositoryStatus>{
     if(!this.githubKey){if(this.githubError)throw new Error(this.githubError);throw new Error('Connect GitHub in Settings before checking this repository.');}
+    const token = this.githubKey;
     const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15_000);
-    const headers={Accept:'application/vnd.github+json',Authorization:`Bearer ${this.githubKey}`,'X-GitHub-Api-Version':'2022-11-28','User-Agent':'Aux-Browser'};
+    const headers={Accept:'application/vnd.github+json',Authorization:`Bearer ${token}`,'X-GitHub-Api-Version':'2022-11-28','User-Agent':'Aux-Browser'};
     const request=async(path:string,allowMissing=false)=>{
       const response=await fetch(`https://api.github.com${path}`,{headers,signal:controller.signal,redirect:'error'});
       if(allowMissing&&response.status===404)return null;
@@ -337,6 +346,7 @@ export class SettingsService {
       const checkRuns=Array.isArray(checkRunsValue?.check_runs)?checkRunsValue.check_runs.flatMap(value=>{if(!value||typeof value!=='object')return[];const item=value as Record<string,unknown>;return typeof item.id==='number'&&typeof item.name==='string'?[{id:item.id,name:item.name,status:typeof item.status==='string'?item.status:'unknown',conclusion:typeof item.conclusion==='string'?item.conclusion:null,detailsUrl:typeof item.details_url==='string'?item.details_url:null}]:[];}):[];
       const pullRequests=Array.isArray(pullsValue)?pullsValue.flatMap(value=>{if(!value||typeof value!=='object')return[];const item=value as Record<string,unknown>,baseValue=item.base&&typeof item.base==='object'?item.base as Record<string,unknown>:{},headValue=item.head&&typeof item.head==='object'?item.head as Record<string,unknown>:{};return typeof item.number==='number'&&typeof item.title==='string'&&typeof item.html_url==='string'?[{number:item.number,title:item.title,url:item.html_url,draft:item.draft===true,base:typeof baseValue.ref==='string'?baseValue.ref:'',head:typeof headValue.ref==='string'?headValue.ref:identity.branch,updatedAt:typeof item.updated_at==='string'?item.updated_at:''}]:[];}):[];
       const issues=Array.isArray(issuesValue)?issuesValue.flatMap(value=>{if(!value||typeof value!=='object')return[];const item=value as Record<string,unknown>;if(item.pull_request||typeof item.number!=='number'||typeof item.title!=='string'||typeof item.html_url!=='string')return[];const user=item.user&&typeof item.user==='object'?item.user as Record<string,unknown>:{},labels=Array.isArray(item.labels)?item.labels.flatMap(label=>typeof label==='string'?[label]:label&&typeof label==='object'&&typeof (label as Record<string,unknown>).name==='string'?[(label as Record<string,unknown>).name as string]:[]).slice(0,20):[];return[{number:item.number,title:item.title.slice(0,500),url:item.html_url,body:typeof item.body==='string'?item.body.replace(/\0/g,'').slice(0,8000):null,author:typeof user.login==='string'?user.login:'unknown',labels,updatedAt:typeof item.updated_at==='string'?item.updated_at:''}];}):[];
+      if(this.githubKey!==token)throw new Error('The GitHub connection changed during the read. Try again.');
       return {...identity,defaultBranch:typeof repo.default_branch==='string'?repo.default_branch:'',private:repo.private===true,account:probe?.login??'unverified',permissions:{admin:permissions.admin===true,...(typeof permissions.maintain==='boolean'?{maintain:permissions.maintain}:{}),push:permissions.push===true,...(typeof permissions.triage==='boolean'?{triage:permissions.triage}:{}),pull:permissions.pull===true},basePresent:!!base,headPresent:!!head,checks:combined?{state:typeof combined.state==='string'?combined.state:'unknown',total:typeof combined.total_count==='number'?combined.total_count:0,updatedAt:Date.now()}:null,checkRuns,pullRequests,issues,checkedAt:Date.now()};
     }catch(error){if((error as {name?:string}).name==='AbortError')throw new Error('GitHub did not respond within 15 seconds.');throw error;}
     finally{clearTimeout(timeout);}

@@ -78,7 +78,7 @@ const METHOD_FEATURE_PREFIXES: readonly [string, AuxFeature][] = [
   ["safety.", "safetyCore"],
   ["vault.", "vault"], ["routines.", "automations"],
   ["plugins.", "skills"], ["cloud.", "cloudEnvironments"],
-  ["projects.", "devWorkflows"], ["development.", "devWorkflows"], ["calendar.", "connectors"],
+  ["projects.", "devWorkflows"], ["development.", "devWorkflows"], ["calendar.", "connectors"], ["connectors.", "connectors"],
   ["spaces.", "spaces"], ["sets.", "subagents"],
   ["memory.", "memory"], ["reports.", "reports"],
 ];
