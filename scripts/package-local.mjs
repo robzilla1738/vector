@@ -110,8 +110,10 @@ const resvgRequire=createRequire(join(root,"apps/runtime/package.json"));
 const resvgDir=dirname(resvgRequire.resolve("@resvg/resvg-js/package.json"));
 const resvgPkg=JSON.parse(readFileSync(join(resvgDir,"package.json"),"utf8"));
 const runtimeTag=process.platform==="linux"
-  ? `${process.platform}-${process.arch}-${process.report.getReport().header.glibcVersionRuntime?"gnu":"musl"}`
-  : `${process.platform}-${process.arch}${process.platform==="win32"?"-msvc":""}`;
+  ? process.arch==="arm" ? "linux-arm-gnueabihf"
+    : `linux-${process.arch}-${process.report.getReport().header.glibcVersionRuntime?"gnu":"musl"}`
+  : process.platform==="win32" ? `win32-${process.arch}-msvc`
+    : `${process.platform}-${process.arch}`;
 const bindingName=`@resvg/resvg-js-${runtimeTag}`;
 if(!Object.hasOwn(resvgPkg.optionalDependencies??{},bindingName))throw new Error(`resvg has no binding for ${runtimeTag}`);
 const bindingPath=createRequire(join(resvgDir,"package.json")).resolve(bindingName);
