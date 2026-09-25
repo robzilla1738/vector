@@ -40,12 +40,16 @@ const launch = () => launchApp({args:["--use-mock-keychain"],env: {
     AUX_LOAD_DOTENV: "0",
   }});
 async function shell() {
-  for (let attempt = 0; attempt < 150; attempt++) {
+  for (let attempt = 0; attempt < 450; attempt++) {
     const found = app.windows().find(page => page.url().includes("renderer/index.html"));
-    if (found && await found.evaluate(() => Boolean(window.aux?.windowId)).catch(() => false)) return found;
+    if (found && await found.evaluate(async () => {
+      if (!window.aux?.windowId) return false;
+      try { const runtime = await window.aux.invoke("runtime.describe", {}); return runtime.methods?.includes("pages.open"); }
+      catch { return false; }
+    }).catch(() => false)) return found;
     await delay(100);
   }
-  throw new Error("Aux shell did not start");
+  throw new Error("Aux shell and runtime did not become ready within 45 seconds");
 }
 const parseToolText = result => {
   const value = result.content.find(item => item.type === "text").text;
