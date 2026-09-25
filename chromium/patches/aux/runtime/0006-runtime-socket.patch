@@ -88,7 +88,7 @@ new file mode 100644
 index 0000000000..023924e7b5
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -0,0 +1,400 @@
+@@ -0,0 +1,402 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -104,7 +104,7 @@ index 0000000000..023924e7b5
 +
 +#include <array>
 +#include <cerrno>
-+#include <cstring>
++#include "base/containers/span.h"
 +#include <optional>
 +#include <utility>
 +
@@ -214,8 +214,9 @@ index 0000000000..023924e7b5
 +  }
 +  sockaddr_un address = {};
 +  address.sun_family = AF_UNIX;
-+  std::memcpy(address.sun_path, socket_path_.value().c_str(),
-+              socket_path_.value().size() + 1);
++  const std::string& path = socket_path_.value();
++  base::span(address.sun_path).first(path.size()).copy_from(base::span(path));
++  base::span(address.sun_path)[path.size()] = '\0';
 +  if (bind(listener_fd_, reinterpret_cast<sockaddr*>(&address),
 +           sizeof(address)) != 0 ||
 +      chmod(socket_path_.value().c_str(), 0600) != 0 ||
@@ -338,8 +339,9 @@ index 0000000000..023924e7b5
 +  const std::string line = frame + "\n";
 +  size_t offset = 0;
 +  while (offset < line.size()) {
++    const auto remaining = base::span(line).subspan(offset);
 +    const ssize_t written =
-+        write(connection_fd_, line.data() + offset, line.size() - offset);
++        write(connection_fd_, remaining.data(), remaining.size());
 +    if (written <= 0) {
 +      if (written < 0 && errno == EINTR) {
 +        continue;
@@ -648,7 +650,7 @@ index 0000000000..8828755602
 +      CFStringCreateWithCString(kCFAllocatorDefault, name.c_str(),
 +                                kCFStringEncodingUTF8));
 +  if (!query || !service_ref || !account_ref) {
-+    return {};
++    return base::apple::ScopedCFTypeRef<CFMutableDictionaryRef>();
 +  }
 +  CFDictionarySetValue(query.get(), kSecClass, kSecClassGenericPassword);
 +  CFDictionarySetValue(query.get(), kSecAttrService, service_ref.get());

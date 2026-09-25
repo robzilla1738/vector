@@ -163,7 +163,7 @@ index 0000000000..e68ff072c9
 +  size_t total_bytes = 0;
 +  for (const base::Value& raw : *cookies) {
 +    if (const base::DictValue* item = raw.GetIfDict()) {
-+      for (const auto& [key, value] : *item) {
++      for (const auto [key, value] : *item) {
 +        total_bytes += key.size();
 +        if (const std::string* text = value.GetIfString()) {
 +          total_bytes += text->size();

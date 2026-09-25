@@ -622,13 +622,13 @@ index 0000000000..4905de3358
 +                return;
 +              }
 +              for (const Target& item : pending->targets) {
-+                content::RenderFrameHost* current =
++                content::RenderFrameHost* rollback_frame =
 +                    content::RenderFrameHost::FromID(item.frame_id);
-+                if (!current) {
++                if (!rollback_frame) {
 +                  continue;
 +                }
 +                pending->owner->PrepareFrame(
-+                    current, pending->origin,
++                    rollback_frame, pending->origin,
 +                    base::BindOnce(
 +                        [](std::shared_ptr<Rollback> rollback, bool, bool) {
 +                          if (--rollback->remaining == 0) {
