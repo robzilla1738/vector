@@ -25,8 +25,9 @@ it("exports a current authorized Google Doc without following cross-origin redir
   const { adapter, fetches, page } = fixture(input, "Quarterly facts\nRevenue 42", "text/plain; charset=utf-8");
   const result = await adapter.read(input);
   expect(result).toMatchObject({ kind: "google-docs", pageId: "p1", documentEpoch: 4, mediaType: "text/plain", text: "Quarterly facts\nRevenue 42" });
-  expect(fetches).toEqual([{ url: `https://docs.google.com/document/d/${docId}/export?format=txt`, init: {
-    method: "GET", credentials: "same-origin", redirect: "manual", cache: "no-store" } }]);
+  expect(fetches[0]).toMatchObject({ url: `https://docs.google.com/document/d/${docId}/export?format=txt`, init: {
+    method: "GET", credentials: "same-origin", redirect: "manual", cache: "no-store" } });
+  expect(fetches[0]?.init.signal).toBeInstanceOf(AbortSignal);
   page.documentEpoch++;
   await expect(adapter.read(input)).rejects.toMatchObject({ code: "conflict" });
 });
@@ -64,6 +65,7 @@ it("refuses unrelated origins and malformed source paths before reading page con
   await expect(denied.read(input)).rejects.toMatchObject({ code: "permission_denied" });
   expect(fetches).toHaveLength(0);
   await expect(adapter.read({ ...input, expectedUrl: "https://evil.example/document/d/12345678901234567890/edit" })).rejects.toMatchObject({ code: "capability_unsupported" });
+  await expect(adapter.read({ ...input, sheetGid: "123" })).rejects.toMatchObject({ code: "invalid_params" });
 });
 
 it("refuses oversized exports and documents that navigate while exporting", async () => {

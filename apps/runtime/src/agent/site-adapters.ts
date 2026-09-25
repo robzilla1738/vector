@@ -8,6 +8,8 @@ const MAX_TEXT_BYTES = 2_000_000;
 /** Only URLs for the currently open document can be used as export sources. */
 export function siteExportUrl(input: SiteRead): URL {
   const page = new URL(input.expectedUrl);
+  if (input.kind !== "google-sheets" && input.sheetGid !== undefined)
+    throw new AuxError("invalid_params", "A sheet ID is accepted only for a Google Sheets export.");
   if (page.protocol !== "https:" || page.username || page.password)
     throw new AuxError("permission_denied", "Site export requires a secure page without embedded credentials.");
   if (input.kind === "youtube") {
@@ -19,8 +21,6 @@ export function siteExportUrl(input: SiteRead): URL {
   const route = input.kind === "google-docs" ? "document" : "spreadsheets";
   const match = new RegExp(`^/${route}/d/([A-Za-z0-9_-]{20,200})(?:/|$)`).exec(page.pathname);
   if (!match) throw new AuxError("capability_unsupported", `Open a Google ${input.kind === "google-docs" ? "Doc" : "Sheet"} before exporting it.`);
-  if (input.kind === "google-docs" && input.sheetGid !== undefined)
-    throw new AuxError("invalid_params", "A document export does not accept a sheet ID.");
   const exportUrl = new URL(`/${route}/d/${match[1]}/export`, page.origin);
   exportUrl.searchParams.set("format", input.kind === "google-docs" ? "txt" : "csv");
   if (input.kind === "google-sheets") {
@@ -48,7 +48,8 @@ export async function readSiteTextInPage(input: { kind: SiteRead["kind"]; expect
   }
   if (target.origin !== location.origin || target.protocol !== "https:") return { ok: false, reason: "export_origin" };
   let response: Response;
-  try { response = await fetch(target.href, { method: "GET", credentials: "same-origin", redirect: "manual", cache: "no-store" }); }
+  try { response = await fetch(target.href, { method: "GET", credentials: "same-origin", redirect: "manual", cache: "no-store",
+    signal: AbortSignal.timeout(15_000) }); }
   catch { return { ok: false, reason: "export_unavailable" }; }
   if (!response.ok || response.type === "opaqueredirect") return { ok: false, reason: "export_unavailable" };
   const type = (response.headers.get("content-type") ?? "").toLowerCase();
@@ -86,7 +87,9 @@ export class SiteAdapters {
     if (before.documentEpoch !== input.expectedDocumentEpoch || before.url !== input.expectedUrl)
       throw new AuxError("conflict", "The page changed before site extraction.");
     const driver = this.pages.driverPageLenient(input.pageId);
-    const result = await driver.evaluate(`(${readSiteTextInPage.toString()})(${JSON.stringify({ kind: input.kind, expectedUrl: input.expectedUrl, exportUrl: exportUrl.href })})`) as InPageResult;
+    let result: InPageResult;
+    try { result = await driver.evaluate(`(${readSiteTextInPage.toString()})(${JSON.stringify({ kind: input.kind, expectedUrl: input.expectedUrl, exportUrl: exportUrl.href })})`) as InPageResult; }
+    catch { throw new AuxError("backend_unavailable", "The site export could not be read from the current page."); }
     const after = this.pages.get(input.pageId);
     if (after.documentEpoch !== input.expectedDocumentEpoch || after.url !== input.expectedUrl || !driver.isAttached())
       throw new AuxError("conflict", "The page changed during site extraction.");
