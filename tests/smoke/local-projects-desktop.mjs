@@ -30,7 +30,7 @@ const quote=value=>"'"+value.replaceAll("'","'\\''")+"'";
 async function openProjectFile(editor,path){
  const search=editor.getByRole('textbox',{name:'Find project file',exact:true});
  await search.fill(path);
- await editor.getByRole('treeitem',{name:path.split('/').at(-1),exact:true}).click();
+ await editor.locator(`[role="treeitem"][title=${JSON.stringify(path)}]`).click();
  await search.fill('');
 }
 async function projectFileAction(editor,label){

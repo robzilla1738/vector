@@ -1,17 +1,11 @@
 import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { readCssGraph } from "./read-css-graph.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const tokens = readFileSync(join(here, "../../apps/desktop/renderer/src/tokens.css"), "utf8");
-function readCssGraph(path: string, seen = new Set<string>()): string {
-  const file = resolve(path);
-  if (seen.has(file)) return "";
-  seen.add(file);
-  return readFileSync(file, "utf8").replace(/@import\s+["'](\.[^"']+)["'];/g, (_statement, relative: string) =>
-    readCssGraph(resolve(dirname(file), relative), seen));
-}
 const styles = readCssGraph(join(here, "../../apps/desktop/renderer/src/styles.css"));
 const sharedUi = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ui.css"), "utf8");
 const css = tokens + "\n" + styles;

@@ -2,6 +2,7 @@ import { afterEach, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readCssGraph } from "./read-css-graph.js";
 import {
   assertProfileBackupAllowed,
   mcpCatalogForScope,
@@ -94,7 +95,7 @@ it("skips incomplete backups and fails closed when the backup cannot fit", async
 });
 
 it("keeps the compact and mid-width conversation breakpoints", () => {
-  const css = readFileSync(join(process.cwd(), "apps/desktop/renderer/src/styles.css"), "utf8");
+  const css = readCssGraph(join(process.cwd(), "apps/desktop/renderer/src/styles.css"));
   // wider layouts are governed by the full-page conversation rule, not a breakpoint
   expect(css).toContain("@media (max-width: 1024px)");
   expect(css).toContain("@media (min-width: 1025px) and (max-width: 1279px)");
