@@ -103,11 +103,11 @@ it("marks a call uncertain if its grant is revoked while a server is responding"
   let reached!: () => void;
   const ready = new Promise<void>(resolve => { reached = resolve; });
   const f = fixture(async () => {
-    const transport = fakeTransport([]) as unknown as { send: (message: { method?: string; id?: number }) => Promise<void> };
+    const transport = fakeTransport([]);
     const send = transport.send.bind(transport);
-    transport.send = async message => {
-      if (message.method === "tools/call") { reached(); return; }
-      return send(message);
+    transport.send = async (message, options) => {
+      if ("method" in message && message.method === "tools/call") { reached(); return; }
+      return send(message, options);
     };
     return transport as unknown as Transport;
   });

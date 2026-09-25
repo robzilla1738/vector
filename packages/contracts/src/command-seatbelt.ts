@@ -31,6 +31,8 @@ export type CommandSeatbeltPrepare = z.infer<typeof CommandSeatbeltPrepareSchema
 export const CommandSeatbeltPermitSchema = z.object({
   capabilityId: id,
   commandSha256: digest,
+  /** Native-derived policy actually applied by the launcher, for review and audit. */
+  effectiveProfile: CommandSeatbeltProfileSchema,
   expiresAt: z.number().int().positive(),
 }).strict();
 export type CommandSeatbeltPermit = z.infer<typeof CommandSeatbeltPermitSchema>;

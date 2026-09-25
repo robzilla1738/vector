@@ -45,7 +45,7 @@ import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
 import { AgentCodeMode } from "../agent/code-mode.js";
 import { HistoryProjection } from "../services/history-projection.js";
-import { CommandEscalationStore, commandDigest, defaultCommandSeatbelt } from "../services/command-seatbelt.js";
+import { CommandEscalationStore, commandDigest, defaultCommandSeatbelt, validateEffectiveSeatbelt } from "../services/command-seatbelt.js";
 import { AgentWebTools, permittedWebUrl } from "../agent/web-tools.js";
 import { AgentImageTools } from "../agent/image-tools.js";
 import { SpendLedger } from "../store/spend-ledger.js";
@@ -728,32 +728,37 @@ export function makeInvoker(s: Services) {
       case 'development.runCommand':{
         const task=tasks.prepareLocalCommand(params.taskId,params.expectedRevision,params.projectId);
         let seatbeltCapability: string | undefined;
-        let seatbeltReview: { input: {taskId:string;projectId:string;sessionId:string;command:string;projectPath:string}; profile: import('@aux/contracts').CommandSeatbeltProfile } | undefined;
+        let seatbeltReview: { input: {taskId:string;projectId:string;sessionId:string;command:string;projectPath:string}; profile: import('@aux/contracts').CommandSeatbeltProfile; requestId: string } | undefined;
+        let effectiveProfileDigest: string | undefined;
         if (s.featureHost === 'chromium-fork') {
           const native = developmentNative();
           if (!native.prepareCommandSeatbelt) throw new AuxError('backend_unavailable','The native command seatbelt is unavailable.');
           const project = await native.inspectProject(params.projectId);
           const input = {taskId:task.taskId,projectId:params.projectId,sessionId:commandSessionId,
             command:params.command,projectPath:project.project.path};
-          const reviewed = commandEscalations.authorize(input,Date.now(),false);
-          const requestedProfile = reviewed ?? defaultCommandSeatbelt({sessionId:commandSessionId,
+          const reviewed = commandEscalations.authorizeGrant(input,Date.now(),false);
+          const requestedProfile = reviewed?.profile ?? defaultCommandSeatbelt({sessionId:commandSessionId,
             projectId:params.projectId,projectPath:project.project.path,expiresAt:Date.now()+10*60_000});
           let permit;
           try { permit = CommandSeatbeltPermitSchema.parse(await native.prepareCommandSeatbelt({
             projectId:params.projectId,taskId:task.taskId,taskRevision:task.revision,
             sessionId:commandSessionId,commandSha256:commandDigest(params.command),requestedProfile})); }
           catch { throw new AuxError('backend_unavailable','The native command seatbelt could not attest this command.'); }
-          if (permit.commandSha256 !== commandDigest(params.command) || permit.expiresAt <= Date.now())
+          if (permit.commandSha256 !== commandDigest(params.command) || permit.expiresAt <= Date.now() ||
+            permit.expiresAt > permit.effectiveProfile.expiresAt)
             throw new AuxError('permission_denied','The command seatbelt permit is stale or belongs to another command.');
-          if (reviewed) seatbeltReview = {input,profile:reviewed};
+          const effectiveProfile = validateEffectiveSeatbelt(requestedProfile, permit.effectiveProfile, project.project.path);
+          effectiveProfileDigest = createHash('sha256').update(JSON.stringify(effectiveProfile)).digest('hex');
+          if (reviewed) seatbeltReview = {input,profile:reviewed.profile,requestId:reviewed.requestId};
           seatbeltCapability = permit.capabilityId;
         }
         return projectBroker().invokeProjectEffect({name:"command.start",taskId:task.taskId,taskRevision:task.revision,projectId:params.projectId,
-          audit:{mode:params.mode,commandSha256:createHash("sha256").update(params.command).digest("hex"),commandBytes:Buffer.byteLength(params.command)},
+          audit:{mode:params.mode,commandSha256:createHash("sha256").update(params.command).digest("hex"),commandBytes:Buffer.byteLength(params.command),
+            effectiveProfileSha256:effectiveProfileDigest,escalationRequestId:seatbeltReview?.requestId},
           execute:(invocationId)=>{
             if (seatbeltReview) {
-              const current = commandEscalations.authorize(seatbeltReview.input);
-              if (!current || JSON.stringify(current) !== JSON.stringify(seatbeltReview.profile))
+              const current = commandEscalations.authorizeGrant(seatbeltReview.input);
+              if (!current || current.requestId !== seatbeltReview.requestId || JSON.stringify(current.profile) !== JSON.stringify(seatbeltReview.profile))
                 throw new AuxError('permission_denied','Command escalation changed before launch. Review it again.');
             }
             return developmentNative().runProjectCommand({projectId:params.projectId,command:params.command,mode:params.mode,

@@ -8,7 +8,13 @@ import {
   type CommandEscalationRequest, type CommandSeatbeltProfile,
 } from "@aux/contracts";
 
-const BANNED_EXECUTABLES = new Set(["sudo", "doas", "su", "rm", "dd", "mkfs", "diskutil", "mount", "umount", "chown"]);
+const BANNED_EXECUTABLES = new Set([
+  "sudo", "doas", "su", "rm", "dd", "mkfs", "diskutil", "mount", "umount", "chown",
+  "sh", "bash", "zsh", "fish", "env", "xargs", "find", "osascript", "open", "launchctl",
+  "node", "python", "python3", "ruby", "perl", "php", "npx", "bunx", "deno",
+  "curl", "wget", "ssh", "scp", "rsync", "nc", "netcat", "socat", "openssl",
+]);
+const BANNED_GENERIC_SUBCOMMANDS = new Set(["run", "exec", "dlx", "-c", "-e", "eval"]);
 const SHELL_OPERATORS = /[;&|<>`$()\n\r\\]/;
 
 export function commandDigest(command: string): string {
@@ -29,8 +35,12 @@ function canonicalRoot(path: string): string {
 export function validPrefixRule(prefix: string): boolean {
   const trimmed = prefix.trim();
   if (!trimmed || SHELL_OPERATORS.test(trimmed) || /["']/.test(trimmed)) return false;
-  const executable = trimmed.split(/\s+/, 1)[0]!.split("/").at(-1)!.toLowerCase();
-  return !BANNED_EXECUTABLES.has(executable) && /^[A-Za-z0-9_./:=+@%,\-\s]+$/.test(trimmed);
+  const tokens = trimmed.split(/\s+/);
+  if (tokens.length < 2 || tokens[1]!.startsWith("-") || BANNED_GENERIC_SUBCOMMANDS.has(tokens[1]!.toLowerCase())) return false;
+  const executable = tokens[0]!.split("/").at(-1)!.toLowerCase();
+  return !BANNED_EXECUTABLES.has(executable) &&
+    !/^(?:python(?:\d+(?:\.\d+)?)?|node(?:js)?|ruby(?:\d+)?|perl(?:\d+)?)$/.test(executable) &&
+    /^[A-Za-z0-9_./:=+@%,\-\s]+$/.test(trimmed);
 }
 
 /** No network; writes are limited to this isolated checkout. */
@@ -51,6 +61,22 @@ export function validateCommandSeatbelt(profile: CommandSeatbeltProfile, project
   return parsed;
 }
 
+/** Native may narrow a requested profile; it cannot silently expand the human-reviewed authority. */
+export function validateEffectiveSeatbelt(requested: CommandSeatbeltProfile, effective: CommandSeatbeltProfile,
+  projectPath: string, now = Date.now()): CommandSeatbeltProfile {
+  const permitted = validateCommandSeatbelt(requested, projectPath, now);
+  const applied = validateCommandSeatbelt(effective, projectPath, now);
+  if (applied.projectId !== permitted.projectId || applied.sessionId !== permitted.sessionId ||
+    applied.expiresAt > permitted.expiresAt || applied.network && !permitted.network ||
+    applied.allowProcessSpawn && !permitted.allowProcessSpawn)
+    throw new AuxError("permission_denied", "The native command seatbelt exceeds the reviewed profile.");
+  for (const [roots, allowed] of [[applied.readableRoots, permitted.readableRoots], [applied.writableRoots, permitted.writableRoots]] as const) {
+    if (roots.some(root => !allowed.some(parent => inside(canonicalRoot(parent), canonicalRoot(root)))))
+      throw new AuxError("permission_denied", "The native command seatbelt exceeds the reviewed roots.");
+  }
+  return applied;
+}
+
 type RequestRow = { body: string; state: string; decided_at: number | null };
 type GrantRow = { request_id: string; body: string; mode: "once" | "prefix"; consumed_at: number | null };
 
@@ -61,6 +87,8 @@ export class CommandEscalationStore {
   request(input: Omit<CommandEscalationRequest, "requestId" | "createdAt" | "expiresAt" | "commandSha256" | "commandPreview"> & { command: string }, now = Date.now()): CommandEscalationRequest {
     if (!input.command.trim() || input.command.length > 8000) throw new AuxError("invalid_params", "The command must be 1 to 8,000 characters.");
     if (input.prefixRule && !validPrefixRule(input.prefixRule)) throw new AuxError("invalid_params", "This prefix cannot be granted safely.");
+    if (input.prefixRule && input.command !== input.prefixRule && !input.command.startsWith(`${input.prefixRule} `))
+      throw new AuxError("invalid_params", "The proposed prefix must match the exact command under review.");
     if (input.requestedProfile.sessionId !== input.sessionId || input.requestedProfile.projectId !== input.projectId)
       throw new AuxError("invalid_params", "The requested command profile has a different session or project.");
     const { command, ...fields } = input;
@@ -99,7 +127,8 @@ export class CommandEscalationStore {
   }
 
   /** Re-evaluate right before native launch; one-time grants are consumed atomically. */
-  authorize(input: { taskId: string; projectId: string; sessionId: string; command: string; projectPath: string }, now = Date.now(), consume = true): CommandSeatbeltProfile | undefined {
+  authorizeGrant(input: { taskId: string; projectId: string; sessionId: string; command: string; projectPath: string }, now = Date.now(), consume = true):
+    { profile: CommandSeatbeltProfile; requestId: string; mode: "once" | "prefix" } | undefined {
     this.db.exec("BEGIN IMMEDIATE");
     try {
       const rows = this.db.prepare("SELECT request_id,body,mode,consumed_at FROM command_escalation_grants ORDER BY rowid DESC")
@@ -116,11 +145,15 @@ export class CommandEscalationStore {
         if (row.mode === "once" && consume) this.db.prepare("UPDATE command_escalation_grants SET consumed_at=? WHERE request_id=? AND consumed_at IS NULL")
           .run(now, request.requestId);
         this.db.exec("COMMIT");
-        return profile;
+        return { profile, requestId: request.requestId, mode: row.mode };
       }
       this.db.exec("COMMIT");
       return undefined;
     } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
+
+  authorize(input: { taskId: string; projectId: string; sessionId: string; command: string; projectPath: string }, now = Date.now(), consume = true): CommandSeatbeltProfile | undefined {
+    return this.authorizeGrant(input, now, consume)?.profile;
   }
 
   revokeSession(sessionId: string): number {

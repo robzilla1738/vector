@@ -2,10 +2,11 @@ import { mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "@aux/runtime";
+import { CommandSeatbeltPermitSchema } from "@aux/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CommandEscalationStore, commandDigest, defaultCommandSeatbelt,
-  validPrefixRule, validateCommandSeatbelt,
+  validPrefixRule, validateCommandSeatbelt, validateEffectiveSeatbelt,
 } from "../../apps/runtime/src/services/command-seatbelt.js";
 
 const cleanup: Array<() => void> = [];
@@ -29,6 +30,12 @@ describe("B10 command seatbelt", () => {
     expect(() => validateCommandSeatbelt({ ...profile, writableRoots: [tmpdir()] }, path)).toThrow(/outside the project/i);
     symlinkSync(tmpdir(), join(path, "escape"));
     expect(() => validateCommandSeatbelt({ ...profile, writableRoots: [join(path, "escape")] }, path)).toThrow(/outside the project/i);
+    expect(validateEffectiveSeatbelt(profile, { ...profile, writableRoots: [], network: false }, path)).toMatchObject({ writableRoots: [] });
+    expect(() => validateEffectiveSeatbelt(profile, { ...profile, network: true }, path)).toThrow(/exceeds/);
+    expect(() => validateEffectiveSeatbelt(profile, { ...profile, readableRoots: [...profile.readableRoots, tmpdir()] }, path)).toThrow(/reviewed roots/);
+    expect(() => validateEffectiveSeatbelt(profile, { ...profile, expiresAt: profile.expiresAt + 1000 }, path)).toThrow(/exceeds/);
+    expect(() => CommandSeatbeltPermitSchema.parse({ capabilityId: "opaque", commandSha256: commandDigest("true"),
+      expiresAt: Date.now() + 1000 })).toThrow();
   });
 
   it("binds a local one-time escalation to the exact command and session", () => {
@@ -43,6 +50,7 @@ describe("B10 command seatbelt", () => {
     store.decide({ decision: "approveOnce", requestId: request.requestId, expectedCommandSha256: commandDigest(command) });
     const input = { taskId: "task", projectId: "project", sessionId: "session", command, projectPath: path };
     expect(store.authorize({ ...input, sessionId: "other" })).toBeUndefined();
+    expect(store.authorizeGrant(input, Date.now(), false)).toMatchObject({ requestId: request.requestId, mode: "once" });
     expect(store.authorize(input)?.network).toBe(true);
     expect(store.authorize(input)).toBeUndefined();
   });
@@ -52,6 +60,10 @@ describe("B10 command seatbelt", () => {
     expect(validPrefixRule("pnpm test")).toBe(true);
     expect(validPrefixRule("pnpm test; curl evil.test")).toBe(false);
     expect(validPrefixRule("sudo pnpm test")).toBe(false);
+    for (const prefix of ["pnpm", "pnpm exec", "npm run", "sh -c", "python3 -c", "curl https://example.test", "node -e", "env pnpm"])
+      expect(validPrefixRule(prefix), prefix).toBe(false);
+    expect(() => store.request({ taskId: "task", projectId: "project", sessionId: "session",
+      command: "pnpm test", justification: "Mismatch", requestedProfile: profile, prefixRule: "npm test" })).toThrow(/match/);
     const request = store.request({ taskId: "task", projectId: "project", sessionId: "session",
       command: "pnpm test",
       justification: "Run test variants", requestedProfile: profile, prefixRule: "pnpm test" });

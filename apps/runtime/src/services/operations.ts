@@ -69,7 +69,7 @@ const PROJECT_AUDIT_FIELDS: Record<ProjectEffectName, readonly string[]> = {
   "file.create": ["name", "contentSha256", "contentBytes"],
   "file.rename": ["name", "nextName", "expectedHash"],
   "file.delete": ["name", "expectedHash"],
-  "command.start": ["mode", "commandSha256", "commandBytes"],
+  "command.start": ["mode", "commandSha256", "commandBytes", "effectiveProfileSha256", "escalationRequestId"],
   "command.stop": ["commandId"],
   "commit.create": ["expectedPatchHash", "expectedTree", "messageSha256"],
   "preview.open": ["urlSha256"],
