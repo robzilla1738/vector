@@ -16,7 +16,7 @@ import { TAB_DRAG_TYPE } from "../bookmark-drop";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useTabMembership } from "../use-tab-membership";
 
-const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, active, focusable, selected, selecting, onSelect, onSelectionKey, onContext, onClose, onMove }: {
+const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, active, focusable, selected, selecting, onSelect, onSelectionKey, onContext, onClose, onMove, onTabNode }: {
   pageId: string;
   active: boolean;
   focusable: boolean;
@@ -27,12 +27,13 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
   onContext: (page: PageTarget, x: number, y: number) => void;
   onClose: (id: string, refocus: boolean) => void;
   onMove: (id: string, direction: -1 | 1) => void;
+  onTabNode: (id: string, node: HTMLButtonElement | null) => void;
 }) {
   const page = useStore(state => state.pages.find(tab => tab.pageId === pageId));
   if (!page) return null;
   const title = useStore(state => tabLabel(state.layout, page));
   return <>
-    <button className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active}
+    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active}
       onClick={event => { if (!onSelect(pageId, event)) void useStore.getState().activate(pageId).catch(errToast); }} onKeyDown={event => {
         if (event.nativeEvent.isComposing || onSelectionKey(event)) return;
         if ((event.key === " " || event.key === "Enter") && (event.metaKey || event.ctrlKey || event.shiftKey)) { event.preventDefault(); onSelect(pageId, event); return; }
@@ -93,15 +94,24 @@ export function HorizontalTabs() {
   const dragging = useRef<string | null>(null);
   const dragIds = useRef<string[]>([]);
   const strip = useRef<HTMLDivElement>(null);
+  const tabNodes = useRef(new Map<string, HTMLButtonElement>());
+  const onTabNode = useCallback((id: string, node: HTMLButtonElement | null) => {
+    if (node) tabNodes.current.set(id, node);
+    else tabNodes.current.delete(id);
+  }, []);
   useEffect(() => {
-    strip.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (activePageId && mode === "focus") tabNodes.current.get(activePageId)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [activePageId, mode, layout.order]);
 
   const focusablePage=tabs.some(page=>page.pageId===activePageId)?activePageId:tabs[0]?.pageId;
   const onContext = useCallback((page: PageTarget, x: number, y: number) => { hidePreview(); setMenu({ page, x, y }); }, [hidePreview, setMenu]);
   const onClose = useCallback((pageId: string, refocus: boolean) => {
     void useStore.getState().closeTab(pageId).then(() => {
-      if (refocus) requestAnimationFrame(() => strip.current?.querySelector<HTMLElement>('[role="tab"][tabindex="0"]')?.focus());
+      if (refocus) requestAnimationFrame(() => {
+        const state = useStore.getState();
+        const fallback = tabsInSpace(state.layout, state.pages, state.layout.activeSpaceId)[0]?.pageId;
+        tabNodes.current.get(state.activePageId ?? fallback ?? "")?.focus();
+      });
     }).catch(errToast);
   }, []);
   const onMove = useCallback((pageId: string, direction: -1 | 1) => {
@@ -136,7 +146,7 @@ export function HorizontalTabs() {
         onContextMenu={event => { event.preventDefault(); const current = useStore.getState().pages.find(tab => tab.pageId === page.pageId); if (current) onContext(current, event.clientX, event.clientY); }}>
         <HorizontalTabControls pageId={page.pageId} active={activePageId === page.pageId && mode === "focus"} focusable={focusablePage === page.pageId}
           selected={selection.ids.includes(page.pageId)} selecting={selection.ids.length > 0} onSelect={selection.select} onSelectionKey={selection.keyDown}
-          onContext={onContext} onClose={onClose} onMove={onMove} />
+          onContext={onContext} onClose={onClose} onMove={onMove} onTabNode={onTabNode} />
       </div>}</Fragment>; })}
     </div>
       <div className="horizontal-tab-tools">
