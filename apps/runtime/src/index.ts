@@ -8,6 +8,7 @@ export { RoutineService, nextScheduledTime, previousScheduledTime } from "./serv
 export { PluginService } from "./services/plugins.js";
 export { TaskEvidenceService } from "./services/task-evidence.js";
 export { AgentConnectionService } from "./services/agent-connections.js";
+export { OutboundMcpService, type McpTransportProvider } from "./services/outbound-mcp.js";
 export { EventBus } from "./events.js";
 export { NullNativeBridge, type NativeBridge } from "./native.js";
 export { ApiServer, MAX_BODY_BYTES } from "./api/server.js";

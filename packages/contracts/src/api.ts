@@ -33,6 +33,7 @@ import { StateQuerySchema } from "./state.js";
 import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, ContentMemoryPolicySchema, ContentMemoryMatchSchema, ContentMemoryDocumentSchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
   TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
+import { OutboundMcpRegisterParams, OutboundMcpGrantParams, OutboundMcpServerSchema, OutboundMcpGrantSchema, OutboundMcpToolSchema, OutboundMcpCallResultSchema } from "./outbound-mcp.js";
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
 import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
@@ -762,6 +763,16 @@ export const MethodSchemas = {
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
   "agentConnections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
+  "mcp.servers.register": OutboundMcpRegisterParams,
+  "mcp.servers.list": z.object({ workspaceId: id }).strict(),
+  "mcp.servers.approve": z.object({ serverId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "mcp.servers.revoke": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.tools.list": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.grants.create": OutboundMcpGrantParams,
+  "mcp.grants.list": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.grants.revoke": z.object({ grantId: z.string().uuid() }).strict(),
+  "mcp.tools.call": z.object({ grantId: z.string().uuid(), arguments: z.record(z.string(), z.unknown()),
+    context: z.object({ workspaceId: id, taskId: id.optional(), revision: z.number().int().positive().optional() }).strict() }).strict(),
   "calendar.connections.list": z.object({}),
   "calendar.auth.start": z.object({}),
   "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -1186,6 +1197,15 @@ export const ResultSchemas = {
   "agentConnections.list": z.array(AgentConnectionSchema),
   "agentConnections.create": z.object({ connection: AgentConnectionSchema, token: z.string().min(1) }),
   "agentConnections.revoke": AgentConnectionSchema,
+  "mcp.servers.register": OutboundMcpServerSchema,
+  "mcp.servers.list": z.array(OutboundMcpServerSchema),
+  "mcp.servers.approve": OutboundMcpServerSchema,
+  "mcp.servers.revoke": OutboundMcpServerSchema,
+  "mcp.tools.list": z.array(OutboundMcpToolSchema),
+  "mcp.grants.create": OutboundMcpGrantSchema,
+  "mcp.grants.list": z.array(OutboundMcpGrantSchema),
+  "mcp.grants.revoke": OutboundMcpGrantSchema,
+  "mcp.tools.call": OutboundMcpCallResultSchema,
   "calendar.connections.list": z.object({ available: z.boolean(), reason: z.string().optional(), connections: z.array(CalendarConnectionSchema) }),
   "calendar.auth.start": z.object({ url: z.string().url(), expiresAt: z.number().int().nonnegative() }),
   "calendar.connections.revoke": z.object({ ok: z.literal(true), providerRevocation: z.enum(["confirmed", "pending"]) }),

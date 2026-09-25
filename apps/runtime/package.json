@@ -24,6 +24,7 @@
     "@ai-sdk/openai": "4.0.60",
     "@aux/chromium-driver": "workspace:*",
     "@aux/contracts": "workspace:*",
+    "@modelcontextprotocol/client": "2.1.0",
     "@vercel/sandbox": "3.3.0",
     "ai": "7.0.93",
     "parse5": "7.3.0",

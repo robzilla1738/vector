@@ -315,11 +315,26 @@ CREATE TABLE hook_invocations(
   error TEXT, created_at INTEGER NOT NULL, ended_at INTEGER,
   UNIQUE(hook_id,event_id));
 CREATE INDEX idx_hook_invocations_state ON hook_invocations(state,created_at);
+CREATE TABLE outbound_mcp_servers(
+  server_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+  state TEXT NOT NULL CHECK(state IN ('pending','approved','revoked')),
+  body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX idx_outbound_mcp_servers_workspace ON outbound_mcp_servers(workspace_id,state);
+CREATE TABLE outbound_mcp_grants(
+  grant_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
+  tool_name TEXT NOT NULL, body TEXT NOT NULL, revoked_at INTEGER, consumed_at INTEGER);
+CREATE INDEX idx_outbound_mcp_grants_server ON outbound_mcp_grants(server_id,tool_name,revoked_at);
+CREATE TABLE outbound_mcp_calls(
+  call_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
+  grant_id TEXT NOT NULL REFERENCES outbound_mcp_grants(grant_id), tool_name TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('invoking','completed','uncertain')),
+  created_at INTEGER NOT NULL, ended_at INTEGER);
+CREATE INDEX idx_outbound_mcp_calls_state ON outbound_mcp_calls(status,created_at);
 ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -493,6 +508,24 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       error TEXT, created_at INTEGER NOT NULL, ended_at INTEGER,
       UNIQUE(hook_id,event_id))`,
     `CREATE INDEX IF NOT EXISTS idx_hook_invocations_state ON hook_invocations(state,created_at)`,
+  ],
+  // v18 → v19: outbound MCP server, tool grants and uncertain-call journal.
+  18: [
+    `CREATE TABLE IF NOT EXISTS outbound_mcp_servers(
+      server_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+      state TEXT NOT NULL CHECK(state IN ('pending','approved','revoked')),
+      body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS idx_outbound_mcp_servers_workspace ON outbound_mcp_servers(workspace_id,state)`,
+    `CREATE TABLE IF NOT EXISTS outbound_mcp_grants(
+      grant_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
+      tool_name TEXT NOT NULL, body TEXT NOT NULL, revoked_at INTEGER, consumed_at INTEGER)`,
+    `CREATE INDEX IF NOT EXISTS idx_outbound_mcp_grants_server ON outbound_mcp_grants(server_id,tool_name,revoked_at)`,
+    `CREATE TABLE IF NOT EXISTS outbound_mcp_calls(
+      call_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
+      grant_id TEXT NOT NULL REFERENCES outbound_mcp_grants(grant_id), tool_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('invoking','completed','uncertain')),
+      created_at INTEGER NOT NULL, ended_at INTEGER)`,
+    `CREATE INDEX IF NOT EXISTS idx_outbound_mcp_calls_state ON outbound_mcp_calls(status,created_at)`,
   ],
 };
 

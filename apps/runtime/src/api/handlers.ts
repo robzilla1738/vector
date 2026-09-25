@@ -51,6 +51,7 @@ import { SpendLedger } from "../store/spend-ledger.js";
 import { authorizeProgram } from "../agent/permissions.js";
 import { AgentTurnTabs } from "../agent/turn-tabs.js";
 import { siteExportUrl } from "../agent/site-adapters.js";
+import { OutboundMcpService, type McpTransportProvider } from "../services/outbound-mcp.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -65,6 +66,7 @@ export interface Services {
   events: EventBus;
   repo: Repo;
   agentConnections?: AgentConnectionService;
+  mcpTransportProvider?: McpTransportProvider;
   calendar?: CalendarConnectionService;
   native?:NativeBridge;
   contentMemory?: ContentMemoryStore;
@@ -100,6 +102,7 @@ function browserImporter(s: Services): BrowserImporter {
 export function makeInvoker(s: Services) {
   const commandSessionId = randomUUID();
   const commandEscalations = new CommandEscalationStore(s.repo.db);
+  const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
   const tasks = new TaskService(s.repo, s.events);
   const browsingMemory = new BrowsingMemory(s.repo);
   browsingMemory.prune();
@@ -409,6 +412,26 @@ export function makeInvoker(s: Services) {
         if (client.external) throw new AuxError("permission_denied", "Connections can only be revoked in Aux Settings");
         if (!s.agentConnections) throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
         return s.agentConnections.revoke(params.connectionId);
+      case "mcp.servers.register":
+      case "mcp.servers.list":
+      case "mcp.servers.approve":
+      case "mcp.servers.revoke":
+      case "mcp.tools.list":
+      case "mcp.grants.create":
+      case "mcp.grants.list":
+      case "mcp.grants.revoke":
+      case "mcp.tools.call": {
+        if (client.external) throw new AuxError("permission_denied", "MCP connections are managed in Aux.");
+        if (method === "mcp.servers.register") return outboundMcp.register(params);
+        if (method === "mcp.servers.list") return outboundMcp.list(params.workspaceId);
+        if (method === "mcp.servers.approve") return outboundMcp.approve(params.serverId, params.expectedDigest);
+        if (method === "mcp.servers.revoke") return outboundMcp.revoke(params.serverId);
+        if (method === "mcp.tools.list") return outboundMcp.listTools(params.serverId);
+        if (method === "mcp.grants.create") return outboundMcp.grant(params);
+        if (method === "mcp.grants.list") return outboundMcp.grants(params.serverId);
+        if (method === "mcp.grants.revoke") return outboundMcp.revokeGrant(params.grantId);
+        return outboundMcp.callTool(params.grantId, params.arguments, params.context);
+      }
       case "plugins.inspect":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.inspect(params.path);
