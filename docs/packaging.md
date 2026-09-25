@@ -82,7 +82,7 @@ After a credentialed build, run `pnpm verify:package:signed`. This verifies the 
 
 ## September 23 shell checkpoint
 
-See [current shell behavior](ui/design-update-2026-09-23.md) and
+See [current shell behavior](archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md) and
 [focused native tests](local-testing.md#focused-shell-design-regressions).
 Review horizontal and vertical modes, persistent versus preview sidebars, chat
 folder actions, and URL reveal followed by page scrolling and window dragging.

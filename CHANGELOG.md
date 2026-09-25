@@ -15,7 +15,7 @@ the integration tracks that were merged.
 - Removed harsh separators, nested disclosure bubbles and the jump-to-latest bar.
 - Fixed URL reveal intercepting page clicks/scrolling after dismissal; added
   captured dragging for blank toolbar/sidebar areas with native bounds regression.
-- See [implementation and limits](docs/ui/design-update-2026-09-23.md) and the
+- See [implementation and limits](docs/archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md) and the
   [chronological QA log](design-qa.md). This remains an unsigned local preview.
 
 

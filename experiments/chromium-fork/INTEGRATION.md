@@ -1,6 +1,6 @@
 # Aux shell and host proof map
 
-This maps the **current Aux checkout** to the existing isolated `//chrome` candidate. The original identity build and live Store install/restart proof completed on September 24. The candidate now executes Aux's production shell with real tabs; dated evidence and unresolved failures are in `docs/M1-HOST-COMPARISON.md`. This remains a bounded proof, not a full migration or release.
+This maps the **current Aux checkout** to the existing isolated `//chrome` candidate. The original identity build and live Store install/restart proof completed on September 24. The candidate now executes Aux's production shell with real tabs; dated evidence and unresolved failures are in `docs/archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md`. This remains a bounded proof, not a full migration or release.
 
 The original process-continuity watcher completed without restarting the baseline build. Native iterations reuse the same checkout/output at nice 10 and run detached. Apply native patches only after the active incremental build finishes, then restart the candidate to load the new binary. Renderer production assets are staged independently; HMR is not yet established.
 
@@ -69,7 +69,7 @@ Use the visible candidate, never the mock renderer or a separate stock Chromium 
 
 ### Build/Store checkpoint — 2026-09-24
 
-The identity binary completed and the candidate Store installation/restart passed; see the dated evidence in `docs/M1-HOST-COMPARISON.md`. Native patches may now be integrated into this same checkout for the narrow shell proof. Keep the baseline Store Profile and binary evidence. Use LaunchServices with explicit Profile arguments and then bind CUA by app name to avoid a second default-profile process. The next native integration will require restarting the candidate; React/CSS production staging alone cannot update native C++.
+The identity binary completed and the candidate Store installation/restart passed; see the dated evidence in `docs/archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md`. Native patches may now be integrated into this same checkout for the narrow shell proof. Keep the baseline Store Profile and binary evidence. Use LaunchServices with explicit Profile arguments and then bind CUA by app name to avoid a second default-profile process. The next native integration will require restarting the candidate; React/CSS production staging alone cannot update native C++.
 
 ### Executable shell proof — current checkpoint
 

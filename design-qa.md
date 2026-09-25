@@ -3,7 +3,7 @@
 This is a chronological local QA record, including rejected intermediate designs.
 Per-section pass labels describe the checks performed at that point. Later user
 corrections supersede earlier treatments. The authoritative current behavior and
-remaining acceptance are in [the checkpoint](docs/ui/design-update-2026-09-23.md).
+remaining acceptance are in [the checkpoint](docs/archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md).
 Local screenshot and reference paths below are evidence locations on the review
 Mac, not portable repository files or redistributed Aside assets.
 
@@ -202,5 +202,5 @@ Typecheck, lint (387 warnings / cap 390), 1,029 unit tests, 27 integration tests
 all eleven focused native design smokes, benchmark manifest validation, bundle
 budgets, and unsigned macOS ARM64 packaging passed. Integration was rerun alone
 after fixture-port/build-output contention in overlapping runs. Current behavior,
-limitations and pickup steps are in [the checkpoint](docs/ui/design-update-2026-09-23.md).
+limitations and pickup steps are in [the checkpoint](docs/archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md).
 GitHub CI remains a separate post-push gate.

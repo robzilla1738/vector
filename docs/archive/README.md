@@ -1,13 +1,7 @@
 # Archive
 
-Frozen documents kept for provenance. None of these describe current behavior or
-current plans. The current roadmap is [../ROADMAP.md](../ROADMAP.md), the current
-founder-Mac handoff is [../HANDOFF.md](../HANDOFF.md), and implementation evidence
-is in [../progress/](../progress/).
+Frozen documents are preserved for context and provenance. They are not current requirements or release evidence. Use the active [roadmap](../ROADMAP.md), [handoff](../HANDOFF.md), and [evidence ledger](../EVIDENCE.md).
 
-- Vector-era roadmaps, the custom engine roadmap and its CI durations
-- The Aux phase tracker (superseded by the 22 September roadmap) and the 20 September previous roadmap
-- Pre-M1 speed and architecture audits and the runtime-vnext notes
-- The 21 September implementation checkpoint and design QA note
-- `screenshots/`: legacy `ve-shell` captures referenced by the frame baseline
-- `perf-engine/`: frame, observe and repaint gates measured on the removed custom engine
+The [2026-09-24 B0 reset](2026-09-24-b0-reset/) holds the former roadmap and handoff, UI transplant program and machine-readable ledger, Aside parity/design notes, host comparison, first review, planning, progress logs, and UI audit. Links inside frozen files may point to their original locations. The old ledger's absolute donor paths are historical source references; active docs use stable capture IDs and provenance rows instead.
+
+Other dated folders retain earlier Vector-era roadmaps, pre-M1 audits, implementation checkpoints, legacy screenshots, and performance artifacts. None of these establish present Chromium qualification without a fresh recorded run.

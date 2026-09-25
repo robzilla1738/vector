@@ -188,7 +188,7 @@ need the view laid out.
 
 ## Shell material, native input and local chat organization
 
-See [the shell checkpoint](ui/design-update-2026-09-23.md) for the current layout
+See [the shell checkpoint](archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md) for the current layout
 and full component map in [ui/shell.md](ui/shell.md). Horizontal is the fallback
 `tabLayout`; persisted explicit settings override it.
 

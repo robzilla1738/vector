@@ -3,9 +3,9 @@
 **Aux is the browser that works with you. Delegate real work, take over whenever
 you want, and know what actually happened.**
 
-Start with the [current build handoff](docs/HANDOFF.md), [roadmap](docs/ROADMAP.md),
-[UI implementation record](docs/ui/COMPONENT-TRANSPLANT.md), and [host evidence](docs/M1-HOST-COMPARISON.md).
-Active implementation is on `codex/aux-roadmap-build` in [draft PR #24](https://github.com/robzilla1738/vector/pull/24), not merged to `main`.
+Start with the [implementation handoff](docs/HANDOFF.md), [roadmap](docs/ROADMAP.md),
+and [evidence ledger](docs/EVIDENCE.md). Historical [UI implementation](docs/archive/2026-09-24-b0-reset/ui/COMPONENT-TRANSPLANT.md) and [host proof](docs/archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md) records are archived.
+The reviewed implementation sequence and release stop line are in the [roadmap](docs/ROADMAP.md).
 
 Aux targets a Chromium `//chrome` fork, contingent on compatibility and native integration qualification.
 The candidate builds, runs Aux's real shell and has passed Store installation/restart persistence.
@@ -29,7 +29,7 @@ Connection kind is recorded on every page (`backend`, `routeReason`).
 ## Private hands-on preview
 ### Current shell
 
-The [September 23 design checkpoint](docs/ui/design-update-2026-09-23.md) records the earlier
+The [archived September 23 design checkpoint](docs/archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md) records the earlier
 Aside-inspired shell: horizontal tabs by default, optional vertical tabs, native
 glass, a persistent expanded sidebar and a separate collapsed edge preview,
 chat project folders, inline session actions, and consistent work controls.
@@ -42,8 +42,8 @@ dragging. Existing Aux colors and explicit preferences are preserved.
 Run `AUX_LOAD_DOTENV=0 pnpm dev` for the current private development build. `pnpm preview` opens a
 separate persistent Aux Preview profile. Follow the [local Mac handoff](docs/HANDOFF.md),
 [private build handoff](docs/AUX-PRIVATE-BUILD.md)
-and [first review walkthrough](docs/AUX-FIRST-REVIEW.md) for browsing, tasks,
-development, cloud setup and the known compatibility limits. The current handoff separates implemented Electron behavior, partial Chromium integration, and remaining external qualification. The six-batch design transplant remains in progress.
+and [archived first review walkthrough](docs/archive/2026-09-24-b0-reset/AUX-FIRST-REVIEW.md) for browsing, tasks,
+development, cloud setup and the known compatibility limits. The current handoff separates implemented Electron behavior, partial Chromium integration, and remaining external qualification. The reviewed roadmap replaces the six-batch transplant plan.
 
 ## Quickstart
 
@@ -61,9 +61,9 @@ pnpm package:local  # desktop application
 Configuration is optional — copy `.env.example` to `.env` (in the
 repo root you launch from, or in the data dir
 `~/Library/Application Support/Aux Browser`) and set `AI_GATEWAY_API_KEY` to
-enable agent goals (`runs.start`, `sets.map --goal`). The planner defaults
-to `alibaba/qwen3.8-27b` through Vercel AI Gateway; Settings also offers
-`openai/gpt-5.6-luna-fast`. The runtime loads
+enable agent goals (`runs.start`, `sets.map --goal`). The reviewed roadmap sets `meta/muse-spark-1.3-contributor` as the default
+for every agent role and caps cumulative Aux model spend at $50. See the
+[model and spend gates](docs/ROADMAP.md) and [recorded usage](docs/EVIDENCE.md). The runtime loads
 `<dataDir>/.env` then `<cwd>/.env` at startup; variables already set in the
 environment always win. Programs, observations, and saved-operation sets
 work with no key. Other agents (Cursor, Codex, Claude) can drive the same
@@ -108,11 +108,10 @@ fixture state reset before every task) is recorded per run in
 ## Using the app
 
 The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
-follows [Aside-inspired visual direction](docs/AUX-DESIGN-DIRECTION.md), retaining
+retains the [archived visual direction](docs/archive/2026-09-24-b0-reset/AUX-DESIGN-DIRECTION.md) where consistent with the reviewed roadmap, including
 Aux branding and capabilities. It uses Geist/Geist Mono, Central Icons, native
 macOS material, a fully hidden sidebar that grows back as the same glass
-column, and a resizable agent panel. See the [parity audit](docs/ASIDE-PARITY.md)
-for remaining verification.
+column, and a resizable agent panel. The [old parity audit](docs/archive/2026-09-24-b0-reset/ASIDE-PARITY.md) is historical; current gates are in the [roadmap](docs/ROADMAP.md).
 
 - `⌘T` new tab · `⌘W` close · `⌘⇧T` reopen · `⌘1–9` switch · `⌃Tab` cycle
 - `⌘L` / `⌘E` focus the **command bar** (new-tab hero or top toolbar).

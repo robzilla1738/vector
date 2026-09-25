@@ -7,8 +7,7 @@ The renderer in `apps/desktop/renderer/src` is the browser chrome around the
 runtime's pages: Aside-inspired sidebar, top command bar, continuous rounded
 main surface and resizable agent rail. It is React 19 + zustand, styled with
 plain CSS and shared tokens (Geist/Geist Mono, Central Icons, neutral surfaces).
-The current spec is [visual direction](../AUX-DESIGN-DIRECTION.md); verification
-limits are in [Aside parity](../ASIDE-PARITY.md).
+The current spec and verification gates are in the [reviewed roadmap](../ROADMAP.md). The [earlier visual direction](../archive/2026-09-24-b0-reset/AUX-DESIGN-DIRECTION.md) and [parity audit](../archive/2026-09-24-b0-reset/ASIDE-PARITY.md) are historical.
 Nothing in the shell talks to Electron except through the preload
 `contextBridge` (`bridge.ts`); `sandbox: true` and the permission handlers in
 `main/` are unchanged by the redesign.
@@ -30,7 +29,7 @@ Overlays (`Palette`, `Settings`, `History`, `Inspector`) are portalled siblings
 of `.app-body`; toasts sit bottom-left over the sidebar.
 
 ## Component map
-See the [September 23 implementation checkpoint](design-update-2026-09-23.md)
+See the [September 23 implementation checkpoint](../archive/2026-09-24-b0-reset/ui/design-update-2026-09-23.md)
 for current behavior, storage scope, native input invariants and pickup checks.
 The diagram above shows the vertical layout. Horizontal mode adds
 `HorizontalTabs`/`HorizontalPins` above the URL row and a click-operated
