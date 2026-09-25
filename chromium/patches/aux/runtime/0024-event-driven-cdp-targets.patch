@@ -1,0 +1,58 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index f8aa9f6f4c..4e49fe8fac 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -120,6 +120,14 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
+                   profile->GetPath().BaseName().AsUTF8Unsafe(),
+                   base::SequencedTaskRunner::GetCurrentDefault(),
+                   weak_factory_.GetWeakPtr());
++  if (auto* catalog = aux::TabCatalog::GetForProfile(profile_)) {
++    tab_catalog_subscription_ = catalog->ObserveChanges(base::BindRepeating(
++        [](base::WeakPtr<AuxRuntimeHost> host, const std::string&) {
++          if (host)
++            host->worker_.AsyncCall(&Worker::SendTabsChanged);
++        },
++        weak_factory_.GetWeakPtr()));
++  }
+ }
+ 
+ AuxRuntimeHost::~AuxRuntimeHost() = default;
+@@ -738,6 +746,18 @@ void AuxRuntimeHost::Worker::SendCdpMessage(uint64_t connection_generation,
+   }
+ }
+ 
++void AuxRuntimeHost::Worker::SendTabsChanged() {
++  if (connection_fd_ < 0)
++    return;
++  base::Value::Dict note;
++  note.Set("kind", "note");
++  note.Set("type", "native.tabsChanged");
++  note.Set("payload", base::Value::Dict());
++  const auto json = base::WriteJson(note);
++  if (!json || !SendFrame(*json))
++    Disconnect();
++}
++
+ void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
+   const std::string* type = data.FindString("type");
+   const base::Value* payload = data.Find("payload");
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 4564c75706..147fbf1d1a 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -68,6 +68,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+     void SendCdpMessage(uint64_t connection_generation,
+                         std::string page_id,
+                         std::string message);
++    void SendTabsChanged();
+ 
+    private:
+     bool Connect(std::string* error);
+@@ -110,6 +111,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   raw_ptr<Profile> profile_;
+   base::SequenceBound<Worker> worker_;
+   std::unique_ptr<aux::CdpBroker> cdp_broker_;
++  base::CallbackListSubscription tab_catalog_subscription_;
+   base::RepeatingCallbackList<void(const std::string&, const std::string&)>
+       observers_;
+   bool pump_scheduled_ = false;

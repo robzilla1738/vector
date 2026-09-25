@@ -19,3 +19,4 @@ aux/runtime/0018-native-zap-stylesheet.patch
 aux/runtime/0019-profile-cdp-broker.patch
 aux/runtime/0020-sparkle-updater.patch
 aux/runtime/0021-native-profile-content.patch
+aux/runtime/0024-event-driven-cdp-targets.patch

@@ -6,20 +6,45 @@ import { WebSocket, WebSocketServer } from "ws";
 import type { RpcChannel } from "@aux/contracts";
 
 type Page = { pageId: string; cdpTargetId?: string; url: string; title: string; active: boolean };
-type Target = { targetId: string; type: "page"; title: string; url: string; attached: boolean; browserContextId: string };
+type Target = {
+  targetId: string;
+  type: "page";
+  title: string;
+  url: string;
+  attached: boolean;
+  browserContextId: string;
+};
 type Request = { id: number; method: string; params: Record<string, unknown>; sessionId?: string };
 type Pending = { id: number; sessionId: string; pageId: string };
 
 const CONTEXT_ID = "aux-profile";
 const MAX_MESSAGE_BYTES = 1024 * 1024;
 const MAX_NATIVE_EVENT_BYTES = 16 * 1024 * 1024;
-const REFRESH_MS = 300;
-const PAGE_DOMAINS = new Set(["Page", "Runtime", "DOM", "DOMSnapshot", "Accessibility", "Input", "Emulation", "Log", "CSS", "Performance", "Overlay", "IO", "Network", "Fetch"]);
+const PAGE_DOMAINS = new Set([
+  "Page",
+  "Runtime",
+  "DOM",
+  "DOMSnapshot",
+  "Accessibility",
+  "Input",
+  "Emulation",
+  "Log",
+  "CSS",
+  "Performance",
+  "Overlay",
+  "IO",
+  "Network",
+  "Fetch",
+]);
 
 function pageMethodAllowed(method: string): boolean {
   const [domain, command] = method.split(".");
   if (!domain || !command || !PAGE_DOMAINS.has(domain)) return false;
-  if (domain === "Network" && (/^(get(All)?Cookies|setCookies?|deleteCookies?|clearBrowserCookies)$/.test(command))) return false;
+  if (
+    domain === "Network" &&
+    /^(get(All)?Cookies|setCookies?|deleteCookies?|clearBrowserCookies)$/.test(command)
+  )
+    return false;
   return true;
 }
 
@@ -32,7 +57,11 @@ export class NativeCdpBroker {
   private readonly socketPath: string;
   private readonly path = `/aux-cdp/${randomBytes(32).toString("hex")}`;
   private readonly server: Server = createServer();
-  private readonly ws = new WebSocketServer({ server: this.server, path: this.path, maxPayload: MAX_MESSAGE_BYTES });
+  private readonly ws = new WebSocketServer({
+    server: this.server,
+    path: this.path,
+    maxPayload: MAX_MESSAGE_BYTES,
+  });
   private readonly targets = new Map<string, { pageId: string; info: Target }>();
   private readonly sessions = new Map<string, string>();
   private readonly childOwners = new Map<string, string>();
@@ -41,16 +70,23 @@ export class NativeCdpBroker {
   private readonly pending = new Map<number, Pending>();
   private nextNativeId = 1;
   private client: WebSocket | null = null;
-  private poll: NodeJS.Timeout | null = null;
   private refreshQueue: Promise<void> = Promise.resolve();
   private autoAttach = false;
   private discover = false;
   private closed = false;
 
-  private constructor(private readonly channel: RpcChannel, hostSocketPath: string) {
+  private constructor(
+    private readonly channel: RpcChannel,
+    hostSocketPath: string,
+  ) {
     this.socketPath = join(dirname(hostSocketPath), `c-${randomBytes(4).toString("hex")}.s`);
     channel.onNotify((type, payload) => {
       if (type === "native.cdpMessage") this.forwardNative(payload);
+      if (type === "native.tabsChanged") {
+        void this.refresh().catch((error: unknown) => {
+          console.error("Aux CDP target catalog refresh failed:", error);
+        });
+      }
     });
   }
 
@@ -83,13 +119,12 @@ export class NativeCdpBroker {
       return;
     }
     this.client = socket;
-    this.poll = setInterval(() => { void this.refresh(); }, REFRESH_MS);
-    socket.on("message", raw => { void this.handle(socket, String(raw)); });
+    socket.on("message", (raw) => {
+      void this.handle(socket, String(raw));
+    });
     socket.once("close", () => {
       if (this.client !== socket) return;
       this.client = null;
-      if (this.poll) clearInterval(this.poll);
-      this.poll = null;
       this.sessions.clear();
       this.childOwners.clear();
       this.autoAttachSessions.clear();
@@ -110,8 +145,11 @@ export class NativeCdpBroker {
   }
 
   private fail(request: Request, error: unknown): void {
-    this.send({ id: request.id, error: { code: -32000, message: error instanceof Error ? error.message : String(error) },
-      ...(request.sessionId ? { sessionId: request.sessionId } : {}) });
+    this.send({
+      id: request.id,
+      error: { code: -32000, message: error instanceof Error ? error.message : String(error) },
+      ...(request.sessionId ? { sessionId: request.sessionId } : {}),
+    });
   }
 
   private notify(method: string, params: Record<string, unknown>): void {
@@ -126,26 +164,38 @@ export class NativeCdpBroker {
       const next = new Map<string, { pageId: string; info: Target }>();
       for (const page of snapshot.pages) {
         if (!page.cdpTargetId || !/^(https?:|about:blank$)/.test(page.url)) continue;
-        next.set(page.cdpTargetId, { pageId: page.pageId, info: {
-          targetId: page.cdpTargetId, type: "page", title: page.title, url: page.url,
-          attached: [...this.sessions.values()].includes(page.cdpTargetId), browserContextId: CONTEXT_ID,
-        } });
+        next.set(page.cdpTargetId, {
+          pageId: page.pageId,
+          info: {
+            targetId: page.cdpTargetId,
+            type: "page",
+            title: page.title,
+            url: page.url,
+            attached: [...this.sessions.values()].includes(page.cdpTargetId),
+            browserContextId: CONTEXT_ID,
+          },
+        });
       }
-      for (const [id, old] of this.targets) if (!next.has(id)) {
-        for (const [sessionId, targetId] of this.sessions) if (targetId === id) {
-          this.sessions.delete(sessionId);
-          if (!this.childOwners.delete(sessionId)) this.notify("Target.detachedFromTarget", { sessionId, targetId: id });
+      for (const [id, old] of this.targets)
+        if (!next.has(id)) {
+          for (const [sessionId, targetId] of this.sessions)
+            if (targetId === id) {
+              this.sessions.delete(sessionId);
+              if (!this.childOwners.delete(sessionId))
+                this.notify("Target.detachedFromTarget", { sessionId, targetId: id });
+            }
+          this.autoAttachSessions.delete(id);
+          if (this.discover) this.notify("Target.targetDestroyed", { targetId: id });
+          for (const [nativeId, pending] of this.pending)
+            if (pending.pageId === old.pageId) this.pending.delete(nativeId);
         }
-        this.autoAttachSessions.delete(id);
-        if (this.discover) this.notify("Target.targetDestroyed", { targetId: id });
-        for (const [nativeId, pending] of this.pending) if (pending.pageId === old.pageId) this.pending.delete(nativeId);
-      }
       this.targets.clear();
       for (const [id, value] of next) this.targets.set(id, value);
-      for (const [id, value] of next) if (!previous.has(id)) {
-        if (this.discover) this.notify("Target.targetCreated", { targetInfo: value.info });
-        if (this.autoAttach) this.attach(id, true);
-      }
+      for (const [id, value] of next)
+        if (!previous.has(id)) {
+          if (this.discover) this.notify("Target.targetCreated", { targetInfo: value.info });
+          if (this.autoAttach) this.attach(id, true);
+        }
     });
     this.refreshQueue = work.catch(() => {});
     return work;
@@ -161,18 +211,30 @@ export class NativeCdpBroker {
     const sessionId = `aux-page-${randomUUID()}`;
     this.sessions.set(sessionId, targetId);
     target.info.attached = true;
-    if (automatic) this.notify("Target.attachedToTarget", {
-      sessionId, targetInfo: target.info, waitingForDebugger: false,
-    });
+    if (automatic)
+      this.notify("Target.attachedToTarget", {
+        sessionId,
+        targetInfo: target.info,
+        waitingForDebugger: false,
+      });
     return sessionId;
   }
 
   private forwardNative(payload: unknown): void {
     if (!payload || typeof payload !== "object") return;
     const event = payload as { pageId?: unknown; message?: unknown };
-    if (typeof event.pageId !== "string" || typeof event.message !== "string" || event.message.length > MAX_NATIVE_EVENT_BYTES) return;
+    if (
+      typeof event.pageId !== "string" ||
+      typeof event.message !== "string" ||
+      event.message.length > MAX_NATIVE_EVENT_BYTES
+    )
+      return;
     let message: Record<string, unknown>;
-    try { message = JSON.parse(event.message) as Record<string, unknown>; } catch { return; }
+    try {
+      message = JSON.parse(event.message) as Record<string, unknown>;
+    } catch {
+      return;
+    }
     if (typeof message.id === "number") {
       const pending = this.pending.get(message.id);
       if (!pending || pending.pageId !== event.pageId || !this.sessions.has(pending.sessionId)) return;
@@ -207,7 +269,8 @@ export class NativeCdpBroker {
       return;
     }
     for (const [sessionId, targetId] of this.sessions) {
-      if (!this.childOwners.has(sessionId) && this.targets.get(targetId)?.pageId === event.pageId) this.send({ ...message, sessionId });
+      if (!this.childOwners.has(sessionId) && this.targets.get(targetId)?.pageId === event.pageId)
+        this.send({ ...message, sessionId });
     }
   }
 
@@ -216,15 +279,30 @@ export class NativeCdpBroker {
     let request: Request;
     try {
       const parsed = JSON.parse(raw) as Partial<Request>;
-      if (!Number.isSafeInteger(parsed.id) || typeof parsed.method !== "string" ||
-          (parsed.sessionId !== undefined && typeof parsed.sessionId !== "string") ||
-          (parsed.params !== undefined && (!parsed.params || typeof parsed.params !== "object" || Array.isArray(parsed.params)))) throw new Error();
-      request = { id: parsed.id!, method: parsed.method, params: parsed.params ?? {}, sessionId: parsed.sessionId };
-    } catch { socket.close(1003, "Invalid CDP request"); return; }
+      if (
+        !Number.isSafeInteger(parsed.id) ||
+        typeof parsed.method !== "string" ||
+        (parsed.sessionId !== undefined && typeof parsed.sessionId !== "string") ||
+        (parsed.params !== undefined &&
+          (!parsed.params || typeof parsed.params !== "object" || Array.isArray(parsed.params)))
+      )
+        throw new Error();
+      request = {
+        id: parsed.id!,
+        method: parsed.method,
+        params: parsed.params ?? {},
+        sessionId: parsed.sessionId,
+      };
+    } catch {
+      socket.close(1003, "Invalid CDP request");
+      return;
+    }
     try {
       const result = await this.execute(request);
       if (result !== null) this.reply(request, result);
-    } catch (error) { this.fail(request, error); }
+    } catch (error) {
+      this.fail(request, error);
+    }
   }
 
   private async execute(request: Request): Promise<unknown | null> {
@@ -246,14 +324,25 @@ export class NativeCdpBroker {
         if (params.autoAttach === true) this.autoAttachSessions.set(targetId, sessionId);
         else this.autoAttachSessions.delete(targetId);
       } else if (method === "Target.detachFromTarget") {
-        if (typeof params.sessionId !== "string" || this.childOwners.get(params.sessionId) !== sessionId) throw new Error("Iframe session is not owned by this page");
+        if (typeof params.sessionId !== "string" || this.childOwners.get(params.sessionId) !== sessionId)
+          throw new Error("Iframe session is not owned by this page");
       } else if (!pageMethodAllowed(method)) throw new Error("CDP method is not page scoped");
       const nativeId = this.nextNativeId++;
       this.pending.set(nativeId, { id: request.id, sessionId, pageId: target.pageId });
       try {
-        await this.channel.call("native.cdpDispatch", { pageId: target.pageId,
-          message: JSON.stringify({ id: nativeId, method, params,
-            ...(this.childOwners.has(sessionId) ? { sessionId } : {}) }) }, 10_000);
+        await this.channel.call(
+          "native.cdpDispatch",
+          {
+            pageId: target.pageId,
+            message: JSON.stringify({
+              id: nativeId,
+              method,
+              params,
+              ...(this.childOwners.has(sessionId) ? { sessionId } : {}),
+            }),
+          },
+          10_000,
+        );
       } catch (error) {
         this.pending.delete(nativeId);
         if (method === "Target.setAutoAttach") {
@@ -268,17 +357,21 @@ export class NativeCdpBroker {
     if (method === "Browser.getVersion") {
       const { version } = await this.channel.call<{ version: string }>("native.cdpVersion", {});
       return {
-        protocolVersion: "1.3", product: `Chrome/${version}`, revision: "Aux",
+        protocolVersion: "1.3",
+        product: `Chrome/${version}`,
+        revision: "Aux",
         userAgent: `Mozilla/5.0 (${process.platform === "darwin" ? "Macintosh" : "X11; Linux x86_64"}) AppleWebKit/537.36 Chrome/${version} Safari/537.36`,
         jsVersion: "",
       };
     }
     if (method === "Browser.setDownloadBehavior") {
-      if (params.browserContextId && params.browserContextId !== CONTEXT_ID) throw new Error("Other browser contexts are not available");
+      if (params.browserContextId && params.browserContextId !== CONTEXT_ID)
+        throw new Error("Other browser contexts are not available");
       return {}; // Chromium's Profile download controller remains authoritative.
     }
     if (method === "Target.getTargetInfo") {
-      if (!params.targetId) return { targetInfo: { targetId: "aux-internal-root", type: "browser", title: "Aux", url: "" } };
+      if (!params.targetId)
+        return { targetInfo: { targetId: "aux-internal-root", type: "browser", title: "Aux", url: "" } };
       await this.refresh();
       const target = this.targets.get(String(params.targetId));
       if (!target) throw new Error("Target is not an Aux tab in this Profile");
@@ -291,18 +384,21 @@ export class NativeCdpBroker {
     }
     if (method === "Target.getTargets") {
       await this.refresh();
-      return { targetInfos: [...this.targets.values()].map(value => value.info) };
+      return { targetInfos: [...this.targets.values()].map((value) => value.info) };
     }
     if (method === "Target.setDiscoverTargets") {
       await this.refresh();
       this.discover = params.discover === true;
-      if (this.discover) for (const { info } of this.targets.values()) this.notify("Target.targetCreated", { targetInfo: info });
+      if (this.discover)
+        for (const { info } of this.targets.values())
+          this.notify("Target.targetCreated", { targetInfo: info });
       return {};
     }
     if (method === "Target.setAutoAttach") {
       this.autoAttach = params.autoAttach === true;
       await this.refresh();
-      if (this.autoAttach) for (const id of this.targets.keys()) if (!this.sessionsHasTarget(id)) this.attach(id, true);
+      if (this.autoAttach)
+        for (const id of this.targets.keys()) if (!this.sessionsHasTarget(id)) this.attach(id, true);
       return {};
     }
     if (method === "Target.attachToTarget") {
@@ -317,7 +413,8 @@ export class NativeCdpBroker {
       if (!targetId) throw new Error("Unknown target session");
       this.sessions.delete(params.sessionId);
       this.childOwners.delete(params.sessionId);
-      if (this.autoAttachSessions.get(targetId) === params.sessionId) this.autoAttachSessions.delete(targetId);
+      if (this.autoAttachSessions.get(targetId) === params.sessionId)
+        this.autoAttachSessions.delete(targetId);
       this.notify("Target.detachedFromTarget", { sessionId: params.sessionId, targetId });
       return {};
     }
@@ -333,10 +430,9 @@ export class NativeCdpBroker {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
-    if (this.poll) clearInterval(this.poll);
     this.client?.terminate();
     this.ws.close();
-    if (this.server.listening) await new Promise<void>(resolve => this.server.close(() => resolve()));
+    if (this.server.listening) await new Promise<void>((resolve) => this.server.close(() => resolve()));
     rmSync(this.socketPath, { force: true });
   }
 }
