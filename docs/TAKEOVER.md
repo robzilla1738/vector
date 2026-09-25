@@ -51,6 +51,8 @@ The owner runs the real tests with a disposable macOS user, test accounts, signe
 
 ## Founder test script
 
+Run the scripted [native Aux.app journeys](native-journeys.md) on the official ad-hoc build before the founder pass. Keep its capture manifest with the build evidence and visually inspect the four Aside layout captures.
+
 Use a fresh regular Profile and a separate private Profile. Record build hash, macOS version, machine, window dimensions, test account identities and each pass/fail with a reproducible note. Test at least one site with a login popup, one extension and one long task.
 
 | Area | Founder action and expected result |

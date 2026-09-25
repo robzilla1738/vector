@@ -51,6 +51,8 @@ UI work: `pnpm -C apps/desktop dev:mock` serves the renderer at
 
 ## Desktop smoke suites
 
+For the official Chromium `Aux.app`, run the [native app journeys](native-journeys.md). They launch a disposable Profile and use the private runtime bridge and native window capture; the Electron smoke suites below qualify the development preview.
+
 `tests/smoke/*.mjs` are real-Electron acceptance cases (isolated profiles,
 serial execution). `tests/smoke/run-suite.mjs` groups them:
 
