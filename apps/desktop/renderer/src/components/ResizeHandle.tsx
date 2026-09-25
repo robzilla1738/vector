@@ -1,4 +1,5 @@
-import type React from "react";
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { acquireFloatingSidebarLock } from "../floating-sidebar";
 
 export function snapResizeWidth(width: number, min: number, max: number, reset: number): number {
   const clamped = Math.round(Math.min(max, Math.max(min, width)));
@@ -26,7 +27,10 @@ export function ResizeHandle({
   reset: number;
   onResize: (w: number) => void;
 }) {
-  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const cleanup = useRef<(() => void) | null>(null);
+  useEffect(() => () => cleanup.current?.(), []);
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    cleanup.current?.();
     e.preventDefault();
     e.currentTarget.focus();
     const handle = e.currentTarget;
@@ -36,6 +40,7 @@ export function ResizeHandle({
     const cssVar = side === "left" ? "--sb-w" : "--rail-w";
     const startX = e.clientX;
     const startW = value;
+    const releaseLock = side === "left" ? acquireFloatingSidebarLock("keep-current") : null;
     let width = value,
       frame = 0;
     document.body.classList.add("resizing");
@@ -44,16 +49,20 @@ export function ResizeHandle({
     } catch {
       /* synthetic events have no active pointer */
     }
-    const done = () => {
+    const done = (commit = true) => {
       window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", done);
-      window.removeEventListener("pointercancel", done);
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", cancel);
       cancelAnimationFrame(frame);
       document.body.classList.remove("resizing");
-      panel?.style.setProperty(cssVar, `${width}px`);
-      handle.setAttribute("aria-valuenow", String(width));
-      if (width !== value) onResize(width);
+      panel?.style.setProperty(cssVar, `${commit ? width : value}px`);
+      handle.setAttribute("aria-valuenow", String(commit ? width : value));
+      if (commit && width !== value) onResize(width);
+      releaseLock?.();
+      cleanup.current = null;
     };
+    const release = () => done();
+    const cancel = () => done(false);
     const move = (ev: PointerEvent) => {
       if (!(ev.buttons & 1)) return done(); // released outside the window
       const d = side === "left" ? ev.clientX - startX : startX - ev.clientX;
@@ -66,8 +75,9 @@ export function ResizeHandle({
       });
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", done);
-    window.addEventListener("pointercancel", done);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", cancel);
+    cleanup.current = cancel;
   };
   return (
     <div

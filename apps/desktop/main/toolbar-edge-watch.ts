@@ -30,7 +30,7 @@ export function attachToolbarEdgeWatch(win: BaseWindow, shell: WebContents, read
     const cursor = screen.getCursorScreenPoint();
     const content = win.getContentBounds();
     send(toolbarEdgeFromCursor(cursor, content, stage, open));
-    sendLeft(cursorAtWindowLeft(cursor, content));
+    sendLeft(cursorAtWindowLeft(cursor, content, atLeft));
   };
   const stop = () => {
     if (timer) clearInterval(timer);

@@ -15,7 +15,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
-import { bridge, inNativeHost, inMock } from "./bridge";
+import { bridge, hostKind, inNativeHost, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
@@ -195,7 +195,17 @@ export function App() {
   // Raise the shell over the native page before the bar animates, and lower it only after the bar has left.
   const toolbarTicket = useRef(0);
   useEffect(() => {
-    if (!inNativeHost) return;
+    if (hostKind === "chromium") {
+      const covering = toolbarReveal.covering || tabPreviewOpen || sidebarCovering;
+      let active = true;
+      queueMicrotask(() => {
+        if (!active) return;
+        setToolbarReady(covering);
+        if (!covering) setToolbarHole(false);
+      });
+      return () => { active = false; };
+    }
+    if (hostKind !== "electron") return;
     const ticket = ++toolbarTicket.current;
     const current = () => toolbarTicket.current === ticket;
     if (toolbarReveal.covering || tabPreviewOpen || sidebarCovering) {
@@ -217,11 +227,11 @@ export function App() {
   }, [toolbarReveal.covering, tabPreviewOpen, sidebarCovering]);
 
   useEffect(() => {
-    if (inNativeHost) void bridge.toolbarGlass(toolbarReveal.revealed && toolbarReady).catch(() => {});
+    if (hostKind === "electron") void bridge.toolbarGlass(toolbarReveal.revealed && toolbarReady).catch(() => {});
   }, [toolbarReveal.revealed, toolbarReady]);
 
   useEffect(() => {
-    if (!inNativeHost || !toolbarReveal.covering || activePageLoading) return;
+    if (hostKind !== "electron" || !toolbarReveal.covering || activePageLoading) return;
     let current = true;
     void bridge.toolbarTone().then(tone => {
       if (current) document.documentElement.dataset.toolbarTone = tone;
@@ -230,14 +240,14 @@ export function App() {
   }, [toolbarReveal.covering, activePageId, activePageLoading]);
 
   // The page stays flush. While the address bar is away, the window buttons would sit on that page, so they leave with the bar.
-  const hideTrafficLights = inNativeHost && !horizontal && sidebar !== "expanded" && !sidebarPeek && nativeShowing && !(toolbarReveal.covering && toolbarReady);
+  const hideTrafficLights = hostKind === "electron" && !horizontal && sidebar !== "expanded" && !sidebarPeek && nativeShowing && !(toolbarReveal.covering && toolbarReady);
   useEffect(() => {
-    if (!inNativeHost) return;
+    if (hostKind !== "electron") return;
     void bridge.trafficLights(!hideTrafficLights).catch(() => {});
   }, [hideTrafficLights]);
 
   useEffect(() => {
-    if (!inNativeHost || !floatingSidebar || !nativeShowing) return;
+    if (hostKind !== "electron" || !floatingSidebar || !nativeShowing) return;
     const panel = document.querySelector<HTMLElement>(".sidebar.peek");
     if (!panel) return;
     const reduced = matchMedia("(prefers-reduced-transparency: reduce)");
@@ -261,7 +271,7 @@ export function App() {
       document.documentElement.style.setProperty("--sidebar-tint", `${Number(settings.sidebarTint ?? 0)}%`);
       document.documentElement.style.setProperty("--content-opacity", `${Number(settings.contentOpacity ?? 95)}%`);
       const material = settings.sidebarMaterial === "sidebar" || settings.sidebarMaterial === "under-window" || settings.sidebarMaterial === "titlebar" ? settings.sidebarMaterial : "liquid-glass";
-      void bridge.setAppearance(settings.theme === "system" ? "system" : theme, glass, true, material).catch(errToast);
+      if (hostKind === "electron") void bridge.setAppearance(settings.theme === "system" ? "system" : theme, glass, true, material).catch(errToast);
     };
     apply(); dark.addEventListener("change", apply); reduced.addEventListener("change", apply);
     return () => { dark.removeEventListener("change", apply); reduced.removeEventListener("change", apply); };
@@ -356,11 +366,11 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep the native view pinned to the stage card — report at the end of
-  // layout changes, never per animation frame
+  // Electron's separate page view needs geometry. Chromium's Webium embed
+  // already lives in the stage DOM and uses the shell's CSS glass directly.
   useEffect(() => {
     const el = stageRef.current;
-    if (!el || !inNativeHost) return;
+    if (!el || hostKind !== "electron") return;
     let raf = 0;
     const report = () => {
       cancelAnimationFrame(raf);

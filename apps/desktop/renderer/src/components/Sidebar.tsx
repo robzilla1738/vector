@@ -23,7 +23,7 @@ import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
 import { useWindowedRows } from "../use-windowed-rows";
-import { useFloatingSidebar } from "../floating-sidebar";
+import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-sidebar";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useDismissable } from "../use-dismissable";
 
@@ -464,6 +464,10 @@ export const Sidebar = memo(function Sidebar() {
   const [ctx, setCtx] = useState<{ p: PageTarget; x: number; y: number } | null>(null);
   const [pinCtx, setPinCtx] = useState<{ pin: Pin; spaceId: string; x: number; y: number } | null>(null);
   const [folderCtx, setFolderCtx] = useState<{ folder: Folder; x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!menuOpen && !ctx && !pinCtx && !folderCtx && !editing) return;
+    return acquireFloatingSidebarLock("keep-current");
+  }, [menuOpen, ctx, pinCtx, folderCtx, editing]);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const close = (event: PointerEvent) => {
@@ -773,7 +777,7 @@ export const Sidebar = memo(function Sidebar() {
         aria-label="Sidebar"
       >
         <div className="sidebar-content" inert={!sidebarVisible ? true : undefined} aria-hidden={!sidebarVisible}>{full}</div>
-        {sidebar === "expanded" && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
+        {sidebarVisible && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
       </aside>
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
