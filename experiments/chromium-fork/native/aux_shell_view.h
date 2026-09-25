@@ -3,6 +3,7 @@
 #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SHELL_VIEW_H_
 #include <memory>
 #include "base/values.h"
+#include "content/public/browser/weak_document_ptr.h"
 #include "ui/events/event_observer.h"
 #include "ui/views/event_monitor.h"
 #include "ui/base/metadata/metadata_header_macros.h"
@@ -24,14 +25,22 @@ class AuxShellView : public views::WebView, public ui::EventObserver {
   void OnEvent(const ui::Event& event) override;
   base::Value Request(const std::string& method, const base::ListValue& args);
  private:
+  void SyncPageMaterial();
   void Emit(const std::string& event, base::Value payload);
   raw_ptr<BrowserView> browser_;
   std::unique_ptr<views::EventMonitor> pointer_monitor_;
   bool near_edge_ = false;
+  bool near_sidebar_ = false;
   gfx::Rect stage_;
+  float stage_radius_ = 0;
   std::string stage_page_id_;
   bool stage_visible_ = false;
   bool overlay_ = false;
+  bool glass_enabled_ = true;
+  bool toolbar_glass_ = false;
+  gfx::Rect sidebar_glass_;
+  content::WeakDocumentPtr material_document_;
+  std::string material_state_;
   std::string window_id_;
   std::string profile_id_;
 };

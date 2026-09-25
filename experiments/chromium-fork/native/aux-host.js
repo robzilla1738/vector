@@ -58,7 +58,7 @@
       if (method === 'toolbarTone') return native(method,args);
       if (method === 'overlay') { overlayOpen = args[0]; return native('overlay',[overlayOpen || toolbarOpen]); }
       if (method === 'toolbarOverlay') { if (args[1] < toolbarTicket) return false; toolbarTicket = args[1]; toolbarOpen = args[0]; await native('overlay',[overlayOpen || toolbarOpen]); return true; }
-      if (['setStage','focusShell','setAppearance','forwardPagePointer'].includes(method)) return native(method,args);
+      if (['setStage','focusShell','setAppearance','forwardPagePointer','toolbarGlass','sidebarGlass'].includes(method)) return native(method,args);
       throw new Error(`Aux native operation not integrated: ${method}`);
     }
   };

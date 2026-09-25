@@ -1,7 +1,14 @@
 #include "chrome/browser/ui/views/frame/aux_shell_view.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "url/origin.h"
+#include "base/json/json_writer.h"
+#include "chrome/common/chrome_isolated_world_ids.h"
+#include "chrome/browser/ui/views/frame/aux_page_material.h"
 #include "chrome/browser/themes/theme_service.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/common/pref_names.h"
+#include "components/prefs/pref_service.h"
+#include "chrome/browser/ui/views/frame/glass_frame_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/views/frame/top_container_view.h"
 #include "ui/compositor/layer.h"
@@ -50,6 +57,8 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/controls/native/native_view_host.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
 
 namespace {
 auto& Shells() {
@@ -141,7 +150,7 @@ AuxShellView::~AuxShellView() { Shells().erase(web_contents()); }
 void AuxShellView::ApplyLayout() {
   SetBoundsRect(browser_->GetLocalBounds());
   if (!pointer_monitor_ && GetWidget()) {
-    pointer_monitor_ = views::EventMonitor::CreateWindowMonitor(this, GetWidget()->GetNativeWindow(), {ui::EventType::kMouseMoved});
+    pointer_monitor_ = views::EventMonitor::CreateWindowMonitor(this, GetWidget()->GetNativeWindow(), {ui::EventType::kMouseMoved, ui::EventType::kMousePressed, ui::EventType::kMouseExited});
   }
   auto* top = browser_->top_container();
   if (!top->layer()) top->SetPaintToLayer();
@@ -161,8 +170,38 @@ void AuxShellView::ApplyLayout() {
   // BrowserView layout requires this container to remain visible. Collapse its
   // bounds when Aux has no page stage rather than violating that invariant.
   native->SetBoundsRect(stage_visible_ ? stage_ : gfx::Rect());
+  // A zero-sized Views ancestor does not hide a hosted macOS WebContents
+  // surface. Hide the actual WebView while Aux owns the page area; keep the
+  // outer container visible to satisfy BrowserView's layout invariant.
+  if (auto* page_view = browser_->GetActiveContentsWebView()) {
+    page_view->SetVisible(stage_visible_);
+    page_view->holder()->SetNativeViewCornerRadii(gfx::RoundedCornersF(stage_radius_));
+  }
   browser_->ReorderChildView(this, browser_->children().size() - 1);
   if (stage_visible_ && !overlay_) browser_->ReorderChildView(native, browser_->children().size() - 1);
+}
+void AuxShellView::SyncPageMaterial() {
+  auto* wc = browser_->browser()->GetTabStripModel()->GetActiveWebContents();
+  auto* frame = wc ? wc->GetPrimaryMainFrame() : nullptr;
+  auto* prior = material_document_.AsRenderFrameHostIfValid();
+  if (prior && prior != frame && prior->IsActive()) {
+    prior->ExecuteJavaScriptInIsolatedWorld(base::UTF8ToUTF16(std::string(kAuxPageMaterial) + "({enabled:false});"), base::NullCallback(), ISOLATED_WORLD_ID_CHROME_INTERNAL);
+  }
+  if (!frame || !frame->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
+    material_document_ = content::WeakDocumentPtr(); material_state_.clear(); return;
+  }
+  if (!frame->IsActive() || !frame->IsDOMContentLoaded()) return;
+  base::DictValue state;
+  state.Set("enabled", glass_enabled_ && stage_visible_ && PageId(wc) == stage_page_id_);
+  state.Set("toolbar", toolbar_glass_);
+  if (!sidebar_glass_.IsEmpty()) {
+    state.Set("sidebar", base::DictValue().Set("x", sidebar_glass_.x()-stage_.x()).Set("y", sidebar_glass_.y()-stage_.y())
+        .Set("width", sidebar_glass_.width()).Set("height", sidebar_glass_.height()));
+  }
+  auto json = base::WriteJson(state).value_or("{}");
+  if (prior == frame && json == material_state_) return;
+  material_document_ = frame->GetWeakDocumentPtr(); material_state_ = json;
+  frame->ExecuteJavaScriptInIsolatedWorld(base::UTF8ToUTF16(std::string(kAuxPageMaterial) + "(" + json + ");"), base::NullCallback(), ISOLATED_WORLD_ID_CHROME_INTERNAL);
 }
 void AuxShellView::Emit(const std::string& event, base::Value payload) {
   auto* frame = web_contents()->GetPrimaryMainFrame();
@@ -171,10 +210,16 @@ void AuxShellView::Emit(const std::string& event, base::Value payload) {
 }
 void AuxShellView::OnEvent(const ui::Event& event) {
   if (!event.IsMouseEvent() || !stage_visible_) return;
-  const auto point = pointer_monitor_->GetLastMouseLocation();
+  auto point = event.AsMouseEvent()->root_location();
+  views::View::ConvertPointToScreen(GetWidget()->GetRootView(), &point);
   const auto bounds = GetBoundsInScreen();
-  const bool near = bounds.Contains(point) && point.y() - bounds.y() < (near_edge_ ? 80 : 8);
+  // Crossing native child views emits an exit without leaving the window.
+  // Keep the edge reveal alive until the pointer actually leaves its bounds.
+  const bool inside = bounds.Contains(point);
+  const bool near = inside && point.y() - bounds.y() < (near_edge_ ? 80 : 8);
   if (near != near_edge_) { near_edge_ = near; Emit("onToolbarEdge", base::Value(near)); }
+  const bool left = inside && point.x() - bounds.x() <= 8 && point.y() - bounds.y() >= 48;
+  if (left != near_sidebar_) { near_sidebar_ = left; Emit("onSidebarEdge", base::Value(left)); }
 }
 bool AuxShellView::HandleBrowserCommand(BrowserWindowInterface* browser, int command_id) {
   if (command_id != IDC_NEW_TAB && command_id != IDC_FOCUS_LOCATION) return false;
@@ -205,6 +250,7 @@ bool AuxShellView::HandleKey(const input::NativeWebKeyboardEvent& event) {
 base::Value AuxShellView::Request(const std::string& method, const base::ListValue& args) {
   auto* model = browser_->browser()->GetTabStripModel();
   if (method == "state") {
+    SyncPageMaterial();
     base::ListValue tabs;
     for (int i = 0; i < model->count(); ++i) {
       auto* wc = model->GetWebContentsAt(i);
@@ -226,8 +272,32 @@ base::Value AuxShellView::Request(const std::string& method, const base::ListVal
     ThemeServiceFactory::GetForProfile(browser_->GetProfile())->SetBrowserColorScheme(
         theme == "dark" ? ThemeService::BrowserColorScheme::kDark :
         theme == "light" ? ThemeService::BrowserColorScheme::kLight : ThemeService::BrowserColorScheme::kSystem);
-    // Theme is applied. Native backdrop materials/window buttons remain unqualified.
-    return base::Value(false);
+    if (args.size() < 2 || !args[1].is_bool()) return Error("Invalid transparency preference");
+    // The upstream service owns native material lifecycle, power/fullscreen
+    // fallback and frame presentation synchronization. Aux owns the tint in CSS.
+    glass_enabled_ = args[1].GetBool();
+    SyncPageMaterial();
+    auto* glass = GlassFrameService::GetInstance();
+    if (!glass) return base::Value(false);
+    g_browser_process->local_state()->SetBoolean(prefs::kGlassFrameEnabled, args[1].GetBool());
+    return base::Value(glass->IsBrowserWindowEligible(browser_->browser()));
+  }
+  if (method == "toolbarGlass") {
+    if (args.size() != 1 || !args[0].is_bool()) return Error("Invalid toolbar glass state");
+    toolbar_glass_ = args[0].GetBool(); SyncPageMaterial(); return base::Value(true);
+  }
+  if (method == "sidebarGlass") {
+    if (args.size() != 1 || (!args[0].is_none() && !args[0].is_dict())) return Error("Invalid sidebar glass bounds");
+    sidebar_glass_ = gfx::Rect();
+    if (args[0].is_dict()) {
+      const auto& r = args[0].GetDict();
+      auto value = [&](const char* key) { return r.FindDouble(key).value_or(r.FindInt(key).value_or(-1)); };
+      const double x=value("x"), y=value("y"), w=value("width"), h=value("height");
+      if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(w) || !std::isfinite(h) ||
+          x<0 || y<0 || w<=0 || h<=0 || x+w>20000 || y+h>20000) return Error("Invalid sidebar glass rectangle");
+      sidebar_glass_ = gfx::Rect(x,y,w,h);
+    }
+    SyncPageMaterial(); return base::Value(true);
   }
   if (method == "toolbarTone") {
     auto* wc = model->GetActiveWebContents();
@@ -293,11 +363,14 @@ base::Value AuxShellView::Request(const std::string& method, const base::ListVal
         (!model->GetActiveWebContents() || PageId(model->GetActiveWebContents()) != args[0].GetString())) return Error("Stage is not the active native tab");
     const auto& bounds = args[1].GetDict();
     auto number = [&](const char* name) { return bounds.FindDouble(name).value_or(bounds.FindInt(name).value_or(0)); };
+    const double radius = args.size() > 3 && args[3].is_double() ? args[3].GetDouble() : args.size() > 3 && args[3].is_int() ? args[3].GetInt() : 0;
+    if (!std::isfinite(radius)) return Error("Invalid stage radius");
+    stage_radius_ = std::clamp(radius, 0.0, 48.0);
     stage_ = gfx::Rect(number("x"), number("y"), number("width"), number("height"));
     stage_.Intersect(browser_->GetLocalBounds());
     stage_page_id_ = args[0].is_string() ? args[0].GetString() : "";
     stage_visible_ = args[0].is_string() && !args[0].GetString().empty() && !stage_.IsEmpty();
-    ApplyLayout(); return base::Value(true);
+    ApplyLayout(); SyncPageMaterial(); return base::Value(true);
   }
   if (method == "overlay") {
     if (args.empty() || !args[0].is_bool()) return Error("Invalid overlay state");

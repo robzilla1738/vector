@@ -2164,11 +2164,13 @@
         "overflow",
         "keyboard-focus"
       ],
-      "visualEvidence": [],
+      "visualEvidence": [
+        "docs/ui/evidence/2026-09-24/host/candidate-glass-newtab.jpg"
+      ],
       "functionalEvidence": [
         "Space menu now shows current Space separately from Profile, current-first ordering and search above six entries. Search takes initial keyboard focus; ArrowDown enters matches. Full Space keyboard matrix pending."
       ],
-      "nativeHostVerification": "pending Chromium candidate",
+      "nativeHostVerification": "Partial Chromium candidate: native material across full sidebar in New Tab and live-page round trip; prior horizontal cutoff fixed by hiding unused hosted page view. Full motion/resize/appearance matrix remains open.",
       "remaining": [
         "Complete all applicable requirements in the approved surface map.",
         "Run the full appearance, size, input, accessibility, and host matrix."
