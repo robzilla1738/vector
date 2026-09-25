@@ -37,8 +37,8 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
     const page = (await this.trustedPages?.())?.find(page => page.pageId === pageId && page.marker === marker);
     // The native broker deliberately excludes browser-internal documents.
     // Reject them before waiting for a target that can never be exposed.
-    if (page && this.endpoint.startsWith("ws+unix://") &&
-        (!page.url || !/^(https?:|about:blank$)/.test(page.url))) {
+    if (page?.url && this.endpoint.startsWith("ws+unix://") &&
+        !/^(https?:|about:blank$)/.test(page.url)) {
       throw new AuxError("permission_denied", "Browser-internal pages are not available to automation.");
     }
     return page;

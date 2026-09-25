@@ -174,3 +174,10 @@ The owner reported soft/pixelated shell icons on September 25. This is a current
 - **[Open]** Icon optical-stroke correction is being staged. No live post-fix sharpness claim yet. The shell's actual `chrome://aux/` renderer was inspected through Chromium DevTools; no remote-debugging server or browser security override was enabled.
 
 Log: `/tmp/aux-dev-first-run-build.log`.
+
+### Recovery and core native journeys after startup fixes
+
+- **[Verified]** The complete independent two-Profile restart fixture passes: Work and Personal restore their original page IDs and HttpOnly fixture accounts; cross-Profile observation stays denied. Log: `/tmp/aux-native-profile-recovery-complete.log`.
+- **[Verified]** All six core native RPC journeys pass after allowing a trusted tab's empty, not-yet-committed URL to proceed through attachment. Protected internal URLs still reject immediately. The driver regression covers both committed and pending recovery. Evidence: `release/test-artifacts/native-journeys-2026-09-25T19-41-06-763Z/manifest.json`.
+- **[Owner clarification]** The icon appearance was traced by the owner to their monitor. The unverified optical-stroke trial was removed before app installation; existing Central icon paths and weights are preserved.
+- **[In progress]** The owner reported inconsistent corners. Page cards used circular 14px corners, horizontal toolbar 16px, and main surfaces the Aux squircle. The page card and toolbar now share the existing `--stage-radius` and `--squircle-factor`; redundant vertical-only radius override removed. Renderer build and existing bundle budgets pass. Native resource rebuild/live inspection remain pending; no claim of complete visual qualification.

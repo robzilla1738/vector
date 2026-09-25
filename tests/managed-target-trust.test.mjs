@@ -47,8 +47,9 @@ test('native internal pages fail immediately without a CDP attachment', async ()
 
 test('native recovery reuses its authenticated broker connection', async () => {
   let connections = 0;
+  let url = 'https://fixture.test/';
   const driver = new ManagedChromiumDriver('ws+unix:///tmp/fixture.sock', {
-    trustedPages: async () => [{ pageId: 'page', marker: 'atab-page', url: 'https://fixture.test/', cdpTargetId: 'native-target' }],
+    trustedPages: async () => [{ pageId: 'page', marker: 'atab-page', url, cdpTargetId: 'native-target' }],
     connectOverCDP: async () => { connections++; throw new Error('unexpected CDP connection'); },
   });
   const recovered = {};
@@ -58,6 +59,10 @@ test('native recovery reuses its authenticated broker connection', async () => {
     assert.equal(hint.initialDocumentEpoch, 8);
     return recovered;
   };
+  assert.equal(await driver.recoverPage('atab-page', 'page', 8), recovered);
+  // A native tab exists before its first navigation commits. An empty URL
+  // is pending state, not evidence that this is a protected internal page.
+  url = '';
   assert.equal(await driver.recoverPage('atab-page', 'page', 8), recovered);
   assert.equal(connections, 0);
 });
