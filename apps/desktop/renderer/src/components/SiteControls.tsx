@@ -20,6 +20,10 @@ const labels: Record<string, string> = {
   "clipboard-sanitized-write": "Write clipboard",
 };
 
+function blockedRequestsLabel(count: number) {
+  return `${count} request${count === 1 ? "" : "s"} blocked for this site this session`;
+}
+
 export function SiteControls() {
   const page = useStore((state) => state.pages.find((page) => page.pageId === state.activePageId));
   const pageId = page?.pageId;
@@ -239,9 +243,7 @@ export function SiteControls() {
               <div>
                 <strong>Block trackers and ads</strong>
                 <span>
-                  {info.trackersAllowed
-                    ? "Paused on this site"
-                    : `${info.blockedCount} request${info.blockedCount === 1 ? "" : "s"} blocked for this site this session`}
+                  {info.trackersAllowed ? "Paused on this site" : blockedRequestsLabel(info.blockedCount)}
                 </span>
               </div>
               <button

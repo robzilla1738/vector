@@ -12,7 +12,9 @@ export function FilterListManager() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [kind, setKind] = useState<"hosts" | "cookie_banner">("hosts");
-  const [review, setReview] = useState<{ name: string; url: string; kind: "hosts" | "cookie_banner" } | null>(null);
+  const [review, setReview] = useState<{ name: string; url: string; kind: "hosts" | "cookie_banner" } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -59,8 +61,8 @@ export function FilterListManager() {
     <section className="filter-manager" aria-label="Filter lists">
       <div className="drawer-section">Filter lists</div>
       <p className="hint">
-        Choose HTTPS hosts or cookie-banner lists you trust. Downloads update in Aux while it is open. The built-in protection
-        works without a download.
+        Choose HTTPS hosts or cookie-banner lists you trust. Downloads update in Aux while it is open. The
+        built-in protection works without a download.
       </p>
       {status && (
         <p className="hint">
@@ -80,7 +82,8 @@ export function FilterListManager() {
             >
               <strong>{source.name}</strong>
               <span>
-                {source.enabled ? "Enabled" : "Paused"} · {source.kind === "cookie_banner"
+                {source.enabled ? "Enabled" : "Paused"} ·{" "}
+                {source.kind === "cookie_banner"
                   ? `${source.meta?.selectors?.toLocaleString() ?? 0} cookie-banner selectors`
                   : `${source.meta?.hosts?.toLocaleString() ?? 0} domains`}
               </span>
@@ -144,8 +147,15 @@ export function FilterListManager() {
       <div className="filter-manager-add">
         <label>
           List type
-          <select aria-label="Filter list type" value={kind} disabled={busy || preview}
-            onChange={(event) => { setKind(event.target.value as "hosts" | "cookie_banner"); setReview(null); }}>
+          <select
+            aria-label="Filter list type"
+            value={kind}
+            disabled={busy || preview}
+            onChange={(event) => {
+              setKind(event.target.value as "hosts" | "cookie_banner");
+              setReview(null);
+            }}
+          >
             <option value="hosts">Domain blocking hosts list</option>
             <option value="cookie_banner">Cookie-banner cosmetic list</option>
           </select>
@@ -202,9 +212,11 @@ export function FilterListManager() {
               {review.name} · {review.url}
             </p>
             <p className="hint">
-              Aux will fetch this source and use {review.kind === "hosts"
+              Aux will fetch this source and use{" "}
+              {review.kind === "hosts"
                 ? "validated host entries for subresource blocking"
-                : "validated cosmetic selectors to hide cookie banners on matching sites"}. The source sees this browser's network address.
+                : "validated cosmetic selectors to hide cookie banners on matching sites"}
+              . The source sees this browser's network address.
             </p>
             <div className="row">
               <button
