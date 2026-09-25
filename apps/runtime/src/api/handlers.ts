@@ -40,6 +40,7 @@ import { RoutineService } from "../services/routines.js";
 import { PluginService } from "../services/plugins.js";
 import { GoalService } from "../services/goals.js";
 import { HookService } from "../services/hooks.js";
+import { ZapService } from "../services/zap.js";
 import { TranslateService } from "../services/translate.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
@@ -82,6 +83,7 @@ export interface Services {
   checkpointDeletedData?: () => void;
   vault?: VaultService;
   routines?: RoutineService;
+  zap?: ZapService;
   responses?: ResponseStore;
   operations?: OperationService;
   state?: StateService;
@@ -172,6 +174,7 @@ export function makeInvoker(s: Services) {
   const plugins = new PluginService(s.repo, routines);
   const goals = new GoalService(s.repo, s.runs);
   const hooks = new HookService(s.repo);
+  const zap = s.zap ?? new ZapService(s.repo, s.native, s.featureProfileId ?? "default");
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{
     const criteria=new Set(task.criteria.map(item=>item.criterionId));
     if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new AuxError('conflict','The cloud task result references a criterion outside this task revision.');
@@ -353,6 +356,16 @@ export function makeInvoker(s: Services) {
     };
 
     switch (method as MethodName) {
+      case "zap.list":
+      case "zap.grant":
+      case "zap.update":
+      case "zap.revoke": {
+        if (client.external) throw new AuxError("permission_denied", "Zap site changes require the Aux desktop user.");
+        if (method === "zap.list") return zap.list();
+        if (method === "zap.grant") return zap.grant(params.origin);
+        if (method === "zap.update") return zap.update(params);
+        return zap.revoke(params.origin, params.expectedRevision);
+      }
       case "agent.js.run": return codeMode.run(params, client);
       case "agent.js.reset": return codeMode.reset(client, params.sessionId);
       case "agent.tidy.propose": {

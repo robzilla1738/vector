@@ -58,3 +58,4 @@ export * from "./tidy.js";
 export * from "./tab-name.js";
 export * from "./inline-assist.js";
 export * from "./electron-migration.js";
+export * from "./zap.js";

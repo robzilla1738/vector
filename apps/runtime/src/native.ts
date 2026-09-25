@@ -1,4 +1,4 @@
-import { AuxError, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken } from "@aux/contracts";
+import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken } from "@aux/contracts";
 
 /**
  * Calls into the Electron main process, which owns all native surfaces.
@@ -9,6 +9,8 @@ export interface NativeBridge {
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
   historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
+  /** Install a Profile/site stylesheet before new documents, and report active-document application. */
+  installZapStylesheet?(request: ZapStylesheetInstall): Promise<ZapInstallReceipt>;
   listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>;
   /** Scoped agent tab commands (§7.3) — same controller humans use, deduplicated + ack'd. */
   tabCommand(envelope: TabCommandEnvelope): Promise<TabCommandAck>;
@@ -67,6 +69,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   historyRemove(url: string, visitedAt: number) {
     return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt });
+  }
+  async installZapStylesheet(request: ZapStylesheetInstall): Promise<ZapInstallReceipt> {
+    return ZapInstallReceiptSchema.parse(await this.channel.call("native.zapInstallStylesheet", request));
   }
   listPages() {
     return this.channel.call<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>("native.listPages", {});

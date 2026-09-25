@@ -81,6 +81,7 @@ const METHOD_FEATURE_PREFIXES: readonly [string, AuxFeature][] = [
   ["projects.", "devWorkflows"], ["development.", "devWorkflows"], ["calendar.", "connectors"],
   ["connectors.", "connectors"], ["customization.", "zapAndUserCss"],
   ["spaces.", "spaces"], ["sets.", "subagents"],
+  ["zap.", "zapAndUserCss"],
   ["memory.", "memory"], ["reports.", "reports"],
 ];
 

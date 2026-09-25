@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { EventTypes, AuxError, OriginRuleSchema, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
+import { EventTypes, AuxError, OriginRuleSchema, ZapSnapshotParamsSchema, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
 import { RpcChannel, type Transport } from "@aux/contracts";
 import {
   AttachedChromeDriver,
@@ -43,6 +43,7 @@ import { makeInvoker } from "./api/handlers.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
+import { ZapService } from "./services/zap.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
@@ -119,6 +120,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     channel = new RpcChannel(transport, "runtime->shell");
   }
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
+  const zap = new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default");
+  // Register before service boot so the host can preload styles before restoring tabs.
+  channel?.onMethod("zap.snapshot", params => zap.snapshot(ZapSnapshotParamsSchema.parse(params).profileId));
   settings.attachNative(native);
 
   // Register api.invoke immediately — the renderer can call before services
@@ -366,6 +370,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
     native,
+    zap,
     contentMemory,
     memoryPipeline,
     mcpTransportProvider: createMcpTransportProvider(native),

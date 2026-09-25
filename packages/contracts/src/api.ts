@@ -1,4 +1,5 @@
 import { GenerateResultParamsSchema, GeneratedResultSchema, GeneratedResultSummarySchema } from "./generated-results.js";
+import { ZapApplyResultSchema, ZapGrantParamsSchema, ZapRevokeParamsSchema, ZapSitePolicySchema, ZapUpdateParamsSchema } from "./zap.js";
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
 import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
@@ -773,6 +774,10 @@ export const MethodSchemas = {
     path: z.string().trim().min(1).max(4096).optional(),
     workspaceId: id.optional(),
   }).strict().refine(value => (value.routines === undefined) !== (value.path === undefined), { message: "Pass routines or a file path, not both" }),
+  "zap.list": z.object({}).strict(),
+  "zap.grant": ZapGrantParamsSchema,
+  "zap.update": ZapUpdateParamsSchema,
+  "zap.revoke": ZapRevokeParamsSchema,
 
   "plugins.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id,
@@ -1237,6 +1242,10 @@ export const ResultSchemas = {
     skipped: z.number().int().nonnegative(),
     routineIds: z.array(id),
   }),
+  "zap.list": z.array(ZapSitePolicySchema),
+  "zap.grant": ZapApplyResultSchema,
+  "zap.update": ZapApplyResultSchema,
+  "zap.revoke": ZapApplyResultSchema,
   "plugins.inspect": z.object({
     name: z.string(),
     version: z.string().optional(),
