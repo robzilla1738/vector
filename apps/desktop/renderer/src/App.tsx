@@ -550,10 +550,10 @@ export function App() {
       }}
     >
       {!connected && (
-        <div className="degraded" role="status" aria-live="polite">
+        <output className="degraded" data-block aria-live="polite">
           {I.alert}
           <span>Runtime reconnecting — tabs keep working</span>
-        </div>
+        </output>
       )}
       {horizontal && <div className="horizontal-chrome"><HorizontalTabs /><Toolbar /></div>}
       <div className="app-body">

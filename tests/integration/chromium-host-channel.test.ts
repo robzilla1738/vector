@@ -13,6 +13,7 @@ describe("Chromium host runtime channel", () => {
     const socketPath = join(dir, "host.sock");
     const token = randomBytes(32).toString("hex");
     let peer: Socket | null = null;
+    let hello: Record<string, unknown> | null = null;
     let resolveResponse: (value: Record<string, unknown>) => void = () => {};
     const response = new Promise<Record<string, unknown>>(resolve => { resolveResponse = resolve; });
     const server = createServer(socket => {
@@ -25,8 +26,7 @@ describe("Chromium host runtime channel", () => {
           const frame = JSON.parse(buffer.slice(0, end)) as Record<string, unknown>;
           buffer = buffer.slice(end + 1);
           if (frame.kind === "hello") {
-            expect(frame.protocol).toBe(AUX_HOST_PROTOCOL);
-            expect(frame.token).toBe(token);
+            hello = frame;
             socket.write(`${JSON.stringify({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: frame.nonce })}\n`);
           } else if (frame.kind === "req") {
             const result = frame.method === "native.listPages" ? { pages: [] } : { ok: true };
@@ -50,6 +50,7 @@ describe("Chromium host runtime channel", () => {
         AUX_API_PORT: "0",
         AUX_ELECTRON_CDP: "",
       });
+      expect(hello).toMatchObject({ protocol: AUX_HOST_PROTOCOL, token });
       expect(peer).not.toBeNull();
       peer!.write(`${JSON.stringify({
         kind: "req", id: 900, method: "api.invoke",

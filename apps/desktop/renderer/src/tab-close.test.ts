@@ -29,6 +29,7 @@ it("restores a closed group in original order and activates its previous foregro
   const {emptyLayout} = await import("./workspace");
   const layout = emptyLayout(); layout.order = ["one", "two", "three"];
   useStore.setState({pages, layout, closedTabs: [], activePageId: "one", closingTabs: false, reopeningTab: false, pendingRestoreIds: []});
+  vi.spyOn(bridge, "bindTabSpace").mockResolvedValue({ spaceId: layout.activeSpaceId, workspaceId: `workspace:${layout.activeSpaceId}` });
   let eventSeq = lastEventSeq() + 1;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async (command: any) => {
     if (command.kind === "close") {

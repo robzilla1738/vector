@@ -223,7 +223,7 @@ export class InternalCdpBroker {
       this.targetOwners.delete(targetId);
       this.allowedTargets.delete(targetId);
       if (this.announced.delete(targetId)) this.send({ method: "Target.targetDestroyed", params: { targetId } });
-      for (const [sessionId, ownerId] of [...this.sessionOwners]) if (ownerId === targetId) {
+      for (const [sessionId, ownerId] of this.sessionOwners) if (ownerId === targetId) {
         if (!this.pageSessions.has(sessionId)) continue;
         this.dropSession(sessionId);
         void this.root.debugger.sendCommand("Target.detachFromTarget", { sessionId }).catch(() => {});
@@ -255,7 +255,7 @@ export class InternalCdpBroker {
       this.allowedTargets.delete(id);
       this.targetOwners.delete(id);
       if (this.announced.delete(id)) this.send({ method: "Target.targetDestroyed", params: { targetId: id } });
-      for (const [sessionId, ownerId] of [...this.sessionOwners]) if (ownerId === id) {
+      for (const [sessionId, ownerId] of this.sessionOwners) if (ownerId === id) {
         if (!this.pageSessions.has(sessionId)) continue;
         this.dropSession(sessionId);
         void this.root.debugger.sendCommand("Target.detachFromTarget", { sessionId }).catch(() => {});

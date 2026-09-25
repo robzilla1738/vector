@@ -202,7 +202,7 @@ export function Overview() {
         focusTab(safe[0]);
       })}>Select duplicates · {duplicates.length}</button>}
     </div>
-    {selection.length > 0 && <div className="ov-selection" role="region" aria-label="Selected tab actions" aria-busy={busy}>
+    {selection.length > 0 && <section className="ov-selection" aria-label="Selected tab actions" aria-busy={busy}>
       <strong>{selection.length} selected</strong>
       <select aria-label="Move selected tabs" value="" disabled={busy} onChange={event => {
         const value=event.target.value;
@@ -263,7 +263,7 @@ export function Overview() {
       })}>Close tabs</button>
       {closing && <button className="btn sm ghost" onClick={() => { stopClosing.current=true; setProgress("Stopping after the current tab…"); }}>Stop</button>}
       <span className="sp" /><button className="icon-btn" disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{I.close}</button>
-    </div>}
+    </section>}
     {savingFolder && selection.length > 0 && <form className="ov-save-folder" onSubmit={event => {
       event.preventDefault(); void act(async () => {
         const name=folderName.trim(); if(!name)return;
@@ -284,7 +284,7 @@ export function Overview() {
       <p className="hint">{savingFolder === "tabs" ? `Move the selected open tabs into a new folder in ${folderSpace?.name ?? "the selected Space"}. Their pages stay open.` : "Save web pages for later. Existing bookmarks keep their current folders. Open the folder’s pages together from Library."}</p>
       <div className="row"><button className="btn sm" disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button type="button" className="btn sm ghost" disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
     </form>}
-    {progress && <p className="hint ov-progress" role="status">{progress}</p>}
+    {progress && <output className="hint ov-progress" data-block>{progress}</output>}
     {error && <p role="alert" className="field-error">{error}</p>}
     {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? I.search : I.grid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
     <div role="group" ref={grid} className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">

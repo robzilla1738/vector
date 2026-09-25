@@ -1,7 +1,6 @@
 // Bounded acceptance for the real Aux renderer inside the isolated //chrome
 // candidate. Run only after the Store proof and shell integration. DOM/bridge
 // checks here do not replace a native-window visual and input inspection.
-import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';

@@ -195,7 +195,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     const x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)), y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
     setRegion({ x: Math.min(x, start.current.x), y: Math.min(y, start.current.y), width: Math.abs(x - start.current.x), height: Math.abs(y - start.current.y) });
   }} onPointerUp={() => { start.current = null; }} onPointerCancel={() => { start.current = null; }}>
-    <img src={capture.dataUrl} alt="Image to review before attaching" draggable={false}/>
+    <img src={capture.dataUrl} alt="Capture to review before attaching" draggable={false}/>
     {region && <span className="capture-region" style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}/>}</div>;
   const captureActions = <div className="capture-actions"><button className="btn sm ghost" disabled={busy} onClick={cancelCapture}>Cancel</button>{region && <button className="btn sm ghost" disabled={busy} onClick={() => setRegion(null)}>Use whole image</button>}<button className="btn sm" disabled={disabled || busy} onClick={() => void saveCapture()}>Attach {region ? "region" : "image"}</button></div>;
   const triggers = <div className="capture-triggers"><button className="btn sm" disabled={disabled || busy} onClick={onDocument}>Document</button><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture</button><button ref={lassoTrigger} className="btn sm" disabled={disabled || busy || !onPage || images.length >= 4} title={onPage ? "Select directly on the visible page" : "Show this page by itself to select an area"} onClick={() => void takeCapture(true)}>Select area</button></div>;
@@ -205,7 +205,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     {showRest && <div className="conversation-capture-rest">
     {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
-    {busy && <p className="hint" role="status">Preparing image…</p>}
+    {busy && <output className="hint" data-block>Preparing image…</output>}
     {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}
     {capture && !lasso && <div className="capture-editor" ref={review}>
       <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>

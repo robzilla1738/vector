@@ -25,7 +25,7 @@ class RootBoundary extends Component<{ children: ReactNode }, { error: Error | n
 async function boot() {
   if (booting) return;
   booting = true;
-  root.render(<div className="boot-status" role="status">Opening Aux…</div>);
+  root.render(<output className="boot-status" data-block>Opening Aux…</output>);
   try {
     const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
     if (chromiumShell) {

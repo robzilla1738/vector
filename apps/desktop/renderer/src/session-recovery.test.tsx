@@ -28,7 +28,7 @@ it("continues past a failed tab and retains it for individual recovery",async()=
     expect(invoke.mock.calls.filter(([method])=>method==="browser.recovery.retry").map(([,params])=>(params as {pageId:string}).pageId)).toEqual(["first","failed","last"]);
     expect(host.querySelectorAll(".session-recovery-row")).toHaveLength(1);
     expect(host.querySelector('[role="alert"]')?.textContent).toBe("Browser unavailable");
-    expect(host.querySelector('[role="status"]')?.textContent).toBe("2 tabs restored. 1 couldn’t reopen.");
+    expect(host.querySelector('output')?.textContent).toBe("2 tabs restored. 1 couldn’t reopen.");
   }finally{await act(async()=>root.unmount());vi.restoreAllMocks();useStore.setState(initial,true);}
 });
 
@@ -49,6 +49,6 @@ it("stops after the in-flight tab without dispatching the rest",async()=>{
     await act(async()=>Array.from(host.querySelectorAll("button")).find(button=>button.textContent==="Stop")!.click());
     await act(async()=>finish({ok:true}));
     expect(invoke.mock.calls.filter(([method])=>method==="browser.recovery.retry")).toHaveLength(1);
-    expect(host.querySelector('[role="status"]')?.textContent).toBe("1 tab restored. 1 not attempted.");
+    expect(host.querySelector('output')?.textContent).toBe("1 tab restored. 1 not attempted.");
   }finally{await act(async()=>root.unmount());vi.restoreAllMocks();useStore.setState(initial,true);}
 });

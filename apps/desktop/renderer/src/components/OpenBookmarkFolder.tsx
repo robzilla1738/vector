@@ -58,7 +58,7 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
       {running ? <button className="btn sm ghost" onClick={() => { stopped.current = true; setMessage("Stopping after the current page…"); }}>Stop</button>
         : <button ref={done} className="btn sm ghost" onClick={() => { setExpanded(false); setRemaining(null); setMessage(""); setError(""); }}>Done</button>}
     </div>
-    {message && <p className="hint" role="status">{message}</p>}
+    {message && <output className="hint" data-block>{message}</output>}
     {error && <p className="hint" role="alert">{error}</p>}
   </section>;
 }

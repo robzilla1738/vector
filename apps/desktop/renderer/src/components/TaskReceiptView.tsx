@@ -83,10 +83,10 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
       <button className="btn sm" disabled={exporting} onClick={() => void exportReceipt()}>{exporting ? "Preparing receipt…" : "Export receipt as Markdown"}</button>
       <label><input type="checkbox" checked={includeSnapshots} onChange={event => setIncludeSnapshots(event.target.checked)} /> Include captured text</label>
       <span className="hint">Exports objective, evidence summaries and sources, reviews, unresolved actions, run history and recorded usage. Page, document and command text is optional.</span>
-      {exportMessage && <p role="status">{exportMessage}</p>}
+      {exportMessage && <output data-block>{exportMessage}</output>}
       {exportError && <p role="alert">{exportError}</p>}
     </div>
-    <p role="status">{STATUS[receipt.status]}</p>
+    <output data-block>{STATUS[receipt.status]}</output>
     <span className="hint">Your acceptance records your review of the selected evidence. Captured pages, documents and command results are dated snapshots, not a live guarantee of the outcome.</span>
     <span className="hint">{receipt.modelCalls} model calls · ${receipt.knownCostUsd.toFixed(4)} {receipt.costComplete ? "recorded model cost" : "known model cost; some costs are unknown or estimated"}</span>
     {!!receipt.childTasks.length&&<span className="hint">Coordinated total: {treeUsage.calls} model calls · ${treeUsage.cost.toFixed(4)} {treeUsage.complete?'recorded model cost':'known model cost; some descendant costs are unknown or estimated'}</span>}

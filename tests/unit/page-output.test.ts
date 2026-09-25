@@ -25,9 +25,8 @@ it("waits for printing and handles cancellation, failure and overlapping request
   tab.print.mock.calls[0]![1](false, "Print job canceled");
   expect(await pending).toBe(false);
   const failed = printPage(wc);
-  const failure = expect(failed).rejects.toThrow("Check the printer");
   tab.print.mock.calls[1]![1](false, "Print job failed");
-  await failure;
+  await expect(failed).rejects.toThrow("Check the printer");
   expect(tab.listenerCount("destroyed")).toBe(0);
 });
 it("saves a captured private PDF with a safe name and cleans up the temporary file", async () => {

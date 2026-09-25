@@ -53,7 +53,7 @@ export function BrowserProfiles() {
   if(!inNativeHost||bridge.privateMode)return null;
   return <div className="browser-profiles">
     <p className="hint">Profiles keep website sign-ins, tabs, history, chats, memory and connections separate. Spaces organize work inside a profile and share its sign-ins.</p>
-    {loading&&<p className="hint" role="status">Loading profiles…</p>}
+    {loading&&<output className="hint" data-block>Loading profiles…</output>}
     {profiles.filter(profile=>!profile.archived||profile.current).map(profileRow)}
     {editing!==null?<form className="browser-profile-editor" onSubmit={event=>{event.preventDefault();void action(async()=>{
       if(editing==="new"){
@@ -78,6 +78,6 @@ export function BrowserProfiles() {
       {profiles.filter(profile=>profile.archived&&!profile.current).map(profileRow)}
     </details>}
     {error&&<div role="alert"><p className="hint err">{error}</p><button className="btn sm ghost" disabled={busy} onClick={()=>setRefresh(value=>value+1)}>Refresh profiles</button></div>}
-    {message&&<p className="hint" role="status">{message}</p>}
+    {message&&<output className="hint" data-block>{message}</output>}
   </div>;
 }

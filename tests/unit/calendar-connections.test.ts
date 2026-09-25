@@ -35,13 +35,13 @@ function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: b
     }
     if (url.pathname === "/calendar/users/me/calendarList/primary") {
       if (options.denied) return Response.json({}, { status: 403 });
-      const account = String((init?.headers as Record<string, string>).Authorization).replace("Bearer access-", "");
+      const account = String((init?.headers as Record<string, string> | undefined)?.Authorization).replace("Bearer access-", "");
       return Response.json({ id: `${account}@example.test`, summary: `Calendar ${account}`, primary: true });
     }
     if (url.pathname === "/calendar/calendars/primary/events") {
       if (options.rateLimited) return Response.json({}, { status: 429 });
       if (options.onEvents) return options.onEvents(init?.signal);
-      const account = String((init?.headers as Record<string, string>).Authorization).replace(/^Bearer (?:access-|renewed-refresh-)/, "");
+      const account = String((init?.headers as Record<string, string> | undefined)?.Authorization).replace(/^Bearer (?:access-|renewed-refresh-)/, "");
       return Response.json({ items: [{ id: `event-${account}`, summary: `Meeting ${account}`, htmlLink: `https://calendar.google.com/calendar/event?eid=${account}`,
         start: { dateTime: "2026-09-25T10:00:00Z" }, end: { dateTime: "2026-09-25T11:00:00Z" } }], nextPageToken: url.searchParams.has("pageToken") ? undefined : "next" });
     }
@@ -289,7 +289,7 @@ describe("outbound Google Calendar connection", () => {
       for (let attempt = 0; attempt < 200 && !["completed", "failed", "partially_completed"].includes(setup.repo.getRun(run.runId)!.status); attempt++)
         await new Promise(resolve => setTimeout(resolve, 10));
       const result = setup.repo.getRun(run.runId)!;
-      expect(result.status, result.error).toBe("completed");
+      expect({ status: result.status, error: result.error }).toMatchObject({ status: "completed" });
       expect(result.result?.report).toContain(eventUrl);
       expect(prompts[0]).toContain(grant.grantId);
       expect(prompts[0]).not.toContain(otherGrant.grantId);

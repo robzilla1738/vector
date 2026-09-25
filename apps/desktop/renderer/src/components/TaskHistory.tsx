@@ -42,7 +42,7 @@ export function TaskHistory({ taskId, onClose }: { taskId: string; onClose: () =
         {revisions.map(item => <option key={item.revision} value={item.revision}>Revision {item.revision}{item.revision === revisions[0]?.revision ? " · Latest saved" : ""} · {new Date(item.updatedAt).toLocaleString()}</option>)}
       </select></label>}
     {error && <div role="alert"><p>{error}</p><button className="btn sm" onClick={() => setRetry(value => value + 1)}>Retry history</button></div>}
-    {!receipt && !error && <p role="status">Loading saved revision…</p>}
+    {!receipt && !error && <output data-block>Loading saved revision…</output>}
     {task && receipt && <>
       <div className="task-history-definition field">
         <h3>{task.title}</h3><span className="hint">Revision {task.revision} · {task.state === "archived" ? "Archived" : "Open"} when saved</span>

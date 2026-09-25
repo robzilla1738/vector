@@ -86,7 +86,7 @@ export function SiteControls(){
       <header><div className={`site-security-icon ${unavailable?"insecure":info?.security??""}`}>{security.icon}</div><div><h2 id="site-controls-title">{info?.origin??"Site controls"}</h2><p>{security.title}</p></div><button ref={closeRef} className="icon-btn" aria-label="Close site controls" onClick={close}>{I.close}</button></header>
       {error&&<div className="site-controls-error" role="alert"><span>{error}</span><button className="btn sm" disabled={loading||!!busy||!!page?.loading} onClick={()=>void load()}>{loading?"Refreshing…":"Refresh details"}</button></div>}
       {actionError&&<p className="site-controls-error" role="alert">{actionError}</p>}
-      {!info&&!error&&<p className="site-controls-loading" role="status">Loading site details…</p>}
+      {!info&&!error&&<output className="site-controls-loading" data-block>Loading site details…</output>}
       {info&&<>
         <PageZoom key={info.pageId} pageId={info.pageId} documentEpoch={page?.documentEpoch} />
         <div className="site-security-copy"><span>{security.detail}</span></div>
@@ -95,7 +95,7 @@ export function SiteControls(){
         <section className="site-controls-group" aria-labelledby="site-access-title"><div className="site-group-heading"><div><strong id="site-access-title">Site access</strong><span>{bridge.privateMode?"Only for this private window":"Saved for this website"}</span></div>{Object.keys(info.permissions).length>0&&<button className="btn sm" disabled={!!busy} onClick={()=>void reset()}>{busy==="all"?"Resetting…":"Reset all"}</button>}</div>
           {Object.entries(info.permissions).length?Object.entries(info.permissions).map(([permission,decision])=><div className="site-permission-compact" key={permission}><span>{labels[permission]??permission}</span><span className={`site-decision ${decision}`}>{decision==="allow"?"Allowed":"Blocked"}</span><button className="btn sm" aria-label={`Reset ${labels[permission]??permission}`} disabled={!!busy} onClick={()=>void reset(permission)}>{busy===permission?"Resetting…":"Reset"}</button></div>):<p className="site-empty-access">No saved access decisions. Aux will ask before this site uses sensitive capabilities.</p>}
         </section>
-        {notice&&<p className="site-controls-notice" role="status">{notice}</p>}
+        {notice&&<output className="site-controls-notice" data-block>{notice}</output>}
       </>}
     </section>
   </div>;

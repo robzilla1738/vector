@@ -1,7 +1,7 @@
 // The real Aux shell and runtime operate with no Chromium debugging port.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { launchApp, shellWindow } from './launch.mjs';

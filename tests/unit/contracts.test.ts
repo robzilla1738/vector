@@ -83,7 +83,7 @@ describe("API schemas", () => {
       "installation.listBackups", "installation.backupRetention",
       "tasks.verifyCriterion", "tasks.replaceAgent", "cloud.reconnectStatus", "development.prepareIncidentFix",
     ]) {
-      expect(MethodSchemas, m).toHaveProperty(m);
+      expect(MethodSchemas).toHaveProperty(m);
     }
   });
 

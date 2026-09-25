@@ -251,7 +251,7 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
       {spaces.length + archivedSpaces.length > 6 && <label className="space-search">{I.search}<input type="search" aria-label="Search Spaces" placeholder="Find a Space…" value={spaceQuery} onChange={event => setSpaceQuery(event.target.value)} onKeyDown={event => {
         if (event.key === "ArrowDown") { event.preventDefault(); ref.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus(); }
       }} /></label>}
-      {!visibleSpaces.length && <p className="menu-caption" role="status">No matching Spaces</p>}
+      {!visibleSpaces.length && <output className="menu-caption" data-block>No matching Spaces</output>}
       {visibleSpaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} role="none">
         <button className={`menu-item ${space.id === active ? "on" : ""}`} role="menuitemradio" aria-checked={space.id === active}
           onClick={() => choose(() => onPick(space.id))}>

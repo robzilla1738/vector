@@ -69,7 +69,7 @@ export function CalendarTaskGrants({ task, onOpenSettings }: { task: Task; onOpe
     {!!selectable.length && task.state === "open" && <div className="row"><select className="grow" aria-label="Grant Calendar account" value={selectedAccount} onChange={event => setChosen(event.target.value)}>{selectable.map(account => <option key={account.connectionId} value={account.connectionId}>{account.label} · {account.accountKey}</option>)}</select><button className="btn sm" disabled={busy} onClick={() => void grant()}>Grant to task</button></div>}
     {grants.filter(grant => grant.taskRevision === task.revision).map(grant => <div className="field" key={grant.grantId}><div className="row"><strong className="grow">{grant.label} · {grant.accountKey}</strong><button className="btn sm" disabled={busy || task.state !== "open"} onClick={() => void preview(grant.grantId)}>Preview events</button><button className="btn sm" disabled={busy} onClick={() => void revoke(grant.grantId)}>Revoke</button></div>
       {previewGrant === grant.grantId && page && <div className="field"><span className="hint">Next 7 days · source {grant.accountKey}</span>{page.events.length ? page.events.map(event => <p key={event.eventId}><strong>{event.title}</strong> · {new Date(event.start).toLocaleString()}</p>) : <p className="hint">No events in this range.</p>}{page.nextPageToken && <button className="btn sm" disabled={busy} onClick={() => void preview(grant.grantId, page.nextPageToken)}>Load more</button>}</div>}</div>)}
-    {message && <p className="hint" role="status">{message}</p>}
+    {message && <output className="hint" data-block>{message}</output>}
     {error && <p className="hint err" role="alert">{error}</p>}
   </section>;
 }

@@ -112,7 +112,7 @@ export function Downloads() {
   });
 
   return (
-    <div ref={shelfRef} className="shelf slide-up" role="region" aria-label="Downloads">
+    <section ref={shelfRef} className="shelf slide-up" aria-label="Downloads">
       <div className="shelf-head">
         <span>Downloads</span>
         <span className="count nums">{items.length}</span>
@@ -131,7 +131,7 @@ export function Downloads() {
       {loadError && <p className="download-error" role="alert">Couldn’t refresh downloads. {loadError} <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Try again</button></p>}
       {error && <p className="download-error" role="alert">{error}</p>}
       {bridge.privateMode ? <p className="download-private-note">Choose a save location for each private download. Files remain on your computer after this window closes.</p> : showFolder&&<section className="download-location" aria-label="Download save location" aria-busy={folderLoading}>
-        {folderLoading&&<p className="download-private-note" role="status">Loading save location…</p>}
+        {folderLoading&&<output className="download-private-note" data-block>Loading save location…</output>}
         {folder&&<div className="download-folder">
           <span className="download-folder-path" title={folder.path}>Save to <span className="selectable">{folder.path}</span></span>
           <button className="btn sm ghost" disabled={busy!==null} onClick={()=>void changeFolder()}>Change folder</button>
@@ -140,7 +140,7 @@ export function Downloads() {
         {(folderError||folder?.error)&&<p className="download-error" role="alert">{folderError||folder?.error} <button className="btn sm ghost" disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
       </section>}
       <div className="download-list" aria-busy={loading}>
-      {loading&&!items.length&&<div className="shelf-empty" role="status">Loading downloads…</div>}
+      {loading&&!items.length&&<output className="shelf-empty" data-block>Loading downloads…</output>}
       {!loading&&!loadError&&!filtered.length && <div className="shelf-empty">{items.length ? "No downloads match. Try another name or filter." : "No files yet. Your downloads will appear here."}</div>}
       {filtered.map((d) => {
         const active = d.state === "started" || d.state === "progressing";
@@ -180,6 +180,6 @@ export function Downloads() {
         );
       })}
       </div>
-    </div>
+    </section>
   );
 }

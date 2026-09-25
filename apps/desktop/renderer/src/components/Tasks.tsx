@@ -139,7 +139,7 @@ export function Tasks() {
   const dirty = !!selected && (title !== selected.task.title || objective !== selected.task.objective || criteria !== selected.task.criteria.map(item => item.description).join("\n"));
   const visibleTasks = tasks.filter(task => (taskFilter === "all" || (taskFilter === "archived" ? task.state === "archived" : task.state !== "archived")) && `${task.title} ${task.objective} ${task.criteria.map(item => item.description).join(" ")} ${task.resources.map(item => item.label).join(" ")}`.toLowerCase().includes(taskQuery.toLowerCase()));
 
-  return <div className="tasks-page" role="region" aria-label="Tasks" ref={dialogRef}>
+  return <section className="tasks-page" aria-label="Tasks" ref={dialogRef}>
     <div className={`task-content ${!selected && !creating ? "task-index" : ""}`}>
       <div className="drawer-head"><h3>{creating ? "New task" : selected ? selected.task.title : "Tasks"}</h3><span className="sp" /><button className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>{I.close}</button></div>
       {error && <p role="alert" className="field">{error}</p>}
@@ -155,7 +155,7 @@ export function Tasks() {
         </div>
         {!selected && !creating && <>
           <div className="task-index-tools"><input aria-label="Search tasks" placeholder="Search tasks…" value={taskQuery} onChange={event => setTaskQuery(event.target.value)} /><button className="btn primary" disabled={!workspaceId} onClick={() => reset()}>{I.plusSm}New task</button></div>
-          <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Task status">{(["all", "active", "archived"] as const).map(filter => <button key={filter} className={taskFilter === filter ? "active" : ""} aria-pressed={taskFilter === filter} onClick={() => setTaskFilter(filter)}>{filter === "all" ? "All" : filter === "active" ? "Active" : "Archived"}</button>)}</div><span className="hint" role="status">{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span></div>
+          <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Task status">{(["all", "active", "archived"] as const).map(filter => <button key={filter} className={taskFilter === filter ? "active" : ""} aria-pressed={taskFilter === filter} onClick={() => setTaskFilter(filter)}>{filter === "all" ? "All" : filter === "active" ? "Active" : "Archived"}</button>)}</div><output className="hint">{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</output></div>
           <div className="ui-work-list">
             {visibleTasks.map(task => <WorkRow key={task.taskId} title={task.title} summary={task.objective} icon={I.folder}
               status={task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"}
@@ -174,7 +174,7 @@ export function Tasks() {
         {selected && !showHistory && <div className="row"><button className="btn sm" onClick={() => reset(selected.task.taskId)}>New child task</button><button className="btn sm" onClick={() => { setError(""); setShowHistory(true); }}>Task history</button>{(selected.task.conversationId || selected.runs[0]) && <button className="btn sm" onClick={() => { if (selected.task.conversationId) useStore.getState().openConversationDraft(selected.task.conversationId); else useStore.getState().openConversation(selected.runs[0]!.run.runId); close(null); }}>Open full conversation</button>}</div>}
         {selected && showHistory && <TaskHistory key={selected.task.taskId} taskId={selected.task.taskId} onClose={() => setShowHistory(false)} />}
         {workspaceId && (selected || creating) && !showHistory && <>
-          {draftNotice && <p className="field hint" role="status">{draftNotice}</p>}
+          {draftNotice && <output className="field hint" data-block>{draftNotice}</output>}
           {conflict && selected && <div className="field" role="alert"><p>This task changed since your draft began. Review the current saved version before applying your draft.</p>
             <details><summary>Current saved task · revision {selected.task.revision}</summary><h4>{selected.task.title}</h4><p className="selectable">{selected.task.objective}</p><ul>{selected.task.criteria.map(item => <li key={item.criterionId}>{item.description}</li>)}</ul></details>
             <button className="btn" onClick={() => { setDraftRevision(selected.task.revision); try { writeTaskDraft(taskDraftKey(workspaceId, selected.task.taskId), {title, objective, criteria, baseRevision: selected.task.revision}); setDraftNotice("Draft applied to the current revision. Review your edits, then Save task."); } catch { setDraftNotice("Draft could not be saved locally. Keep this window open."); } }}>Use my draft with this revision</button>
@@ -223,5 +223,5 @@ export function Tasks() {
         </>}
       </fieldset>
     </div>
-  </div>;
+  </section>;
 }

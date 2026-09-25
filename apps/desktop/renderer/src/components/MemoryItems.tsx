@@ -78,7 +78,7 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
           {label:"Edit",disabled:disabled || busy || !!draft,onSelect:()=>edit(item)},
           {label:"Delete",danger:true,disabled:disabled || busy || !!draft,onSelect:()=>void persist(items.filter(value=>value.itemId!==item.itemId))},
         ]} /></>} />)}</div>
-    {!!items.length && !visibleItems.length && <p className="hint" role="status">No notes match these filters.</p>}
+    {!!items.length && !visibleItems.length && <output className="hint" data-block>No notes match these filters.</output>}
     {selectedItem && <DetailPane title="Memory note" metadata={noteStatus(selectedItem)} onClose={() => { setSelectedId(null); requestAnimationFrame(() => detailOpener.current?.focus()); }}>
       <p className="memory-note-content selectable">{selectedItem.content}</p>
       <dl className="memory-note-metadata"><dt>Scope</dt><dd>This Space</dd><dt>Source</dt><dd className="selectable">{selectedItem.sourceUrl || "Added directly"}</dd><dt>Expires</dt><dd>{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</dd><dt>Updated</dt><dd>{new Date(selectedItem.updatedAt).toLocaleString()}</dd></dl>

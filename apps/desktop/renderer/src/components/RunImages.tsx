@@ -18,7 +18,7 @@ function RunImage({artifact}:{artifact:Artifact}) {
   return <figure className="conversation-image">
     {error ? <p className="field-error" role="alert">Couldn’t load this image. {error} <button className="btn sm ghost" onClick={()=>setRetry(value=>value+1)}>Retry image</button></p>
       : url ? <ImageViewer src={url} alt="Saved image from this turn" onError={()=>setError("The saved image could not be displayed.")}/>
-      : <p className="hint" role="status">Loading image…</p>}
+      : <output className="hint" data-block>Loading image…</output>}
     <figcaption>Saved {new Date(artifact.createdAt).toLocaleString()}</figcaption>
   </figure>;
 }

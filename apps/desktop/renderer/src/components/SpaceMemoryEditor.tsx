@@ -72,7 +72,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     }}/>
     <BrowsingMemory key={memory.workspaceId} memory={memory}/>
     <ContentMemory key={`content-${memory.workspaceId}`} memory={memory}/>
-    {storageError && <p role="status" className="hint">Your draft is available in this window but could not be saved for restart.</p>}
+    {storageError && <output data-block className="hint">Your draft is available in this window but could not be saved for restart.</output>}
     {error && <p role="alert" className="field-error">{error}</p>}
     {conflict && <div className="memory-conflict"><strong>These notes changed elsewhere</strong><p>Your draft is preserved. Review the latest saved notes before choosing which version to keep.</p><pre>{conflict.content || "No saved notes"}</pre><div className="row">
       <button className="btn sm" disabled={disabled || busy} onClick={() => { useMemoryDrafts.getState().write(memory.workspaceId, null); onSaved(conflict); setConflict(null); setError(""); }}>Use saved notes</button>

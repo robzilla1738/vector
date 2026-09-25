@@ -37,7 +37,7 @@ export function VaultSettings() {
   return <section className="field" aria-label="Agent vault">
     <div className="drawer-section">Sign-ins and agent vault</div>
     <p className="hint">Locked store for site credentials. Aux offers to save sign-ins and fills them natively on the matching site; agents receive opaque fill references only. Secrets stay in OS encryption and never reach models, logs, observations or saved results.</p>
-    {status && <p className="hint" role="status">{!status.available ? (status.error ?? "Vault requires the Aux desktop app.") : status.locked ? "Locked. Unlock to save or fill credentials." : status.configured ? `Unlocked · ${status.itemCount} saved ${status.itemCount === 1 ? "credential" : "credentials"}` : "No credentials saved."}</p>}
+    {status && <output className="hint" data-block>{!status.available ? (status.error ?? "Vault requires the Aux desktop app.") : status.locked ? "Locked. Unlock to save or fill credentials." : status.configured ? `Unlocked · ${status.itemCount} saved ${status.itemCount === 1 ? "credential" : "credentials"}` : "No credentials saved."}</output>}
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="row">
       <input type="password" aria-label="Vault passphrase" autoComplete="off" value={passphrase} onChange={event => setPassphrase(event.target.value)} placeholder={status?.configured ? "Passphrase" : "Choose a passphrase (8+ characters)"} />

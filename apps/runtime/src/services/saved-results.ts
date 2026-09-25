@@ -81,6 +81,6 @@ export class SavedResults {
     const version=this.repo.db.prepare(`SELECT root_artifact_id AS rootArtifactId,parent_artifact_id AS parentArtifactId,revision
       FROM result_versions WHERE artifact_id=?`).get(artifactId) as {rootArtifactId:string;parentArtifactId:string;revision:number}|undefined;
     return { artifactId, chatId: run.config?.chatId ?? run.runId, filename: resultFilename(artifactId,artifact.path), mediaType: artifact.mediaType, content, createdAt: artifact.createdAt,
-      ...(version??{}) };
+      ...version };
   }
 }

@@ -331,7 +331,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
             <span>Page</span>
             {obs && <span className="count nums">{obs.refs.length}</span>}
           </button>
-          {showObs && (obsLoading ? <p className="hint" role="status">Loading saved page…</p> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <button className="btn sm" onClick={()=>void inspect((inspectedArtifact || observationArtifact)!)}>Retry</button>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
+          {showObs && (obsLoading ? <output className="hint" data-block>Loading saved page…</output> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <button className="btn sm" onClick={()=>void inspect((inspectedArtifact || observationArtifact)!)}>Retry</button>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
         </section>
       )}
     </div>

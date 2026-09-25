@@ -138,10 +138,10 @@ export function SitePermissions({ query = "" }: { query?: string }) {
       </div> : <p className="hint">Open a website to manage its stored data.</p>}
     </section>
     <input aria-label="Search site permissions" placeholder="Search websites or permissions" value={search} onChange={event => setSearch(event.target.value)} />
-    {loading && <p role="status">Loading site permissions…</p>}
+    {loading && <output data-block>Loading site permissions…</output>}
     {error && <p role="alert">{error}</p>}
     {loadError && <div role="alert"><p>Couldn’t refresh permissions. {loadError}</p><button className="btn sm" disabled={loading||!!busy} onClick={() => void load()}>Refresh permissions</button></div>}
-    {notice && <p className="hint" role="status">{notice}</p>}
+    {notice && <output className="hint" data-block>{notice}</output>}
     {!loading && !loadError && !sites.length && <p className="hint">{Object.keys(decisions).length ? "No matching websites." : "No saved website permissions. Websites ask when they need access."}</p>}
     {sites.map(([origin, permissions]) => <section className="site-permission-group" key={origin} aria-label={origin}>
       <header><strong>{origin}</strong><button className="btn sm" disabled={!!busy} onClick={() => void reset(origin)}>Reset site</button></header>

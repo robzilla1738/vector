@@ -149,7 +149,7 @@ export const AgentRail = memo(function AgentRail() {
       <div className="rail-inner">
         <div className="rail-head">
           <span className="rail-title">{recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}</span>
-          {!connected && <span className="rail-sub offline" role="status">Connecting…</span>}
+          {!connected && <output className="rail-sub offline">Connecting…</output>}
           <span className="sp" />
           <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? I.left : I.chats}</button>
           {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{I.open}</button>}

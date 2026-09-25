@@ -37,7 +37,7 @@ export class TabSessionRestore {
         // before its background placeholders. Restore those saved tabs too;
         // otherwise one existing view makes the remaining tabs disappear from
         // the runtime indefinitely after restart.
-        for (const pageId of [...this.pages.pendingRestore.keys()]) {
+        for (const pageId of this.pages.pendingRestore.keys()) {
           try {
             await this.restoreSavedTab(pageId);
           } catch (error) {

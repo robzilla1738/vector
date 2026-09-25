@@ -38,9 +38,10 @@ async function withHost(reply: (message: Record<string, unknown>) => Record<stri
 
 describe("Chromium host socket", () => {
   it("authenticates before carrying the existing bidirectional RPC frames", async () => {
+    let hello: Record<string, unknown> | null = null;
     await withHost(message => {
       if (message.kind === "hello") {
-        expect(message.token).toBe(token);
+        hello = message;
         return { kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: message.nonce };
       }
       return { kind: "res", id: message.id, result: message.params };
@@ -50,6 +51,7 @@ describe("Chromium host socket", () => {
       expect(await channel.call("echo", { pageId: "page-1" })).toEqual({ pageId: "page-1" });
       transport.close();
     });
+    expect(hello).toMatchObject({ token });
   });
 
   it("rejects a host that does not acknowledge the matching handshake", async () => {

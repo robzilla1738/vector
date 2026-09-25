@@ -83,7 +83,7 @@ export function ExternalAgents() {
       {!catalogGroups.length && <p className="hint">No scoped tools match this filter.</p>}
     </details>
     <div className="seg" role="group" aria-label="Agent client">{(["codex", "claude"] as const).map(value => <button key={value} className={client === value ? "on" : ""} aria-pressed={client === value} onClick={() => setClient(value)}>{value === "codex" ? "Codex" : "Claude Code"}</button>)}</div>
-    {!workspaces.length ? <p role="status">Create a saved task and workspace before connecting an external agent.</p> : <>
+    {!workspaces.length ? <output data-block>Create a saved task and workspace before connecting an external agent.</output> : <>
       <label>Connection name<input aria-label="Connection name" value={name} maxLength={100} onChange={event => { setName(event.target.value); setConfig(null); }} /></label>
       <label>Workspace<select aria-label="Connection workspace" value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); setConfig(null); }}>{workspaces.map(workspace => <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.name}</option>)}</select></label>
       <label>Scope<select aria-label="Connection scope" value={scopeKind} onChange={event => { setScopeKind(event.target.value as "workspace" | "task"); setConfig(null); }}><option value="task">One task</option><option value="workspace">All tasks in workspace</option></select></label>
@@ -101,7 +101,7 @@ export function ExternalAgents() {
       <div className="external-agent-copy"><strong>{connection.name}</strong><span className="hint">{connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}{connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}` : " · not used yet"}{connection.revokedAt ? " · revoked" : ""}</span></div>
       {!connection.revokedAt && <button className="btn sm" disabled={busy} onClick={() => void revoke(connection.connectionId)}>Revoke</button>}
     </div>)}</div>}
-    {message && <p role="status">{message}</p>}
+    {message && <output data-block>{message}</output>}
     <span className="hint">Removing the client entry stops normal use. Revoking it here invalidates the token immediately. Quitting Aux stops the runtime.</span>
   </section>;
 }

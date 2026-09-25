@@ -47,9 +47,9 @@ export function Extensions() {
       <p className="hint">Aux uses its own copy of the selected folder. Choose Update to replace that copy after reviewing its declared access. Changes to the original folder do not apply automatically. Disabling and removal persist after restart.</p>
     </details>
     {error&&<p className="hint err" role="alert">{error}</p>}
-    {message&&<p className="hint" role="status">{message}</p>}
+    {message&&<output className="hint" data-block>{message}</output>}
     <div role="group" className="extension-list" aria-label="Installed extensions" aria-busy={loading||busy}>
-      {loading&&!items.length?<p className="hint" role="status">Loading extensions…</p>:!items.length&&!error&&<p className="hint">No extensions installed. Add one when you need it.</p>}
+      {loading&&!items.length?<output className="hint" data-block>Loading extensions…</output>:!items.length&&!error&&<p className="hint">No extensions installed. Add one when you need it.</p>}
       {items.map(extension=><article className="extension-row" key={`${extension.source}:${extension.key}`} aria-label={extension.name}>
         <div className="extension-copy">
           <div><strong>{extension.name}</strong><span className="extension-version">{extension.version}</span></div>

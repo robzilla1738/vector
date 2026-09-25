@@ -12,7 +12,7 @@ export function QuickAsk({onExpand}:{onExpand():void}) {
   return <main className="quick-ask" onKeyDown={event=>{if(event.key==="Escape"&&!event.defaultPrevented){event.preventDefault();event.stopPropagation();void bridge.quickAsk("dismiss").catch(errToast);}}}>
     <div className="quick-ask-panel">
       <header className="quick-ask-header"><strong>Ask Aux</strong><div className="sp"/><button className="btn sm ghost" onClick={()=>{useStore.getState().openConversationDraft(crypto.randomUUID());}}>New chat</button><button className="btn sm ghost" onClick={onExpand} title="Continue in a full browser window">Expand {I.open}</button></header>
-      {!connected&&<p className="quick-ask-connection" role="status">Connecting to Aux… Your draft stays here.</p>}
+      {!connected&&<output className="quick-ask-connection" data-block>Connecting to Aux… Your draft stays here.</output>}
       <Conversation embedded/>
       <div className="toasts" aria-live="polite">{toasts.map(item=><div key={item.id} className={`toast ${item.kind}`}>{item.text}</div>)}</div>
     </div>

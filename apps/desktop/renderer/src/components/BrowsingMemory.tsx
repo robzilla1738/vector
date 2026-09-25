@@ -66,7 +66,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
         {saved.pages.length > 0 && <div className="row">{confirmClear ? <><span className="hint">Forget all {saved.pages.length} saved page references?</span><button className="btn sm" disabled={busy} onClick={() => void change("workspaces.browsingMemory.forget", {})}>Forget all</button><button className="btn sm ghost" disabled={busy} onClick={() => setConfirmClear(false)}>Cancel</button></> : <button className="btn sm ghost" disabled={busy} onClick={() => setConfirmClear(true)}>Forget all remembered pages…</button>}</div>}
         <p className="hint">Revisiting a forgotten page can remember it again. Exclude its site to prevent this. Earlier replies retain the context they used.</p>
       </details>
-    </> : !error && <p className="hint" role="status">Loading browsing memory…</p>}
+    </> : !error && <output className="hint" data-block>Loading browsing memory…</output>}
     {error && <p className="field-error" role="alert">{error} <button className="btn sm ghost" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
   </section>;
 }

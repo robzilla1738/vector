@@ -44,7 +44,7 @@ export function Inspector() {
           actions={!historical && activePageId ? <button className="btn sm ghost" onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
           {!activePageId && !historical && <EmptyState title="No active page" description="Open a page to inspect its available content." />}
           {err && <div role="alert"><p className="hint err">{err}</p><button className="btn sm" onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
-          {!obs && !err && (activePageId || historical) && <div className="drawer-loading" role="status"><span className="spin" /> Observing {page?.title || page?.url || activePageId}…</div>}
+          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" data-block><span className="spin" /> Observing {page?.title || page?.url || activePageId}…</output>}
           {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
             <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}
         </DetailPane>

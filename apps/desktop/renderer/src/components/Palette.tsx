@@ -363,8 +363,8 @@ export function Palette() {
           <kbd>esc</kbd>
         </div>
         {!chromeTabs&&!vaultItems&&!splitPick&&!/^[/@]/.test(q.trim())&&<div role="group" className="palette-filters" aria-label="Search types">{([['all','All'],['tabs','Tabs'],['work','Work'],['pages','Saved pages']] as const).filter(([type])=>!bridge.privateMode||type!=="work").map(([type,label])=><button key={type} className="btn sm ghost" aria-pressed={filter===type} onClick={()=>setFilter(type)}>{label}</button>)}</div>}
-        {searching&&<p className="palette-search-status hint" role="status">Searching saved work…</p>}
-        {searchError&&<p className="palette-search-status hint" role="status">Some saved results couldn’t be searched. <button className="btn sm ghost" onClick={()=>setSearchRefresh(value=>value+1)}>Retry</button></p>}
+        {searching&&<output className="palette-search-status hint" data-block>Searching saved work…</output>}
+        {searchError&&<output className="palette-search-status hint" data-block>Some saved results couldn’t be searched. <button className="btn sm ghost" onClick={()=>setSearchRefresh(value=>value+1)}>Retry</button></output>}
         <div className="palette-list" ref={listRef} role="listbox" id="palette-list">
           {shown.map((c, i) => {
             const first = i === 0 || shown[i - 1]!.section !== c.section;

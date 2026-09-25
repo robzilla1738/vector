@@ -29,6 +29,6 @@ export function ImageSnapshot({chatId,imageId,onClose}:{chatId:string;imageId:st
   },[chatId,imageId,retry]);
   if(snapshot)return <ImagePreview snapshot={snapshot} onClose={onClose}/>;
   return <ViewerFrame label="Image snapshot" title="Image reference" onClose={onClose} closeLabel="Close image preview">
-    {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:<p className="hint" role="status">Loading image…</p>}
+    {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:<output className="hint" data-block>Loading image…</output>}
   </ViewerFrame>;
 }

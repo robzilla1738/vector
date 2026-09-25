@@ -26,6 +26,6 @@ export function AttachmentTray({ items, disabled, busy }: { items: AttachmentIte
       <Checkbox aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} onChange={event => item.onToggle(event.target.checked)}/>
       {item.onRemove && <button type="button" className="icon-btn xs" aria-label={`Remove ${item.name}`} disabled={disabled || busy} onClick={item.onRemove}>{I.close}</button>}
     </div>)}
-    {busy && <span className="attachment-progress" role="status">Saving attachments…</span>}
+    {busy && <output className="attachment-progress">Saving attachments…</output>}
   </div>;
 }

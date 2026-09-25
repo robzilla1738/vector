@@ -312,7 +312,7 @@ export function Settings() {
   const connectionReady = hasKey || localCompatible;
 
   return (
-    <div className="settings-page" role="region" aria-label="Settings" ref={dialogRef}>
+    <section className="settings-page" aria-label="Settings" ref={dialogRef}>
       <nav className="settings-nav" aria-label="Settings categories" onKeyDown={event => moveListFocus(event, "button[data-category]")}>
         <div className="settings-search-box">{I.search}<input aria-label="Search settings" placeholder="Search settings…" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={event => {
           if (event.nativeEvent.isComposing || !searching) return;
@@ -601,6 +601,6 @@ export function Settings() {
           {backups.length>0&&<details><summary>{backups.length} local backup{backups.length===1?'':'s'}</summary>{backups.map(item=><div className="hint" key={item.path}>{new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} · {item.artifactFiles} artifacts{item.missingArtifacts?` · ${item.missingArtifacts} unavailable`:''}<button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.stageRestore",{path:item.path}).then(result=>{setRestoreStatus(current=>({...current,pending:true}));setBackupMessage(`Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`);return result;}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Restore this backup</button>{deleteBackupName===item.name?<><span>Delete this local backup?</span><button className="btn sm" disabled={backupBusy||restoreStatus.pending} onClick={()=>{setBackupBusy(true);setBackupMessage('');void call("installation.deleteBackup",{name:item.name,expectedSha256:item.sha256}).then(()=>call("installation.listBackups",{})).then(value=>{setBackups(value);setDeleteBackupName(null);setBackupMessage('Local backup deleted.');}).catch(error=>setBackupMessage(error instanceof Error?error.message:String(error))).finally(()=>setBackupBusy(false));}}>Delete backup</button><button className="btn sm ghost" disabled={backupBusy} onClick={()=>setDeleteBackupName(null)}>Cancel</button></>:<button className="btn sm ghost" disabled={backupBusy||restoreStatus.pending} onClick={()=>setDeleteBackupName(item.name)}>Delete…</button>}</div>)}</details>}
           {restoreStatus.pending&&<output className="hint">A restore is staged for the next launch. Changes made before quitting will be replaced.</output>}{restoreStatus.lastAppliedAt&&<span className="hint">Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private recovery snapshot of the prior runtime database.</span>}{backupMessage&&<output className="hint">{backupMessage}</output>}
         </Field></section></div></div>
-    </div>
+    </section>
   );
 }

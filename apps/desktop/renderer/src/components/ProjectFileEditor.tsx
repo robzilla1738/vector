@@ -72,9 +72,9 @@ function ProjectFileEditorView({projectId,taskId,taskRevision,attached,disabled}
   <p className="hint">Tracked and untracked files; ignored files are excluded. Choose a UTF-8 file up to 256 KB. No file contents are read until you open one.</p>
   <div className="project-editor-layout"><aside className="project-file-browser" aria-label="File browser"><FileTree paths={matches.slice(0,100)} selected={file?.name} disabled={busy||loadingFiles} expandAll={!!query.trim()} onSelect={name=>void action(()=>load(name))}/>
   {matches.length>100&&<p className="hint">Showing 100 of {matches.length} matches. Narrow your search.</p>}
-  {loadingFiles?<p className="hint" role="status">Loading files…</p>:!matches.length&&<p className="hint">No matching files.</p>}
+  {loadingFiles?<output className="hint" data-block>Loading files…</output>:!matches.length&&<p className="hint">No matching files.</p>}
   </aside><div className="project-file-detail">{!file&&!error&&<EmptyState title="Choose a file" description="Open a file from the tree to inspect or edit it."/>}
-  {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
+  {error&&<p role="alert">{error}</p>}{message&&<output data-block>{message}</output>}
   {!file&&recovery&&<button className="btn sm" onClick={()=>void action(()=>bridge.revealPath(recovery).then(()=>{}))}>Show recovery copy</button>}
   {file&&<DetailPane title={file.name} metadata={dirty?"Unsaved draft":"Saved to this checkout"} actions={fileActions}>
    <textarea className="project-file-text" aria-label="File contents" spellCheck={false} rows={16} disabled={busy||disabled} value={content} onChange={event=>{

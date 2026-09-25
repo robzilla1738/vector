@@ -53,10 +53,10 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
   const previewEdited=useRef(false);
   const autoRefreshKey=useRef('');
   const previousActive=useRef(new Set<string>());
+  const [error,setError]=useState('');
   useEffect(()=>{setPreviewLink(readPreviewLink(projectId));setDiagnostics(null);setDiagnosticsError('');setStackCommands([]);setPick(null);setPicking(false);setEditText('');autoRefreshKey.current='';previousActive.current=new Set();},[projectId]);
   const refreshEnvironment=useCallback(async()=>setEnvironment((await bridge.inspectProject(projectId)).environment),[projectId]);
   useEffect(()=>{let active=true;void Promise.all([bridge.listProjects(),bridge.inspectProject(projectId)]).then(([projects,inspection])=>{if(!active)return;setEnvironment(inspection.environment);const saved=projects.find(project=>project.projectId===projectId)?.preview;if(saved){setCheck(saved);if(!previewEdited.current)setPreview(saved.url);}}).catch(error=>{if(active)setError(String(error));});return()=>{active=false;};},[projectId]);
-  const [error,setError]=useState('');
   const [busy,setBusy]=useState(false);
   useEffect(()=>{
     let stopped=false;let timer:ReturnType<typeof setTimeout>;
@@ -188,8 +188,8 @@ export function ProjectCommandPanel({projectId,disabled,task,surface="all"}:{pro
         </div>
         <span className="hint">Starts the task on this preview tab with your request as its context.</span>
       </div>}
-      {!linkedPage&&<p className="hint" role="status">The linked preview tab was closed. Check and open the preview again to resume diagnostics.</p>}
-      {linkedPage&&linkedPage.url!==previewLink.url&&<p className="hint" role="status">The linked tab navigated to {displayUrl(linkedPage.url)}. Diagnostics are paused until you check and open {displayUrl(previewLink.url)} again.</p>}
+      {!linkedPage&&<output className="hint" data-block>The linked preview tab was closed. Check and open the preview again to resume diagnostics.</output>}
+      {linkedPage&&linkedPage.url!==previewLink.url&&<output className="hint" data-block>The linked tab navigated to {displayUrl(linkedPage.url)}. Diagnostics are paused until you check and open {displayUrl(previewLink.url)} again.</output>}
       {diagnosticsError&&<p role="alert">{diagnosticsError}</p>}
       {incident&&<div className="field" role="status"><strong>Incident snapshot saved</strong><span className="hint">{incident.consoleCount} console messages · {incident.networkCount} network responses · {new Date(incident.generatedAt).toLocaleString()}</span><div className="row"><button className="btn sm" onClick={()=>void bridge.openPath(incident.path)}>Open report</button>{incident.preparedFixPath&&<button className="btn sm" onClick={()=>{const path=incident.preparedFixPath;if(path)void bridge.openPath(path);}}>Open prepared local fix</button>}</div><span className="hint">The prepared fix stays on this Mac. It does not push, deploy, open a pull request or mutate cloud resources.</span></div>}
       {previewReady&&diagnostics&&diagnostics.pageId===linkedPage.pageId&&<>

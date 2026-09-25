@@ -3,7 +3,7 @@ import { z } from "zod";
 import { structuredCall, type TurnState } from "../../apps/runtime/src/agent/coordinator-turn.js";
 
 it("hydrates selected article text only for the provider call and refuses revoked sources", async () => {
-  const generateStructured = vi.fn(async (input: { prompt: string; system: string }) => ({
+  const generateStructured = vi.fn(async (_input: { prompt: string; system: string }) => ({
     object: { answer: "October" }, durationMs: 1,
   }));
   let available = true;

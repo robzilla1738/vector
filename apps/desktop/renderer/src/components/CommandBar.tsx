@@ -177,7 +177,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   // Saved work joins after immediate local matches. Old responses never paint
   // a new query, and private browsing never queries the regular Profile.
   useEffect(() => {
-    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || /^[\/@]/.test(raw)) return;
+    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || /^[/@]/.test(raw)) return;
     let live = true;
     const timer = window.setTimeout(() => {
       const update = (patch: Partial<Omit<typeof workResult, "query">>) => {
@@ -420,7 +420,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const title = page?.title || (hasPage ? hostOf(pageAddress) : "");
   const placeholder = hero && entryMode === "ask" ? "Ask Aux a task…" : "Search or type a URL";
 
-  if (hero && entryMode === "ask" && !bridge.privateMode) return <Suspense fallback={<div className="home-ask-loading" role="status">Opening composer…</div>}><HomeAsk onSearch={() => switchEntryMode("search")}/></Suspense>;
+  if (hero && entryMode === "ask" && !bridge.privateMode) return <Suspense fallback={<output className="home-ask-loading" data-block>Opening composer…</output>}><HomeAsk onSearch={() => switchEntryMode("search")}/></Suspense>;
 
   return (
     <div ref={barRef} className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}>

@@ -258,7 +258,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         }}/></>}
         {view === "history" && <><div className="library-ranges" role="group" aria-label="History date range">{[["all","All time"],["today","Today"],["week","7 days"],["month","30 days"]].map(([value,label]) => <button key={value} className="btn sm ghost" aria-pressed={historyRange === value} onClick={() => setHistoryRange(value!)}>{label}</button>)}</div><ClearHistory initiallyOpen={confirmClear} /></>}
       </div>
-      {view === "bookmarks" && selecting && <div className="library-selection" role="region" aria-label="Move selected bookmarks">
+      {view === "bookmarks" && selecting && <section className="library-selection" aria-label="Move selected bookmarks">
         <div className="row"><strong>{selection.length} selected</strong><span className="sp" />
           <button className="btn sm ghost" disabled={busy || !items.length} onClick={() => setSelection(current => [...current, ...items.filter(item => !current.some(selected => selected.url === item.url)).map(item => ({...item, folderPath:[...("folderPath" in item ? item.folderPath ?? [] : [])]}))])}>Select this view</button>
           <button className="btn sm ghost" disabled={busy} onClick={cancelSelection}>Cancel</button>
@@ -276,8 +276,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
             setSelection([]); setSelecting(false); search.current?.focus(); setNotice(`${result.moved} ${result.moved === 1 ? "bookmark" : "bookmarks"} moved.`);
           })}>{busy ? "Moving…" : "Move"}</button>
         </div>
-      </div>}
-      {view === "bookmarks" && importPreview && <div className="library-import" role="region" aria-label="Bookmark import preview">
+      </section>}
+      {view === "bookmarks" && importPreview && <section className="library-import" aria-label="Bookmark import preview">
         <strong>{importPreview.bookmarks.length} web bookmarks ready</strong>
         <p className="hint">From {importSource} into Bookmarks · {importDuplicates} already saved · {importPreview.folders.length} folders preserved. Existing bookmarks keep their titles and folders. {importPreview.skipped > 0 ? `${importPreview.skipped} duplicate or unsupported links skipped.` : ""}</p>
         <ul>{importPreview.bookmarks.slice(0, 4).map(item => <li key={item.url}>{item.title} <span className="hint">{hostOf(item.url)}</span></li>)}</ul>
@@ -287,7 +287,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
           setFolders(await call("bookmarks.folders.list")); setFolder([]);
           setImportPreview(null); setQuery(""); setNotice(`Imported ${result.added} bookmarks. ${result.skipped} already saved.`);
         })}>Import bookmarks</button><button className="btn sm" disabled={busy} onClick={cancelImport}>Cancel import</button></div>
-      </div>}
+      </section>}
       {view === "bookmarks" && <nav className="library-breadcrumbs" aria-label="Bookmark folders">
         <button className="btn ghost sm" onClick={() => openFolder([])}>Bookmarks</button>
         {folder.map((part, index) => <span key={index}>{I.right}<button className="btn ghost sm" onClick={() => openFolder(folder.slice(0, index + 1))}>{part}</button></span>)}
@@ -318,13 +318,13 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
         <button className="btn sm" type="button" onClick={cancelEditor}>Cancel</button>
       </form>}
       {error && <p className="library-message" role="alert">{error} {failedLoad && <button className="btn sm" disabled={loading || loadingMore} onClick={() => failedLoad === "more" ? void loadMoreHistory() : setRefresh(value => value + 1)}>Retry</button>}</p>}
-      {notice && <p className="library-message" role="status">{notice}</p>}
+      {notice && <output className="library-message" data-block>{notice}</output>}
       {removed && <div className="library-tools"><span className="hint">Removed {removed.title || hostOf(removed.url)}</span><button className="btn sm" disabled={busy} onClick={() => void action(async () => { await save(removed); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
       <div className="palette-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
         {view === "bookmarks" && childFolders.map(path => <button key={JSON.stringify(path)} className="library-folder" onClick={() => openFolder(path)}>
           <span className="library-folder-icon">{I.folderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span className="hint">{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{I.right}
         </button>)}
-        {loading && (items.length ? <p className="library-message hint" role="status">Updating…</p> : <SkeletonRows label="Loading…" />)}
+        {loading && (items.length ? <output className="library-message hint" data-block>Updating…</output> : <SkeletonRows label="Loading…" />)}
         {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="pal-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => <Fragment key={"visitedAt" in item ? `${item.url}:${item.visitedAt}` : item.url}>
           {view === "history" && (index === 0 || dayOf(displayItems[index - 1]!) !== dayOf(item)) && <h4 className="library-day">{dayOf(item)}</h4>}
           {view === "reading" && index === 0 && unread.length > 0 && <h4 className="library-day">Unread</h4>}

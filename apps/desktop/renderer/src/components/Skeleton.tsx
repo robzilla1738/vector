@@ -1,8 +1,8 @@
 /** Placeholder rows shaped like the list that is loading. The label is what assistive tech hears. */
 export function SkeletonRows({ label, rows = 6, tall = false }: { label: string; rows?: number; tall?: boolean }) {
-  return <div className={`skeleton-rows${tall ? " tall" : ""}`} role="status" aria-label={label}>
+  return <output className={`skeleton-rows${tall ? " tall" : ""}`} data-block aria-label={label}>
     {Array.from({ length: rows }, (_, index) => <span key={index} className="skeleton-row" />)}
-  </div>;
+  </output>;
 }
 
 /** A lazily loaded surface's outline: a heading bar over a few rows. */

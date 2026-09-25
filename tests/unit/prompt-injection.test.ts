@@ -34,7 +34,7 @@ describe("planner-facing step schema (P0-1)", () => {
         { id: "d", op: "fillCredential", target: "r9", credentialRef: `cref_${"ab".repeat(12)}` },
       ],
     });
-    expect(ok.success, JSON.stringify(ok.success ? "" : ok.error.issues)).toBe(true);
+    expect(ok).toMatchObject({ success: true });
   });
 
   it("PlanStepSchema is StepSchema minus evaluate", () => {

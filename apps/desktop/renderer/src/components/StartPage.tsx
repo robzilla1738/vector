@@ -19,7 +19,7 @@ export function StartPage() {
       <span>Aux won’t save this window’s tabs, history, site data, or permissions. Files you download remain on your Mac.</span>
     </section> : <>
       <SessionRecovery compact />
-      {connected ? <RecentWork /> : <p className="hint" role="status">AI tools are reconnecting. Search and open sites as usual.</p>}
+      {connected ? <RecentWork /> : <output className="hint" data-block>AI tools are reconnecting. Search and open sites as usual.</output>}
     </>}
   </div></div>;
 }

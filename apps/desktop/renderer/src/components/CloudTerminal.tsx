@@ -27,5 +27,5 @@ export function CloudTerminal({task,environmentId,onClose,onEnvironmentChanged}:
     void connect();
     return()=>{disposed=true;observer?.disconnect();input?.dispose();socket?.close();terminal?.dispose();};
   },[task.taskId,task.revision,environmentId]);
-  return <section className="cloud-terminal" aria-label="Interactive cloud terminal"><div className="cloud-terminal-head"><strong>Terminal</strong><span className="hint" role="status">{status}</span><button className="btn sm" onClick={onClose}>Close terminal</button></div><div className="cloud-terminal-host" ref={host}/></section>;
+  return <section className="cloud-terminal" aria-label="Interactive cloud terminal"><div className="cloud-terminal-head"><strong>Terminal</strong><output className="hint">{status}</output><button className="btn sm" onClick={onClose}>Close terminal</button></div><div className="cloud-terminal-host" ref={host}/></section>;
 }

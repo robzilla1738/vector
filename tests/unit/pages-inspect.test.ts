@@ -231,9 +231,9 @@ describe("H2-C7 pages inspect RPCs", () => {
       ["pages.dialog", { pageId: page.pageId }],
       ["pages.network", { pageId: page.pageId }],
     ] as [MethodName, unknown][]) {
-      expect(MethodSchemas[method].safeParse(params).success, method).toBe(true);
+      expect({ method, accepted: MethodSchemas[method].safeParse(params).success }).toEqual({ method, accepted: true });
       const result = await invoke(method, params);
-      expect(ResultSchemas[method].safeParse(result).success, `${method} ${JSON.stringify(result)}`).toBe(true);
+      expect({ method, result, accepted: ResultSchemas[method].safeParse(result).success }).toMatchObject({ method, accepted: true });
     }
   });
 });

@@ -51,7 +51,7 @@ function ResponseTable({ children }: { children?: ReactNode }) {
     } catch (error) { errToast(error); }
     finally { setSaving(false); }
   }
-  return <div className="answer-table-wrap"><div className="answer-table-actions"><button className="btn sm ghost" onClick={() => void copy()}>{copied ? I.check : I.copy}{copied ? "Copied" : "Copy table"}</button><button className="btn sm ghost" disabled={saving} onClick={() => void save()}>{I.downloadSm}{saving ? "Saving…" : "Save CSV"}</button></div><div className="answer-table" tabIndex={0} role="region" aria-label="Response table"><table ref={table}>{children}</table></div></div>;
+  return <div className="answer-table-wrap"><div className="answer-table-actions"><button className="btn sm ghost" onClick={() => void copy()}>{copied ? I.check : I.copy}{copied ? "Copied" : "Copy table"}</button><button className="btn sm ghost" disabled={saving} onClick={() => void save()}>{I.downloadSm}{saving ? "Saving…" : "Save CSV"}</button></div><section className="answer-table" tabIndex={0} aria-label="Response table"><table ref={table}>{children}</table></section></div>;
 }
 
 const REMARK_PLUGINS = [remarkGfm, answerHeadings];

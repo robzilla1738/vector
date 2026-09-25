@@ -35,6 +35,7 @@
     "host:compare": "node tests/host/compare.mjs"
   },
   "devDependencies": {
+    "@types/jsdom": "21.1.7",
     "@types/node": "catalog:",
     "jsdom": "catalog:",
     "oxlint": "1.83.0",

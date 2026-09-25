@@ -76,7 +76,7 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
         <button className="btn sm" disabled={!!busy||tab.retrying} onClick={()=>void retry([tab])}>{busy===tab.pageId||tab.retrying?"Restoring…":"Retry"}</button>
       </div>)}</div>
     </>}
-    {message&&<p className="hint" role="status">{message}</p>}
+    {message&&<output className="hint" data-block>{message}</output>}
     {error&&<p className="hint err" role="alert">{error} <button className="btn sm ghost" disabled={!!busy} onClick={()=>{setError("");setRefresh(value=>value+1);}}>Refresh</button></p>}
   </section>;
 }

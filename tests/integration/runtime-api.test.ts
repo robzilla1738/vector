@@ -99,10 +99,10 @@ describe("pages", () => {
         ],
       },
     });
-    expect(res.status, JSON.stringify(res.steps.at(-1))).toBe("completed");
+    expect({ status: res.status, lastStep: res.steps.at(-1) }).toMatchObject({ status: "completed" });
     const after = await fixtureState();
     const edit = after.edits.find((e) => e.fields.title === "Edited by Aux");
-    expect(edit, "server saw the save").toBeTruthy();
+    expect(edit).toBeTruthy();
     expect(after.records.find((r) => r.id === "rec-03")?.title).toBe("Edited by Aux");
     expect(before.edits.length).toBeLessThan(after.edits.length);
   }, 60_000);
@@ -351,7 +351,7 @@ describe("pages", () => {
         ],
       },
     });
-    expect(res.status, JSON.stringify(res.steps)).toBe("completed");
+    expect({ status: res.status, steps: res.steps }).toMatchObject({ status: "completed" });
     expect((res.extracted?.out as { late?: string } | undefined)?.late).toBe("late");
   }, 60_000);
 

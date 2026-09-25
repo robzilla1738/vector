@@ -13,7 +13,7 @@ it("proceeds an HTTPS host case-insensitively and only for that host", () => {
 it("rejects non-HTTPS schemes and malformed addresses", () => {
   const bypass = createInsecureBypass();
   for (const url of ["http://site.test", "file:///etc/passwd", "javascript:alert(1)", "chrome://flags", "not a url", ""]) {
-    expect(() => bypass.proceed(url), url).toThrow();
+    expect(() => bypass.proceed(url)).toThrow();
     expect(bypass.has("site.test")).toBe(false);
   }
 });

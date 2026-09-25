@@ -47,14 +47,14 @@ export function MemorySettings() {
   return <div className="memory-settings">
     <p className="hint">Keep useful preferences and project context in one place. Write notes yourself or opt in to remembering page titles and addresses below. Browsing memory is off by default.</p>
     <label className="memory-space-search">Search saved memory<input className="field-input" aria-label="Search Space names and saved notes" value={query} placeholder="Search Space names and saved notes…" onChange={event => setQuery(event.target.value)} /></label>
-    {searching&&<p className="hint" role="status">Searching saved notes…</p>}
+    {searching&&<output className="hint" data-block>Searching saved notes…</output>}
     {searchError&&<p className="field-error" role="alert">{searchError} <button className="btn sm ghost" onClick={()=>setRefresh(value=>value+1)}>Retry</button></p>}
     <div className={`memory-space-list ${query.trim()?"memory-search-results":""}`} role="group" aria-label="Space memory selection">
       {matchingSpaces.map(item => <button key={item.id} className="btn sm" aria-pressed={item.id === space?.id} onClick={() => setSpaceId(item.id)}><span>{item.name}{layout.archivedSpaces?.some(archived => archived.id === item.id) ? " · Archived" : ""}</span>{query.trim()&&<small>{matches.find(match=>match.workspaceId===item.workspaceId)?.excerpt||"No saved notes"}{matches.find(match=>match.workspaceId===item.workspaceId)?.enabled===false?" · Paused":""}</small>}</button>)}
-      {!!spaces.length && !matchingSpaces.length && !searching && !searchError && <p className="hint" role="status">No saved memory matches “{query.trim()}”.</p>}
+      {!!spaces.length && !matchingSpaces.length && !searching && !searchError && <output className="hint" data-block>No saved memory matches “{query.trim()}”.</output>}
     </div>
     {space && <h4>{space.name}</h4>}
-    {loading && !memory && <p className="hint" role="status">Loading saved notes…</p>}
+    {loading && !memory && <output className="hint" data-block>Loading saved notes…</output>}
     {error && <p className="field-error" role="alert">{error} <button className="btn sm" onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
     {memory && <SpaceMemoryEditor key={memory.workspaceId} memory={memory} onSaved={value=>{if(value.workspaceId!==selectedWorkspace.current)return;setMemory(value);if(query.trim())setRefresh(current=>current+1);}} />}
     {!spaces.length && <p className="hint">Create a Space to save shared notes.</p>}

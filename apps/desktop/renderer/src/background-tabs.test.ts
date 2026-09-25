@@ -10,11 +10,13 @@ it("keeps the destination and current browsing state when a background open fini
   useStore.setState({ layout, pages: [], activePageId: null, overlay: "bookmarks" });
   let finish!: (ack: TabCommandAck) => void;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async () => new Promise<TabCommandAck>(resolve => { finish = resolve; }));
+  const bindTabSpace = vi.spyOn(bridge, "bindTabSpace").mockResolvedValue({ spaceId: "work", workspaceId: "workspace:work" });
   const opening = useStore.getState().openBackgroundTab("https://example.com", "work");
   useStore.setState({ layout: { ...layout, activeSpaceId: "home" }, activePageId: "new-selection" });
   finish({ commandId: "", status: "applied", catalogVersion: 0, pageId: "opened" });
   await opening;
   expect(tabCommand).toHaveBeenCalledWith({ kind: "open", url: "https://example.com", background: true, activate: false }, expect.any(Number));
+  expect(bindTabSpace).toHaveBeenCalledWith("opened", "work");
   expect(useStore.getState().layout.tabSpace.opened).toBe("work");
   expect(useStore.getState().layout.activeSpaceId).toBe("home");
   expect(useStore.getState().activePageId).toBe("new-selection");

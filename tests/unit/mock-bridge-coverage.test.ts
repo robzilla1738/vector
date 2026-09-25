@@ -23,7 +23,11 @@ function rendererMethods() {
 function mockMethods() {
   const text = readFileSync(join(renderer, "mock/bridge.ts"), "utf8");
   const table = text.slice(text.indexOf("const handlers = {"), text.indexOf("} satisfies Partial<Record<MethodName"));
-  return new Set([...table.matchAll(/^ {4}"([\w.]+)":/gm)].map(match => match[1]!));
+  const fixtures = readFileSync(join(renderer, "mock/work.ts"), "utf8");
+  return new Set([
+    ...[...table.matchAll(/^ {4}"([\w.]+)":/gm)].map(match => match[1]!),
+    ...[...fixtures.matchAll(/^ {4}'([\w.]+)':/gm)].map(match => match[1]!),
+  ]);
 }
 
 it("lists the runtime methods the renderer uses that the mock bridge does not implement", () => {
@@ -47,13 +51,13 @@ const UNMOCKED = [
   "cloud.startService", "cloud.stop", "cloud.stopCommand", "cloud.syncProject", "cloud.taskResult",
   "development.githubStatus", "development.operationsStatus", "development.prepareIncidentFix",
   "github.probe", "import.cancel", "import.preview", "import.run", "import.status",
-  "installation.backupRetention", "installation.listBackups", "installation.setBackupRetention",
-  "installation.stageRestore", "pages.console", "pages.list", "pages.network", "pages.openLive", "routines.alerts",
-  "routines.compare", "routines.export", "routines.fromResult", "routines.get", "routines.import",
-  "routines.list", "routines.outcome", "routines.pause", "routines.reconcile", "routines.run", "routines.update",
-  "runs.message.cancel", "runs.messages.list", "runs.queue", "runs.steer", "sentry.probe",
-  "sentry.projects", "tasks.archive", "tasks.captureEvidence", "tasks.create", "tasks.get",
-  "tasks.importCommandEvidence", "tasks.importDocumentEvidence", "tasks.promote", "tasks.receipt",
+  "installation.backupRetention", "installation.deleteBackup", "installation.listBackups", "installation.setBackupRetention",
+  "installation.stageRestore", "pages.console", "pages.list", "pages.network", "pages.openLive",
+  "routines.compare", "routines.export", "routines.fromResult", "routines.import",
+  "routines.outcome", "routines.reconcile", "routines.run", "routines.update",
+  "runs.steer", "sentry.probe",
+  "sentry.projects", "tasks.captureEvidence", "tasks.create",
+  "tasks.importCommandEvidence", "tasks.importDocumentEvidence", "tasks.promote",
   "tasks.reconcileAction", "tasks.reconcileOperation", "tasks.recordEvidence", "tasks.replaceAgent",
   "tasks.reviewCriterion", "tasks.start", "tasks.update", "tasks.verifyCriterion", "vault.expiredGrants",
   "vault.generate", "vault.grant", "vault.grants", "vault.history", "vault.itemsForOrigin", "vault.list",

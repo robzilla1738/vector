@@ -26,7 +26,7 @@ import type { CompactObservation, ConversationImage, ConversationAttachment, Con
 import { draftKey, HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge, type BrowserProfile } from "../bridge";
-import { hostOf, previewSplit } from "../workspace";
+import { previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { browserLinkUrl as answerUrl } from "../browser-links";
@@ -700,7 +700,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     {!embedded && <header className="conversation-head">{newChat && <span className="new-chat-brand"><AuxMark />Aux<span aria-hidden="true">/</span></span>}<h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{selectedContext && selectedContext.url !== "about:blank" && <button className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{I.globe}</button>}{turns.length > 0 && <button className="icon-btn" disabled={exporting} title="Export conversation as Markdown" aria-label="Export conversation as Markdown" onClick={() => void exportConversation()}>{I.downloadSm}</button>}<button className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" onClick={() => useStore.getState().showConversationInRail(id)}>{I.rail}</button></header>}
     <div className="conversation-body"><div className="conversation-main">
     <div className="conversation-scroll" tabIndex={-1} ref={scrolling.scrollRef}><div className="conversation-thread" data-find-surface="conversation" ref={scrolling.threadRef}>
-      {historyLoading && <p role="status" className="hint">Loading conversation…</p>}
+      {historyLoading && <output data-block className="hint">Loading conversation…</output>}
       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
@@ -711,7 +711,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     {scrolling.awayFromLatest && <div className="conversation-jump"><button className="icon-btn" aria-label="Jump to latest" title="Jump to latest" onClick={scrolling.jumpToLatest}>{I.arrowDown}</button></div>}
     <div className="conversation-compose"><div className="conversation-compose-content">
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
-      {archived && <div className="conversation-archive-notice" role="status"><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</div>}
+      {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</output>}
       {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message)}>Remove</button></>}</div></li>)}</ol></section>}
       <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{answerQuestion}</p></div>}</>}>
       <div className="composer-context">
@@ -720,19 +720,19 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
       {imageTray}
       </div>
-      {!connected && <p className="hint" role="status">Connecting to Aux… You can keep writing.</p>}
+      {!connected && <output className="hint" data-block>Connecting to Aux… You can keep writing.</output>}
       {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
       {taskBound ? <>
       <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || historySaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
 
-      {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
+      {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {last?.status === "needs_input" && <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} />}
       </> : <>
-      {contextLoading && <p className="hint" role="status">Loading saved context…</p>}
+      {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
-      {missingContext && !closedPage && <p className="field-error" role="status">The selected tab is unavailable. Choose another browser context before sending.</p>}
-      {changedBrowserSources.length > 0 && !closedPage && <p className="field-error" role="status">A selected tab changed or closed. Update or remove it before sending.</p>}
+      {missingContext && !closedPage && <output className="field-error" data-block>The selected tab is unavailable. Choose another browser context before sending.</output>}
+      {changedBrowserSources.length > 0 && !closedPage && <output className="field-error" data-block>A selected tab changed or closed. Update or remove it before sending.</output>}
 
       <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : home ? "Ask Aux…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()} footer={composerFooter} modes={composerModes}>{home ? null : dictation}</ComposerInput>
       </>}

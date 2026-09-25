@@ -113,7 +113,7 @@ class SetRunControl {
     });
   }
   private release() {
-    for (const wake of [...this.waiters]) wake();
+    for (const wake of this.waiters) wake();
   }
 }
 

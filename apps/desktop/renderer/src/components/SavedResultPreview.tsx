@@ -24,7 +24,7 @@ function IsolatedHtmlResult({html}:{html:string}) {
   },[html]);
   if(error)return <p role="alert" className="field-error">{error}</p>;
   if(!inNativeHost)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
-  return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<p role="status" className="hint">Preparing isolated preview…</p>;
+  return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<output data-block className="hint">Preparing isolated preview…</output>;
 }
 export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;onVersionSaved?:(artifactId:string)=>void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {
   const [result,setResult]=useState<Result|null>(null), [error,setError]=useState(""), [retry,setRetry]=useState(0), [saving,setSaving]=useState(false);
@@ -82,11 +82,11 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
   }
   return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview"
     metadata={result && <>v{result.revision ?? 1} · {result.mediaType} · {new Date(result.createdAt).toLocaleString()}</>}
-    toolbar={result && <><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><ActionMenu label="Export result" children={saving ? "Exporting…" : "Export…"} actions={[
+    toolbar={result && <><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><ActionMenu label="Export result" actions={[
       {label:"Export file…",disabled:saving||attaching||!valid,onSelect:()=>void save()},
       ...(result.mediaType === "text/csv" ? [{label:"Export Excel…",disabled:saving||attaching||!valid,onSelect:()=>void save(true)}] : []),
-    ]}/></>}>
-    {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<p className="hint" role="status">Loading saved result…</p>:<>
+    ]}>{saving ? "Exporting…" : "Export…"}</ActionMenu></>}>
+    {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<output className="hint" data-block>Loading saved result…</output>:<>
       {result.mediaType==="text/csv"&&<p className="hint">Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
       {result.mediaType==="text/html"&&<p className="hint">Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
       {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button className="btn sm ghost" disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button className="btn sm" disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button className="btn sm ghost" disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}

@@ -15,7 +15,7 @@ it("keeps a confirmed reset successful when refreshing permissions fails",async(
     await act(async()=>{reset.click();reset.click();});
     expect(clear).toHaveBeenCalledTimes(1);
     expect(host.querySelectorAll(".site-permission-group")).toHaveLength(0);
-    expect(host.querySelector('[role="status"]')?.textContent).toContain("Decision reset");
+    expect(host.querySelector('output')?.textContent).toContain("Decision reset");
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("Couldn’t refresh permissions");
     expect(host.textContent).not.toContain("No saved website permissions");
   }finally{await act(async()=>root.unmount());vi.restoreAllMocks();}

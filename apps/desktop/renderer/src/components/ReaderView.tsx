@@ -114,7 +114,7 @@ export function ReaderView() {
       <select aria-label="Reading font" value={preferences.font} onChange={event=>preference({...preferences,font:event.target.value})}><option value="serif">Serif</option><option value="sans">Sans serif</option></select>
       <button className="btn sm" aria-label="Smaller reading text" disabled={preferences.size<=16} onClick={() => preference({...preferences,size:preferences.size-2})}>A−</button>
       <button className="btn sm" aria-label="Larger reading text" disabled={preferences.size>=26} onClick={() => preference({...preferences,size:preferences.size+2})}>A+</button>
-      {storageNotice&&<p className="reader-notice" role="status">{storageNotice}</p>}
+      {storageNotice&&<output className="reader-notice" data-block>{storageNotice}</output>}
     {contentsOpen && <nav ref={contentsMenu} onKeyDown={event => moveListFocus(event, "button")} id="reader-contents" className="reader-contents" aria-label="Article contents">
       {sections.map(section => <button key={section.id} className={section.level > 2 ? "reader-subsection" : ""} onClick={() => { const target = scroll.current?.querySelector<HTMLElement>(`#${section.id}`); if (target) jump(target); }}>{section.title}</button>)}
     </nav>}
@@ -139,7 +139,7 @@ export function ReaderView() {
       }
       void openBrowserLink(link.href, backgroundLink(event)).catch(errToast);
     }}>
-      {error ? <div className="reader-empty" role="status"><h2>Reader view isn’t available</h2><p>{error}</p><button className="btn sm" onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <p className="reader-empty" role="status">Preparing article…</p> : <article className="reader-article" data-find-surface="reader">
+      {error ? <div className="reader-empty" role="status"><h2>Reader view isn’t available</h2><p>{error}</p><button className="btn sm" onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <output className="reader-empty" data-block>Preparing article…</output> : <article className="reader-article" data-find-surface="reader">
         <div className="reader-meta">{offlineSavedAt ? `Offline copy · saved ${new Date(offlineSavedAt).toLocaleString()} · ` : ""}{article.site} · {article.minutes} min read</div>
         <h1>{article.title}</h1>
         {article.byline && <p className="reader-byline">{article.byline}</p>}

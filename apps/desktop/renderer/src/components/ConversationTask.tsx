@@ -60,7 +60,7 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
   };
   return <section className="conversation-task-card" aria-label="Saved task">
     <div className="conversation-task-heading"><strong>{task?.title ?? "Saved task"}</strong><button className="btn sm" onClick={details}>Details</button></div>
-    {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <p className="hint" role="status">Loading task…</p>}
+    {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <output className="hint" data-block>Loading task…</output>}
     {error && <p className="field-error" role="alert">{error} <button className="btn sm" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
     {live ? <p className="hint">Working in this conversation. Browser context stays fixed until this run stops.</p> : task?.state === "archived" ? <p className="hint">Restore this task in Details before running it.</p> : <>
       {unsaved && <p className="hint">You have unsaved task edits. Open Details to save or discard them before running.</p>}

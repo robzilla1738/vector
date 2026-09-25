@@ -157,8 +157,8 @@ describe("desktop e2e", () => {
       rpc<{ status: string; error?: string }>("pages.execute", { program: program(bgB.pageId, "bravo") }),
     ]);
     const wall = Date.now() - t0;
-    expect(a.status, a.error).toBe("completed");
-    expect(b.status, b.error).toBe("completed");
+    expect({ status: a.status, error: a.error }).toMatchObject({ status: "completed" });
+    expect({ status: b.status, error: b.error }).toMatchObject({ status: "completed" });
     expect(await readTitle(bgA.pageId)).toBe("alpha");
     expect(await readTitle(bgB.pageId)).toBe("bravo");
     const ws = await rpc<{ activePageId: string | null }>("workspace.get");

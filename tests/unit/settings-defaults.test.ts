@@ -147,7 +147,7 @@ describe("search engine URL templates", () => {
     expect(SearchEngineTemplateSchema.safeParse(" https://search.example/search?q=%s ").success).toBe(true);
     expect(SearchEngineTemplateSchema.safeParse("http://localhost:8080/search/%s").success).toBe(true);
     for (const url of ["https://search.example/", "javascript:alert('%s')", "file:///tmp/%s", "https://user:password@example.com/?q=%s", "https://%s.example.com/", "not a url %s"]) {
-      expect(SearchEngineTemplateSchema.safeParse(url).success, url).toBe(false);
+      expect({ url, accepted: SearchEngineTemplateSchema.safeParse(url).success }).toEqual({ url, accepted: false });
     }
   });
 });

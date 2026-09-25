@@ -92,11 +92,11 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     {alerts.length > 0 && <section className="field" aria-label="Routine alerts"><strong>Alerts</strong><span className="hint">Local run records only. They do not prove a business outcome.</span>{alerts.map(alert => <div className="hint" key={alert.routineRunId}>{alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}{alert.reason ? ` · ${alert.reason}` : ""} · {new Date(alert.createdAt).toLocaleString()}</div>)}</section>}
     {task && <div className="row"><input aria-label="Skill name" placeholder="Skill name" value={title} onChange={event => setTitle(event.target.value)} /></div>}
     {error && <p className="field-error" role="alert">{error}</p>}
-    {notice && <p className="hint" role="status">{notice}</p>}
+    {notice && <output className="hint" data-block>{notice}</output>}
     {!selected && <>
       <label className="routine-search">{I.search}<input aria-label="Search Skills" placeholder="Search Skills…" value={query} onChange={event => setQuery(event.target.value)} /></label>
-      <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Skill status">{(["all", "ready", "paused", "archived"] as const).map(filter => <button key={filter} className={status === filter ? "active" : ""} aria-pressed={status === filter} onClick={() => setStatus(filter)}>{filter[0]!.toUpperCase() + filter.slice(1)}</button>)}</div><span className="hint" role="status">{visibleRoutines.length} {visibleRoutines.length === 1 ? "Skill" : "Skills"}</span></div>
-      {loading ? <p className="hint" role="status">Loading Skills…</p> : <div className="ui-work-list">
+      <div className="work-list-heading"><div className="history-segment" role="group" aria-label="Skill status">{(["all", "ready", "paused", "archived"] as const).map(filter => <button key={filter} className={status === filter ? "active" : ""} aria-pressed={status === filter} onClick={() => setStatus(filter)}>{filter[0]!.toUpperCase() + filter.slice(1)}</button>)}</div><output className="hint">{visibleRoutines.length} {visibleRoutines.length === 1 ? "Skill" : "Skills"}</output></div>
+      {loading ? <output className="hint" data-block>Loading Skills…</output> : <div className="ui-work-list">
         {visibleRoutines.map(item => <WorkRow key={item.routineId} title={item.title} summary={item.objective} icon={I.clock}
           status={item.archivedAt ? "Archived" : item.paused ? "Paused" : !item.sourceTaskId ? "Unbound" : "Ready"}
           metadata={`${routineScheduleSummary(item.trigger)}${matchesCurrentSite(item) ? " · Saved for this site" : ""} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`}
@@ -144,7 +144,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         await call("routines.update", { routineId: selected.routine.routineId, expectedRevision: selected.routine.revision, calendarGrantIds });
         await refresh(selected.routine.routineId);
       })} />
-      {comparison && comparison.routineId === selected.routine.routineId && <p className="hint" role="status">{comparison.summary}</p>}
+      {comparison && comparison.routineId === selected.routine.routineId && <output className="hint" data-block>{comparison.summary}</output>}
       <h4>Run history</h4>
       {!selected.runs.length && <p className="hint">This Skill has not run yet.</p>}
       {selected.runs.map(run => <div className="routine-run hint" key={run.routineRunId}>
@@ -173,7 +173,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
   return <div className="field">
     <button className="btn sm ghost" aria-expanded={open} onClick={() => { setOpen(!open); if (!open) void load(); }}>{open ? "Hide outcome evidence" : "Inspect outcome evidence"}</button>
     {open && <div aria-busy={loading}>
-      {loading && <p className="hint" role="status">Loading outcome evidence…</p>}
+      {loading && <output className="hint" data-block>Loading outcome evidence…</output>}
       {error && <p className="field-error" role="alert">{error} <button className="btn sm ghost" onClick={() => void load()}>Retry</button></p>}
       {outcome && <>
         <p className="hint">Skill revision {outcome.run.revision}{outcome.sourceTaskRevision ? ` · source task revision ${outcome.sourceTaskRevision}` : ""}. {outcome.linkedRunFound ? "Only evidence from this task run is shown." : "No linked agent run is available; criteria remain unverified."}</p>
