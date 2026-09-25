@@ -1,0 +1,257 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -207,8 +207,11 @@
+   base::CallbackListSubscription runtime_event_subscription_;
+   std::unique_ptr<PrefChangeRegistrar> organization_pref_registrar_;
+   std::unique_ptr<AuxShellEdgeMonitor> edge_monitor_;
++  enum class FileDialogPurpose { kNone, kOpenFile, kSavePdf };
++  FileDialogPurpose file_dialog_purpose_ = FileDialogPurpose::kNone;
+   scoped_refptr<ui::SelectFileDialog> open_file_dialog_;
+-  RequestCallback open_file_callback_;
++  RequestCallback file_dialog_callback_;
++  std::string save_pdf_page_id_;
+ #endif
+ 
+   mojo::Receiver<bookmark_bar::mojom::PageHandlerFactory>
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -5,9 +5,15 @@
+ #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
+ 
+ #include <cmath>
+-
++#include <utility>
++#include <variant>
++
++#include "base/files/file_util.h"
+ #include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
++#include "base/task/thread_pool.h"
+ #include "chrome/browser/shell_integration.h"
++#include "printing/buildflags/buildflags.h"
+ #include "content/public/browser/host_zoom_map.h"
+ #include "third_party/blink/public/common/page/page_zoom.h"
+ #include "base/json/json_reader.h"
+@@ -19,6 +25,14 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/devtools/devtools_window.h"
++#if BUILDFLAG(ENABLE_PRINTING)
++#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
++#include "chrome/browser/printing/print_view_manager.h"
++#else
++#include "chrome/browser/printing/print_view_manager_basic.h"
++#endif
++#include "components/printing/browser/print_to_pdf/pdf_print_utils.h"
++#endif
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -75,6 +89,7 @@
+ #include "ui/views/event_monitor.h"
+ #include "ui/shell_dialogs/selected_file_info.h"
+ #endif
++#include "net/base/filename_util.h"
+ #include "chrome/grit/webui_toolbar_shared_resources.h"
+ #include "chrome/grit/webui_toolbar_shared_resources_map.h"
+ #include "components/contextual_search/contextual_search_service.h"
+@@ -108,6 +123,26 @@
+ 
+ namespace {
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(ENABLE_PRINTING)
++#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
++using AuxPrintManager = printing::PrintViewManager;
++#else
++using AuxPrintManager = printing::PrintViewManagerBasic;
++#endif
++
++bool WriteAuxPdf(const base::FilePath& destination,
++                 scoped_refptr<base::RefCountedMemory> data) {
++  base::FilePath temporary;
++  if (!base::CreateTemporaryFileInDir(destination.DirName(), &temporary))
++    return false;
++  if (base::WriteFile(temporary, base::span(*data)) &&
++      base::ReplaceFile(temporary, destination, nullptr))
++    return true;
++  base::DeleteFile(temporary);
++  return false;
++}
++#endif
++
+ std::string SidePanelEntryIdToTitle(SidePanelEntryId id) {
+   // TODO(webium): Ideally, the titles should be added to SIDE_PANEL_ENTRY_IDS
+   // macros in chrome/browser/ui/side_panel/side_panel_entry_id.h, and
+@@ -318,19 +353,90 @@
+ void WebUIBrowserUI::FileSelected(const ui::SelectedFileInfo& file,
+                                   int index) {
+   scoped_refptr<ui::SelectFileDialog> dialog = std::move(open_file_dialog_);
+-  browser_->GetProfile()->set_last_selected_directory(file.file_path.DirName());
++  auto callback = std::move(file_dialog_callback_);
++  const auto purpose =
++      std::exchange(file_dialog_purpose_, FileDialogPurpose::kNone);
+   const base::FilePath& selected_path =
+       file.local_path.empty() ? file.file_path : file.local_path;
+-  const auto result = base::WriteJson(base::Value(selected_path.AsUTF8Unsafe()));
+-  std::move(open_file_callback_)
+-      .Run(result.has_value(), result.value_or(""),
+-           result.has_value() ? "" : "invalid_argument",
+-           result.has_value() ? "" : "Invalid selected file path");
++  if (selected_path.empty()) {
++    std::move(callback).Run(false, "", "invalid_argument",
++                            "Invalid selected file path");
++    return;
++  }
++  browser_->GetProfile()->set_last_selected_directory(
++      selected_path.DirName());
++  if (purpose == FileDialogPurpose::kOpenFile) {
++    const auto result =
++        base::WriteJson(base::Value(selected_path.AsUTF8Unsafe()));
++    std::move(callback)
++        .Run(result.has_value(), result.value_or(""),
++             result.has_value() ? "" : "invalid_argument",
++             result.has_value() ? "" : "Invalid selected file path");
++    return;
++  }
++#if BUILDFLAG(ENABLE_PRINTING)
++  BrowserWindowInterface* owner = nullptr;
++  auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++  auto* contents = catalog->FindPage(save_pdf_page_id_, &owner);
++  save_pdf_page_id_.clear();
++  if (purpose != FileDialogPurpose::kSavePdf || !contents || owner != browser_ ||
++      browser_->GetTabStripModel()->GetActiveWebContents() != contents ||
++      !chrome::CanPrint(browser_)) {
++    std::move(callback).Run(false, "", "conflict",
++                            "The page changed before PDF export");
++    return;
++  }
++  auto parameters = print_to_pdf::GetPrintPagesParams(
++      contents->GetLastCommittedURL(), {}, {}, {}, {}, {}, {}, {}, {}, {},
++      {}, {}, {}, {}, {}, {});
++  auto* manager = AuxPrintManager::FromWebContents(contents);
++  if (!manager || std::holds_alternative<std::string>(parameters)) {
++    std::move(callback).Run(false, "", "not_supported",
++                            "PDF rendering is unavailable for this page");
++    return;
++  }
++  manager->PrintToPdf(
++      contents->GetPrimaryMainFrame(), "",
++      std::move(std::get<printing::mojom::PrintPagesParamsPtr>(parameters)),
++      base::BindOnce(
++          [](RequestCallback callback, base::FilePath destination,
++             print_to_pdf::PdfPrintResult result,
++             scoped_refptr<base::RefCountedMemory> pdf) {
++            if (result != print_to_pdf::PdfPrintResult::kPrintSuccess || !pdf ||
++                pdf->size() == 0) {
++              std::move(callback).Run(false, "", "internal",
++                                      "The page could not be rendered as PDF");
++              return;
++            }
++            base::ThreadPool::PostTaskAndReplyWithResult(
++                FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++                base::BindOnce(&WriteAuxPdf, destination, std::move(pdf)),
++                base::BindOnce(
++                    [](RequestCallback callback, base::FilePath destination,
++                       bool saved) {
++                      const auto json = base::WriteJson(
++                          base::Value(destination.AsUTF8Unsafe()));
++                      if (!saved || !json) {
++                        std::move(callback).Run(
++                            false, "", "io_error", "The PDF could not be saved");
++                        return;
++                      }
++                      std::move(callback).Run(true, *json, "", "");
++                    },
++                    std::move(callback), destination));
++          },
++          std::move(callback), selected_path));
++#else
++  std::move(callback).Run(false, "", "not_supported",
++                          "PDF rendering is unavailable");
++#endif
+ }
+ 
+ void WebUIBrowserUI::FileSelectionCanceled() {
+   scoped_refptr<ui::SelectFileDialog> dialog = std::move(open_file_dialog_);
+-  std::move(open_file_callback_).Run(true, "null", "", "");
++  file_dialog_purpose_ = FileDialogPurpose::kNone;
++  save_pdf_page_id_.clear();
++  std::move(file_dialog_callback_).Run(true, "null", "", "");
+ }
+ 
+ void WebUIBrowserUI::CreateShellHost(
+@@ -1266,6 +1372,62 @@
+     std::move(callback).Run(true, "true", "", "");
+     return;
+   }
++  if (method == "savePagePdf") {
++#if !BUILDFLAG(ENABLE_PRINTING)
++    std::move(callback).Run(false, "", "not_supported",
++                            "PDF rendering is unavailable");
++    return;
++#else
++    if (list->size() != 1 || !(*list)[0].is_string() ||
++        (*list)[0].GetString().empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A browser page ID is required");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_ ||
++        browser_->GetTabStripModel()->GetActiveWebContents() != contents) {
++      std::move(callback).Run(false, "", "not_found",
++                              "Select the page before saving its PDF");
++      return;
++    }
++    if (!chrome::CanPrint(browser_)) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "PDF export is unavailable for this page");
++      return;
++    }
++    if (open_file_dialog_) {
++      std::move(callback).Run(false, "", "conflict",
++                              "A file dialog is already open");
++      return;
++    }
++    open_file_dialog_ = ui::SelectFileDialog::Create(
++        this, std::make_unique<ChromeSelectFilePolicy>(contents));
++    if (!open_file_dialog_) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "The system file dialog is unavailable");
++      return;
++    }
++    file_dialog_purpose_ = FileDialogPurpose::kSavePdf;
++    save_pdf_page_id_ = (*list)[0].GetString();
++    file_dialog_callback_ = std::move(callback);
++    ui::SelectFileDialog::FileTypeInfo file_types;
++    file_types.extensions = {{FILE_PATH_LITERAL("pdf")}};
++    const auto name = net::GenerateFileName(
++        contents->GetLastCommittedURL(), "", "",
++        base::UTF16ToUTF8(contents->GetTitle()), "application/pdf", "Page")
++                          .ReplaceExtension(FILE_PATH_LITERAL("pdf"));
++    const auto destination =
++        browser_->GetProfile()->last_selected_directory().Append(name);
++    open_file_dialog_->SelectFile(
++        ui::SelectFileDialog::SELECT_SAVEAS_FILE, std::u16string(), destination,
++        &file_types, 0, FILE_PATH_LITERAL("pdf"),
++        browser_->GetWindow()->GetNativeWindow());
++    return;
++#endif
++  }
+   if (method == "setShortcuts") {
+ #if BUILDFLAG(IS_MAC)
+     const auto* bindings = list->size() == 1 ? (*list)[0].GetIfList() : nullptr;
+@@ -1319,7 +1481,8 @@
+                               "The system file dialog is unavailable");
+       return;
+     }
+-    open_file_callback_ = std::move(callback);
++    file_dialog_purpose_ = FileDialogPurpose::kOpenFile;
++    file_dialog_callback_ = std::move(callback);
+     ui::SelectFileDialog::FileTypeInfo file_types;
+     file_types.allowed_paths =
+         ui::SelectFileDialog::FileTypeInfo::ANY_PATH_OR_URL;

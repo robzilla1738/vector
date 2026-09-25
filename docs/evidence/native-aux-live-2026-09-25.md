@@ -233,3 +233,11 @@ The responsive Ask Aux panel used an opaque `--bg-1` fill below 820 CSS px while
 - Patch 45 adds a Chromium `SelectFileDialog` bridge for Aux's Open File action. It returns only the user-selected local path to the shell, which then opens the document through its existing tab workflow. An outstanding picker is rejected instead of opening a second dialog, and the listener is detached during teardown. Close Window now calls Chromium's window command after replying to the shell.
 - **Verified:** The local development app builds (9 actions, 1m22s; `/tmp/aux-native-file-dialog-build.log`). In AuxDev, ⌘O opened the macOS picker. Selecting the local `/tmp/aux-native-open-fixture.html` fixture opened an Aux tab showing “Aux file picker verified” at its `file:///private/tmp/...` URL. No real user file was selected.
 - **Partial:** ⌘⇧W from the fixture page removed its window and a new Aux Home window became visible. The final-window lifecycle and multi-window command behavior remain to be qualified with a dedicated fixture.
+
+### Native PDF export
+
+- Patch 46 routes `savePagePdf` through Chromium's page renderer and a native Save dialog. It rechecks page identity after the dialog, renders the selected page to PDF, and writes the document atomically on a blocking worker rather than the browser UI sequence. The suggested filename comes from Chromium's sanitized page-title naming path. Printing-disabled builds return a direct unavailable error.
+- **Verified in AuxDev:** With the local HTML fixture focused, ⌘⇧P opened the macOS Save panel. Saving to `/tmp/aux-native-pdf-fixture.pdf` produced a 10,768-byte PDF 1.4 document with one page and the fixture document title; the file had owner-only permissions. Reopening the dialog and Cancel returned to the page with “PDF export canceled.” The shared Open File picker still opened the same fixture after this change.
+- **Verified after filename refinement:** The local native rebuild passed, and the Save panel suggested “Aux native open fixture” instead of a generic “Page.” The final incremental build after the printing-disabled guard also passed (2 actions, 2m02s). No real document was exported.
+
+Logs: `/tmp/aux-native-pdf-build.log`, `/tmp/aux-native-pdf-refine-build.log`, `/tmp/aux-native-pdf-final-build.log`.
