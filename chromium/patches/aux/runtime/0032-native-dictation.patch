@@ -1,0 +1,818 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+index 23e48b4df5..d7c80d877e 100644
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -519,7 +519,11 @@ if (is_win) {
+       deps = []
+       if (enable_aux_shell) {
+         info_plists += [ "$target_gen_dir/aux-crash-Info.plist" ]
+-        deps += [ ":aux_crash_info_plist" ]
++        info_plists += [ "$target_gen_dir/aux-dictation-Info.plist" ]
++        deps += [
++          ":aux_crash_info_plist",
++          ":aux_dictation_info_plist",
++        ]
+       }
+     }
+     if (enable_aux_sparkle) {
+@@ -562,6 +566,11 @@ if (is_win) {
+       substitutions = [ "AUX_CRASH_UPLOAD_URL=$aux_crash_upload_url" ]
+       output_name = "$target_gen_dir/aux-crash-Info.plist"
+     }
++    compile_plist("aux_dictation_info_plist") {
++      plist_templates = [ "app/aux-dictation-Info.plist" ]
++      format = "xml1"
++      output_name = "$target_gen_dir/aux-dictation-Info.plist"
++    }
+   }
+ 
+   if (enable_aux_sparkle) {
+diff --git a/chrome/app/aux-dictation-Info.plist b/chrome/app/aux-dictation-Info.plist
+new file mode 100644
+index 0000000000..cee92b61a1
+--- /dev/null
++++ b/chrome/app/aux-dictation-Info.plist
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++  <key>NSMicrophoneUsageDescription</key>
++  <string>Aux uses your microphone only while you choose to dictate a message.</string>
++  <key>NSSpeechRecognitionUsageDescription</key>
++  <string>Aux turns your speech into editable text using on-device recognition.</string>
++</dict>
++</plist>
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index 835f93af19..7752893069 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -105,6 +105,7 @@ function autocomplete(query: string): Promise<Match[]> {
+ const client = new ShellHostClientReceiver({
+   onEvent(eventName: string, payloadJson: string) {
+     if (eventName !== 'onEvent' && eventName !== 'onTabsPatch' &&
++        eventName !== 'onDictation' &&
+         eventName !== 'onSidebarEdge' &&
+         eventName !== 'onToolbarEdge' &&
+         eventName !== 'onOrganizationChanged') {
+@@ -134,7 +135,7 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+     profileId: identity.profileId,
+     platform: 'darwin',
+     privateMode: identity.privateMode,
+-    featureStages: {extensions: 'on', contentBlocking: 'on'},
++    featureStages: {extensions: 'on', contentBlocking: 'on', dictation: 'on'},
+     async request(method, args) {
+       if (method === 'autocomplete') {
+         if (args.length !== 1 || typeof args[0] !== 'string') {
+@@ -152,6 +153,7 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+     },
+     subscribe(event, callback) {
+       if (event !== 'onEvent' && event !== 'onTabsPatch' &&
++          event !== 'onDictation' &&
+           event !== 'onSidebarEdge' &&
+           event !== 'onToolbarEdge' &&
+           event !== 'onOrganizationChanged') {
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index f45e4434b8..35e5b2e185 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -22,6 +22,10 @@ source_set("runtime") {
+     "credential_fill.cc",
+     "credential_fill.h",
+     "credential_fill_prompt_mac.mm",
++    "dictation_mac.h",
++    "dictation_mac.mm",
++    "dictation_session.cc",
++    "dictation_session.h",
+     "organization_store.cc",
+     "organization_store.h",
+     "page_identity.cc",
+@@ -79,8 +83,18 @@ source_set("runtime") {
+     "//url",
+   ]
+   frameworks = [
++    "AVFoundation.framework",
+     "Cocoa.framework",
+     "Security.framework",
++    "Speech.framework",
++  ]
++}
++
++test("dictation_session_unittests") {
++  sources = [ "dictation_session_unittest.cc" ]
++  deps = [
++    ":runtime",
++    "//testing/gtest",
+   ]
+ }
+ 
+diff --git a/chrome/browser/ui/aux/dictation_mac.h b/chrome/browser/ui/aux/dictation_mac.h
+new file mode 100644
+index 0000000000..58d78f2fb4
+--- /dev/null
++++ b/chrome/browser/ui/aux/dictation_mac.h
+@@ -0,0 +1,76 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_DICTATION_MAC_H_
++#define CHROME_BROWSER_UI_AUX_DICTATION_MAC_H_
++
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_observer.h"
++
++namespace aux {
++
++// Owns only the shell's transient microphone session. Audio and transcription
++// never enter the Aux runtime, browser Profile storage, or a network service.
++class DictationMac final : public content::WebContentsObserver {
++ public:
++  using EventCallback = base::RepeatingCallback<void(const std::string&)>;
++
++  DictationMac(content::WebContents* contents, EventCallback on_event);
++  ~DictationMac() override;
++  DictationMac(const DictationMac&) = delete;
++  DictationMac& operator=(const DictationMac&) = delete;
++
++  static base::DictValue Status();
++  bool Start(const std::string& session_id);
++  bool Stop(const std::string& session_id);
++  bool Cancel(const std::string& session_id);
++  void CancelAll();
++
++ private:
++  struct Impl;
++
++  bool IsCurrent(const std::string& session_id) const;
++  void AuthorizeSpeech(const std::string& session_id);
++  void AuthorizeMicrophone(const std::string& session_id);
++  void BeginCapture(const std::string& session_id);
++  void ReceiveResult(const std::string& session_id,
++                     const std::string& text,
++                     bool final,
++                     bool error);
++  void Finish(const std::string& session_id,
++              const char* type,
++              const char* message = nullptr);
++  void Emit(const std::string& session_id,
++            const char* type,
++            const char* message = nullptr);
++  void StopAudio();
++
++  // content::WebContentsObserver:
++  void DidFinishNavigation(content::NavigationHandle* handle) override;
++  void OnVisibilityChanged(content::Visibility visibility) override;
++  void WebContentsDestroyed() override;
++
++  EventCallback on_event_;
++  std::string owner_id_;
++  std::string session_id_;
++  std::string text_;
++  bool recording_ = false;
++  bool stopping_ = false;
++  bool tapped_ = false;
++  bool audio_ended_ = false;
++  std::unique_ptr<Impl> impl_;
++  base::OneShotTimer capture_timer_;
++  base::OneShotTimer finish_timer_;
++  base::WeakPtrFactory<DictationMac> weak_factory_{this};
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_DICTATION_MAC_H_
+diff --git a/chrome/browser/ui/aux/dictation_mac.mm b/chrome/browser/ui/aux/dictation_mac.mm
+new file mode 100644
+index 0000000000..b3251b8fdf
+--- /dev/null
++++ b/chrome/browser/ui/aux/dictation_mac.mm
+@@ -0,0 +1,354 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/dictation_mac.h"
++
++#import <AVFoundation/AVFoundation.h>
++#import <Speech/Speech.h>
++
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/no_destructor.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "base/uuid.h"
++#include "chrome/browser/ui/aux/dictation_session.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++
++DictationSessionGate& GlobalGate() {
++  static base::NoDestructor<DictationSessionGate> gate;
++  return *gate;
++}
++
++constexpr char kUnavailable[] =
++    "On-device dictation is unavailable for the current language.";
++constexpr char kSpeechDenied[] =
++    "Allow Speech Recognition for Aux in System Settings → Privacy & Security.";
++constexpr char kMicrophoneDenied[] =
++    "Allow Microphone access for Aux in System Settings → Privacy & Security.";
++
++}  // namespace
++
++struct DictationMac::Impl {
++  SFSpeechRecognizer* __strong recognizer = nil;
++  SFSpeechAudioBufferRecognitionRequest* __strong request = nil;
++  SFSpeechRecognitionTask* __strong task = nil;
++  AVAudioEngine* __strong engine = nil;
++};
++
++DictationMac::DictationMac(content::WebContents* contents,
++                           EventCallback on_event)
++    : content::WebContentsObserver(contents),
++      on_event_(std::move(on_event)),
++      owner_id_(base::Uuid::GenerateRandomV4().AsLowercaseString()) {}
++
++DictationMac::~DictationMac() {
++  CancelAll();
++}
++
++base::DictValue DictationMac::Status() {
++  SFSpeechRecognizer* recognizer =
++      [[SFSpeechRecognizer alloc] initWithLocale:[NSLocale currentLocale]];
++  const bool available = recognizer && recognizer.supportsOnDeviceRecognition;
++  base::DictValue result;
++  result.Set("available", available);
++  result.Set("language", base::SysNSStringToUTF8(
++                             recognizer.locale.localeIdentifier ?: @""));
++  if (!available) {
++    result.Set("reason", kUnavailable);
++  }
++  return result;
++}
++
++bool DictationMac::IsCurrent(const std::string& session_id) const {
++  return !session_id_.empty() && session_id_ == session_id &&
++         GlobalGate().IsCurrent(owner_id_, session_id);
++}
++
++bool DictationMac::Start(const std::string& session_id) {
++  if (!web_contents() ||
++      web_contents()->GetVisibility() != content::Visibility::VISIBLE ||
++      !Status().FindBool("available").value_or(false) ||
++      !GlobalGate().Begin(owner_id_, session_id)) {
++    return false;
++  }
++  session_id_ = session_id;
++  text_.clear();
++  recording_ = false;
++  stopping_ = false;
++  audio_ended_ = false;
++  impl_ = std::make_unique<Impl>();
++  impl_->recognizer =
++      [[SFSpeechRecognizer alloc] initWithLocale:[NSLocale currentLocale]];
++  if (!impl_->recognizer || !impl_->recognizer.supportsOnDeviceRecognition) {
++    Finish(session_id, "error", kUnavailable);
++    return false;
++  }
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&DictationMac::AuthorizeSpeech,
++                                weak_factory_.GetWeakPtr(), session_id));
++  return true;
++}
++
++void DictationMac::AuthorizeSpeech(const std::string& session_id) {
++  const auto status = [SFSpeechRecognizer authorizationStatus];
++  if (status == SFSpeechRecognizerAuthorizationStatusAuthorized) {
++    AuthorizeMicrophone(session_id);
++    return;
++  }
++  if (status != SFSpeechRecognizerAuthorizationStatusNotDetermined) {
++    Finish(session_id, "error", kSpeechDenied);
++    return;
++  }
++  base::WeakPtr<DictationMac> weak = weak_factory_.GetWeakPtr();
++  [SFSpeechRecognizer
++      requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus granted) {
++        dispatch_async(dispatch_get_main_queue(), ^{
++          if (!weak || !weak->IsCurrent(session_id)) {
++            return;
++          }
++          if (granted == SFSpeechRecognizerAuthorizationStatusAuthorized) {
++            weak->AuthorizeMicrophone(session_id);
++          } else {
++            weak->Finish(session_id, "error", kSpeechDenied);
++          }
++        });
++      }];
++}
++
++void DictationMac::AuthorizeMicrophone(const std::string& session_id) {
++  const auto status =
++      [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
++  if (status == AVAuthorizationStatusAuthorized) {
++    BeginCapture(session_id);
++    return;
++  }
++  if (status != AVAuthorizationStatusNotDetermined) {
++    Finish(session_id, "error", kMicrophoneDenied);
++    return;
++  }
++  base::WeakPtr<DictationMac> weak = weak_factory_.GetWeakPtr();
++  [AVCaptureDevice
++      requestAccessForMediaType:AVMediaTypeAudio
++              completionHandler:^(BOOL granted) {
++                dispatch_async(dispatch_get_main_queue(), ^{
++                  if (!weak || !weak->IsCurrent(session_id)) {
++                    return;
++                  }
++                  if (granted) {
++                    weak->BeginCapture(session_id);
++                  } else {
++                    weak->Finish(session_id, "error", kMicrophoneDenied);
++                  }
++                });
++              }];
++}
++
++void DictationMac::BeginCapture(const std::string& session_id) {
++  if (!IsCurrent(session_id) || stopping_ || !web_contents() ||
++      web_contents()->GetVisibility() != content::Visibility::VISIBLE) {
++    CancelAll();
++    return;
++  }
++  if (!impl_->recognizer.isAvailable) {
++    Finish(session_id, "error",
++           "Speech recognition is temporarily unavailable.");
++    return;
++  }
++  impl_->request = [[SFSpeechAudioBufferRecognitionRequest alloc] init];
++  impl_->request.requiresOnDeviceRecognition = YES;
++  impl_->request.shouldReportPartialResults = YES;
++  impl_->engine = [[AVAudioEngine alloc] init];
++  AVAudioInputNode* input = impl_->engine.inputNode;
++  AVAudioFormat* format = [input outputFormatForBus:0];
++  if (!input || !format || format.sampleRate <= 0 || format.channelCount == 0) {
++    Finish(session_id, "error", "No microphone input is available.");
++    return;
++  }
++
++  SFSpeechAudioBufferRecognitionRequest* request = impl_->request;
++  [input installTapOnBus:0
++              bufferSize:1024
++                  format:format
++                   block:^(AVAudioPCMBuffer* buffer, AVAudioTime* when) {
++                     [request appendAudioPCMBuffer:buffer];
++                   }];
++  tapped_ = true;
++
++  base::WeakPtr<DictationMac> weak = weak_factory_.GetWeakPtr();
++  impl_->task = [impl_->recognizer
++      recognitionTaskWithRequest:impl_->request
++                   resultHandler:^(SFSpeechRecognitionResult* result,
++                                   NSError* error) {
++                     NSString* partial =
++                         result.bestTranscription.formattedString;
++                     if (partial.length > 20000) {
++                       partial = [partial substringToIndex:20000];
++                     }
++                     const std::string text =
++                         base::SysNSStringToUTF8(partial ?: @"");
++                     const bool final = result.isFinal;
++                     const bool failed = error != nil;
++                     dispatch_async(dispatch_get_main_queue(), ^{
++                       if (weak) {
++                         weak->ReceiveResult(session_id, text, final, failed);
++                       }
++                     });
++                   }];
++  if (!impl_->task) {
++    Finish(session_id, "error", "On-device dictation could not start.");
++    return;
++  }
++  NSError* start_error = nil;
++  [impl_->engine prepare];
++  if (![impl_->engine startAndReturnError:&start_error]) {
++    Finish(session_id, "error",
++           "The microphone could not start. Check microphone access.");
++    return;
++  }
++  recording_ = true;
++  Emit(session_id, "recording");
++  capture_timer_.Start(
++      FROM_HERE, base::Seconds(60),
++      base::BindOnce(
++          [](base::WeakPtr<DictationMac> weak, std::string id) {
++            if (weak) {
++              weak->Stop(id);
++            }
++          },
++          weak_factory_.GetWeakPtr(), session_id));
++}
++
++void DictationMac::ReceiveResult(const std::string& session_id,
++                                 const std::string& text,
++                                 bool final,
++                                 bool error) {
++  if (!IsCurrent(session_id)) {
++    return;
++  }
++  if (!text.empty()) {
++    text_ = text;
++    Emit(session_id, "transcript");
++  }
++  if (final) {
++    Finish(session_id, "final");
++  } else if (error) {
++    Finish(session_id, stopping_ && !text_.empty() ? "final" : "error",
++           stopping_ && !text_.empty()
++               ? nullptr
++               : "Dictation stopped. Check your microphone and try again.");
++  }
++}
++
++void DictationMac::StopAudio() {
++  if (!impl_ || audio_ended_) {
++    return;
++  }
++  audio_ended_ = true;
++  [impl_->engine stop];
++  if (tapped_) {
++    [impl_->engine.inputNode removeTapOnBus:0];
++    tapped_ = false;
++  }
++  [impl_->request endAudio];
++}
++
++bool DictationMac::Stop(const std::string& session_id) {
++  if (!IsCurrent(session_id) ||
++      !GlobalGate().MarkStopping(owner_id_, session_id)) {
++    return false;
++  }
++  stopping_ = true;
++  capture_timer_.Stop();
++  StopAudio();
++  Emit(session_id, "finishing");
++  if (!recording_) {
++    Finish(session_id, "final");
++    return true;
++  }
++  finish_timer_.Start(
++      FROM_HERE, base::Seconds(3),
++      base::BindOnce(&DictationMac::Finish, weak_factory_.GetWeakPtr(),
++                     session_id, "final", nullptr));
++  return true;
++}
++
++bool DictationMac::Cancel(const std::string& session_id) {
++  if (!IsCurrent(session_id)) {
++    return false;
++  }
++  CancelAll();
++  return true;
++}
++
++void DictationMac::CancelAll() {
++  if (session_id_.empty()) {
++    return;
++  }
++  weak_factory_.InvalidateWeakPtrs();
++  GlobalGate().EndOwner(owner_id_);
++  session_id_.clear();
++  capture_timer_.Stop();
++  finish_timer_.Stop();
++  StopAudio();
++  [impl_->task cancel];
++  impl_.reset();
++  text_.clear();
++  recording_ = false;
++  stopping_ = false;
++  audio_ended_ = false;
++}
++
++void DictationMac::Finish(const std::string& session_id,
++                          const char* type,
++                          const char* message) {
++  if (!IsCurrent(session_id)) {
++    return;
++  }
++  Emit(session_id, type, message);
++  CancelAll();
++}
++
++void DictationMac::Emit(const std::string& session_id,
++                        const char* type,
++                        const char* message) {
++  if (!IsCurrent(session_id) || on_event_.is_null()) {
++    return;
++  }
++  base::DictValue event;
++  event.Set("sessionId", session_id);
++  event.Set("type", type);
++  if (!text_.empty()) {
++    event.Set("text", text_);
++  }
++  if (message) {
++    event.Set("message", message);
++  }
++  on_event_.Run(*base::WriteJson(event));
++}
++
++void DictationMac::DidFinishNavigation(content::NavigationHandle* handle) {
++  if (handle->IsInPrimaryMainFrame() && handle->HasCommitted()) {
++    CancelAll();
++  }
++}
++
++void DictationMac::OnVisibilityChanged(content::Visibility visibility) {
++  if (visibility != content::Visibility::VISIBLE) {
++    CancelAll();
++  }
++}
++
++void DictationMac::WebContentsDestroyed() {
++  CancelAll();
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/dictation_session.cc b/chrome/browser/ui/aux/dictation_session.cc
+new file mode 100644
+index 0000000000..5037487f75
+--- /dev/null
++++ b/chrome/browser/ui/aux/dictation_session.cc
+@@ -0,0 +1,55 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/dictation_session.h"
++
++#include "base/uuid.h"
++
++namespace aux {
++
++bool DictationSessionGate::Begin(const std::string& owner,
++                                 const std::string& session_id) {
++  if (!owner_.empty() || !base::Uuid::ParseLowercase(owner).is_valid() ||
++      !base::Uuid::ParseLowercase(session_id).is_valid()) {
++    return false;
++  }
++  owner_ = owner;
++  session_id_ = session_id;
++  stopping_ = false;
++  return true;
++}
++
++bool DictationSessionGate::IsCurrent(const std::string& owner,
++                                     const std::string& session_id) const {
++  return !owner_.empty() && owner_ == owner && session_id_ == session_id;
++}
++
++bool DictationSessionGate::MarkStopping(const std::string& owner,
++                                        const std::string& session_id) {
++  if (!IsCurrent(owner, session_id) || stopping_) {
++    return false;
++  }
++  stopping_ = true;
++  return true;
++}
++
++bool DictationSessionGate::End(const std::string& owner,
++                               const std::string& session_id) {
++  if (!IsCurrent(owner, session_id)) {
++    return false;
++  }
++  EndOwner(owner);
++  return true;
++}
++
++void DictationSessionGate::EndOwner(const std::string& owner) {
++  if (owner_ != owner) {
++    return;
++  }
++  owner_.clear();
++  session_id_.clear();
++  stopping_ = false;
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/dictation_session.h b/chrome/browser/ui/aux/dictation_session.h
+new file mode 100644
+index 0000000000..34febb686d
+--- /dev/null
++++ b/chrome/browser/ui/aux/dictation_session.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_DICTATION_SESSION_H_
++#define CHROME_BROWSER_UI_AUX_DICTATION_SESSION_H_
++
++#include <string>
++
++namespace aux {
++
++// UI-sequence authority for the one microphone session in the browser process.
++// The owner token is generated by the browser, never supplied by a renderer.
++class DictationSessionGate {
++ public:
++  bool Begin(const std::string& owner, const std::string& session_id);
++  bool IsCurrent(const std::string& owner, const std::string& session_id) const;
++  bool MarkStopping(const std::string& owner, const std::string& session_id);
++  bool End(const std::string& owner, const std::string& session_id);
++  void EndOwner(const std::string& owner);
++
++ private:
++  std::string owner_;
++  std::string session_id_;
++  bool stopping_ = false;
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_DICTATION_SESSION_H_
+diff --git a/chrome/browser/ui/aux/dictation_session_unittest.cc b/chrome/browser/ui/aux/dictation_session_unittest.cc
+new file mode 100644
+index 0000000000..de0bdcad73
+--- /dev/null
++++ b/chrome/browser/ui/aux/dictation_session_unittest.cc
+@@ -0,0 +1,50 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/dictation_session.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++namespace {
++
++constexpr char kFirst[] = "4e8e3c9f-3140-4bc7-95e0-d28808389d47";
++constexpr char kSecond[] = "42a0756a-9535-43ef-b5d6-6c8806079642";
++constexpr char kFirstOwner[] = "658426c1-7488-4462-9e9b-12f42d25384e";
++constexpr char kSecondOwner[] = "e1c85449-b1ed-41ac-9405-66845593647a";
++
++TEST(DictationSessionGateTest, RejectsInvalidAndOverlappingSessions) {
++  DictationSessionGate gate;
++  EXPECT_FALSE(gate.Begin(kFirstOwner, "not-a-session"));
++  EXPECT_FALSE(gate.Begin("renderer-owned", kFirst));
++  ASSERT_TRUE(gate.Begin(kFirstOwner, kFirst));
++  EXPECT_FALSE(gate.Begin(kSecondOwner, kSecond));
++  EXPECT_FALSE(gate.Begin(kFirstOwner, kSecond));
++  EXPECT_TRUE(gate.IsCurrent(kFirstOwner, kFirst));
++  EXPECT_FALSE(gate.IsCurrent(kSecondOwner, kFirst));
++}
++
++TEST(DictationSessionGateTest, StaleAndForeignStopCannotEndNewSession) {
++  DictationSessionGate gate;
++  ASSERT_TRUE(gate.Begin(kFirstOwner, kFirst));
++  EXPECT_FALSE(gate.MarkStopping(kSecondOwner, kFirst));
++  EXPECT_FALSE(gate.End(kFirstOwner, kSecond));
++  ASSERT_TRUE(gate.MarkStopping(kFirstOwner, kFirst));
++  EXPECT_FALSE(gate.MarkStopping(kFirstOwner, kFirst));
++  ASSERT_TRUE(gate.End(kFirstOwner, kFirst));
++  ASSERT_TRUE(gate.Begin(kSecondOwner, kSecond));
++  EXPECT_FALSE(gate.End(kFirstOwner, kFirst));
++  EXPECT_TRUE(gate.IsCurrent(kSecondOwner, kSecond));
++}
++
++TEST(DictationSessionGateTest, OwnerTeardownReleasesMicrophone) {
++  DictationSessionGate gate;
++  ASSERT_TRUE(gate.Begin(kFirstOwner, kFirst));
++  gate.EndOwner(kFirstOwner);
++  EXPECT_FALSE(gate.IsCurrent(kFirstOwner, kFirst));
++  EXPECT_TRUE(gate.Begin(kFirstOwner, kSecond));
++}
++
++}  // namespace
++}  // namespace aux
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 9bc3f451f8..49c76a5d7a 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/dictation_mac.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+@@ -287,6 +288,9 @@ void WebUIBrowserUI::BindInterface(
+ void WebUIBrowserUI::CreateShellHost(
+     mojo::PendingReceiver<aux::mojom::ShellHost> host,
+     mojo::PendingRemote<aux::mojom::ShellHostClient> client) {
++  if (dictation_) {
++    dictation_->CancelAll();
++  }
+   shell_host_receiver_.reset();
+   shell_host_client_.reset();
+   tab_catalog_subscription_ = {};
+@@ -296,6 +300,17 @@ void WebUIBrowserUI::CreateShellHost(
+   if (IsAuthorizedAuxDocument()) {
+     shell_host_receiver_.Bind(std::move(host));
+     shell_host_client_.Bind(std::move(client));
++    shell_host_client_.set_disconnect_handler(base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> ui) {
++          if (ui && ui->dictation_) {
++            ui->dictation_->CancelAll();
++          }
++          if (ui) {
++            ui->shell_host_receiver_.reset();
++            ui->shell_host_client_.reset();
++          }
++        },
++        weak_factory_.GetWeakPtr()));
+     if (!browser_->GetProfile()->IsOffTheRecord()) {
+       organization_pref_registrar_ = std::make_unique<PrefChangeRegistrar>();
+       organization_pref_registrar_->Init(browser_->GetProfile()->GetPrefs());
+@@ -398,6 +413,52 @@ void WebUIBrowserUI::Request(const std::string& method,
+                             "Aux shell arguments must be an array");
+     return;
+   }
++  if (method == "dictationStatus") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid dictation status request");
++      return;
++    }
++    std::move(callback).Run(
++        true, *base::WriteJson(aux::DictationMac::Status()), "", "");
++    return;
++  }
++  if (method == "startDictation" || method == "stopDictation" ||
++      method == "cancelDictation") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid dictation session request");
++      return;
++    }
++    const std::string& id = (*list)[0].GetString();
++    if (method == "startDictation" && !dictation_) {
++      dictation_ = std::make_unique<aux::DictationMac>(
++          web_ui()->GetWebContents(),
++          base::BindRepeating(
++              [](base::WeakPtr<WebUIBrowserUI> ui,
++                 const std::string& event_json) {
++                if (ui && ui->IsAuthorizedAuxDocument() &&
++                    ui->shell_host_client_.is_bound() &&
++                    ui->web_ui()->GetWebContents()->GetVisibility() ==
++                        content::Visibility::VISIBLE) {
++                  ui->shell_host_client_->OnEvent("onDictation", event_json);
++                }
++              },
++              weak_factory_.GetWeakPtr()));
++    }
++    bool result = false;
++    if (dictation_) {
++      if (method == "startDictation") {
++        result = dictation_->Start(id);
++      } else if (method == "stopDictation") {
++        result = dictation_->Stop(id);
++      } else {
++        result = dictation_->Cancel(id);
++      }
++    }
++    std::move(callback).Run(true, *base::WriteJson(base::Value(result)), "", "");
++    return;
++  }
+   if (method == "siteInfo" || method == "setSiteTrackers") {
+     if (list->size() != (method == "siteInfo" ? 1u : 2u) ||
+         !(*list)[0].is_string() ||
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index d8d774af05..97f5710e3c 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -52,6 +52,9 @@ class WebUIBrowserUI;
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ class AuxShellEdgeMonitor;
+ class PrefChangeRegistrar;
++namespace aux {
++class DictationMac;
++}
+ #endif
+ class WebUIBrowserBookmarkBarPageHandler;
+ 
+@@ -185,6 +188,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+       page_factory_receiver_{this};
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++  std::unique_ptr<aux::DictationMac> dictation_;
+   mojo::Receiver<aux::mojom::ShellHostFactory> shell_host_factory_receiver_{
+       this};
+   mojo::Receiver<aux::mojom::ShellHost> shell_host_receiver_{this};
