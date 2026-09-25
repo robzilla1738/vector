@@ -49,6 +49,28 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
 }
 
 describe("B5 live dispatch gate", () => {
+  it("requires a one-time credential approval even when the origin rule says none", async () => {
+    const db = openDb(":memory:"); databases.push(db);
+    const approvals = new ApprovalStore(db);
+    const gate = new SafetyDispatchGate({ approvals, managedRules: () => [],
+      userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "none" }],
+      localCeiling: () => "always", audit: () => {} });
+    const step: Step = { id: "saved-password", op: "fillCredential", passwordSelector: "#password" };
+    const digest = createHash("sha256").update(JSON.stringify(step)).digest("hex");
+    const context = { profileId: "profile-1", scope: { kind: "task" as const, id: "task-1" },
+      turnId: "turn-1", threadId: "thread-1", turnToolCallCount: 1,
+      review: { artifactId: "review-1", turnId: "turn-1", action: "fillCredential", effect: "credential" as const,
+        invocationDigest: digest, dataDescription: "Saved password", destination: "allowed.test",
+        consequence: "Fill the active sign-in form", createdAt: Date.now() } };
+    const request = await gate.check({ step, origin: "https://allowed.test/form", context, phase: "preflight" })
+      .catch(error => error) as { detail?: { requestId?: string } };
+    const approvalId = request.detail?.requestId;
+    expect(approvalId).toBeTruthy();
+    approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
+    expect(await gate.check({ step, origin: "https://allowed.test/form",
+      context: { ...context, approvalId }, phase: "dispatch" })).toMatchObject({ authorizedBy: "approval", approvalId });
+  });
+
   it("records policy authorization and blocks a second step after an origin change", async () => {
     const { pages, calls } = fixture();
     const page = await pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });

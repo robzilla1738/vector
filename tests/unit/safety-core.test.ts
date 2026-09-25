@@ -116,15 +116,19 @@ describe("B5 safety core", () => {
 
   it("never passes credential values through the handoff interface or result", async () => {
     const calls: unknown[] = [];
-    const host = { fillFromPasswordManager: async (request: unknown) => { calls.push(request); return { status: "filled" as const }; } };
-    const request = { credentialRef: `cref_${"a".repeat(24)}`, pageId: "page", topLevelOrigin: "https://example.test/",
-      frameOrigin: "https://example.test/", submissionOrigin: "https://example.test/", passwordSelector: "#password" };
-    expect(await secureCredentialHandoff({ ...request, submissionOrigin: "https://evil.test/" }, host)).toEqual({ status: "denied", reason: "origin_mismatch" });
+    const host = { fillSavedPassword: async (request: unknown) => { calls.push(request); return { status: "filled" as const }; } };
+    const request = { pageId: "page", expectedUrl: "https://example.test/login", passwordSelector: "#password" };
+    expect(await secureCredentialHandoff({ ...request, credentialRef: `cref_${"a".repeat(24)}` }, host)).toEqual({ status: "permission_denied" });
+    expect(await secureCredentialHandoff({ ...request, value: "password-value" }, host)).toEqual({ status: "permission_denied" });
+    expect(await secureCredentialHandoff({ ...request, expectedUrl: "http://example.test/login" }, host)).toEqual({ status: "permission_denied" });
     expect(calls).toHaveLength(0);
     const result = await secureCredentialHandoff(request, host);
     expect(result.status).toBe("filled");
     expect(JSON.stringify([calls, result])).not.toContain("password-value");
-    expect(calls).toEqual([{ credentialRef: request.credentialRef, pageId: "page", expectedOrigin: "https://example.test", usernameSelector: undefined, passwordSelector: "#password" }]);
+    expect(calls).toEqual([request]);
+    await expect(secureCredentialHandoff(request, {
+      fillSavedPassword: async () => ({ status: "filled", value: "password-value" } as never),
+    })).rejects.toThrow();
   });
 
   it("Guardian denies critical policy failures and requires authorization for restricted retries", async () => {

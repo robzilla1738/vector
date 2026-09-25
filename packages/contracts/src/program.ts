@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AuthorizationProvenanceSchema } from "./safety.js";
+import { AuthorizationProvenanceSchema, CredentialSelectorSchema } from "./safety.js";
 
 /**
  * Conditions the executor can wait on — no fixed sleeps. `safeConditions`
@@ -100,9 +100,9 @@ const stepOptions = <C extends z.ZodType>(condition: C) => {
   z.object({
     ...stepBase,
     op: z.literal("fillCredential"),
-    ...targetFields,
-    credentialRef: z.string().regex(/^cref_[a-z0-9]{24,64}$/).describe("opaque vault grant; never a secret value"),
-  }),
+    passwordSelector: CredentialSelectorSchema.describe("CSS selector for the active page's password field"),
+    usernameSelector: CredentialSelectorSchema.optional().describe("CSS selector for a username field in the same form"),
+  }).strict(),
   z.object({
     ...stepBase,
     op: z.literal("type"),

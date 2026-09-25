@@ -2,6 +2,7 @@ import { AuxError, isElementRef, type Condition, type Observation, type Observat
 import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
 import { DEFAULT_GRANTS, authorizeProgram, classifyStep } from "../../agent/permissions.js";
 import { type ExecContext, executeProgram } from "../../execution/executor.js";
+import { secureCredentialHandoff } from "../../safety/credential-handoff.js";
 import type { ControlAuthority } from "./control.js";
 import type { PageLanes } from "./lanes.js";
 import type { ObservationService } from "./observation.js";
@@ -197,17 +198,11 @@ export class ProgramExecutor {
           allowEval: ctx.allowEval ?? false,
           pageOrigin: origin,
           taskId: ctx.taskId ?? (ctx.runId ? this.pages.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
-          resolveCredential: ctx.resolveCredential ?? (this.pages.deps.vault
-            ? (ref, info) => {
-                const runConfig = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId)?.config : undefined;
-                return this.pages.deps.vault!.revealForFill(ref, {
-                  ...info,
-                  origin: info.origin || origin,
-                  taskId: info.taskId ?? ctx.taskId ?? runConfig?.taskId,
-                  accountLabels: runConfig?.accountLabels,
-                });
-              }
-            : undefined),
+          fillSavedPassword: this.pages.deps.nativePasswordFillEnabled && this.pages.deps.native.fillSavedPassword
+            ? request => secureCredentialHandoff(request, {
+                fillSavedPassword: validated => this.pages.deps.native.fillSavedPassword!(validated),
+              })
+            : undefined,
           observe: (req) => this.observation.observe(pageId, req).then((o) => o.content),
           onEmit: (label, value) =>
             this.pages.deps.events.emit("page.emitted", { pageId, runId: ctx.runId, label, value }),
@@ -301,7 +296,7 @@ export class ProgramExecutor {
 
 function stepInputsOf(s: { op: string } & Record<string, unknown>): Record<string, unknown> {
   const { id, op, timeoutMs, optional, expect, ...rest } = s;
-  if (op === "fillCredential") return { target: rest.target, credentialRef: rest.credentialRef };
+  if (op === "fillCredential") return { passwordSelector: rest.passwordSelector, usernameSelector: rest.usernameSelector };
   return rest;
 }
 

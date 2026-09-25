@@ -6,7 +6,6 @@ import {
   TaskPlanChunkSchema,
   RepairChunkSchema,
   AuxError,
-  originOfAddress,
   type FinalDecision,
   type Observation,
   type PlanChunk,
@@ -342,13 +341,6 @@ export type PlanAttempt = {
   onStepRecorded: (outcome: StepOutcome, step: Step) => void;
 };
 
-function credentialGrantsFor(s: TurnState, url: string) {
-  const origin = originOfAddress(url);
-  return origin && s.self.deps.vault
-    ? s.self.deps.vault.grants({ taskId: s.run.config?.taskId, origin, accountLabels: s.run.config?.accountLabels }).map(g => ({ credentialRef: g.credentialRef, origin: g.origin, accountLabel: g.accountLabel }))
-    : undefined;
-}
-
 function calendarGrantsFor(s: TurnState) {
   const calendar = s.self.deps.calendar, taskId = s.run.config?.taskId, revision = s.run.config?.taskRevision;
   if (!calendar || !taskId || !revision) return [];
@@ -374,7 +366,6 @@ function plannerPrompt(s: TurnState, obs: Observation): string {
     instructions: userInstructions(s),
     notes: s.notes,
     budget: { tokens: 3000 },
-    credentialGrants: credentialGrantsFor(s, obs.content.url),
     calendarGrants: calendarGrantsFor(s),
   });
 }

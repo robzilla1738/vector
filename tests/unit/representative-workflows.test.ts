@@ -54,13 +54,13 @@ it("runs representative form, popup, upload, download and rich-text steps withou
       { id: "f1", op: "fill", target: "r-title", value: "Prepared message" },
       { id: "t1", op: "type", target: "r-body", value: "Hello from Aux" },
       { id: "s1", op: "select", target: "r-account", value: "work" },
-      { id: "c1", op: "fillCredential", target: "r-secret", credentialRef: `cref_${"ab".repeat(12)}` },
+      { id: "c1", op: "fillCredential", passwordSelector: "#secret" },
       { id: "dl", op: "expectDownload", timeoutMs: 1000 },
       { id: "go", op: "click", target: "r-submit" },
     ],
   }, {
     pageOrigin: "https://app.test",
-    resolveCredential: async () => "s3cret-value",
+    fillSavedPassword: async request => { calls.push(`native-fill:${request.passwordSelector}`); return { status: "filled" }; },
   });
   expect(result.status).toBe("completed");
   expect(JSON.stringify(result)).not.toContain("s3cret-value");
@@ -68,10 +68,10 @@ it("runs representative form, popup, upload, download and rich-text steps withou
     "navigate:https://app.test/compose",
     "dialog:accept",
     "upload:r-file:1",
+    "native-fill:#secret",
     "fill:r-title=Prepared message",
     "type:r-body=Hello from Aux",
     "select:r-account=work",
-    "fill:r-secret=s3cret-value",
     "click:r-submit",
   ]));
   expect(result.steps.find(step => step.op === "expectDownload")?.extracted?.downloaded).toBe("report.csv");

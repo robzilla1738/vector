@@ -90,20 +90,28 @@ export const ConfirmationRequestSchema = z.object({
 }).strict();
 export type ConfirmationRequest = z.infer<typeof ConfirmationRequestSchema>;
 
+export const CredentialSelectorSchema = z.string().min(1).max(1000).refine(
+  value => [...value].every(character => {
+    const code = character.charCodeAt(0);
+    return code >= 0x20 && code !== 0x7f;
+  }), "Selectors cannot contain control characters.",
+);
+
 export const CredentialHandoffRequestSchema = z.object({
-  credentialRef: z.string().regex(/^cref_[a-z0-9]{24,64}$/),
   pageId: id,
-  topLevelOrigin: origin,
-  frameOrigin: origin,
-  submissionOrigin: origin,
-  usernameSelector: z.string().min(1).max(1000).optional(),
-  passwordSelector: z.string().min(1).max(1000),
+  expectedUrl: z.string().url().max(8192).refine(value => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password && url.href === value;
+    } catch { return false; }
+  }),
+  usernameSelector: CredentialSelectorSchema.optional(),
+  passwordSelector: CredentialSelectorSchema,
 }).strict();
 export type CredentialHandoffRequest = z.infer<typeof CredentialHandoffRequestSchema>;
-export const CredentialHandoffResultSchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("filled"), pageId: id, credentialRef: CredentialHandoffRequestSchema.shape.credentialRef }).strict(),
-  z.object({ status: z.literal("denied"), reason: z.enum(["origin_mismatch", "credential_unavailable", "permission_denied", "target_changed"]) }).strict(),
-]);
+export const CredentialHandoffResultSchema = z.object({
+  status: z.enum(["filled", "unavailable", "target_changed", "permission_denied", "cancelled"]),
+}).strict();
 export type CredentialHandoffResult = z.infer<typeof CredentialHandoffResultSchema>;
 
 export const TurnSteerSchema = z.object({ expectedTurnId: id, message: z.string().trim().min(1).max(20_000) }).strict();

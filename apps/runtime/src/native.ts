@@ -1,5 +1,7 @@
 import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken } from "@aux/contracts";
 
+import { CredentialHandoffResultSchema, type CredentialHandoffRequest, type CredentialHandoffResult } from "@aux/contracts";
+
 /**
  * Calls into the Electron main process, which owns all native surfaces.
  * In standalone mode (tests, external-only use) the bridge is absent and
@@ -37,6 +39,7 @@ export interface NativeBridge {
   /** Native host owns OAuth consent/refresh and returns only an ephemeral token for this exact server. */
   mcpOAuthToken?(server: OutboundMcpServer): Promise<McpOAuthToken>;
   captureReadablePage?(pageId: string, workspaceId: string, expectedUrl: string): Promise<{ url: string; title: string; text: string }>;
+  fillSavedPassword?(request: CredentialHandoffRequest): Promise<CredentialHandoffResult>;
   developmentProjects?(projectIds:string[]):Promise<LocalProject[]>;
   inspectProject?(projectId:string):Promise<ProjectInspection>;
   githubProject?(projectId:string):Promise<{owner:string;repository:string;remoteUrl:string;branch:string;baseCommit:string;headCommit:string}>;
@@ -128,6 +131,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   captureReadablePage(pageId: string, workspaceId: string, expectedUrl: string) {
     return this.channel.call<{ url: string; title: string; text: string }>("native.captureReadablePage", { pageId, workspaceId, expectedUrl }, 15_000);
+  }
+  async fillSavedPassword(request: CredentialHandoffRequest): Promise<CredentialHandoffResult> {
+    return CredentialHandoffResultSchema.parse(await this.channel.call("native.fillSavedPassword", request, 65_000));
   }
   developmentProjects(projectIds:string[]){return this.channel.call<LocalProject[]>("native.developmentProjects",{projectIds});}
   inspectProject(projectId:string){return this.channel.call<ProjectInspection>("native.inspectProject",{projectId});}

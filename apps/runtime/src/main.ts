@@ -218,11 +218,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     profileId: env.AUX_BROWSER_PROFILE_ID,
     events,
     native,
+    nativePasswordFillEnabled: !!env.AUX_HOST_SOCKET,
     drivers: () => drivers,
     artifacts,
     responses,
     tracer,
-    vault,
     durableWrites,
     safetyGate,
     // unified step ledger — every execution records steps with pageId so

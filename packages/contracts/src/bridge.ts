@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ProjectCommandSchema, ProjectCommandTaskSchema, ProjectCommitRequestSchema, ProjectGithubStatusSchema, ProjectReviewContextSchema } from "./local-projects.js";
 import { CommandSeatbeltPrepareSchema } from "./command-seatbelt.js";
 import { TabCommandEnvelopeSchema } from "./tabs.js";
+import { CredentialHandoffRequestSchema } from "./safety.js";
 
 /**
  * Internal transport between the Electron main process (native surface owner)
@@ -66,6 +67,7 @@ export const NativeMethods = {
   "native.storeSecret": z.object({ name: z.string(), value: z.string() }),
   "native.readSecret": z.object({ name: z.string() }),
   "native.captureReadablePage": z.object({ pageId: z.string().min(1), workspaceId: z.string().min(1), expectedUrl: z.string().url().max(8192) }),
+  "native.fillSavedPassword": CredentialHandoffRequestSchema,
   "native.developmentProjects": z.object({ projectIds: z.array(z.string()).default([]) }),
   "native.inspectProject": ProjectParams,
   "native.githubProject": ProjectParams,

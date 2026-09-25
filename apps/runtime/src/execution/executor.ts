@@ -57,8 +57,8 @@ export interface ExecContext {
   journaled?: boolean;
   /** Durable intent created by the caller for every consequential program step. */
   journalIntentId?: string;
-  /** resolve opaque vault grants immediately before fill; never persist the secret */
-  resolveCredential?: (ref: string, info: { pageId: string; runId?: string; origin: string; target: string; taskId?: string; accountLabels?: string[] }) => Promise<string>;
+  /** Chromium's Profile password manager handles selection, approval, and fill. */
+  fillSavedPassword?: (request: { pageId: string; expectedUrl: string; passwordSelector: string; usernameSelector?: string }) => Promise<{ status: "filled" | "unavailable" | "target_changed" | "permission_denied" | "cancelled" }>;
   pageOrigin?: string;
 }
 
@@ -98,16 +98,18 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
     case "hover": return void (await page.hover(s.target, s.timeoutMs));
     case "fill": return void (await page.fill(s.target, s.value, s.timeoutMs));
     case "fillCredential": {
-      if (!ctx.resolveCredential) throw new AuxError("backend_unavailable", "Trusted fill requires the agent vault.");
-      const origin = await page.originForTarget?.(s.target) ?? ctx.pageOrigin ?? "";
-      const secret = await ctx.resolveCredential(s.credentialRef, {
+      if (!ctx.fillSavedPassword) throw new AuxError("backend_unavailable", "The browser password manager is unavailable.");
+      const result = await ctx.fillSavedPassword({
         pageId: page.identity.pageId,
-        runId: ctx.runId,
-        origin,
-        target: s.target,
-        taskId: ctx.taskId,
+        expectedUrl: page.url(),
+        passwordSelector: s.passwordSelector,
+        ...(s.usernameSelector ? { usernameSelector: s.usernameSelector } : {}),
       });
-      return void (await page.fill(s.target, secret, s.timeoutMs));
+      if (result.status === "filled") return { detail: "Saved password filled after browser approval" };
+      if (result.status === "target_changed") throw new AuxError("conflict", "The active login page changed during password fill.");
+      if (result.status === "unavailable") throw new AuxError("needs_input", "No saved password is available for this site.");
+      if (result.status === "permission_denied") throw new AuxError("permission_denied", "The browser denied password fill on this page.");
+      throw new AuxError("needs_input", "Password fill was not approved in the browser.");
     }
     case "type": return void (await page.typeText(s.target, s.value, s.delayMs, s.timeoutMs));
     case "press": return void (await page.press(s.key, s.target, s.timeoutMs));

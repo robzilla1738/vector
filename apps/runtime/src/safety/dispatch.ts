@@ -67,9 +67,6 @@ export class SafetyDispatchGate {
     });
     const policy = evaluate();
     if (policy.access === "deny") throw new AuxError("permission_denied", "Origin policy denied this action.", { effect, origin: `${exact}/` });
-    // The fork must fill through its password manager. The legacy runtime vault
-    // cannot provide that boundary, even if an origin rule would allow it.
-    if (input.step.op === "fillCredential") throw new AuxError("needs_input", "Use the browser password manager to fill this credential.");
     const level = confirmationLevelForAction({
       policyLevel: policy.confirmation,
       sensitiveData: input.context.sensitiveData || sensitiveStep(input.step),

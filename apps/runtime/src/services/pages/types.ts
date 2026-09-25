@@ -5,7 +5,6 @@ import type { GrantSource } from "../../agent/permissions.js";
 import type { EventBus } from "../../events.js";
 import type { NativeBridge } from "../../native.js";
 import type { Repo } from "../../store/repo.js";
-import type { VaultService } from "../vault.js";
 import type { SafetyDispatchGate } from "../../safety/dispatch.js";
 
 /** Backends the runtime can hold drivers for. */
@@ -51,6 +50,8 @@ export interface PageServiceDeps {
   profileId?: string;
   events: EventBus;
   native: NativeBridge;
+  /** Only the authenticated Chromium Profile host can handle saved passwords. */
+  nativePasswordFillEnabled?: boolean;
   drivers: () => DriverSet;
   recordStep?: (s: StepRecord) => void;
   artifacts?: { save(o: { runId?: string; pageId?: string; label: string; buffer: Buffer; mediaType: string }): { artifactId: string } };
@@ -81,8 +82,6 @@ export interface PageServiceDeps {
    * run is the write grant. Falls back to `grants` when omitted.
    */
   grantsForRun?: GrantSource;
-  /** optional locked vault; fillCredential resolves here and never records the secret */
-  vault?: VaultService;
   /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
   durableWrites?: DurableWriteLedger;
   safetyGate?: SafetyDispatchGate;

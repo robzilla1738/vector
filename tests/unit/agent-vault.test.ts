@@ -89,7 +89,7 @@ it("fails closed on lock, expiry and revoke without retrying the write", async (
   await expect(vault.revealForFill(expired.credentialRef, { pageId: "p1", origin: "https://example.com", target: "r1" })).rejects.toMatchObject({ code: "permission_denied" });
 });
 
-it("keeps task-scoped grants from filling other tasks and never batches secrets", async () => {
+it("keeps task-scoped vault grants isolated and never moves their values into browser programs", async () => {
   const { vault, db } = memoryVault();
   vault.lock("passphrase-ok");
   vault.unlock("passphrase-ok");
@@ -105,21 +105,38 @@ it("keeps task-scoped grants from filling other tasks and never batches secrets"
   expect(await vault.revealForFill(grant.credentialRef, { pageId: "p1", origin: "https://example.com", target: "r1", taskId: "task-a" })).toBe("s3cret-value");
 
   const { page, calls } = fakePage();
+  const nativeRequests: unknown[] = [];
   const result = await executeProgram(page, {
     pageId: "p1",
     steps: [
-      { id: "s1", op: "fillCredential", target: "r1", credentialRef: grant.credentialRef },
+      { id: "s1", op: "fillCredential", passwordSelector: "#password", usernameSelector: "#username" },
       { id: "s2", op: "click", target: "r2" },
     ],
   }, {
     taskId: "task-a",
     pageOrigin: "https://example.com",
-    resolveCredential: (ref, info) => vault.revealForFill(ref, info),
+    fillSavedPassword: async request => { nativeRequests.push(request); return { status: "filled" }; },
   });
   expect(result.status).toBe("completed");
   expect(JSON.stringify(result)).not.toContain("s3cret-value");
-  expect(calls).toContain("fill:r1=s3cret-value");
+  expect(nativeRequests).toEqual([{ pageId: "p1", expectedUrl: "https://example.com/login", passwordSelector: "#password", usernameSelector: "#username" }]);
+  expect(calls.some(call => call.startsWith("fill:"))).toBe(false);
   expect(calls).toContain("click");
+});
+
+it("fails closed when the native password manager is absent, declined, or the document changes", async () => {
+  const { page, calls } = fakePage();
+  const program = { pageId: "p1", steps: [{ id: "password", op: "fillCredential" as const, passwordSelector: "#password" }] };
+  const missing = await executeProgram(page, program);
+  expect(missing.status).toBe("failed");
+  expect(missing.steps[0]?.error?.code).toBe("backend_unavailable");
+  const declined = await executeProgram(page, program, { fillSavedPassword: async () => ({ status: "cancelled" }) });
+  expect(declined.steps[0]?.error?.code).toBe("needs_input");
+  const stale = await executeProgram(page, program, { fillSavedPassword: async () => ({ status: "target_changed" }) });
+  expect(stale.steps[0]?.error?.code).toBe("conflict");
+  const denied = await executeProgram(page, program, { fillSavedPassword: async () => ({ status: "permission_denied" }) });
+  expect(denied.steps[0]?.error?.code).toBe("permission_denied");
+  expect(calls.some(call => call.startsWith("fill:"))).toBe(false);
 });
 
 it("renews an expired grant without duplicating the secret", async () => {
