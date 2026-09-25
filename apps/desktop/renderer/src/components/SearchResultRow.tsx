@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import "./SearchResultRow.css";
 
 /** Literal matching only: source titles and queries are never interpreted as markup. */
@@ -12,11 +12,11 @@ function Match({ text, query }: { text: string; query: string }) {
 }
 
 /** Presentation only; each search owner retains its keyboard/selection controller. */
-export function SearchResultRow({ id, title, detail, icon, selected, query, trailing, className = "", onHover, onSelect }: {
+export function SearchResultRow({ id, title, detail, icon, selected, query, trailing, className = "", onHover, onSelect, elementRef }: {
   id: string; title: string; detail?: string; icon: ReactNode; selected: boolean;
-  query: string; trailing?: ReactNode; className?: string; onHover: () => void; onSelect: () => void;
+  query: string; trailing?: ReactNode; className?: string; onHover: () => void; onSelect: () => void; elementRef?: Ref<HTMLDivElement>;
 }) {
-  return <div id={id} role="option" aria-selected={selected}
+  return <div id={id} ref={elementRef} role="option" aria-selected={selected}
     className={`search-result-row ${selected ? "sel" : ""} ${className}`}
     onMouseMove={onHover} onClick={onSelect}>
     <span className="search-result-icon">{icon}</span>

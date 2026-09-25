@@ -233,20 +233,6 @@ export function App() {
   }, [hideTrafficLights]);
 
   useEffect(() => {
-    if (!floatingSidebar) return;
-    const dismiss = (event: PointerEvent) => {
-      if (event.target instanceof Element && event.target.closest('.sidebar, .toolbar, .menu, .cb-pop, .sheet, .palette')) return;
-      useStore.getState().setSidebarPeek(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented && !useStore.getState().overlay) useStore.getState().setSidebarPeek(false);
-    };
-    window.addEventListener("pointerdown", dismiss, true);
-    document.addEventListener("keydown", escape);
-    return () => { window.removeEventListener("pointerdown", dismiss, true); document.removeEventListener("keydown", escape); };
-  }, [floatingSidebar]);
-
-  useEffect(() => {
     if (!inNativeHost || !floatingSidebar || !nativeShowing) return;
     const panel = document.querySelector<HTMLElement>(".sidebar.peek");
     if (!panel) return;

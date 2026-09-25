@@ -1,17 +1,19 @@
-import { SplitDivider } from "./SplitDivider";
 import { PaneBoundary } from "./PaneBoundary";
 import { isScrimOverlay, nativePageId } from "../chrome";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
-import { forwardRef, memo, useRef, useState } from "react";
+import { forwardRef, lazy, memo, Suspense, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
-import { bridge, inNativeHost, inMock } from "../bridge";
+import { bridge, hostKind } from "../bridge";
 import { useStore, call, errToast, tabCommand } from "../store";
 
 import { TranslationBar } from "./TranslationBar";
-import { Conversation, MockPage } from "./surfaces";
+import { Conversation } from "./surfaces";
 import { StartPage } from "./StartPage";
 import { I } from "./icons";
+
+const PageSurface = lazy(async () => { const module = await import("./PageSurface"); return { default: module.PageSurface }; });
+const SplitDivider = lazy(async () => { const module = await import("./SplitDivider"); return { default: module.SplitDivider }; });
 
 const Overview = deferSurface(async () => { const module = await import("./Overview"); return {default:module.Overview}; }, "Tab overview", true);
 const ResultsTable = deferSurface(async () => { const module = await import("./ResultsTable"); return {default:module.ResultsTable}; }, "Results", true);
@@ -104,8 +106,8 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
         )}
         {mode === "focus" && page?.viewStatus === "crashed" && <PageRecovery key={page.pageId} page={page} />}
         {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
-        {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError && !inNativeHost && inMock && !splitVisible && <MockPage page={page} />}
-        {splitVisible && <SplitDivider preview={!inNativeHost && inMock ? [page!, companion!] : undefined} />}
+        {showingPage && page && !splitVisible && hostKind !== "electron" && <Suspense fallback={<div className="stage-message">Opening page…</div>}><PageSurface page={page} /></Suspense>}
+        {splitVisible && <Suspense fallback={null}><SplitDivider pages={hostKind !== "electron" ? [page!, companion!] : undefined} /></Suspense>}
         {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation /></PaneBoundary>}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}

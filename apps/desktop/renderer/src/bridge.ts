@@ -37,6 +37,13 @@ export type ReaderNode = string | {tag:string;href?:string;sourceId?:string;chil
 export interface ReaderArticle { title:string;byline:string;site:string;url:string;minutes:number;content:ReaderNode }
 
 export interface VaultOffer { pageId:string; username:string; origin:string; kind:"save"|"update"; itemId?:string; locked?:boolean }
+export interface AutocompleteMatch {
+  id: string;
+  type: "history" | "bookmark" | "search" | "typed";
+  title: string;
+  url: string;
+  description?: string;
+}
 
 export interface AuxBridge {
   browserProfiles():Promise<BrowserProfile[]>;
@@ -95,6 +102,10 @@ export interface AuxBridge {
   onLoading(cb: (s: { pageId: string; loading: boolean }) => void): () => void;
   /** position the visible native page; `radius` rounds the view to match the stage card */
   setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number, ratio?: number): Promise<boolean>;
+  /** Opaque Webium SurfaceEmbed content ID for a page in this Profile and window. */
+  surfaceContentId(pageId: string): Promise<string | null>;
+  /** Chromium AutocompleteController order, before Aux provider ranking. */
+  autocomplete(query: string): Promise<AutocompleteMatch[]>;
   overlay(open: boolean): Promise<boolean>;
   /** Keep the shell painted above the native page so the address bar can slide over it. `ticket` drops stale replies. */
   windowDrag(phase: "start" | "move" | "end", point?: { x: number; y: number }): void;
@@ -260,6 +271,8 @@ const stub: AuxBridge = {
   downloadsSnapshot: async () => [],
   controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
   setStage: async () => true,
+  surfaceContentId: async () => null,
+  autocomplete: async () => [],
   overlay: async () => true,
   windowDrag: () => {},
   sidebarGlass: async () => true,

@@ -1,0 +1,29 @@
+@layer components {
+  .aux-native-dialog {
+    color: var(--ink-0);
+    border: 0;
+    margin: auto;
+  }
+  .aux-native-dialog::backdrop {
+    background: rgb(0 0 0 / 0.25);
+  }
+  .aux-native-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: var(--space-1);
+  }
+  .aux-native-menu::backdrop {
+    background: transparent;
+  }
+}
+
+@layer overrides {
+  @media (forced-colors: active) {
+    .aux-native-dialog {
+      border: 1px solid CanvasText;
+      background: Canvas;
+      color: CanvasText;
+    }
+  }
+}

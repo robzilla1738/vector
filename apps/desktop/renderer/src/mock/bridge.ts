@@ -794,6 +794,20 @@ export function installMockBridge(q: URLSearchParams) {
     onDownload: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     setStage: async () => true,
+    surfaceContentId: async () => null,
+    autocomplete: async query => {
+      const term = query.trim().toLowerCase();
+      if (!term) return [];
+      return [
+        ...HISTORY.filter(item => `${item.title} ${item.url}`.toLowerCase().includes(term)).slice(0, 4).map((item, index) => ({
+          id: `history-${index}-${item.url}`, type: "history" as const, title: item.title, url: item.url, description: new URL(item.url).hostname,
+        })),
+        ...BOOKMARKS.filter(item => `${item.title} ${item.url}`.toLowerCase().includes(term)).slice(0, 3).map((item, index) => ({
+          id: `bookmark-${index}-${item.url}`, type: "bookmark" as const, title: item.title, url: item.url, description: "Bookmark",
+        })),
+        { id: `search-${term}`, type: "search" as const, title: `Search for “${query.trim()}”`, url: DEFAULT_SEARCH_ENGINE.replace("%s", encodeURIComponent(query.trim())), description: "Web search" },
+      ];
+    },
     overlay: async () => true,
     windowDrag: () => {},
     sidebarGlass: async () => true,

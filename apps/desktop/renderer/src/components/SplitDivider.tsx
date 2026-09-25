@@ -1,11 +1,11 @@
 import type { PageTarget } from "@aux/contracts";
-import { MockPage } from "./surfaces";
+import { PageSurface } from "./PageSurface";
 import { useEffect, useRef, useState } from "react";
 import { splitWidths } from "@aux/contracts/split-layout";
 import { useStore } from "../store";
 
 /** The native pages leave this gutter uncovered, so resizing belongs to the shell. */
-export function SplitDivider({preview}: {preview?: [PageTarget, PageTarget]}) {
+export function SplitDivider({pages}: {pages?: [PageTarget, PageTarget]}) {
   const divider = useRef<HTMLDivElement>(null);
   const drag = useRef<{pointerId:number;ratio:number} | null>(null);
   const [width, setWidth] = useState(0);
@@ -28,9 +28,9 @@ export function SplitDivider({preview}: {preview?: [PageTarget, PageTarget]}) {
     if (divider.current?.hasPointerCapture(current.pointerId)) divider.current.releasePointerCapture(current.pointerId);
   }
   return <>
-    {preview && <>
-      <div className="split-preview-page" style={{left:0,width:geometry.left}}><MockPage page={preview[0]} /></div>
-      <div className="split-preview-page" style={{left:geometry.left+geometry.gutter,width:geometry.right}}><MockPage page={preview[1]} /></div>
+    {pages && <>
+      <div className="split-preview-page" style={{left:0,width:geometry.left}}><PageSurface page={pages[0]} /></div>
+      <div className="split-preview-page" style={{left:geometry.left+geometry.gutter,width:geometry.right}}><PageSurface page={pages[1]} /></div>
     </>}
     <div ref={divider} className="split-divider" role="separator" tabIndex={0}
     aria-label="Resize split view" aria-orientation="vertical" aria-valuemin={25} aria-valuemax={75}

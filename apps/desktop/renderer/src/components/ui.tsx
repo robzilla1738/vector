@@ -1,10 +1,6 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
-import { createPortal } from "react-dom";
-import { moveMenuFocus } from "../keyboard-list";
-import { positionContextMenu } from "../position-context-menu";
-import { requestStageReport } from "../stage-obstruction";
-import { useDismissable } from "../use-dismissable";
+import { useCallback, useId, useRef, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { I } from "./icons";
+import { NativeMenu } from "./NativeDialog";
 import "./ui.css";
 
 /** Aux materials: native chrome owns page blur; reading surfaces remain stable. */
@@ -50,39 +46,15 @@ export function ActionMenu({ label, actions, children = I.more }: { label: strin
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const openAtEnd = useRef(false);
-  const menu = useRef<HTMLDivElement>(null);
   const id = useId();
-  const close = () => { setOpen(false); trigger.current?.focus(); };
-  useDismissable(open, close);
-  useLayoutEffect(() => {
-    if (!open || !menu.current || !trigger.current) return;
-    const rect = trigger.current.getBoundingClientRect();
-    positionContextMenu(menu.current, rect.right - menu.current.offsetWidth, rect.bottom + 4);
-    const items = menu.current.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
-    (openAtEnd.current ? items[items.length - 1] : items[0])?.focus();
-    requestStageReport();
-    return () => { requestAnimationFrame(requestStageReport); };
-  }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const outside = (event: PointerEvent) => {
-      if (!menu.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const resized = () => setOpen(false);
-    document.addEventListener("pointerdown", outside);
-    window.addEventListener("resize", resized);
-    return () => { document.removeEventListener("pointerdown", outside); window.removeEventListener("resize", resized); };
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
   return <>
     <button ref={trigger} type="button" className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => { openAtEnd.current = false; setOpen(value => !value); }} onKeyDown={event => {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); openAtEnd.current = event.key === "ArrowUp"; setOpen(true); }
     }}>{children}</button>
-    {open && createPortal(<div id={id} ref={menu} className="menu ctx-menu ui-action-menu" role="menu" aria-label={label} onKeyDown={event => {
-      if (event.key === "Tab") { setOpen(false); trigger.current?.focus(); return; }
-      moveMenuFocus(event);
-    }}>{actions.map(action => <button key={action.label} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={() => { close(); action.onSelect(); }}>
+    {open && <NativeMenu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={() => { close(); action.onSelect(); }}>
       <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.shortcut && <kbd>{action.shortcut}</kbd>}
-    </button>)}</div>, trigger.current?.closest("dialog") ?? document.body)}
+    </button>)}</NativeMenu>}
   </>;
 }
 

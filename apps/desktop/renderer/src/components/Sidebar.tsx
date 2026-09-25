@@ -24,6 +24,8 @@ import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
 import { useWindowedRows } from "../use-windowed-rows";
+import { useFloatingSidebar } from "../floating-sidebar";
+import { NativeDialog } from "./NativeDialog";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useDismissable } from "../use-dismissable";
 
@@ -83,7 +85,7 @@ function FolderKids({ collapsed, count, children }: { collapsed: boolean; count:
 /* ------------------------------------------------------------------ */
 
 interface TabRowProps {
-  p: PageTarget;
+  pageId: string;
   active: boolean;
   selected: boolean;
   selecting: boolean;
@@ -104,13 +106,15 @@ interface TabRowProps {
   onKeyMove: (folderId: string | null, index: number, dir: -1 | 1) => void;
 }
 
-const TabRow = memo(function TabRow({ p, active, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
+const TabRow = memo(function TabRow({ pageId, active, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
+  const p = useStore(state => state.pages.find(page => page.pageId === pageId));
   const key = useShortcutLabels();
   const preview = useSidebarTabPreview();
   const row = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (active && !row.current?.closest('[inert]')) row.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
+  if (!p) return null;
   const crashed = p.viewStatus === "crashed";
   const sleeping = !crashed && (p.lifecycle === "frozen" || p.lifecycle === "discarded" || p.lifecycle === "placeholder");
   const title = p.title || (p.url && p.url !== "about:blank" ? hostOf(p.url) : "New Tab");
@@ -298,23 +302,10 @@ export function SpaceEditor({ space, onSave, onClose }: { space: Space | null; o
   const previous = useRef(document.activeElement as HTMLElement | null);
   useEffect(() => {
     void bridge.overlay(true);
-    return () => {
-      void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
-      const target = previous.current?.isConnected ? previous.current : document.querySelector<HTMLElement>('.space-switch, .horizontal-profile');
-      target?.focus();
-    };
+    return () => { void bridge.overlay(isScrimOverlay(useStore.getState().overlay)); };
   }, []);
-  useDismissable(true, onClose);
-  const onDialogKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab') return;
-    const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')];
-    const first = items[0], last = items.at(-1);
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-  };
   return (
-    <div className="scrim-soft" onMouseDown={onClose}>
-      <div className="sheet pop-in" role="dialog" aria-modal="true" onKeyDown={onDialogKey} aria-label={space ? "Edit space" : "New space"} onMouseDown={(e) => e.stopPropagation()}>
+      <NativeDialog label={space ? "Edit space" : "New space"} onClose={onClose} returnFocus={previous} className="sheet pop-in">
         <h3>{space ? "Edit space" : "New space"}</h3>
         <input autoFocus className="field-input" value={name} maxLength={100} disabled={saving} placeholder="Name" onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void save(); }} />
@@ -328,8 +319,7 @@ export function SpaceEditor({ space, onSave, onClose }: { space: Space | null; o
           <button className="btn" onClick={onClose}>Cancel</button>
           <button className="btn primary" disabled={!name.trim() || saving} onClick={() => void save()}>{saving ? "Saving…" : space ? "Save" : "Create"}</button>
         </div>
-      </div>
-    </div>
+      </NativeDialog>
   );
 }
 
@@ -462,29 +452,8 @@ export const Sidebar = memo(function Sidebar() {
   const activePageId = useStore((s) => s.activePageId);
   const mode = useStore((s) => s.mode);
   const sidebarVisible = sidebar === "expanded" || peek;
-  useEffect(() => {
-    if (sidebar === "expanded") return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const clear = () => { if (timer) clearTimeout(timer); };
-    const open = () => { clear(); useStore.getState().setSidebarPeek(true); };
-    const close = () => {
-      clear();
-      timer = setTimeout(() => {
-        const panel = document.querySelector(".sidebar");
-        if (panel?.matches(":hover, :focus-within") || document.querySelector(".menu, .sheet, .palette") || useStore.getState().overlay) return;
-        useStore.getState().setSidebarPeek(false);
-      }, 280);
-    };
-    const move = (event: PointerEvent) => {
-      if (event.clientX <= 8 && event.clientY >= 48) open();
-      else if (event.target instanceof Element && event.target.closest(".sidebar, .menu, .sheet, .palette")) clear();
-      else close();
-    };
-    const unsubscribe = bridge.onSidebarEdge(near => near ? open() : close());
-    window.addEventListener("pointermove", move);
-    window.addEventListener("blur", close);
-    return () => { clear(); unsubscribe(); window.removeEventListener("pointermove", move); window.removeEventListener("blur", close); };
-  }, [sidebar]);
+  const floatingPanel = useRef<HTMLElement>(null);
+  useFloatingSidebar(sidebar, floatingPanel);
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);
   const newTab = useStore((s) => s.newTab);
@@ -657,7 +626,7 @@ export const Sidebar = memo(function Sidebar() {
 
   const renderRow = (p: PageTarget, index: number, folderId: string | null, groupLen: number) => (
     <TabRow
-      p={p}
+      pageId={p.pageId}
       selected={selectedIds.has(p.pageId)}
       selecting={selection.ids.length > 0}
       onSelect={selection.select}
@@ -823,6 +792,7 @@ export const Sidebar = memo(function Sidebar() {
   return (
     <>
       <aside
+        ref={floatingPanel}
         {...windowDrag}
         className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"}${peek ? " peek" : ""}`}
         inert={!sidebarVisible ? true : undefined}
