@@ -16,6 +16,7 @@ import { MethodSchemas, ResultSchemas, RunsStartParams, type MethodName, type Pa
 let dir: string;
 let invoke: ReturnType<typeof makeInvoker>;
 let repo: Repo;
+let fixtureServices: Services;
 const executed: { program: Program; ctx: unknown }[] = [];
 const projectId='11111111-1111-4111-8111-111111111111';
 const nativeProject={projectId,name:'fixture',sourcePath:'/source',path:'/managed/checkout',branch:'codex/aux-fixture',baseCommit:'a'.repeat(40),createdAt:1,state:'ready' as const};
@@ -68,6 +69,7 @@ beforeAll(() => {
     importCookies: async () => ({}), benchRun: async () => ({ reportPath: "" }),
   };
   services.operations = new OperationService({ repo, events, pages });
+  fixtureServices = services;
   invoke = makeInvoker(services);
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -80,6 +82,36 @@ const call = async (method: MethodName, params: unknown = {}) => {
 };
 
 describe("handler results conform to ResultSchemas", () => {
+  it("routes Chromium bookmarks to BookmarkModel and waits for a fresh native history projection", async () => {
+    const chromiumRepo = new Repo(openDb(":memory:"));
+    chromiumRepo.requireChromiumHistory();
+    const calls: string[] = [];
+    const chromium = makeInvoker({
+      ...fixtureServices,
+      repo: chromiumRepo,
+      events: new EventBus(chromiumRepo),
+      featureHost: "chromium-fork",
+      featureProfileId: "regular-profile",
+      native: {
+        ...fixtureServices.native!,
+        bookmarksInvoke: async (method: string) => {
+          calls.push(method);
+          if (method === "bookmarks.list") return [{ nodeId: "7", url: "https://native.test/", title: "Native", createdAt: 1, folderPath: [] }];
+          if (method === "bookmarks.folders.list") return [];
+          return { ok: true };
+        },
+      },
+    });
+    const localCount = chromiumRepo.listBookmarks().length;
+    expect(await chromium("bookmarks.list", {}, { external: false })).toMatchObject([{ nodeId: "7", url: "https://native.test/" }]);
+    await chromium("bookmarks.add", { url: "https://new-native.test/", title: "Native save" }, { external: false });
+    expect(calls).toEqual(["bookmarks.list", "bookmarks.add"]);
+    expect(chromiumRepo.listBookmarks()).toHaveLength(localCount);
+    expect(await chromium("history.list", { limit: 10 }, { external: false })).toEqual([]);
+    await chromium("history.projectSnapshot", { profileId: "regular-profile", sourceGeneration: "browser", sequence: 0, batchIndex: 0, complete: true,
+      visits: [{ url: "https://native-history.test/", title: "Visit", visitedAt: 123 }] }, { external: false });
+    expect(await chromium("history.list", { limit: 10 }, { external: false })).toMatchObject([{ url: "https://native-history.test/" }]);
+  });
   it("returns account-scoped Calendar event provenance through conversation sources", async () => {
     repo.saveRun({ runId: "calendar-source-turn", goal: "Meeting brief", status: "completed", pageIds: [], createdAt: 20,
       config: { chatId: "calendar-source-chat" } });

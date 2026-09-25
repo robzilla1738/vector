@@ -37,6 +37,7 @@ const ftsMatch = (query: string): string | null => {
 
 /** Repository: the runtime's single-writer persistence surface. */
 export class Repo {
+  private chromiumHistoryRequired = false;
   private txDepth = 0;
   private statements = new Map<string, StatementSync>();
   /** Hot-path writes coalesced by key, committed together once per tick (see defer). */
@@ -44,6 +45,7 @@ export class Repo {
   private flushTimer: NodeJS.Immediate | null = null;
 
   constructor(readonly db: DatabaseSync) {}
+  requireChromiumHistory() { this.chromiumHistoryRequired = true; }
 
   /** Prepared once per SQL text; SQLite re-prepares a cached statement itself after a schema change. */
   private q(sql: string): StatementSync {
@@ -732,6 +734,7 @@ export class Repo {
 
   // ---- history / bookmarks / downloads ----
   nativeHistoryAuthoritative(): boolean {
+    if (this.chromiumHistoryRequired) return true;
     // Legacy import databases can contain history without the runtime KV table.
     // Treat those as local history until the full runtime schema is installed.
     if (!this.q("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='kv'").get()) return false;
@@ -844,6 +847,12 @@ export class Repo {
   getBookmarkArticle(url: string): { article: string; savedAt: number } | null {
     const row = this.q("SELECT json,saved_at FROM bookmark_articles WHERE url=?").get(url) as { json: string; saved_at: number } | undefined;
     return row ? { article: row.json, savedAt: row.saved_at } : null;
+  }
+  deleteBookmarkArticle(url: string) {
+    this.q("DELETE FROM bookmark_articles WHERE url=?").run(url);
+  }
+  moveBookmarkArticle(previousUrl: string, nextUrl: string) {
+    if (previousUrl !== nextUrl) this.q("UPDATE bookmark_articles SET url=? WHERE url=?").run(nextUrl, previousUrl);
   }
   updateBookmark(input: { originalUrl: string; url: string; title: string; folderPath?: string[]; expected: { title: string; folderPath?: string[] } }) {
     this.transaction(() => {

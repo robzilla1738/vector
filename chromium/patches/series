@@ -20,5 +20,6 @@ aux/runtime/0019-profile-cdp-broker.patch
 aux/runtime/0020-sparkle-updater.patch
 aux/runtime/0021-native-profile-content.patch
 aux/runtime/0022-crashpad-consent.patch
+aux/runtime/0023-profile-library.patch
 aux/runtime/0024-event-driven-cdp-targets.patch
 aux/runtime/0025-store-extension-shell.patch

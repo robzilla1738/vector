@@ -6,6 +6,8 @@ import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapI
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
+  /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
+  bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
   historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
@@ -63,6 +65,9 @@ export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
   available() {
     return true;
+  }
+  bookmarksInvoke(method: string, params: unknown) {
+    return this.channel.call<unknown>("native.bookmarksInvoke", { method, params });
   }
   historyClear(range: { since?: number; before?: number }) {
     return this.channel.call<{ removed: number }>("native.historyClear", range);

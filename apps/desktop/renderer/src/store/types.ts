@@ -79,7 +79,7 @@ export interface Workspace {
   bookmarkPending: Record<string, boolean>;
   toggleBookmark(url: string, title: string): Promise<void>;
   toggleReadingList(url: string, title: string): Promise<void>;
-  bookmarks: { url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean }[];
+  bookmarks: { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean }[];
   closedTabs: ClosedTab[];
   reopeningTab: boolean;
   downloads: Download[];

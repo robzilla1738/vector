@@ -72,6 +72,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env = configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
+  if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) repo.requireChromiumHistory();
   const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, error =>
     process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`));
   repo.pruneEvents();
@@ -495,6 +496,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       // Main-owned tab catalog patches — presence/focus/placement truth for
       // human tabs; field convergence still rides view.* above (§7.1/§7.2).
       case "tabs.catalog": return pages.syncCatalog(payload as Parameters<typeof pages.syncCatalog>[0]);
+      case "native.bookmarksChanged": {
+        void invoke("bookmarks.list", {}, { external: false }).then(bookmarks => {
+          events.emit("bookmarks.changed", { bookmarks });
+        }).catch(error => console.error("Chromium bookmarks refresh failed", error));
+        return;
+      }
       case "app.closing": return pages.shuttingDown();
     }
   });

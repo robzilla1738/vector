@@ -15,7 +15,8 @@ import { parseBookmarkFile, exportBookmarkFile, bookmarkWebUrl, MAX_BOOKMARK_FIL
 import { useShortcutLabels } from "../use-shortcut-label";
 import { SkeletonRows } from "./Skeleton";
 
-type SavedPage = { url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
+type SavedPage = { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
+const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
 type View = "bookmarks" | "reading" | "history" | "closed";
 const VIEWS: View[] = ["bookmarks", "reading", "history", "closed"];
 const VIEW_NAMES: Record<View, string> = { bookmarks: "Bookmarks", reading: "Reading list", history: "History", closed: "Recently closed" };
@@ -43,8 +44,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
   const [selection, setSelection] = useState<SavedPage[]>([]);
   const [moveFolder, setMoveFolder] = useState("[]");
   const [newMoveFolder,setNewMoveFolder]=useState("");
-  const toggleSelection = (item: SavedPage) => setSelection(current => current.some(selected => selected.url === item.url)
-    ? current.filter(selected => selected.url !== item.url) : [...current, {...item, folderPath:[...(item.folderPath ?? [])]}]);
+  const toggleSelection = (item: SavedPage) => setSelection(current => current.some(selected => bookmarkKey(selected) === bookmarkKey(item))
+    ? current.filter(selected => bookmarkKey(selected) !== bookmarkKey(item)) : [...current, {...item, folderPath:[...(item.folderPath ?? [])]}]);
   const [folderEditor, setFolderEditor] = useState<{ mode: "create" | "rename"; name: string } | null>(null);
   const [importSource, setImportSource] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -167,8 +168,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
       });
     }
   }
-  async function save(item: SavedPage) {
-    await call("bookmarks.add", item);
+  async function save(item: SavedPage, forceNew = false) {
+    await call("bookmarks.add", { ...item, forceNew });
     const items = await call("bookmarks.list", {});
     useStore.setState({ bookmarks: items });
     setFolders(await call("bookmarks.folders.list"));
@@ -198,7 +199,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
       }
       else if (!await state.newTab(item.url)) throw new Error("The page could not be opened. Try again.");
       // A foreground open is the act of reading — background opens stay unread.
-      if (item.readingList && !item.readAt) await call("bookmarks.markRead", { url: item.url, read: true });
+      if (item.readingList && !item.readAt) await call("bookmarks.markRead", { url: item.url, nodeId: item.nodeId, read: true });
       if (["bookmarks", "history", "clear-history"].includes(useStore.getState().overlay ?? "")) close(null);
     });
   }
@@ -261,7 +262,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
       </div>
       {view === "bookmarks" && selecting && <section className="library-selection" aria-label="Move selected bookmarks">
         <div className="row"><strong>{selection.length} selected</strong><span className="sp" />
-          <button className="btn sm ghost" disabled={busy || !items.length} onClick={() => setSelection(current => [...current, ...items.filter(item => !current.some(selected => selected.url === item.url)).map(item => ({...item, folderPath:[...("folderPath" in item ? item.folderPath ?? [] : [])]}))])}>Select this view</button>
+          <button className="btn sm ghost" disabled={busy || !items.length} onClick={() => setSelection(current => [...current, ...items.filter(item => !current.some(selected => bookmarkKey(selected) === bookmarkKey(item))).map(item => ({...item, folderPath:[...("folderPath" in item ? item.folderPath ?? [] : [])]}))])}>Select this view</button>
           <button className="btn sm ghost" disabled={busy} onClick={cancelSelection}>Cancel</button>
         </div>
         <div className="row"><label htmlFor="bookmark-move-destination">Move to</label>
@@ -271,7 +272,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
           </select>
           {moveFolder === "new" && <input className="field-input grow" aria-label="New destination folder name" placeholder="Folder name" maxLength={200} value={newMoveFolder} disabled={busy} onChange={event=>setNewMoveFolder(event.target.value)} />}
           <button className="btn sm" disabled={busy || !selection.length || (moveFolder === "new" && !newMoveFolder.trim())} onClick={() => void action(async () => {
-            const result = await call("bookmarks.move", {bookmarks:selection.map(item => ({url:item.url, folderPath:item.folderPath ?? []})), folderPath:moveFolder === "new" ? [...folder,newMoveFolder.trim()] : JSON.parse(moveFolder), createFolder:moveFolder === "new"});
+            const result = await call("bookmarks.move", {bookmarks:selection.map(item => ({url:item.url, nodeId:item.nodeId, folderPath:item.folderPath ?? []})), folderPath:moveFolder === "new" ? [...folder,newMoveFolder.trim()] : JSON.parse(moveFolder), createFolder:moveFolder === "new"});
             useStore.setState({bookmarks:await call("bookmarks.list")});
             setFolders(await call("bookmarks.folders.list"));
             setSelection([]); setSelecting(false); search.current?.focus(); setNotice(`${result.moved} ${result.moved === 1 ? "bookmark" : "bookmarks"} moved.`);
@@ -320,27 +321,27 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
       </form>}
       {error && <p className="library-message" role="alert">{error} {failedLoad && <button className="btn sm" disabled={loading || loadingMore} onClick={() => failedLoad === "more" ? void loadMoreHistory() : setRefresh(value => value + 1)}>Retry</button>}</p>}
       {notice && <output className="library-message" data-block>{notice}</output>}
-      {removed && <div className="library-tools"><span className="hint">Removed {removed.title || hostOf(removed.url)}</span><button className="btn sm" disabled={busy} onClick={() => void action(async () => { await save(removed); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
+      {removed && <div className="library-tools"><span className="hint">Removed {removed.title || hostOf(removed.url)}</span><button className="btn sm" disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
       <div className="palette-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
         {view === "bookmarks" && childFolders.map(path => <button key={JSON.stringify(path)} className="library-folder" onClick={() => openFolder(path)}>
           <span className="library-folder-icon">{I.folderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span className="hint">{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{I.right}
         </button>)}
         {loading && (items.length ? <output className="library-message hint" data-block>Updating…</output> : <SkeletonRows label="Loading…" />)}
-        {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="pal-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => <Fragment key={"visitedAt" in item ? `${item.url}:${item.visitedAt}` : item.url}>
+        {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="pal-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => <Fragment key={"visitedAt" in item ? `${item.url}:${item.visitedAt}` : bookmarkKey(item)}>
           {view === "history" && (index === 0 || dayOf(displayItems[index - 1]!) !== dayOf(item)) && <h4 className="library-day">{dayOf(item)}</h4>}
           {view === "reading" && index === 0 && unread.length > 0 && <h4 className="library-day">Unread</h4>}
           {view === "reading" && index === unread.length && read.length > 0 && <h4 className="library-day">Read</h4>}
-          <div className={`library-item${selecting && selection.some(selected => selected.url === item.url) ? " selected" : ""}${view === "reading" && "readAt" in item && item.readAt ? " read" : ""}`}>
-          {selecting && view === "bookmarks" && <input className="library-select" type="checkbox" aria-label={`Select ${item.title || hostOf(item.url)}`} checked={selection.some(selected => selected.url === item.url)} disabled={busy} onChange={() => toggleSelection(item)} />}
+          <div className={`library-item${selecting && selection.some(selected => bookmarkKey(selected) === bookmarkKey(item)) ? " selected" : ""}${view === "reading" && "readAt" in item && item.readAt ? " read" : ""}`}>
+          {selecting && view === "bookmarks" && <input className="library-select" type="checkbox" aria-label={`Select ${item.title || hostOf(item.url)}`} checked={selection.some(selected => bookmarkKey(selected) === bookmarkKey(item))} disabled={busy} onChange={() => toggleSelection(item)} />}
           <button className="library-open" disabled={busy} onClick={event => selecting && view === "bookmarks" ? toggleSelection(item) : open(item, backgroundLink(event), event.currentTarget)}
             onAuxClick={event => { if (event.button === 1) { event.preventDefault(); if (!selecting) open(item, true, event.currentTarget); } }} title={`${item.title || hostOf(item.url)} — ${item.url}`}>
             <span className="library-row-heading"><span className="library-title">{item.title || hostOf(item.url)}</span>{"visitedAt" in item && <time className="library-time" dateTime={new Date(Number(item.visitedAt)).toISOString()}>{new Date(Number(item.visitedAt)).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time>}</span><span className="library-url">{item.url}</span>{q && "folderPath" in item && item.folderPath?.length ? <span className="hint">{item.folderPath.join(" / ")}</span> : null}
           </button>
           <div className="library-actions" hidden={selecting}>
             {view === "bookmarks" ? <><button className="icon-btn sm" title="Edit bookmark" disabled={busy} aria-label={`Edit ${item.title || hostOf(item.url)}`} onClick={() => setEditing({ ...item, original: item })}>{I.pencil}</button><button className="icon-btn sm" title="Remove bookmark" disabled={busy} aria-label={`Remove ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => {
-              await call("bookmarks.remove", { url: item.url });
+              await call("bookmarks.remove", { url: item.url, nodeId: "nodeId" in item ? item.nodeId : undefined });
               useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
-              setRemoved(item); setNotice(""); if (editing?.original.url === item.url) setEditing(null);
+              setRemoved(item); setNotice(""); if (editing && bookmarkKey(editing.original) === bookmarkKey(item)) setEditing(null);
             })}>{I.trash}</button></> : view === "reading" && "readingList" in item ? <>
               {item.offline && <span className="hint library-offline" title="Offline copy saved">offline</span>}
               {openPageFor(item.url) && <button className="icon-btn sm" title={item.offline ? "Refresh offline copy" : "Save offline copy"} disabled={busy} aria-label={`${item.offline ? "Refresh" : "Save"} offline copy of ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => {
@@ -352,11 +353,11 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
                 setNotice("Offline copy saved.");
               })}>{I.downloadSm}</button>}
               <button className="icon-btn sm" title={"readAt" in item && item.readAt ? "Mark unread" : "Mark read"} disabled={busy} aria-label={`Mark ${item.title || hostOf(item.url)} ${"readAt" in item && item.readAt ? "unread" : "read"}`} onClick={() => void action(async () => {
-                await call("bookmarks.markRead", { url: item.url, read: !("readAt" in item && item.readAt) });
+                await call("bookmarks.markRead", { url: item.url, nodeId: item.nodeId, read: !("readAt" in item && item.readAt) });
                 useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
               })}>{"readAt" in item && item.readAt ? I.circle : I.check}</button>
               <button className="icon-btn sm" title="Remove from reading list" disabled={busy} aria-label={`Remove ${item.title || hostOf(item.url)} from reading list`} onClick={() => void action(async () => {
-                await call("bookmarks.readingList", { url: item.url, readingList: false });
+                await call("bookmarks.readingList", { url: item.url, nodeId: item.nodeId, readingList: false });
                 useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
               })}>{I.trash}</button>
             </> : <><button className="icon-btn sm" title={isSaved(item.url) ? "Already bookmarked" : "Bookmark page"} disabled={busy || isSaved(item.url)} aria-label={`Bookmark ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => { await save(item); setNotice("Page bookmarked."); })}>{isSaved(item.url) ? I.bookmarkFill : I.bookmark}</button>
@@ -366,9 +367,9 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
                 setNotice("Visit removed from browsing history. Bookmarks and saved work are unchanged.");
               })}>{I.trash}</button>}</>}
           </div>
-          {editing?.original.url === item.url && <form className="library-edit" onSubmit={event => { event.preventDefault(); void action(async () => { const url = bookmarkWebUrl(editing.url.trim());
+          {editing && bookmarkKey(editing.original) === bookmarkKey(item) && <form className="library-edit" onSubmit={event => { event.preventDefault(); void action(async () => { const url = bookmarkWebUrl(editing.url.trim());
               if (!url) throw new Error("Enter a complete http or https address without a username or password.");
-              await call("bookmarks.update", { originalUrl: editing.original.url, url, title: editing.title.trim(), folderPath: editing.folderPath, expected: { title: editing.original.title, folderPath: editing.original.folderPath } });
+              await call("bookmarks.update", { originalUrl: editing.original.url, nodeId: editing.original.nodeId, url, title: editing.title.trim(), folderPath: editing.folderPath, expected: { title: editing.original.title, folderPath: editing.original.folderPath } });
               // The update event supplies the authoritative list. A follow-up read
               // must not turn a successful edit into an apparent failed save.
               setEditing(null); setNotice("Bookmark updated."); }); }}>

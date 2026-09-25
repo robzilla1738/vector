@@ -359,6 +359,24 @@ export function makeInvoker(s: Services) {
       finally { release?.(); }
     };
 
+    // Chromium's BookmarkModel is the only bookmark tree in a browser Profile.
+    // SQLite remains a standalone/Electron backend and an offline-article cache.
+    if (host === "chromium-fork" && method.startsWith("bookmarks.") && method !== "bookmarks.offline.set" && method !== "bookmarks.offline.get") {
+      if (!s.native?.bookmarksInvoke) throw new AuxError("backend_unavailable", "Chromium BookmarkModel is unavailable.");
+      if (client.external && ["bookmarks.folders.create", "bookmarks.folders.rename", "bookmarks.folders.remove", "bookmarks.update", "bookmarks.move", "bookmarks.saveFolder"].includes(method))
+        throw new AuxError("permission_denied", "Organize bookmarks in Aux Library.");
+      const result = await s.native.bookmarksInvoke(method, params);
+      if (method === "bookmarks.list") {
+        return (result as { url: string; readingList?: boolean }[]).map(item => ({ ...item, offline: item.readingList && !!s.repo.getBookmarkArticle(item.url) }));
+      }
+      if (method === "bookmarks.remove" || (method === "bookmarks.readingList" && !params.readingList)) {
+        const remaining = await s.native.bookmarksInvoke("bookmarks.list", {}) as { url: string; readingList?: boolean }[];
+        if (!remaining.some(item => item.url === params.url && item.readingList)) s.repo.deleteBookmarkArticle(params.url);
+      }
+      if (method === "bookmarks.update") s.repo.moveBookmarkArticle(params.originalUrl, params.url);
+      return result;
+    }
+
     switch (method as MethodName) {
       case "zap.list":
       case "zap.grant":
@@ -1515,6 +1533,7 @@ export function makeInvoker(s: Services) {
         return result;
       }
       case "history.list": {
+        if (host === "chromium-fork" && !historyProjection.isCurrentSessionReady()) return [];
         return s.repo.listHistory(params.query, params.limit, params);
       }
       case "history.clear": {
@@ -1571,10 +1590,13 @@ export function makeInvoker(s: Services) {
       }
       case "bookmarks.offline.set": {
         const p = MethodSchemas["bookmarks.offline.set"].parse(params);
-        if (!s.repo.listBookmarks().some(item => item.url === p.url && item.readingList))
+        const saved = host === "chromium-fork" && s.native?.bookmarksInvoke
+          ? await s.native.bookmarksInvoke("bookmarks.list", {}) as { url: string; readingList?: boolean }[]
+          : s.repo.listBookmarks();
+        if (!saved.some(item => item.url === p.url && item.readingList))
           throw new AuxError("permission_denied", "Save the page to the reading list before keeping an offline copy.");
         s.repo.saveBookmarkArticle(p.url, p.article);
-        s.events.emit("bookmarks.changed", { bookmarks: s.repo.listBookmarks() });
+        s.events.emit("bookmarks.changed", { bookmarks: host === "chromium-fork" ? saved.map(item => ({ ...item, offline: item.readingList && !!s.repo.getBookmarkArticle(item.url) })) : s.repo.listBookmarks() });
         return { ok: true };
       }
       case "bookmarks.offline.get": {

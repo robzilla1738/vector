@@ -12,6 +12,7 @@ const STAGING_KEY = "historyProjection:staging";
 
 /** SQLite/FTS is a disposable projection of Chromium HistoryService. */
 export class HistoryProjection {
+  private fresh = false;
   constructor(private repo: Repo, private profileId: string) {}
 
   private requireProfile(profileId: string) {
@@ -23,7 +24,7 @@ export class HistoryProjection {
     const cursor = this.repo.getSetting<Cursor>(CURSOR_KEY);
     if (cursor?.sourceGeneration === input.sourceGeneration && cursor.sequence >= input.sequence)
       return { accepted: false, committed: true, nextBatchIndex: input.batchIndex + 1 };
-    return this.repo.transaction(() => {
+    const result = this.repo.transaction(() => {
       let staging = this.repo.getSetting<Staging>(STAGING_KEY);
       if (input.batchIndex === 0) {
         this.repo.db.prepare("DELETE FROM history_projection_staging").run();
@@ -45,6 +46,8 @@ export class HistoryProjection {
       } else this.repo.setSetting(STAGING_KEY, staging);
       return { accepted: true, committed: input.complete, nextBatchIndex: staging.nextBatchIndex };
     });
+    if (result.committed) this.fresh = true;
+    return result;
   }
 
   delta(input: Delta) {
@@ -62,6 +65,8 @@ export class HistoryProjection {
       }
       const remove = this.repo.db.prepare("DELETE FROM history WHERE url=? AND visited_at=?");
       for (const visit of input.removals) remove.run(visit.url, visit.visitedAt);
+      const title = this.repo.db.prepare("UPDATE history SET title=? WHERE url=?");
+      for (const update of input.titleUpdates) title.run(update.title, update.url);
       const insert = this.repo.db.prepare("INSERT INTO history(url,title,page_id,visited_at) VALUES(?,?,NULL,?) ON CONFLICT(url,visited_at) DO UPDATE SET title=excluded.title");
       for (const visit of input.upserts) insert.run(visit.url, visit.title, visit.visitedAt);
       this.repo.setSetting(CURSOR_KEY, { ...cursor, sequence: input.sequence });
@@ -70,5 +75,7 @@ export class HistoryProjection {
   }
 
   /** Once native history is authoritative, runtime navigation cannot create visits. */
-  isAuthoritative() { return !!this.repo.getSetting<Cursor>(CURSOR_KEY); }
+  isAuthoritative() { return this.repo.nativeHistoryAuthoritative(); }
+  /** Avoid showing a stale projection from a previous runtime process. */
+  isCurrentSessionReady() { return this.fresh; }
 }

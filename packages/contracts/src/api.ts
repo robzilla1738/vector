@@ -546,26 +546,29 @@ export const HistoryProjectDeltaParams = z.object({
   sequence: z.number().int().nonnegative(),
   upserts: z.array(HistoryProjectionVisitSchema).max(1000).default([]),
   removals: z.array(HistoryProjectionVisitSchema.pick({ url: true, visitedAt: true })).max(1000).default([]),
+  titleUpdates: z.array(HistoryProjectionVisitSchema.pick({ url: true, title: true })).max(1000).default([]),
   clearRange: z.object({ since: z.number().int().nonnegative().optional(), before: z.number().int().nonnegative().optional() }).optional(),
 }).strict();
 const WebBookmarkSchema = z.object({
   url: z.string().url().max(8192).refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
   title: z.string().max(1000), folderPath: BookmarkFolderPathSchema.optional(),
 });
-export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string(), folderPath: BookmarkFolderPathSchema.optional(), readingList: z.boolean().optional() });
+const BookmarkNodeIdSchema = z.string().regex(/^[1-9]\d{0,18}$/);
+export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string(), folderPath: BookmarkFolderPathSchema.optional(), readingList: z.boolean().optional(), forceNew: z.boolean().optional() });
 /** Toggle the reading-list flag on a bookmark; creates the bookmark when absent (title then required). */
-export const BookmarkReadingListParams = z.object({ url: z.string().url().max(8192), readingList: z.boolean(), title: z.string().max(1000).optional() });
-export const BookmarkMarkReadParams = z.object({ url: z.string().url().max(8192), read: z.boolean() });
+export const BookmarkReadingListParams = z.object({ url: z.string().url().max(8192), nodeId: BookmarkNodeIdSchema.optional(), readingList: z.boolean(), title: z.string().max(1000).optional() });
+export const BookmarkMarkReadParams = z.object({ url: z.string().url().max(8192), nodeId: BookmarkNodeIdSchema.optional(), read: z.boolean() });
 /** Serialized reader-extract article; stored opaque and capped so list copies stay small. */
 export const BookmarkOfflineSetParams = z.object({ url: z.string().url().max(8192), article: z.string().min(2).max(512 * 1024) });
 export const BookmarkOfflineGetParams = z.object({ url: z.string().url().max(8192) });
 export const BookmarkUpdateParams = BookmarkAddParams.extend({
+  nodeId: BookmarkNodeIdSchema.optional(),
   originalUrl: z.string().url(),
   url: z.string().max(8192).url().refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
   title: z.string().trim().min(1).max(1000),
   expected: z.object({ title: z.string(), folderPath: BookmarkFolderPathSchema.optional() }),
 });
-export const BookmarkRemoveParams = z.object({ url: z.string().url() });
+export const BookmarkRemoveParams = z.object({ url: z.string().url(), nodeId: BookmarkNodeIdSchema.optional() });
 
 export const PageWindowMoveParams = z.object({
   pageId: id,
@@ -985,7 +988,7 @@ export const MethodSchemas = {
   "bookmarks.offline.get": BookmarkOfflineGetParams,
   "bookmarks.update": BookmarkUpdateParams,
   "bookmarks.move": z.object({
-    bookmarks: z.array(z.object({ url: z.string().min(1).max(8192), folderPath: BookmarkFolderPathSchema })).min(1).max(10000),
+    bookmarks: z.array(z.object({ url: z.string().min(1).max(8192), nodeId: BookmarkNodeIdSchema.optional(), folderPath: BookmarkFolderPathSchema })).min(1).max(10000),
     folderPath: BookmarkFolderPathSchema,
     createFolder: z.boolean().optional(),
   }),

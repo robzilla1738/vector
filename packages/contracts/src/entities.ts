@@ -347,6 +347,8 @@ export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 
 export const BookmarkFolderPathSchema = z.array(z.string().trim().min(1).max(200)).max(32);
 export const BookmarkSchema = z.object({
+  /** Chromium BookmarkModel node identity, when available. */
+  nodeId: z.string().regex(/^[1-9]\d{0,18}$/).optional(),
   folderPath: BookmarkFolderPathSchema.optional(),
   url: z.string(),
   title: z.string(),
