@@ -9,7 +9,7 @@ index f31c486ced..71cf9af778 100644
 +  ts_deps = [ "//ui/webui/resources/mojo:build_ts" ]
  }
 diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-index 9c86d7339d..ee1dc230ed 100644
+index 8af94cba59..835f93af19 100644
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 @@ -3,6 +3,9 @@
@@ -106,7 +106,7 @@ index 9c86d7339d..ee1dc230ed 100644
      if (eventName !== 'onEvent' && eventName !== 'onTabsPatch' &&
 @@ -58,6 +136,12 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
      privateMode: identity.privateMode,
-     featureStages: {extensions: 'on'},
+     featureStages: {extensions: 'on', contentBlocking: 'on'},
      async request(method, args) {
 +      if (method === 'autocomplete') {
 +        if (args.length !== 1 || typeof args[0] !== 'string') {
@@ -118,10 +118,10 @@ index 9c86d7339d..ee1dc230ed 100644
            [crypto.randomUUID(), ...args] : args;
        const response = await remote.request(method, JSON.stringify(requestArgs));
 diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
-index 4eaaba623f..5daf149c4b 100644
+index 72a71dd089..b6906394e2 100644
 --- a/chrome/browser/ui/aux/BUILD.gn
 +++ b/chrome/browser/ui/aux/BUILD.gn
-@@ -22,6 +22,8 @@ source_set("runtime") {
+@@ -26,6 +26,8 @@ source_set("runtime") {
      "page_identity.h",
      "profile_library.cc",
      "profile_library.h",
@@ -130,7 +130,7 @@ index 4eaaba623f..5daf149c4b 100644
      "readable_capture.cc",
      "readable_capture.h",
      "runtime_host.cc",
-@@ -56,10 +58,12 @@ source_set("runtime") {
+@@ -60,10 +62,12 @@ source_set("runtime") {
      "//services/network/public/mojom",
      "//chrome/browser/bookmarks",
      "//chrome/browser/history",
@@ -140,10 +140,10 @@ index 4eaaba623f..5daf149c4b 100644
      "//components/history/core/browser",
      "//components/keyed_service/core",
 +    "//components/search_engines",
+     "//services/network/public/cpp:cpp",
+     "//third_party/blink/common",
      "//url",
-   ]
-   frameworks = [
-@@ -93,3 +97,13 @@ test("credential_fill_unittests") {
+@@ -107,3 +111,13 @@ test("credential_fill_unittests") {
      "//testing/gtest",
    ]
  }
@@ -446,10 +446,10 @@ index 0000000000..d6c8c41232
 +}  // namespace
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index e90d9e2778..63794db55c 100644
+index 34a94f9191..a7cf3878a4 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -40,6 +40,7 @@
+@@ -41,6 +41,7 @@
  #include "chrome/browser/ui/aux/organization_store.h"
  #include "chrome/browser/ui/aux/page_identity.h"
  #include "chrome/browser/ui/aux/profile_library.h"
@@ -457,7 +457,7 @@ index e90d9e2778..63794db55c 100644
  #include "chrome/browser/ui/aux/readable_capture.h"
  #include "chrome/browser/ui/aux/secret_store_mac.h"
  #include "chrome/browser/ui/aux/tab_catalog.h"
-@@ -366,6 +367,52 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+@@ -367,6 +368,52 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
      const std::string& method,
      const base::DictValue& params,
      uint64_t connection_generation) {
@@ -511,10 +511,10 @@ index e90d9e2778..63794db55c 100644
      const std::string* bookmark_method = params.FindString("method");
      const base::DictValue* bookmark_params = params.FindDict("params");
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 0af7e39b8e..dfeb4f0a51 100644
+index b9bbceaa0e..d204c6bf7a 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-@@ -15,6 +15,7 @@
+@@ -17,6 +17,7 @@
  #include "chrome/browser/ui/aux/extension_bridge.h"
  #include "chrome/browser/ui/aux/runtime_host.h"
  #include "chrome/browser/ui/aux/organization_store.h"
@@ -522,7 +522,7 @@ index 0af7e39b8e..dfeb4f0a51 100644
  #include "chrome/browser/ui/aux/tab_catalog.h"
  #include "components/guest_contents/browser/guest_contents_handle.h"
  #include "components/prefs/pref_change_registrar.h"
-@@ -172,6 +173,9 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
+@@ -185,6 +186,9 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
    WebUIBrowserWindow* webui_browser_window =
        WebUIBrowserWindow::FromWebShellWebContents(web_ui->GetWebContents());
    Profile* profile = Profile::FromWebUI(web_ui);
@@ -532,7 +532,7 @@ index 0af7e39b8e..dfeb4f0a51 100644
    browser_ = webui_browser_window->browser();
  
    webui::SetBrowserWindowInterface(web_ui->GetWebContents(), browser_);
-@@ -489,6 +493,22 @@ void WebUIBrowserUI::Request(const std::string& method,
+@@ -760,6 +764,22 @@ void WebUIBrowserUI::Request(const std::string& method,
                              "", "");
      return;
    }
