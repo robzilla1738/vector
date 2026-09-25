@@ -28,7 +28,6 @@ import { ChatSidebar } from "./components/ChatSidebar";
 import { Toolbar, ToolbarDragRegion } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
 import { AgentRail } from "./components/AgentRail";
-import { FindBar } from "./components/FindBar";
 import { I } from "./components/icons";
 import { Toasts } from "./components/Toasts";
 import { applyUiFontSize } from "./ui-font-size";
@@ -46,6 +45,7 @@ const QuickAsk = deferSurface(async () => { const module = await import("./compo
 const HorizontalTabs = deferSurface(async () => { const module = await import("./components/HorizontalTabs"); return {default:module.HorizontalTabs}; }, "Tabs", true, true);
 const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
 const VaultOfferBanner = deferSurface(async () => { const module = await import("./components/VaultOfferBanner"); return {default:module.VaultOfferBanner}; }, "Password offer", true, true);
+const FindBar = deferSurface(async () => { const module = await import("./components/FindBar"); return {default:module.FindBar}; }, "Find in page", true, true);
 
 /** Only the fields that decide native-view placement — title/favicon churn must not re-render the shell. */
 const placementFields = (page?: PageTarget) => page && { pageId: page.pageId, url: page.url, backend: page.backend, viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument };
@@ -54,7 +54,7 @@ type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl
 type StoreState = ReturnType<typeof useStore.getState>;
 
 export function App() {
-  useEffect(() => preloadWhenIdle([Conversation, AnswerPreview, Palette, Downloads, SiteControls]), []);
+  useEffect(() => preloadWhenIdle([Conversation, AnswerPreview, Palette, Downloads, SiteControls, FindBar]), []);
   useEffect(()=>{
     if(bridge.privateMode)return;
     const changed=(event:StorageEvent)=>{
@@ -181,6 +181,7 @@ export function App() {
   const splitRatio = useStore(s => s.layout.splitRatio ?? .5);
   const connected = useStore((s) => s.connected);
   const spaceColor = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).color);
+  const spaceGrain = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).grain);
   const vaultOffer = useStore((s) => !!s.vaultOffer);
   const setOverlay = useStore((s) => s.setOverlay);
   const setMode = useStore((s) => s.setMode);
@@ -525,6 +526,7 @@ export function App() {
   return (
     <div
       className={`app tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+      style={{ "--space-grain": spaceGrain } as React.CSSProperties}
       data-overlay={overlay ?? undefined}
       onContextMenu={(e) => {
         if (!inNativeHost) return;

@@ -23,7 +23,7 @@ it("lets the newest task request win even when responses arrive out of order",as
   const finishes=new Map<string,(value:unknown)=>void>();
   vi.spyOn(bridge,"invoke").mockImplementation((_method,params)=>new Promise(resolve=>{finishes.set((params as {taskId:string}).taskId,resolve);}));
   const switchSpace=vi.fn(),setOverlay=vi.fn();
-  useStore.setState({layout:{...initial.layout,spaces:[{id:"space",name:"Research",color:"slate",workspaceId:"work"}]},refreshSpaces:async()=>{},switchSpace,setOverlay});
+  useStore.setState({layout:{...initial.layout,spaces:[{id:"space",name:"Research",color:"slate",grain:0,workspaceId:"work"}]},refreshSpaces:async()=>{},switchSpace,setOverlay});
   const first=openSavedTask("first"),second=openSavedTask("second");
   finishes.get("second")!({task:{taskId:"second",workspaceId:"work"}});await second;
   finishes.get("first")!({task:{taskId:"first",workspaceId:"work"}});await first;

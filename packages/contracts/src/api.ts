@@ -39,7 +39,7 @@ import {
 import {
   RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema,
 } from "./routines.js";
-import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema } from "./spaces.js";
+import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import { AgentModelRouteSchema } from './model-registry.js';
@@ -604,8 +604,8 @@ export const MethodSchemas = {
   "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
   "spaces.list": z.object({}),
   "spaces.import": z.object({ spaces: z.array(SpaceInputSchema).max(500) }),
-  "spaces.create": z.object({ name: z.string().trim().min(1).max(100), color: SpaceColorSchema }),
-  "spaces.update": z.object({ id: id, name: z.string().trim().min(1).max(100).optional(), color: SpaceColorSchema.optional(), archived: z.boolean().optional() }),
+  "spaces.create": z.object({ name: z.string().trim().min(1).max(100), color: SpaceColorSchema, grain: SpaceGrainSchema.default(0) }),
+  "spaces.update": z.object({ id: id, name: z.string().trim().min(1).max(100).optional(), color: SpaceColorSchema.optional(), grain: SpaceGrainSchema.optional(), archived: z.boolean().optional() }),
   "workspaces.list": z.object({}),
   "workspaces.browsingMemory.get": z.object({ workspaceId: id }),
   "workspaces.browsingMemory.set": z.object({ workspaceId: id, policy: BrowsingMemoryPolicySchema }),

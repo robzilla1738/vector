@@ -23,11 +23,11 @@ it("uses one new destination, carries placement to it, and restores the active t
   const space = useStore.getState().layout.spaces.find(item => item.id === folder.spaceId)!;
   expect(tabCommand.mock.calls.map(([command]) => command)).toEqual([
     {kind: "move", pageId: "one", activate: true, placement: {
-      space: {id: space.id, name: space.name, color: space.color},
+      space: {id: space.id, name: space.name, color: space.color, grain: space.grain},
       folder: {id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: false, color: "green", emoji: "🧪"},
     }},
     {kind: "move", pageId: "two", activate: false, windowId: "destination", placement: {
-      space: {id: space.id, name: space.name, color: space.color},
+      space: {id: space.id, name: space.name, color: space.color, grain: space.grain},
       folder: {id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: false, color: "green", emoji: "🧪"},
     }},
   ]);
@@ -50,11 +50,11 @@ it("files an arriving tab into the relayed space and folder", () => {
   const pages = [{pageId: "moved", windowId: "main", url: "https://example.com"} as PageTarget];
   useStore.setState({layout, pages});
   useStore.getState().applyTabsPlacement({pageId: "moved", windowId: bridge.windowId, placement: {
-    space: {id: "research", name: "Research", color: "violet"},
+    space: {id: "research", name: "Research", color: "violet", grain: 60},
     folder: {id: "folder", name: "Papers", spaceId: "research", collapsed: false, color: "teal", emoji: "📌"},
   }});
   const state = useStore.getState();
-  expect(state.layout.spaces.some(space => space.id === "research" && space.name === "Research")).toBe(true);
+  expect(state.layout.spaces.some(space => space.id === "research" && space.name === "Research" && space.grain === 60)).toBe(true);
   expect(state.layout.tabSpace.moved).toBe("research");
   expect(state.layout.tabFolder.moved).toBe("folder");
   expect(state.layout.folders.find(item => item.id === "folder")).toMatchObject({color: "teal", emoji: "📌"});

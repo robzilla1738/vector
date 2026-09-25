@@ -15,7 +15,7 @@ const tabPlacementFor = (state: { layout: Workspace["layout"] }, pageId: string)
   if (!space) return undefined;
   const folder = state.layout.folders.find(item => item.id === state.layout.tabFolder[pageId]);
   return {
-    space: { id: space.id, name: space.name, color: space.color, ...(space.workspaceId ? { workspaceId: space.workspaceId } : {}) },
+    space: { id: space.id, name: space.name, color: space.color, grain: space.grain, ...(space.workspaceId ? { workspaceId: space.workspaceId } : {}) },
     ...(folder ? { folder: { id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: folder.collapsed, ...(folder.color ? { color: folder.color } : {}), ...(folder.emoji ? { emoji: folder.emoji } : {}) } } : {}),
   };
 };
@@ -152,7 +152,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     if (windowId !== bridge.windowId) return;
     set(s => {
       if (!s.pages.some(page => page.pageId === pageId)) return {};
-      const space: Space = { id: placement.space.id, name: placement.space.name, color: placement.space.color as SpaceColor, ...(placement.space.workspaceId ? { workspaceId: placement.space.workspaceId } : {}) };
+      const space: Space = { id: placement.space.id, name: placement.space.name, color: placement.space.color as SpaceColor, grain: placement.space.grain ?? 0, ...(placement.space.workspaceId ? { workspaceId: placement.space.workspaceId } : {}) };
       let layout = s.layout.spaces.some(item => item.id === space.id) ? s.layout
         : { ...s.layout, spaces: [...s.layout.spaces, space], archivedSpaces: s.layout.archivedSpaces?.filter(item => item.id !== space.id) };
       layout = assignSpace(layout, pageId, space.id);

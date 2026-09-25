@@ -44,7 +44,7 @@ it("merges catalog fields onto live pages without clobbering runtime fields", ()
 
 it("reconciles an older local tab placement to the main-owned Space", () => {
   setup();
-  const space = { id: "research", name: "Research", color: "blue" as const, workspaceId: "workspace-research" };
+  const space = { id: "research", name: "Research", color: "blue" as const, grain: 0, workspaceId: "workspace-research" };
   useStore.setState(state => ({ layout: { ...state.layout, spaces: [...state.layout.spaces, space], tabSpace: { one: state.layout.activeSpaceId } } }));
   useStore.getState().applyTabsPatch(patch(4, 3, [{ op: "upsert", tab: record("one", { spaceId: space.id, workspaceId: space.workspaceId }) }]));
   expect(useStore.getState().layout.tabSpace.one).toBe(space.id);

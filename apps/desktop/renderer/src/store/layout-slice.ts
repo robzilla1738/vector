@@ -94,26 +94,26 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   refreshSpaces: async () => {
     if (!bridge.privateMode) get().syncBrowserSpaces(await call("spaces.list"));
   },
-  addSpace: async (name, color = "slate") => {
+  addSpace: async (name, color = "slate", grain = 0) => {
     if (bridge.privateMode) {
-      const layout = createSpace(get().layout, name, color);
+      const layout = createSpace(get().layout, name, color, grain);
       persistLayout(layout); set({ layout });
       get().switchSpace(layout.activeSpaceId);
       return;
     }
     const previous = new Set(get().layout.spaces.map(space => space.id));
-    const spaces = await call("spaces.create", { name, color });
+    const spaces = await call("spaces.create", { name, color, grain });
     get().syncBrowserSpaces(spaces);
     const created = spaces.find(space => !space.archived && !previous.has(space.id));
     if (created) get().switchSpace(created.id);
   },
-  editSpace: async (spaceId, name, color) => {
+  editSpace: async (spaceId, name, color, grain) => {
     if (bridge.privateMode) {
-      const layout = renameSpace(get().layout, spaceId, name, color);
+      const layout = renameSpace(get().layout, spaceId, name, color, grain);
       persistLayout(layout); set({ layout });
       return;
     }
-    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, name, color }));
+    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, name, color, grain }));
   },
   deleteSpace: async (spaceId) => {
     if (bridge.privateMode) {

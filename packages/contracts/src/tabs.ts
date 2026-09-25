@@ -24,6 +24,7 @@ export const TabPlacementSchema = z.object({
     id: z.string().min(1).max(200),
     name: z.string().max(100),
     color: z.string().max(40),
+    grain: z.number().int().min(0).max(100).optional(),
     workspaceId: z.string().max(200).optional(),
   }),
   folder: z.object({ id, name: z.string().max(200), spaceId: z.string().min(1).max(200), collapsed: z.boolean(), color: z.string().max(40).optional(), emoji: z.string().max(16).optional() }).optional(),

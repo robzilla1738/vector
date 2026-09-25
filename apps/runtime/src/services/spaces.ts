@@ -17,7 +17,7 @@ export class SpaceService {
       ...saved.map(space => ({ ...space, name: workspaces.find(workspace => workspace.workspaceId === space.workspaceId)?.name ?? space.name })),
       ...workspaces.filter(workspace => !mapped.has(workspace.workspaceId)).map(workspace => ({
         id: `workspace:${workspace.workspaceId}`, workspaceId: workspace.workspaceId,
-        name: workspace.name, color: "slate" as const, archived: false,
+        name: workspace.name, color: "slate" as const, grain: 0, archived: false,
       })),
     ];
   }
@@ -40,11 +40,11 @@ export class SpaceService {
     return spaces;
   }
 
-  create(name: string, color: BrowserSpace["color"]): BrowserSpace[] {
-    return this.import([{ id: `space-${randomUUID()}`, name, color }]);
+  create(name: string, color: BrowserSpace["color"], grain = 0): BrowserSpace[] {
+    return this.import([{ id: `space-${randomUUID()}`, name, color, grain }]);
   }
 
-  update(id: string, patch: Partial<Pick<BrowserSpace, "name" | "color" | "archived">>): BrowserSpace[] {
+  update(id: string, patch: Partial<Pick<BrowserSpace, "name" | "color" | "grain" | "archived">>): BrowserSpace[] {
     const spaces = this.repo.transaction(() => {
       const spaces = this.list();
       const current = spaces.find(space => space.id === id);

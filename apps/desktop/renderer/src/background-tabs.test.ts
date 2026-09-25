@@ -6,7 +6,7 @@ import { useStore } from "./store";
 import { emptyLayout } from "./workspace";
 afterEach(() => vi.restoreAllMocks());
 it("keeps the destination and current browsing state when a background open finishes after a Space switch", async () => {
-  const layout = { ...emptyLayout(), spaces: [{ id: "work", name: "Work", color: "slate" as const }, { id: "home", name: "Home", color: "slate" as const }], activeSpaceId: "work" };
+  const layout = { ...emptyLayout(), spaces: [{ id: "work", name: "Work", color: "slate" as const, grain: 0 }, { id: "home", name: "Home", color: "slate" as const, grain: 0 }], activeSpaceId: "work" };
   useStore.setState({ layout, pages: [], activePageId: null, overlay: "bookmarks" });
   let finish!: (ack: TabCommandAck) => void;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async () => new Promise<TabCommandAck>(resolve => { finish = resolve; }));

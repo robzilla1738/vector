@@ -1,14 +1,13 @@
 import { useWindowDrag } from "../use-window-drag";
 import { ChatSessions } from "./ChatSessions";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
 import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
 
-import { isScrimOverlay } from "../chrome";
 import { bookmarkTabsFromDrop, TAB_DRAG_TYPE } from "../bookmark-drop";
 import { requestStageReport } from "../stage-obstruction";
 import { detailsMenuKey, moveMenuFocus, moveListFocus } from "../keyboard-list";
@@ -25,7 +24,6 @@ import { TabAudioButton } from "./TabAudioButton";
 import { I } from "./icons";
 import { useWindowedRows } from "../use-windowed-rows";
 import { useFloatingSidebar } from "../floating-sidebar";
-import { NativeDialog } from "./NativeDialog";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useDismissable } from "../use-dismissable";
 
@@ -287,40 +285,9 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
   );
 }
 
-export function SpaceEditor({ space, onSave, onClose }: { space: Space | null; onSave: (name: string, color: SpaceColor) => Promise<void>; onClose: () => void }) {
-  const [name, setName] = useState(space?.name ?? "");
-  const [color, setColor] = useState<SpaceColor>(space?.color ?? "violet");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const save = async () => {
-    if (!name.trim() || saving) return;
-    setSaving(true); setError("");
-    try { await onSave(name.trim(), color); onClose(); }
-    catch (error) { setError(error instanceof Error ? error.message : String(error)); }
-    finally { setSaving(false); }
-  };
-  const previous = useRef(document.activeElement as HTMLElement | null);
-  useEffect(() => {
-    void bridge.overlay(true);
-    return () => { void bridge.overlay(isScrimOverlay(useStore.getState().overlay)); };
-  }, []);
-  return (
-      <NativeDialog label={space ? "Edit space" : "New space"} onClose={onClose} returnFocus={previous} className="sheet pop-in">
-        <h3>{space ? "Edit space" : "New space"}</h3>
-        <input autoFocus className="field-input" value={name} maxLength={100} disabled={saving} placeholder="Name" onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") void save(); }} />
-        <div className="swatches" role="radiogroup" aria-label="Colour">
-          {SPACE_COLORS.map((c) => (
-            <button key={c} role="radio" aria-checked={color === c} aria-label={c} data-space={c} className={`swatch ${color === c ? "on" : ""}`} onClick={() => setColor(c)} />
-          ))}
-        </div>
-        {error && <p role="alert" className="field-error">{error}</p>}
-        <div className="sheet-acts">
-          <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" disabled={!name.trim() || saving} onClick={() => void save()}>{saving ? "Saving…" : space ? "Save" : "Create"}</button>
-        </div>
-      </NativeDialog>
-  );
+const LazySpaceEditor = lazy(() => import("./SpaceEditor"));
+export function SpaceEditor(props: { space: Space | null; onSave: (name: string, color: SpaceColor, grain: number) => Promise<void>; onClose: () => void }) {
+  return <Suspense fallback={null}><LazySpaceEditor {...props} /></Suspense>;
 }
 
 function FolderRow({ folder, count, open, dropOn, renaming, onToggle, onRename, onStartRename, onContext, onDragOver, onDrop, onDragEnd }: {
@@ -798,7 +765,7 @@ export const Sidebar = memo(function Sidebar() {
         inert={!sidebarVisible ? true : undefined}
         aria-hidden={!sidebarVisible}
         data-space={space.color}
-        style={{ "--sb-w": `${sidebarWidth}px` } as React.CSSProperties}
+        style={{ "--sb-w": `${sidebarWidth}px`, "--space-grain": space.grain } as React.CSSProperties}
         aria-label="Sidebar"
       >
         <div className="sidebar-content" inert={!sidebarVisible ? true : undefined} aria-hidden={!sidebarVisible}>{full}</div>
@@ -806,7 +773,7 @@ export const Sidebar = memo(function Sidebar() {
       </aside>
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)}
-          onSave={(name, color) => (editing === "new" ? addSpace(name, color) : editSpace(editing.id, name, color))} />
+          onSave={(name, color, grain) => (editing === "new" ? addSpace(name, color, grain) : editSpace(editing.id, name, color, grain))} />
       )}
       {pinCtx && <PinMenu {...pinCtx} onClose={() => setPinCtx(null)} />}
       {ctx && <TabMenu selectedPages={selection.pagesFor(ctx.p)} onSelectionDone={selection.clear} page={ctx.p} x={ctx.x} y={ctx.y} onClose={() => setCtx(null)} />}

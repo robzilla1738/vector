@@ -151,8 +151,8 @@ export interface Workspace {
   moveTabs(pageIds: string[], spaceId: string, folderId?: string | { name: string } | null, beforeId?: string | null): void;
   moveTabToWindow(pageId: string, windowId?: string): Promise<void>;
   moveTabsToWindow(pageIds: string[], windowId?: string): Promise<void>;
-  addSpace(name: string, color?: SpaceColor): Promise<void>;
-  editSpace(spaceId: string, name: string, color?: SpaceColor): Promise<void>;
+  addSpace(name: string, color?: SpaceColor, grain?: number): Promise<void>;
+  editSpace(spaceId: string, name: string, color?: SpaceColor, grain?: number): Promise<void>;
   deleteSpace(spaceId: string): Promise<void>;
   restoreSpace(spaceId: string, activate?:boolean): Promise<void>;
   syncBrowserSpaces(spaces: BrowserSpace[]): void;

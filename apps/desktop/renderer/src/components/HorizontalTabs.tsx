@@ -126,7 +126,7 @@ export function HorizontalTabs() {
       </div>
     </div>
     {editingSpace && <SpaceEditor space={editingSpace === "new" ? null : editingSpace} onClose={() => setEditingSpace(null)}
-      onSave={(name, color) => editingSpace === "new" ? useStore.getState().addSpace(name, color) : useStore.getState().editSpace(editingSpace.id, name, color)} />}
+      onSave={(name, color, grain) => editingSpace === "new" ? useStore.getState().addSpace(name, color, grain) : useStore.getState().editSpace(editingSpace.id, name, color, grain)} />}
     {groupMenu && folders.some(folder => folder.id === groupMenu.id) && <FolderContextMenu group folder={folders.find(folder => folder.id === groupMenu.id)!} x={groupMenu.x} y={groupMenu.y} onClose={() => setGroupMenu(null)} onRename={() => setRenaming(groupMenu.id)} onDelete={() => { useStore.getState().deleteFolder(groupMenu.id); setGroupMenu(null); }} />}
     {preview && !groupMenu && !menu && pages.some(page => page.pageId === preview.page.pageId) && <TabPreview {...preview} page={pages.find(page => page.pageId === preview.page.pageId)!} />}
     {menu && <TabMenu selectedPages={selection.pagesFor(menu.page)} onSelectionDone={selection.clear} page={menu.page} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}

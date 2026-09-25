@@ -219,8 +219,8 @@ export function installMockBridge(q: URLSearchParams) {
       return workspace();
     },
     "spaces.import": async p => {
-      for (const input of p.spaces as { id: string; name: string; color: BrowserSpace["color"] }[]) {
-        if (!spaces.some(space => space.id === input.id)) spaces.push({ ...input, workspaceId: `workspace:${input.id}`, archived: false });
+      for (const input of p.spaces as { id: string; name: string; color: BrowserSpace["color"]; grain?: number }[]) {
+        if (!spaces.some(space => space.id === input.id)) spaces.push({ ...input, grain: input.grain ?? 0, workspaceId: `workspace:${input.id}`, archived: false });
       }
       return spaces;
     },
@@ -229,7 +229,7 @@ export function installMockBridge(q: URLSearchParams) {
     },
     "spaces.create": async p => {
       const id = crypto.randomUUID();
-      spaces = [...spaces, { id, workspaceId: `workspace:${id}`, name: String(p.name), color: p.color as BrowserSpace["color"], archived: false }];
+      spaces = [...spaces, { id, workspaceId: `workspace:${id}`, name: String(p.name), color: p.color as BrowserSpace["color"], grain: Number(p.grain ?? 0), archived: false }];
       emit("spaces.updated", { spaces });
       return spaces;
     },

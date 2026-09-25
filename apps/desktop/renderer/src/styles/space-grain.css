@@ -1,0 +1,47 @@
+@layer refinements {
+  .app .sidebar::after,
+  .app .toolbar::after,
+  .app .horizontal-tabs-row::after,
+  .space-grain-preview::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: inherit;
+    background: url("./space-grain.svg") repeat;
+    mix-blend-mode: soft-light;
+    opacity: calc(var(--space-grain, 0) * 0.00065);
+  }
+
+  .space-grain-control {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .space-grain-label {
+    display: flex;
+    justify-content: space-between;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+  }
+  .space-grain-control input {
+    width: 100%;
+    accent-color: var(--space-color);
+  }
+  .space-grain-preview {
+    position: relative;
+    height: 32px;
+    overflow: hidden;
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--space-color) 28%, var(--sb-bg));
+  }
+
+  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    .app .sidebar::after,
+    .app .toolbar::after,
+    .app .horizontal-tabs-row::after,
+    .space-grain-preview::after {
+      display: none;
+    }
+  }
+}

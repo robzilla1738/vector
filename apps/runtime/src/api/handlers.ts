@@ -377,7 +377,7 @@ export function makeInvoker(s: Services) {
       case "workspaces.create": return tasks.createWorkspace(params.name);
       case "spaces.list": return spaces.list();
       case "spaces.import": return spaces.import(params.spaces);
-      case "spaces.create": return spaces.create(params.name, params.color);
+      case "spaces.create": return spaces.create(params.name, params.color, params.grain);
       case "spaces.update": {
         const { id, ...patch } = params;
         return spaces.update(id, patch);

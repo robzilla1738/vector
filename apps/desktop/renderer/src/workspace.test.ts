@@ -193,6 +193,9 @@ describe("persistence", () => {
     expect(bad.activeSpaceId).toBe("x");
     expect(bad.order).toEqual(["ok"]);
     expect(bad.folders).toEqual([]);
+    expect(bad.spaces[0]?.grain).toBe(0);
+    expect(parseLayout(JSON.stringify({ spaces: [{ id: "x", name: "X", color: "blue", grain: 75 }] })).spaces[0]?.grain).toBe(75);
+    expect(parseLayout(JSON.stringify({ spaces: [{ id: "x", name: "X", color: "blue", grain: 101 }] })).spaces[0]?.grain).toBe(0);
     const withFolder = parseLayout(JSON.stringify({
       spaces: [{ id: "x", name: "X", color: "blue" }],
       folders: [{ id: "f1", name: "Dev", spaceId: "x" }],

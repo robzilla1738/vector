@@ -9,7 +9,7 @@ const applied = (command: TabCommand, pageId?: string): TabCommandAck =>
   ({ commandId: '', status: 'applied', catalogVersion: 1, pageId: pageId ?? ('pageId' in command ? command.pageId : undefined) });
 function setup() {
   const pages = ['first','middle','last','other'].map(pageId => ({ pageId, title: pageId, url: `https://example.test/${pageId}`, ownedByRuntime: false, viewStatus: 'visible' } as PageTarget));
-  const layout = { ...emptyLayout(), spaces: [{id:'work',name:'Work',color:'slate' as const},{id:'personal',name:'Personal',color:'slate' as const}], activeSpaceId:'work', order:pages.map(page=>page.pageId), tabSpace:{first:'work',middle:'work',last:'work',other:'personal'}, folders:[{id:'research',spaceId:'work',name:'Research',collapsed:false}], tabFolder:{middle:'research'} };
+  const layout = { ...emptyLayout(), spaces: [{id:'work',name:'Work',color:'slate' as const,grain:0},{id:'personal',name:'Personal',color:'slate' as const,grain:0}], activeSpaceId:'work', order:pages.map(page=>page.pageId), tabSpace:{first:'work',middle:'work',last:'work',other:'personal'}, folders:[{id:'research',spaceId:'work',name:'Research',collapsed:false}], tabFolder:{middle:'research'} };
   useStore.setState({ pages, layout, activePageId:'middle', closedTabs:[], reopeningTab:false });
   vi.spyOn(bridge,'overlay').mockResolvedValue(true);
   vi.spyOn(bridge,'invoke').mockResolvedValue({} as never);

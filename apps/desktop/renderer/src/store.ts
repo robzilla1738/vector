@@ -48,7 +48,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
           storage.setItem(`${LAYOUT_KEY}:before-spaces`, JSON.stringify(layout));
         }
         const spaces = await call("spaces.import", { spaces: legacySpaces.map(space => ({
-          id: space.id, name: space.name.slice(0, 100) || "Untitled", color: space.color ?? "slate",
+          id: space.id, name: space.name.slice(0, 100) || "Untitled", color: space.color ?? "slate", grain: space.grain,
         })) });
         get().syncBrowserSpaces(spaces);
       }

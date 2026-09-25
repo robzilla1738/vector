@@ -14,6 +14,7 @@ export interface Space {
   id: string;
   name: string;
   color: SpaceColor;
+  grain: number;
   workspaceId?: string;
 }
 
@@ -54,7 +55,11 @@ export interface Layout {
   tabFolder: Record<string, string>;
 }
 
-export const DEFAULT_SPACE: Space = { id: "space-personal", name: "Personal", color: "blue" };
+export const DEFAULT_SPACE: Space = { id: "space-personal", name: "Personal", color: "blue", grain: 0 };
+
+export function spaceGrain(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : 0;
+}
 
 export function emptyLayout(): Layout {
   return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {} };
@@ -179,17 +184,17 @@ export function assignSpace(layout: Layout, pageId: string, spaceId: string): La
   return { ...layout, tabSpace };
 }
 
-export function createSpace(layout: Layout, name: string, color?: SpaceColor): Layout {
+export function createSpace(layout: Layout, name: string, color?: SpaceColor, grain = 0): Layout {
   const used = new Set(layout.spaces.map((s) => s.color));
   const pick = color ?? SPACE_COLORS.find((c) => !used.has(c)) ?? SPACE_COLORS[layout.spaces.length % SPACE_COLORS.length]!;
-  const space: Space = { id: newSpaceId(), name: name.trim() || `Space ${layout.spaces.length + 1}`, color: pick };
+  const space: Space = { id: newSpaceId(), name: name.trim() || `Space ${layout.spaces.length + 1}`, color: pick, grain: spaceGrain(grain) };
   return { ...layout, spaces: [...layout.spaces, space], activeSpaceId: space.id, pins: { ...layout.pins, [space.id]: [] } };
 }
 
-export function renameSpace(layout: Layout, spaceId: string, name: string, color?: SpaceColor): Layout {
+export function renameSpace(layout: Layout, spaceId: string, name: string, color?: SpaceColor, grain?: number): Layout {
   return {
     ...layout,
-    spaces: layout.spaces.map((s) => (s.id === spaceId ? { ...s, name: name.trim() || s.name, color: color ?? s.color } : s)),
+    spaces: layout.spaces.map((s) => (s.id === spaceId ? { ...s, name: name.trim() || s.name, color: color ?? s.color, grain: grain === undefined ? s.grain : spaceGrain(grain) } : s)),
   };
 }
 
@@ -357,12 +362,13 @@ export function parseLayout(raw: string | null): Layout {
   try {
     const v = JSON.parse(raw) as Partial<Layout>;
     if (!Array.isArray(v.spaces) || v.spaces.length === 0) return emptyLayout();
-    const spaces = v.spaces.filter((s): s is Space => !!s && typeof s.id === "string" && typeof s.name === "string");
+    const spaces = v.spaces.filter((s): s is Space => !!s && typeof s.id === "string" && typeof s.name === "string")
+      .map(space => ({ ...space, grain: spaceGrain(space.grain) }));
     if (!spaces.length) return emptyLayout();
     const active = spaces.some((s) => s.id === v.activeSpaceId) ? v.activeSpaceId! : spaces[0]!.id;
     return {
       spaces,
-      archivedSpaces: Array.isArray(v.archivedSpaces) ? v.archivedSpaces.filter(space => space && typeof space.id === "string" && typeof space.name === "string") : [],
+      archivedSpaces: Array.isArray(v.archivedSpaces) ? v.archivedSpaces.filter(space => space && typeof space.id === "string" && typeof space.name === "string").map(space => ({ ...space, grain: spaceGrain(space.grain) })) : [],
       activeSpaceId: active,
       splitRatio: splitRatio(v.splitRatio),
       activeTabs: v.activeTabs && typeof v.activeTabs === "object" ? Object.fromEntries(Object.entries(v.activeTabs).filter(([, pageId]) => typeof pageId === "string")) : {},
