@@ -11,6 +11,14 @@ for(const [index,title] of ['Research notes','Planning session'].entries()) repo
 repo.db.close();
 const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.env,AUX_PROFILE_DIR:dir+'/profile',AUX_DATA_DIR:dir+'/data',AUX_LOAD_DOTENV:'0'}});
 page.setDefaultTimeout(10000);
+async function chatAction(title,action){
+ await page.getByRole('button',{name:`Actions for ${title}`,exact:true}).click();
+ await page.getByRole('menuitem',{name:action,exact:true}).click();
+}
+async function chatView(label){
+ await page.getByRole('button',{name:'Chat options',exact:true}).click();
+ await page.getByRole('menuitem',{name:label,exact:true}).click();
+}
 try {
  await page.locator('.aux-home').waitFor();
  if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
@@ -19,22 +27,22 @@ try {
  await page.getByRole('textbox',{name:'Chat project name'}).fill('Research');
  await page.locator('.session-editor').getByRole('button',{name:'Save',exact:true}).click();
  const row=page.locator('.chat-sessions .session-row').filter({has:page.getByRole('button',{name:'Research notes',exact:true})});
- await row.hover();await page.getByRole('button',{name:'Move Research notes to project'}).click();
+ await row.hover();await chatAction('Research notes','Move to project');
  await page.getByLabel('Project for Research notes').selectOption({label:'Research'});
  await page.reload();
  await page.locator('.session-folder').filter({hasText:'Research'}).getByRole('button',{name:'Research notes',exact:true}).waitFor();
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).focus();
- await page.getByRole('button',{name:'Archive Research notes',exact:true}).click();
+ await chatAction('Research notes','Archive chat');
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).waitFor({state:'hidden'});
- await page.locator('.session-archive-toggle').click();
+ await chatView('Archived chats');
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).waitFor();
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).hover();
- await page.getByRole('button',{name:'Restore Research notes',exact:true}).click();
- await page.locator('.session-archive-toggle').click();
+ await chatAction('Research notes','Restore chat');
+ await chatView('Active chats');
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).waitFor();
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).hover();
  await page.locator('.chat-sessions[aria-busy=false]').waitFor();
- await page.getByRole('button',{name:'Delete Research notes',exact:true}).click();
+ await chatAction('Research notes','Delete chat…');
  const expanded=page.locator('.session-item:has(.session-disclosure.open)');
  const surface=await expanded.evaluate(el=>({background:getComputedStyle(el).backgroundColor,row:getComputedStyle(el.querySelector('.session-row')).backgroundColor,panel:getComputedStyle(el.querySelector('.session-confirm')).backgroundColor,duration:getComputedStyle(el.querySelector('.session-disclosure.open')).transitionDuration}));
  assert.notEqual(surface.background,'rgba(0, 0, 0, 0)');
@@ -45,17 +53,17 @@ try {
  await expanded.evaluate(async el=>{await Promise.all(el.getAnimations({subtree:true}).map(a=>a.finished));});
  await page.screenshot({path:root+'/release/test-artifacts/tabs/delete-confirmation.png'});
  await page.locator('.session-confirm').getByRole('button',{name:'Cancel',exact:true}).click();
- assert.equal(await page.getByRole('button',{name:'Delete Research notes',exact:true}).evaluate(el=>el===document.activeElement),true);
+ assert.equal(await page.getByRole('button',{name:'Actions for Research notes',exact:true}).evaluate(el=>el===document.activeElement),true);
  assert.equal(await page.locator('.session-disclosure:not(.open)').evaluateAll(els=>els.every(el=>el.inert)),true);
- await page.getByRole('button',{name:'Delete Research notes',exact:true}).click();
- await page.getByRole('button',{name:'Delete Research notes',exact:true}).press('Escape');
+ await chatAction('Research notes','Delete chat…');
+ await page.getByRole('button',{name:'Actions for Research notes',exact:true}).press('Escape');
  assert.equal(await page.locator('.session-disclosure.open').count(),0);
  await page.emulateMedia({reducedMotion:'reduce'});
  assert.equal(await page.locator('.session-disclosure').first().evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
  await page.emulateMedia({reducedMotion:'no-preference'});
  assert.equal((await page.evaluate(()=>window.aux.invoke('conversations.list',{}))).length,2);
  await page.locator('.chat-sessions').getByRole('button',{name:'Planning session',exact:true}).hover();
- await page.getByRole('button',{name:'Delete Planning session',exact:true}).click();
+ await chatAction('Planning session','Delete chat…');
  await page.getByRole('button',{name:'Delete permanently',exact:true}).click();
  await page.locator('.chat-sessions').getByRole('button',{name:'Planning session',exact:true}).waitFor({state:'hidden'});
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).click();
@@ -64,7 +72,7 @@ try {
  await session.hover();
  const after=await session.boundingBox();
  assert.deepEqual(after,before);
- assert.equal(await session.getByRole('button',{name:'Archive Research notes',exact:true}).isVisible(),true);
+ assert.equal(await session.getByRole('button',{name:'Actions for Research notes',exact:true}).isVisible(),true);
  await page.screenshot({path:root+'/release/test-artifacts/tabs/session-projects.png'});
  await page.evaluate(()=>window.aux.invoke('pages.open',{url:'about:blank',activate:true}));
  await page.locator('.horizontal-tab-select').last().click({button:'right'});
@@ -80,7 +88,8 @@ try {
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).hover();
  await page.screenshot({path:root+'/release/test-artifacts/tabs/vertical-sessions.png'});
  await page.getByRole('button',{name:'Research',exact:false}).filter({has:page.locator('small')}).hover();
- await page.getByRole('button',{name:'Remove project Research',exact:true}).click();
+ await page.getByRole('button',{name:'Actions for project Research',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Remove folder; keep chats',exact:true}).click();
  await page.locator('.chat-sessions').getByRole('button',{name:'Research notes',exact:true}).waitFor();
  assert.equal(await page.locator('.session-folder').count(),0);
  console.log('PASS folder persistence, moving, archive/restore, delete cancellation/confirmation, folder removal retains chats, both modes, tab-group keyboard rename/collapse/cancel.');

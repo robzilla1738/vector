@@ -16,10 +16,11 @@ try {
  const scroll=await rect('.conversation-scroll'),mark=await rect('.conversation-empty .aux-mark');
  assert.ok(Math.abs(mark.y+mark.height/2-(scroll.y+scroll.height/2))<3,'mark centered vertically');
  const compose=await rect('.conversation-input');assert.ok(compose.width>680,'composer wider than old 680px');
- await page.getByRole('button',{name:'Add image or capture'}).click();
+ await page.getByRole('button',{name:'Add context',exact:true}).click();
  assert.equal(await page.getByRole('button',{name:'Image',exact:true}).isVisible(),true);
- await page.getByRole('button',{name:'Add image or capture'}).click();
- await page.getByLabel('Browser context').selectOption('none');
+ await page.getByRole('button',{name:'Add context',exact:true}).click();
+ await page.getByRole('button',{name:'Browser context',exact:true}).click();
+ await page.getByRole('dialog',{name:'Browser context',exact:true}).getByRole('button',{name:/New browser tab/}).click();
  await page.getByRole('textbox',{name:'Reply to conversation'}).fill('A draft to verify composer sizing');
  await page.screenshot({path:root+'/release/test-artifacts/tabs/new-chat-wide.png'});
  await app.evaluate(({BaseWindow})=>{const win=BaseWindow.getAllWindows()[0];win.setMinimumSize(600,500);win.setBounds({x:100,y:100,width:780,height:680});});

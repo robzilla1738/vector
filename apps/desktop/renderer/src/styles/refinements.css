@@ -224,6 +224,7 @@
   -webkit-app-region: no-drag;
 }
 .app.tabs-vertical:not(.layout-expanded) .sidebar.peek,
+.app.native-host.tabs-vertical:not(.layout-expanded) .sidebar.fully-hidden.peek,
 :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar.peek {
   opacity: 1; transform: none; visibility: visible; pointer-events: auto;
   transition-delay: var(--t-none);
