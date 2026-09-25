@@ -74,3 +74,7 @@ The initial material wrapper described above was superseded after inspecting Chr
 - Narrowing the CSP-safe Zod configuration import reduced total renderer JavaScript from 1,958 KB to 1,677 KB (1,800 KB budget). Startup is currently 494 KB against 490 KB, so that gate still fails; CSS is 210 KB against 218 KB. No budget was raised.
 - Clean candidate startup currently opens a new tab rather than restoring the prior live tabs. Complete session-restore qualification remains open; do not assume restart restoration from shutdown success.
 - The native glass underlay compiled successfully. Latest shell resources with the narrowed Zod import built into the candidate successfully (`/tmp/aux-build-glass-shell.log`, 12 steps).
+
+### Verified default sidebar shortcut
+
+After consolidating the bootstrap’s separate delivery/subscription allowlists into `hostEvents`, and registering Cmd-S in Chromium’s native Views focus manager, the live horizontal shell changed from `Hide sidebar` to `Show sidebar` on Cmd-S. The final native build passed in 15 seconds. This verifies the default shortcut in the shell; custom rebinding and guest-focus coverage remain separate gates.

@@ -61,15 +61,33 @@ diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-@@ -105,6 +105,7 @@
+@@ -27,6 +27,10 @@
+ 
+ const remote = new ShellHostRemote();
+ const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
++const hostEvents = new Set([
++  'onEvent', 'onTabsPatch', 'onDictation', 'onSidebarEdge', 'onToolbarEdge',
++  'onOrganizationChanged', 'onShortcut', 'onSiteZoomChanged',
++]);
+ type Match = {id: string; type: 'history'|'bookmark'|'search'|'typed'; title: string; url: string; description?: string};
+ let searchbox: PageHandlerRemote|undefined;
+ let queryId = 0;
+@@ -104,13 +108,7 @@
+ }
  const client = new ShellHostClientReceiver({
    onEvent(eventName: string, payloadJson: string) {
-     if (eventName !== 'onEvent' && eventName !== 'onTabsPatch' &&
-+        eventName !== 'onShortcut' && eventName !== 'onSiteZoomChanged' &&
-         eventName !== 'onDictation' &&
-         eventName !== 'onSidebarEdge' &&
-         eventName !== 'onToolbarEdge' &&
-@@ -143,8 +144,12 @@
+-    if (eventName !== 'onEvent' && eventName !== 'onTabsPatch' &&
+-        eventName !== 'onDictation' &&
+-        eventName !== 'onSidebarEdge' &&
+-        eventName !== 'onToolbarEdge' &&
+-        eventName !== 'onOrganizationChanged') {
+-      return;
+-    }
++    if (!hostEvents.has(eventName)) return;
+     let payload: unknown;
+     try {
+       payload = JSON.parse(payloadJson);
+@@ -143,8 +141,12 @@
          }
          return autocomplete(args[0]);
        }
@@ -83,6 +101,21 @@ diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/br
        const response = await remote.request(method, JSON.stringify(requestArgs));
        if (!response.ok) {
          throw new Error(`${response.errorCode}: ${response.errorMessage}`);
+@@ -152,13 +154,7 @@
+       return JSON.parse(response.resultJson);
+     },
+     subscribe(event, callback) {
+-      if (event !== 'onEvent' && event !== 'onTabsPatch' &&
+-          event !== 'onDictation' &&
+-          event !== 'onSidebarEdge' &&
+-          event !== 'onToolbarEdge' &&
+-          event !== 'onOrganizationChanged') {
+-        return () => {};
+-      }
++      if (!hostEvents.has(event)) return () => {};
+       const callbacks = listeners.get(event) ?? new Set();
+       callbacks.add(callback);
+       listeners.set(event, callbacks);
 diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
 --- a/chrome/browser/ui/aux/content_blocking_controller.cc
 +++ b/chrome/browser/ui/aux/content_blocking_controller.cc
@@ -1949,7 +1982,7 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/br
  #include "base/notimplemented.h"
  #include "chrome/browser/app_mode/app_mode_utils.h"
  #include "chrome/browser/buildflags.h"
-@@ -66,6 +67,8 @@
+@@ -66,8 +67,11 @@
  #include "ui/base/interaction/element_tracker.h"
  #include "ui/compositor/compositor.h"
  #include "ui/content_accelerators/accelerator_util.h"
@@ -1957,8 +1990,11 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/br
 +#include "ui/events/keycodes/keyboard_codes.h"
  #include "ui/views/controls/webview/webview.h"
  #include "ui/views/interaction/element_tracker_views.h"
++#include "ui/views/focus/focus_manager.h"
  #include "ui/views/widget/widget.h"
-@@ -178,6 +181,9 @@
+ #include "ui/views/widget/widget_delegate.h"
+ 
+@@ -178,6 +182,9 @@
    auto web_view = std::make_unique<views::WebView>(browser_->GetProfile());
  
    auto* ui_web_contents = web_view->GetWebContents();
@@ -1968,7 +2004,29 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/br
    web_contents_delegate_->SetUIWebContents(ui_web_contents);
    ui_web_contents->SetDelegate(web_contents_delegate_.get());
    ui_web_contents->SetUserData(
-@@ -428,18 +434,28 @@
+@@ -230,9 +237,21 @@
+                               base::Unretained(this)));
+ 
+   LoadAccelerators();
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  // macOS's command dispatcher consults the Views focus manager before the
++  // first responder and native menus. WebContents interception alone cannot
++  // receive a chord already claimed by an AppKit menu item.
++  widget_->GetFocusManager()->RegisterAccelerator(
++      ui::Accelerator(ui::VKEY_S, ui::EF_COMMAND_DOWN),
++      ui::AcceleratorManager::kHighPriority, this);
++#endif
+ }
+ 
+ WebUIBrowserWindow::~WebUIBrowserWindow() {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  if (auto* focus = widget_->GetFocusManager())
++    focus->UnregisterAccelerators(this);
++#endif
+   browser_->GetFeatures().TearDownPreBrowserWindowDestruction();
+   web_view_ = nullptr;
+   // We want to destroy the extensions container before the `widget_` since
+@@ -428,18 +447,28 @@
    // to verify.
    return gfx::NativeWindow();
  #else
@@ -1998,10 +2056,24 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/br
  }
  
  void WebUIBrowserWindow::SetTopControlsShownRatio(
-@@ -1021,6 +1037,16 @@
+@@ -724,6 +753,12 @@
+ 
+ bool WebUIBrowserWindow::AcceleratorPressed(
+     const ui::Accelerator& accelerator) {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  if (accelerator == ui::Accelerator(ui::VKEY_S, ui::EF_COMMAND_DOWN)) {
++    WebUIBrowserUI* ui = GetWebUIBrowserUI();
++    return ui && ui->DispatchAuxShortcut("sidebar");
++  }
++#endif
+   int command_id;
+   // Though AcceleratorManager should not send unknown |accelerator| to us, it's
+   // still possible the command cannot be executed now.
+@@ -1020,6 +1055,16 @@
+ 
    ui::Accelerator accelerator =
        ui::GetAcceleratorFromNativeWebKeyboardEvent(event);
- 
++
 +#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
 +  if (event.GetType() == blink::WebInputEvent::Type::kRawKeyDown &&
 +      accelerator == ui::Accelerator(ui::VKEY_S, ui::EF_COMMAND_DOWN)) {
@@ -2011,10 +2083,9 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/br
 +    }
 +  }
 +#endif
-+
+ 
    // What we have to do here is as follows:
    // - If the |browser_| is for an app, do nothing.
-   // - On CrOS if |accelerator| is deprecated, we allow web contents to consume
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
