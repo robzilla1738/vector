@@ -155,7 +155,11 @@ export class PageOpener {
     const inFlight = this.pages.pendingExternal.get(pageId);
     if (inFlight?.done) return inFlight.done;
     const pending: { removed: boolean; done?: Promise<PageTarget> } = { removed: false };
-    pending.done = this.attachExternal(opts, pageId, pending);
+    // Native catalog notifications can attach a saved page before the
+    // explicit session-restore pass. Read its prior epoch here as well so
+    // either arrival order invalidates refs from the previous process.
+    const previous = opts.restored ?? this.pages.deps.repo.getPage(pageId);
+    pending.done = this.attachExternal({ ...opts, restored: previous?.backend === opts.backend ? previous : undefined }, pageId, pending);
     this.pages.pendingExternal.set(pageId, pending);
     try {
       return await pending.done;
@@ -176,7 +180,10 @@ export class PageOpener {
     restored?: PageTarget;
   }, pageId: string, pending: { removed: boolean }): Promise<PageTarget> {
     const driver = this.pages.driverFor(opts.backend);
-    const dp = driver ? await driver.attach(opts.marker, pageId, opts.cdpTargetId ? { cdpTargetId: opts.cdpTargetId } : undefined) : null;
+    const dp = driver ? await driver.attach(opts.marker, pageId, {
+      cdpTargetId: opts.cdpTargetId,
+      initialDocumentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : undefined,
+    }) : null;
     if (pending.removed || this.pages.closing) {
       await dp?.dispose().catch(() => {});
       throw new AuxError("not_found", "Page closed while it was being attached");

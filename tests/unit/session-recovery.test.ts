@@ -37,3 +37,26 @@ it("keeps failed session tabs through later browsing and retries the same durabl
     expect(nativeFocusCalls).toBe(focusCallsBeforeNotification);
   } finally {pages.shuttingDown();await Promise.resolve();db.close();}
 });
+
+it("keeps document epochs monotonic when a native catalog event wins the restore race", async () => {
+  const db = openDb(":memory:"), repo = new Repo(db);
+  const previous: PageTarget = { pageId: "saved-tab", windowId: "main", backend: "aux", targetId: "old-target",
+    url: "https://saved.test/", title: "Saved", documentEpoch: 7, lastRevision: 0,
+    viewStatus: "visible", controller: "none", controllerEpoch: 2, ownedByRuntime: false,
+    createdAt: 1, lastActiveAt: 2 };
+  repo.upsertPage(previous);
+  let initialEpoch: number | undefined;
+  const driver = { isConnected: () => true, attach: async (_targetId: string, pageId: string, hint?: { initialDocumentEpoch?: number }) => {
+    initialEpoch = hint?.initialDocumentEpoch;
+    return { identity: { pageId, targetId: "new-target", backend: "aux" }, url: () => previous.url,
+      title: async () => previous.title, isAttached: () => true, setEvents: () => {}, dispose: async () => {} } as unknown as DriverPage;
+  } } as unknown as BrowserDriver;
+  const native = { available: () => true } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
+  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  try {
+    const restored = await pages.registerExternal({ pageId: previous.pageId, marker: "new-target", url: previous.url, backend: "aux" });
+    expect(restored.documentEpoch).toBe(8);
+    expect(initialEpoch).toBe(8);
+    expect(repo.getPage(previous.pageId)?.documentEpoch).toBe(8);
+  } finally { pages.shuttingDown(); db.close(); }
+});
