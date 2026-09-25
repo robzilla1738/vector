@@ -56,6 +56,11 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
   }
 
   protected async identityOfPage(page: Page): Promise<string | null> {
+    if (this.trustedPages && this.endpoint.startsWith("ws+unix://")) {
+      const cdpId = await this.cdpTargetId(page);
+      if (!cdpId) return null;
+      return (await this.trustedPages()).find(p => p.cdpTargetId === cdpId)?.marker ?? null;
+    }
     return this.markerOf(page, AUX_MARKER_GLOBAL);
   }
 

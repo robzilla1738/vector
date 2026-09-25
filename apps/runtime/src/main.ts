@@ -27,6 +27,7 @@ import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
 import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
+import { NativeCdpBroker } from "./native-cdp-broker.js";
 import { PageService, type DriverSet } from "./services/pages.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
@@ -159,9 +160,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       events.emit("session.changed", { backend: d.backend, status: "connected" });
     };
   };
-  const hostCdp = env.AUX_INTERNAL_CDP === "1" && channel
+  const nativeCdp = env.AUX_HOST_SOCKET && channel
+    ? await NativeCdpBroker.start(channel, env.AUX_HOST_SOCKET)
+    : null;
+  const hostCdp = nativeCdp?.endpoint() ?? (env.AUX_INTERNAL_CDP === "1" && channel
     ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
-    : config.hostCdp;
+    : config.hostCdp);
   if (hostCdp) {
     const d = new ManagedChromiumDriver(hostCdp, {
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
@@ -523,6 +527,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await invoke.dispose().catch(() => {});
     await drivers.aux?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
+    await nativeCdp?.close();
     await calendar.close();
     hostSocket?.close();
     tracer.close();
