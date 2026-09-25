@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { errToast } from "../store";
 import { useShortcutLabels } from "../use-shortcut-label";
+import "./QuickAskSetting.css";
 
 type Status={enabled:boolean;registered:boolean;error:string};
 export function QuickAskSetting() {

@@ -3,6 +3,7 @@ import { Conversation } from "./Conversation";
 import { bridge } from "../bridge";
 import { useStore, errToast } from "../store";
 import { I } from "./icons";
+import "./QuickAsk.css";
 
 export function QuickAsk({onExpand}:{onExpand():void}) {
   const chatId=useStore(state=>state.conversationId);

@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
 import { call } from "../store";
 import { useMemoryDrafts } from "../memory-drafts";
+import "./SpaceMemoryEditor.css";
 
 export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
   memory: WorkspaceMemory; disabled?: boolean; onSaved(memory: WorkspaceMemory): void;
