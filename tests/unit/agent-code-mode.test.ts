@@ -10,8 +10,25 @@ describe("manifest-backed code mode", () => {
     expect(supportedAgentApi({ surface: "code", capabilities: new Set(["ax"]), apiSupportOverrides: { "tabs.ax.write": true } }).some(entry => entry.path === "tabs.ax.write")).toBe(true);
     expect(agentApiDocs({ surface: "code" }, "included")).toContain("tabs.dom.execute");
     expect(agentApiDocs({ surface: "code" }, "lookup", "visual")).toContain("tabs.cua.execute");
+    expect(agentApiDocs({ surface: "code" }, "lookup")).toContain("tabs.dialog");
+    expect(agentApiDocs({ surface: "code" }, "lookup", "debugging")).toContain("tabs.dev.logs");
     expect(new Set(Object.values(DEFAULT_AGENT_MODEL_ROUTES).map(route => route.modelId))).toEqual(new Set(["meta/muse-spark-1.3-contributor"]));
     expect(agentModelRoute("deep").reasoning).toBe("xhigh");
+  });
+  it("uses typed host contracts for dialog inspection and development logs", async () => {
+    const calls: string[] = [];
+    const mode = new AgentCodeMode(async method => {
+      calls.push(method);
+      if (method === "pages.dialog") return { action: "list", dialogs: [{ type: "confirm", message: "Continue?" }], pending: null };
+      if (method === "pages.console") return { lines: [{ level: "warning", message: "retry", atMs: 1 }] };
+      throw new Error("unexpected method");
+    });
+    try {
+      const result = await mode.run({ code: "[aux.tabs.dialog({pageId:'p1',action:'list'}),aux.tabs.dev.logs({pageId:'p1',limit:10})]" }, caller);
+      expect(result.value).toEqual([{ action: "list", dialogs: [{ type: "confirm", message: "Continue?" }], pending: null },
+        { lines: [{ level: "warning", message: "retry", atMs: 1 }] }]);
+      expect(calls).toEqual(["pages.dialog", "pages.console"]);
+    } finally { mode.disposeAll(); }
   });
   it("runs in QuickJS, preserves one session, and passes the caller through every host call", async () => {
     const calls: { method: string; params: unknown; client: unknown }[] = [];

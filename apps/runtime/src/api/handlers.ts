@@ -265,7 +265,7 @@ export function makeInvoker(s: Services) {
         requireScopedTask(scope,params.taskId);
       } else if ((method === "calendar.taskGrants.list" || method === "calendar.taskEvents.list") && typeof params.taskId === "string") {
         requireScopedTask(scope, params.taskId);
-      } else if (method === "agent.web.fetch" || method === "agent.web.search" || method === "agent.images.generate" || method === "agent.turn.open" || method === "agent.turn.end") {
+      } else if (method === "agent.web.fetch" || method === "agent.web.search" || method === "agent.images.generate" || method === "agent.turn.open" || method === "agent.turn.end" || method.startsWith("agent.turn.clipboard.")) {
         if (!params.taskId || !params.expectedRevision) throw new AuxError("invalid_params", "Scoped agent tools require a task ID and revision.");
         const task = requireScopedTask(scope, params.taskId);
         if (method !== "agent.turn.end" && task.revision !== params.expectedRevision)
@@ -329,6 +329,14 @@ export function makeInvoker(s: Services) {
           turnId: params.turnId, url: url.href, skipIfActive: params.skipIfActive });
       }
       case "agent.turn.end": return turnTabs.end(client.connectionId ?? (client.external ? "owner" : "internal"), params.taskId, params.turnId);
+      case "agent.turn.clipboard.write": return turnTabs.writeClipboard(client.connectionId ?? (client.external ? "owner" : "internal"), params.taskId, params.turnId, params.text);
+      case "agent.turn.clipboard.read": return { text: turnTabs.readClipboard(client.connectionId ?? (client.external ? "owner" : "internal"), params.taskId, params.turnId) };
+      case "agent.turn.clipboard.paste": {
+        const text = turnTabs.readClipboard(client.connectionId ?? (client.external ? "owner" : "internal"), params.taskId, params.turnId);
+        return invoke("pages.execute", { taskId: params.taskId, expectedRevision: params.expectedRevision,
+          program: { pageId: params.pageId, ...(params.documentEpoch === undefined ? {} : { documentEpoch: params.documentEpoch }),
+            steps: [{ id: "turn-clipboard-paste", op: "type", target: params.target, value: text }] } }, client);
+      }
       case "calendar.connections.list":
         if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
         if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");

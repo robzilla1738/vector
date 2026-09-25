@@ -29,6 +29,9 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 - aux.tabs.list(params): List accessible tabs and their stable Aux page IDs.
 - aux.tabs.turn.open(params): Open a background tab owned by one task turn; duplicate URLs reuse that turn's tab.
 - aux.tabs.turn.end(params): Close every temporary tab owned by the task turn.
+- aux.tabs.clipboard.write(params): Write text to this task turn's virtual clipboard without changing the person's system clipboard.
+- aux.tabs.clipboard.read(params): Read text previously written to this task turn's virtual clipboard.
+- aux.tabs.clipboard.paste(params): Insert turn clipboard text into a page target through the guarded typed page program.
 - aux.tabs.playwright.domSnapshot(params): Read a structured DOM snapshot and stable element refs.
 - aux.tabs.playwright.elementInfo(params): Identify the observed element at viewport coordinates.
 - aux.tabs.playwright.extract(params): Extract named fields from the current document.
@@ -38,6 +41,7 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 - aux.tabs.dom_cua.observe(params): Alias for Aux ref observation.
 - aux.tabs.dom_cua.execute(params): Alias for guarded Aux ref actions.
 - aux.tabs.content.text(params): Read page text and headings.
+- aux.tabs.dialog(params): List browser dialogs. Scoped/code-mode responses use a guarded typed dialog step.
 - aux.tabs.handoff(params): Yield an authorized tab to its human owner and stop automated input.
 - aux.history.search(params): Search the derived browser history index.
 
@@ -52,6 +56,9 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 | `aux.tabs.close` | `pages.close` | management | model | yes | yes | yes | — |
 | `aux.tabs.turn.open` | `agent.turn.open` | management | model | yes | yes | yes | yes |
 | `aux.tabs.turn.end` | `agent.turn.end` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.clipboard.write` | `agent.turn.clipboard.write` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.clipboard.read` | `agent.turn.clipboard.read` | management | lookup | yes | yes | yes | yes |
+| `aux.tabs.clipboard.paste` | `agent.turn.clipboard.paste` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.playwright.domSnapshot` | `pages.observe` | playwright | included | yes | yes | yes | yes |
 | `aux.tabs.playwright.elementInfo` | `pages.elementInfo` | playwright | model | yes | yes | yes | yes |
 | `aux.tabs.playwright.evaluate` | `pages.read` | playwright | lookup | yes | yes | yes | yes |
@@ -67,7 +74,7 @@ MCP keeps its default tool listing small: `aux_api_describe` returns the exact i
 | `aux.tabs.cua.capture` | `pages.capture` | cua | model | yes | yes | yes | yes |
 | `aux.tabs.cua.execute` | `pages.cuaExecute` | cua | lookup | yes | yes | yes | yes |
 | `aux.tabs.content.text` | `pages.observe` | content | model | yes | yes | yes | yes |
-| `aux.tabs.dialog` | `pages.dialog` | management | lookup | yes | yes | yes | — |
+| `aux.tabs.dialog` | `pages.dialog` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.handoff` | `pages.takeover` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.dev.logs` | `pages.console` | dev | lookup | yes | yes | yes | yes |
 | `aux.history.search` | `history.list` | management | lookup | yes | yes | yes | yes |

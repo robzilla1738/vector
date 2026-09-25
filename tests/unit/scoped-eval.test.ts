@@ -13,6 +13,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
     resources: [{ resourceId: "page", kind: "page", locator: "p1", label: "Tab" }] });
   const seen: { allowEval?: boolean; taskId?: string; taskRevision?: number }[] = [];
+  const programs: unknown[] = [];
   const page = { controller: "none" as "none" | "human" };
   const turnPages = new Map<string, { pageId: string; url: string; ownedByRuntime: boolean; controller: "none" | "human" }>();
   const pages = {
@@ -20,7 +21,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     open: async ({ url }: { url: string }) => { const target = { pageId: "turn-p1", url, ownedByRuntime: true, controller: "none" as const }; turnPages.set(target.pageId, target); return target; },
     close: async (pageId: string) => { turnPages.delete(pageId); return { ok: true }; },
     takeover: async (pageId: string) => { page.controller = "human"; return { pageId, controller: "human" }; },
-    execute: async (_program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; },
+    execute: async (program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); programs.push(program); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; },
   } as unknown as PageService;
   const pageOwnership = new PageOwnership();
   let operationCalls = 0;
@@ -28,7 +29,7 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
   const grants = ["effect:read"];
   const settings = { effectGrants: () => grants, searchEngine: () => "https://search.example.com/?q=%s" };
   const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership }, operations, settings } as unknown as Services);
-  return { invoke, seen, tasks, task, workspace, page, grants, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
+  return { invoke, seen, programs, tasks, task, workspace, page, grants, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
 }
 
 const program = { program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] } };
@@ -94,6 +95,20 @@ it("authorizes task programs on a temporary turn tab and revokes them at turn en
   expect(f.seen).toHaveLength(1);
   await f.invoke("agent.turn.end", { taskId: input.taskId, expectedRevision: input.expectedRevision, turnId: input.turnId }, client);
   await expect(f.invoke("pages.observe", { pageId: tab.pageId }, client)).rejects.toMatchObject({ code: "permission_denied" });
+});
+
+it("inserts virtual clipboard text through a guarded task program and erases it at turn end", async () => {
+  const f = fixture();
+  f.grants.push("effect:write");
+  const client = { external: true, connectionId: "c1", scope: f.scope };
+  const ctx = { taskId: f.task.taskId, expectedRevision: 1, turnId: "copy1" };
+  await expect(f.invoke("agent.turn.clipboard.read", ctx, client)).rejects.toMatchObject({ code: "not_found" });
+  await expect(f.invoke("agent.turn.clipboard.write", { ...ctx, text: "Hello Aux" }, client)).resolves.toEqual({ bytes: 9 });
+  await expect(f.invoke("agent.turn.clipboard.read", ctx, { ...client, connectionId: "c2" })).rejects.toMatchObject({ code: "not_found" });
+  await f.invoke("agent.turn.clipboard.paste", { ...ctx, pageId: "p1", target: "r1" }, client);
+  expect(f.programs.at(-1)).toMatchObject({ pageId: "p1", steps: [{ op: "type", target: "r1", value: "Hello Aux" }] });
+  await f.invoke("agent.turn.end", ctx, client);
+  await expect(f.invoke("agent.turn.clipboard.read", ctx, client)).rejects.toMatchObject({ code: "not_found" });
 });
 
 it("keeps direct operation calls off a tab owned by another agent or a person", async () => {

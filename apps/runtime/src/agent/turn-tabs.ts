@@ -3,7 +3,7 @@ import type { PageService } from "../services/pages.js";
 
 const TURN_TTL_MS = 60 * 60_000;
 const MAX_TABS_PER_TURN = 8;
-type Turn = { taskId: string; connectionId: string; expiresAt: number; pageIds: Set<string> };
+type Turn = { taskId: string; connectionId: string; expiresAt: number; pageIds: Set<string>; clipboardText?: string };
 
 /** Runtime-owned tabs belong to a task turn, not the user's persistent session. */
 export class AgentTurnTabs {
@@ -21,13 +21,29 @@ export class AgentTurnTabs {
   owns(connectionId: string, taskId: string, pageId: string): boolean {
     return [...this.turns.values()].some(turn => turn.connectionId === connectionId && turn.taskId === taskId && turn.pageIds.has(pageId));
   }
-  async open(input: { connectionId: string; taskId: string; turnId: string; url: string; skipIfActive?: boolean }): Promise<PageTarget> {
-    const key = this.key(input.connectionId, input.taskId, input.turnId);
+  private begin(connectionId: string, taskId: string, turnId: string): Turn {
+    const key = this.key(connectionId, taskId, turnId);
     let turn = this.turns.get(key);
     if (!turn) {
-      turn = { taskId: input.taskId, connectionId: input.connectionId, expiresAt: this.now() + TURN_TTL_MS, pageIds: new Set() };
+      turn = { taskId, connectionId, expiresAt: this.now() + TURN_TTL_MS, pageIds: new Set() };
       this.turns.set(key, turn);
     }
+    turn.expiresAt = this.now() + TURN_TTL_MS;
+    return turn;
+  }
+  writeClipboard(connectionId: string, taskId: string, turnId: string, text: string): { bytes: number } {
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > 256_000) throw new AuxError("invalid_params", "The turn clipboard is limited to 256 KB of text.");
+    this.begin(connectionId, taskId, turnId).clipboardText = text;
+    return { bytes };
+  }
+  readClipboard(connectionId: string, taskId: string, turnId: string): string {
+    const turn = this.turns.get(this.key(connectionId, taskId, turnId));
+    if (!turn || turn.clipboardText === undefined) throw new AuxError("not_found", "This task turn has no clipboard text.");
+    return turn.clipboardText;
+  }
+  async open(input: { connectionId: string; taskId: string; turnId: string; url: string; skipIfActive?: boolean }): Promise<PageTarget> {
+    const turn = this.begin(input.connectionId, input.taskId, input.turnId);
     if (input.skipIfActive) for (const pageId of turn.pageIds) {
       try { const page = this.pages.get(pageId); if (page.url === input.url) { turn.expiresAt = this.now() + TURN_TTL_MS; return page; } }
       catch { turn.pageIds.delete(pageId); }
@@ -42,6 +58,7 @@ export class AgentTurnTabs {
     const key = this.key(connectionId, taskId, turnId);
     const turn = this.turns.get(key);
     if (!turn) return { closed: [] };
+    delete turn.clipboardText;
     const closed: string[] = [];
     for (const pageId of turn.pageIds) {
       try {

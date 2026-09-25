@@ -10,4 +10,6 @@ Imagen is used only by the image-generation tool. It is never selected for agent
 
 `aux.tabs.turn.open` creates a background runtime-owned tab for an authorized task turn, with at most eight tabs per turn. Reopening the same URL can reuse its tab. `aux.tabs.turn.end`, one-hour expiry, and runtime shutdown close temporary tabs. A tab the person takes over is retained as a normal page. Turn tabs do not need a native tab group; the fork may add group display independently.
 
+`aux.tabs.clipboard.write/read` keep text inside the calling connection and task turn; they do not read or alter the person's system clipboard. `aux.tabs.clipboard.paste` inserts that text through a typed page program, which applies the same task revision, page ownership, journal, and effect grants as any other page write. Ending or expiring the turn discards the virtual text, leaving the person's clipboard as it was. Code mode can inspect typed dialogs and recent page console logs; dialog responses still use a guarded `dom.execute` dialog step.
+
 Qualification for this slice is fixture-only. Live search quality, provider billing, and native tab behavior require separate end-to-end gates.
