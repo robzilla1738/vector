@@ -303,6 +303,8 @@ html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, 
    Apply tint once, on the panel, rather than stacking it on its contents. */
 :root[data-sidebar-appearance="translucent"] {
   --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
+  --floating-glass-tint: color-mix(in srgb, var(--sb-bg) 78%, transparent);
+  --floating-glass-filter: blur(28px) saturate(1.15);
 }
 :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail),
 :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tabs-row {

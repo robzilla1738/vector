@@ -216,8 +216,9 @@
   position: absolute; z-index: var(--z-peek); inset: 48px auto var(--space-2) var(--space-2);
   width: var(--sb-w, 280px); min-width: 0; max-width: calc(100% - 16px);
   margin: 0; border: 0; border-radius: var(--r-peek); overflow: clip;
-  background: color-mix(in srgb, var(--sb-bg) 78%, transparent);
-  backdrop-filter: blur(28px) saturate(1.15); -webkit-backdrop-filter: blur(28px) saturate(1.15);
+  background: var(--floating-glass-tint, color-mix(in srgb, var(--sb-bg) 78%, transparent));
+  backdrop-filter: var(--floating-glass-filter, blur(28px) saturate(1.15));
+  -webkit-backdrop-filter: var(--floating-glass-filter, blur(28px) saturate(1.15));
   box-shadow: 0 8px 30px rgb(0 0 0 / .16), inset 0 1px rgb(255 255 255 / .06);
   opacity: 0; transform: translateX(-12px); visibility: hidden; pointer-events: none;
   transition: opacity var(--t-disclosure) var(--ease-out), transform var(--t-sidebar-peek) var(--ease-out), visibility var(--t-none) var(--t-sidebar-peek);
@@ -233,6 +234,13 @@
 .app.native-host.tabs-vertical:not(.layout-expanded) .sidebar.peek .sb-head.native-host { height: 34px; padding: 0 var(--space-2); }
 @media (prefers-reduced-motion: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { transition: none !important; } }
 @media (prefers-reduced-transparency: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { background: var(--sb-bg) !important; backdrop-filter: none !important; } }
+@media (max-width: 820px) {
+  :root[data-sidebar-appearance="translucent"] .rail.open .rail-inner {
+    background: var(--floating-glass-tint);
+    backdrop-filter: var(--floating-glass-filter);
+    -webkit-backdrop-filter: var(--floating-glass-filter);
+  }
+}
 .app.tabs-vertical:not(.layout-expanded) .main-col { margin-left: 0; border: 0; border-radius: 0; box-shadow: none; }
 /* Ask Aux creates an interior edge even when the navigation sidebar is hidden.
    Clip the complete column so the toolbar and page keep one continuous contour. */
