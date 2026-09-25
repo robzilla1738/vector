@@ -74,7 +74,7 @@ index 1df15c5636..d3f8e553d2 100644
 +    }
 +    const gfx::Rect bounds = window_->widget()->GetWindowBoundsInScreen();
 +    const gfx::Point cursor =
-+        display::Screen::GetScreen()->GetCursorScreenPoint();
++        display::Screen::Get()->GetCursorScreenPoint();
 +    const bool inside = window_->widget()->IsActive() &&
 +                        bounds.Contains(cursor);
 +    const bool sidebar = inside && cursor.x() - bounds.x() <= 8;

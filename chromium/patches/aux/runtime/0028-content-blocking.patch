@@ -104,7 +104,7 @@ index 4eaaba623f..72a71dd089 100644
      "//components/history/core/browser",
      "//components/keyed_service/core",
 +    "//services/network/public/cpp:cpp",
-+    "//third_party/blink/common",
++    "//third_party/blink/public/common:common",
      "//url",
    ]
    frameworks = [

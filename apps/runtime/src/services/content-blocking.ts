@@ -13,6 +13,11 @@ import {
   type FilterSourceKind,
 } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
+
+type BlockingNativeBridge = Pick<
+  NativeBridge,
+  "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit"
+>;
 import type { ContentBlockBegin } from "../native.js";
 
 interface BlockingSettings {
@@ -30,9 +35,12 @@ export class ContentBlockingService {
   private settings: BlockingSettings;
   private busy = false;
 
-  constructor(private readonly dataDir: string, private readonly native: NativeBridge,
-              private readonly profileId: string,
-              private readonly fetchText = fetchFilterText) {
+  constructor(
+    private readonly dataDir: string,
+    private readonly native: BlockingNativeBridge,
+    private readonly profileId: string,
+    private readonly fetchText = fetchFilterText,
+  ) {
     this.lists = new FilterLists(dataDir, "subresource_filter");
     this.settingsPath = join(this.lists.dir, "blocking.json");
     this.settings = this.readSettings();
@@ -45,7 +53,9 @@ export class ContentBlockingService {
         generation: Number.isSafeInteger(value.generation) && value.generation! >= 0 ? value.generation! : 0,
         enabled: value.enabled !== false,
         allowedSiteHosts: Array.isArray(value.allowedSiteHosts)
-          ? value.allowedSiteHosts.filter((host): host is string => typeof host === "string" && validSiteHost(host)).slice(0, 4096)
+          ? value.allowedSiteHosts
+              .filter((host): host is string => typeof host === "string" && validSiteHost(host))
+              .slice(0, 4096)
           : [],
       };
     } catch {
@@ -61,10 +71,22 @@ export class ContentBlockingService {
 
   status(): FilterListStatus {
     const state = this.lists.status(TRACKER_HOSTS.size);
-    return { ...state, cookieSelectors: 0, sources: state.sources.map(source =>
-      source.kind === "cookie_banner" ? { ...source, enabled: false,
-        meta: { ...(source.meta ?? { fetchedAt: 0, hosts: 0, sha256: "" }),
-          error: "Chromium has no native cosmetic filter backend." } } : source) };
+    return {
+      ...state,
+      cookieSelectors: 0,
+      sources: state.sources.map((source) =>
+        source.kind === "cookie_banner"
+          ? {
+              ...source,
+              enabled: false,
+              meta: {
+                ...(source.meta ?? { fetchedAt: 0, hosts: 0, sha256: "" }),
+                error: "Chromium has no native cosmetic filter backend.",
+              },
+            }
+          : source,
+      ),
+    };
   }
 
   privacy() {
@@ -81,20 +103,38 @@ export class ContentBlockingService {
     const generation = ++this.settings.generation;
     this.saveSettings();
     const snapshot: ContentBlockSnapshot = {
-      generation, hostsDigest, hosts,
+      generation,
+      hostsDigest,
+      hosts,
       allowedSiteHosts: this.settings.allowedSiteHosts,
       enabled: this.settings.enabled,
     };
-    await this.native.contentBlockBegin({ profileId: this.profileId, generation, hostsDigest,
-      hostCount: hosts.length, allowedSiteHosts: snapshot.allowedSiteHosts, enabled: snapshot.enabled,
-      ...(siteGuard ? { siteGuard } : {}) });
+    await this.native.contentBlockBegin({
+      profileId: this.profileId,
+      generation,
+      hostsDigest,
+      hostCount: hosts.length,
+      allowedSiteHosts: snapshot.allowedSiteHosts,
+      enabled: snapshot.enabled,
+      ...(siteGuard ? { siteGuard } : {}),
+    });
     for (let offset = 0; offset < hosts.length; offset += 1024)
-      await this.native.contentBlockAppend({ profileId: this.profileId, generation,
-        offset, hosts: hosts.slice(offset, offset + 1024) });
-    const receipt = await this.native.contentBlockCommit({ profileId: this.profileId, generation, hostsDigest });
+      await this.native.contentBlockAppend({
+        profileId: this.profileId,
+        generation,
+        offset,
+        hosts: hosts.slice(offset, offset + 1024),
+      });
+    const receipt = await this.native.contentBlockCommit({
+      profileId: this.profileId,
+      generation,
+      hostsDigest,
+    });
     assertContentBlockReceipt(snapshot, receipt);
-    if (receipt.backend !== "subresource_filter") throw new Error("Chromium reported the wrong filter backend.");
-    if (receipt.installedRules !== hosts.length) throw new Error("Chromium installed a partial filter snapshot.");
+    if (receipt.backend !== "subresource_filter")
+      throw new Error("Chromium reported the wrong filter backend.");
+    if (receipt.installedRules !== hosts.length)
+      throw new Error("Chromium installed a partial filter snapshot.");
     return receipt;
   }
 
@@ -103,17 +143,28 @@ export class ContentBlockingService {
   }
 
   async maintain() {
-    const sources = this.lists.status(TRACKER_HOSTS.size).sources.filter(source => source.enabled && source.kind === "hosts");
-    if (!sources.length || this.busy || sources.every(source =>
-      source.meta?.fetchedAt && Date.now() - source.meta.fetchedAt < 24 * 60 * 60 * 1000)) return;
+    const sources = this.lists
+      .status(TRACKER_HOSTS.size)
+      .sources.filter((source) => source.enabled && source.kind === "hosts");
+    if (
+      !sources.length ||
+      this.busy ||
+      sources.every(
+        (source) => source.meta?.fetchedAt && Date.now() - source.meta.fetchedAt < 24 * 60 * 60 * 1000,
+      )
+    )
+      return;
     await this.update();
   }
 
   private async mutate<T>(work: () => Promise<T>): Promise<T> {
     if (this.busy) throw new Error("A filter list operation is already running.");
     this.busy = true;
-    try { return await work(); }
-    finally { this.busy = false; }
+    try {
+      return await work();
+    } finally {
+      this.busy = false;
+    }
   }
 
   async update(): Promise<FilterListStatus> {
@@ -126,7 +177,8 @@ export class ContentBlockingService {
 
   async add(name: string, url: string, kind: FilterSourceKind): Promise<FilterSource[]> {
     return this.mutate(async () => {
-      if (kind !== "hosts") throw new Error("Cookie-banner selectors need the native cosmetic filter backend.");
+      if (kind !== "hosts")
+        throw new Error("Cookie-banner selectors need the native cosmetic filter backend.");
       this.lists.addSource(name, filterSourceUrl(url), kind);
       await this.lists.update(this.fetchText, ["hosts"]);
       await this.installSnapshot();
@@ -144,7 +196,7 @@ export class ContentBlockingService {
 
   async setSourceEnabled(id: string, enabled: boolean): Promise<FilterSource[]> {
     return this.mutate(async () => {
-      const source = this.lists.sources().find(item => item.id === id);
+      const source = this.lists.sources().find((item) => item.id === id);
       if (enabled && source?.kind === "cookie_banner")
         throw new Error("Cookie-banner selectors need the native cosmetic filter backend.");
       this.lists.setEnabled(id, enabled);
@@ -162,8 +214,7 @@ export class ContentBlockingService {
     });
   }
 
-  async setSiteAllowed(hostname: string, allowed: boolean,
-                       siteGuard?: ContentBlockBegin["siteGuard"]) {
+  async setSiteAllowed(hostname: string, allowed: boolean, siteGuard?: ContentBlockBegin["siteGuard"]) {
     return this.mutate(async () => {
       const host = hostname.toLowerCase();
       if (!validSiteHost(host)) throw new Error("Choose an HTTP or HTTPS site.");
@@ -193,8 +244,10 @@ export class ContentBlockingService {
   }
 
   handle(method: string, params: unknown): unknown {
-    const object = params && typeof params === "object" && !Array.isArray(params)
-      ? params as Record<string, unknown> : {};
+    const object =
+      params && typeof params === "object" && !Array.isArray(params)
+        ? (params as Record<string, unknown>)
+        : {};
     const string = (name: string) => {
       const value = object[name];
       if (typeof value !== "string") throw new Error(`Invalid ${name}.`);
@@ -206,39 +259,66 @@ export class ContentBlockingService {
       return value;
     };
     switch (method) {
-      case "blocking.status": return this.status();
-      case "blocking.privacy": return this.privacy();
-      case "blocking.update": return this.update();
-      case "blocking.add": return this.add(string("name"), string("url"), string("kind") as FilterSourceKind);
-      case "blocking.remove": return this.remove(string("id"));
-      case "blocking.setSourceEnabled": return this.setSourceEnabled(string("id"), boolean("enabled"));
-      case "blocking.setEnabled": return this.setEnabled(boolean("enabled"));
+      case "blocking.status":
+        return this.status();
+      case "blocking.privacy":
+        return this.privacy();
+      case "blocking.update":
+        return this.update();
+      case "blocking.add":
+        return this.add(string("name"), string("url"), string("kind") as FilterSourceKind);
+      case "blocking.remove":
+        return this.remove(string("id"));
+      case "blocking.setSourceEnabled":
+        return this.setSourceEnabled(string("id"), boolean("enabled"));
+      case "blocking.setEnabled":
+        return this.setEnabled(boolean("enabled"));
       case "blocking.setSiteAllowed": {
         const guard = object.siteGuard;
-        if (!guard || typeof guard !== "object" || Array.isArray(guard)) throw new Error("Missing page review.");
+        if (!guard || typeof guard !== "object" || Array.isArray(guard))
+          throw new Error("Missing page review.");
         const page = guard as Record<string, unknown>;
-        if (typeof page.pageId !== "string" || typeof page.expectedUrl !== "string" ||
-            !Number.isSafeInteger(page.navigationId)) throw new Error("Invalid page review.");
-        return this.setSiteAllowed(string("hostname"), boolean("allowed"),
-          { pageId: page.pageId, expectedUrl: page.expectedUrl, navigationId: page.navigationId as number });
+        if (
+          typeof page.pageId !== "string" ||
+          typeof page.expectedUrl !== "string" ||
+          !Number.isSafeInteger(page.navigationId)
+        )
+          throw new Error("Invalid page review.");
+        return this.setSiteAllowed(string("hostname"), boolean("allowed"), {
+          pageId: page.pageId,
+          expectedUrl: page.expectedUrl,
+          navigationId: page.navigationId as number,
+        });
       }
-      case "blocking.removeAllowedHost": return this.removeAllowedHost(string("hostname"));
-      default: throw new Error("Unsupported content blocking operation.");
+      case "blocking.removeAllowedHost":
+        return this.removeAllowedHost(string("hostname"));
+      default:
+        throw new Error("Unsupported content blocking operation.");
     }
   }
 }
 
 function validSiteHost(host: string) {
   if (!host || host.length > 253 || /[/?#@\\]/.test(host)) return false;
-  try { return new URL(`https://${host}/`).hostname === host; }
-  catch { return false; }
+  try {
+    return new URL(`https://${host}/`).hostname === host;
+  } catch {
+    return false;
+  }
 }
 
 async function fetchFilterText(url: string, etag?: string) {
   const expected = filterSourceUrl(url);
-  const response = await fetch(expected, { redirect: "manual", signal: AbortSignal.timeout(12_000),
-    headers: etag ? { "If-None-Match": etag.slice(0, 512) } : {} });
-  if (response.url !== expected) throw new Error("The filter list redirected. Review its final HTTPS URL separately.");
-  return { status: response.status, etag: response.headers.get("etag")?.slice(0, 512),
-    text: () => readBoundedFilterText(response) };
+  const response = await fetch(expected, {
+    redirect: "manual",
+    signal: AbortSignal.timeout(12_000),
+    headers: etag ? { "If-None-Match": etag.slice(0, 512) } : {},
+  });
+  if (response.url !== expected)
+    throw new Error("The filter list redirected. Review its final HTTPS URL separately.");
+  return {
+    status: response.status,
+    etag: response.headers.get("etag")?.slice(0, 512),
+    text: () => readBoundedFilterText(response),
+  };
 }

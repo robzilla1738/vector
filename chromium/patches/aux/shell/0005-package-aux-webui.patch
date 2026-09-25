@@ -339,7 +339,7 @@ index 5c29c02888..b9a775791e 100644
 +  WebUIBrowserWindow* window =
 +      WebUIBrowserWindow::FromWebShellWebContents(contents);
 +  return frame && frame->GetLastCommittedURL().SchemeIs(content::kChromeUIScheme) &&
-+         frame->GetLastCommittedURL().host_piece() == chrome::kChromeUIAuxHost &&
++         frame->GetLastCommittedURL().host() == chrome::kChromeUIAuxHost &&
 +         window && browser_ && window->browser() == browser_ &&
 +         Profile::FromWebUI(web_ui()) == browser_->GetProfile();
 +}
@@ -474,3 +474,22 @@ index 23b1c1220e..67e15d9147 100644
  inline constexpr char kChromeUIWebUIJsErrorHost[] = "webuijserror";
  inline constexpr char kChromeUIWebUIJsErrorURL[] = "chrome://webuijserror/";
  #endif  // BUILDFLAG(IS_ANDROID)
+diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+index d55db4f82a..8f0b86ed40 100644
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -244,6 +244,14 @@
+     "META": {"sizes": {"includes": [1000],}},
+     "includes": [2860],
+   },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/resources.grd": {
++    "META": {"sizes": {"includes": [150]}},
++    "includes": [2870],
++  },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/resources.grd": {
++    "META": {"sizes": {"includes": [20]}},
++    "includes": [2875],
++  },
+   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/bluetooth_internals/resources.grd": {
+     "META": {"sizes": {"includes": [50],}},
+     "includes": [2880],

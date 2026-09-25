@@ -16,7 +16,7 @@ diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runti
 index e8601431a5..a551b4052e 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
-@@ -11,8 +11,10 @@
+@@ -11,7 +11,9 @@
  #include <sys/un.h>
  #include <unistd.h>
  
@@ -24,7 +24,6 @@ index e8601431a5..a551b4052e 100644
  #include <array>
  #include <cerrno>
 +#include <cmath>
- #include <cstring>
  #include <memory>
  #include <optional>
 @@ -38,9 +40,11 @@

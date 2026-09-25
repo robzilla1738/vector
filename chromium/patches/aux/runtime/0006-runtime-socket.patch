@@ -805,10 +805,10 @@ index b9a775791e..b620f86165 100644
    WebUIBrowserWindow* window =
        WebUIBrowserWindow::FromWebShellWebContents(contents);
 -  return frame && frame->GetLastCommittedURL().SchemeIs(content::kChromeUIScheme) &&
--         frame->GetLastCommittedURL().host_piece() == chrome::kChromeUIAuxHost &&
+-         frame->GetLastCommittedURL().host() == chrome::kChromeUIAuxHost &&
 +  return frame &&
 +         frame->GetLastCommittedURL().SchemeIs(content::kChromeUIScheme) &&
-+         frame->GetLastCommittedURL().host_piece() ==
++         frame->GetLastCommittedURL().host() ==
 +             chrome::kChromeUIAuxHost &&
           window && browser_ && window->browser() == browser_ &&
           Profile::FromWebUI(web_ui()) == browser_->GetProfile();

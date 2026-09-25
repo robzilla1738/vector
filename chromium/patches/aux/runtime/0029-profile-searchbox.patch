@@ -141,7 +141,7 @@ index 72a71dd089..b6906394e2 100644
      "//components/keyed_service/core",
 +    "//components/search_engines",
      "//services/network/public/cpp:cpp",
-     "//third_party/blink/common",
+     "//third_party/blink/public/common:common",
      "//url",
 @@ -107,3 +111,13 @@ test("credential_fill_unittests") {
      "//testing/gtest",

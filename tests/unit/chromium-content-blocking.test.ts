@@ -5,7 +5,12 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContentBlockingService } from "../../apps/runtime/src/services/content-blocking.js";
 import { AuxError } from "@aux/contracts";
-import type { ContentBlockAppend, ContentBlockBegin, ContentBlockCommit, NativeBridge } from "../../apps/runtime/src/native.js";
+import type {
+  ContentBlockAppend,
+  ContentBlockBegin,
+  ContentBlockCommit,
+  NativeBridge,
+} from "../../apps/runtime/src/native.js";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -18,7 +23,13 @@ function fixture() {
   let begun: ContentBlockBegin | undefined;
   let hosts: string[] = [];
   const guards: (ContentBlockBegin["siteGuard"] | undefined)[] = [];
-  const receipts: { generation: number; digest: string; hosts: string[]; enabled: boolean; allowed: string[] }[] = [];
+  const receipts: {
+    generation: number;
+    digest: string;
+    hosts: string[];
+    enabled: boolean;
+    allowed: string[];
+  }[] = [];
   const native = {
     async contentBlockBegin(input: ContentBlockBegin) {
       expect(input.profileId).toBe("Profile 1");
@@ -40,15 +51,26 @@ function fixture() {
       expect(hosts).toEqual([...hosts].sort());
       expect(new Set(hosts).size).toBe(hosts.length);
       expect(hosts.length).toBe(begun?.hostCount);
-      receipts.push({ generation: input.generation, digest: input.hostsDigest, hosts: [...hosts],
-        enabled: begun!.enabled, allowed: [...begun!.allowedSiteHosts] });
-      return { backend: "subresource_filter" as const, generation: input.generation,
-        hostsDigest: input.hostsDigest, installedRules: hosts.length };
+      receipts.push({
+        generation: input.generation,
+        digest: input.hostsDigest,
+        hosts: [...hosts],
+        enabled: begun!.enabled,
+        allowed: [...begun!.allowedSiteHosts],
+      });
+      return {
+        backend: "subresource_filter" as const,
+        generation: input.generation,
+        hostsDigest: input.hostsDigest,
+        installedRules: hosts.length,
+      };
     },
   } satisfies Pick<NativeBridge, "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit">;
-  const service = new ContentBlockingService(directory, native as NativeBridge, "Profile 1",
-    async () => ({ status: 200, etag: "fixture-v1", text: async () =>
-      "0.0.0.0 ads.fixture.test\ntracker.fixture.test\n||unsupported.test^" }));
+  const service = new ContentBlockingService(directory, native, "Profile 1", async () => ({
+    status: 200,
+    etag: "fixture-v1",
+    text: async () => "0.0.0.0 ads.fixture.test\ntracker.fixture.test\n||unsupported.test^",
+  }));
   return { directory, native, service, receipts, guards };
 }
 
@@ -78,17 +100,19 @@ describe("Chromium content blocking snapshots", () => {
     await service.boot();
     const [source] = await service.add("Fixture hosts", "https://lists.fixture.test/hosts.txt", "hosts");
     await service.setSiteAllowed("news.fixture.test", true);
-    const restart = new ContentBlockingService(directory, native as NativeBridge, "Profile 1",
-      async () => { throw new Error("offline"); });
+    const restart = new ContentBlockingService(directory, native, "Profile 1", async () => {
+      throw new Error("offline");
+    });
     await restart.boot();
     expect(receipts.at(-1)!.hosts).toContain("ads.fixture.test");
     expect(restart.privacy().allowedHosts).toEqual(["news.fixture.test"]);
     writeFileSync(join(directory, "filters", `${source!.id}.txt`), "0.0.0.0 injected.fixture.test\n");
-    const tampered = new ContentBlockingService(directory, native as NativeBridge, "Profile 1");
+    const tampered = new ContentBlockingService(directory, native, "Profile 1");
     await tampered.boot();
     expect(receipts.at(-1)!.hosts).not.toContain("injected.fixture.test");
-    expect(JSON.parse(readFileSync(join(directory, "filters", "blocking.json"), "utf8")).generation)
-      .toBe(receipts.at(-1)!.generation);
+    expect(JSON.parse(readFileSync(join(directory, "filters", "blocking.json"), "utf8")).generation).toBe(
+      receipts.at(-1)!.generation,
+    );
   });
 
   it("rejects a mismatched native receipt and never claims cosmetic rules were installed", async () => {
@@ -96,22 +120,31 @@ describe("Chromium content blocking snapshots", () => {
     const native = {
       contentBlockBegin: async () => ({ accepted: true as const }),
       contentBlockAppend: async () => ({ accepted: true as const }),
-      contentBlockCommit: async () => ({ backend: "subresource_filter" as const,
-        generation: 9, hostsDigest: "0".repeat(64), installedRules: 0 }),
-    } as NativeBridge;
+      contentBlockCommit: async () => ({
+        backend: "subresource_filter" as const,
+        generation: 9,
+        hostsDigest: "0".repeat(64),
+        installedRules: 0,
+      }),
+    };
     const service = new ContentBlockingService(directory, native, "Profile 1");
     await expect(service.boot()).rejects.toThrow(/attest/);
-    await expect(service.add("Cosmetic", "https://lists.fixture.test/cosmetic.txt", "cookie_banner"))
-      .rejects.toThrow(/native cosmetic/);
+    await expect(
+      service.add("Cosmetic", "https://lists.fixture.test/cosmetic.txt", "cookie_banner"),
+    ).rejects.toThrow(/native cosmetic/);
   });
 
   it("requires the selected page and navigation epoch for site-control writes", async () => {
     const { service, receipts, guards } = fixture();
     await service.boot();
-    expect(() => service.handle("blocking.setSiteAllowed", { hostname: "shop.test", allowed: true }))
-      .toThrow(/Missing page review/);
-    await service.handle("blocking.setSiteAllowed", { hostname: "shop.test", allowed: true,
-      siteGuard: { pageId: "page-1", expectedUrl: "https://shop.test/", navigationId: 7 } });
+    expect(() => service.handle("blocking.setSiteAllowed", { hostname: "shop.test", allowed: true })).toThrow(
+      /Missing page review/,
+    );
+    await service.handle("blocking.setSiteAllowed", {
+      hostname: "shop.test",
+      allowed: true,
+      siteGuard: { pageId: "page-1", expectedUrl: "https://shop.test/", navigationId: 7 },
+    });
     expect(receipts.at(-1)!.allowed).toContain("shop.test");
     expect(guards.at(-1)).toEqual({ pageId: "page-1", expectedUrl: "https://shop.test/", navigationId: 7 });
   });
@@ -125,14 +158,18 @@ describe("Chromium content blocking snapshots", () => {
         if (input.siteGuard) throw new AuxError("conflict", "Content blocking page changed");
         return native.contentBlockBegin(input);
       },
-    } as NativeBridge;
+    };
     const guarded = new ContentBlockingService(directory, rejectStale, "Profile 1");
     await guarded.boot();
-    await expect(guarded.handle("blocking.setSiteAllowed", { hostname: "stale.test", allowed: true,
-      siteGuard: { pageId: "page-1", expectedUrl: "https://stale.test/", navigationId: 2 } }))
-      .rejects.toMatchObject({ code: "conflict" });
+    await expect(
+      guarded.handle("blocking.setSiteAllowed", {
+        hostname: "stale.test",
+        allowed: true,
+        siteGuard: { pageId: "page-1", expectedUrl: "https://stale.test/", navigationId: 2 },
+      }),
+    ).rejects.toMatchObject({ code: "conflict" });
     expect(guarded.privacy().allowedHosts).toEqual([]);
-    const restart = new ContentBlockingService(directory, native as NativeBridge, "Profile 1");
+    const restart = new ContentBlockingService(directory, native, "Profile 1");
     expect(restart.privacy().allowedHosts).toEqual([]);
   });
 });

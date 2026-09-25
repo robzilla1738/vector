@@ -74,7 +74,7 @@ index b6906394e2..7eee9c4d4f 100644
 +    ":runtime",
 +    "//base",
 +    "//chrome/test:test_support",
-+    "//content/public/test:test_support",
++    "//content/test:test_support",
 +    "//testing/gtest",
 +  ]
 +}
@@ -137,7 +137,7 @@ index 0000000000..1df3184c9a
 +      url.path().size() != 49 || url.path()[0] != '/') {
 +    return std::nullopt;
 +  }
-+  const std::string token = url.path().substr(1);
++  const std::string token(url.path().substr(1));
 +  for (char character : token) {
 +    if ((character < '0' || character > '9') &&
 +        (character < 'a' || character > 'f')) {
