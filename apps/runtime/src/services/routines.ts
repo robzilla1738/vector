@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 import type { z } from "zod";
 import {
   routineOccurrenceIdentity,
-  scheduleOccurrenceIdentity,
   AuxError,
   type Routine,
   type RoutineSuggestion,

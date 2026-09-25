@@ -26,7 +26,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
-import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool, ZapRule, PluginSkillGrant } from "@aux/contracts";
+import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, ZapRule, PluginSkillGrant } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
 import type { BrowserExtension, AuxBridge } from "../bridge";
