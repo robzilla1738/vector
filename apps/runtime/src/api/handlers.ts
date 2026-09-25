@@ -783,9 +783,11 @@ export function makeInvoker(s: Services) {
       case "routines.due":
       case "routines.alerts":
       case "routines.export":
+      case "routines.exportSkill":
+      case "routines.importSkill":
       case "routines.import":
       case "routines.compare": {
-        const routineRead = method === "routines.list" || method === "routines.suggest" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare" || method === "routines.export";
+        const routineRead = method === "routines.list" || method === "routines.suggest" || method === "routines.get" || method === "routines.runs" || method === "routines.alerts" || method === "routines.compare" || method === "routines.export" || method === "routines.exportSkill";
         if (client.external && (client.scope || !routineRead)) throw new AuxError("permission_denied", "Routines are managed in Aux.");
         if (method === "routines.list") return routines.list(params);
         if (method === "routines.suggest") return routines.suggest(params);
@@ -802,6 +804,8 @@ export function makeInvoker(s: Services) {
         if (method === "routines.alerts") return routines.alerts(params.limit);
         if (method === "routines.compare") return routines.compare(params.leftRunId, params.rightRunId);
         if (method === "routines.export") return routines.exportRoutines(params.routineIds);
+        if (method === "routines.exportSkill") return routines.exportSkillDocument(params.routineId);
+        if (method === "routines.importSkill") return routines.importSkillDocument(params.path, params.workspaceId);
         if (method === "routines.import") {
           let shares = params.routines;
           if (!shares) {

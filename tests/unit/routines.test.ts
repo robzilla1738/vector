@@ -1,4 +1,7 @@
 import { afterEach, expect, it } from "vitest";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { EventBus, openDb, Repo, RoutineService, TaskEvidenceService, TaskService, nextScheduledTime } from "@aux/runtime";
 import { AuxError, routineOccurrenceIdentity, type RoutineShare } from "@aux/contracts";
 
@@ -49,6 +52,32 @@ it("suggests enabled Skills for bounded keyword and exact-origin URL context wit
   expect(started).toBe(0);
   f.routines.pause(skill.routineId, skill.revision, true);
   expect(f.routines.suggest({ text: "vendor pricing", pageUrl: "https://example.com/pricing" })).toEqual([]);
+});
+
+it("round-trips a SKILL.md as an inert portable definition", async () => {
+  const f = fixture();
+  const saved = f.routines.fromResult({ taskId: f.task.taskId, title: "Vendor check", parameters: [{ name: "topic", label: "Topic" }] });
+  f.routines.update({ routineId: saved.routineId, expectedRevision: saved.revision,
+    description: "Compare vendors", icon: "chart", autoInject: { keywords: ["vendor pricing"], urls: ["https://example.com/pricing"] } });
+  const exported = f.routines.exportSkillDocument(saved.routineId);
+  expect(exported.filename).toBe("SKILL.md");
+  expect(exported.content).toContain('autoInject: {"keywords":["vendor pricing"]');
+  const dir = mkdtempSync(join(tmpdir(), "aux-skill-md-"));
+  cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "SKILL.md");
+  writeFileSync(path, exported.content);
+  const other = f.tasks.createWorkspace("Other");
+  const imported = await f.routines.importSkillDocument(path, other.workspaceId);
+  const copy = f.routines.get(imported.routineIds[0]!).routine;
+  expect(copy).toMatchObject({ title: "Vendor check", description: "Compare vendors", icon: "chart",
+    autoInject: { keywords: ["vendor pricing"], urls: ["https://example.com/pricing"] },
+    paused: true, trigger: { kind: "manual" } });
+  expect(copy.sourceTaskId).toBeUndefined();
+  expect(copy.parameters).toEqual(saved.parameters);
+  await expect(f.routines.importSkillDocument(path, other.workspaceId)).resolves.toMatchObject({ imported: 0, skipped: 1 });
+  const link = join(dir, "linked.md");
+  symlinkSync(path, link);
+  await expect(f.routines.importSkillDocument(link, other.workspaceId)).rejects.toThrow(/regular SKILL.md/);
 });
 
 it("builds parameterized routines from a saved task and versions edits", () => {

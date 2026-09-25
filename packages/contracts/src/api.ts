@@ -729,6 +729,8 @@ export const MethodSchemas = {
   "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
   "routines.compare": z.object({leftRunId:id,rightRunId:id}).strict(),
   "routines.export": z.object({ routineIds: z.array(id).min(1).max(500).optional() }).strict(),
+  "routines.exportSkill": z.object({ routineId: id }).strict(),
+  "routines.importSkill": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
   "routines.import": z.object({
     routines: z.array(RoutineShareSchema).max(500).optional(),
     path: z.string().trim().min(1).max(4096).optional(),
@@ -1122,6 +1124,8 @@ export const ResultSchemas = {
   "routines.alerts": z.array(RoutineAlertSchema),
   "routines.compare": RoutineCompareSchema,
   "routines.export": RoutineShareEnvelopeSchema,
+  "routines.exportSkill": z.object({ filename: z.literal("SKILL.md"), content: z.string().max(64_000) }).strict(),
+  "routines.importSkill": z.object({ imported: z.number().int().nonnegative(), skipped: z.number().int().nonnegative(), routineIds: z.array(id) }).strict(),
   "routines.import": z.object({
     ok: z.boolean(),
     imported: z.number().int().nonnegative(),

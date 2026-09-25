@@ -19,6 +19,7 @@ import {
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { TaskEvidenceService } from "./task-evidence.js";
+import { readSkillDocument, serializeSkillDocument } from "./skill-document.js";
 
 function parseRoutine(row: { json: string; revision: number; paused: number; archived_at: number | null; updated_at: number; routine_id: string; workspace_id: string }): Routine {
   const body = JSON.parse(row.json) as Omit<Routine, "routineId" | "revision" | "updatedAt" | "paused" | "archivedAt">;
@@ -275,6 +276,15 @@ export class RoutineService {
         return { ...share, ...(workspaceName ? { workspaceName } : {}) };
       }),
     };
+  }
+
+  exportSkillDocument(routineId: string): { filename: "SKILL.md"; content: string } {
+    const share = this.exportRoutines([routineId]).routines[0]!;
+    return { filename: "SKILL.md", content: serializeSkillDocument(share) };
+  }
+
+  async importSkillDocument(path: string, workspaceId: string): Promise<{ imported: number; skipped: number; routineIds: string[] }> {
+    return this.importRoutines([await readSkillDocument(path)], workspaceId);
   }
 
   /**
