@@ -1,0 +1,384 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index 9f8f1f255d..ffdfc3bb61 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -25,7 +25,8 @@ const remote = new ShellHostRemote();
+ const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
+ const client = new ShellHostClientReceiver({
+   onEvent(eventName: string, payloadJson: string) {
+-    if (eventName !== 'onTabsPatch' && eventName !== 'onSidebarEdge' &&
++    if (eventName !== 'onEvent' && eventName !== 'onTabsPatch' &&
++        eventName !== 'onSidebarEdge' &&
+         eventName !== 'onToolbarEdge' &&
+         eventName !== 'onOrganizationChanged') {
+       return;
+@@ -64,7 +65,8 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+       return JSON.parse(response.resultJson);
+     },
+     subscribe(event, callback) {
+-      if (event !== 'onTabsPatch' && event !== 'onSidebarEdge' &&
++      if (event !== 'onEvent' && event !== 'onTabsPatch' &&
++          event !== 'onSidebarEdge' &&
+           event !== 'onToolbarEdge' &&
+           event !== 'onOrganizationChanged') {
+         return () => {};
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index a551b4052e..dd61c24938 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -120,7 +120,52 @@ void AuxRuntimeHost::CallApi(std::string method,
+                              ResponseCallback callback) {
+   worker_.AsyncCall(&Worker::CallApi)
+       .WithArgs(std::move(method), std::move(params_json))
+-      .Then(std::move(callback));
++      .Then(base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> owner, ResponseCallback callback,
++             Response response) {
++            if (owner) {
++              owner->SchedulePump();
++            }
++            std::move(callback).Run(std::move(response));
++          },
++          weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++
++base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
++    base::RepeatingCallback<void(const std::string&, const std::string&)>
++        callback) {
++  return observers_.Add(std::move(callback));
++}
++
++void AuxRuntimeHost::OnRuntimeNote(std::string type,
++                                  std::string payload_json) {
++  if (type == "event") {
++    observers_.Notify("onEvent", payload_json);
++  }
++}
++
++void AuxRuntimeHost::SchedulePump() {
++  if (pump_scheduled_) {
++    return;
++  }
++  pump_scheduled_ = true;
++  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce(&AuxRuntimeHost::PumpOnce, weak_factory_.GetWeakPtr()),
++      base::Milliseconds(100));
++}
++
++void AuxRuntimeHost::PumpOnce() {
++  pump_scheduled_ = false;
++  worker_.AsyncCall(&Worker::Pump)
++      .Then(base::BindOnce(&AuxRuntimeHost::OnPumpDone,
++                           weak_factory_.GetWeakPtr()));
++}
++
++void AuxRuntimeHost::OnPumpDone(bool connected) {
++  if (connected) {
++    SchedulePump();
++  }
+ }
+ 
+ base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+@@ -549,6 +594,135 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+   return std::move(state->reply);
+ }
+ 
++bool AuxRuntimeHost::Worker::HandleNativeRequest(
++    const base::Value::Dict& data) {
++  const std::optional<int> nested_id = data.FindInt("id");
++  const std::string* native_method = data.FindString("method");
++  const base::Value::Dict* native_params = data.FindDict("params");
++  base::Value::Dict reply;
++  reply.Set("kind", "res");
++  reply.Set("id", nested_id.value_or(0));
++  std::string native_error;
++  if (native_method && native_params &&
++      *native_method == "native.storeSecret") {
++    const std::string* name = native_params->FindString("name");
++    const std::string* value = native_params->FindString("value");
++    if (name && value &&
++        aux::StoreSecret(profile_path_, *name, *value, &native_error)) {
++      base::Value::Dict result;
++      result.Set("ok", true);
++      reply.Set("result", std::move(result));
++    }
++  } else if (native_method && native_params &&
++             *native_method == "native.readSecret") {
++    const std::string* name = native_params->FindString("name");
++    std::optional<std::string> value;
++    if (name && aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
++      base::Value::Dict result;
++      if (value) {
++        result.Set("value", *value);
++      }
++      reply.Set("result", std::move(result));
++    }
++  } else if (native_method && native_params) {
++    base::Value::Dict dispatched =
++        DispatchNative(*native_method, native_params->Clone());
++    if (base::Value* result = dispatched.Find("result")) {
++      reply.Set("result", result->Clone());
++    } else if (base::Value* fault = dispatched.Find("error")) {
++      reply.Set("error", fault->Clone());
++    }
++  } else {
++    native_error = "Invalid native request";
++  }
++  if (!reply.Find("result") && !reply.Find("error")) {
++    base::Value::Dict fault;
++    fault.Set("code", native_error.empty() ? "invalid_argument"
++                                            : "backend_unavailable");
++    fault.Set("message", native_error.empty() ? "Invalid native request"
++                                               : native_error);
++    reply.Set("error", std::move(fault));
++  }
++  const auto reply_json = base::WriteJson(reply);
++  return reply_json && SendFrame(*reply_json);
++}
++
++void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
++  const std::string* type = data.FindString("type");
++  const base::Value* payload = data.Find("payload");
++  if (!type || *type != "event" || !payload) {
++    return;
++  }
++  const auto payload_json = base::WriteJson(*payload);
++  if (!payload_json) {
++    return;
++  }
++  ui_runner_->PostTask(
++      FROM_HERE,
++      base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> owner, std::string type,
++             std::string payload_json) {
++            if (owner) {
++              owner->OnRuntimeNote(std::move(type), std::move(payload_json));
++            }
++          },
++          owner_, *type, *payload_json));
++}
++
++bool AuxRuntimeHost::Worker::Pump() {
++  if (connection_fd_ < 0) {
++    return false;
++  }
++  for (int handled = 0; handled < 32; ++handled) {
++    if (read_buffer_.find('\n') == std::string::npos) {
++      pollfd pending = {connection_fd_, POLLIN, 0};
++      if (poll(&pending, 1, 0) != 1) {
++        return true;
++      }
++      if (!(pending.revents & POLLIN)) {
++        if (pending.revents & (POLLERR | POLLHUP | POLLNVAL)) {
++          Disconnect();
++          return false;
++        }
++        return true;
++      }
++      std::array<char, 4096> chunk;
++      const ssize_t count = read(connection_fd_, chunk.data(), chunk.size());
++      if (count < 0 && errno == EINTR) {
++        continue;
++      }
++      if (count <= 0) {
++        Disconnect();
++        return false;
++      }
++      read_buffer_.append(chunk.data(), count);
++      if (read_buffer_.size() >= kMaxFrameBytes) {
++        Disconnect();
++        return false;
++      }
++      continue;
++    }
++    const size_t newline = read_buffer_.find('\n');
++    std::string line = read_buffer_.substr(0, newline);
++    read_buffer_.erase(0, newline + 1);
++    const auto frame = base::JSONReader::Read(line);
++    const base::Value::Dict* data = frame ? frame->GetIfDict() : nullptr;
++    if (!data) {
++      Disconnect();
++      return false;
++    }
++    const std::string* kind = data->FindString("kind");
++    if (kind && *kind == "req" && !HandleNativeRequest(*data)) {
++      Disconnect();
++      return false;
++    }
++    if (kind && *kind == "note") {
++      ForwardNote(*data);
++    }
++  }
++  return true;
++}
++
+ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
+     std::string method,
+     std::string params_json) {
+@@ -592,62 +766,17 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
+     }
+     const std::string* kind = data->FindString("kind");
+     if (kind && *kind == "req") {
+-      const std::optional<int> nested_id = data->FindInt("id");
+-      const std::string* native_method = data->FindString("method");
+-      const base::Value::Dict* native_params = data->FindDict("params");
+-      base::Value::Dict reply;
+-      reply.Set("kind", "res");
+-      reply.Set("id", nested_id.value_or(0));
+-      std::string native_error;
+-      if (native_method && native_params &&
+-          *native_method == "native.storeSecret") {
+-        const std::string* name = native_params->FindString("name");
+-        const std::string* value = native_params->FindString("value");
+-        if (name && value &&
+-            aux::StoreSecret(profile_path_, *name, *value, &native_error)) {
+-          base::Value::Dict result;
+-          result.Set("ok", true);
+-          reply.Set("result", std::move(result));
+-        }
+-      } else if (native_method && native_params &&
+-                 *native_method == "native.readSecret") {
+-        const std::string* name = native_params->FindString("name");
+-        std::optional<std::string> value;
+-        if (name &&
+-            aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
+-          base::Value::Dict result;
+-          if (value) {
+-            result.Set("value", *value);
+-          }
+-          reply.Set("result", std::move(result));
+-        }
+-      } else if (native_method && native_params) {
+-        base::Value::Dict dispatched =
+-            DispatchNative(*native_method, native_params->Clone());
+-        if (base::Value* result = dispatched.Find("result")) {
+-          reply.Set("result", result->Clone());
+-        } else if (base::Value* fault = dispatched.Find("error")) {
+-          reply.Set("error", fault->Clone());
+-        }
+-      } else {
+-        native_error = "Invalid native request";
+-      }
+-      if (!reply.Find("result") && !reply.Find("error")) {
+-        base::Value::Dict fault;
+-        fault.Set("code", native_error.empty() ? "invalid_argument"
+-                                               : "backend_unavailable");
+-        fault.Set("message", native_error.empty() ? "Invalid native request"
+-                                                  : native_error);
+-        reply.Set("error", std::move(fault));
+-      }
+-      const auto reply_json = base::WriteJson(reply);
+-      if (!reply_json || !SendFrame(*reply_json)) {
++      if (!HandleNativeRequest(*data)) {
+         Disconnect();
+         return {false, "", "operation_uncertain",
+                 "The runtime connection ended during native dispatch"};
+       }
+       continue;
+     }
++    if (kind && *kind == "note") {
++      ForwardNote(*data);
++      continue;
++    }
+     const std::optional<int> response_id = data->FindInt("id");
+     if (!kind || *kind != "res" || !response_id || *response_id < 0 ||
+         static_cast<uint32_t>(*response_id) != id) {
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 4953528803..248245c8c9 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -9,6 +9,7 @@
+ #include <string>
+ 
+ #include "base/files/file_path.h"
++#include "base/callback_list.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+@@ -39,6 +40,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   void CallApi(std::string method,
+                std::string params_json,
+                ResponseCallback callback);
++  base::CallbackListSubscription ObserveEvents(
++      base::RepeatingCallback<void(const std::string&, const std::string&)>
++          callback);
+ 
+  private:
+   class Worker {
+@@ -49,6 +53,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+            base::WeakPtr<AuxRuntimeHost> owner);
+     ~Worker();
+     Response CallApi(std::string method, std::string params_json);
++    bool Pump();
+ 
+    private:
+     bool Connect(std::string* error);
+@@ -57,6 +62,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+     bool ReadFrame(std::string* frame, int timeout_ms);
+     base::Value::Dict DispatchNative(const std::string& method,
+                                      base::Value::Dict params);
++    bool HandleNativeRequest(const base::Value::Dict& data);
++    void ForwardNote(const base::Value::Dict& data);
+ 
+     base::FilePath profile_path_;
+     std::string profile_id_;
+@@ -74,9 +81,16 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   explicit AuxRuntimeHost(Profile* profile);
+   base::Value::Dict HandleNativeCall(const std::string& method,
+                                      const base::Value::Dict& params);
++  void OnRuntimeNote(std::string type, std::string payload_json);
++  void SchedulePump();
++  void PumpOnce();
++  void OnPumpDone(bool connected);
+ 
+   raw_ptr<Profile> profile_;
+   base::SequenceBound<Worker> worker_;
++  base::RepeatingCallbackList<void(const std::string&, const std::string&)>
++      observers_;
++  bool pump_scheduled_ = false;
+   base::WeakPtrFactory<AuxRuntimeHost> weak_factory_{this};
+ };
+ 
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 257a1716d8..f4b72a0f47 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -269,6 +269,7 @@ void WebUIBrowserUI::CreateShellHost(
+   shell_host_receiver_.reset();
+   shell_host_client_.reset();
+   tab_catalog_subscription_ = {};
++  runtime_event_subscription_ = {};
+   organization_pref_registrar_.reset();
+   edge_monitor_.reset();
+   if (IsAuthorizedAuxDocument()) {
+@@ -318,6 +319,17 @@ void WebUIBrowserUI::CreateShellHost(
+           },
+           weak_factory_.GetWeakPtr()));
+     }
++    if (auto* runtime = AuxRuntimeHost::ForProfile(browser_->GetProfile())) {
++      runtime_event_subscription_ = runtime->ObserveEvents(
++          base::BindRepeating([](base::WeakPtr<WebUIBrowserUI> ui,
++                                 const std::string& event_name,
++                                 const std::string& payload_json) {
++            if (ui && ui->IsAuthorizedAuxDocument() &&
++                ui->shell_host_client_.is_bound()) {
++              ui->shell_host_client_->OnEvent(event_name, payload_json);
++            }
++          }, weak_factory_.GetWeakPtr()));
++    }
+   }
+ }
+ 
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index c78d4cb86c..d8d774af05 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -190,6 +190,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   mojo::Receiver<aux::mojom::ShellHost> shell_host_receiver_{this};
+   mojo::Remote<aux::mojom::ShellHostClient> shell_host_client_;
+   base::CallbackListSubscription tab_catalog_subscription_;
++  base::CallbackListSubscription runtime_event_subscription_;
+   std::unique_ptr<PrefChangeRegistrar> organization_pref_registrar_;
+   std::unique_ptr<AuxShellEdgeMonitor> edge_monitor_;
+ #endif
