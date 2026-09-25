@@ -314,6 +314,15 @@ export function makeInvoker(s: Services) {
         if ((method === "subagents.spawn" || method === "subagents.forkSelf") &&
           params.pageIds.some((pageId: string) => !scopedPageIds(scope, client.connectionId).has(pageId)))
           throw new AuxError("permission_denied", "A subagent page is outside this connection's scope.");
+      } else if (method === "mcp.tools.call") {
+        if (params.context.workspaceId !== scope.workspaceId)
+          throw new AuxError("permission_denied", "MCP tool calls cannot leave this connection's Space.");
+        const taskId = params.context.taskId ?? (scope.kind === "task" ? scope.taskId : undefined);
+        const task = taskId ? requireScopedTask(scope, taskId) : undefined;
+        if (params.context.revision !== undefined && params.context.revision !== task?.revision)
+          throw new AuxError("conflict", "The MCP task revision changed. Review the current task.");
+        params.context = { workspaceId: scope.workspaceId,
+          ...(task ? { taskId: task.taskId, revision: task.revision } : {}) };
       } else if (!["workspaces.list", "tasks.list", "pages.list", "workspace.get", "runs.list", "runtime.describe"].includes(method)) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
       }
@@ -450,7 +459,10 @@ export function makeInvoker(s: Services) {
       case "mcp.grants.list":
       case "mcp.grants.revoke":
       case "mcp.tools.call": {
-        if (client.external || client.codeMode) throw new AuxError("permission_denied", "MCP connections are managed in Aux.");
+        if (method !== "mcp.tools.call" && (client.external || client.codeMode))
+          throw new AuxError("permission_denied", "MCP connections are managed in Aux.");
+        if (method === "mcp.tools.call" && (client.external || client.codeMode) && !scope)
+          throw new AuxError("permission_denied", "MCP tool calls require a scoped connection.");
         if (method === "mcp.bundles.inspect") return outboundMcp.inspectBundle(params.path);
         if (method === "mcp.servers.register") return outboundMcp.register(params);
         if (method === "mcp.servers.list") return outboundMcp.list(params.workspaceId);

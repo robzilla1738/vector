@@ -1,6 +1,7 @@
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
+import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
 /**
  * Aux runtime entry point.
  *
@@ -367,6 +368,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     native,
     contentMemory,
     memoryPipeline,
+    mcpTransportProvider: createMcpTransportProvider(native),
     checkpointDeletedData: () => privacyCheckpoint.request(),
     pages,
     sets,

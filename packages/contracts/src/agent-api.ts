@@ -33,6 +33,7 @@ export const AgentApiManifest = [
   entry({ path: "subagents.send_message", method: "subagents.sendMessage", layer: "management", summary: "Steer an active child through its durable message queue.", documented: "model" }),
   entry({ path: "subagents.get_group", method: "subagents.getGroup", layer: "management", summary: "Inspect child status and shared budget use.", documented: "lookup" }),
   entry({ path: "subagents.cancel", method: "subagents.cancel", layer: "management", summary: "Cancel one child and release its active reservation.", documented: "lookup" }),
+  entry({ path: "mcp.call_tool", method: "mcp.tools.call", layer: "management", summary: "Call one approved MCP tool under a scoped, revision-bound grant.", documented: "lookup" }),
   entry({ path: "tabs.list", method: "pages.list", layer: "management", summary: "List accessible tabs and their stable Aux page IDs.", documented: "included" }),
   entry({ path: "tabs.open", method: "pages.open", layer: "management", summary: "Open a tab under the caller's page authority.", documented: "model", unsupportedByDefaultIn: ["code"] }),
   entry({ path: "tabs.close", method: "pages.close", layer: "management", summary: "Close a tab owned by this turn.", documented: "model", unsupportedByDefaultIn: ["code"] }),

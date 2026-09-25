@@ -27,7 +27,24 @@ export const OutboundMcpGrantSchema = z.object({
 export const OutboundMcpGrantParams = OutboundMcpGrantSchema.pick({ serverId: true, toolName: true, scope: true, mode: true, outputTokenLimit: true });
 export const OutboundMcpToolSchema = z.object({ name: z.string(), description: z.string().optional(), inputSchema: z.record(z.string(), z.unknown()) });
 export const OutboundMcpCallResultSchema = z.object({ callId: z.string().uuid(), status: z.enum(["completed", "uncertain"]), output: z.string().max(128_000), isError: z.boolean() });
+/** Native-host attestation for one supervised stdio launch. The launcher consumes capabilityId before spawning. */
+export const McpStdioLaunchPermitSchema = z.object({
+  serverId: z.string().uuid(), sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  capabilityId: z.string().min(16).max(512), launcherPath: z.string().min(1).max(4096),
+  launcherArgs: z.array(z.string().max(2048)).max(16), cwd: z.string().min(1).max(4096),
+  expiresAt: z.number().int().positive(),
+  effectiveProfile: z.object({ networkAllowed: z.literal(false),
+    readableRoots: z.array(z.string().min(1).max(4096)).max(32),
+    writableRoots: z.tuple([]) }).strict(),
+}).strict();
+export const McpOAuthTokenSchema = z.object({
+  serverId: z.string().uuid(), sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  token: z.string().min(1).max(8192).regex(/^[A-Za-z0-9\-._~+/]+={0,2}$/),
+  expiresAt: z.number().int().positive(),
+}).strict();
 export type OutboundMcpServer = z.infer<typeof OutboundMcpServerSchema>;
 export type OutboundMcpGrant = z.infer<typeof OutboundMcpGrantSchema>;
 export type OutboundMcpTool = z.infer<typeof OutboundMcpToolSchema>;
 export type OutboundMcpCallResult = z.infer<typeof OutboundMcpCallResultSchema>;
+export type McpStdioLaunchPermit = z.infer<typeof McpStdioLaunchPermitSchema>;
+export type McpOAuthToken = z.infer<typeof McpOAuthTokenSchema>;

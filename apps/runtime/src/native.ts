@@ -1,4 +1,4 @@
-import { AuxError, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck } from "@aux/contracts";
+import { AuxError, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken } from "@aux/contracts";
 
 /**
  * Calls into the Electron main process, which owns all native surfaces.
@@ -28,6 +28,10 @@ export interface NativeBridge {
   /** Persist a secret via Electron safeStorage (plan A22). */
   storeSecret(name: string, value: string): Promise<{ ok: true }>;
   readSecret(name: string): Promise<{ value?: string }>;
+  /** Native host signs a one-use, default-deny launch capability for a reviewed MCP server. */
+  prepareMcpStdioLaunch?(server: OutboundMcpServer): Promise<McpStdioLaunchPermit>;
+  /** Native host owns OAuth consent/refresh and returns only an ephemeral token for this exact server. */
+  mcpOAuthToken?(server: OutboundMcpServer): Promise<McpOAuthToken>;
   captureReadablePage?(pageId: string, workspaceId: string, expectedUrl: string): Promise<{ url: string; title: string; text: string }>;
   developmentProjects?(projectIds:string[]):Promise<LocalProject[]>;
   inspectProject?(projectId:string):Promise<ProjectInspection>;
@@ -105,6 +109,12 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   readSecret(name: string) {
     return this.channel.call<{ value?: string }>("native.readSecret", { name });
+  }
+  prepareMcpStdioLaunch(server: OutboundMcpServer) {
+    return this.channel.call<McpStdioLaunchPermit>("native.prepareMcpStdioLaunch", { server }, 30_000);
+  }
+  mcpOAuthToken(server: OutboundMcpServer) {
+    return this.channel.call<McpOAuthToken>("native.mcpOAuthToken", { server }, 30_000);
   }
   captureReadablePage(pageId: string, workspaceId: string, expectedUrl: string) {
     return this.channel.call<{ url: string; title: string; text: string }>("native.captureReadablePage", { pageId, workspaceId, expectedUrl }, 15_000);
