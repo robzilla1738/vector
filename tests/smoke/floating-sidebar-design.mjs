@@ -13,6 +13,7 @@ const bounds=()=>app.evaluate(({BaseWindow},url)=>BaseWindow.getAllWindows()[0].
 const settle=()=>page.locator('.sidebar').evaluate(async el=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await Promise.all(el.getAnimations().map(a=>a.finished));});
 try {
  await page.locator('.aux-home').waitFor();
+ await page.bringToFront();
  await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'vertical'}));
  await page.locator('.tabs-vertical').waitFor();
  await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:100,y:100,width:1200,height:800}));
@@ -23,6 +24,7 @@ try {
  assert.ok((await page.locator('.aux-home').boundingBox()).width < homeBefore.width,'pinned sidebar occupies its normal column');
  await page.keyboard.press('Escape');assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'),'false','Escape does not dismiss pinned sidebar');
  await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();await settle();
+ await page.evaluate(()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();});
  await page.mouse.move(2,150);await page.locator(".sidebar.peek").waitFor();await settle();
  assert.deepEqual(await page.locator('.aux-home').boundingBox(),homeBefore);
  let panel=await page.locator('.sidebar').boundingBox();assert.equal(panel.x,8);assert.equal(panel.y,48);

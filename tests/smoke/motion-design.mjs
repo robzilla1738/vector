@@ -11,7 +11,7 @@ try {
  if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
  await page.locator('.chat-sessions[aria-busy=false]').waitFor();
  await page.getByText('Your sessions will appear here.',{exact:true}).waitFor();
- const add=page.getByRole('button',{name:'New chat project',exact:true});
+ const add=page.getByRole('button',{name:'Chat options',exact:true});
  await page.locator(".chat-sidebar").evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished)));
  const geometry=await add.boundingBox();
  await add.hover();
@@ -21,6 +21,9 @@ try {
  await add.focus();
  await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
  assert.equal(await add.evaluate(el=>getComputedStyle(el).outlineStyle),'solid');
+ await add.click();
+ await page.getByRole('menuitem',{name:'New chat project',exact:true}).waitFor();
+ await page.keyboard.press('Escape');
  await page.mouse.move(1000,600);
  await add.evaluate(el=>el.blur());
  assert.ok((await add.evaluate(el=>getComputedStyle(el).transitionDuration)).split(',').every(value=>parseFloat(value)===0.3));

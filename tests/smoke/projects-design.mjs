@@ -19,10 +19,11 @@ try {
  if (await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible()) await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
  await page.getByRole('button',{name:'Tasks',exact:true}).click();
  await page.getByLabel('Space',{exact:true}).selectOption({label:'Research'});
- await page.locator('.task-index-card').first().waitFor();
- assert.equal(await page.locator('.task-index-card').count(),2);
+ const taskRows=page.locator('.task-index .ui-work-list .ui-work-row');
+ await taskRows.first().waitFor();
+ assert.equal(await taskRows.count(),2);
  await page.getByRole('group',{name:'Task status',exact:true}).getByRole('button',{name:'Active',exact:true}).click();
- assert.equal(await page.locator('.task-index-card').count(),1);
+ assert.equal(await taskRows.count(),1);
  await page.screenshot({path:root+'/release/test-artifacts/tabs/projects-index.png'});
  await page.locator('.routine-card').click();
  await page.getByRole('button',{name:'Weekdays',exact:true}).click();
@@ -39,7 +40,7 @@ try {
  await page.getByText('No matching routines',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Clear filters',exact:true}).click();
  await page.locator('.routine-card').waitFor();
- await page.locator('.task-index-card').click();
+ await taskRows.locator('.ui-list-open').click();
  await page.getByLabel('Title',{exact:true}).waitFor();
  await page.screenshot({path:root+'/release/test-artifacts/tabs/task-editor.png'});
  console.log('PASS: task status filters, routine empty/reset, saved weekday preset, narrow layout and editor.');

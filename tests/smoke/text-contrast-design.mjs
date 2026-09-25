@@ -7,7 +7,8 @@ const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.e
 try {
  await page.locator('.aux-home').waitFor();
  if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
- await page.getByRole('button',{name:'New chat project',exact:true}).click();
+ await page.getByRole('button',{name:'Chat options',exact:true}).click();
+ await page.getByRole('menuitem',{name:'New chat project',exact:true}).click();
  for(const theme of ['dark','light']) {
   await page.evaluate(theme=>window.aux.invoke('settings.set',{theme}),theme);
   await page.waitForFunction(theme=>document.documentElement.dataset.theme===theme,theme);

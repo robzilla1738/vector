@@ -6,6 +6,8 @@ const dir=mkdtempSync('/tmp/aux-new-chat-');
 const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.env,AUX_PROFILE_DIR:dir+'/profile',AUX_DATA_DIR:dir+'/data',AUX_LOAD_DOTENV:'0'}});
 try {
  await page.locator('.aux-home').waitFor();
+ await app.evaluate(({BaseWindow})=>BaseWindow.getAllWindows()[0].setBounds({x:100,y:100,width:1440,height:900}));
+ await page.waitForFunction(()=>innerWidth===1440);
  await page.evaluate(()=>window.aux.invoke('settings.set',{tabLayout:'vertical'}));
  if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
  await page.locator('.sidebar').getByRole('button',{name:'New chat',exact:true}).click();

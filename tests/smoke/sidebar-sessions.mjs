@@ -14,7 +14,8 @@ page.setDefaultTimeout(10000);
 try {
  await page.locator('.aux-home').waitFor();
  if(await page.getByRole('button',{name:'Show sidebar',exact:true}).isVisible())await page.getByRole('button',{name:'Show sidebar',exact:true}).click();
- await page.getByRole('button',{name:'New chat project',exact:true}).click();
+ await page.getByRole('button',{name:'Chat options',exact:true}).click();
+ await page.getByRole('menuitem',{name:'New chat project',exact:true}).click();
  await page.getByRole('textbox',{name:'Chat project name'}).fill('Research');
  await page.locator('.session-editor').getByRole('button',{name:'Save',exact:true}).click();
  const row=page.locator('.chat-sessions .session-row').filter({has:page.getByRole('button',{name:'Research notes',exact:true})});
