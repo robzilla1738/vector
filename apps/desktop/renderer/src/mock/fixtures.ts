@@ -62,7 +62,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     goal: "Find every open review comment on this PR that mentions accessibility and summarise what still needs to change",
     status: "running",
     pageIds: ["page-1", "page-2", "page-3"],
-    config: { maxModelCalls: 8, modelId: "alibaba/qwen3.8-27b" },
+    config: { maxModelCalls: 8, modelId: "meta/muse-spark-1.3-contributor" },
     statusMessage: "Reading the second page of review comments",
     createdAt: T0 - 48_000,
     startedAt: T0 - 47_000,

@@ -134,7 +134,7 @@ export function installMockBridge(q: URLSearchParams) {
     theme,
     tabLayout: q.get("layout") === "vertical" ? "vertical" : "horizontal",
     searchEngine: DEFAULT_SEARCH_ENGINE,
-    plannerModel: "alibaba/qwen3.8-27b",
+    plannerModel: "meta/muse-spark-1.3-contributor",
     maxWorkers: 4,
     maxModelCalls: 8,
     gatewayApiKey: "••••••••",
@@ -431,7 +431,7 @@ export function installMockBridge(q: URLSearchParams) {
       return { models: modelPickerEntries(MODEL_REGISTRY), source: "static" };
     },
     "models.probe": async p => {
-      return { ok: true, modelId: (p.modelId as string) || "alibaba/qwen3.8-27b", latencyMs: 42, vision: false };
+      return { ok: true, modelId: (p.modelId as string) || "meta/muse-spark-1.3-contributor", latencyMs: 42, vision: true };
     },
     "chrome.importCookies": async () => {
       return { ok: true, source: "mock", imported: 0, skipped: 0, domains: 0, detail: "Cookie import is not available in mock." };
@@ -694,7 +694,7 @@ export function installMockBridge(q: URLSearchParams) {
     }
     for (const st of script) {
       await sleep(900);
-      emit("model.call", { runId: id, modelId: "alibaba/qwen3.8-27b", role: "planner", durationMs: 1200 + Math.round(Math.random() * 800), costUsd: 0.0031, inputTokens: 2100, outputTokens: 180 }, id);
+      emit("model.call", { runId: id, modelId: "meta/muse-spark-1.3-contributor", role: "planner", durationMs: 1200 + Math.round(Math.random() * 800), costUsd: 0.000246, inputTokens: 2100, outputTokens: 180 }, id);
       steps[id] = [...(steps[id] ?? []), { ...st, pageId: target, startedAt: Date.now() }];
       emit("step.finished", { step: steps[id]![steps[id]!.length - 1] }, id);
       emit("observation.new", { runId: id, observation: { ...OBSERVATION, pageId: target, revision: OBSERVATION.revision + steps[id]!.length } }, id);
@@ -715,7 +715,7 @@ export function installMockBridge(q: URLSearchParams) {
       for (const st of more) {
         await sleep(2200);
         steps[RUN_ID] = [...(steps[RUN_ID] ?? []), st];
-        emit("model.call", { runId: RUN_ID, modelId: "alibaba/qwen3.8-27b", role: "planner", durationMs: 1400, costUsd: 0.0029, inputTokens: 2400, outputTokens: 160 }, RUN_ID);
+        emit("model.call", { runId: RUN_ID, modelId: "meta/muse-spark-1.3-contributor", role: "planner", durationMs: 1400, costUsd: 0.000272, inputTokens: 2400, outputTokens: 160 }, RUN_ID);
         emit("step.finished", { step: st }, RUN_ID);
       }
     })();

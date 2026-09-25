@@ -39,7 +39,7 @@ describe("typed model registry (AI-04)", () => {
 
   it("picker projection keeps the {id, name} contract", () => {
     const entries = modelPickerEntries(MODEL_REGISTRY);
-    expect(entries).toContainEqual({ id: DEFAULT_PLANNER_MODEL, name: "Qwen 3.8 27B" });
+    expect(entries).toContainEqual({ id: DEFAULT_PLANNER_MODEL, name: "Meta Muse Spark 1.3 Contributor" });
   });
 
   it("settings.listModels merges snapshot + live gateway catalog and re-tags sources", async () => {

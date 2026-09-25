@@ -35,7 +35,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createGateway } from "@ai-sdk/gateway";
-import { generateText, jsonSchema, stepCountIs, tool } from "ai";
+import { generateText, jsonSchema, stepCountIs, tool, wrapLanguageModel } from "ai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
@@ -56,7 +56,7 @@ const adapterNames = flag("adapter", "aux").split(",").map((s) => s.trim()).filt
 const limit = Number(flag("limit", "0")) || 0;
 const only = flag("only", null);
 const timeoutMs = Number(flag("timeout", suiteName === "local" ? "180000" : "900000"));
-const modelId = flag("model", process.env.AUX_PLANNER_MODEL || "alibaba/qwen3.8-27b");
+const modelId = flag("model", process.env.AUX_PLANNER_MODEL || "meta/muse-spark-1.3-contributor");
 // runtime adapter: product default budget unless --max-steps is given; MCP loops keep a 40-step cap
 const maxStepsFlag = flag("max-steps", null);
 const maxToolSteps = Number(maxStepsFlag ?? "40");
@@ -147,6 +147,14 @@ if (suiteName === "local") {
 let tasks = suite.tasks;
 if (only) tasks = tasks.filter((t) => t.id.includes(only));
 if (limit) tasks = tasks.slice(0, limit);
+const { SpendLedger, projectedModelCostUsd } = await import(pathToFileURL(runtimeEntry).href);
+const spendLedger = new SpendLedger();
+// A run-level forecast is a planning check; each actual Gateway request is
+// reserved separately by the runtime client or MCP model middleware below.
+const forecastUsd = Number(flag("projected-usd", String(tasks.length * trials * adapterNames.length * 0.05)));
+if (!Number.isFinite(forecastUsd) || (tasks.length && forecastUsd <= 0) || forecastUsd > spendLedger.summary().remainingUsd) {
+  throw new Error(`Task benchmark exceeds the remaining AI Gateway program allocation (${spendLedger.summary().remainingUsd.toFixed(4)} USD)`);
+}
 
 // ---- run --------------------------------------------------------------------
 const report = {
@@ -177,6 +185,8 @@ for (const name of adapterNames) {
   const rows = [];
   try {
     for (let trial = 1; trial <= trials; trial++) for (const task of tasks) {
+      if (spendLedger.summary().remainingUsd < projectedModelCostUsd(modelId, 8192))
+        throw new Error("Task benchmark stopped at the AI Gateway program spend cap");
       // a write task must not leak state into the next task or trial
       await resetSuiteState(suite);
       const t0 = performance.now();
@@ -429,12 +439,28 @@ async function mcpAdapter(name, cfg) {
 
   async function runTools(task, startNote) {
     const result = await generateText({
-      model: gateway(modelId),
+      model: wrapLanguageModel({
+        model: gateway(modelId),
+        middleware: {
+          wrapGenerate: async ({ doGenerate, params }) => {
+            const reservation = spendLedger.reserve("bench:tasks", modelId, projectedModelCostUsd(modelId, params.maxOutputTokens ?? 2048));
+            try {
+              const result = await doGenerate();
+              spendLedger.settle(reservation, reportedCost(result));
+              return result;
+            } catch (error) {
+              spendLedger.settle(reservation);
+              throw error;
+            }
+          },
+        },
+      }),
       system,
       prompt: `Start URL: ${task.url}${startNote}\nTask: ${task.goal}`,
       tools,
       stopWhen: stepCountIs(maxToolSteps),
       maxRetries: 1,
+      maxOutputTokens: 2048,
       providerOptions: { gateway: { sort: "ttft", caching: "auto", ...(only ? { only } : {}) } },
       abortSignal: AbortSignal.timeout(timeoutMs),
     });
@@ -448,6 +474,16 @@ async function mcpAdapter(name, cfg) {
       tokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) || null,
     };
   }
+}
+
+function reportedCost(result) {
+  const raw = result.providerMetadata?.gateway?.cost ?? result.providerMetadata?.gateway?.marketCost;
+  const cost = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
+  if (Number.isFinite(cost) && cost >= 0) return cost;
+  const usage = result.usage;
+  if (usage && modelId === "meta/muse-spark-1.3-contributor")
+    return ((usage.inputTokens ?? 0) * 0.10 + (usage.outputTokens ?? 0) * 0.20) / 1_000_000;
+  return undefined;
 }
 
 // ---- scoring ----------------------------------------------------------------

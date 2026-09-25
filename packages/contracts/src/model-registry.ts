@@ -39,6 +39,18 @@ export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
  */
 export const MODEL_REGISTRY: readonly ModelCapability[] = [
   {
+    id: "meta/muse-spark-1.3-contributor",
+    name: "Meta Muse Spark 1.3 Contributor",
+    provider: "meta",
+    contextTokens: 1_048_576,
+    modalities: ["text", "image"],
+    reasoning: "supported",
+    inputUsdPerMTok: 0.10,
+    outputUsdPerMTok: 0.20,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
     id: "alibaba/qwen3.8-27b",
     name: "Qwen 3.8 27B",
     provider: "alibaba",

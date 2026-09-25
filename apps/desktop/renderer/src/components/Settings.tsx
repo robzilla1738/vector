@@ -298,7 +298,7 @@ export function Settings() {
   };
 
   const theme = (settings.theme as string) ?? "dark";
-  const plannerModel = (settings.plannerModel as string) ?? "alibaba/qwen3.8-27b";
+  const plannerModel = (settings.plannerModel as string) ?? "meta/muse-spark-1.3-contributor";
   const plannerOptions: ModelEntry[] = provider === "gateway" ? mergeModelOptions(models, plannerModel)
     : [...models, ...[plannerModel, String(settings.visionModel ?? "")].filter(Boolean).map(id => ({ id }))]
       .filter((model, index, all) => all.findIndex(item => item.id === model.id) === index);

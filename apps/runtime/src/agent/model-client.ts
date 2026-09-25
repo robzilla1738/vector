@@ -110,7 +110,7 @@ export interface ModelClient {
 }
 
 /** Static fallback list used until the Gateway catalog is reachable. */
-export const DEFAULT_PLANNER_MODEL = "alibaba/qwen3.8-27b";
+export const DEFAULT_PLANNER_MODEL = "meta/muse-spark-1.3-contributor";
 export const LUNA_FAST_MODEL = "openai/gpt-5.6-luna-fast";
 export const FALLBACK_MODELS = modelPickerEntries(MODEL_REGISTRY);
 

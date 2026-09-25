@@ -12,7 +12,7 @@ const { resolveDatabasePath } = await import(join(root, "packages/contracts/dist
 const temporary = mkdtempSync(join(tmpdir(), "aux-model-health-"));
 const dataDir = join(temporary, "data");
 mkdirSync(dataDir, { recursive: true });
-const modelId = "alibaba/qwen3.8-27b";
+const modelId = "meta/muse-spark-1.3-contributor";
 const checkedAt = Date.now() - 60_000;
 const repo = new Repo(openDb(resolveDatabasePath(dataDir)));
 repo.setSetting("modelProvider", "gateway");

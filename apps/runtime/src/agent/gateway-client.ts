@@ -15,7 +15,8 @@ import { z } from "zod";
 import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
 import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { extractJson } from "./json-text.js";
-import { usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
+import { DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
+import { projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
 export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
@@ -180,6 +181,7 @@ type CallOpts = {
   signal?: AbortSignal;
   maxOutputTokens?: number;
   maxAttempts?: number;
+  reasoning?: "minimal" | "low" | "medium" | "high" | "xhigh";
 };
 
 const RETRY_SYSTEM = "\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.";
@@ -189,13 +191,33 @@ export class GatewayModelClient implements ModelClient {
   private resolveModel: (id: string) => LanguageModel;
   private readonly callTimeoutMs: number;
   private readonly only: string[] | undefined;
+  private readonly spendLedger: SpendLedger | undefined;
 
-  constructor(apiKey: string, opts: { callTimeoutMs?: number; only?: string[]; model?: (id: string) => LanguageModel } = {}) {
+  constructor(apiKey: string, opts: { callTimeoutMs?: number; only?: string[]; model?: (id: string) => LanguageModel; spendLedger?: SpendLedger } = {}) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.gateway = opts.model ? undefined : createGateway({ apiKey });
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.callTimeoutMs = opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
     this.only = this.gateway && opts.only?.length ? opts.only : undefined;
+    this.spendLedger = opts.spendLedger ?? (this.gateway ? new SpendLedger() : undefined);
+  }
+
+  private async billed<T extends { usage?: unknown; providerMetadata?: unknown }>(
+    modelId: string, maxOutputTokens: number, call: () => Promise<T>,
+  ): Promise<T> {
+    if (!this.spendLedger) return call();
+    const reservation = this.spendLedger.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, maxOutputTokens));
+    try {
+      const result = await call();
+      const cost = modelCallCost(modelId, { ...usageFields(result.usage), providerMetadata: result.providerMetadata as Record<string, unknown> | undefined });
+      this.spendLedger.settle(reservation, cost.costUsd);
+      return result;
+    } catch (error) {
+      const billed = error as { usage?: unknown; providerMetadata?: unknown };
+      const cost = modelCallCost(modelId, { ...usageFields(billed?.usage), providerMetadata: billed?.providerMetadata as Record<string, unknown> | undefined });
+      this.spendLedger.settle(reservation, cost.costUsd);
+      throw error;
+    }
   }
 
   private requireVision(modelId: string, images?: string[]) {
@@ -209,6 +231,7 @@ export class GatewayModelClient implements ModelClient {
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens),
+      ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
       providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
     };
   }
@@ -222,12 +245,12 @@ export class GatewayModelClient implements ModelClient {
     // still use structured output.
     if (!schemaNeedsJsonFallback(opts.schema)) {
       try {
-        const res = await generateObject({
+        const res = await this.billed(opts.modelId, opts.maxOutputTokens ?? 2000, () => generateObject({
           ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
           schema: opts.schema,
           system: opts.system,
           messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
-        });
+        }));
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
         if (opts.signal?.aborted) throw e;
@@ -252,18 +275,29 @@ export class GatewayModelClient implements ModelClient {
   async streamStructured<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
+    const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, opts.maxOutputTokens ?? 2000));
     const stream = streamText({
       ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
       system: `${opts.system}${schemaHint(opts.schema)}`,
       messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
     });
     let text = "";
-    for await (const delta of stream.textStream) {
-      text += delta;
-      opts.onText(delta);
+    let usage: unknown;
+    let providerMetadata: unknown;
+    try {
+      for await (const delta of stream.textStream) {
+        text += delta;
+        opts.onText(delta);
+      }
+      usage = await stream.usage;
+      providerMetadata = await stream.providerMetadata;
+    } catch (error) {
+      if (reservation) this.spendLedger?.settle(reservation);
+      throw error;
     }
-    const usage = await Promise.resolve(stream.usage).catch(() => undefined);
-    const providerMetadata = await Promise.resolve(stream.providerMetadata).catch(() => undefined);
+    if (reservation) this.spendLedger?.settle(reservation, modelCallCost(opts.modelId, {
+      ...usageFields(usage), providerMetadata: providerMetadata as Record<string, unknown> | undefined,
+    }).costUsd);
     const first = attempt(started, { usage, providerMetadata });
     return this.parseOrRetry(opts, text, first, []);
   }
@@ -315,11 +349,11 @@ export class GatewayModelClient implements ModelClient {
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
-    const res = await generateText({
+    const res = await this.billed(opts.modelId, opts.maxOutputTokens ?? 1200, () => generateText({
       ...this.sdkOptions({ ...opts, system: opts.system ?? "" }, opts.maxOutputTokens ?? 1200),
       system: opts.system,
       messages: imageReferenceMessage(opts.prompt, images),
-    });
+    }));
     return { text: res.text, ...attempt(started, res) };
   }
 

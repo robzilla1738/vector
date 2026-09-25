@@ -413,11 +413,11 @@ export class SettingsService {
   }
   recoveryModel(): string | undefined {
     if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.recoveryModel || undefined;
-    return (this.get("recoveryModel") as string) ?? this.env.AUX_RECOVERY_MODEL;
+    return (this.get("recoveryModel") as string) ?? this.env.AUX_RECOVERY_MODEL ?? this.plannerModel();
   }
   visionModel(): string | undefined {
     if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.visionModel || undefined;
-    return (this.get("visionModel") as string) || this.env.AUX_VISION_MODEL || undefined;
+    return (this.get("visionModel") as string) || this.env.AUX_VISION_MODEL || this.plannerModel();
   }
   searchEngine(): string {
     return (this.get("searchEngine") as string) ?? DEFAULT_SEARCH_ENGINE;
