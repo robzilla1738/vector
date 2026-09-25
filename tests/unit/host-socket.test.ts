@@ -8,7 +8,7 @@ import { AUX_HOST_PROTOCOL, connectHostSocket } from "../../apps/runtime/src/hos
 
 const token = "a".repeat(64);
 
-async function withHost(reply: (message: Record<string, unknown>) => Record<string, unknown>,
+async function withHost(reply: (message: Record<string, unknown>) => Record<string, unknown> | Record<string, unknown>[] | null,
   run: (path: string) => Promise<void>) {
   const dir = mkdtempSync(join(tmpdir(), "aux-host-"));
   const path = join(dir, "host.sock");
@@ -23,7 +23,8 @@ async function withHost(reply: (message: Record<string, unknown>) => Record<stri
       for (let end = buffer.indexOf("\n"); end >= 0; end = buffer.indexOf("\n")) {
         const message = JSON.parse(buffer.slice(0, end)) as Record<string, unknown>;
         buffer = buffer.slice(end + 1);
-        socket.write(`${JSON.stringify(reply(message))}\n`);
+        const response = reply(message);
+        if (response) socket.write((Array.isArray(response) ? response : [response]).map(frame => JSON.stringify(frame)).join("\n") + "\n");
       }
     });
   });
@@ -52,6 +53,25 @@ describe("Chromium host socket", () => {
       transport.close();
     });
     expect(hello).toMatchObject({ token });
+  });
+
+  it("registers startup methods before delivering requests buffered with the handshake", async () => {
+    let receive!: (message: Record<string, unknown>) => void;
+    const response = new Promise<Record<string, unknown>>(resolve => { receive = resolve; });
+    await withHost(message => {
+      if (message.kind === "hello") return [
+        { kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: message.nonce },
+        { kind: "req", id: 1, method: "zap.snapshot", params: {} },
+      ];
+      receive(message);
+      return null;
+    }, async path => {
+      const transport = await connectHostSocket(path, token);
+      const channel = new RpcChannel(transport, "test-host");
+      channel.onMethod("zap.snapshot", () => []);
+      try { expect(await response).toEqual({ kind: "res", id: 1, result: [] }); }
+      finally { transport.close(); }
+    });
   });
 
   it("notifies both RPC and owner shutdown listeners when the host closes", async () => {

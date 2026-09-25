@@ -16,6 +16,7 @@ export const auxMarkerForWebContents = (webContentsId: number) => `atab-${webCon
 export interface TrustedAuxPage {
   pageId: string;
   marker: string;
+  url?: string;
   cdpTargetId?: string;
 }
 
@@ -33,7 +34,14 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
   }
 
   private async trusted(pageId: string, marker: string): Promise<TrustedAuxPage | undefined> {
-    return (await this.trustedPages?.())?.find(page => page.pageId === pageId && page.marker === marker);
+    const page = (await this.trustedPages?.())?.find(page => page.pageId === pageId && page.marker === marker);
+    // The native broker deliberately excludes browser-internal documents.
+    // Reject them before waiting for a target that can never be exposed.
+    if (page && this.endpoint.startsWith("ws+unix://") &&
+        (!page.url || !/^(https?:|about:blank$)/.test(page.url))) {
+      throw new AuxError("permission_denied", "Browser-internal pages are not available to automation.");
+    }
+    return page;
   }
 
   override async listTargets(): Promise<DiscoveredTarget[]> {
@@ -69,7 +77,7 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
     if (this.trustedPages && !trusted) throw new AuxError("target_detached", "This tab is no longer owned by Aux.");
     // The internal broker permits one runtime connection. Session restore
     // already has a fresh connection, so attach the new native view there.
-    if (this.endpoint.includes("/aux-cdp/"))
+    if (this.endpoint.startsWith("ws+unix://") || this.endpoint.includes("/aux-cdp/"))
       return this.attach(targetId, pageId, { initialDocumentEpoch: documentEpoch });
     // Playwright retains the crashed flag on its old Page proxy. A fresh CDP
     // connection observes the recovered renderer without disturbing other tabs.
@@ -98,7 +106,7 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
 
   /** attachDirect fallback matches by marker too — /json/list only has ids. */
   protected override async attachDirect(targetId: string, pageId: string) {
-    if (this.endpoint.includes("/aux-cdp/")) return null; // broker has no unrestricted /json/list endpoint
+    if (this.endpoint.startsWith("ws+unix://") || this.endpoint.includes("/aux-cdp/")) return null; // broker has no unrestricted /json/list endpoint
     const trusted = this.trustedPages ? await this.trusted(pageId, targetId) : undefined;
     if (this.trustedPages && !trusted?.cdpTargetId) return null;
     const targets = await this.jsonTargets().catch(() => []);

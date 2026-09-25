@@ -100,7 +100,7 @@ try {
     }
     const account = /(?:^|;\s*)session=(alice|bob)(?:;|$)/.exec(request.headers.cookie ?? "")?.[1] ?? "none";
     response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-    response.end(`<!doctype html><title>Aux Profile fixture</title><main><h1>Account ${account}</h1></main>`);
+    response.end(`<!doctype html><title>Aux Profile fixture — ${account}</title><main><h1>Account ${account}</h1></main>`);
   });
   await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
   origin = `http://127.0.0.1:${fixture.address().port}`;
@@ -122,23 +122,43 @@ try {
   // SIGTERM exercises abrupt-process recovery, not the native Quit menu.
   // Wait for Chromium's scheduled session checkpoint rather than racing its
   // write-behind timer or adding an arbitrary sleep before terminating.
-  const sessionDirectory = join(work.profile, "Default/Sessions");
-  await until("Work navigation and identity persisted to the session journal", async () => {
-    if (!existsSync(sessionDirectory)) return false;
-    return readdirSync(sessionDirectory).filter(name => name.startsWith("Session_")).some(name => {
-      const bytes = readFileSync(join(sessionDirectory, name));
-      return bytes.includes(Buffer.from(bob.pageId)) && bytes.includes(Buffer.from(`${origin}/whoami`));
+  for (const [owner, tab] of [[work, bob], [personal, alice]]) {
+    const sessionDirectory = join(owner.profile, "Default/Sessions");
+    await until(`${owner.name} navigation and identity persisted to the session journal`, async () => {
+      if (!existsSync(sessionDirectory)) return false;
+      return readdirSync(sessionDirectory).filter(name => name.startsWith("Session_")).some(name => {
+        const bytes = readFileSync(join(sessionDirectory, name));
+        return bytes.includes(Buffer.from(tab.pageId)) && bytes.includes(Buffer.from(`${origin}/whoami`));
+      });
     });
-  });
+    // This is abrupt-process recovery. Verify the persistent cookie has reached
+    // Chromium's store before killing the process, just as for the tab journal.
+    // Query only fixture metadata; cookie values and encryption keys stay private.
+    const cookies = join(owner.profile, "Default/Cookies");
+    await until(`${owner.name} fixture cookie persisted`, async () => {
+      if (!existsSync(cookies)) return false;
+      try {
+        return execFileSync("/usr/bin/sqlite3", ["-readonly", cookies,
+          "SELECT count(*) FROM cookies WHERE host_key='127.0.0.1' AND name='session' AND is_persistent=1;"],
+        { encoding: "utf8" }).trim() === "1";
+      } catch { return false; }
+    }, startupTimeoutMs);
+  }
+  // Restore each Profile independently before checking both together again.
+  // This also makes a stalled restore inspectable as the only Aux process.
+  await personal.stop();
   await work.stop();
   await work.start(true);
   let restoredPages;
   await until("Work tab restored with stable native identity", async () => {
     restoredPages = (await work.rpc("pages.list")).map(({ pageId, url, loading }) => ({ pageId, url, loading }));
     return restoredPages.some(page => page.pageId === bob.pageId && !page.loading && page.url === `${origin}/whoami`);
-  }).catch(error => { throw new Error(`${error.message}; expected ${bob.pageId}; fixture pages: ${JSON.stringify(restoredPages ?? [])}`); });
+  }, startupTimeoutMs).catch(error => { throw new Error(`${error.message}; expected ${bob.pageId}; fixture pages: ${JSON.stringify(restoredPages ?? [])}`); });
   assert.equal((await work.rpc("workspace.get")).activePageId, bob.pageId);
   assert.match(JSON.stringify(await work.rpc("pages.observe", { pageId: bob.pageId })), /Account bob/);
+  await personal.start(true);
+  await until("Personal tab restored with stable native identity", async () =>
+    (await personal.rpc("pages.list")).some(page => page.pageId === alice.pageId && !page.loading && page.url === `${origin}/whoami`), startupTimeoutMs);
   assert.match(JSON.stringify(await personal.rpc("pages.observe", { pageId: alice.pageId })), /Account alice/);
   await assert.rejects(personal.rpc("pages.observe", { pageId: bob.pageId }), { code: "target_detached" });
   console.log("PASS persisted-session recovery restores Work tab identity, active selection and its cookie without crossing Profiles");

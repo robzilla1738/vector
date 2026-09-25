@@ -152,3 +152,17 @@ Patch 39 replaces the worker's blocking API-response read loop with a bounded ma
 - **[Observed]** Launching the fresh branded default profile opened Chromium's sign-in window. Aux startup/onboarding integration remains a product issue to fix; no sign-in or real-data migration was performed.
 
 Logs: `/tmp/aux-dev-async-rpc-build.log`, `/tmp/aux-dev-async-rpc-journey.log`, and owner-only fixture traces in `/tmp/aux-profile-logs-jIVBiG/`.
+
+### Runtime startup ordering and restored-page attachment
+
+- **[Verified]** A deterministic socket test reproduced `zap.snapshot` being rejected as `not_found` when it arrived in the handshake packet. Buffered delivery now runs after synchronous RPC handler registration. All five host-socket tests pass, including the new regression.
+- **[Verified]** The development app now connects its runtime during saved-session startup and restores the web tab with its original native identity. The former empty-frame/CDP initialization failure no longer reproduces in this fixture.
+- **[Verified]** Native protected pages were imposing a 40-second attach timeout before web tabs were registered. The managed driver now rejects those targets before attachment, preserving the broker's protected-document boundary. Unix-socket recovery also reuses the authenticated connection instead of attempting a second one. Four driver trust tests and 11 combined socket/broker/session tests pass.
+- **[Partial]** The strengthened two-Profile journey has restored Work's tab identity, active selection and persisted HttpOnly account cookie. Its final Personal assertion raced registration; the harness now waits for Personal's restored identity as it already did for Work. A clean complete run remains required.
+- **[Verified]** Abrupt-process cookie recovery now waits for the fixture cookie's SQLite checkpoint, as the harness already waited for Chromium's tab journal. Earlier `Account none` failures terminated before the cookie had reached disk. Only fixture cookie metadata is queried, never values or keys.
+
+Logs: `/tmp/aux-startup-rpc-{before,after,build}.log`, `/tmp/aux-startup-recovery-unit.log`, `/tmp/aux-native-profile-recovery-final.log`. No real data was migrated.
+
+### Development UI follow-up
+
+The owner reported soft/pixelated shell icons on September 25. This is a current development handoff requirement. Icons are inline Central SVG paths (24-unit viewbox, 1.5-unit strokes), displayed at 14/16/20 CSS pixels. The connected Dell display uses 3440×1440 at 1×; the built-in display is Retina. Live scale/compositing and optical stroke verification remain open; no icon fix is claimed yet. Preserve icon geometry, Aux branding and liquid glass.

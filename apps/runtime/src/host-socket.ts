@@ -44,7 +44,12 @@ export function connectHostSocket(path: string, token: string, timeoutMs = 15_00
       },
       onMessage(callback) {
         messageCallback = callback;
-        for (const message of pending.splice(0)) callback(message);
+        // RpcChannel subscribes in its constructor. Let its owner register
+        // startup methods before delivering requests bundled with the handshake.
+        const backlog = pending.splice(0);
+        queueMicrotask(() => {
+          if (!closed) for (const message of backlog) messageCallback?.(message);
+        });
       },
       onClose(callback) {
         if (closed) queueMicrotask(callback);
