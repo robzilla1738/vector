@@ -12,6 +12,7 @@ export function VaultSettings() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [passphrase, setPassphrase] = useState("");
+  const [transferPassphrase, setTransferPassphrase] = useState("");
   const [label, setLabel] = useState("");
   const [origin, setOrigin] = useState("");
   const [username, setUsername] = useState("");
@@ -65,12 +66,15 @@ export function VaultSettings() {
       </div>
     </form>}
     {status && status.available && !status.locked && status.configured && <div className="row">
-      <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
-        const exported = await bridge.vaultExport();
+      <input type="password" aria-label="Transfer passphrase" autoComplete="new-password" minLength={12} maxLength={200} value={transferPassphrase} onChange={event => setTransferPassphrase(event.target.value)} placeholder="Transfer passphrase (12+ characters)" />
+      <button className="btn sm" disabled={busy || transferPassphrase.length < 12} onClick={() => void action(async () => {
+        const exported = await bridge.vaultExport(transferPassphrase);
+        setTransferPassphrase("");
         if (exported?.path) toast(`Vault exported to ${exported.path}`);
       })}>Export credentials…</button>
-      <button className="btn sm" disabled={busy} onClick={() => void action(async () => {
-        const imported = await bridge.vaultImport();
+      <button className="btn sm" disabled={busy || transferPassphrase.length < 12} onClick={() => void action(async () => {
+        const imported = await bridge.vaultImport(transferPassphrase);
+        setTransferPassphrase("");
         if (imported) toast(`${imported.added} credential${imported.added === 1 ? "" : "s"} imported${imported.skipped ? ` · ${imported.skipped} skipped` : ""}.`);
       })}>Import credentials…</button>
     </div>}

@@ -99,8 +99,25 @@ export const VaultExportItemSchema = z.object({
 });
 export const VaultExportSchema = z.object({
   exportedAt: z.number(),
-  items: z.array(VaultExportItemSchema),
+  items: z.array(VaultExportItemSchema).max(500),
 });
+/** A portable transfer package. The plaintext schema is internal to the vault service. */
+export const VaultTransferPackageSchema = z.object({
+  format: z.literal("aux-vault-transfer"),
+  version: z.literal(1),
+  kdf: z.literal("scrypt-n16384-r8-p1"),
+  cipher: z.literal("aes-256-gcm"),
+  salt: z.string().regex(/^[a-f0-9]{32}$/),
+  nonce: z.string().regex(/^[a-f0-9]{24}$/),
+  tag: z.string().regex(/^[a-f0-9]{32}$/),
+  ciphertext: z.string().max(4_000_000).regex(/^[A-Za-z0-9+/]*={0,2}$/),
+}).strict();
+export const VaultTransferPassphraseSchema = z.string().min(12).max(200);
+export const VaultEncryptedExportParams = z.object({ passphrase: VaultTransferPassphraseSchema }).strict();
+export const VaultEncryptedImportParams = z.object({
+  passphrase: VaultTransferPassphraseSchema,
+  package: VaultTransferPackageSchema,
+}).strict();
 export const VaultImportParams = z.object({
   items: z.array(VaultExportItemSchema).max(500),
 }).strict();

@@ -1,7 +1,8 @@
 import { app, dialog } from "electron";
+import { randomUUID } from "node:crypto";
 import { chmodSync, lstatSync, realpathSync } from "node:fs";
-import { cp, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { cp, rename, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { DATA_DIR } from "../app/bootstrap.js";
 import { browserHealth, extensionManager } from "../app/services.js";
 import { buildDiagnosticReport } from "../diagnostics.js";
@@ -11,6 +12,19 @@ import { channel, requireRuntime, runtimeInvoke, runtimeReady } from "../runtime
 import { handleShell, regularWindows } from "../windows/registry.js";
 
 export function wireBackupIpc() {
+  handleShell('app.exportMigrationLayout', async (state, layoutJson: unknown) => {
+    if (typeof layoutJson !== 'string' || Buffer.byteLength(layoutJson) > 4 * 1024 * 1024) throw new Error('The Space layout is too large to export.');
+    const parsed = JSON.parse(layoutJson) as { spaces?: unknown };
+    if (!Array.isArray(parsed.spaces) || !parsed.spaces.length) throw new Error('The Space layout is invalid.');
+    const result = await dialog.showSaveDialog(state.win, { title: 'Export Aux migration layout', defaultPath: `aux-layout-${new Date().toISOString().slice(0,10)}.json`, filters: [{ name: 'Aux layout', extensions: ['json'] }] });
+    if (result.canceled || !result.filePath) return null;
+    const temporary = join(dirname(result.filePath), `.aux-layout-${randomUUID()}.tmp`);
+    try {
+      await writeFile(temporary, layoutJson, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+      await rename(temporary, result.filePath);
+    } finally { await rm(temporary, { force: true }); }
+    return { path: result.filePath };
+  });
   handleShell('app.exportDiagnostics', async state => {
     const invoke=async(method:string,params:Record<string,unknown>={})=>{if(!channel)return null;try{return await runtimeInvoke(method, params, 15_000);}catch{return null;}};
     const [runtime,settings,workspaces,runs,pages]=await Promise.all([invoke('runtime.describe'),invoke('settings.get'),invoke('workspaces.list'),invoke('runs.list',{limit:500}),invoke('pages.list',{includeDetached:true})]);

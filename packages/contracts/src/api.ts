@@ -44,7 +44,7 @@ import { SubagentGroupCreateParams, SubagentGroupSchema, SubagentGroupViewSchema
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
 import { ConnectorCatalogSchema } from "./connectors.js";
 import {
-  VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
+  VaultAccessRecordSchema, VaultEncryptedExportParams, VaultEncryptedImportParams, VaultTransferPackageSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
   RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
@@ -729,8 +729,8 @@ export const MethodSchemas = {
   "vault.generate": VaultGenerateParams,
   "vault.itemsForOrigin": VaultItemsForOriginParams,
   "vault.fill": VaultHumanFillParams,
-  "vault.export": z.object({}),
-  "vault.import": VaultImportParams,
+  "vault.export": VaultEncryptedExportParams,
+  "vault.import": VaultEncryptedImportParams,
   "vault.update": VaultUpdateParams,
   "vault.secretMatches": VaultSecretMatchParams,
   "routines.list": z.object({workspaceId:id.optional(),query:z.string().trim().max(200).optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
@@ -1181,7 +1181,7 @@ export const ResultSchemas = {
   "vault.generate": z.object({ password: z.string() }),
   "vault.itemsForOrigin": z.array(VaultItemSchema),
   "vault.fill": z.object({ username: z.string().optional(), secret: z.string() }),
-  "vault.export": VaultExportSchema,
+  "vault.export": VaultTransferPackageSchema,
   "vault.import": z.object({ added: z.number().int(), skipped: z.number().int() }),
   "vault.update": VaultItemSchema,
   "vault.secretMatches": z.object({ matches: z.boolean() }),

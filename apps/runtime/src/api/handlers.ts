@@ -955,8 +955,8 @@ export function makeInvoker(s: Services) {
         if (method === "vault.generate") return { password: vault.generate(params.length) };
         if (method === "vault.itemsForOrigin") return vault.itemsForOrigin(params.origin);
         if (method === "vault.fill") return vault.revealForHumanFill(params.itemId, params);
-        if (method === "vault.export") return vault.exportItems();
-        if (method === "vault.import") return vault.importItems(params);
+        if (method === "vault.export") return vault.exportEncrypted(params.passphrase);
+        if (method === "vault.import") return vault.importEncrypted(params);
         if (method === "vault.update") return vault.updateSecret(params.itemId, params.secret);
         if (method === "vault.secretMatches") return { matches: await vault.secretMatches(params.itemId, params.secret) };
         const origin = params.origin ? originOfAddress(params.origin) : undefined;

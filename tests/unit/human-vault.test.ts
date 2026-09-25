@@ -154,6 +154,20 @@ it("export/import round-trips credentials and skips duplicates", async () => {
   }
 });
 
+it("encrypted transfer round-trips, rejects wrong passphrases and tampering, and remains idempotent", async () => {
+  const { vault } = memoryVault();
+  await saved(vault);
+  const transfer = await vault.exportEncrypted("a-long-transfer-passphrase");
+  expect(JSON.stringify(transfer)).not.toContain("s3cret!");
+  const { vault: target } = memoryVault();
+  await unlocked(target);
+  await expect(target.importEncrypted({ passphrase: "a-wrong-passphrase", package: transfer })).rejects.toThrow(/invalid/);
+  const tampered = { ...transfer, tag: `${transfer.tag[0] === "a" ? "b" : "a"}${transfer.tag.slice(1)}` };
+  await expect(target.importEncrypted({ passphrase: "a-long-transfer-passphrase", package: tampered })).rejects.toThrow(/invalid/);
+  expect(await target.importEncrypted({ passphrase: "a-long-transfer-passphrase", package: transfer })).toEqual({ added: 1, skipped: 0 });
+  expect(await target.importEncrypted({ passphrase: "a-long-transfer-passphrase", package: transfer })).toEqual({ added: 0, skipped: 1 });
+});
+
 it("import rejects entries without origin or secret", async () => {
   const { vault } = memoryVault();
   await unlocked(vault);

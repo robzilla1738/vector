@@ -30,7 +30,7 @@ export const AUX_FEATURES = {
   memory: "B9", unifiedRecall: "B3", extensions: "B8",
   passwordManager: "B8", vault: "B8", passkeys: "B8", contentBlocking: "B8",
   httpsFirst: "B8", sitePermissions: "B8", pageZoom: "B8",
-  policyProvider: "B8", updates: "B11", crashReporting: "B11",
+  policyProvider: "B8", updates: "B11", crashReporting: "B11", electronMigration: "B11",
   onboarding: "B7",
 } as const satisfies Record<string, AuxFeatureBatch>;
 
@@ -94,6 +94,7 @@ export function auxFeatureForMethod(method: string): AuxFeature | undefined {
 const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
   vaultFill: "vault", vaultSave: "vault", vaultDismiss: "vault",
   vaultExport: "vault", vaultImport: "vault", autofill: "vault",
+  exportMigrationLayout: "electronMigration",
   browserProfiles: "profiles", createBrowserProfile: "profiles", renameBrowserProfile: "profiles",
   archiveBrowserProfile: "profiles", deleteBrowserProfile: "profiles", openBrowserProfile: "profiles",
   openBrowserProfileUrl: "profiles", quickAsk: "quickAsk", quickAskShortcut: "quickAsk",

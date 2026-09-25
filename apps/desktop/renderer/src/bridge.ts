@@ -52,8 +52,8 @@ export interface AuxBridge {
   vaultFill(pageId:string,itemId:string):Promise<boolean>;
   vaultSave(pageId:string,origin:string):Promise<{ok:boolean;updated:boolean}>;
   vaultDismiss(pageId:string,origin:string):Promise<boolean>;
-  vaultExport():Promise<{path:string}|null>;
-  vaultImport():Promise<{added:number;skipped:number}|null>;
+  vaultExport(passphrase:string):Promise<{path:string}|null>;
+  vaultImport(passphrase:string):Promise<{added:number;skipped:number}|null>;
   onVaultOffer(cb:(offer:VaultOffer)=>void):()=>void;
   setDefaultBrowser():Promise<{isDefault:boolean}>;
   createBrowserProfile(name:string):Promise<BrowserProfile>;
@@ -186,6 +186,7 @@ export interface AuxBridge {
   dataDir(): Promise<string>;
   exportDiagnostics():Promise<string|null>;
   exportRuntimeBackup():Promise<{path:string;bytes:number;sha256:string;artifactFiles:number;missingArtifacts:number}|null>;
+  exportMigrationLayout(layoutJson:string):Promise<{path:string}|null>;
   stageRuntimeRestore():Promise<{staged:true;schemaVersion:number;bytes:number;sha256:string;artifactFiles:number;missingArtifacts:number}|null>;
   cancelRuntimeRestore():Promise<{cancelled:true}>;
   runtimeRestoreStatus():Promise<{pending:boolean;lastAppliedAt?:number}>;
@@ -349,6 +350,7 @@ const stub: AuxBridge = {
   dataDir: async () => "",
   exportDiagnostics:async()=>null,
   exportRuntimeBackup:async()=>null,
+  exportMigrationLayout:async()=>null,
   stageRuntimeRestore:async()=>null,
   cancelRuntimeRestore:async()=>({cancelled:true}),
   runtimeRestoreStatus:async()=>({pending:false}),

@@ -1075,6 +1075,7 @@ export function installMockBridge(q: URLSearchParams) {
     dataDir: async () => "/Users/you/Library/Application Support/Aux Browser",
     exportDiagnostics:async()=>null,
     exportRuntimeBackup:async()=>null,
+    exportMigrationLayout:async()=>null,
     stageRuntimeRestore:async()=>null,
     cancelRuntimeRestore:async()=>({cancelled:true}),
     runtimeRestoreStatus:async()=>({pending:false}),

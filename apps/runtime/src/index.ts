@@ -73,6 +73,7 @@ export { DurableWriteLedger, stepSignature, beginConsequentialWrite, settleWrite
 export { CoordinatorLease, coordinatorOwnerId, COORDINATOR_LEASE_TTL_MS } from "./agent/coordinator-lease.js";
 export { SpaceService } from "./services/spaces.js";
 export { backupRetention, setBackupRetention, listRuntimeBackups, createRuntimeBackup, BACKUP_KEEP_OPTIONS } from "./services/runtime-backup.js";
+export { prepareElectronMigration, type ElectronMigrationReport } from "./services/electron-migration.js";
 export { markCloudDesktopClosed, CloudEnvironmentService } from "./services/cloud-environments.js";
 export {
   classifyRepair,

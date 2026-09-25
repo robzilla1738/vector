@@ -1,7 +1,10 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import {
   originOfAddress,
   AuxError,
+  VaultExportSchema,
+  VaultTransferPackageSchema,
+  VaultTransferPassphraseSchema,
   type VaultAccessRecord,
   type VaultGrant,
   type VaultItem,
@@ -388,6 +391,39 @@ export class VaultService {
     }
     this.record("fill", { detail: `exported ${out.length} item(s)` });
     return { exportedAt: Date.now(), items: out };
+  }
+
+  /** Secrets only leave the runtime in a passphrase-encrypted, authenticated package. */
+  async exportEncrypted(passphrase: string) {
+    VaultTransferPassphraseSchema.parse(passphrase);
+    const salt = randomBytes(16);
+    const nonce = randomBytes(12);
+    const key = digestPassphrase(passphrase, salt);
+    const cipher = createCipheriv("aes-256-gcm", key, nonce);
+    cipher.setAAD(Buffer.from("aux-vault-transfer:v1"));
+    const plain = Buffer.from(JSON.stringify(VaultExportSchema.parse(await this.exportItems())), "utf8");
+    if (plain.length > 3_000_000) throw new AuxError("invalid_params", "The vault export is too large.");
+    const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+    return VaultTransferPackageSchema.parse({ format: "aux-vault-transfer", version: 1,
+      kdf: "scrypt-n16384-r8-p1", cipher: "aes-256-gcm", salt: salt.toString("hex"),
+      nonce: nonce.toString("hex"), tag: cipher.getAuthTag().toString("hex"),
+      ciphertext: ciphertext.toString("base64") });
+  }
+
+  async importEncrypted(input: { passphrase: string; package: unknown }) {
+    VaultTransferPassphraseSchema.parse(input.passphrase);
+    const pkg = VaultTransferPackageSchema.parse(input.package);
+    let payload;
+    try {
+      const decipher = createDecipheriv("aes-256-gcm", digestPassphrase(input.passphrase, Buffer.from(pkg.salt, "hex")), Buffer.from(pkg.nonce, "hex"));
+      decipher.setAAD(Buffer.from("aux-vault-transfer:v1"));
+      decipher.setAuthTag(Buffer.from(pkg.tag, "hex"));
+      const plain = Buffer.concat([decipher.update(Buffer.from(pkg.ciphertext, "base64")), decipher.final()]);
+      payload = VaultExportSchema.parse(JSON.parse(plain.toString("utf8")));
+    } catch {
+      throw new AuxError("invalid_params", "The vault package or transfer passphrase is invalid.");
+    }
+    return this.importItems(payload);
   }
 
   /** Import exported items — duplicates (same origin+username+label) are skipped. */

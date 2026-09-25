@@ -1,5 +1,8 @@
 import { dialog } from "electron";
-import { readFileSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { dirname, join } from "node:path";
+import { VaultTransferPackageSchema, VaultTransferPassphraseSchema } from "@aux/contracts";
 import { registry } from "../app/services.js";
 import { runAutofill } from "../features/autofill.js";
 import { pendingVaultSaves, runVaultFill } from "../features/vault.js";
@@ -38,20 +41,27 @@ export function wireVaultIpc() {
     if (pending) { clearTimeout(pending.timer); pendingVaultSaves.delete(`${pageId}:${origin}`); }
     return true;
   });
-  handleShell("ui.vaultExport", async state => {
+  handleShell("ui.vaultExport", async (state, passphrase: unknown) => {
+    VaultTransferPassphraseSchema.parse(passphrase);
     requireRuntime("The browser runtime is not connected yet.");
-    const result = await dialog.showSaveDialog(state.win, { title: "Export vault credentials", defaultPath: `aux-vault-${new Date().toISOString().slice(0, 10)}.json`, filters: [{ name: "JSON", extensions: ["json"] }] });
+    const result = await dialog.showSaveDialog(state.win, { title: "Export encrypted vault credentials", defaultPath: `aux-vault-${new Date().toISOString().slice(0, 10)}.auxvault`, filters: [{ name: "Aux encrypted vault", extensions: ["auxvault"] }] });
     if (result.canceled || !result.filePath) return null;
-    const data = await runtimeInvoke("vault.export");
-    writeFileSync(result.filePath, JSON.stringify(data, null, 2), { mode: 0o600 });
+    const data = await runtimeInvoke("vault.export", { passphrase });
+    const temporary = join(dirname(result.filePath), `.auxvault-${randomUUID()}.tmp`);
+    try {
+      writeFileSync(temporary, JSON.stringify(data, null, 2), { mode: 0o600, flag: "wx" });
+      renameSync(temporary, result.filePath);
+    } finally { rmSync(temporary, { force: true }); }
     return { path: result.filePath };
   });
-  handleShell("ui.vaultImport", async state => {
+  handleShell("ui.vaultImport", async (state, passphrase: unknown) => {
+    VaultTransferPassphraseSchema.parse(passphrase);
     requireRuntime("The browser runtime is not connected yet.");
-    const result = await dialog.showOpenDialog(state.win, { title: "Import vault credentials", filters: [{ name: "JSON", extensions: ["json"] }], properties: ["openFile"] });
+    const result = await dialog.showOpenDialog(state.win, { title: "Import encrypted vault credentials", filters: [{ name: "Aux encrypted vault", extensions: ["auxvault"] }], properties: ["openFile"] });
     if (result.canceled || !result.filePaths[0]) return null;
-    const parsed = JSON.parse(readFileSync(result.filePaths[0], "utf8")) as { items?: unknown };
-    if (!Array.isArray(parsed.items)) throw new Error("That file is not an Aux vault export.");
-    return runtimeInvoke("vault.import", { items: parsed.items });
+    const info = lstatSync(result.filePaths[0]);
+    if (!info.isFile() || info.isSymbolicLink() || info.size > 4_100_000) throw new Error("That vault package is not a regular file or is too large.");
+    const pkg = VaultTransferPackageSchema.parse(JSON.parse(readFileSync(result.filePaths[0], "utf8")));
+    return runtimeInvoke("vault.import", { passphrase, package: pkg });
   });
 }
