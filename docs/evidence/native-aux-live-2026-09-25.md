@@ -141,3 +141,14 @@ Logs: `/tmp/aux-official-build-20260925.log`, `/tmp/aux-dev-build-38.log`, `/tmp
 - **[Investigating]** A temporary native broker diagnostic build is being used to distinguish unavailable renderer state from replies dropped by ownership/URL validation. Diagnostics emit only method names, sizes and Boolean state, never page payloads. They must be removed before the working development build is handed over.
 
 Logs: `/tmp/aux-dev-profile-reset-journey.log`, `/tmp/aux-dev-profile-protocol-journey.log`, `/tmp/aux-dev-restored-tab-journey.log`. Protocol traces are local, owner-only fixture logs; they are not committed. No real profile was migrated.
+
+### Asynchronous native API replies
+
+Patch 39 replaces the worker's blocking API-response read loop with a bounded map of pending requests. Responses are matched by request ID; timeout/disconnect complete each request without replaying it. Callbacks return to the UI task runner. The worker remains free to send CDP notifications while the runtime prepares an API response.
+
+- **[Verified]** Development app compiles (23 actions, 1m05s). Protocol tracing now shows every restored-page initialization request receiving its response, rather than leaving them all pending behind a browser API request.
+- **[Still failing]** Restored `Page.getFrameTree` returns an empty frame URL; Playwright still waits for its first committed navigation and times out. Cookie/authority isolation continues to pass. The API deadlock fix is not a claim that saved-session recovery is complete.
+- **[Verified]** Temporary native diagnostic logging and both unsuccessful load/visibility trials were removed. The retained native change is asynchronous API response handling, not a timing or reload workaround.
+- **[Observed]** Launching the fresh branded default profile opened Chromium's sign-in window. Aux startup/onboarding integration remains a product issue to fix; no sign-in or real-data migration was performed.
+
+Logs: `/tmp/aux-dev-async-rpc-build.log`, `/tmp/aux-dev-async-rpc-journey.log`, and owner-only fixture traces in `/tmp/aux-profile-logs-jIVBiG/`.
