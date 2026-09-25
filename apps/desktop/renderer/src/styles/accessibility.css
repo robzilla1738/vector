@@ -8,7 +8,6 @@
 @media (prefers-reduced-transparency: reduce) { .history-menu { -webkit-backdrop-filter: none; } }
 @media (prefers-reduced-transparency: reduce) { :root .app-body { background: var(--sb-bg); backdrop-filter: none; } }
 @media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-reveal::after { transition: none; } }
-@media (prefers-reduced-transparency: reduce) { .site-controls-scrim { background: var(--bg-0); backdrop-filter: none; } .site-controls-card { background: var(--bg-1); } }
 @media (prefers-reduced-motion: reduce) { .quick-ask-panel { animation:none; } .quick-ask .composer-frame { transition:none; } }
 @media (prefers-reduced-motion:reduce) { .split-divider > span { transition:none; } }
 @media (prefers-reduced-motion: reduce) {

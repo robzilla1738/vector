@@ -25,6 +25,7 @@ try{
   await shell.locator('.main-col > .toolbar').dispatchEvent('pointerenter');
   await shell.locator('button[aria-label="Site controls"]:visible').click();
   const dialog=shell.getByRole('dialog',{name:base});await dialog.waitFor();
+  assert.equal(await dialog.evaluate(element=>element.matches(':modal')),true);
   await dialog.getByText('Local connection',{exact:true}).first().waitFor();
   await dialog.getByText('1 cookie stored for this address',{exact:true}).waitFor();
   await dialog.getByText('Notifications',{exact:true}).waitFor();
@@ -44,5 +45,10 @@ try{
   await shell.locator('button[aria-label="Site controls"]:visible').waitFor();
   await shell.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Site controls');
   assert.equal(await shell.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'Site controls');
+  await shell.locator('button[aria-label="Site controls"]:visible').click();
+  await dialog.waitFor();
+  await shell.keyboard.press('Escape');
+  await dialog.waitFor({state:'detached'});
+  await shell.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Site controls');
   console.log('Current-site connection, cookie and permission state is inspectable; permission reset and guarded site-data clearing refresh the accessible shell surface.');
 }finally{await app?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});}
