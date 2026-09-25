@@ -1,4 +1,5 @@
 import { newAsyncContext, type QuickJSAsyncContext } from "quickjs-emscripten";
+import { randomUUID } from "node:crypto";
 import {
   AgentJsRunParams, MethodSchemas, ResultSchemas,
   supportedAgentApi, AuxError, type AgentApiSupport,
@@ -6,11 +7,20 @@ import {
 
 type Client = { external: boolean; connectionId?: string; scope?: unknown; codeMode?: true };
 type Invoke = (method: string, params: unknown, client: Client) => Promise<unknown>;
-type Session = { context: QuickJSAsyncContext; queue: Promise<void>; client: Client; deadline: number; touchedAt: number };
+type Session = {
+  context: QuickJSAsyncContext;
+  queue: Promise<void>;
+  client: Client;
+  deadline: number;
+  touchedAt: number;
+  hostFailures: Map<string, AuxError>;
+};
 
 const MAX_HEAP_BYTES = 128 * 1024 * 1024;
 const MAX_SESSIONS = 8;
 const IDLE_MS = 30 * 60_000;
+const HOST_FAILURE_MARKER = "aux-host-error:";
+const MAX_HOST_FAILURES = 32;
 
 /** An isolated QuickJS context per caller/session. Only manifest-backed handles cross it. */
 export class AgentCodeMode {
@@ -43,7 +53,7 @@ export class AgentCodeMode {
     const context = await newAsyncContext();
     context.runtime.setMemoryLimit(MAX_HEAP_BYTES);
     context.runtime.setMaxStackSize(2 * 1024 * 1024);
-    const session: Session = { context, queue: Promise.resolve(), client, deadline: 0, touchedAt: Date.now() };
+    const session: Session = { context, queue: Promise.resolve(), client, deadline: 0, touchedAt: Date.now(), hostFailures: new Map() };
     context.runtime.setInterruptHandler(() => Date.now() >= session.deadline);
     const available = supportedAgentApi(this.support);
     const byPath = new Map(available.map(item => [item.path, item]));
@@ -57,7 +67,13 @@ export class AgentCodeMode {
         const result = await this.invoke(entry.method, params, { ...session.client, codeMode: true });
         return context.newString(JSON.stringify({ ok: true, value: ResultSchemas[entry.method].parse(result) }));
       } catch (error) {
-        return context.newString(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+        // Keep the host's error code across the QuickJS boundary. Unknown host
+        // failures contain no public diagnostic and must not leak into code or RPC.
+        const failure = error instanceof AuxError ? error : new AuxError("internal", "Aux host call failed.");
+        const id = randomUUID();
+        session.hostFailures.set(id, failure);
+        if (session.hostFailures.size > MAX_HOST_FAILURES) session.hostFailures.delete(session.hostFailures.keys().next().value!);
+        return context.newString(JSON.stringify({ ok: false, error: `${failure.message} [${HOST_FAILURE_MARKER}${id}]` }));
       }
     });
     handle.consume(fn => context.setProp(context.global, "aux_call", fn));
@@ -101,6 +117,7 @@ export class AgentCodeMode {
     current.client = client;
     current.deadline = started + params.deadlineMs;
     current.touchedAt = started;
+    current.hostFailures.clear();
     try {
       const result = await current.context.evalCodeAsync(params.code);
       const value = current.context.unwrapResult(result).consume(handle => current.context.dump(handle));
@@ -108,8 +125,13 @@ export class AgentCodeMode {
       if (json.length > 1_000_000) throw new AuxError("invalid_params", "Code mode output exceeds 1 MB; return a smaller result.");
       return { value: JSON.parse(json) as unknown, durationMs: Date.now() - started };
     } catch (error) {
-      throw new AuxError("invalid_params", `Code mode failed: ${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      const id = message.match(/aux-host-error:([0-9a-f-]{36})/)?.[1];
+      const hostFailure = id && current.hostFailures.get(id);
+      if (hostFailure) throw hostFailure;
+      throw new AuxError("invalid_params", `Code mode failed: ${message}`);
     } finally {
+      current.hostFailures.clear();
       release();
     }
   }

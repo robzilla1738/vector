@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AgentCodeMode } from "../../apps/runtime/src/agent/code-mode.js";
 import { DEFAULT_AGENT_MODEL_ROUTES, agentModelRoute, supportedAgentApi, agentApiDocs } from "@aux/contracts";
+import { AuxError } from "@aux/contracts";
 
 const caller = { external: true, connectionId: "test-connection" };
 
@@ -65,6 +66,24 @@ describe("manifest-backed code mode", () => {
     try {
       expect((await mode.run({ code: "JSON.parse(aux_call('tabs.ax.observe','{}')).ok" }, caller)).value).toBe(false);
       await expect(mode.run({ code: "while (true) {}", deadlineMs: 100 }, caller)).rejects.toThrow(/Code mode failed/);
+    } finally { mode.disposeAll(); }
+  });
+
+  it("preserves typed host errors and hides unexpected host diagnostics", async () => {
+    const mode = new AgentCodeMode(async method => {
+      if (method === "pages.list") throw new AuxError("permission_denied", "This page needs a grant.");
+      throw new Error("private host diagnostic: secret-token");
+    });
+    try {
+      await expect(mode.run({ code: "aux.tabs.list({})" }, caller)).rejects.toMatchObject({
+        code: "permission_denied", message: "This page needs a grant.",
+      });
+      await expect(mode.run({ code: "aux.tabs.dev.logs({pageId:'p1',limit:10})" }, caller)).rejects.toMatchObject({
+        code: "internal", message: "Aux host call failed.",
+      });
+      await expect(mode.run({ code: "throw new Error('ordinary script failure')" }, caller)).rejects.toMatchObject({
+        code: "invalid_params", message: expect.stringContaining("ordinary script failure"),
+      });
     } finally { mode.disposeAll(); }
   });
 });
