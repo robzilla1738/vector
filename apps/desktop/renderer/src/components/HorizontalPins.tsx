@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
-import type { PageTarget } from "@aux/contracts";
+import { useShallow } from "zustand/react/shallow";
 import { errToast, useStore } from "../store";
-import type { Pin } from "../workspace";
+import { tabsInSpace, type Pin } from "../workspace";
 import { detailsMenuKey } from "../keyboard-list";
 import { FavIcon } from "./SiteTile";
 import { PinMenu } from "./PinMenu";
 
-export function HorizontalPins({ pins, tabs, spaceId, activePageId }: { pins: Pin[]; tabs: PageTarget[]; spaceId: string; activePageId: string | null }) {
+export function HorizontalPins({ pins, spaceId, activePageId }: { pins: Pin[]; spaceId: string; activePageId: string | null }) {
+  const tabs = useStore(useShallow(state => tabsInSpace(state.layout, state.pages, spaceId).filter(page => pins.some(pin => pin.url === page.url))));
   const dragging = useRef<string | null>(null);
   const overflow = useRef<HTMLDetailsElement>(null);
   const [menu, setMenu] = useState<{ pin: Pin; x: number; y: number } | null>(null);

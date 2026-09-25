@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { create } from "zustand";
 import { errToast, useStore } from "./store";
 import type { PageTarget } from "@aux/contracts";
+import type { TabMembership } from "./use-tab-membership";
 
 type Modifiers = { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean };
 
@@ -11,11 +12,11 @@ const useSelection = create<Selection>(() => ({space: "", ids: [], anchor: null}
 /** Selection is transient, scoped to a Space, and never includes agent-owned tabs.
  *  The returned callbacks keep a stable identity — they read the latest state
  *  through a ref — so memoized tab rows are not re-rendered by callback churn. */
-export function useTabSelection(tabs: PageTarget[], spaceId: string, activeId: string | null) {
+export function useTabSelection(tabs: TabMembership[], spaceId: string, activeId: string | null) {
   const state = useSelection();
   const setState = useSelection.setState;
   useEffect(() => { if (useSelection.getState().space !== spaceId) setState({space: spaceId, ids: [], anchor: null}); }, [spaceId]);
-  const eligible = tabs.filter(tab => !tab.ownedByRuntime && tab.viewStatus !== "detached");
+  const eligible = tabs;
   const eligibleIds = new Set(eligible.map(tab => tab.pageId));
   const ids = state.space === spaceId ? state.ids.filter(id => eligibleIds.has(id)) : [];
   const latest = useRef({ state, ids, eligible, activeId, spaceId });
@@ -63,7 +64,12 @@ export function useTabSelection(tabs: PageTarget[], spaceId: string, activeId: s
     },
     pagesFor: (page: PageTarget) => {
       const { ids, eligible } = latest.current;
-      return ids.includes(page.pageId) ? eligible.filter(tab => ids.includes(tab.pageId)) : [page];
+      if (!ids.includes(page.pageId)) return [page];
+      const pages = new Map(useStore.getState().pages.map(tab => [tab.pageId, tab]));
+      return eligible.filter(tab => ids.includes(tab.pageId)).flatMap(tab => {
+        const current = pages.get(tab.pageId);
+        return current ? [current] : [];
+      });
     },
   }), [setState]);
   return { ids, ...api };

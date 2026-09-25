@@ -26,6 +26,7 @@ import { useWindowedRows } from "../use-windowed-rows";
 import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-sidebar";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useDismissable } from "../use-dismissable";
+import { useTabMembership, type TabMembership } from "../use-tab-membership";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
 
@@ -414,7 +415,7 @@ export const Sidebar = memo(function Sidebar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
-  const pages = useStore((s) => s.pages);
+  const pages = useTabMembership();
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
   const saved = useStore((s) => { const url = s.pages.find(p => p.pageId === s.activePageId)?.url; const b = url ? s.bookmarks.find(item => item.url === url) : undefined; return b ? b.readingList ? 2 : 1 : 0; });
   const activePageId = useStore((s) => s.activePageId);
@@ -445,14 +446,21 @@ export const Sidebar = memo(function Sidebar() {
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
   const folders = useMemo(() => foldersInSpace(layout, space.id), [layout, space.id]);
   const loose = useMemo(() => unfiledTabs(layout, pages, space.id), [layout, pages, space.id]);
-  const visibleTabs = useMemo(() => [...folders.filter(folder => !folder.collapsed).flatMap(folder => tabsInFolder(layout, pages, folder.id)), ...loose], [folders, layout, pages, loose]);
+  const visibleTabs = useMemo(() => [...folders.flatMap(folder => folder.collapsed ? [] : tabsInFolder(layout, pages, folder.id)), ...loose], [folders, layout, pages, loose]);
   const focusablePageId = visibleTabs.some(tab => tab.pageId === activePageId) ? activePageId : visibleTabs[0]?.pageId;
   const selection = useTabSelection(visibleTabs, space.id, activePageId);
   const pins = layout.pins[space.id] ?? [];
+  const pinnedIcons = useStore(useShallow(state => {
+    const openTabs = tabsInSpace(state.layout, state.pages, space.id);
+    return pins.map(pin => openTabs.find(tab => tab.url === pin.url)?.favicon);
+  }));
   const visiblePins = pins.length > PIN_ROW_SIZE ? pins.slice(0, PIN_ROW_SIZE - 1) : pins;
   const overflowPins = pins.slice(visiblePins.length);
-  const page = pages.find((p) => p.pageId === activePageId);
-  const web = !!page && page.url.startsWith("http");
+  const [activeUrl, activeController] = useStore(useShallow((s) => {
+    const current = s.pages.find((p) => p.pageId === activePageId);
+    return [current?.url, current?.controller] as const;
+  }));
+  const web = activeUrl?.startsWith("http");
 
   const [menuOpen, setMenuOpen] = useState(false);
   const spaceTrigger = useRef<HTMLButtonElement>(null);
@@ -523,7 +531,7 @@ export const Sidebar = memo(function Sidebar() {
     event.preventDefault();
     if (backgroundLink(event)) void openBrowserLink(pin.url, true).catch(errToast);
     else {
-      const open = tabs.find(page => page.url === pin.url);
+      const open = tabsInSpace(useStore.getState().layout, useStore.getState().pages, space.id).find(page => page.url === pin.url);
       if (open) onActivate(open.pageId); else void newTab(pin.url).catch(errToast);
     }
     event.currentTarget.closest("details")?.removeAttribute("open");
@@ -599,7 +607,7 @@ export const Sidebar = memo(function Sidebar() {
   const virtual = loose.length > VIRTUAL_TABS && !drag.pageId;
   const rows = useWindowedRows(tabScroller, looseRows, loose.length, virtual, loose.findIndex(p => p.pageId === activePageId));
 
-  const renderRow = (p: PageTarget, index: number, folderId: string | null, groupLen: number) => (
+  const renderRow = (p: TabMembership, index: number, folderId: string | null, groupLen: number) => (
     <TabRow
       pageId={p.pageId}
       selected={selectedIds.has(p.pageId)}
@@ -630,14 +638,11 @@ export const Sidebar = memo(function Sidebar() {
       <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
-          {visiblePins.map((b) => {
-            const open = tabs.find((p) => p.url === b.url);
-            return (
-              <SiteTile {...pinDragProps(b)} key={b.url} url={b.url} title={b.title} favicon={open?.favicon} active={!!open && open.pageId === activePageId} aria-haspopup="menu"
+          {visiblePins.map((b, index) => (
+              <SiteTile {...pinDragProps(b)} key={b.url} url={b.url} title={b.title} favicon={pinnedIcons[index]} active={activeUrl === b.url} aria-haspopup="menu"
                 onClick={event => openPin(b, event)} onAuxClick={event => openPin(b, event)}
                 onKeyDown={event => pinKey(b, event)} onContextMenu={event => pinMenu(b, event)} />
-            );
-          })}
+          ))}
           {overflowPins.length > 0 && <details className="pin-overflow" onKeyDown={detailsMenuKey}>
             <summary aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites">+{overflowPins.length}</summary>
             <div className="menu pin-overflow-menu" role="menu" aria-label="More pinned sites">
@@ -738,7 +743,7 @@ export const Sidebar = memo(function Sidebar() {
         {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{I.grid}</button></> : <>
         <span className="sp" />
         <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" onClick={() => setOverlay("palette")}>{I.search}</button>
-        {page?.controller === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(page.pageId)}>{I.handSm}</button>}
+        {activeController === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(activePageId!)}>{I.handSm}</button>}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
         <details className="sb-more" onKeyDown={detailsMenuKey}>
           <summary className="icon-btn" aria-haspopup="menu" aria-label="More" title="More">{I.more}</summary>
@@ -749,12 +754,14 @@ export const Sidebar = memo(function Sidebar() {
             <button role="menuitem" aria-label="Downloads" onClick={() => setOverlay("downloads")}>{I.downloadSm}<span>Downloads</span></button>
             <hr />
             <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
-              if (!page) return;
-              void useStore.getState().toggleBookmark(page.url,page.title).catch(errToast);
+              const current = useStore.getState().pages.find(item => item.pageId === activePageId);
+              if (!current) return;
+              void useStore.getState().toggleBookmark(current.url,current.title).catch(errToast);
             }}>{I.bookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
             <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
-              if (!page) return;
-              void useStore.getState().toggleReadingList(page.url, page.title).catch(errToast);
+              const current = useStore.getState().pages.find(item => item.pageId === activePageId);
+              if (!current) return;
+              void useStore.getState().toggleReadingList(current.url, current.title).catch(errToast);
             }}>{I.clock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
             <button role="menuitem" aria-label="Tab overview" onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}<span>Tab overview</span></button>
             <button role="menuitem" aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>

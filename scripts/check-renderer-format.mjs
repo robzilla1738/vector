@@ -10,6 +10,8 @@ const files = [
   "apps/desktop/renderer/src/floating-sidebar.test.tsx",
   "apps/desktop/renderer/src/toolbar-reveal.ts",
   "apps/desktop/renderer/src/toolbar-reveal.test.tsx",
+  "apps/desktop/renderer/src/use-tab-membership.ts",
+  "apps/desktop/renderer/src/use-tab-membership.test.tsx",
   "apps/desktop/renderer/src/command-results.ts",
   "apps/desktop/renderer/src/command-results.test.ts",
   "apps/desktop/renderer/src/command-ranking-renderer.ts",
