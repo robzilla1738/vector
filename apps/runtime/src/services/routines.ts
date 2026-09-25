@@ -336,13 +336,25 @@ export class RoutineService {
     for (const routine of this.list({ includeArchived: false, limit: 200 })) {
       if (routine.paused || routine.trigger.kind === "manual") continue;
       if (routine.trigger.kind === "schedule") {
-        const scheduledFor = previousScheduledTime(routine.trigger, now);
-        const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, scheduledFor);
-        if (this.hasOccurrence(identity)) continue;
-        if (Math.abs(now - scheduledFor) <= 90_000) {
-          created.push(await this.startOccurrence(routine, identity, scheduledFor));
-        } else if (scheduledFor < now - 90_000) {
-          created.push(this.recordMissed(routine, identity, "Missed scheduled run. Consequential work was not started automatically."));
+        const last = this.repo.db.prepare("SELECT max(created_at) AS at FROM routine_runs WHERE routine_id=? AND occurrence_identity IS NOT NULL")
+          .get(routine.routineId) as { at: number | null };
+        const lowerBound = Math.max(routine.createdAt, last.at ?? 0, now - 14 * 24 * 60 * 60_000);
+        const pending: number[] = [];
+        let cursor = now;
+        for (let count = 0; count < 100; count++) {
+          const scheduledFor = previousScheduledTime(routine.trigger, cursor);
+          if (scheduledFor < lowerBound) break;
+          pending.push(scheduledFor);
+          cursor = scheduledFor - 60_000;
+        }
+        for (const scheduledFor of pending.reverse()) {
+          const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, scheduledFor);
+          if (this.hasOccurrence(identity)) continue;
+          if (Math.abs(now - scheduledFor) <= 90_000) {
+            created.push(await this.startOccurrence(routine, identity, scheduledFor));
+          } else {
+            created.push(this.recordMissed(routine, identity, "Missed scheduled run. Consequential work was not started automatically."));
+          }
         }
       } else {
         const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, Math.floor(now / (routine.trigger.intervalMinutes * 60_000)) * routine.trigger.intervalMinutes * 60_000);
@@ -600,8 +612,22 @@ export class RoutineService {
   }
 
   private updateRun(run: RoutineRun) {
+    const previous = this.repo.db.prepare("SELECT status FROM routine_runs WHERE routine_run_id=?").get(run.routineRunId) as { status: string } | undefined;
     this.repo.db.prepare("UPDATE routine_runs SET status=?,reason=?,chat_id=?,run_id=?,parameters=?,started_at=?,ended_at=? WHERE routine_run_id=?")
       .run(run.status, run.reason ?? null, run.chatId ?? null, run.runId ?? null, JSON.stringify(run.parameters), run.startedAt ?? null, run.endedAt ?? null, run.routineRunId);
+    if (run.status === "failed" && previous?.status !== "failed") {
+      const recent = this.repo.db.prepare(`SELECT status FROM routine_runs WHERE routine_id=?
+        AND status IN ('failed','completed','cancelled','missed') ORDER BY created_at DESC LIMIT 3`)
+        .all(run.routineId) as { status: string }[];
+      if (recent.length === 3 && recent.every(item => item.status === "failed")) {
+        const routine = this.routine(run.routineId);
+        if (!routine.paused) {
+          const paused = { ...routine, paused: true, revision: routine.revision + 1, updatedAt: Date.now() };
+          this.persist(paused);
+          this.events.emit("routine.updated", { routine: paused, reason: "Paused after three consecutive failed runs." });
+        }
+      }
+    }
   }
 }
 

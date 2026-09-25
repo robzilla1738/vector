@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { EventBus, openDb, Repo, RoutineService, TaskEvidenceService, TaskService, nextScheduledTime } from "@aux/runtime";
-import { AuxError, type RoutineShare } from "@aux/contracts";
+import { AuxError, routineOccurrenceIdentity, type RoutineShare } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -250,6 +250,40 @@ it("records missed consequential schedules and coalesces missed monitors", async
   const monitorRun = due.find(run => run.routineId === monitor.routineId);
   expect(monitorRun?.status).toBe("running");
   expect(monitorRun?.reason).toMatch(/Coalesced 2 missed/i);
+});
+
+it("records each missed daily occurrence after downtime without replaying writes", async () => {
+  const started: string[] = [];
+  const f = fixture(async routine => { started.push(routine.title); return { runId: "unexpected" }; });
+  const routine = f.routines.create({ title: "Daily report", objective: "Publish a report",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [], reviewRequired: true,
+    cloudCapable: false, consecutive: false,
+    trigger: { kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] }, paused: false });
+  const first = nextScheduledTime(routine.trigger as Extract<typeof routine.trigger, { kind: "schedule" }>, Date.now() + 60_000);
+  const now = first + 3 * 24 * 60 * 60_000 + 120_000;
+  const missed = await f.routines.due(now);
+  expect(missed.filter(run => run.routineId === routine.routineId)).toHaveLength(4);
+  expect(missed.every(run => run.status === "missed")).toBe(true);
+  expect(started).toEqual([]);
+  expect(await f.routines.due(now)).toEqual([]);
+});
+
+it("gives the repeated fall DST minute one occurrence identity", () => {
+  const before = routineOccurrenceIdentity("routine", "America/New_York", Date.parse("2026-11-01T05:30:00Z"));
+  const after = routineOccurrenceIdentity("routine", "America/New_York", Date.parse("2026-11-01T06:30:00Z"));
+  expect(before).toBe(after);
+});
+
+it("pauses a Skill after three consecutive failed runs", async () => {
+  const f = fixture(async () => { throw new Error("fixture dispatch failure"); });
+  const routine = f.routines.fromResult({ taskId: f.task.taskId, title: "Failing Skill" });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const current = f.routines.get(routine.routineId).routine;
+    expect((await f.routines.run({ routineId: current.routineId, expectedRevision: current.revision })).status).toBe("failed");
+  }
+  expect(f.routines.get(routine.routineId).routine.paused).toBe(true);
+  expect(f.routines.alerts().some(alert => alert.routineId === routine.routineId)).toBe(true);
 });
 
 it("records an overlapping occurrence and still starts other due Skills", async () => {

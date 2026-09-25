@@ -159,6 +159,11 @@ export type RoutineOccurrence = z.infer<typeof RoutineOccurrenceSchema>;
 
 /** Stable identity for one scheduled fire in a timezone. */
 export function routineOccurrenceIdentity(routineId: string, timezone: string, scheduledFor: number): string {
-  const stamp = new Date(scheduledFor).toISOString().slice(0, 16);
-  return `${routineId}:${timezone}:${stamp}`;
+  // A repeated wall-clock minute at the fall DST boundary is one scheduled
+  // occurrence. The spring gap has no matching minute and is never invented.
+  const fields = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date(scheduledFor)).map(part => [part.type, part.value]));
+  return `${routineId}:${timezone}:${fields.year}-${fields.month}-${fields.day}T${fields.hour}:${fields.minute}`;
 }
