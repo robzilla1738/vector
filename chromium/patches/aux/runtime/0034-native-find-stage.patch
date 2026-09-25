@@ -1,0 +1,508 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 35e5b2e185..e44fe7e538 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -26,6 +26,8 @@ source_set("runtime") {
+     "dictation_mac.mm",
+     "dictation_session.cc",
+     "dictation_session.h",
++    "native_find.cc",
++    "native_find.h",
+     "organization_store.cc",
+     "organization_store.h",
+     "page_identity.cc",
+@@ -55,6 +57,7 @@ source_set("runtime") {
+     "//chrome/browser/ui/tabs:tabs_public",
+     "//chrome/common:mojo_bindings",
+     "//components/device_reauth",
++    "//components/find_in_page",
+     "//components/keyed_service/content",
+     "//components/password_manager/content/browser",
+     "//components/password_manager/core/browser",
+@@ -122,6 +125,15 @@ test("cdp_broker_unittests") {
+   ]
+ }
+ 
++test("native_find_unittests") {
++  sources = [ "native_find_unittest.cc" ]
++  deps = [
++    ":runtime",
++    "//content/public/test:test_support",
++    "//testing/gtest",
++  ]
++}
++
+ test("native_content_unittests") {
+   sources = [ "native_content_unittest.cc" ]
+   deps = [
+diff --git a/chrome/browser/ui/aux/native_find.cc b/chrome/browser/ui/aux/native_find.cc
+new file mode 100644
+index 0000000000..4611787efd
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_find.cc
+@@ -0,0 +1,163 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/native_find.h"
++
++#include <algorithm>
++#include <utility>
++#include <vector>
++
++#include "base/functional/bind.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/find_in_page/find_tab_helper.h"
++#include "components/find_in_page/find_types.h"
++#include "content/public/browser/web_contents.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::DictValue result;
++  result.Set("error", std::move(error));
++  return result;
++}
++base::DictValue Result(int matches, int active) {
++  base::DictValue value;
++  value.Set("matches", matches);
++  if (active > 0) value.Set("activeMatch", active);
++  base::DictValue result;
++  result.Set("result", std::move(value));
++  return result;
++}
++}  // namespace
++
++NativeFind::NativeFind(Profile* profile) : profile_(profile) {}
++NativeFind::~NativeFind() {
++  for (auto& [helper, contents] : observed_) helper->RemoveObserver(this);
++  while (!pending_.empty())
++    Finish(pending_.begin()->first,
++           Fault("backend_unavailable", "The browser Profile closed"));
++}
++
++void NativeFind::Finish(const std::string& page_id, base::DictValue result) {
++  auto it = pending_.find(page_id);
++  if (it == pending_.end()) return;
++  Reply reply = std::move(it->second.reply);
++  pending_.erase(it);
++  std::move(reply).Run(std::move(result));
++}
++
++void NativeFind::Find(const base::DictValue& params, Reply reply) {
++  const std::string* page_id = params.FindString("pageId");
++  const std::string* text = params.FindString("text");
++  const auto forward = params.FindBool("forward");
++  const auto find_next = params.FindBool("findNext");
++  if (!page_id || !text || !forward || !find_next || text->empty() ||
++      text->size() > 4096 || !base::IsStringUTF8(*text)) {
++    std::move(reply).Run(Fault("invalid_argument", "Invalid find request"));
++    return;
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
++  if (!contents || contents->GetBrowserContext() != profile_ ||
++      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++    std::move(reply).Run(Fault("not_found", "Page is not in this Profile"));
++    return;
++  }
++  auto* helper = find_in_page::FindTabHelper::FromWebContents(contents);
++  if (!helper) {
++    find_in_page::FindTabHelper::CreateForWebContents(contents);
++    helper = find_in_page::FindTabHelper::FromWebContents(contents);
++  }
++  if (!helper) {
++    std::move(reply).Run(Fault("backend_unavailable", "Page find is unavailable"));
++    return;
++  }
++  Finish(*page_id, Fault("conflict", "A newer find replaced this request"));
++  if (observed_.emplace(helper, contents).second) helper->AddObserver(this);
++  if (!*find_next) helper->StopFinding(find_in_page::SelectionAction::kClear);
++  pending_.emplace(*page_id, Pending{reinterpret_cast<uintptr_t>(contents),
++                                     reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage()), 0,
++                                     std::move(reply)});
++  helper->StartFinding(base::UTF8ToUTF16(*text), *forward,
++                       /*case_sensitive=*/false, /*find_match=*/true);
++  const int request_id = helper->current_find_request_id();
++  if (auto it = pending_.find(*page_id); it != pending_.end())
++    it->second.request_id = request_id;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE, base::BindOnce(
++          [](base::WeakPtr<NativeFind> self, std::string id, int request) {
++            if (!self) return;
++            auto it = self->pending_.find(id);
++            if (it != self->pending_.end() && it->second.request_id == request)
++              self->Finish(id, Fault("backend_unavailable", "Find timed out"));
++          }, weak_factory_.GetWeakPtr(), *page_id, request_id), base::Seconds(10));
++}
++
++base::DictValue NativeFind::Stop(const base::DictValue& params) {
++  const std::string* page_id = params.FindString("pageId");
++  const std::string* action = params.FindString("action");
++  if (!page_id || !action || (*action != "clear" && *action != "keep"))
++    return Fault("invalid_argument", "Invalid stop-find request");
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
++  if (!contents || contents->GetBrowserContext() != profile_)
++    return Fault("not_found", "Page is not in this Profile");
++  Finish(*page_id, Fault("conflict", "Find was stopped"));
++  if (auto* helper = find_in_page::FindTabHelper::FromWebContents(contents))
++    helper->StopFinding(*action == "keep" ? find_in_page::SelectionAction::kKeep
++                                          : find_in_page::SelectionAction::kClear);
++  base::DictValue value;
++  value.Set("ok", true);
++  base::DictValue result;
++  result.Set("result", std::move(value));
++  return result;
++}
++
++void NativeFind::OnFindResultAvailable(content::WebContents* contents) {
++  auto* helper = find_in_page::FindTabHelper::FromWebContents(contents);
++  if (!helper) return;
++  const auto& found = helper->find_result();
++  if (!found.final_update()) return;
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  std::vector<std::string> stale;
++  std::vector<std::string> matches;
++  for (const auto& [id, pending] : pending_) {
++    if (pending.contents != reinterpret_cast<uintptr_t>(contents)) continue;
++    if (!catalog || catalog->FindPage(id) != contents ||
++        pending.document != reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage())) {
++      stale.push_back(id);
++      continue;
++    }
++    if (pending.request_id == found.request_id()) {
++      matches.push_back(id);
++    }
++  }
++  for (const auto& id : stale)
++    Finish(id, Fault("conflict", "Page changed during find"));
++  for (const auto& id : matches)
++    Finish(id, Result(std::max(0, found.number_of_matches()),
++                      found.active_match_ordinal()));
++}
++
++void NativeFind::OnFindTabHelperDestroyed(find_in_page::FindTabHelper* helper) {
++  auto it = observed_.find(helper);
++  if (it == observed_.end()) return;
++  content::WebContents* contents = it->second;
++  observed_.erase(it);
++  std::vector<std::string> cancelled;
++  for (const auto& [id, pending] : pending_)
++    if (pending.contents == reinterpret_cast<uintptr_t>(contents)) cancelled.push_back(id);
++  for (const auto& id : cancelled)
++    Finish(id, Fault("conflict", "Page closed during find"));
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_find.h b/chrome/browser/ui/aux/native_find.h
+new file mode 100644
+index 0000000000..25cccf8d81
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_find.h
+@@ -0,0 +1,53 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
++
++#include <map>
++#include <cstdint>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++#include "components/find_in_page/find_result_observer.h"
++
++class Profile;
++namespace content { class Page; class WebContents; }
++namespace find_in_page { class FindTabHelper; }
++
++namespace aux {
++
++// Observes Chromium's actual find results. Pending results are tied to the
++// owning Profile, page ID, document, and find request; stale replies fail.
++class NativeFind final : public find_in_page::FindResultObserver {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  explicit NativeFind(Profile* profile);
++  ~NativeFind() override;
++  void Find(const base::DictValue& params, Reply reply);
++  base::DictValue Stop(const base::DictValue& params);
++
++ private:
++  struct Pending {
++    // Identity values only. A navigation may destroy either object before a
++    // delayed result or timeout; neither pointer is ever dereferenced.
++    uintptr_t contents;
++    uintptr_t document;
++    int request_id;
++    Reply reply;
++  };
++  void Finish(const std::string& page_id, base::DictValue result);
++  void OnFindResultAvailable(content::WebContents* contents) override;
++  void OnFindTabHelperDestroyed(find_in_page::FindTabHelper* helper) override;
++  raw_ptr<Profile> profile_;
++  std::map<std::string, Pending> pending_;
++  std::map<find_in_page::FindTabHelper*, content::WebContents*> observed_;
++  base::WeakPtrFactory<NativeFind> weak_factory_{this};
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
+diff --git a/chrome/browser/ui/aux/native_find_unittest.cc b/chrome/browser/ui/aux/native_find_unittest.cc
+new file mode 100644
+index 0000000000..00757baa62
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_find_unittest.cc
+@@ -0,0 +1,49 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/native_find.h"
++
++#include "base/functional/bind.h"
++#include "content/public/test/browser_task_environment.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++namespace {
++
++class NativeFindTest : public testing::Test {
++ protected:
++  content::BrowserTaskEnvironment task_environment_;
++  NativeFind finder_{nullptr};
++};
++
++TEST_F(NativeFindTest, RejectsMalformedAndOversizedRequestsBeforePageLookup) {
++  for (const std::string& text : {std::string(), std::string(4097, 'x'),
++                                  std::string("\xff", 1)}) {
++    base::DictValue request;
++    request.Set("pageId", "foreign-page");
++    request.Set("text", text);
++    request.Set("forward", true);
++    request.Set("findNext", false);
++    bool called = false;
++    finder_.Find(request, base::BindOnce(
++        [](bool* called, base::DictValue result) {
++          *called = true;
++          EXPECT_EQ(*result.FindDict("error")->FindString("code"),
++                    "invalid_argument");
++        }, &called));
++    EXPECT_TRUE(called);
++  }
++}
++
++TEST_F(NativeFindTest, RejectsInvalidStopActionBeforePageLookup) {
++  base::DictValue request;
++  request.Set("pageId", "foreign-page");
++  request.Set("action", "activate");
++  base::DictValue result = finder_.Stop(request);
++  EXPECT_EQ(*result.FindDict("error")->FindString("code"),
++            "invalid_argument");
++}
++
++}  // namespace
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index cc5182cc93..b2ae94ce5f 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -31,6 +31,7 @@
+ #include "base/process/launch.h"
+ #include "base/rand_util.h"
+ #include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
+ #include "base/synchronization/waitable_event.h"
+ #include "base/task/thread_pool.h"
+ #include "base/time/time.h"
+@@ -40,6 +41,7 @@
+ #include "chrome/browser/ui/aux/cosmetic_controller.h"
+ #include "chrome/browser/ui/aux/credential_fill.h"
+ #include "chrome/browser/ui/aux/cookie_import.h"
++#include "chrome/browser/ui/aux/native_find.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/profile_library.h"
+@@ -58,6 +60,7 @@
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/common/stop_find_action.h"
+ #include "url/gurl.h"
+ 
+@@ -145,6 +148,7 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
+ }
+ 
+ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
++  native_find_ = std::make_unique<aux::NativeFind>(profile);
+   cdp_broker_ = std::make_unique<aux::CdpBroker>(
+       profile, base::BindRepeating(&AuxRuntimeHost::OnCdpMessage,
+                                    weak_factory_.GetWeakPtr()));
+@@ -434,6 +438,7 @@ void AuxRuntimeHost::OnPumpDone(bool connected) {
+     SchedulePump();
+   } else {
+     cdp_broker_->DetachAll();
++    staged_documents_.clear();
+     profile_library_->OnRuntimeDisconnected();
+   }
+ }
+@@ -545,6 +550,23 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+     if (!page_id || !message) {
+       return NativeFault("invalid_argument", "Invalid CDP dispatch envelope");
+     }
++    const std::optional<base::Value> parsed =
++        base::JSONReader::Read(*message, base::JSON_PARSE_RFC);
++    const std::string* cdp_method = parsed && parsed->is_dict()
++                                        ? parsed->GetDict().FindString("method")
++                                        : nullptr;
++    if (cdp_method && base::StartsWith(*cdp_method, "Input.")) {
++      content::WebContents* contents = catalog->FindPage(*page_id);
++      auto it = staged_documents_.find(*page_id);
++      auto* view = contents ? contents->GetRenderWidgetHostView() : nullptr;
++      if (!contents || it == staged_documents_.end() ||
++          it->second.document !=
++              reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage()) ||
++          !view || view->GetViewBounds().IsEmpty() ||
++          (it->second.requires_visible && !view->IsShowing())) {
++        return NativeFault("conflict", "Page input stage changed");
++      }
++    }
+     return cdp_broker_->Dispatch(*page_id, *message, connection_generation);
+   }
+   if (method == "native.cdpVersion") {
+@@ -552,6 +574,8 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+     result.Set("version", version_info::GetVersionNumber());
+     return NativeResult(base::Value(std::move(result)));
+   }
++  if (method == "native.stopFind")
++    return native_find_->Stop(params);
+   if (method == "native.listPages") {
+     base::DictValue snapshot = catalog->Snapshot();
+     base::ListValue pages;
+@@ -765,26 +789,40 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+     result.Set("ok", true);
+     return NativeResult(base::Value(std::move(result)));
+   }
+-  if (method == "native.setZoom" || method == "native.stopFind") {
++  if (method == "native.acquireStage" || method == "native.releaseStage") {
++    const std::string* page_id = params.FindString("pageId");
++    BrowserWindowInterface* owner = nullptr;
++    content::WebContents* contents =
++        page_id ? catalog->FindPage(*page_id, &owner) : nullptr;
++    if (!contents || !owner || owner->GetProfile() != profile_ ||
++        owner->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        contents->GetBrowserContext() != profile_)
++      return NativeFault("not_found", "Page is not in this Profile");
++    if (method == "native.acquireStage") {
++      auto* view = contents->GetRenderWidgetHostView();
++      const bool requires_visible =
++          params.FindBool("requiresVisible").value_or(false);
++      if (!contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++          !view || view->GetViewBounds().IsEmpty() ||
++          (requires_visible && !view->IsShowing()))
++        return NativeFault("backend_unavailable", "Page input view is unavailable");
++      staged_documents_[*page_id] = InputStage{
++          reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage()),
++          requires_visible};
++    } else {
++      staged_documents_.erase(*page_id);
++    }
++    base::DictValue result;
++    result.Set("ok", true);
++    return NativeResult(base::Value(std::move(result)));
++  }
++  if (method == "native.setZoom") {
+     const std::string* page_id = params.FindString("pageId");
+     content::WebContents* contents =
+         page_id ? catalog->FindPage(*page_id) : nullptr;
+     if (!contents) {
+       return NativeFault("not_found", "Page is not in this Profile");
+     }
+-    if (method == "native.stopFind") {
+-      const std::string* action = params.FindString("action");
+-      if (action && *action != "clear" && *action != "keep") {
+-        return NativeFault("invalid_argument", "Invalid find action");
+-      }
+-      contents->StopFinding(action && *action == "keep"
+-                                ? content::STOP_FIND_ACTION_KEEP_SELECTION
+-                                : content::STOP_FIND_ACTION_CLEAR_SELECTION);
+-      base::DictValue result;
+-      result.Set("ok", true);
+-      return NativeResult(base::Value(std::move(result)));
+-    }
+-
+     auto* zoom_controller = zoom::ZoomController::FromWebContents(contents);
+     if (!zoom_controller) {
+       return NativeFault("backend_unavailable", "Page zoom is unavailable");
+@@ -1083,6 +1121,15 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                              }, state));
+                          return;
+                        }
++                       if (owner && method == "native.findInPage") {
++                         owner->native_find_->Find(params, base::BindOnce(
++                             [](std::shared_ptr<NativeReplyState> state,
++                                base::DictValue reply) {
++                               state->reply = std::move(reply);
++                               state->ready.Signal();
++                             }, state));
++                         return;
++                       }
+                        if (owner && method == "native.fillSavedPassword") {
+                          owner->HandleCredentialFill(params, state->cancelled,
+                              base::BindOnce(
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index bd2c70bcb9..d69eee5bea 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -8,6 +8,7 @@
+ #include <atomic>
+ #include <cstdint>
+ #include <memory>
++#include <map>
+ #include <string>
+ 
+ #include "base/callback_list.h"
+@@ -22,10 +23,12 @@
+ #include "base/values.h"
+ 
+ class Profile;
++namespace content { class Page; }
+ namespace aux {
+ class CdpBroker;
+ class ProfileLibrary;
+ class CredentialFill;
++class NativeFind;
+ }  // namespace aux
+ 
+ // One authenticated runtime connection per regular Chromium Profile. The
+@@ -130,6 +133,14 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   std::unique_ptr<aux::CdpBroker> cdp_broker_;
+   std::unique_ptr<aux::ProfileLibrary> profile_library_;
+   std::unique_ptr<aux::CredentialFill> credential_fill_;
++  std::unique_ptr<aux::NativeFind> native_find_;
++  // Chromium owns visibility. A stage binds input to one retained view and
++  // document; pixel actions additionally require a showing view.
++  struct InputStage {
++    uintptr_t document;
++    bool requires_visible;
++  };
++  std::map<std::string, InputStage> staged_documents_;
+   base::CallbackListSubscription tab_catalog_subscription_;
+   base::RepeatingCallbackList<void(const std::string&, const std::string&)>
+       observers_;

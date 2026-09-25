@@ -31,3 +31,5 @@ aux/runtime/0030-aux-result-isolation.patch
 aux/runtime/0031-cosmetic-document-start.patch
 aux/runtime/0032-native-dictation.patch
 aux/runtime/0033-native-migration-import.patch
+aux/runtime/0034-native-find-stage.patch
+aux/runtime/0035-profile-tab-labels.patch
