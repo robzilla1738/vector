@@ -46,7 +46,9 @@ try{
 
  // A native middle-click must create a background tab and preserve the selected tab.
  const point=await execute(rpBase+'/',`(()=>{const r=document.querySelector('#background').getBoundingClientRect();return{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`);
- await app.evaluate(({BaseWindow,webContents},{url,point})=>{const contents=webContents.getAllWebContents().find(item=>item.getURL()===url);BaseWindow.getAllWindows()[0].focus();contents.focus();contents.sendInputEvent({type:'mouseMove',...point});contents.sendInputEvent({type:'mouseDown',...point,button:'middle',clickCount:1});contents.sendInputEvent({type:'mouseUp',...point,button:'middle',clickCount:1});},{url:rpBase+'/',point});
+ await app.evaluate(({BaseWindow,webContents},url)=>{BaseWindow.getAllWindows()[0].focus();webContents.getAllWebContents().find(item=>item.getURL()===url)?.focus();},rpBase+'/');
+ await poll(app,({webContents},url)=>webContents.getAllWebContents().find(item=>item.getURL()===url)?.isFocused(),rpBase+'/');
+ await app.evaluate(({webContents},{url,point})=>{const contents=webContents.getAllWebContents().find(item=>item.getURL()===url);contents.sendInputEvent({type:'mouseMove',...point});contents.sendInputEvent({type:'mouseDown',...point,button:'middle',clickCount:1});contents.sendInputEvent({type:'mouseUp',...point,button:'middle',clickCount:1});},{url:rpBase+'/',point});
  mark('middle click sent');
  await poll(app,({webContents},suffix)=>webContents.getAllWebContents().some(contents=>contents.getURL().endsWith(suffix)),'/background');
  mark('background tab attached');
