@@ -27,10 +27,11 @@ it('keeps export actions inside the active detail dialog and exports the saved c
   await act(async()=>root.render(<SavedResultPreview artifactId="result-a" chatId="chat-a" onClose={()=>{}}/>));
   expect(host.querySelector('.viewer-metadata')?.textContent).toContain('v2');
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Export result"]')!.click());
-  expect(host.querySelector('[role="menu"]')).not.toBeNull();
-  await act(async()=>button('Export file…').click());
+  const menu=document.body.querySelector<HTMLDialogElement>('[role="menu"]');
+  expect(menu?.open).toBe(true);
+  await act(async()=>menu!.querySelector<HTMLButtonElement>('button')!.click());
   expect(save).toHaveBeenCalledWith('report.csv',result.content);
-  expect(host.querySelector('[role="menu"]')).toBeNull();
+  expect(document.body.querySelector('[role="menu"]')).toBeNull();
 });
 
 it('saves a durable edited copy as a new version and keeps source identity',async()=>{

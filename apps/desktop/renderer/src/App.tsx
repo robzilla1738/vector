@@ -20,7 +20,7 @@ import { savePagePdf, printCurrentPage } from "./page-export";
 import { nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
 import { usePagePointerForward } from "./page-pointer";
-import { onStageReport, stageAvoiding } from "./stage-obstruction";
+import { onStageReport, requestStageReport, stageAvoiding } from "./stage-obstruction";
 import { isTab, tabsInSpace } from "./workspace";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { Sidebar } from "./components/Sidebar";
@@ -238,11 +238,7 @@ export function App() {
     const panel = document.querySelector<HTMLElement>(".sidebar.peek");
     if (!panel) return;
     const reduced = matchMedia("(prefers-reduced-transparency: reduce)");
-    const report = () => {
-      // Offset geometry excludes the entrance transform so the live frost stays steady.
-      const rect = { x: panel.offsetLeft, y: panel.offsetTop, width: panel.offsetWidth, height: panel.offsetHeight };
-      void bridge.sidebarGlass(reduced.matches ? null : rect).catch(() => {});
-    };
+    const report = () => requestStageReport();
     const observer = new ResizeObserver(report);
     observer.observe(panel);
     reduced.addEventListener("change", report);
@@ -380,7 +376,15 @@ export function App() {
           { x: Math.round(r.x), y: Math.round(r.y), width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) },
           menus,
         );
-        void bridge.setStage(showPage, fitted, split, stageRadius, splitRatio);
+        // The page view must be attached before its document can receive the
+        // glass plate. Keep this behind the same stage acknowledgement.
+        void bridge.setStage(showPage, fitted, split, stageRadius, splitRatio).then(() => {
+          const panel = document.querySelector<HTMLElement>(".sidebar.peek");
+          const glass = panel && showPage && !matchMedia("(prefers-reduced-transparency: reduce)").matches
+            ? { x: panel.offsetLeft, y: panel.offsetTop, width: panel.offsetWidth, height: panel.offsetHeight }
+            : null;
+          return bridge.sidebarGlass(glass);
+        }).catch(() => {});
       });
     };
     const ro = new ResizeObserver(report);
@@ -398,7 +402,7 @@ export function App() {
       cancelAnimationFrame(raf);
       document.removeEventListener("transitionend", settled);
     };
-  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, splitCompanion?.url, splitCompanion?.backend, splitCompanion?.viewStatus, splitCompanion?.navigationError, splitCompanion?.showBlankDocument, splitPageId, splitRatio, mode, overlay, railOpen, settings.tabLayout]);
+  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, activePage?.navigationError, activePage?.showBlankDocument, splitCompanion?.url, splitCompanion?.backend, splitCompanion?.viewStatus, splitCompanion?.navigationError, splitCompanion?.showBlankDocument, splitPageId, splitRatio, mode, overlay, railOpen, settings.tabLayout, sidebarPeek]);
 
   const findG = (st: StoreState, forward: boolean) => {
     if (st.overlay === "reader") {
