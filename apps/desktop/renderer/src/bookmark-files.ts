@@ -8,33 +8,35 @@ export function bookmarkWebUrl(value: string): string | null {
   } catch { return null; }
 }
 
-type BookmarkNode = { nodeName: string; value?: string; attrs?: { name: string; value: string }[]; childNodes?: BookmarkNode[] };
-
-function nodeText(node: BookmarkNode): string {
+function nodeText(node: Node): string {
   const pending = [node];
   let text = '';
   while (pending.length) {
     const item = pending.pop()!;
-    if (item.nodeName === '#text') text += item.value ?? '';
-    else if (!['script', 'style', 'template'].includes(item.nodeName)) pending.push(...[...(item.childNodes ?? [])].reverse());
+    const name = item.nodeName.toLowerCase();
+    if (name === '#text') text += item.nodeValue ?? '';
+    else if (!['script', 'style', 'template'].includes(name)) pending.push(...[...item.childNodes].reverse());
   }
   return text.replace(/\s+/g, ' ').trim();
 }
 
-/** parse5 reads bookmark exports without executing markup or requesting their URLs. */
+/** A detached template parses bookmark HTML as inert content: nothing is
+ * attached to the document or promoted into a live browsing context. */
 export async function parseBookmarkFile(source: string) {
   if (new TextEncoder().encode(source).length > MAX_BOOKMARK_FILE_SIZE) throw new Error('Choose a bookmark HTML file smaller than 5 MB.');
-  const { parse } = await import('parse5');
-  const pending: { node: BookmarkNode; path: string[] }[] = [{ node: parse(source), path: [] }];
+  const template = document.createElement('template');
+  template.innerHTML = source;
+  const pending: { node: Node; path: string[] }[] = [{ node: template.content, path: [] }];
   const bookmarks: BookmarkFileEntry[] = [];
   const folders = new Map<string, string[]>();
   const seen = new Set<string>();
   let skipped = 0;
   while (pending.length) {
     const { node, path } = pending.pop()!;
-    if (['script', 'style', 'template'].includes(node.nodeName)) continue;
-    if (node.nodeName === 'a') {
-      const href = node.attrs?.find(attr => attr.name === 'href')?.value ?? '';
+    const nodeName = node.nodeName.toLowerCase();
+    if (['script', 'style', 'template'].includes(nodeName)) continue;
+    if (nodeName === 'a') {
+      const href = (node as Element).getAttribute('href') ?? '';
       const url = bookmarkWebUrl(href);
       if (!url || seen.has(url)) { skipped++; continue; }
       seen.add(url);
@@ -44,15 +46,16 @@ export async function parseBookmarkFile(source: string) {
     }
     let heading = '';
     const children: typeof pending = [];
-    for (const child of node.childNodes ?? []) {
-      if (child.nodeName === 'h3') heading = nodeText(child).slice(0, 200);
-      if (child.nodeName === 'dt') {
-        const title = child.childNodes?.find(item => item.nodeName === 'h3');
+    for (const child of node.childNodes) {
+      const childName = child.nodeName.toLowerCase();
+      if (childName === 'h3') heading = nodeText(child).slice(0, 200);
+      if (childName === 'dt') {
+        const title = [...child.childNodes].find(item => item.nodeName.toLowerCase() === 'h3');
         heading = title ? nodeText(title).slice(0, 200) : '';
       }
-      const childPath = child.nodeName === 'dl' && heading ? [...path, heading] : path;
+      const childPath = childName === 'dl' && heading ? [...path, heading] : path;
       if (childPath.length > 32) throw new Error('Bookmark folders can be nested up to 32 levels.');
-      if (child.nodeName === 'dl' && heading) {
+      if (childName === 'dl' && heading) {
         folders.set(JSON.stringify(childPath), childPath);
         if (folders.size > 10000) throw new Error('Import up to 10,000 bookmark folders at a time.');
         heading = '';

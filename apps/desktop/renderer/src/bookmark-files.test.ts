@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { expect, it } from 'vitest';
 import { parseBookmarkFile, exportBookmarkFile } from './bookmark-files';
 it('parses browser HTML as inert data, preserving titles and rejecting unsafe or duplicate links', async () => {
