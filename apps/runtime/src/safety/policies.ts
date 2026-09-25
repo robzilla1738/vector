@@ -61,7 +61,7 @@ export async function pollUntil<T>(read: () => Promise<T>, done: (value: T) => b
 
 export class ViewerLivenessWatchdog {
   private lastHeartbeat: number;
-  constructor(private readonly stallMs = SAFETY_TIMING.viewerLiveness.stallMs, now = Date.now()) {
+  constructor(private readonly stallMs: number = SAFETY_TIMING.viewerLiveness.stallMs, now = Date.now()) {
     this.lastHeartbeat = now;
   }
   heartbeat(now = Date.now()): void { this.lastHeartbeat = now; }

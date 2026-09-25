@@ -30,7 +30,7 @@ function fixture() {
     attach: async (_targetId, pageId) => ({
       identity: { pageId, targetId: "target-1", backend: "aux" },
       url: () => current, title: async () => "Form", isAttached: () => true,
-      navigate: async url => { current = url; },
+      navigate: async (url: string) => { current = url; },
       click: async () => { calls.push("click"); if (calls.length === 1) current = "https://blocked.test/"; },
       observe: async () => ({ url: current, title: "Form", viewport: { width: 800, height: 600, scale: 1 },
         scroll: { x: 0, y: 0, maxY: 0 }, frames: [{ frame: "main", url: current, sameOrigin: true }],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
-import { AuxError, toErrorPayload, type SafetyAction } from "@aux/contracts";
+import { AuxError, toErrorPayload, type OriginRule, type SafetyAction } from "@aux/contracts";
 import { evaluateOriginPolicy } from "../../apps/runtime/src/safety/origin-policy.js";
 import { ChallengeRecoveryGate, confirmationLevelForAction, decideConfirmation } from "../../apps/runtime/src/safety/confirmation.js";
 import { secureCredentialHandoff } from "../../apps/runtime/src/safety/credential-handoff.js";
@@ -16,7 +16,7 @@ const action: SafetyAction = {
   invocationDigest: "a".repeat(64),
   origin: "https://example.test/", turnId: "turn-1", threadId: "thread-1", requestedAt: 100,
 };
-const rule = { origin: "https://example.test/", access: "allow" as const };
+const rule: OriginRule = { origin: "https://example.test/", access: "allow" };
 const allowed = { access: "allow" as const, confirmation: "action" as const, approvalLifetime: "turn" as const,
   grantLifetime: "session" as const, source: "user" as const, reason: "matched_rule", origin: "https://example.test", effect: "write" as const };
 

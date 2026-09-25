@@ -320,7 +320,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         // Reopen into the recorded Space at the catalog boundary. Opening in
         // the current Space first lets a later catalog patch overwrite the
         // restored placement after the renderer assigns it locally.
-        let page = await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId, entry.index);
+        let page: PageTarget | null = await get().openBackgroundTab(entry.url, destinationSpace, false, entry.pageId, entry.index);
         if (!page && entry.pageId && await awaitPage(entry.pageId)) {
           // The catalog acknowledged the open while its patch was still in
           // flight — the tab did land, it just wasn't visible yet.
