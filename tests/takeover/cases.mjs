@@ -52,12 +52,17 @@ export const cases = {
   },
   sparkle: {
     title: "Signed Sparkle N to N+1 and rollback",
-    inputs: ["signed Aux version N", "signed Aux version N+1", "local test appcast", "test EdDSA public key"],
+    inputs: [
+      "Developer ID signed Aux N and N+1",
+      "pinned Sparkle 2.10.0",
+      "disposable local EdDSA key",
+      "loopback appcast",
+    ],
     steps: [
-      "Serve a test appcast on loopback with N+1 and matching Sparkle EdDSA signature; record exact feed and hashes.",
-      "Run N with a disposable Profile, download N+1, cancel a dirty-work quit, then complete an orderly quit/install.",
-      "Confirm N+1 launches with the Profile intact and the schema downgrade guard rejects unsupported older readers.",
-      "Republish the prior signed version in the local feed, rehearse rollback, and verify Profile recovery.",
+      "Run sparkle-rehearsal.mjs keygen and prepare with matching signed N/N+1 builds; inspect the local appcast, archive hashes and EdDSA signature.",
+      "Serve the upgrade feed on loopback, check from N using the native Updates menu and a disposable Profile, cancel a dirty-work quit, then complete the orderly quit/install.",
+      "Confirm N+1 launches with the Profile intact and verify the schema downgrade guard rejects an unsupported older reader.",
+      "Prepare a recovery build of the prior code with a higher CFBundleVersion, serve the rollback feed, install it from N+1, and verify Profile recovery.",
     ],
     evidence: [
       "N/N+1 app signatures and hashes",

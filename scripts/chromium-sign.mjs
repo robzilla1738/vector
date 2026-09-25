@@ -18,13 +18,14 @@ import {
   expectedPasskeyEntitlements,
   validatePasskeySigning,
 } from "./lib/passkey-signing.mjs";
+import { SPARKLE_NESTED_PATHS, SPARKLE_VERSION, validateSparkleSigning } from "./lib/sparkle-signing.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const flags = new Map();
 const options = new Set(["--input", "--output", "--identity", "--team-id", "--passkey-profile"]);
 for (let index = 2; index < process.argv.length; index += 1) {
   const flag = process.argv[index];
-  if (flag === "--execute") flags.set(flag, true);
+  if (flag === "--execute" || flag === "--local-feed-rehearsal") flags.set(flag, true);
   else if (options.has(flag) && process.argv[index + 1] && !process.argv[index + 1].startsWith("--"))
     flags.set(flag, process.argv[++index]);
   else throw new Error(`Unknown or incomplete option: ${flag}`);
@@ -35,6 +36,7 @@ const output = resolve(String(flags.get("--output") ?? join(root, "release")));
 const identity = String(flags.get("--identity") ?? process.env.AUX_SIGNING_IDENTITY ?? "").trim();
 const teamId = String(flags.get("--team-id") ?? process.env.AUX_TEAM_ID ?? "").trim();
 const passkeyProfile = flags.get("--passkey-profile") ? resolve(String(flags.get("--passkey-profile"))) : "";
+const localFeedRehearsal = flags.has("--local-feed-rehearsal");
 const adhoc = !identity && !teamId;
 if (!!identity !== !!teamId)
   throw new Error("Signing identity and Team ID must both be set, or both be empty for ad-hoc signing.");
@@ -81,6 +83,7 @@ const signingScript = existsSync(input)
   : undefined;
 const app = join(input, "Aux.app");
 const runtimeHelper = join(app, "Contents", "Helpers", "Aux Runtime");
+const sparkleFramework = join(app, "Contents", "Frameworks", "Sparkle.framework");
 const signingPackage = signingScript ? join(dirname(signingScript), "signing") : "";
 const runtimeEntitlementsPath = signingScript
   ? join(dirname(signingScript), "aux-runtime-entitlements.plist")
@@ -94,16 +97,16 @@ if (!signingScript) blockers.push("the generated * Packaging/sign_chrome.py is m
 if (!/\bis_component_build\s*=\s*false\b/.test(args))
   blockers.push("GN build must set is_component_build=false");
 if (!/\bis_debug\s*=\s*false\b/.test(args)) blockers.push("GN build must set is_debug=false");
-if (!/\benable_aux_shell\s*=\s*true\b/.test(args))
-  blockers.push("GN build must enable the Aux shell");
+if (!/\benable_aux_shell\s*=\s*true\b/.test(args)) blockers.push("GN build must enable the Aux shell");
 if (/\baux_allow_remote_debugging_for_tests\s*=\s*true\b/.test(args))
   blockers.push("Release builds must disable remote debugging test access");
+let appInfo;
 if (!existsSync(app)) blockers.push("official Aux.app is missing from the build directory");
 else if (process.platform === "darwin") {
   try {
-    const identityPlist = plist(join(app, "Contents", "Info.plist"));
-    if (identityPlist.CFBundleIdentifier !== "dev.aux.browser")
-      blockers.push(`bundle ID is ${identityPlist.CFBundleIdentifier}, expected dev.aux.browser`);
+    appInfo = plist(join(app, "Contents", "Info.plist"));
+    if (appInfo.CFBundleIdentifier !== "dev.aux.browser")
+      blockers.push(`bundle ID is ${appInfo.CFBundleIdentifier}, expected dev.aux.browser`);
   } catch (error) {
     blockers.push(`app Info.plist is unreadable: ${error.message}`);
   }
@@ -117,6 +120,32 @@ if (
   !readFileSync(join(signingPackage, "parts.py"), "utf8").includes("'aux-runtime'")
 )
   blockers.push("Chromium signing pipeline does not register Aux Runtime");
+const signingParts =
+  signingPackage && existsSync(join(signingPackage, "parts.py"))
+    ? readFileSync(join(signingPackage, "parts.py"), "utf8")
+    : "";
+blockers.push(
+  ...validateSparkleSigning({
+    args,
+    appInfo,
+    frameworkPresent: existsSync(sparkleFramework),
+    signingParts,
+    adhoc,
+    localFeedRehearsal,
+  }),
+);
+if (existsSync(sparkleFramework)) {
+  try {
+    const frameworkInfo = plist(join(sparkleFramework, "Resources", "Info.plist"));
+    if (frameworkInfo.CFBundleShortVersionString !== SPARKLE_VERSION)
+      blockers.push("bundled Sparkle framework version differs from the pinned release");
+    for (const nested of SPARKLE_NESTED_PATHS)
+      if (!existsSync(join(sparkleFramework, nested)))
+        blockers.push(`Sparkle nested component is missing: ${nested}`);
+  } catch {
+    blockers.push("bundled Sparkle framework Info.plist is unreadable");
+  }
+}
 if (!adhoc && !identity.startsWith("Developer ID Application: "))
   blockers.push("Developer ID signing identity must start with 'Developer ID Application: '");
 let packagedEntitlements;
@@ -186,6 +215,9 @@ const plan = {
   signing: adhoc ? "ad-hoc" : "Developer ID",
   teamId: teamId || null,
   passkeyProvisioning: passkeyProfile ? "approved profile supplied" : "omitted",
+  sparkle: existsSync(sparkleFramework) ? SPARKLE_VERSION : "omitted",
+  updateFeed: appInfo?.SUFeedURL ?? null,
+  localFeedRehearsal,
   ready: blockers.length === 0,
   blockers,
   commands: [
@@ -236,6 +268,19 @@ if (passkeyProfile) {
     throw new Error("Signed Aux passkey entitlement or group differs from the approved profile.");
   const embedded = join(signedApp, "Contents", "embedded.provisionprofile");
   if (!existsSync(embedded)) throw new Error("Signed Aux app lacks the approved provisioning profile.");
+}
+if (plan.sparkle !== "omitted") {
+  const signedSparkle = join(signedApp, "Contents", "Frameworks", "Sparkle.framework");
+  for (const nested of SPARKLE_NESTED_PATHS)
+    run("codesign", ["--verify", "--strict", join(signedSparkle, nested)]);
+  run("codesign", ["--verify", "--deep", "--strict", signedSparkle]);
+  for (const nested of [...SPARKLE_NESTED_PATHS, ""])
+    if (
+      !run("codesign", ["-dv", "--verbose=4", join(signedSparkle, nested)]).includes(
+        `TeamIdentifier=${teamId}`,
+      )
+    )
+      throw new Error("A signed Sparkle component differs from Aux's Team ID.");
 }
 run("hdiutil", ["create", "-srcfolder", signedApp, "-volname", "Aux", "-format", "UDZO", dmg], true);
 run("hdiutil", ["verify", dmg], true);
