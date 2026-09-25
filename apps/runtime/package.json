@@ -26,6 +26,7 @@
     "@aux/contracts": "workspace:*",
     "@vercel/sandbox": "3.3.0",
     "ai": "7.0.93",
+    "parse5": "7.3.0",
     "pngjs": "^7.0.0",
     "quickjs-emscripten": "0.31.0",
     "ws": "8.21.3",

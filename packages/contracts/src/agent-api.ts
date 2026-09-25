@@ -1,7 +1,7 @@
 import { MethodSchemas, ResultSchemas, type MethodName, type MethodParams, type MethodResult } from "./api.js";
 
 export type AgentSurface = "sdk" | "mcp" | "cli" | "code";
-export type AgentLayer = "management" | "playwright" | "dom" | "ax" | "cua" | "content" | "dev";
+export type AgentLayer = "management" | "playwright" | "dom" | "ax" | "cua" | "content" | "dev" | "web" | "image";
 export type AgentDocMode = "included" | "model" | "lookup";
 
 export interface AgentApiEntry<M extends MethodName = MethodName> {
@@ -30,6 +30,8 @@ export const AgentApiManifest = [
   entry({ path: "tabs.list", method: "pages.list", layer: "management", summary: "List accessible tabs and their stable Aux page IDs.", documented: "included" }),
   entry({ path: "tabs.open", method: "pages.open", layer: "management", summary: "Open a tab under the caller's page authority.", documented: "model", unsupportedByDefaultIn: ["code"] }),
   entry({ path: "tabs.close", method: "pages.close", layer: "management", summary: "Close a tab owned by this turn.", documented: "model", unsupportedByDefaultIn: ["code"] }),
+  entry({ path: "tabs.turn.open", method: "agent.turn.open", layer: "management", summary: "Open a background tab owned by one task turn; duplicate URLs reuse that turn's tab.", documented: "model" }),
+  entry({ path: "tabs.turn.end", method: "agent.turn.end", layer: "management", summary: "Close every temporary tab owned by the task turn.", documented: "lookup" }),
   entry({ path: "tabs.playwright.domSnapshot", method: "pages.observe", layer: "playwright", summary: "Read a structured DOM snapshot and stable element refs.", documented: "included" }),
   entry({ path: "tabs.playwright.elementInfo", method: "pages.elementInfo", layer: "playwright", summary: "Identify the observed element at viewport coordinates.", documented: "model" }),
   entry({ path: "tabs.playwright.evaluate", method: "pages.read", layer: "playwright", summary: "Evaluate a declarative read query for title, URL, text, count or attribute.", documented: "lookup", when: "a snapshot cannot answer a narrow read", requiredFor: ["analysis"] }),
@@ -49,6 +51,9 @@ export const AgentApiManifest = [
   entry({ path: "tabs.handoff", method: "pages.takeover", layer: "management", summary: "Yield an authorized tab to its human owner and stop automated input.", documented: "lookup" }),
   entry({ path: "tabs.dev.logs", method: "pages.console", layer: "dev", summary: "Read recent page console lines.", documented: "lookup", requiredFor: ["debugging"] }),
   entry({ path: "history.search", method: "history.list", layer: "management", summary: "Search the derived browser history index.", documented: "lookup" }),
+  entry({ path: "web.fetch", method: "agent.web.fetch", layer: "web", summary: "Fetch a public text page under explicit egress grants, with bounded bytes and redirects.", documented: "lookup", requiredFor: ["research"] }),
+  entry({ path: "web.search", method: "agent.web.search", layer: "web", summary: "Search with the configured engine under explicit egress grants.", documented: "lookup", requiredFor: ["research"] }),
+  entry({ path: "images.generate", method: "agent.images.generate", layer: "image", summary: "Generate one image through the capped Gateway ledger and save it as an artifact.", documented: "lookup", requiredFor: ["visual"], unsupportedByDefaultIn: ["code"] }),
 ] as const;
 
 export type AgentApiPath = (typeof AgentApiManifest)[number]["path"];

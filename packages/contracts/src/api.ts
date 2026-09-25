@@ -575,6 +575,10 @@ export const AgentJsRunParams = z.object({
 }).strict();
 export const AgentJsResetParams = AgentJsRunParams.pick({ sessionId: true });
 export const AgentJsResult = z.object({ value: z.unknown(), durationMs: z.number().nonnegative() });
+export const AgentWebContextSchema = z.object({ taskId: id.optional(), expectedRevision: z.number().int().positive().optional() });
+export const AgentWebPageSchema = z.object({ url: z.string().url(), title: z.string(), text: z.string(),
+  links: z.array(z.object({ title: z.string(), url: z.string().url() })), contentType: z.string() });
+export const AgentTurnContextSchema = z.object({ taskId: id, expectedRevision: z.number().int().positive(), turnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
 
 /** browser-data import */
 export const ImportCategorySchema = z.enum(["bookmarks", "history", "tabs"]);
@@ -590,6 +594,11 @@ export type ImportReport = z.infer<typeof ImportReportSchema>;
 export const MethodSchemas = {
   "agent.js.run": AgentJsRunParams,
   "agent.js.reset": AgentJsResetParams,
+  "agent.web.fetch": AgentWebContextSchema.extend({ url: z.string().url().max(8192) }).strict(),
+  "agent.web.search": AgentWebContextSchema.extend({ query: z.string().trim().min(1).max(500) }).strict(),
+  "agent.images.generate": AgentWebContextSchema.extend({ prompt: z.string().trim().min(1).max(4000) }).strict(),
+  "agent.turn.open": AgentTurnContextSchema.extend({ url: z.string().url().max(8192), skipIfActive: z.boolean().default(true) }).strict(),
+  "agent.turn.end": AgentTurnContextSchema.strict(),
   "tasks.recordEvidence": EvidenceNoteParams,
   "tasks.captureEvidence": EvidenceCaptureParams,
   "tasks.importDocumentEvidence": EvidenceDocumentParams,
@@ -973,6 +982,11 @@ export type MethodName = keyof typeof MethodSchemas;
 export const ResultSchemas = {
   "agent.js.run": AgentJsResult,
   "agent.js.reset": z.object({ reset: z.literal(true) }),
+  "agent.web.fetch": AgentWebPageSchema,
+  "agent.web.search": AgentWebPageSchema,
+  "agent.images.generate": z.object({ artifactId: id, mediaType: z.string(), size: z.number().int().positive(), modelId: z.string() }),
+  "agent.turn.open": PageTargetSchema,
+  "agent.turn.end": z.object({ closed: z.array(id) }),
   "tasks.recordEvidence": TaskEvidenceSchema,
   "tasks.captureEvidence": TaskEvidenceSchema,
   "tasks.importDocumentEvidence": TaskEvidenceSchema,

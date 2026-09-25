@@ -43,6 +43,11 @@ import { SafetyAuditStore } from "../safety/audit.js";
 import { AgentCodeMode } from "../agent/code-mode.js";
 import { HistoryProjection } from "../services/history-projection.js";
 import { CommandEscalationStore, commandDigest, defaultCommandSeatbelt } from "../services/command-seatbelt.js";
+import { AgentWebTools, permittedWebUrl } from "../agent/web-tools.js";
+import { AgentImageTools } from "../agent/image-tools.js";
+import { SpendLedger } from "../store/spend-ledger.js";
+import { authorizeProgram } from "../agent/permissions.js";
+import { AgentTurnTabs } from "../agent/turn-tabs.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -192,6 +197,11 @@ export function makeInvoker(s: Services) {
   // rebuilt at most once a second otherwise. Preview grants are read live.
   const taskPages = new Map<string, { at: number; pages: Set<string> }>();
   s.events.subscribe(event => { if (event.type.startsWith("task.") || event.type.startsWith("run.")) taskPages.clear(); });
+  const turnTabs = new AgentTurnTabs(s.pages, page => {
+    s.repo.upsertPage({ ...page, ownedByRuntime: false });
+    page.ownedByRuntime = false;
+    void s.pages.activate(page.pageId).catch(() => {});
+  });
   const scopedPageIds = (scope: AgentConnectionScope,connectionId?:string): Set<string> => {
     const key = JSON.stringify(scope);
     let cached = taskPages.get(key);
@@ -204,7 +214,7 @@ export function makeInvoker(s: Services) {
       taskPages.set(key, cached);
     }
     const preview = connectionId ? previewPageGrants.get(connectionId) : undefined;
-    return preview?.size ? new Set([...cached.pages, ...preview.keys()]) : cached.pages;
+    return connectionId ? new Set([...cached.pages, ...turnTabs.pageIds(connectionId), ...(preview?.keys() ?? [])]) : cached.pages;
   };
   const requireScopedPage = (scope: AgentConnectionScope, pageId: string,connectionId?:string) => {
     if (!scopedPageIds(scope,connectionId).has(pageId)) throw new AuxError("permission_denied", "Attach this page to the authorized task before using it");
@@ -255,6 +265,11 @@ export function makeInvoker(s: Services) {
         requireScopedTask(scope,params.taskId);
       } else if ((method === "calendar.taskGrants.list" || method === "calendar.taskEvents.list") && typeof params.taskId === "string") {
         requireScopedTask(scope, params.taskId);
+      } else if (method === "agent.web.fetch" || method === "agent.web.search" || method === "agent.images.generate" || method === "agent.turn.open" || method === "agent.turn.end") {
+        if (!params.taskId || !params.expectedRevision) throw new AuxError("invalid_params", "Scoped agent tools require a task ID and revision.");
+        const task = requireScopedTask(scope, params.taskId);
+        if (method !== "agent.turn.end" && task.revision !== params.expectedRevision)
+          throw new AuxError("conflict", "Task revision changed; refresh it before using agent tools.");
       } else if (method.startsWith("pages.") && method !== "pages.list") {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
@@ -290,6 +305,30 @@ export function makeInvoker(s: Services) {
     switch (method as MethodName) {
       case "agent.js.run": return codeMode.run(params, client);
       case "agent.js.reset": return codeMode.reset(client, params.sessionId);
+      case "agent.web.fetch":
+      case "agent.web.search": {
+        const web = new AgentWebTools(url => authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok);
+        return method === "agent.web.fetch" ? web.fetch(params.url) : web.search(params.query, s.settings.searchEngine());
+      }
+      case "agent.images.generate": {
+        const permitted = authorizeProgram([{ id: "image-egress", op: "navigate", url: "https://ai-gateway.vercel.sh" }], s.settings.effectGrants());
+        if (!permitted.ok) throw new AuxError("permission_denied", "AI Gateway egress is not granted for image generation.");
+        const key = s.settings.gatewayKey();
+        if (!key) throw new AuxError("backend_unavailable", "Connect AI Gateway in Settings before generating an image.");
+        const ledger = new SpendLedger();
+        try { return await AgentImageTools.withGateway(key, s.artifacts, ledger).generate(params.prompt, params.taskId); }
+        finally { ledger.close(); }
+      }
+      case "agent.turn.open": {
+        const task = tasks.get(params.taskId);
+        if (task.revision !== params.expectedRevision) throw new AuxError("conflict", "Task revision changed; refresh it before opening a turn tab.");
+        const url = permittedWebUrl(params.url);
+        if (!authorizeProgram([{ id: "turn-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok)
+          throw new AuxError("permission_denied", `Web egress is not granted for ${url.origin}.`);
+        return turnTabs.open({ connectionId: client.connectionId ?? (client.external ? "owner" : "internal"), taskId: params.taskId,
+          turnId: params.turnId, url: url.href, skipIfActive: params.skipIfActive });
+      }
+      case "agent.turn.end": return turnTabs.end(client.connectionId ?? (client.external ? "owner" : "internal"), params.taskId, params.turnId);
       case "calendar.connections.list":
         if (client.external) throw new AuxError("permission_denied", "Calendar accounts are managed in Aux.");
         if (!s.calendar) throw new AuxError("backend_unavailable", "Calendar connections are unavailable.");
@@ -818,7 +857,8 @@ export function makeInvoker(s: Services) {
         if (client.external && p.safety) throw new AuxError("permission_denied", "Final approval metadata comes from the Aux interface.");
         if((scope || client.codeMode) && programContainsOperationCalls(p.program))throw new AuxError("permission_denied","Code mode and scoped connections use typed page steps, not operation calls");
         const consequential=programHasConsequentialSteps(p.program);
-        const previewGranted=!!client.connectionId&&previewPageGrants.get(client.connectionId)?.get(p.program.pageId)===p.taskId;
+        const previewGranted=!!client.connectionId&&(previewPageGrants.get(client.connectionId)?.get(p.program.pageId)===p.taskId
+          || !!p.taskId && turnTabs.owns(client.connectionId,p.taskId,p.program.pageId));
         let validateBeforeJournal: (()=>void)|undefined;
         let validateDuringExecution: (()=>void)|undefined;
         if(p.taskId){
@@ -1484,5 +1524,5 @@ export function makeInvoker(s: Services) {
       }
     }
   }
-  return invoke;
+  return Object.assign(invoke, { dispose: async () => { turnTabs.dispose(); await turnTabs.endAll(); codeMode.disposeAll(); } });
 }

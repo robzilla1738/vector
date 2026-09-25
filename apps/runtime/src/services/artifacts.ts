@@ -28,7 +28,8 @@ export class ArtifactStore {
     const group = opts.subdir ?? opts.runId ?? opts.pageId ?? "misc";
     const dir = join(this.dir, group);
     const safe = opts.label.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 60) || "file";
-    const ext = opts.mediaType === "image/png" ? ".png" : opts.mediaType.includes("json") ? ".json" : "";
+    const ext = opts.mediaType === "image/png" ? ".png" : opts.mediaType === "image/jpeg" ? ".jpg"
+      : opts.mediaType === "image/webp" ? ".webp" : opts.mediaType.includes("json") ? ".json" : "";
     const filename = `${artifactId}-${safe}${ext}`;
     return {
       dir,

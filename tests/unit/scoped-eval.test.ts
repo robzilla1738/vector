@@ -14,16 +14,21 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
     resources: [{ resourceId: "page", kind: "page", locator: "p1", label: "Tab" }] });
   const seen: { allowEval?: boolean; taskId?: string; taskRevision?: number }[] = [];
   const page = { controller: "none" as "none" | "human" };
+  const turnPages = new Map<string, { pageId: string; url: string; ownedByRuntime: boolean; controller: "none" | "human" }>();
   const pages = {
-    get: () => page,
+    get: (pageId: string) => turnPages.get(pageId) ?? page,
+    open: async ({ url }: { url: string }) => { const target = { pageId: "turn-p1", url, ownedByRuntime: true, controller: "none" as const }; turnPages.set(target.pageId, target); return target; },
+    close: async (pageId: string) => { turnPages.delete(pageId); return { ok: true }; },
     takeover: async (pageId: string) => { page.controller = "human"; return { pageId, controller: "human" }; },
     execute: async (_program: unknown, opts: { allowEval?: boolean; taskId?: string; taskRevision?: number; beforeJournal?:()=>void }) => { seen.push(opts); onDispatch?.(opts,tasks,task.taskId); return { steps: [] }; },
   } as unknown as PageService;
   const pageOwnership = new PageOwnership();
   let operationCalls = 0;
   const operations = { invoke: async () => { operationCalls++; return { status: "completed" }; } };
-  const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership }, operations } as unknown as Services);
-  return { invoke, seen, tasks, task, workspace, page, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
+  const grants = ["effect:read"];
+  const settings = { effectGrants: () => grants, searchEngine: () => "https://search.example.com/?q=%s" };
+  const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership }, operations, settings } as unknown as Services);
+  return { invoke, seen, tasks, task, workspace, page, grants, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
 }
 
 const program = { program: { pageId: "p1", steps: [{ id: "s", op: "click", target: "r1" }] } };
@@ -64,6 +69,31 @@ it("lets a scoped agent hand its authorized tab to a person without granting res
   await expect(f.invoke("pages.takeover", { pageId: "p1" }, client)).resolves.toMatchObject({ controller: "human" });
   expect(f.page.controller).toBe("human");
   await expect(f.invoke("pages.resume", { pageId: "p1" }, client)).rejects.toMatchObject({ code: "permission_denied" });
+});
+
+it("requires a current task revision and an egress grant before network tools or turn tabs", async () => {
+  const f = fixture();
+  const client = { external: true, connectionId: "c1", scope: f.scope };
+  await expect(f.invoke("agent.web.fetch", { url: "https://example.com/" }, client)).rejects.toMatchObject({ code: "invalid_params" });
+  await expect(f.invoke("agent.web.fetch", { url: "https://example.com/", taskId: f.task.taskId, expectedRevision: 2 }, client)).rejects.toMatchObject({ code: "conflict" });
+  await expect(f.invoke("agent.web.fetch", { url: "https://example.com/", taskId: f.task.taskId, expectedRevision: 1 }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.invoke("agent.turn.open", { url: "https://example.com/", taskId: f.task.taskId, expectedRevision: 1, turnId: "turn1" }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.invoke("agent.images.generate", { prompt: "A glass sphere", taskId: f.task.taskId, expectedRevision: 1 }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  f.tasks.update({ taskId: f.task.taskId, expectedRevision: 1, title: "Changed during the turn" });
+  await expect(f.invoke("agent.turn.end", { taskId: f.task.taskId, expectedRevision: 1, turnId: "turn1" }, client)).resolves.toEqual({ closed: [] });
+});
+
+it("authorizes task programs on a temporary turn tab and revokes them at turn end", async () => {
+  const f = fixture();
+  f.grants.push("effect:egress");
+  const client = { external: true, connectionId: "c1", scope: f.scope };
+  const input = { url: "https://example.com/", taskId: f.task.taskId, expectedRevision: 1, turnId: "turn1" };
+  const tab = await f.invoke("agent.turn.open", input, client) as { pageId: string };
+  await f.invoke("pages.execute", { taskId: f.task.taskId, expectedRevision: 1,
+    program: { pageId: tab.pageId, steps: [{ id: "s", op: "extract", fields: [{ name: "title" }] }] } }, client);
+  expect(f.seen).toHaveLength(1);
+  await f.invoke("agent.turn.end", { taskId: input.taskId, expectedRevision: input.expectedRevision, turnId: input.turnId }, client);
+  await expect(f.invoke("pages.observe", { pageId: tab.pageId }, client)).rejects.toMatchObject({ code: "permission_denied" });
 });
 
 it("keeps direct operation calls off a tab owned by another agent or a person", async () => {

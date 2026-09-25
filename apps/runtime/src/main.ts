@@ -481,9 +481,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await runs.messages.stop();
     runs.coordinator.markInterrupted();
     try { markCloudDesktopClosed(repo); } catch { /* local records only */ }
+    await api.close().catch(() => {});
+    await invoke.dispose().catch(() => {});
     await drivers.aux?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
-    await api.close().catch(() => {});
     await calendar.close();
     hostSocket?.close();
     tracer.close();

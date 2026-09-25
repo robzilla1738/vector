@@ -13,6 +13,7 @@ The SDK, MCP and CLI project this manifest. Code mode exposes only entries suppo
 ## Full model reference
 
 - aux.tabs.list(params): List accessible tabs and their stable Aux page IDs.
+- aux.tabs.turn.open(params): Open a background tab owned by one task turn; duplicate URLs reuse that turn's tab.
 - aux.tabs.playwright.domSnapshot(params): Read a structured DOM snapshot and stable element refs.
 - aux.tabs.playwright.elementInfo(params): Identify the observed element at viewport coordinates.
 - aux.tabs.playwright.extract(params): Extract named fields from the current document.
@@ -24,6 +25,8 @@ The SDK, MCP and CLI project this manifest. Code mode exposes only entries suppo
 ## Lookup reference
 
 - aux.tabs.list(params): List accessible tabs and their stable Aux page IDs.
+- aux.tabs.turn.open(params): Open a background tab owned by one task turn; duplicate URLs reuse that turn's tab.
+- aux.tabs.turn.end(params): Close every temporary tab owned by the task turn.
 - aux.tabs.playwright.domSnapshot(params): Read a structured DOM snapshot and stable element refs.
 - aux.tabs.playwright.elementInfo(params): Identify the observed element at viewport coordinates.
 - aux.tabs.playwright.extract(params): Extract named fields from the current document.
@@ -45,6 +48,8 @@ The SDK, MCP and CLI project this manifest. Code mode exposes only entries suppo
 | `aux.tabs.list` | `pages.list` | management | included | yes | yes | yes | yes |
 | `aux.tabs.open` | `pages.open` | management | model | yes | yes | yes | — |
 | `aux.tabs.close` | `pages.close` | management | model | yes | yes | yes | — |
+| `aux.tabs.turn.open` | `agent.turn.open` | management | model | yes | yes | yes | yes |
+| `aux.tabs.turn.end` | `agent.turn.end` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.playwright.domSnapshot` | `pages.observe` | playwright | included | yes | yes | yes | yes |
 | `aux.tabs.playwright.elementInfo` | `pages.elementInfo` | playwright | model | yes | yes | yes | yes |
 | `aux.tabs.playwright.evaluate` | `pages.read` | playwright | lookup | yes | yes | yes | yes |
@@ -64,5 +69,8 @@ The SDK, MCP and CLI project this manifest. Code mode exposes only entries suppo
 | `aux.tabs.handoff` | `pages.takeover` | management | lookup | yes | yes | yes | yes |
 | `aux.tabs.dev.logs` | `pages.console` | dev | lookup | yes | yes | yes | yes |
 | `aux.history.search` | `history.list` | management | lookup | yes | yes | yes | yes |
+| `aux.web.fetch` | `agent.web.fetch` | web | lookup | yes | yes | yes | yes |
+| `aux.web.search` | `agent.web.search` | web | lookup | yes | yes | yes | yes |
+| `aux.images.generate` | `agent.images.generate` | image | lookup | yes | yes | yes | — |
 
 The AX layer requires an explicit `ax` capability and stays disabled until the accessibility benchmark supports enabling it. Pixel actions require a captured document epoch and viewport. Code mode has no Node, file system or raw DevTools handle; page writes re-enter the guarded RPC invoker.
