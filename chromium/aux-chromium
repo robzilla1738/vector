@@ -139,6 +139,7 @@ def run_app(flavor: str, profile: Path | None) -> None:
 
 def validate() -> None:
     assert_revision()
+    run("node", str(ROOT / "stage-shell.mjs"), "verify", cwd=REPO)
     run("git", "diff", "--check", cwd=SRC)
     if applied():
         print("patch series applied; source diff has no whitespace errors")

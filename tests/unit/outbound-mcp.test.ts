@@ -1,11 +1,12 @@
 import { expect, it } from "vitest";
-import { EventBus, openDb, OutboundMcpService, Repo, TaskService } from "@aux/runtime";
-import type { Transport } from "@modelcontextprotocol/client";
+import { EventBus, openDb, OutboundMcpService, Repo, TaskService, type McpTransportProvider } from "@aux/runtime";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+type Transport = Awaited<ReturnType<McpTransportProvider>>;
 
 function fixture(provider?: ConstructorParameters<typeof OutboundMcpService>[1]) {
   const db = openDb(":memory:");
@@ -101,13 +102,13 @@ it("marks a call uncertain if its grant is revoked while a server is responding"
   let reached!: () => void;
   const ready = new Promise<void>(resolve => { reached = resolve; });
   const f = fixture(async () => {
-    const transport = fakeTransport([]) as Transport & { send: (message: { method?: string; id?: number }) => Promise<void> };
+    const transport = fakeTransport([]) as unknown as { send: (message: { method?: string; id?: number }) => Promise<void> };
     const send = transport.send.bind(transport);
     transport.send = async message => {
       if (message.method === "tools/call") { reached(); return; }
       return send(message);
     };
-    return transport;
+    return transport as unknown as Transport;
   });
   const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "server",
     source: { kind: "remote", url: "https://example.test/mcp", auth: "oauth" } });

@@ -76,7 +76,7 @@ function replaceDirectory(from, to) {
 }
 
 const mode = process.argv[2];
-const output = process.argv[3] ? resolve(process.argv[3]) : mode === 'capture' ? pinned : destination;
+const output = process.argv[3] ? resolve(process.argv[3]) : mode === 'capture' ? pinned : mode === 'verify' ? pinned : destination;
 if (mode === 'capture') {
   if (!existsSync(join(dist, '.vite/manifest.json'))) throw new Error('Build the Chromium renderer first');
   const builtAt = statSync(join(dist, '.vite/manifest.json')).mtimeMs;
@@ -91,11 +91,14 @@ if (mode === 'capture') {
   writeFileSync(join(output, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   verify(output);
   console.log(`Pinned ${manifest.files.length} WebUI assets at ${relative(repo, output)} (${manifest.sha256})`);
+} else if (mode === 'verify') {
+  const manifest = verify(output);
+  console.log(`Verified ${manifest.files.length} pinned WebUI assets (${manifest.sha256})`);
 } else if (mode === 'install') {
   const manifest = verify(pinned);
   replaceDirectory(pinned, output);
   verify(output);
   console.log(`Installed ${manifest.files.length} verified WebUI assets at ${output}`);
 } else {
-  throw new Error('Usage: node chromium/stage-shell.mjs capture [destination] | install [destination]');
+  throw new Error('Usage: node chromium/stage-shell.mjs capture [destination] | verify [directory] | install [destination]');
 }
