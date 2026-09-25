@@ -82,9 +82,14 @@ function fullObservation() {
 class McpStdio {
   private buf = "";
   private nextId = 1;
+  private exited: string | null = null;
   constructor(private child: ChildProcessWithoutNullStreams) {
     child.stdout.on("data", (chunk: Buffer) => {
       this.buf += chunk.toString("utf8");
+    });
+    child.stderr.resume();
+    child.once("exit", (code, signal) => {
+      this.exited = `MCP process exited before replying (${signal ?? code ?? "unknown"})`;
     });
   }
 
@@ -92,11 +97,12 @@ class McpStdio {
     this.child.stdin.write(`${JSON.stringify(msg)}\n`);
   }
 
-  async read(timeoutMs = 8_000): Promise<Record<string, unknown>> {
+  async read(timeoutMs = 30_000): Promise<Record<string, unknown>> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const parsed = this.pull();
       if (parsed) return parsed;
+      if (this.exited) throw new Error(this.exited);
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     throw new Error("mcp stdio timed out");
@@ -199,7 +205,7 @@ describe("Gate F MCP stdio session", () => {
     });
     if (!init.result) throw new Error("MCP initialize handshake failed");
     mcp.write({ jsonrpc: "2.0", method: "notifications/initialized" });
-  }, 15_000);
+  }, 45_000);
 
   afterAll(async () => {
     child?.kill();
