@@ -21,6 +21,9 @@ const files = [
   "apps/desktop/renderer/src/components/ResizeHandle.test.tsx",
   "apps/desktop/renderer/src/components/RoutineSchedule.tsx",
   "apps/desktop/renderer/src/components/RoutineSchedule.test.tsx",
+  "apps/desktop/renderer/src/components/OutboundMcpSettings.tsx",
+  "apps/desktop/renderer/src/components/OutboundMcpSettings.test.tsx",
+  "apps/desktop/renderer/src/components/OutboundMcpSettings.css",
   "apps/desktop/renderer/src/styles/space-grain.css",
 ];
 
