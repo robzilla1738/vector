@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync } from "node:fs";
 import { basename, isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -12,6 +12,9 @@ if (process.argv.includes("--list")) {
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Profile journeys require macOS.");
+const timeoutIndex = process.argv.indexOf("--startup-timeout-ms");
+const startupTimeoutMs = timeoutIndex < 0 ? 30_000 : Number(process.argv[timeoutIndex + 1]);
+assert.ok(Number.isInteger(startupTimeoutMs) && startupTimeoutMs >= 1000 && startupTimeoutMs <= 120_000, "Startup timeout must be 1000–120000 ms");
 const appIndex = process.argv.indexOf("--app");
 const appArg = process.argv[appIndex + 1];
 if (appIndex < 0 || !isAbsolute(appArg ?? "")) throw new Error("Pass --app /absolute/path/to/Aux.app.");
@@ -24,6 +27,8 @@ const disposable = mkdtempSync("/tmp/aux-native-profiles-");
 let fixture;
 let origin;
 const sessions = [];
+let passed = false;
+const logs = mkdtempSync("/tmp/aux-profile-logs-");
 
 async function until(label, check, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
@@ -45,15 +50,18 @@ function session(name) {
       body: JSON.stringify({ id: 1, method, params }), signal: AbortSignal.timeout(10_000),
     });
     const body = await response.json();
-    if (body.error) throw new Error(`${method}: ${body.error.code}: ${body.error.message}`);
+    if (body.error) throw Object.assign(new Error(`${method}: ${body.error.code}: ${body.error.message}`), { code: body.error.code });
     return body.result;
   };
   state.start = async (restore = false) => {
+    let lastStatus;
+    const startupLog = join(logs, name + (restore ? "-restore" : "") + ".log");
     const priorToken = state.token;
     state.child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
       "--use-mock-keychain", "--password-store=basic", ...(restore ? ["--restore-last-session"] : [])], {
-      cwd: disposable, env: { ...process.env, HOME: disposable, AUX_LOAD_DOTENV: "0" }, stdio: "ignore",
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
     });
+    state.child.stderr.on("data", chunk => appendFileSync(startupLog, chunk, { mode: 0o600 }));
     await until(`${name} runtime`, async () => {
       if (state.child.exitCode !== null || state.child.signalCode !== null) throw new Error(`${name} Aux exited before runtime connection`);
       if (!existsSync(runtimeFile)) return false;
@@ -63,8 +71,10 @@ function session(name) {
       if (!Number.isInteger(value.port) || !value.token || value.token === priorToken) return false;
       state.port = value.port;
       state.token = value.token;
-      return (await state.rpc("workspace.get").catch(() => null))?.sessions?.some(item => item.sessionId === "aux" && item.status === "connected");
-    });
+      const workspace = await state.rpc("workspace.get").catch(() => null);
+      lastStatus = workspace?.sessions?.map(({ sessionId, status, detail }) => ({ sessionId, status, detail }));
+      return workspace?.sessions?.some(item => item.sessionId === "aux" && item.status === "connected");
+    }, startupTimeoutMs).catch(error => { throw new Error(`${error.message}; sessions: ${JSON.stringify(lastStatus ?? [])}; browser log: ${startupLog}`); });
     assert.equal(existsSync(join(profile, "DevToolsActivePort")), false);
   };
   state.stop = async () => {
@@ -105,22 +115,38 @@ try {
     await until(`${account} Profile page`, async () => (await owner.rpc("pages.list")).some(page => page.pageId === tab.pageId && !page.loading && page.url === `${origin}/whoami`));
     assert.match(JSON.stringify(await owner.rpc("pages.observe", { pageId: tab.pageId })), new RegExp(`Account ${account}`));
   }
-  await assert.rejects(personal.rpc("pages.observe", { pageId: bob.pageId }), /not found|unknown|unavailable|not attached|Profile|permission/i);
-  await assert.rejects(work.rpc("pages.observe", { pageId: alice.pageId }), /not found|unknown|unavailable|not attached|Profile|permission/i);
+  await assert.rejects(personal.rpc("pages.observe", { pageId: bob.pageId }), { code: "target_detached" });
+  await assert.rejects(work.rpc("pages.observe", { pageId: alice.pageId }), { code: "target_detached" });
   console.log("PASS two regular Profiles isolate HttpOnly account cookies and page authority");
 
+  // SIGTERM exercises abrupt-process recovery, not the native Quit menu.
+  // Wait for Chromium's scheduled session checkpoint rather than racing its
+  // write-behind timer or adding an arbitrary sleep before terminating.
+  const sessionDirectory = join(work.profile, "Default/Sessions");
+  await until("Work navigation and identity persisted to the session journal", async () => {
+    if (!existsSync(sessionDirectory)) return false;
+    return readdirSync(sessionDirectory).filter(name => name.startsWith("Session_")).some(name => {
+      const bytes = readFileSync(join(sessionDirectory, name));
+      return bytes.includes(Buffer.from(bob.pageId)) && bytes.includes(Buffer.from(`${origin}/whoami`));
+    });
+  });
   await work.stop();
   await work.start(true);
-  await until("Work tab restored with stable native identity", async () =>
-    (await work.rpc("pages.list")).some(page => page.pageId === bob.pageId && !page.loading && page.url === `${origin}/whoami`));
+  let restoredPages;
+  await until("Work tab restored with stable native identity", async () => {
+    restoredPages = (await work.rpc("pages.list")).map(({ pageId, url, loading }) => ({ pageId, url, loading }));
+    return restoredPages.some(page => page.pageId === bob.pageId && !page.loading && page.url === `${origin}/whoami`);
+  }).catch(error => { throw new Error(`${error.message}; expected ${bob.pageId}; fixture pages: ${JSON.stringify(restoredPages ?? [])}`); });
   assert.equal((await work.rpc("workspace.get")).activePageId, bob.pageId);
   assert.match(JSON.stringify(await work.rpc("pages.observe", { pageId: bob.pageId })), /Account bob/);
   assert.match(JSON.stringify(await personal.rpc("pages.observe", { pageId: alice.pageId })), /Account alice/);
-  await assert.rejects(personal.rpc("pages.observe", { pageId: bob.pageId }), /not found|unknown|unavailable|not attached|Profile|permission/i);
-  console.log("PASS native restart restores Work tab identity, active selection and its cookie without crossing Profiles");
+  await assert.rejects(personal.rpc("pages.observe", { pageId: bob.pageId }), { code: "target_detached" });
+  console.log("PASS persisted-session recovery restores Work tab identity, active selection and its cookie without crossing Profiles");
+  passed = true;
 } finally {
   for (const item of sessions.reverse()) await item.stop();
   fixture?.closeAllConnections();
   if (fixture) await new Promise(resolveClose => fixture.close(resolveClose));
-  rmSync(disposable, { recursive: true, force: true });
+  if (passed) rmSync(disposable, { recursive: true, force: true });
+  else console.error("Disposable failure profile retained for diagnosis:", disposable);
 }

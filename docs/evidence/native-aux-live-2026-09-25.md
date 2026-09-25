@@ -98,3 +98,10 @@ After consolidating the bootstrap’s separate delivery/subscription allowlists 
 - **[Verified]** The developer app's About Version page reports the upstream Chromium profile directory. Chromium supports a branded root through the outer bundle's CrProductDirName key.
 - **[Implemented, pending native staging]** Patch 0037 sets the Aux-only plist fragment to use Application Support/Aux. Electron's separate Aux Browser Profile and Aux Browser Development Profile roots remain untouched. The current native checkout is frozen for the in-progress official compile; apply this patch and rebuild its plist afterward.
 - **[Verified]** Packaging now rejects missing or colliding product-directory metadata. Five takeover dry-run tests pass, including missing/Chromium/Electron-directory rejection and acceptance of the Aux directory key. These tests do not qualify signing or the not-yet-built official app.
+
+### Profile isolation and startup recovery
+
+- **[Verified]** Two disposable regular Profiles kept separate HttpOnly fixture account cookies and rejected each other's page IDs with target_detached. Assertions now check the structured error code.
+- **[Partial]** Abrupt restart must wait for Chromium's session checkpoint; the original test terminated before its 2.5-second write-behind could save navigation. The harness now checks for the fixture URL and identity in the session journal before terminating. This is persisted-session recovery, not qualification of the native Quit menu.
+- **[Failed]** With a persisted session, the runtime's first internal CDP connection timed out after 15 seconds and remained degraded. A 90-second diagnostic startup deadline did not recover it.
+- **[Implemented, pending live verification]** Retain the managed driver after initial connection failure and retry connection setup with capped backoff. This retries no browser actions. Shutdown cancels timers and drains an in-flight handshake before disconnecting. Three lifecycle tests and the runtime TypeScript build pass.

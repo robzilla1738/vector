@@ -1,3 +1,4 @@
+import { ConnectionRecovery } from "./connection-recovery.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
@@ -182,6 +183,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const nativeCdp = env.AUX_HOST_SOCKET && channel
     ? await NativeCdpBroker.start(channel)
     : null;
+  let auxRecovery: ConnectionRecovery | undefined;
   const hostCdp = nativeCdp?.endpoint() ?? (env.AUX_INTERNAL_CDP === "1" && channel
     ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
     : config.hostCdp);
@@ -190,9 +192,27 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
     });
     watchDriver(d, "aux", "Aux");
+    // Keep the driver available even if the first handshake times out.
+    drivers.aux = d;
+    let initialConnectionFailed = false;
+    auxRecovery = new ConnectionRecovery({
+      reconnect: () => d.reconnect(),
+      isConnected: () => d.isConnected(),
+      onReady: () => {
+        // Later drops emit onReconnected from the driver itself.
+        if (initialConnectionFailed) {
+          initialConnectionFailed = false;
+          d.onReconnected?.();
+        }
+      },
+    });
+    const reportDisconnected = d.onDisconnected;
+    d.onDisconnected = () => {
+      reportDisconnected?.();
+      auxRecovery?.retry();
+    };
     try {
       await d.connect();
-      drivers.aux = d;
       repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux", status: "connected" });
     } catch (e) {
       repo.upsertSession({
@@ -202,6 +222,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         status: "degraded",
         detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
       });
+      initialConnectionFailed = true;
+      auxRecovery.retry();
     }
   } else if (!channel && env.AUX_STANDALONE !== "0") {
     // No native shell — drive a headless system Chrome so the full API still works.
@@ -550,6 +572,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     try { markCloudDesktopClosed(repo); } catch { /* local records only */ }
     await api.close().catch(() => {});
     await invoke.dispose().catch(() => {});
+    await auxRecovery?.stop();
     await drivers.aux?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
     await nativeCdp?.close();
