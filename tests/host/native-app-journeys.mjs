@@ -177,14 +177,17 @@ try {
     // A fresh Profile starts with the sidebar hidden. The first chord pins it.
     native("toggle-sidebar");
     await delay(700);
+    assert.equal(native("has-button", "Collapse sidebar"), "true", "The expanded Aside sidebar must be accessible");
     const expanded = capture(window.id, "vertical-expanded");
     native("toggle-sidebar");
     await delay(450);
+    assert.equal(native("has-button", "Collapse sidebar"), "false", "The hidden sidebar must leave the accessibility tree");
     const collapsed = capture(window.id, "vertical-collapsed");
     const collapseChange = changedFraction(expanded, collapsed);
     assert.ok(collapseChange > 0.02, `Sidebar toggle did not visibly change the native window (${collapseChange.toFixed(3)})`);
     native("move", window.x + 2, centerY);
     await delay(450);
+    assert.equal(native("has-button", "Keep sidebar open"), "true", "Edge hover must expose an accessible floating sidebar");
     const peek = capture(window.id, "vertical-floating-peek");
     const peekChange = changedFraction(collapsed, peek);
     assert.ok(peekChange > 0.02, `Edge hover did not reveal the glass sidebar (${peekChange.toFixed(3)})`);

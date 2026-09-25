@@ -1,6 +1,7 @@
 // Native-window input and lookup for a disposable Aux.app journey.
 // The caller passes the PID it launched; no other application is targeted.
 import AppKit
+import ApplicationServices
 import CoreGraphics
 import Foundation
 
@@ -27,7 +28,35 @@ struct WindowRecord: Encodable {
   let height: Double
 }
 
-if action == "window" {
+func hasButton(_ label: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) -> Bool {
+    visited += 1
+    if depth > 18 || visited > 4000 { return false }
+    var roleValue: CFTypeRef?
+    var titleValue: CFTypeRef?
+    var descriptionValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleValue)
+    AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
+    if (roleValue as? String) == (kAXButtonRole as String) &&
+      ((titleValue as? String) == label || (descriptionValue as? String) == label) {
+      return true
+    }
+    var childrenValue: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString,
+                                       &childrenValue) == .success,
+      let children = childrenValue as? [AXUIElement] else { return false }
+    return children.contains { visit($0, depth: depth + 1) }
+  }
+  return visit(application, depth: 0)
+}
+
+if action == "has-button" {
+  guard CommandLine.arguments.count == 4 else { fail("Use has-button PID label.") }
+  print(hasButton(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "window" {
   let windows = CGWindowListCopyWindowInfo(
     [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
   let candidates = windows.compactMap { window -> WindowRecord? in
