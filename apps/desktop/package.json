@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@aux/contracts": "workspace:*",
+    "@aux/filter-lists": "workspace:*",
     "@mozilla/readability": "0.6.0",
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",

@@ -8,5 +8,5 @@
     "types": ["node"]
   },
   "include": ["main"],
-  "references": [{ "path": "../../packages/contracts" }]
+  "references": [{ "path": "../../packages/contracts" }, { "path": "../../packages/filter-lists" }]
 }

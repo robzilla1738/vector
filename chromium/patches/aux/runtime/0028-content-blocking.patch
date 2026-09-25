@@ -1,0 +1,1429 @@
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+index faf941525e..e64a173ada 100644
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -72,6 +72,7 @@
+ #include "chrome/browser/browsing_data/chrome_browsing_data_remover_constants.h"
+ #include "chrome/browser/btm/btm_browser_signin_detector.h"
+ #include "chrome/browser/btm/stateful_bounce_counter.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/child_process_host_flags.h"
+ #include "chrome/browser/chrome_browser_main.h"
+ #include "chrome/browser/chrome_content_browser_client_binder_policies.h"
+@@ -217,8 +218,8 @@
+ #include "chrome/browser/webauthn/chrome_web_authentication_delegate_base.h"
+ #include "chrome/browser/webauthn/webauthn_pref_names.h"
+ #include "chrome/common/buildflags.h"
+-#include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+ #endif
+ #include "chrome/common/channel_info.h"
+@@ -6040,6 +6041,19 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
+     result.push_back(std::move(contextual_tasks_throttle));
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  std::string top_site_host(
++      request.site_for_cookies.RepresentativeUrl().host());
++  if (top_site_host.empty() && request.request_initiator) {
++    top_site_host = std::string(request.request_initiator->host());
++  }
++  if (auto blocking_throttle =
++          aux::ContentBlockingController::ForProfile(profile)->CreateThrottle(
++              request, std::move(top_site_host))) {
++    result.push_back(std::move(blocking_throttle));
++  }
++#endif
++
+   return result;
+ }
+ 
+@@ -6075,6 +6089,21 @@ ChromeContentBrowserClient::CreateURLLoaderThrottlesForKeepAlive(
+     result.push_back(std::move(contextual_tasks_throttle));
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  std::string top_site_host;
++  if (content::WebContents* contents =
++          content::WebContents::FromFrameTreeNodeId(frame_tree_node_id)) {
++    if (contents->GetBrowserContext() == browser_context) {
++      top_site_host = std::string(contents->GetLastCommittedURL().host());
++    }
++  }
++  if (auto blocking_throttle =
++          aux::ContentBlockingController::ForProfile(profile)
++              ->CreateKeepAliveThrottle(std::move(top_site_host))) {
++    result.push_back(std::move(blocking_throttle));
++  }
++#endif
++
+   return result;
+ }
+ 
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index 9c86d7339d..8af94cba59 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -10,7 +10,7 @@ interface Port {
+   profileId: string;
+   platform: string;
+   privateMode: boolean;
+-  featureStages: {extensions: 'on'};
++  featureStages: {extensions: 'on', contentBlocking: 'on'};
+   request(method: string, args: unknown[]): Promise<unknown>;
+   subscribe(event: string, callback: (...args: unknown[]) => void): () => void;
+ }
+@@ -56,7 +56,7 @@ window.auxChromiumHostReady = remote.getIdentity().then(identity => {
+     profileId: identity.profileId,
+     platform: 'darwin',
+     privateMode: identity.privateMode,
+-    featureStages: {extensions: 'on'},
++    featureStages: {extensions: 'on', contentBlocking: 'on'},
+     async request(method, args) {
+       const requestArgs = method === 'tabCommand' ?
+           [crypto.randomUUID(), ...args] : args;
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 4eaaba623f..72a71dd089 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -11,6 +11,10 @@ source_set("runtime") {
+   sources = [
+     "cdp_broker.cc",
+     "cdp_broker.h",
++    "content_blocking_controller.cc",
++    "content_blocking_controller.h",
++    "content_blocking_policy.cc",
++    "content_blocking_policy.h",
+     "cookie_import.cc",
+     "cookie_import.h",
+     "credential_fill.cc",
+@@ -60,6 +64,8 @@ source_set("runtime") {
+     "//components/bookmarks/common",
+     "//components/history/core/browser",
+     "//components/keyed_service/core",
++    "//services/network/public/cpp:cpp",
++    "//third_party/blink/common",
+     "//url",
+   ]
+   frameworks = [
+@@ -68,6 +74,14 @@ source_set("runtime") {
+   ]
+ }
+ 
++test("content_blocking_unittests") {
++  sources = [ "content_blocking_policy_unittest.cc" ]
++  deps = [
++    ":runtime",
++    "//testing/gtest",
++  ]
++}
++
+ test("cdp_broker_unittests") {
+   sources = [ "cdp_broker_unittest.cc" ]
+   deps = [
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
+new file mode 100644
+index 0000000000..30748a798a
+--- /dev/null
++++ b/chrome/browser/ui/aux/content_blocking_controller.cc
+@@ -0,0 +1,537 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++
++#include <algorithm>
++#include <cmath>
++#include <limits>
++#include <memory>
++#include <string>
++#include <utility>
++
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/task/bind_post_task.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
++#include "content/public/browser/web_contents.h"
++#include "crypto/sha2.h"
++#include "net/base/net_errors.h"
++#include "net/url_request/redirect_info.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "third_party/blink/public/common/loader/url_loader_throttle.h"
++
++namespace aux {
++namespace {
++const char kContentBlockingKey = 0;
++constexpr size_t kMaxHosts = 400000;
++constexpr size_t kMaxAllowed = 4096;
++constexpr size_t kMaxSnapshotBytes = 32 * 1024 * 1024;
++#include "chrome/browser/ui/aux/content_blocking_seed.inc"
++
++std::string Digest(std::string_view text) {
++  return base::HexEncodeLower(crypto::SHA256HashString(text));
++}
++
++bool ValidDigest(std::string_view digest) {
++  return digest.size() == 64 && std::ranges::all_of(digest, [](char c) {
++           return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++         });
++}
++
++bool ValidGeneration(std::optional<double> generation) {
++  return generation && std::isfinite(*generation) && *generation >= 1 &&
++         *generation <= 9007199254740991.0 &&
++         std::floor(*generation) == *generation;
++}
++
++base::FilePath SnapshotPath(Profile* profile) {
++  return profile->GetPath()
++      .Append(FILE_PATH_LITERAL("Aux Blocking"))
++      .Append(FILE_PATH_LITERAL("snapshot.json"));
++}
++
++BlockingHosts BuiltInHosts() {
++  BlockingHosts hosts;
++  for (const char* host : kBuiltInBlockingHosts) {
++    hosts.insert(host);
++  }
++  return hosts;
++}
++
++bool IsSortedHostList(const base::ListValue& list,
++                      size_t expected_count,
++                      std::vector<std::string>* hosts) {
++  if (list.size() != expected_count || list.size() > kMaxHosts) {
++    return false;
++  }
++  hosts->reserve(list.size());
++  for (const base::Value& value : list) {
++    const std::string* host = value.GetIfString();
++    if (!host || !IsBlockingHost(*host) ||
++        (!hosts->empty() && hosts->back() >= *host)) {
++      return false;
++    }
++    hosts->push_back(*host);
++  }
++  return true;
++}
++
++std::string JoinHosts(const std::vector<std::string>& hosts) {
++  std::string joined;
++  for (const std::string& host : hosts) {
++    if (!joined.empty()) {
++      joined.push_back('\n');
++    }
++    joined.append(host);
++  }
++  return joined;
++}
++
++bool IncludesBuiltInHosts(const std::vector<std::string>& hosts) {
++  for (const char* built_in : kBuiltInBlockingHosts) {
++    if (!std::binary_search(hosts.begin(), hosts.end(), built_in)) {
++      return false;
++    }
++  }
++  return true;
++}
++
++base::DictValue Accepted() {
++  base::DictValue result;
++  result.Set("accepted", true);
++  return result;
++}
++
++bool SiteGuardMatches(Profile* profile, const base::DictValue& guard) {
++  const std::string* page_id = guard.FindString("pageId");
++  const std::string* expected_url = guard.FindString("expectedUrl");
++  const auto navigation_id = guard.FindInt("navigationId");
++  if (!page_id || !expected_url || !navigation_id || page_id->size() > 128 ||
++      expected_url->size() > 2048) {
++    return false;
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile);
++  content::WebContents* contents =
++      catalog ? catalog->FindPage(*page_id) : nullptr;
++  const content::NavigationEntry* entry =
++      contents ? contents->GetController().GetLastCommittedEntry() : nullptr;
++  return contents && entry &&
++         contents->GetLastCommittedURL().spec() == *expected_url &&
++         contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++         entry->GetUniqueID() == *navigation_id;
++}
++
++}  // namespace
++
++struct ContentBlockingController::Rules {
++  double generation = 0;
++  std::string digest;
++  bool enabled = true;
++  BlockingHosts blocked = BuiltInHosts();
++  BlockingHosts allowed;
++};
++
++struct ContentBlockingController::Staging {
++  double generation = 0;
++  std::string digest;
++  size_t host_count = 0;
++  bool enabled = true;
++  std::vector<std::string> hosts;
++  BlockingHosts allowed;
++  std::optional<base::DictValue> site_guard;
++};
++
++class BlockingThrottle final : public blink::URLLoaderThrottle {
++ public:
++  BlockingThrottle(
++      std::shared_ptr<const ContentBlockingController::Rules> rules,
++      std::string top_site_host,
++      bool main_frame,
++      base::RepeatingCallback<void(std::string)> on_blocked)
++      : rules_(std::move(rules)),
++        top_site_host_(std::move(top_site_host)),
++        main_frame_(main_frame),
++        on_blocked_(std::move(on_blocked)) {}
++  ~BlockingThrottle() override = default;
++
++  void WillStartRequest(network::ResourceRequest* request,
++                        bool* defer) override {
++    MaybeBlock(request->url);
++  }
++  void WillRedirectRequest(
++      net::RedirectInfo* redirect_info,
++      const network::mojom::URLResponseHead& response_head,
++      bool* defer,
++      network::HttpRequestHeadersUpdateParams* headers_update_params) override {
++    MaybeBlock(redirect_info->new_url);
++  }
++
++ private:
++  void MaybeBlock(const GURL& url) {
++    if (!ShouldBlockSubresource(url, top_site_host_, main_frame_,
++                                rules_->enabled, rules_->blocked,
++                                rules_->allowed)) {
++      return;
++    }
++    on_blocked_.Run(top_site_host_);
++    delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT,
++                               "Aux content filter");
++  }
++
++  std::shared_ptr<const ContentBlockingController::Rules> rules_;
++  const std::string top_site_host_;
++  const bool main_frame_;
++  base::RepeatingCallback<void(std::string)> on_blocked_;
++};
++
++ContentBlockingController* ContentBlockingController::ForProfile(
++    Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile) {
++    return nullptr;
++  }
++  auto* owner = static_cast<ContentBlockingController*>(
++      profile->GetUserData(&kContentBlockingKey));
++  if (!owner) {
++    auto created = std::unique_ptr<ContentBlockingController>(
++        new ContentBlockingController(profile));
++    owner = created.get();
++    profile->SetUserData(&kContentBlockingKey, std::move(created));
++  }
++  owner->SyncPrivateRules();
++  return owner;
++}
++
++ContentBlockingController::ContentBlockingController(Profile* profile)
++    : profile_(profile), rules_(std::make_shared<Rules>()) {
++  if (!profile->IsOffTheRecord()) {
++    Load();
++  }
++}
++ContentBlockingController::~ContentBlockingController() = default;
++
++void ContentBlockingController::Load() {
++  std::string text;
++  if (!base::ReadFileToStringWithMaxSize(SnapshotPath(profile_), &text,
++                                         kMaxSnapshotBytes)) {
++    return;
++  }
++  const auto root = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++  if (!root) {
++    return;
++  }
++  const auto generation = root->FindDouble("generation");
++  const std::string* digest = root->FindString("hostsDigest");
++  const base::ListValue* host_list = root->FindList("hosts");
++  const base::ListValue* allowed_list = root->FindList("allowedSiteHosts");
++  const auto enabled = root->FindBool("enabled");
++  if (!ValidGeneration(generation) || !digest || !ValidDigest(*digest) ||
++      !host_list || !allowed_list || !enabled ||
++      allowed_list->size() > kMaxAllowed) {
++    return;
++  }
++  std::vector<std::string> hosts;
++  if (!IsSortedHostList(*host_list, host_list->size(), &hosts) ||
++      !IncludesBuiltInHosts(hosts) || Digest(JoinHosts(hosts)) != *digest) {
++    return;
++  }
++  auto next = std::make_shared<Rules>();
++  next->generation = *generation;
++  next->digest = *digest;
++  next->enabled = *enabled;
++  next->blocked = BlockingHosts(hosts.begin(), hosts.end());
++  for (const base::Value& value : *allowed_list) {
++    const std::string* host = value.GetIfString();
++    if (!host || !IsAllowedSiteHost(*host)) {
++      return;
++    }
++    next->allowed.insert(*host);
++  }
++  rules_ = std::move(next);
++}
++
++void ContentBlockingController::SyncPrivateRules() {
++  if (!profile_->IsOffTheRecord()) {
++    return;
++  }
++  auto* original = ForProfile(profile_->GetOriginalProfile());
++  if (original && original->rules_->generation > rules_->generation) {
++    auto next = std::make_shared<Rules>(*original->rules_);
++    for (const auto& [host, allowed] : private_site_overrides_) {
++      if (allowed) {
++        next->allowed.insert(host);
++      } else {
++        next->allowed.erase(host);
++      }
++    }
++    if (private_enabled_override_) {
++      next->enabled = *private_enabled_override_;
++    }
++    rules_ = std::move(next);
++  }
++}
++
++std::optional<base::DictValue> ContentBlockingController::Begin(
++    const base::DictValue& params,
++    std::string* error) {
++  if (profile_->IsOffTheRecord()) {
++    *error = "Private Profiles cannot install filter lists";
++    return std::nullopt;
++  }
++  const std::string* profile_id = params.FindString("profileId");
++  const std::string* digest = params.FindString("hostsDigest");
++  const auto generation = params.FindDouble("generation");
++  const auto host_count = params.FindInt("hostCount");
++  const auto enabled = params.FindBool("enabled");
++  const base::ListValue* allowed = params.FindList("allowedSiteHosts");
++  const base::Value* guard_value = params.Find("siteGuard");
++  const base::DictValue* guard = params.FindDict("siteGuard");
++  if (!profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() || !digest ||
++      !ValidDigest(*digest) || !ValidGeneration(generation) ||
++      *generation <= rules_->generation || !host_count || *host_count < 0 ||
++      *host_count > static_cast<int>(kMaxHosts) || !enabled || !allowed ||
++      allowed->size() > kMaxAllowed) {
++    *error = "Invalid content blocking snapshot header";
++    return std::nullopt;
++  }
++  if (guard_value && (!guard || !SiteGuardMatches(profile_, *guard))) {
++    *error = "Content blocking page changed";
++    return std::nullopt;
++  }
++  auto staged = std::make_unique<Staging>();
++  staged->generation = *generation;
++  staged->digest = *digest;
++  staged->host_count = *host_count;
++  staged->enabled = *enabled;
++  staged->hosts.reserve(*host_count);
++  if (guard) {
++    staged->site_guard = guard->Clone();
++  }
++  for (const base::Value& value : *allowed) {
++    const std::string* host = value.GetIfString();
++    if (!host || !IsAllowedSiteHost(*host)) {
++      *error = "Invalid content blocking site exception";
++      return std::nullopt;
++    }
++    staged->allowed.insert(*host);
++  }
++  staging_ = std::move(staged);
++  return Accepted();
++}
++
++std::optional<base::DictValue> ContentBlockingController::Append(
++    const base::DictValue& params,
++    std::string* error) {
++  const auto generation = params.FindDouble("generation");
++  const auto offset = params.FindInt("offset");
++  const std::string* profile_id = params.FindString("profileId");
++  const base::ListValue* hosts = params.FindList("hosts");
++  if (!staging_ || !profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++      !generation || *generation != staging_->generation || !offset ||
++      *offset != static_cast<int>(staging_->hosts.size()) || !hosts ||
++      hosts->empty() || hosts->size() > 1024 ||
++      staging_->hosts.size() + hosts->size() > staging_->host_count) {
++    staging_.reset();
++    *error = "Invalid content blocking snapshot chunk";
++    return std::nullopt;
++  }
++  for (const base::Value& value : *hosts) {
++    const std::string* host = value.GetIfString();
++    if (!host || !IsBlockingHost(*host) ||
++        (!staging_->hosts.empty() && staging_->hosts.back() >= *host)) {
++      staging_.reset();
++      *error = "Invalid content blocking host order";
++      return std::nullopt;
++    }
++    staging_->hosts.push_back(*host);
++  }
++  return Accepted();
++}
++
++bool ContentBlockingController::Persist(const Staging& staging,
++                                        std::string* error) {
++  base::DictValue root;
++  root.Set("generation", staging.generation);
++  root.Set("hostsDigest", staging.digest);
++  root.Set("enabled", staging.enabled);
++  base::ListValue hosts;
++  for (const auto& host : staging.hosts) {
++    hosts.Append(host);
++  }
++  root.Set("hosts", std::move(hosts));
++  base::ListValue allowed;
++  for (const auto& host : staging.allowed) {
++    allowed.Append(host);
++  }
++  root.Set("allowedSiteHosts", std::move(allowed));
++  const auto encoded = base::WriteJson(root);
++  const base::FilePath path = SnapshotPath(profile_);
++  const base::FilePath temp = path.AddExtension(FILE_PATH_LITERAL("tmp"));
++  if (!encoded || encoded->size() > kMaxSnapshotBytes ||
++      !base::CreateDirectory(path.DirName()) ||
++      !base::SetPosixFilePermissions(path.DirName(), 0700) ||
++      !base::WriteFile(temp, *encoded) ||
++      !base::SetPosixFilePermissions(temp, 0600) ||
++      !base::ReplaceFile(temp, path, nullptr)) {
++    base::DeleteFile(temp);
++    *error = "Chromium could not persist the filter snapshot";
++    return false;
++  }
++  return true;
++}
++
++std::optional<base::DictValue> ContentBlockingController::Commit(
++    const base::DictValue& params,
++    std::string* error) {
++  const auto generation = params.FindDouble("generation");
++  const std::string* digest = params.FindString("hostsDigest");
++  const std::string* profile_id = params.FindString("profileId");
++  if (!staging_ || !generation || *generation != staging_->generation ||
++      !digest || *digest != staging_->digest || !profile_id ||
++      *profile_id != profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++      staging_->hosts.size() != staging_->host_count ||
++      !IncludesBuiltInHosts(staging_->hosts) ||
++      Digest(JoinHosts(staging_->hosts)) != staging_->digest) {
++    staging_.reset();
++    *error = "Content blocking snapshot digest mismatch";
++    return std::nullopt;
++  }
++  if (staging_->site_guard &&
++      !SiteGuardMatches(profile_, *staging_->site_guard)) {
++    staging_.reset();
++    *error = "Content blocking page changed";
++    return std::nullopt;
++  }
++  if (!Persist(*staging_, error)) {
++    staging_.reset();
++    return std::nullopt;
++  }
++  auto next = std::make_shared<Rules>();
++  next->generation = staging_->generation;
++  next->digest = staging_->digest;
++  next->enabled = staging_->enabled;
++  next->blocked = BlockingHosts(staging_->hosts.begin(), staging_->hosts.end());
++  next->allowed = std::move(staging_->allowed);
++  const int count = static_cast<int>(next->blocked.size());
++  const double applied_generation = next->generation;
++  const std::string applied_digest = next->digest;
++  rules_ = std::move(next);
++  staging_.reset();
++  base::DictValue receipt;
++  receipt.Set("backend", "subresource_filter");
++  receipt.Set("generation", applied_generation);
++  receipt.Set("hostsDigest", applied_digest);
++  receipt.Set("installedRules", count);
++  return receipt;
++}
++
++std::unique_ptr<blink::URLLoaderThrottle>
++ContentBlockingController::CreateThrottle(
++    const network::ResourceRequest& request,
++    std::string top_site_host) {
++  SyncPrivateRules();
++  if (!rules_->enabled) {
++    return nullptr;
++  }
++  const bool main_frame = request.is_outermost_main_frame;
++  return std::make_unique<BlockingThrottle>(
++      rules_, base::ToLowerASCII(top_site_host), main_frame,
++      base::BindPostTask(
++          base::SequencedTaskRunner::GetCurrentDefault(),
++          base::BindRepeating(&ContentBlockingController::NoteBlocked,
++                              weak_factory_.GetWeakPtr())));
++}
++
++std::unique_ptr<blink::URLLoaderThrottle>
++ContentBlockingController::CreateKeepAliveThrottle(std::string top_site_host) {
++  SyncPrivateRules();
++  if (!rules_->enabled) {
++    return nullptr;
++  }
++  return std::make_unique<BlockingThrottle>(
++      rules_, base::ToLowerASCII(top_site_host), false,
++      base::BindPostTask(
++          base::SequencedTaskRunner::GetCurrentDefault(),
++          base::BindRepeating(&ContentBlockingController::NoteBlocked,
++                              weak_factory_.GetWeakPtr())));
++}
++
++void ContentBlockingController::NoteBlocked(std::string site_host) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  ++total_blocked_;
++  if (!site_host.empty() &&
++      (by_site_.contains(site_host) || by_site_.size() < kMaxAllowed)) {
++    int& count = by_site_[site_host];
++    if (count < std::numeric_limits<int>::max()) ++count;
++  }
++}
++
++bool ContentBlockingController::enabled() const {
++  return rules_->enabled;
++}
++bool ContentBlockingController::IsAllowed(std::string_view site_host) const {
++  return BlockingHostMatches(rules_->allowed, site_host);
++}
++int ContentBlockingController::blocked_count() const {
++  return static_cast<int>(
++      std::min<uint64_t>(total_blocked_, std::numeric_limits<int>::max()));
++}
++int ContentBlockingController::BlockedForSite(
++    std::string_view site_host) const {
++  auto it = by_site_.find(std::string(site_host));
++  return it == by_site_.end() ? 0 : it->second;
++}
++std::vector<std::string> ContentBlockingController::allowed_hosts() const {
++  std::vector<std::string> hosts(rules_->allowed.begin(), rules_->allowed.end());
++  std::sort(hosts.begin(), hosts.end());
++  return hosts;
++}
++bool ContentBlockingController::SetPrivateSiteAllowed(std::string_view host,
++                                                      bool allowed) {
++  if (!profile_->IsOffTheRecord() || !IsAllowedSiteHost(host) ||
++      (private_site_overrides_.size() >= kMaxAllowed &&
++       !private_site_overrides_.contains(std::string(host)))) {
++    return false;
++  }
++  SyncPrivateRules();
++  auto next = std::make_shared<Rules>(*rules_);
++  if (allowed) {
++    if (next->allowed.size() >= kMaxAllowed &&
++        !next->allowed.contains(std::string(host))) {
++      return false;
++    }
++    next->allowed.insert(std::string(host));
++  } else {
++    next->allowed.erase(std::string(host));
++  }
++  private_site_overrides_[std::string(host)] = allowed;
++  rules_ = std::move(next);
++  return true;
++}
++
++bool ContentBlockingController::SetPrivateEnabled(bool enabled) {
++  if (!profile_->IsOffTheRecord()) {
++    return false;
++  }
++  SyncPrivateRules();
++  auto next = std::make_shared<Rules>(*rules_);
++  next->enabled = enabled;
++  private_enabled_override_ = enabled;
++  rules_ = std::move(next);
++  return true;
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
+new file mode 100644
+index 0000000000..76e9cf8947
+--- /dev/null
++++ b/chrome/browser/ui/aux/content_blocking_controller.h
+@@ -0,0 +1,79 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_CONTROLLER_H_
++
++#include <cstdint>
++#include <map>
++#include <memory>
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/supports_user_data.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/content_blocking_policy.h"
++
++class Profile;
++namespace blink {
++class URLLoaderThrottle;
++}
++namespace network {
++struct ResourceRequest;
++}
++
++namespace aux {
++
++class ContentBlockingController final : public base::SupportsUserData::Data {
++ public:
++  static ContentBlockingController* ForProfile(Profile* profile);
++  ~ContentBlockingController() override;
++
++  std::optional<base::DictValue> Begin(const base::DictValue& params,
++                                       std::string* error);
++  std::optional<base::DictValue> Append(const base::DictValue& params,
++                                        std::string* error);
++  std::optional<base::DictValue> Commit(const base::DictValue& params,
++                                        std::string* error);
++  std::unique_ptr<blink::URLLoaderThrottle> CreateThrottle(
++      const network::ResourceRequest& request,
++      std::string top_site_host);
++  std::unique_ptr<blink::URLLoaderThrottle> CreateKeepAliveThrottle(
++      std::string top_site_host);
++
++  bool enabled() const;
++  bool IsAllowed(std::string_view site_host) const;
++  int blocked_count() const;
++  int BlockedForSite(std::string_view site_host) const;
++  std::vector<std::string> allowed_hosts() const;
++  bool SetPrivateSiteAllowed(std::string_view host, bool allowed);
++  bool SetPrivateEnabled(bool enabled);
++
++ private:
++  friend class BlockingThrottle;
++  struct Rules;
++  struct Staging;
++  explicit ContentBlockingController(Profile* profile);
++  void Load();
++  void SyncPrivateRules();
++  void NoteBlocked(std::string site_host);
++  bool Persist(const Staging& staging, std::string* error);
++
++  raw_ptr<Profile> profile_;
++  std::shared_ptr<const Rules> rules_;
++  std::unique_ptr<Staging> staging_;
++  std::map<std::string, bool> private_site_overrides_;
++  std::optional<bool> private_enabled_override_;
++  uint64_t total_blocked_ = 0;
++  std::map<std::string, int> by_site_;
++  base::WeakPtrFactory<ContentBlockingController> weak_factory_{this};
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_CONTROLLER_H_
+diff --git a/chrome/browser/ui/aux/content_blocking_policy.cc b/chrome/browser/ui/aux/content_blocking_policy.cc
+new file mode 100644
+index 0000000000..62af9327e7
+--- /dev/null
++++ b/chrome/browser/ui/aux/content_blocking_policy.cc
+@@ -0,0 +1,121 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/content_blocking_policy.h"
++
++#include <algorithm>
++#include <string>
++#include <string_view>
++
++#include "base/strings/string_split.h"
++#include "base/strings/string_util.h"
++
++namespace aux {
++
++bool IsBlockingHost(std::string_view host) {
++  if (host.empty() || host.size() > 253 || host.find('.') == host.npos ||
++      host == "localhost" || host.ends_with(".localhost") ||
++      host.ends_with(".local")) {
++    return false;
++  }
++  size_t label_start = 0;
++  bool all_numeric = true;
++  while (label_start < host.size()) {
++    const size_t end = host.find('.', label_start);
++    const size_t label_end = end == host.npos ? host.size() : end;
++    const auto label = host.substr(label_start, label_end - label_start);
++    if (label.empty() || label.size() > 63 || label.front() == '-' ||
++        label.back() == '-') {
++      return false;
++    }
++    for (char c : label) {
++      if (c >= 'a' && c <= 'z') {
++        all_numeric = false;
++      } else if (c >= '0' && c <= '9') {
++      } else if (c == '-') {
++        all_numeric = false;
++      } else {
++        return false;
++      }
++    }
++    if (end == host.npos) {
++      break;
++    }
++    label_start = end + 1;
++  }
++  return !all_numeric;
++}
++
++bool IsAllowedSiteHost(std::string_view host) {
++  if (host.empty() || host.size() > 253 ||
++      host.find_first_of("/?#@\\") != host.npos) {
++    return false;
++  }
++  const GURL url("https://" + std::string(host) + "/");
++  return url.is_valid() && url.host() == host;
++}
++
++BlockingHosts ParseBlockingHosts(std::string_view text, size_t limit) {
++  BlockingHosts hosts;
++  if (limit == 0) {
++    return hosts;
++  }
++  for (std::string_view line : base::SplitStringPiece(
++           text, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
++    line = line.substr(0, line.find('#'));
++    const auto tokens = base::SplitStringPiece(
++        line, " \t\r", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
++    if (tokens.empty() || tokens.size() > 2) {
++      continue;
++    }
++    std::string_view host;
++    if (tokens.size() == 1) {
++      host = tokens.front();
++    } else if (tokens.front() == "0.0.0.0" || tokens.front() == "127.0.0.1" ||
++               tokens.front() == "255.255.255.255" || tokens.front() == "::1") {
++      host = tokens.back();
++    }
++    const std::string normalized = base::ToLowerASCII(host);
++    if (IsBlockingHost(normalized)) {
++      hosts.insert(normalized);
++      if (hosts.size() >= limit) {
++        break;
++      }
++    }
++  }
++  return hosts;
++}
++
++bool BlockingHostMatches(const BlockingHosts& hosts, std::string_view host) {
++  if (host.empty()) {
++    return false;
++  }
++  if (hosts.contains(std::string(host))) {
++    return true;
++  }
++  size_t dot = host.find('.');
++  while (dot != host.npos) {
++    host.remove_prefix(dot + 1);
++    if (hosts.contains(std::string(host))) {
++      return true;
++    }
++    dot = host.find('.');
++  }
++  return false;
++}
++
++bool ShouldBlockSubresource(const GURL& request_url,
++                            std::string_view top_site_host,
++                            bool main_frame,
++                            bool enabled,
++                            const BlockingHosts& blocked,
++                            const BlockingHosts& allowed) {
++  if (main_frame || !enabled || !request_url.SchemeIsHTTPOrHTTPS() ||
++      !BlockingHostMatches(blocked, request_url.host())) {
++    return false;
++  }
++  return !BlockingHostMatches(allowed, top_site_host);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/content_blocking_policy.h b/chrome/browser/ui/aux/content_blocking_policy.h
+new file mode 100644
+index 0000000000..3a30441d52
+--- /dev/null
++++ b/chrome/browser/ui/aux/content_blocking_policy.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_POLICY_H_
++#define CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_POLICY_H_
++
++#include <cstddef>
++#include <string>
++#include <string_view>
++#include <unordered_set>
++
++#include "url/gurl.h"
++
++namespace aux {
++
++using BlockingHosts = std::unordered_set<std::string>;
++
++bool IsBlockingHost(std::string_view host);
++bool IsAllowedSiteHost(std::string_view host);
++BlockingHosts ParseBlockingHosts(std::string_view text, size_t limit);
++bool BlockingHostMatches(const BlockingHosts& hosts, std::string_view host);
++bool ShouldBlockSubresource(const GURL& request_url,
++                            std::string_view top_site_host,
++                            bool main_frame,
++                            bool enabled,
++                            const BlockingHosts& blocked,
++                            const BlockingHosts& allowed);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_CONTENT_BLOCKING_POLICY_H_
+diff --git a/chrome/browser/ui/aux/content_blocking_policy_unittest.cc b/chrome/browser/ui/aux/content_blocking_policy_unittest.cc
+new file mode 100644
+index 0000000000..91f80207fd
+--- /dev/null
++++ b/chrome/browser/ui/aux/content_blocking_policy_unittest.cc
+@@ -0,0 +1,57 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/content_blocking_policy.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++
++TEST(ContentBlockingPolicyTest, ParsesOnlyBoundedHostsLines) {
++  const auto hosts = ParseBlockingHosts(
++      "# comment\n0.0.0.0 ads.example.test # label\n"
++      "tracker.example.test\n127.0.0.1 localhost\n"
++      "||malformed.example.test^\n0.0.0.0 ads.example.test\n",
++      400000);
++  EXPECT_EQ(hosts.size(), 2u);
++  EXPECT_TRUE(hosts.contains("ads.example.test"));
++  EXPECT_TRUE(hosts.contains("tracker.example.test"));
++}
++
++TEST(ContentBlockingPolicyTest, BlocksSubresourcesAndRedirectDestinations) {
++  const BlockingHosts blocked{"example.test"};
++  const BlockingHosts allowed{"allowed.test"};
++  EXPECT_TRUE(ShouldBlockSubresource(GURL("https://ads.example.test/a.js"),
++                                     "news.test", false, true, blocked,
++                                     allowed));
++  EXPECT_FALSE(ShouldBlockSubresource(GURL("https://ads.example.test/"),
++                                      "news.test", true, true, blocked,
++                                      allowed));
++  EXPECT_FALSE(ShouldBlockSubresource(GURL("https://ads.example.test/a.js"),
++                                      "sub.allowed.test", false, true, blocked,
++                                      allowed));
++  EXPECT_FALSE(ShouldBlockSubresource(GURL("https://ads.example.test/a.js"),
++                                      "news.test", false, false, blocked,
++                                      allowed));
++  EXPECT_FALSE(ShouldBlockSubresource(GURL("file:///ads.example.test/a.js"),
++                                      "news.test", false, true, blocked,
++                                      allowed));
++}
++
++TEST(ContentBlockingPolicyTest, ValidatesDomainAndSuffix) {
++  EXPECT_TRUE(IsBlockingHost("ads.example.test"));
++  EXPECT_FALSE(IsBlockingHost("localhost"));
++  EXPECT_FALSE(IsBlockingHost("1.2.3.4"));
++  EXPECT_FALSE(IsBlockingHost("-ads.example.test"));
++  EXPECT_FALSE(IsBlockingHost("ads.example..test"));
++  EXPECT_TRUE(IsAllowedSiteHost("localhost"));
++  EXPECT_TRUE(IsAllowedSiteHost("127.0.0.1"));
++  EXPECT_FALSE(IsAllowedSiteHost("evil.test/path"));
++  EXPECT_TRUE(
++      BlockingHostMatches(BlockingHosts{"example.test"}, "ads.example.test"));
++  EXPECT_FALSE(
++      BlockingHostMatches(BlockingHosts{"example.test"}, "notexample.test"));
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/content_blocking_seed.inc b/chrome/browser/ui/aux/content_blocking_seed.inc
+new file mode 100644
+index 0000000000..df893a4910
+--- /dev/null
++++ b/chrome/browser/ui/aux/content_blocking_seed.inc
+@@ -0,0 +1,91 @@
++// Generated from packages/contracts/src/tracker-hosts.ts. Do not edit.
++constexpr const char* kBuiltInBlockingHosts[] = {
++    "doubleclick.net",
++    "googlesyndication.com",
++    "googleadservices.com",
++    "google-analytics.com",
++    "googletagmanager.com",
++    "googletagservices.com",
++    "ads.yahoo.com",
++    "adtechus.com",
++    "advertising.com",
++    "adnxs.com",
++    "adsrvr.org",
++    "amazon-adsystem.com",
++    "bidswitch.net",
++    "casalemedia.com",
++    "criteo.com",
++    "criteo.net",
++    "indexww.com",
++    "openx.net",
++    "pubmatic.com",
++    "rubiconproject.com",
++    "smartadserver.com",
++    "taboola.com",
++    "outbrain.com",
++    "mgid.com",
++    "revcontent.com",
++    "sharethrough.com",
++    "triplelift.com",
++    "yieldmo.com",
++    "33across.com",
++    "appnexus.com",
++    "contextweb.com",
++    "lijit.com",
++    "sovrn.com",
++    "gumgum.com",
++    "teads.tv",
++    "undertone.com",
++    "zemanta.com",
++    "zergnet.com",
++    "adroll.com",
++    "exosrv.com",
++    "trafficjunky.net",
++    "popads.net",
++    "propellerads.com",
++    "adcash.com",
++    "hilltopads.net",
++    "facebook.net",
++    "connect.facebook.net",
++    "ads-twitter.com",
++    "analytics.twitter.com",
++    "bat.bing.com",
++    "scorecardresearch.com",
++    "quantserve.com",
++    "chartbeat.com",
++    "chartbeat.net",
++    "parsely.com",
++    "bluekai.com",
++    "exelator.com",
++    "demdex.net",
++    "everesttech.net",
++    "krxd.net",
++    "tapad.com",
++    "liveramp.com",
++    "rlcdn.com",
++    "adsymptotic.com",
++    "bounceexchange.com",
++    "2mdn.net",
++    "serving-sys.com",
++    "mathtag.com",
++    "media.net",
++    "intentiq.com",
++    "hotjar.com",
++    "mouseflow.com",
++    "fullstory.com",
++    "logrocket.com",
++    "smartlook.com",
++    "luckyorange.com",
++    "crazyegg.com",
++    "clarity.ms",
++    "mixpanel.com",
++    "segment.io",
++    "segment.com",
++    "amplitude.com",
++    "heap.io",
++    "heapanalytics.com",
++    "nr-data.net",
++    "pingdom.net",
++    "statcounter.com",
++    "histats.com",
++};
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index e90d9e2778..34a94f9191 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -35,6 +35,7 @@
+ #include "base/time/time.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/cdp_broker.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/credential_fill.h"
+ #include "chrome/browser/ui/aux/cookie_import.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+@@ -374,6 +375,29 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+     }
+     return profile_library_->BookmarkCall(*bookmark_method, *bookmark_params);
+   }
++  if (method == "native.contentBlockBegin" ||
++      method == "native.contentBlockAppend" ||
++      method == "native.contentBlockCommit") {
++    auto* blocker = aux::ContentBlockingController::ForProfile(profile_);
++    if (!blocker) {
++      return NativeFault("backend_unavailable",
++                         "Content blocking is unavailable");
++    }
++    std::string error;
++    std::optional<base::DictValue> result;
++    if (method == "native.contentBlockBegin") {
++      result = blocker->Begin(params, &error);
++    } else if (method == "native.contentBlockAppend") {
++      result = blocker->Append(params, &error);
++    } else {
++      result = blocker->Commit(params, &error);
++    }
++    return result ? NativeResult(base::Value(std::move(*result)))
++                  : NativeFault(error == "Content blocking page changed"
++                                    ? "conflict"
++                                    : "invalid_argument",
++                                std::move(error));
++  }
+   auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+   if (!catalog) {
+     return NativeFault("backend_unavailable", "Tab catalog is unavailable");
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 0af7e39b8e..b9bbceaa0e 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -9,9 +9,11 @@
+ #include "base/json/json_writer.h"
+ #include "base/notimplemented.h"
+ #include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+@@ -66,16 +68,27 @@
+ #include "components/guest_contents/browser/guest_contents_host_impl.h"
+ #include "components/surface_embed/common/features.h"
+ #include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/web_ui.h"
+ #include "content/public/browser/web_ui_data_source.h"
+ #include "services/network/public/mojom/content_security_policy.mojom.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "net/cookies/cookie_options.h"
++#include "net/cookies/cookie_partition_key_collection.h"
++#include "net/cookies/canonical_cookie.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
++#endif
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/views/interaction/element_tracker_views.h"
+ #include "ui/webui/tracked_element/tracked_element_handler.h"
+ #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
+ #include "ui/webui/webui_util.h"
++#include "url/origin.h"
+ 
+ namespace {
+ 
+@@ -378,6 +391,264 @@ void WebUIBrowserUI::Request(const std::string& method,
+                             "Aux shell arguments must be an array");
+     return;
+   }
++  if (method == "siteInfo" || method == "setSiteTrackers") {
++    if (list->size() != (method == "siteInfo" ? 1u : 2u) ||
++        !(*list)[0].is_string() ||
++        (method == "setSiteTrackers" && !(*list)[1].is_bool())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid site controls request");
++      return;
++    }
++    const std::string page_id = (*list)[0].GetString();
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents = catalog->FindPage(page_id, &owner);
++    if (!contents || owner != browser_ ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The website is no longer in this window");
++      return;
++    }
++    const GURL url = contents->GetLastCommittedURL();
++    const content::NavigationEntry* entry =
++        contents->GetController().GetLastCommittedEntry();
++    if (!entry) {
++      std::move(callback).Run(false, "", "conflict",
++                              "The page is still loading");
++      return;
++    }
++    const int navigation_id = entry->GetUniqueID();
++    auto* blocker =
++        aux::ContentBlockingController::ForProfile(browser_->GetProfile());
++    if (method == "setSiteTrackers") {
++      const bool allowed = (*list)[1].GetBool();
++      if (browser_->GetProfile()->IsOffTheRecord()) {
++        if (!blocker->SetPrivateSiteAllowed(url.host(), allowed)) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Invalid private site exception");
++          return;
++        }
++        base::DictValue result;
++        result.Set("hostname", url.host());
++        result.Set("allowed", allowed);
++        std::move(callback).Run(true, *base::WriteJson(result), "", "");
++        return;
++      }
++      base::DictValue params;
++      params.Set("hostname", url.host());
++      params.Set("allowed", allowed);
++      base::DictValue site_guard;
++      site_guard.Set("pageId", page_id);
++      site_guard.Set("expectedUrl", url.spec());
++      site_guard.Set("navigationId", navigation_id);
++      params.Set("siteGuard", std::move(site_guard));
++      AuxRuntimeHost::ForProfile(browser_->GetProfile())
++          ->CallInternal("blocking.setSiteAllowed", *base::WriteJson(params),
++                         base::BindOnce(
++                             [](RequestCallback callback,
++                                AuxRuntimeHost::Response response) {
++                               std::move(callback).Run(
++                                   response.ok, response.result_json,
++                                   response.error_code, response.error_message);
++                             },
++                             std::move(callback)));
++      return;
++    }
++    base::DictValue result;
++    result.Set("pageId", page_id);
++    result.Set("url", url.spec());
++    result.Set("origin", url::Origin::Create(url).Serialize());
++    result.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
++    result.Set("security",
++               url.SchemeIs("https")
++                   ? "secure"
++                   : (url.HostIsIPAddress() || url.host() == "localhost"
++                          ? "local"
++                          : "insecure"));
++    result.Set("trackersAllowed",
++               !blocker->enabled() || blocker->IsAllowed(url.host()));
++    result.Set("blockedCount", blocker->BlockedForSite(url.host()));
++    result.Set("permissions", base::DictValue());
++    browser_->GetProfile()
++        ->GetStoragePartitionForUrl(url)
++        ->GetCookieManagerForBrowserProcess()
++        ->GetCookieList(
++            url, net::CookieOptions::MakeAllInclusive(),
++            net::CookiePartitionKeyCollection::ContainsAll(),
++            mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++                base::BindOnce(
++                    [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++                       GURL expected_url, int navigation_id,
++                       base::DictValue result, RequestCallback callback,
++                       const net::CookieAccessResultList& cookies,
++                       const net::CookieAccessResultList&) {
++                      if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                        std::move(callback).Run(
++                            false, "", "forbidden",
++                            "The Aux shell is no longer active");
++                        return;
++                      }
++                      BrowserWindowInterface* owner = nullptr;
++                      content::WebContents* current =
++                          aux::TabCatalog::GetForProfile(
++                              ui->browser_->GetProfile())
++                              ->FindPage(page_id, &owner);
++                      if (!current || owner != ui->browser_ ||
++                          current->GetLastCommittedURL() != expected_url ||
++                          !current->GetController().GetLastCommittedEntry() ||
++                          current->GetController()
++                                  .GetLastCommittedEntry()
++                                  ->GetUniqueID() != navigation_id) {
++                        std::move(callback).Run(
++                            false, "", "conflict",
++                            "The page changed. Open site controls again");
++                        return;
++                      }
++                      result.Set("cookieCount",
++                                 static_cast<int>(cookies.size()));
++                      std::move(callback).Run(true, *base::WriteJson(result),
++                                              "", "");
++                    },
++                    weak_factory_.GetWeakPtr(), page_id, url, navigation_id,
++                    std::move(result), std::move(callback)),
++                net::CookieAccessResultList(), net::CookieAccessResultList()));
++    return;
++  }
++  const bool blocking_method =
++      method == "filterLists" || method == "updateFilters" ||
++      method == "addFilterSource" || method == "removeFilterSource" ||
++      method == "setFilterSourceEnabled" || method == "privacy" ||
++      method == "setTrackerBlock" || method == "removeAllowedHost";
++  if (blocking_method) {
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      auto* blocker =
++          aux::ContentBlockingController::ForProfile(browser_->GetProfile());
++      if ((method == "privacy" && list->empty()) ||
++          (method == "setTrackerBlock" && list->size() == 1 &&
++           (*list)[0].is_bool()) ||
++          (method == "removeAllowedHost" && list->size() == 1 &&
++           (*list)[0].is_string())) {
++        if (method == "setTrackerBlock") {
++          blocker->SetPrivateEnabled((*list)[0].GetBool());
++        } else if (method == "removeAllowedHost" &&
++                   !blocker->SetPrivateSiteAllowed((*list)[0].GetString(),
++                                                   false)) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Invalid private site exception");
++          return;
++        }
++        if (method == "removeAllowedHost") {
++          base::ListValue allowed;
++          for (const auto& host : blocker->allowed_hosts()) {
++            allowed.Append(host);
++          }
++          std::move(callback).Run(true, *base::WriteJson(allowed), "", "");
++          return;
++        }
++        base::DictValue privacy;
++        privacy.Set("trackerBlock", blocker->enabled());
++        privacy.Set("blocked", blocker->blocked_count());
++        base::ListValue allowed;
++        for (const auto& host : blocker->allowed_hosts()) {
++          allowed.Append(host);
++        }
++        privacy.Set("allowedHosts", std::move(allowed));
++        std::move(callback).Run(true, *base::WriteJson(privacy), "", "");
++        return;
++      }
++      std::move(callback).Run(false, "", "forbidden",
++                              "Private windows use temporary site exceptions");
++      return;
++    }
++    const char* internal = nullptr;
++    base::DictValue params;
++    if (method == "filterLists" || method == "privacy" ||
++        method == "updateFilters") {
++      if (list->size() != 0) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Unexpected arguments");
++        return;
++      }
++      internal = method == "filterLists" ? "blocking.status"
++                 : method == "privacy"   ? "blocking.privacy"
++                                         : "blocking.update";
++    } else if (method == "setTrackerBlock") {
++      if (list->size() != 1 || !(*list)[0].is_bool()) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid blocking preference");
++        return;
++      }
++      params.Set("enabled", (*list)[0].GetBool());
++      internal = "blocking.setEnabled";
++    } else if (method == "addFilterSource") {
++      if (list->size() < 2 || list->size() > 3 || !(*list)[0].is_string() ||
++          !(*list)[1].is_string() ||
++          (list->size() == 3 && !(*list)[2].is_string())) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid filter source");
++        return;
++      }
++      params.Set("name", (*list)[0].GetString());
++      params.Set("url", (*list)[1].GetString());
++      params.Set("kind", list->size() == 3 ? (*list)[2].GetString() : "hosts");
++      internal = "blocking.add";
++    } else if (method == "setFilterSourceEnabled") {
++      if (list->size() != 2 || !(*list)[0].is_string() ||
++          !(*list)[1].is_bool()) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid filter source change");
++        return;
++      }
++      params.Set("id", (*list)[0].GetString());
++      params.Set("enabled", (*list)[1].GetBool());
++      internal = "blocking.setSourceEnabled";
++    } else {
++      if (list->size() != 1 || !(*list)[0].is_string()) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid filter identifier");
++        return;
++      }
++      params.Set(method == "removeAllowedHost" ? "hostname" : "id",
++                 (*list)[0].GetString());
++      internal = method == "removeAllowedHost" ? "blocking.removeAllowedHost"
++                                               : "blocking.remove";
++    }
++    AuxRuntimeHost::ForProfile(browser_->GetProfile())
++        ->CallInternal(
++            internal, *base::WriteJson(params),
++            base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> ui, bool with_count,
++                   RequestCallback callback,
++                   AuxRuntimeHost::Response response) {
++                  if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                    std::move(callback).Run(
++                        false, "", "forbidden",
++                        "The Aux shell is no longer active");
++                    return;
++                  }
++                  if (response.ok && with_count) {
++                    auto value = base::JSONReader::ReadDict(
++                        response.result_json, base::JSON_PARSE_RFC);
++                    if (!value) {
++                      std::move(callback).Run(false, "", "backend_unavailable",
++                                              "Invalid blocking state");
++                      return;
++                    }
++                    value->Set("blocked",
++                               aux::ContentBlockingController::ForProfile(
++                                   ui->browser_->GetProfile())
++                                   ->blocked_count());
++                    response.result_json = *base::WriteJson(*value);
++                  }
++                  std::move(callback).Run(response.ok, response.result_json,
++                                          response.error_code,
++                                          response.error_message);
++                },
++                weak_factory_.GetWeakPtr(),
++                method == "privacy" || method == "setTrackerBlock",
++                std::move(callback)));
++    return;
++  }
+   if (aux::ExtensionBridge::Handles(method)) {
+     aux::ExtensionBridge::Handle(
+         browser_->GetProfile(), browser_, browser_window()->GetNativeWindow(),

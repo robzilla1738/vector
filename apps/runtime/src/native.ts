@@ -1,4 +1,12 @@
-import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken } from "@aux/contracts";
+import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken, type ChromiumContentBlockReceipt } from "@aux/contracts";
+
+export interface ContentBlockBegin {
+  profileId: string; generation: number; hostsDigest: string; hostCount: number;
+  allowedSiteHosts: readonly string[]; enabled: boolean;
+  siteGuard?: { pageId: string; expectedUrl: string; navigationId: number };
+}
+export interface ContentBlockAppend { profileId: string; generation: number; offset: number; hosts: readonly string[] }
+export interface ContentBlockCommit { profileId: string; generation: number; hostsDigest: string }
 
 import { CredentialHandoffResultSchema, type CredentialHandoffRequest, type CredentialHandoffResult } from "@aux/contracts";
 
@@ -10,6 +18,9 @@ import { CredentialHandoffResultSchema, type CredentialHandoffRequest, type Cred
 export interface NativeBridge {
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
+  contentBlockBegin?(request: ContentBlockBegin): Promise<{ accepted: true }>;
+  contentBlockAppend?(request: ContentBlockAppend): Promise<{ accepted: true }>;
+  contentBlockCommit?(request: ContentBlockCommit): Promise<ChromiumContentBlockReceipt>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
   historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
@@ -71,6 +82,15 @@ export interface NativeBridge {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  contentBlockBegin(request: ContentBlockBegin) {
+    return this.channel.call<{ accepted: true }>("native.contentBlockBegin", request);
+  }
+  contentBlockAppend(request: ContentBlockAppend) {
+    return this.channel.call<{ accepted: true }>("native.contentBlockAppend", request);
+  }
+  contentBlockCommit(request: ContentBlockCommit) {
+    return this.channel.call<ChromiumContentBlockReceipt>("native.contentBlockCommit", request);
+  }
   available() {
     return true;
   }

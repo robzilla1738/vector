@@ -129,3 +129,18 @@ it("reviews cookie-banner type before adding and describes the cosmetic scope", 
     "cookie_banner",
   );
 });
+
+it("offers only installed native host filtering in Chromium", async () => {
+  api.filterLists.mockResolvedValue({
+    sources: [],
+    hosts: 0,
+    cookieSelectors: 0,
+    builtinHosts: 88,
+    backend: "subresource_filter",
+  });
+  await act(async () => root.render(<FilterListManager />));
+  await flush();
+  const cosmetic = container.querySelector<HTMLOptionElement>('option[value="cookie_banner"]')!;
+  expect(cosmetic.disabled).toBe(true);
+  expect(container.textContent).toContain("Chromium applies downloaded domain lists");
+});

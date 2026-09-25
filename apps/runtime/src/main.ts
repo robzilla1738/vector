@@ -45,6 +45,7 @@ import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
 import { ZapService } from "./services/zap.js";
+import { ContentBlockingService } from "./services/content-blocking.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
@@ -122,6 +123,23 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     channel = new RpcChannel(transport, "runtime->shell");
   }
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
+  const blocking = env.AUX_HOST_SOCKET
+    ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default") : null;
+  const blockingBoot = blocking?.boot();
+  if (blocking) {
+    for (const method of ["blocking.status", "blocking.privacy", "blocking.update", "blocking.add",
+      "blocking.remove", "blocking.setSourceEnabled", "blocking.setEnabled",
+      "blocking.setSiteAllowed", "blocking.removeAllowedHost"]) {
+      channel?.onMethod(method, params => blockingBoot!.then(() => blocking.handle(method, params)));
+    }
+    void blockingBoot?.then(() => blocking.maintain()).catch(error =>
+      process.stderr.write(`[runtime] content blocking unavailable: ${String(error)}\n`));
+    const filterTimer = setInterval(() => {
+      void blocking.maintain().catch(error =>
+        process.stderr.write(`[runtime] filter refresh failed: ${String(error)}\n`));
+    }, 60 * 60 * 1000);
+    filterTimer.unref?.();
+  }
   const zap = new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default");
   // Register before service boot so the host can preload styles before restoring tabs.
   channel?.onMethod("zap.snapshot", params => {

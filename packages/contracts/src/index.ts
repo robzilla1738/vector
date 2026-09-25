@@ -15,6 +15,7 @@ export * from "./agent-connections.js";
 export * from "./calendar.js";
 export * from "./connectors.js";
 export * from "./content-blocking.js";
+export * from "./tracker-hosts.js";
 export * from "./vault.js";
 export * from "./routines.js";
 export * from "./goals.js";

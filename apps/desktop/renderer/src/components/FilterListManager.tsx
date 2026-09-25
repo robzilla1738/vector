@@ -20,6 +20,7 @@ export function FilterListManager() {
   const [notice, setNotice] = useState("");
   const selected = status?.sources.find((source) => source.id === selectedId);
   const preview = status?.backend === "preview";
+  const nativeHostsOnly = status?.backend === "subresource_filter";
 
   const refresh = async () => {
     const next = await bridge.filterLists();
@@ -157,9 +158,17 @@ export function FilterListManager() {
             }}
           >
             <option value="hosts">Domain blocking hosts list</option>
-            <option value="cookie_banner">Cookie-banner cosmetic list</option>
+            <option value="cookie_banner" disabled={nativeHostsOnly}>
+              Cookie-banner cosmetic list
+            </option>
           </select>
         </label>
+        {nativeHostsOnly && (
+          <p className="hint">
+            Chromium applies downloaded domain lists to network requests. Cosmetic lists need a separate
+            native stylesheet backend.
+          </p>
+        )}
         <label>
           List name
           <input
