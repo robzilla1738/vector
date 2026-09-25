@@ -16,4 +16,5 @@ aux/branding/0015-sign-runtime-helper.patch
 aux/runtime/0016-disable-remote-debugging.patch
 aux/branding/0017-aux-passkey-signing.patch
 aux/runtime/0018-native-zap-stylesheet.patch
+aux/runtime/0019-profile-cdp-broker.patch
 aux/runtime/0020-sparkle-updater.patch

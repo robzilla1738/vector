@@ -40,15 +40,20 @@ describe("Chromium native CDP facade", () => {
     const [runtimeTransport, hostTransport] = memoryTransportPair();
     const runtime = new RpcChannel(runtimeTransport, "runtime");
     const host = new RpcChannel(hostTransport, "host");
-    const dispatched: { pageId: string; message: { id: number; method: string } }[] = [];
+    const dispatched: { pageId: string; message: { id: number; method: string; sessionId?: string } }[] = [];
     host.onMethod("native.listPages", () => ({ pages: [
       { pageId: "own", cdpTargetId: "own-target", url: "https://example.test/", title: "Own tab", active: true },
     ] }));
     host.onMethod("native.cdpVersion", () => ({ version: "154.0.8037.58" }));
     host.onMethod("native.cdpDispatch", params => {
       const request = params as { pageId: string; message: string };
-      const message = JSON.parse(request.message) as { id: number; method: string };
+      const message = JSON.parse(request.message) as { id: number; method: string; sessionId?: string };
       dispatched.push({ pageId: request.pageId, message });
+      if (message.method === "Target.setAutoAttach") queueMicrotask(() => host.notify("native.cdpMessage", {
+        pageId: request.pageId, message: JSON.stringify({ method: "Target.attachedToTarget", params: {
+          sessionId: "child-owned", targetInfo: { targetId: "iframe-target", type: "iframe" }, waitingForDebugger: false,
+        } }),
+      }));
       queueMicrotask(() => host.notify("native.cdpMessage", {
         pageId: request.pageId, message: JSON.stringify({ id: message.id, result: { reached: true } }),
       }));
@@ -87,6 +92,12 @@ describe("Chromium native CDP facade", () => {
       expect(dispatched).toHaveLength(1);
       expect(dispatched[0]).toMatchObject({ pageId: "own", message: { method: "Page.enable" } });
       expect((await call("Network.getCookies", {}, sessionId)).error).toBeTruthy();
+      expect((await call("Target.setAutoAttach", { autoAttach: true, flatten: true }, sessionId)).result).toEqual({ reached: true });
+      const childEvent = frames.find(frame => frame.method === "Target.attachedToTarget" && frame.sessionId === sessionId);
+      expect((childEvent?.params as { sessionId?: string })?.sessionId).toBe("child-owned");
+      expect((await call("Runtime.evaluate", { expression: "1 + 1" }, "child-owned")).result).toEqual({ reached: true });
+      expect(dispatched.at(-1)?.message).toMatchObject({ method: "Runtime.evaluate", sessionId: "child-owned" });
+      expect((await call("Runtime.evaluate", { expression: "1" }, "child-foreign")).error).toBeTruthy();
       expect((await call("Target.attachToBrowserTarget")).result).toMatchObject({ sessionId: expect.stringMatching(/^aux-browser-/) });
     } finally {
       socket.terminate();

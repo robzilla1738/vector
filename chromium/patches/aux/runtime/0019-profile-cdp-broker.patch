@@ -1,0 +1,633 @@
+diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+index 681ad0d1e1..30743ae5c6 100644
+--- a/chrome/browser/browser_process_impl.cc
++++ b/chrome/browser/browser_process_impl.cc
+@@ -1369,7 +1369,9 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
+ 
+   registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
+                                 GoogleUpdateSettings::GetCollectStatsConsent());
+-  registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed, true);
++  // Aux's in-process Profile broker does not require public remote debugging.
++  registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed,
++                                !BUILDFLAG(ENABLE_AUX_SHELL));
+   registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingEnabled, false);
+ 
+ #if BUILDFLAG(IS_LINUX) && BUILDFLAG(USE_DBUS)
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index fda13a9a86..2651df44a7 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -3,11 +3,14 @@
+ # found in the LICENSE file.
+ 
+ import("//chrome/browser/buildflags.gni")
++import("//testing/test.gni")
+ 
+ assert(enable_aux_shell)
+ 
+ source_set("runtime") {
+   sources = [
++    "cdp_broker.cc",
++    "cdp_broker.h",
+     "organization_store.cc",
+     "organization_store.h",
+     "page_identity.cc",
+@@ -33,9 +36,18 @@ source_set("runtime") {
+     "//components/prefs",
+     "//components/sessions:session_id",
+     "//components/zoom",
++    "//components/version_info",
+     "//content/public/browser",
+     "//content/public/common",
+     "//url",
+   ]
+   frameworks = [ "Security.framework" ]
+ }
++
++test("cdp_broker_unittests") {
++  sources = [ "cdp_broker_unittest.cc" ]
++  deps = [
++    ":runtime",
++    "//testing/gtest",
++  ]
++}
+diff --git a/chrome/browser/ui/aux/cdp_broker.cc b/chrome/browser/ui/aux/cdp_broker.cc
+new file mode 100644
+index 0000000000..374710e173
+--- /dev/null
++++ b/chrome/browser/ui/aux/cdp_broker.cc
+@@ -0,0 +1,274 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/cdp_broker.h"
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <optional>
++#include <set>
++#include <utility>
++
++#include "base/containers/span.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/devtools_agent_host_client.h"
++#include "content/public/browser/web_contents.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++constexpr size_t kMaxCdpMessageBytes = 1024 * 1024;
++constexpr std::array<const char*, 14> kPageDomains = {
++    "Page", "Runtime", "DOM", "DOMSnapshot", "Accessibility", "Input",
++    "Emulation", "Log", "CSS", "Performance", "Overlay", "IO", "Network",
++    "Fetch"};
++
++base::Value::Dict Fault(const char* code, const char* message) {
++  base::Value::Dict error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::Value::Dict reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++
++bool IsPageURL(const GURL& url) {
++  return url.SchemeIsHTTPOrHTTPS() || url.spec() == "about:blank";
++}
++
++}  // namespace
++
++bool IsCdpMethodAllowed(const std::string& method) {
++  if (method == "Target.setAutoAttach" ||
++      method == "Target.detachFromTarget") {
++    return true;
++  }
++  const size_t dot = method.find('.');
++  if (dot == std::string::npos || dot == 0 || dot + 1 == method.size()) {
++    return false;
++  }
++  const std::string domain = method.substr(0, dot);
++  if (domain == "Network" &&
++      (method == "Network.getAllCookies" || method == "Network.getCookies" ||
++       base::StartsWith(method, "Network.setCookie") ||
++       base::StartsWith(method, "Network.deleteCookie") ||
++       method == "Network.clearBrowserCookies")) {
++    return false;
++  }
++  for (const char* allowed : kPageDomains) {
++    if (domain == allowed) {
++      return true;
++    }
++  }
++  return false;
++}
++
++class CdpBroker::Session final : public content::DevToolsAgentHostClient {
++ public:
++  Session(Profile* profile, uint64_t connection_generation,
++          std::string page_id,
++          scoped_refptr<content::DevToolsAgentHost> host,
++          MessageCallback on_message)
++      : profile_(profile),
++        connection_generation_(connection_generation),
++        page_id_(std::move(page_id)),
++        host_(std::move(host)),
++        on_message_(std::move(on_message)) {}
++
++  ~Session() override {
++    if (host_) {
++      host_->DetachClient(this);
++    }
++  }
++
++  bool Attach() { return host_->AttachClient(this); }
++  bool Owns(content::DevToolsAgentHost* host) const { return host_.get() == host; }
++  bool IsClosed() const { return !host_; }
++  bool OwnsChild(const std::string& session_id) const {
++    return child_sessions_.contains(session_id);
++  }
++
++  void Send(const std::string& message) {
++    host_->DispatchProtocolMessage(this, base::as_byte_span(message));
++  }
++
++  void DispatchProtocolMessage(content::DevToolsAgentHost* host,
++                               base::span<const uint8_t> message) override {
++    auto* catalog = TabCatalog::GetForProfile(profile_);
++    content::WebContents* contents = catalog ? catalog->FindPage(page_id_) : nullptr;
++    if (!Owns(host) || !contents || host->GetWebContents() != contents ||
++        host->GetBrowserContext() != profile_ ||
++        !IsPageURL(contents->GetLastCommittedURL())) {
++      return;
++    }
++    const std::string json(message.begin(), message.end());
++    const auto parsed = base::JSONReader::Read(json);
++    const base::Value::Dict* event = parsed ? parsed->GetIfDict() : nullptr;
++    const std::string* method = event ? event->FindString("method") : nullptr;
++    const base::Value::Dict* params = event ? event->FindDict("params") : nullptr;
++    if (const std::string* session_id =
++            event ? event->FindString("sessionId") : nullptr;
++        session_id && !OwnsChild(*session_id)) {
++      return;
++    }
++    if (method && *method == "Target.attachedToTarget") {
++      const std::string* session_id =
++          params ? params->FindString("sessionId") : nullptr;
++      const base::Value::Dict* info =
++          params ? params->FindDict("targetInfo") : nullptr;
++      const std::string* target_id =
++          info ? info->FindString("targetId") : nullptr;
++      const std::string* type = info ? info->FindString("type") : nullptr;
++      scoped_refptr<content::DevToolsAgentHost> child;
++      if (target_id) {
++        child = content::DevToolsAgentHost::GetForId(*target_id);
++      }
++      if (!session_id || !target_id || !type || *type != "iframe" ||
++          !child || child->GetBrowserContext() != profile_ ||
++          child->GetWebContents() != contents) {
++        return;
++      }
++      child_sessions_.insert(*session_id);
++    } else if (method && *method == "Target.detachedFromTarget") {
++      if (const std::string* child =
++              params ? params->FindString("sessionId") : nullptr) {
++        child_sessions_.erase(*child);
++      }
++    }
++    on_message_.Run(connection_generation_, page_id_,
++                    json);
++  }
++
++  void AgentHostClosed(content::DevToolsAgentHost* host) override {
++    if (Owns(host)) {
++      host_.reset();
++      on_message_.Run(connection_generation_, page_id_,
++                      "{\"method\":\"Inspector.detached\",\"params\":{\"reason\":\"target_closed\"}}");
++    }
++  }
++
++  bool MayAttachToURL(const GURL& url, bool is_webui) override {
++    return !is_webui && IsPageURL(url);
++  }
++
++ private:
++  raw_ptr<Profile> profile_;
++  uint64_t connection_generation_;
++  std::string page_id_;
++  scoped_refptr<content::DevToolsAgentHost> host_;
++  std::set<std::string> child_sessions_;
++  MessageCallback on_message_;
++};
++
++CdpBroker::CdpBroker(Profile* profile, MessageCallback on_message)
++    : profile_(profile), on_message_(std::move(on_message)) {}
++CdpBroker::~CdpBroker() = default;
++
++base::Value::Dict CdpBroker::Dispatch(const std::string& page_id,
++                                      const std::string& message,
++                                      uint64_t connection_generation) {
++  if (connection_generation_ != connection_generation) {
++    DetachAll();
++    connection_generation_ = connection_generation;
++  }
++  if (!profile_ || profile_->IsOffTheRecord()) {
++    return Fault("permission_denied", "CDP requires a regular Profile");
++  }
++  if (message.size() > kMaxCdpMessageBytes) {
++    return Fault("invalid_argument", "CDP message exceeds 1 MiB");
++  }
++  const auto parsed = base::JSONReader::Read(message);
++  const base::Value::Dict* command = parsed ? parsed->GetIfDict() : nullptr;
++  const std::string* method = command ? command->FindString("method") : nullptr;
++  const std::optional<int> id = command ? command->FindInt("id") : std::nullopt;
++  if (!command || !method || !id || *id < 1 ||
++      !IsCdpMethodAllowed(*method)) {
++    return Fault("permission_denied", "CDP method or envelope is not allowed");
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  content::WebContents* contents = catalog ? catalog->FindPage(page_id) : nullptr;
++  if (!contents || contents->GetBrowserContext() != profile_ ||
++      !IsPageURL(contents->GetLastCommittedURL())) {
++    sessions_.erase(page_id);
++    return Fault("not_found", "Page is outside this Profile or unavailable");
++  }
++  scoped_refptr<content::DevToolsAgentHost> host =
++      content::DevToolsAgentHost::GetOrCreateFor(contents);
++  if (!host || host->GetWebContents() != contents ||
++      host->GetBrowserContext() != profile_) {
++    return Fault("permission_denied", "CDP target ownership changed");
++  }
++  auto it = sessions_.find(page_id);
++  if (it != sessions_.end() && (it->second->IsClosed() ||
++                               !it->second->Owns(host.get()))) {
++    sessions_.erase(it);
++    it = sessions_.end();
++  }
++  if (it == sessions_.end()) {
++    auto session =
++        std::make_unique<Session>(profile_, connection_generation_, page_id,
++                                  std::move(host), on_message_);
++    if (!session->Attach()) {
++      return Fault("backend_unavailable", "Could not attach to page target");
++    }
++    it = sessions_.emplace(page_id, std::move(session)).first;
++  }
++  if (command->Find("sessionId") && !command->FindString("sessionId")) {
++    return Fault("invalid_argument", "Invalid CDP child session");
++  }
++  if (const std::string* session_id = command->FindString("sessionId");
++      session_id && !it->second->OwnsChild(*session_id)) {
++    return Fault("permission_denied", "CDP child session is not owned by this page");
++  }
++  std::string dispatched = message;
++  if (*method == "Target.setAutoAttach") {
++    const base::Value::Dict* params = command->FindDict("params");
++    if (!params || !params->FindBool("autoAttach") ||
++        !params->FindBool("flatten").value_or(false)) {
++      return Fault("invalid_argument", "Flat iframe attachment is required");
++    }
++    base::Value::Dict restricted = command->Clone();
++    base::Value::Dict options = params->Clone();
++    base::Value::List filter;
++    base::Value::Dict iframe;
++    iframe.Set("type", "iframe");
++    filter.Append(std::move(iframe));
++    base::Value::Dict exclude_all;
++    exclude_all.Set("type", "*");
++    exclude_all.Set("exclude", true);
++    filter.Append(std::move(exclude_all));
++    options.Set("filter", std::move(filter));
++    restricted.Set("params", std::move(options));
++    const auto encoded = base::WriteJson(restricted);
++    if (!encoded) {
++      return Fault("invalid_argument", "Invalid iframe attachment request");
++    }
++    dispatched = *encoded;
++  } else if (*method == "Target.detachFromTarget") {
++    const base::Value::Dict* params = command->FindDict("params");
++    const std::string* child = params ? params->FindString("sessionId") : nullptr;
++    if (!child || !it->second->OwnsChild(*child)) {
++      return Fault("permission_denied", "CDP child session is not owned by this page");
++    }
++  }
++  it->second->Send(dispatched);
++  base::Value::Dict result;
++  result.Set("accepted", true);
++  base::Value::Dict reply;
++  reply.Set("result", std::move(result));
++  return reply;
++}
++
++void CdpBroker::DetachAll() {
++  sessions_.clear();
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/cdp_broker.h b/chrome/browser/ui/aux/cdp_broker.h
+new file mode 100644
+index 0000000000..bd447e449a
+--- /dev/null
++++ b/chrome/browser/ui/aux/cdp_broker.h
+@@ -0,0 +1,53 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
++#define CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
++
++#include <map>
++#include <cstdint>
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++// Only page-scoped protocol domains are exposed to the Aux runtime. Browser,
++// Target, Storage and cookie commands must go through the native controllers.
++bool IsCdpMethodAllowed(const std::string& method);
++
++// A single DevTools client per catalog page in one regular Profile. Calls and
++// protocol events run on Chromium's UI sequence; no TCP listener is involved.
++class CdpBroker final {
++ public:
++  using MessageCallback =
++      base::RepeatingCallback<void(uint64_t, const std::string&,
++                                   const std::string&)>;
++
++  CdpBroker(Profile* profile, MessageCallback on_message);
++  ~CdpBroker();
++  CdpBroker(const CdpBroker&) = delete;
++  CdpBroker& operator=(const CdpBroker&) = delete;
++
++  base::Value::Dict Dispatch(const std::string& page_id,
++                             const std::string& message,
++                             uint64_t connection_generation);
++  void DetachAll();
++
++ private:
++  class Session;
++  raw_ptr<Profile> profile_;
++  MessageCallback on_message_;
++  uint64_t connection_generation_ = 0;
++  std::map<std::string, std::unique_ptr<Session>> sessions_;
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
+diff --git a/chrome/browser/ui/aux/cdp_broker_unittest.cc b/chrome/browser/ui/aux/cdp_broker_unittest.cc
+new file mode 100644
+index 0000000000..65d730839d
+--- /dev/null
++++ b/chrome/browser/ui/aux/cdp_broker_unittest.cc
+@@ -0,0 +1,35 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/cdp_broker.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace aux {
++
++TEST(CdpBrokerMethodTest, AllowsPageScopedAutomation) {
++  EXPECT_TRUE(IsCdpMethodAllowed("Page.navigate"));
++  EXPECT_TRUE(IsCdpMethodAllowed("Runtime.evaluate"));
++  EXPECT_TRUE(IsCdpMethodAllowed("DOM.getDocument"));
++  EXPECT_TRUE(IsCdpMethodAllowed("Network.getResponseBody"));
++  EXPECT_TRUE(IsCdpMethodAllowed("IO.read"));
++  EXPECT_TRUE(IsCdpMethodAllowed("Target.setAutoAttach"));
++  EXPECT_TRUE(IsCdpMethodAllowed("Target.detachFromTarget"));
++}
++
++TEST(CdpBrokerMethodTest, DeniesBrowserTargetAndCookieAuthority) {
++  EXPECT_FALSE(IsCdpMethodAllowed("Browser.getVersion"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Target.attachToTarget"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Storage.getCookies"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Network.getCookies"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Network.getAllCookies"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Network.setCookie"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Network.setCookies"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Network.deleteCookies"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Network.clearBrowserCookies"));
++  EXPECT_FALSE(IsCdpMethodAllowed("Runtime"));
++  EXPECT_FALSE(IsCdpMethodAllowed(".evaluate"));
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 2ed11dfba1..f8aa9f6f4c 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -34,6 +34,7 @@
+ #include "base/task/thread_pool.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/cdp_broker.h"
+ #include "chrome/browser/ui/aux/secret_store_mac.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+@@ -42,6 +43,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "components/sessions/core/session_id.h"
+ #include "components/zoom/zoom_controller.h"
++#include "components/version_info/version_info.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/web_contents.h"
+@@ -108,6 +110,9 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
+ }
+ 
+ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
++  cdp_broker_ = std::make_unique<aux::CdpBroker>(
++      profile, base::BindRepeating(&AuxRuntimeHost::OnCdpMessage,
++                                   weak_factory_.GetWeakPtr()));
+   worker_.emplace(base::ThreadPool::CreateSequencedTaskRunner(
+                       {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
+                        base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
+@@ -174,6 +179,13 @@ void AuxRuntimeHost::OnRuntimeNote(std::string type,
+   }
+ }
+ 
++void AuxRuntimeHost::OnCdpMessage(uint64_t connection_generation,
++                                  const std::string& page_id,
++                                  const std::string& message) {
++  worker_.AsyncCall(&Worker::SendCdpMessage)
++      .WithArgs(connection_generation, page_id, message);
++}
++
+ void AuxRuntimeHost::SchedulePump() {
+   if (pump_scheduled_) {
+     return;
+@@ -195,16 +207,33 @@ void AuxRuntimeHost::PumpOnce() {
+ void AuxRuntimeHost::OnPumpDone(bool connected) {
+   if (connected) {
+     SchedulePump();
++  } else {
++    cdp_broker_->DetachAll();
+   }
+ }
+ 
+ base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+     const std::string& method,
+-    const base::Value::Dict& params) {
++    const base::Value::Dict& params,
++    uint64_t connection_generation) {
+   auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+   if (!catalog) {
+     return NativeFault("backend_unavailable", "Tab catalog is unavailable");
+   }
++  if (method == "native.cdpDispatch") {
++    const std::string* page_id = params.FindString("pageId");
++    const std::string* message = params.FindString("message");
++    if (!page_id || !message) {
++      return NativeFault("invalid_argument", "Invalid CDP dispatch envelope");
++    }
++    return cdp_broker_->Dispatch(*page_id, *message,
++                                 connection_generation);
++  }
++  if (method == "native.cdpVersion") {
++    base::Value::Dict result;
++    result.Set("version", version_info::GetVersionNumber());
++    return NativeResult(base::Value(std::move(result)));
++  }
+   if (method == "native.listPages") {
+     base::Value::Dict snapshot = catalog->Snapshot();
+     base::Value::List pages;
+@@ -529,6 +558,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+   }
+   close(listener_fd_);
+   listener_fd_ = -1;
++  ++connection_generation_;
+   return true;
+ }
+ 
+@@ -608,6 +638,7 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+       FROM_HERE, base::BindOnce(
+                      [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
+                         base::Value::Dict params,
++                        uint64_t connection_generation,
+                         std::shared_ptr<NativeReplyState> state) {
+                        if (owner && method == "native.zapInstallStylesheet") {
+                          owner->HandleZapInstall(params, base::BindOnce(
+@@ -619,13 +650,15 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+                          return;
+                        }
+                        state->reply =
+-                           owner ? owner->HandleNativeCall(method, params)
++                           owner ? owner->HandleNativeCall(
++                                       method, params, connection_generation)
+                                  : NativeFault(
+                                        "backend_unavailable",
+                                        "The owning browser Profile closed");
+                        state->ready.Signal();
+                      },
+-                     owner_, method, std::move(params), state));
++                     owner_, method, std::move(params), connection_generation_,
++                     state));
+   if (!state->ready.TimedWait(base::Seconds(30))) {
+     return NativeFault("backend_unavailable",
+                        "The browser did not answer the native request");
+@@ -686,6 +719,25 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
+   return reply_json && SendFrame(*reply_json);
+ }
+ 
++void AuxRuntimeHost::Worker::SendCdpMessage(uint64_t connection_generation,
++                                            std::string page_id,
++                                            std::string message) {
++  if (connection_fd_ < 0 || connection_generation != connection_generation_) {
++    return;
++  }
++  base::Value::Dict payload;
++  payload.Set("pageId", std::move(page_id));
++  payload.Set("message", std::move(message));
++  base::Value::Dict note;
++  note.Set("kind", "note");
++  note.Set("type", "native.cdpMessage");
++  note.Set("payload", std::move(payload));
++  const auto json = base::WriteJson(note);
++  if (!json || json->size() >= kMaxFrameBytes || !SendFrame(*json)) {
++    Disconnect();
++  }
++}
++
+ void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
+   const std::string* type = data.FindString("type");
+   const base::Value* payload = data.Find("payload");
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index fda61cd0cb..4564c75706 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_AUX_RUNTIME_HOST_H_
+ 
+ #include <cstdint>
++#include <memory>
+ #include <string>
+ 
+ #include "base/files/file_path.h"
+@@ -20,6 +21,9 @@
+ #include "base/values.h"
+ 
+ class Profile;
++namespace aux {
++class CdpBroker;
++}
+ 
+ // One authenticated runtime connection per regular Chromium Profile. The
+ // blocking Unix-domain protocol runs on a sequenced worker; WebUI and browser
+@@ -61,6 +65,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+     Response CallRequest(std::string method, std::string params_json,
+                          bool desktop_api);
+     bool Pump();
++    void SendCdpMessage(uint64_t connection_generation,
++                        std::string page_id,
++                        std::string message);
+ 
+    private:
+     bool Connect(std::string* error);
+@@ -82,6 +89,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+     int listener_fd_ = -1;
+     int connection_fd_ = -1;
+     uint32_t next_request_id_ = 1;
++    uint64_t connection_generation_ = 0;
+     std::string read_buffer_;
+   };
+ 
+@@ -89,14 +97,19 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   void HandleZapInstall(const base::Value::Dict& params,
+                         base::OnceCallback<void(base::Value::Dict)> callback);
+   base::Value::Dict HandleNativeCall(const std::string& method,
+-                                     const base::Value::Dict& params);
++                                     const base::Value::Dict& params,
++                                     uint64_t connection_generation);
+   void OnRuntimeNote(std::string type, std::string payload_json);
++  void OnCdpMessage(uint64_t connection_generation,
++                    const std::string& page_id,
++                    const std::string& message);
+   void SchedulePump();
+   void PumpOnce();
+   void OnPumpDone(bool connected);
+ 
+   raw_ptr<Profile> profile_;
+   base::SequenceBound<Worker> worker_;
++  std::unique_ptr<aux::CdpBroker> cdp_broker_;
+   base::RepeatingCallbackList<void(const std::string&, const std::string&)>
+       observers_;
+   bool pump_scheduled_ = false;

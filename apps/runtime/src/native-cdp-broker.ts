@@ -34,6 +34,8 @@ export class NativeCdpBroker {
   private readonly ws = new WebSocketServer({ server: this.server, path: this.path, maxPayload: MAX_MESSAGE_BYTES });
   private readonly targets = new Map<string, { pageId: string; info: Target }>();
   private readonly sessions = new Map<string, string>();
+  private readonly childOwners = new Map<string, string>();
+  private readonly autoAttachSessions = new Map<string, string>();
   private readonly browserSessions = new Set<string>();
   private readonly pending = new Map<number, Pending>();
   private nextNativeId = 1;
@@ -45,7 +47,7 @@ export class NativeCdpBroker {
   private closed = false;
 
   private constructor(private readonly channel: RpcChannel, hostSocketPath: string) {
-    this.socketPath = join(dirname(hostSocketPath), `cdp-${randomBytes(8).toString("hex")}.sock`);
+    this.socketPath = join(dirname(hostSocketPath), `c-${randomBytes(4).toString("hex")}.s`);
     channel.onNotify((type, payload) => {
       if (type === "native.cdpMessage") this.forwardNative(payload);
     });
@@ -88,6 +90,8 @@ export class NativeCdpBroker {
       if (this.poll) clearInterval(this.poll);
       this.poll = null;
       this.sessions.clear();
+      this.childOwners.clear();
+      this.autoAttachSessions.clear();
       this.browserSessions.clear();
       this.pending.clear();
       this.targets.clear();
@@ -129,8 +133,9 @@ export class NativeCdpBroker {
       for (const [id, old] of this.targets) if (!next.has(id)) {
         for (const [sessionId, targetId] of this.sessions) if (targetId === id) {
           this.sessions.delete(sessionId);
-          this.notify("Target.detachedFromTarget", { sessionId, targetId: id });
+          if (!this.childOwners.delete(sessionId)) this.notify("Target.detachedFromTarget", { sessionId, targetId: id });
         }
+        this.autoAttachSessions.delete(id);
         if (this.discover) this.notify("Target.targetDestroyed", { targetId: id });
         for (const [nativeId, pending] of this.pending) if (pending.pageId === old.pageId) this.pending.delete(nativeId);
       }
@@ -174,8 +179,34 @@ export class NativeCdpBroker {
       this.send({ ...message, id: pending.id, sessionId: pending.sessionId });
       return;
     }
+    const nativeSession = typeof message.sessionId === "string" ? message.sessionId : undefined;
+    if (message.method === "Target.attachedToTarget") {
+      const params = message.params as { sessionId?: unknown } | undefined;
+      const child = params?.sessionId;
+      const targetId = [...this.targets].find(([, value]) => value.pageId === event.pageId)?.[0];
+      const parent = nativeSession ?? (targetId ? this.autoAttachSessions.get(targetId) : undefined);
+      if (typeof child !== "string" || !targetId || !parent || !this.sessions.has(parent)) return;
+      this.sessions.set(child, targetId);
+      this.childOwners.set(child, parent);
+      this.send({ ...message, sessionId: parent });
+      return;
+    }
+    if (message.method === "Target.detachedFromTarget") {
+      const params = message.params as { sessionId?: unknown } | undefined;
+      const child = params?.sessionId;
+      if (typeof child !== "string") return;
+      const parent = nativeSession ?? this.childOwners.get(child);
+      this.sessions.delete(child);
+      this.childOwners.delete(child);
+      if (parent && this.sessions.has(parent)) this.send({ ...message, sessionId: parent });
+      return;
+    }
+    if (nativeSession) {
+      if (this.childOwners.has(nativeSession)) this.send(message);
+      return;
+    }
     for (const [sessionId, targetId] of this.sessions) {
-      if (this.targets.get(targetId)?.pageId === event.pageId) this.send({ ...message, sessionId });
+      if (!this.childOwners.has(sessionId) && this.targets.get(targetId)?.pageId === event.pageId) this.send({ ...message, sessionId });
     }
   }
 
@@ -206,13 +237,18 @@ export class NativeCdpBroker {
         if (params.targetId && params.targetId !== targetId) throw new Error("Target is not an Aux tab");
         return { targetInfo: target.info };
       }
-      if (method === "Target.setAutoAttach") return {};
-      if (!pageMethodAllowed(method)) throw new Error("CDP method is not page scoped");
+      if (method === "Target.setAutoAttach") {
+        if (params.autoAttach === true) this.autoAttachSessions.set(targetId, sessionId);
+        else this.autoAttachSessions.delete(targetId);
+      } else if (method === "Target.detachFromTarget") {
+        if (typeof params.sessionId !== "string" || this.childOwners.get(params.sessionId) !== sessionId) throw new Error("Iframe session is not owned by this page");
+      } else if (!pageMethodAllowed(method)) throw new Error("CDP method is not page scoped");
       const nativeId = this.nextNativeId++;
       this.pending.set(nativeId, { id: request.id, sessionId, pageId: target.pageId });
       try {
         await this.channel.call("native.cdpDispatch", { pageId: target.pageId,
-          message: JSON.stringify({ id: nativeId, method, params }) }, 10_000);
+          message: JSON.stringify({ id: nativeId, method, params,
+            ...(this.childOwners.has(sessionId) ? { sessionId } : {}) }) }, 10_000);
       } catch (error) { this.pending.delete(nativeId); throw error; }
       return null; // Native protocol response arrives as native.cdpMessage.
     }
@@ -268,6 +304,8 @@ export class NativeCdpBroker {
       const targetId = this.sessions.get(params.sessionId);
       if (!targetId) throw new Error("Unknown target session");
       this.sessions.delete(params.sessionId);
+      this.childOwners.delete(params.sessionId);
+      if (this.autoAttachSessions.get(targetId) === params.sessionId) this.autoAttachSessions.delete(targetId);
       this.notify("Target.detachedFromTarget", { sessionId: params.sessionId, targetId });
       return {};
     }
