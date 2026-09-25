@@ -29,6 +29,9 @@ async function boot() {
   try {
     const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
     if (chromiumShell) {
+      const ready = (window as Window & { auxChromiumHostReady?: Promise<void> }).auxChromiumHostReady;
+      if (!ready) throw new Error("Aux's Chromium host bootstrap is unavailable.");
+      await ready;
       const { installChromiumBridge } = await import("./chromium-bridge");
       if (!installChromiumBridge()) throw new Error("Aux's Chromium host bridge is unavailable.");
     }

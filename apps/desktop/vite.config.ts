@@ -29,6 +29,14 @@ const shellCsp = (): Plugin => ({
   transformIndexHtml: () => [{ tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content: SHELL_CSP }, injectTo: "head-prepend" }],
 });
 
+const chromiumHostBootstrap = (): Plugin => ({
+  name: "aux-chromium-host-bootstrap",
+  apply: "build",
+  transformIndexHtml: () => process.env.AUX_CHROMIUM_SHELL_BUILD === "1"
+    ? [{ tag: "script", attrs: { type: "module", src: "./aux_host_bootstrap.js" }, injectTo: "head" }]
+    : [],
+});
+
 /**
  * main.tsx imports App dynamically so a failed chunk still shows a recoverable
  * boot screen. Preload App and its static imports from the document so they
@@ -56,7 +64,7 @@ export default defineConfig({
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [react(), shellCsp(), preloadApp()],
+  plugins: [react(), shellCsp(), chromiumHostBootstrap(), preloadApp()],
   build: {
     outDir: join(import.meta.dirname, "dist", "renderer"),
     emptyOutDir: true,
