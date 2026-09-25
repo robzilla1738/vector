@@ -92,3 +92,9 @@ After consolidating the bootstrap’s separate delivery/subscription allowlists 
 - **[Verified]** Switching from horizontal to vertical kept the same native About Version page. Cmd-L then navigated to example.com, which rendered inside the vertical layout.
 - **[Verified]** Removed legacy cookie-import entries from Settings, settings search and command palette to match the roadmap. Renderer typecheck and the palette search test pass. These source changes await the next shell staging batch.
 - **[Partial]** The disposable Profile qualification timed out before runtime connection at its normal 30-second startup deadline during the official compilation. No isolation/restore pass is claimed. The harness now retains fixture-only failure data and owner-only browser logs for diagnosis, and supports an explicit startup deadline override for correctness runs under build load; the default deadline is unchanged.
+
+### Packaged profile storage
+
+- **[Verified]** The developer app's About Version page reports the upstream Chromium profile directory. Chromium supports a branded root through the outer bundle's CrProductDirName key.
+- **[Implemented, pending native staging]** Patch 0037 sets the Aux-only plist fragment to use Application Support/Aux. Electron's separate Aux Browser Profile and Aux Browser Development Profile roots remain untouched. The current native checkout is frozen for the in-progress official compile; apply this patch and rebuild its plist afterward.
+- **[Verified]** Packaging now rejects missing or colliding product-directory metadata. Five takeover dry-run tests pass, including missing/Chromium/Electron-directory rejection and acceptance of the Aux directory key. These tests do not qualify signing or the not-yet-built official app.

@@ -106,6 +106,8 @@ if (!existsSync(app)) blockers.push("official Aux.app is missing from the build 
 else if (process.platform === "darwin") {
   try {
     appInfo = plist(join(app, "Contents", "Info.plist"));
+    if (appInfo.CrProductDirName !== "Aux")
+      blockers.push("Aux must use its own profile directory (CrProductDirName=Aux)");
     if (appInfo.CFBundleIdentifier !== "dev.aux.browser")
       blockers.push(`bundle ID is ${appInfo.CFBundleIdentifier}, expected dev.aux.browser`);
   } catch (error) {

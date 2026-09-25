@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -67,6 +67,27 @@ test("takeover report accepts a symlinked workspace path and refuses replacement
     assert.notEqual(second.status, 0);
   } finally {
     rmSync(actual, { force: true });
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("packaging rejects a browser that would use Chromium or Electron profile storage", { skip: process.platform !== "darwin" }, () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "aux-profile-sign-test-"));
+  try {
+    const contents = resolve(directory, "Aux.app/Contents");
+    mkdirSync(contents, { recursive: true });
+    for (const productDir of ["", "Chromium", "Aux Browser Profile", "Aux"]) {
+      writeFileSync(resolve(contents, "Info.plist"), `<?xml version="1.0"?><plist version="1.0"><dict>
+        <key>CFBundleIdentifier</key><string>dev.aux.browser</string>
+        ${productDir ? `<key>CrProductDirName</key><string>${productDir}</string>` : ""}
+      </dict></plist>`);
+      const result = invoke("scripts/chromium-sign.mjs", ["--input", directory, "--output", resolve(directory, "output")]);
+      assert.equal(result.status, 0, result.stderr);
+      const plan = JSON.parse(result.stdout);
+      assert.equal(plan.blockers.some(blocker => blocker.includes("profile directory")), productDir !== "Aux");
+      assert.equal(existsSync(resolve(directory, "output")), false);
+    }
+  } finally {
     rmSync(directory, { recursive: true, force: true });
   }
 });

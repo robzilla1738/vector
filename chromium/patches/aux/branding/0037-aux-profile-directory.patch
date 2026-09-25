@@ -1,0 +1,24 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -518,6 +518,7 @@
+       info_plists = [ "app/app-Info.plist" ]
+       deps = []
+       if (enable_aux_shell) {
++        info_plists += [ "app/aux-product-Info.plist" ]
+         info_plists += [ "$target_gen_dir/aux-crash-Info.plist" ]
+         info_plists += [ "$target_gen_dir/aux-dictation-Info.plist" ]
+         deps += [
+diff --git a/chrome/app/aux-product-Info.plist b/chrome/app/aux-product-Info.plist
+new file mode 100644
+--- /dev/null
++++ b/chrome/app/aux-product-Info.plist
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++  <key>CrProductDirName</key>
++  <string>Aux</string>
++</dict>
++</plist>
