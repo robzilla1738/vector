@@ -13,6 +13,7 @@ function setup() {
   useStore.setState({ pages, layout, activePageId:'middle', closedTabs:[], reopeningTab:false });
   vi.spyOn(bridge,'overlay').mockResolvedValue(true);
   vi.spyOn(bridge,'invoke').mockResolvedValue({} as never);
+  vi.spyOn(bridge,'bindTabSpace').mockImplementation(async (_pageId, spaceId) => ({ spaceId, workspaceId: `workspace:${spaceId}` }));
   return {pages,layout};
 }
 function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),type:'page.removed',ts:Date.now(),payload:{pageId}}); }
@@ -25,7 +26,7 @@ const pageOf = (pageId: string, url = 'https://example.test/x'): PageTarget =>
 // at the end instead of its recorded position.
 it('restores position when the catalog patch lands after the open ack', async () => {
   setup();
-  // newTab's stub-add is skipped when the id was seen-then-removed during the
+  // The background open's stub-add is skipped when the id was seen-then-removed during the
   // await — simulate exactly that racing the open, so `pages` gains the tab
   // only via the delayed patch.
   vi.spyOn(bridge,'tabCommand').mockImplementation(async command => {

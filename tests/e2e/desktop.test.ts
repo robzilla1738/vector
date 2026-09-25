@@ -26,8 +26,8 @@ async function rpc<T>(method: string, params: unknown = {}): Promise<T> {
     headers: { "content-type": "application/json", authorization: `Bearer ${desc.token}` },
     body: JSON.stringify({ method, params }),
   });
-  const body = (await res.json()) as { result?: T; error?: { message: string } };
-  if (body.error) throw new Error(body.error.message);
+  const body = (await res.json()) as { result?: T; error?: { code?: string; message: string } };
+  if (body.error) throw Object.assign(new Error(body.error.message), { code: body.error.code });
   return body.result as T;
 }
 
@@ -180,7 +180,7 @@ describe("desktop e2e", () => {
       rpc("pages.execute", {
         program: { pageId: page.pageId, steps: [{ id: "x", op: "extract", fields: [{ name: "n", selector: "table#records-table" }] }] },
       }),
-    ).rejects.toThrow(/human control|takeover|conflict|person controls this tab/i);
+    ).rejects.toMatchObject({ code: "conflict" });
     const resumed = await rpc<{ controller?: string }>("pages.resume", { pageId: page.pageId });
     expect(resumed.controller).not.toBe("human");
   }, 60_000);
