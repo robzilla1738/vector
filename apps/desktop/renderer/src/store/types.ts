@@ -110,6 +110,8 @@ export interface Workspace {
   /** window is too narrow for sidebar + stage + agent rail side by side */
   narrow: boolean;
   layout: Layout;
+  /** Latest AI Tidy change remains undoable while this browser window is open. */
+  tidyUndo: { before: Layout; after: Layout } | null;
 
   setMode(m: Mode): void;
   setNarrow(v: boolean): void;
@@ -191,7 +193,7 @@ export interface Workspace {
 export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
 export type DraftKeys = "conversationContexts" | "setConversationContext" | "conversationBrowserSources" | "setConversationBrowserSources" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
 export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
-export type LayoutKeys = "layout" | "splitPageId" | "setSplitPage" | "setSplitRatio" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";
+export type LayoutKeys = "layout" | "tidyUndo" | "splitPageId" | "setSplitPage" | "setSplitRatio" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";
 export type TabKeys = "pages" | "activePageId" | "closedTabs" | "reopeningTab" | "tabAudio" | "catalogVersion" | "applyTabsPatch" | "syncTabsSnapshot" | "applyTabsPlacement" | "resyncTabs" | "activate" | "navigatePage" | "newTab" | "openBackgroundTab" | "reopenClosedTab" | "duplicateTab" | "closingTabs" | "closeTabs" | "closeTab" | "moveTabToWindow" | "moveTabsToWindow" | "previewVersion" | "restoringTabs" | "pendingRestoreIds";
 export type RunKeys = "sets" | "members" | "runs" | "sessions" | "programs" | "conversationId" | "openConversation" | "openConversationDraft" | "activeSetId" | "results" | "steps" | "modelStats" | "observations" | "prompt" | "runAnswerPending" | "retryingRuns" | "settings" | "pendingTurns" | "answerStreams" | "startRun" | "retryRun" | "answerRun" | "returnControl" | "loadRun" | "refreshResults";
 export type Slice<K extends keyof Workspace> = StateCreator<Workspace, [], [], Pick<Workspace, K>>;

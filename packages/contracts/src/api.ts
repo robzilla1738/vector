@@ -28,6 +28,7 @@ import {
   StepRecordSchema,
 } from "./entities.js";
 import { EventSchema } from "./events.js";
+import { TidyProposalParamsSchema, TidyProposalSchema } from "./tidy.js";
 import { CompactObservationSchema, ElementRefSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
@@ -602,6 +603,7 @@ export type ImportReport = z.infer<typeof ImportReportSchema>;
 export const MethodSchemas = {
   "agent.js.run": AgentJsRunParams,
   "agent.js.reset": AgentJsResetParams,
+  "agent.tidy.propose": TidyProposalParamsSchema,
   "agent.web.fetch": AgentWebContextSchema.extend({ url: z.string().url().max(8192) }).strict(),
   "agent.web.search": AgentWebContextSchema.extend({ query: z.string().trim().min(1).max(500) }).strict(),
   "agent.images.generate": AgentWebContextSchema.extend({ prompt: z.string().trim().min(1).max(4000) }).strict(),
@@ -1037,6 +1039,7 @@ export type MethodName = keyof typeof MethodSchemas;
 export const ResultSchemas = {
   "agent.js.run": AgentJsResult,
   "agent.js.reset": z.object({ reset: z.literal(true) }),
+  "agent.tidy.propose": TidyProposalSchema,
   "agent.web.fetch": AgentWebPageSchema,
   "agent.web.search": AgentWebPageSchema,
   "agent.images.generate": z.object({ artifactId: id, mediaType: z.string(), size: z.number().int().positive(), modelId: z.string() }),

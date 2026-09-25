@@ -84,6 +84,7 @@ const METHOD_FEATURE_PREFIXES: readonly [string, AuxFeature][] = [
 ];
 
 export function auxFeatureForMethod(method: string): AuxFeature | undefined {
+  if (method === "agent.tidy.propose") return "aiTidy";
   return METHOD_FEATURE_PREFIXES.find(([prefix]) => method.startsWith(prefix))?.[1];
 }
 

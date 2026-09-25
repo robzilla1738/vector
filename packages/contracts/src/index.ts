@@ -48,3 +48,4 @@ export * from "./shortcuts.js";
 export * from "./csv.js";
 
 export * from "./generated-results.js";
+export * from "./tidy.js";

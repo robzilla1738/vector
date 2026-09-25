@@ -3,14 +3,17 @@ import { TabCardCaption } from "./TabCardCaption";
 import { duplicateTabs, protectedDuplicateIds } from "../duplicate-tabs";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { PageTarget } from "@aux/contracts";
+import type { PageTarget, TidyProposal } from "@aux/contracts";
 import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../store";
 import { bridge, inNativeHost } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { hostOf, isPinned } from "../workspace";
+import { persistLayout } from "../store/persistence";
+import { applyTidyProposal, revertTidyProposal } from "../tidy-layout";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { useShortcutLabels } from "../use-shortcut-label";
+import "./Overview.css";
 
 /** A searchable, keyboard-accessible place to organize several tabs together. */
 export function Overview() {
@@ -30,6 +33,8 @@ export function Overview() {
   const [savingFolder, setSavingFolder] = useState<false | "bookmarks" | "tabs">(false);
   const [folderName, setFolderName] = useState("");
   const [progress, setProgress] = useState("");
+  const [tidy, setTidy] = useState<{ proposal: TidyProposal; spaceId: string } | null>(null);
+  const tidyUndo = useStore(state => state.tidyUndo);
   const [closing, setClosing] = useState(false);
   const pending = useRef(false);
   const stopClosing = useRef(false);
@@ -54,6 +59,10 @@ export function Overview() {
   const visibleKey = JSON.stringify(visible.map(page => page.pageId));
   const focusedId = visible.some(page => page.pageId === focused) ? focused : visible[0]?.pageId;
   const selection = pages.filter(page => selected.has(page.pageId));
+  const tidySource = selection.length ? selection : visible;
+  const tidyCandidates = tidySource.filter(page => page.controller !== "agent" && page.controller !== "external" && /^https?:\/\//.test(page.url));
+  const tidySpaceIds = new Set(tidyCandidates.map(page => layout.tabSpace[page.pageId] ?? layout.activeSpaceId));
+  const tidySpaceId = tidySpaceIds.size === 1 ? [...tidySpaceIds][0] : undefined;
   const canMoveWindow = inNativeHost && !bridge.privateMode;
   const audioSelection = selection.filter(page => audio[page.pageId] && page.controller !== "agent" && page.controller !== "external");
   const muteSelection = audioSelection.some(page => !audio[page.pageId]!.muted);
@@ -187,6 +196,13 @@ export function Overview() {
         <option value="">All spaces</option>{[...layout.spaces, ...(layout.archivedSpaces ?? [])].map(space => <option key={space.id} value={space.id}>{space.name}{layout.archivedSpaces?.some(item => item.id === space.id) ? " · Archived" : ""}</option>)}
       </select>
       <button className="btn sm" disabled={busy || !visible.length} onClick={() => {duplicateSelection.current=false;setSelected(new Set(visible.map(page => page.pageId)));}}>Select all</button>
+      <button className="btn sm ghost" disabled={busy || !tidySpaceId || !layout.spaces.some(space => space.id === tidySpaceId) || tidyCandidates.length !== tidySource.length || tidyCandidates.length < 3 || tidyCandidates.length > 30}
+        title="Suggest folders for 3–30 tabs in one Space. Their titles and site domains are sent to your configured AI model."
+        onClick={() => void act(async () => {
+          const proposal = await call("agent.tidy.propose", { pageIds: tidyCandidates.map(page => page.pageId) });
+          setTidy({ proposal, spaceId: tidySpaceId! });
+        })}>{selection.length ? "Tidy selected with AI" : "Tidy with AI"}</button>
+      <span className="hint ov-tidy-disclosure">Sends tab titles and site domains to your AI model.</span>
       {duplicates.length > 0 && <button className="btn sm ghost" disabled={busy} title="Check extra copies of the exact same address in each Space for unsaved edits before selecting them." onClick={() => void act(async () => {
         const checked=await bridge.tabsUnsavedWork(duplicates.map(pageId=>{
           const page=visible.find(item=>item.pageId===pageId)!;
@@ -203,6 +219,27 @@ export function Overview() {
         focusTab(safe[0]);
       })}>Select duplicates · {duplicates.length}</button>}
     </div>
+    {tidy && <section className="ov-tidy" aria-label="AI Tidy preview">
+      <div className="ov-tidy-head"><strong>Suggested folders</strong><span className="sp" /><span className="hint">Review before applying</span></div>
+      <p className="hint">Only tab titles and site domains were sent to your configured AI model. Tabs stay open; ungrouped tabs stay where they are.</p>
+      <div className="ov-tidy-groups">{tidy.proposal.groups.map((group, index) => <div className="ov-tidy-group" key={`${group.name}-${index}`}>
+        <strong>{group.name}</strong><ul>{group.pageIds.map(pageId => <li key={pageId}>{tidy.proposal.pages.find(page => page.pageId === pageId)?.title || "Untitled tab"}</li>)}</ul>
+      </div>)}</div>
+      <div className="row"><button className="btn sm" disabled={busy} onClick={() => void act(() => {
+        const state = useStore.getState();
+        const after = applyTidyProposal(state.layout, state.pages, tidy.spaceId, tidy.proposal);
+        persistLayout(after);
+        useStore.setState({ layout: after, tidyUndo: { before: state.layout, after } });
+        setTidy(null);
+        setProgress(`Created ${tidy.proposal.groups.length} ${tidy.proposal.groups.length === 1 ? "folder" : "folders"}. You can undo this change.`);
+      })}>Apply folders</button><button className="btn sm ghost" disabled={busy} onClick={() => setTidy(null)}>Dismiss</button></div>
+    </section>}
+    {tidyUndo && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button className="btn sm ghost" disabled={busy} onClick={() => void act(() => {
+      const restored = revertTidyProposal(tidyUndo.before, tidyUndo.after, useStore.getState().layout);
+      persistLayout(restored);
+      useStore.setState({ layout: restored, tidyUndo: null });
+      setProgress("Tidy undone. Your earlier folders and tab positions are restored.");
+    })}>Undo Tidy</button></div>}
     {selection.length > 0 && <section className="ov-selection" aria-label="Selected tab actions" aria-busy={busy}>
       <strong>{selection.length} selected</strong>
       <select aria-label="Move selected tabs" value="" disabled={busy} onChange={event => {

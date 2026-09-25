@@ -6,6 +6,7 @@
  * methods the window does not call are rejected in the main process.
  */
 export const RENDERER_METHODS: ReadonlySet<string> = new Set([
+  "agent.tidy.propose",
   "artifacts.list",
   "artifacts.read",
   "bookmarks.add",

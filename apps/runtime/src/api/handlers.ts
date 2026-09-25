@@ -44,6 +44,7 @@ import { TranslateService } from "../services/translate.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
 import { AgentCodeMode } from "../agent/code-mode.js";
+import { proposeTabTidy } from "../agent/tidy.js";
 import { HistoryProjection } from "../services/history-projection.js";
 import { CommandEscalationStore, commandDigest, defaultCommandSeatbelt, validateEffectiveSeatbelt } from "../services/command-seatbelt.js";
 import { AgentWebTools, permittedWebUrl } from "../agent/web-tools.js";
@@ -335,6 +336,14 @@ export function makeInvoker(s: Services) {
     switch (method as MethodName) {
       case "agent.js.run": return codeMode.run(params, client);
       case "agent.js.reset": return codeMode.reset(client, params.sessionId);
+      case "agent.tidy.propose": {
+        if (client.external) throw new AuxError("permission_denied", "Tab Tidy suggestions must be requested in Aux.");
+        const model = s.settings.model();
+        if (!model) throw new AuxError("backend_unavailable", "Connect a model in Settings before using AI Tidy.");
+        const proposal = await proposeTabTidy(params, s.pages.list(), model, s.settings.agentRoute("fast"));
+        s.events.emit("agent.tidy.proposed", { tabCount: proposal.pages.length, groupCount: proposal.groups.length, modelId: proposal.modelId });
+        return proposal;
+      }
       case "agent.web.fetch":
       case "agent.web.search": {
         const web = new AgentWebTools(url => authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok);

@@ -29,6 +29,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     set({ layout, splitPageId });
   },
   layout: initialLayout,
+  tidyUndo: null,
 
   // ---- layout ----
   reorderTabs: (spaceId, from, to) =>

@@ -235,6 +235,15 @@ export function installMockBridge(q: URLSearchParams) {
     return page(p.pageId as string);
   };
   const handlers = {
+    "agent.tidy.propose": async p => {
+      const pageIds = (p.pageIds as string[]);
+      const chosen = pageIds.map(id => pages.find(item => item.pageId === id));
+      if (chosen.some(item => !item)) throw new Error("A selected tab closed. Review the selection and retry.");
+      const source = chosen as PageTarget[];
+      return { pages: source.map(item => ({ pageId: item.pageId, url: item.url, title: item.title })),
+        groups: [{ name: "Research", pageIds: pageIds.slice(0, 2) }, ...(pageIds.length >= 4 ? [{ name: "More reading", pageIds: pageIds.slice(2, 4) }] : [])],
+        modelId: "meta/muse-spark-1.3-contributor", createdAt: Date.now() };
+    },
     "workspace.get": async () => {
       return workspace();
     },
