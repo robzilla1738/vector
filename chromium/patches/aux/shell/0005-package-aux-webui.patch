@@ -83,6 +83,33 @@ index fa8206b5ba..c566f9a3fa 100644
    if (is_chromeos) {
      deps += [ "//chrome/browser/ui/ash/system_web_apps" ]
    }
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc b/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc
+index cb0e145c0c..bf810f338c 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_page_handler.cc
+@@ -202,11 +202,22 @@ void WebUIBrowserPageHandler::GetGuestIdForTabId(
+     mojo::ReportBadMessage("Invalid tab id");
+     return;
+   }
++  // A renderer-supplied handle is process-global. Only expose a page that
++  // belongs to this shell's window and Profile.
++  if (tab->GetBrowserWindowInterface() != GetBrowser()) {
++    mojo::ReportBadMessage("Tab is outside this browser window");
++    return;
++  }
+   content::WebContents* tab_contents = tab->GetContents();
+   if (tab_contents == nullptr) {
+     mojo::ReportBadMessage("Tab has no contents");
+     return;
+   }
++  if (tab_contents->GetBrowserContext() !=
++      render_frame_host().GetBrowserContext()) {
++    mojo::ReportBadMessage("Tab is outside this Profile");
++    return;
++  }
+ 
+   // The RenderFrameHost takes ownership of this object via the DocumentService.
+   new WebUIBrowserGuestHandler(render_frame_host(), std::move(receiver),
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 index 5c29c02888..b1816c98da 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
