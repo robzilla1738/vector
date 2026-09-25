@@ -1,0 +1,22 @@
+diff --git a/chrome/browser/ui/startup/first_run_service.cc b/chrome/browser/ui/startup/first_run_service.cc
+--- a/chrome/browser/ui/startup/first_run_service.cc
++++ b/chrome/browser/ui/startup/first_run_service.cc
+@@ -13,6 +13,7 @@
+ #include "base/metrics/histogram_functions.h"
+ #include "base/no_destructor.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/first_run/first_run.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_selections.h"
+@@ -296,6 +297,8 @@
+ // Helpers ---------------------------------------------------------------------
+ 
+ bool ShouldOpenFirstRun(Profile* profile) {
++  // Aux opens its own Home and Settings; Chromium account onboarding is not
++  // part of the Aux profile lifecycle. Keep upstream behavior in non-Aux builds.
+   return IsFirstRunEligibleProcess() && IsFirstRunEligibleProfile(profile) &&
+-         !IsFirstRunMarkedFinishedInPrefs();
+-}
++         !IsFirstRunMarkedFinishedInPrefs() && !BUILDFLAG(ENABLE_AUX_SHELL);
++}

@@ -166,3 +166,11 @@ Logs: `/tmp/aux-startup-rpc-{before,after,build}.log`, `/tmp/aux-startup-recover
 ### Development UI follow-up
 
 The owner reported soft/pixelated shell icons on September 25. This is a current development handoff requirement. Icons are inline Central SVG paths (24-unit viewbox, 1.5-unit strokes), displayed at 14/16/20 CSS pixels. The connected Dell display uses 3440×1440 at 1×; the built-in display is Retina. Live scale/compositing and optical stroke verification remain open; no icon fix is claimed yet. Preserve icon geometry, Aux branding and liquid glass.
+
+### Aux startup instead of Chromium account onboarding
+
+- **[Verified]** Patch 40 disables Chromium's account first-run gate only when `ENABLE_AUX_SHELL` is enabled. Non-Aux builds retain upstream behavior.
+- **[Verified]** Native component build succeeds (2 actions, 23.37s). A normal CUA launch of AuxDev, without `--no-first-run`, opens branded Aux Home with its Search/Ask control and Recent work. No Chromium sign-in prompt appears.
+- **[Open]** Icon optical-stroke correction is being staged. No live post-fix sharpness claim yet. The shell's actual `chrome://aux/` renderer was inspected through Chromium DevTools; no remote-debugging server or browser security override was enabled.
+
+Log: `/tmp/aux-dev-first-run-build.log`.
