@@ -241,6 +241,7 @@ export class NativeCdpBroker {
         if (params.targetId && params.targetId !== targetId) throw new Error("Target is not an Aux tab");
         return { targetInfo: target.info };
       }
+      const previousAutoAttach = this.autoAttachSessions.get(targetId);
       if (method === "Target.setAutoAttach") {
         if (params.autoAttach === true) this.autoAttachSessions.set(targetId, sessionId);
         else this.autoAttachSessions.delete(targetId);
@@ -253,7 +254,14 @@ export class NativeCdpBroker {
         await this.channel.call("native.cdpDispatch", { pageId: target.pageId,
           message: JSON.stringify({ id: nativeId, method, params,
             ...(this.childOwners.has(sessionId) ? { sessionId } : {}) }) }, 10_000);
-      } catch (error) { this.pending.delete(nativeId); throw error; }
+      } catch (error) {
+        this.pending.delete(nativeId);
+        if (method === "Target.setAutoAttach") {
+          if (previousAutoAttach) this.autoAttachSessions.set(targetId, previousAutoAttach);
+          else this.autoAttachSessions.delete(targetId);
+        }
+        throw error;
+      }
       return null; // Native protocol response arrives as native.cdpMessage.
     }
     if (sessionId && !this.browserSessions.has(sessionId)) throw new Error("Unknown CDP session");
