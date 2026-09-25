@@ -21,6 +21,15 @@ export const RoutineTriggerSchema = z.discriminatedUnion("kind", [
     timezone: z.string().min(1).max(80),
     intervalMinutes: z.number().int().min(5).max(24 * 60),
   }).strict(),
+  z.object({
+    kind: z.literal("event"),
+    source: z.enum(["page_change", "site_notification", "calendar_event"]),
+    /** Exact web origin for page/notification events; Calendar events use a connection ID. */
+    origin: z.string().url().optional(),
+    connectionId: z.string().uuid().optional(),
+  }).strict().refine(value => value.source === "calendar_event"
+    ? !!value.connectionId && !value.origin
+    : !!value.origin && !value.connectionId, "Choose the event's exact origin or Calendar connection."),
 ]);
 export const RoutineDefinitionSchema = z.object({
   title: text.max(200),
@@ -62,6 +71,13 @@ export const RoutineSuggestionSchema = z.object({
   title: text.max(200),
   reasons: z.array(z.enum(["keyword", "url"])).min(1).max(2),
 });
+export const RoutineEventSchema = z.object({
+  eventId: text.max(200),
+  source: z.enum(["page_change", "site_notification", "calendar_event"]),
+  origin: z.string().url().optional(),
+  connectionId: z.string().uuid().optional(),
+  occurredAt: z.number().int().nonnegative(),
+}).strict();
 /** Thin plugin: a named bundle of existing capabilities (portable routines). */
 export const AuxPluginManifestSchema = z.object({
   format: z.literal("aux-plugin@1"),
@@ -154,7 +170,7 @@ export const RoutineAlertSchema = z.object({
   title: text.max(200),
   status: RoutineRunSchema.shape.status,
   reason: z.string().max(1000).optional(),
-  triggerKind: z.enum(["manual", "schedule", "monitor"]),
+  triggerKind: z.enum(["manual", "schedule", "monitor", "event"]),
   createdAt: z.number(),
 });
 export const RoutineCompareSchema = z.object({
@@ -176,6 +192,7 @@ export type PluginAsset = z.infer<typeof PluginAssetSchema>;
 export type RoutineShare = z.infer<typeof RoutineShareSchema>;
 export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
 export type RoutineSuggestion = z.infer<typeof RoutineSuggestionSchema>;
+export type RoutineEvent = z.infer<typeof RoutineEventSchema>;
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;
 export type RoutineTrigger = z.infer<typeof RoutineTriggerSchema>;
 export type Routine = z.infer<typeof RoutineSchema>;

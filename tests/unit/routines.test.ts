@@ -80,6 +80,28 @@ it("round-trips a SKILL.md as an inert portable definition", async () => {
   await expect(f.routines.importSkillDocument(link, other.workspaceId)).rejects.toThrow(/regular SKILL.md/);
 });
 
+it("runs live event Skills once, records stale events as missed, and never matches a lookalike origin", async () => {
+  const started: string[] = [];
+  const f = fixture(async routine => { started.push(routine.title); return { runId: `event-run-${started.length}` }; });
+  const skill = f.routines.create({
+    title: "Page change check", objective: "Review changed pricing", workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId, parameters: [], siteOrigins: ["https://example.com"], accountLabels: [],
+    reviewRequired: false, cloudCapable: false, consecutive: false, paused: false,
+    trigger: { kind: "event", source: "page_change", origin: "https://example.com" },
+  });
+  const event = { eventId: "change-1", source: "page_change" as const, origin: "https://example.com/pricing", occurredAt: Date.now() };
+  expect(await f.routines.triggerEvent({ ...event, origin: "https://example.com.evil.test/pricing" })).toEqual([]);
+  const first = await f.routines.triggerEvent(event);
+  expect(first).toHaveLength(1);
+  expect(first[0]?.status).toBe("running");
+  expect(await f.routines.triggerEvent(event)).toEqual([]);
+  expect(started).toEqual(["Page change check"]);
+  const missed = await f.routines.triggerEvent({ ...event, eventId: "change-2", occurredAt: Date.now() - 100_000 });
+  expect(missed[0]?.status).toBe("missed");
+  expect(started).toHaveLength(1);
+  expect(f.routines.get(skill.routineId).runs).toHaveLength(2);
+});
+
 it("builds parameterized routines from a saved task and versions edits", () => {
   const f = fixture();
   const routine = f.routines.fromResult({

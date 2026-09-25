@@ -5,6 +5,7 @@ import {
   AuxError,
   type Routine,
   type RoutineSuggestion,
+  type RoutineEvent,
   type RoutineAlert,
   type RoutineCompare,
   RoutineShareSchema,
@@ -398,7 +399,7 @@ export class RoutineService {
             created.push(this.recordMissed(routine, identity, "Missed scheduled run. Consequential work was not started automatically."));
           }
         }
-      } else {
+      } else if (routine.trigger.kind === "monitor") {
         const identity = routineOccurrenceIdentity(routine.routineId, routine.trigger.timezone, Math.floor(now / (routine.trigger.intervalMinutes * 60_000)) * routine.trigger.intervalMinutes * 60_000);
         if (this.hasOccurrence(identity)) continue;
         const missed = this.recentMissedMonitors(routine.routineId);
@@ -412,6 +413,40 @@ export class RoutineService {
       }
     }
     return created;
+  }
+
+  /** Called by trusted host event adapters. Stable event IDs make delivery idempotent. */
+  async triggerEvent(event: RoutineEvent): Promise<RoutineRun[]> {
+    this.sync();
+    const now = Date.now();
+    const records: RoutineRun[] = [];
+    for (const routine of this.list({ includeArchived: false, limit: 200 })) {
+      const trigger = routine.trigger;
+      if (routine.paused || trigger.kind !== "event" || trigger.source !== event.source) continue;
+      const matches = trigger.source === "calendar_event"
+        ? !!event.connectionId && event.connectionId === trigger.connectionId && !!routine.sourceTaskId && !!routine.sourceTaskRevision
+          && routine.calendarGrantIds.length > 0 && !!this.repo.db.prepare(`SELECT 1 FROM calendar_task_grants
+            WHERE connection_id=? AND task_id=? AND task_revision=? AND revoked_at IS NULL
+            AND grant_id IN (${routine.calendarGrantIds.map(() => "?").join(",")}) LIMIT 1`)
+            .get(event.connectionId, routine.sourceTaskId, routine.sourceTaskRevision, ...routine.calendarGrantIds)
+        : (() => {
+            try {
+              if (!event.origin) return false;
+              const observed = new URL(event.origin), expected = new URL(trigger.origin!);
+              return ["http:", "https:"].includes(observed.protocol) && observed.origin === expected.origin;
+            }
+            catch { return false; }
+          })();
+      if (!matches) continue;
+      const identity = `event:${routine.routineId}:${event.eventId}`;
+      if (this.hasOccurrence(identity)) continue;
+      if (event.occurredAt > now + 60_000 || now - event.occurredAt > 90_000) {
+        records.push(this.recordMissed(routine, identity, "Event arrived outside the live automation window. Consequential work was not started automatically."));
+      } else {
+        records.push(await this.startOccurrence(routine, identity, event.occurredAt));
+      }
+    }
+    return records;
   }
 
   private async startOccurrence(routine: Routine, identity: string, scheduledFor: number): Promise<RoutineRun> {
@@ -440,7 +475,7 @@ export class RoutineService {
         title: routine.title,
         status: row.status as RoutineAlert["status"],
         reason: row.reason ?? undefined,
-        triggerKind: routine.trigger?.kind === "schedule" || routine.trigger?.kind === "monitor" ? routine.trigger.kind : "manual",
+        triggerKind: routine.trigger?.kind === "schedule" || routine.trigger?.kind === "monitor" || routine.trigger?.kind === "event" ? routine.trigger.kind : "manual",
         createdAt: row.created_at,
       };
     });
