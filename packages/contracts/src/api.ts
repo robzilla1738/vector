@@ -1,6 +1,6 @@
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
-import { OriginRuleSchema, SendRecordSchema } from "./safety.js";
+import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
@@ -88,6 +88,13 @@ export const PagesExecuteParams = z.object({
   taskId: z.string().min(1).optional(),
   expectedRevision: z.number().int().positive().optional(),
   returnObservation: ReturnObservationSchema.optional(),
+  safety: z.object({
+    turnId: id.optional(), threadId: id.optional(), turnToolCallCount: z.number().int().nonnegative().optional(),
+    steps: z.record(z.string(), z.object({
+      approvalId: id.optional(), review: FinalReviewArtifactSchema.optional(),
+      sensitiveData: z.boolean().optional(), restrictedRetry: z.boolean().optional(),
+    }).strict()).optional(),
+  }).strict().optional(),
 });
 /**
  * Human/owner reconciliation of a direct (non-run) write on a page whose outcome
@@ -470,6 +477,7 @@ export const SettingsSetParams = z.object({
     .optional(),
   /** Per-origin user policy. Managed policy is supplied by the host and can only tighten these rules. */
   originPolicies: z.array(OriginRuleSchema).max(500).optional(),
+  safetyCeilings: z.partialRecord(EffectSchema, z.enum(["never", "ask", "always"])).optional(),
 });
 export const SettingsGetParams = z.object({});
 
@@ -742,6 +750,10 @@ export const MethodSchemas = {
   "runs.steer": RunsSteerParams,
   "runs.messages.list": z.object({ chatId: id }),
   "runs.messageStatus": z.object({ nonce: id }),
+  "safety.approvals.pending": z.object({ threadId: id }),
+  "safety.approvals.decide": z.object({ decision: ApprovalDecisionSchema, expectedTurnId: id }).strict(),
+  "safety.grants.list": z.object({ profileId: id }),
+  "safety.grants.revoke": z.object({ profileId: id, scope: z.object({ kind: z.enum(["workspace", "task"]), id }).strict().optional(), effect: EffectSchema.optional(), grantId: id.optional() }).strict(),
   "runs.message.cancel": z.object({ messageId: id }),
   "runs.events": RunsEventsParams,
   "events.since": EventsSinceParams,
@@ -1148,6 +1160,10 @@ export const ResultSchemas = {
   "runs.steer": RunMessageSchema,
   "runs.messages.list": z.array(RunMessageSchema),
   "runs.messageStatus": SendRecordSchema.nullable(),
+  "safety.approvals.pending": z.array(PendingApprovalSchema),
+  "safety.approvals.decide": z.object({ ok: z.literal(true) }),
+  "safety.grants.list": z.array(StandingGrantSchema),
+  "safety.grants.revoke": z.object({ revoked: z.number().int().nonnegative() }),
   "runs.message.cancel": RunMessageSchema,
   "runs.events": z.object({ events: z.array(EventSchema), lastSeq: z.number() }),
   "events.since": z.object({ events: z.array(EventSchema), lastSeq: z.number() }),

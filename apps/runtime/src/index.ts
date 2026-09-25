@@ -85,6 +85,9 @@ export { ApprovalStore, type AuthorizationDecision, type LocalCeiling } from "./
 export { decideConfirmation, confirmationLevelForAction, ChallengeRecoveryGate, type ConfirmationResult } from "./safety/confirmation.js";
 export { secureCredentialHandoff, type CredentialHost } from "./safety/credential-handoff.js";
 export { reviewGuardian, untrustedOutput, type GuardianFinding, type GuardianDecision, type UntrustedOutput } from "./safety/guardian.js";
+export { createGuardianJudge } from "./safety/guardian-model.js";
+export { SafetyDispatchGate, type StepSafetyContext } from "./safety/dispatch.js";
+export { SafetyAuditStore } from "./safety/audit.js";
 export { SendJournal, sendNotice, type MessageTransport, type SendState } from "./safety/send-journal.js";
 export { SAFETY_TIMING, withDeadline, retryWithHints, pollUntil, ViewerLivenessWatchdog, tightenEgress, recoveryLadder } from "./safety/policies.js";
 

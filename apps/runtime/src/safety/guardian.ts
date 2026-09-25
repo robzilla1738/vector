@@ -37,6 +37,7 @@ export async function reviewGuardian(input: {
     return { status: "deny", findings, guidance: "Do not retry this critical action. Explain the refusal and ask the user for a safe alternative." };
   }
   const needsJudge = findings.some(f => f.severity === "high") || input.action.effect === "external_tool";
+  if (needsJudge && !input.judge) findings.push({ category: "privilege_escalation", severity: "critical", reason: "guardian_unavailable" });
   if (needsJudge && input.judge) {
     try { findings.push(...await input.judge({ action: input.action, untrusted: input.untrusted ?? [] })); }
     catch { findings.push({ category: "privilege_escalation", severity: "critical", reason: "guardian_unavailable" }); }

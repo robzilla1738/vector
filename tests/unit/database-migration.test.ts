@@ -23,11 +23,11 @@ describe("schema versioning", () => {
   it("migrates v12 profiles to the safety approval and send journal tables", () => {
     const { path } = fixture();
     const old = track(openDb(path));
-    old.exec("DROP TABLE safety_approval_requests; DROP TABLE safety_standing_grants; DROP TABLE safety_send_journal; DROP TABLE safety_challenge_recovery; PRAGMA user_version=12");
+    old.exec("DROP TABLE safety_approval_requests; DROP TABLE safety_standing_grants; DROP TABLE safety_send_journal; DROP TABLE safety_challenge_recovery; DROP TABLE safety_audit; PRAGMA user_version=12");
     old.close();
     const upgraded = track(openDb(path));
     expect(version(upgraded)).toBe(13);
-    for (const table of ["safety_approval_requests", "safety_standing_grants", "safety_send_journal", "safety_challenge_recovery"]) {
+    for (const table of ["safety_approval_requests", "safety_standing_grants", "safety_send_journal", "safety_challenge_recovery", "safety_audit"]) {
       expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table)).toBeDefined();
     }
   });

@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { EventTypes, AuxError, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
+import { EventTypes, AuxError, OriginRuleSchema, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
 import { RpcChannel, type Transport } from "@aux/contracts";
 import {
   AttachedChromeDriver,
@@ -46,6 +46,11 @@ import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
 import { DurableWriteLedger } from "./agent/durable.js";
+import { modelCallCost } from "./agent/model-client.js";
+import { ApprovalStore } from "./safety/approval.js";
+import { SafetyAuditStore } from "./safety/audit.js";
+import { SafetyDispatchGate } from "./safety/dispatch.js";
+import { createGuardianJudge } from "./safety/guardian-model.js";
 import { markCloudDesktopClosed } from "./services/cloud-environments.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
 
@@ -70,6 +75,24 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const events = new EventBus(repo);
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
+  const safetyAudit = new SafetyAuditStore(repo.db);
+  const approvals = new ApprovalStore(repo.db, event => safetyAudit.record(event));
+  const safetyGate = env.AUX_HOST_SOCKET ? new SafetyDispatchGate({
+    approvals,
+    managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
+    userRules: () => settings.originPolicies(),
+    localCeiling: action => settings.safetyCeiling(action.effect),
+    audit: event => safetyAudit.record({ ...event }),
+    judge: createGuardianJudge({
+      model: () => settings.model(), modelId: () => settings.plannerModel(),
+      recordAttempt: (attempt, modelId, error) => repo.saveModelCall({
+        callId: randomUUID(), role: "guardian", modelId, durationMs: attempt.durationMs,
+        inputTokens: attempt.inputTokens, outputTokens: attempt.outputTokens,
+        providerMetadata: attempt.providerMetadata,
+        ...modelCallCost(modelId, attempt), ...(error ? { error } : {}), createdAt: Date.now(),
+      }),
+    }),
+  }) : undefined;
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
   setTimeout(() => { void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch(error =>
     process.stderr.write(`[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`)); }, 10_000).unref();
@@ -182,6 +205,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tracer,
     vault,
     durableWrites,
+    safetyGate,
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),

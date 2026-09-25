@@ -75,6 +75,7 @@ export function requireAuxFeature(
 
 /** API families with a single feature owner. Methods without a mapping are core browser operations. */
 const METHOD_FEATURE_PREFIXES: readonly [string, AuxFeature][] = [
+  ["safety.", "safetyCore"],
   ["vault.", "vault"], ["routines.", "automations"],
   ["plugins.", "skills"], ["cloud.", "cloudEnvironments"],
   ["projects.", "devWorkflows"], ["calendar.", "connectors"],

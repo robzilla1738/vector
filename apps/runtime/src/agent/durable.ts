@@ -161,7 +161,7 @@ export function beginConsequentialWrite(
 
 /** Failures raised while resolving or authorizing a target: no input reached the page. */
 const PRE_DISPATCH_CODES = new Set([
-  "target_detached", "ref_stale", "target_ambiguous", "not_found", "invalid_params", "permission_denied", "capability_unsupported",
+  "target_detached", "ref_stale", "target_ambiguous", "not_found", "invalid_params", "permission_denied", "needs_input", "capability_unsupported",
 ]);
 
 export interface WriteResultLike {

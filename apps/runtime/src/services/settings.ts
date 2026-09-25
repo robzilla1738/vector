@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ModelProviderSchema, OriginRuleSchema, SidebarMaterialSchema, type ModelProvider, type OriginRule, type ShortcutOverrides } from "@aux/contracts";
+import { EffectSchema, ModelProviderSchema, OriginRuleSchema, SidebarMaterialSchema, type Effect, type ModelProvider, type OriginRule, type ShortcutOverrides } from "@aux/contracts";
+import { z } from "zod";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY, mergeModelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
@@ -52,6 +53,7 @@ export interface Settings {
    */
   effectGrants?: GrantInput[];
   originPolicies?: OriginRule[];
+  safetyCeilings?: Partial<Record<Effect, "never" | "ask" | "always">>;
   /** Nonsecret result of the latest explicit connection test. */
   modelProbe?: ModelProbeRecord;
   githubProbe?: GithubProbeRecord;
@@ -186,6 +188,7 @@ export class SettingsService {
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
       effectGrants: [...this.effectGrantsForRun()],
       originPolicies: this.originPolicies(),
+      safetyCeilings: this.get("safetyCeilings") as Settings["safetyCeilings"] ?? {},
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
   }
@@ -207,6 +210,10 @@ export class SettingsService {
 
   originPolicies(): OriginRule[] {
     return OriginRuleSchema.array().parse(this.get("originPolicies") ?? []);
+  }
+
+  safetyCeiling(effect: Effect): "never" | "ask" | "always" {
+    return (this.get("safetyCeilings") as Settings["safetyCeilings"] | undefined)?.[effect] ?? "ask";
   }
 
   set(patch: Settings): Promise<{ ok: true }> {
@@ -264,6 +271,7 @@ export class SettingsService {
     }
     if (next.effectGrants !== undefined) next.effectGrants = sanitizeGrants(next.effectGrants);
     if (next.originPolicies !== undefined) next.originPolicies = OriginRuleSchema.array().max(500).parse(next.originPolicies);
+    if (next.safetyCeilings !== undefined) next.safetyCeilings = z.partialRecord(EffectSchema, z.enum(["never", "ask", "always"])).parse(next.safetyCeilings);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) this.repo.deleteSetting("modelProbe");
     for (const [k, v] of Object.entries(next)) {

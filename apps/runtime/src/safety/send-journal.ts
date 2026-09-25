@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
-export type SendState = "queued" | "offline" | "sending" | "accepted" | "acknowledged" | "parked" | "failed";
+export type SendState = "queued" | "offline" | "sending" | "accepted" | "acknowledged" | "parked" | "failed" | "cancelled";
 export interface SendRecord {
   nonce: string;
   threadId: string;
@@ -33,7 +33,7 @@ export class SendJournal {
   constructor(private readonly db: DatabaseSync) {
     db.exec(`CREATE TABLE IF NOT EXISTS safety_send_journal(
       nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
-      digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed')),
+      digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
       acceptance_id TEXT, error_code TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS idx_safety_send_turn ON safety_send_journal(turn_id,created_at);
       CREATE INDEX IF NOT EXISTS idx_safety_send_state ON safety_send_journal(state,created_at);`);
@@ -71,7 +71,7 @@ export class SendJournal {
   private async dispatchOnce(nonce: string, transport: MessageTransport, now: number): Promise<SendRecord> {
     let record = this.messageStatus(nonce);
     if (!record) throw new Error("Unknown message nonce");
-    if (["accepted", "acknowledged", "failed"].includes(record.state)) return record;
+    if (["accepted", "acknowledged", "failed", "cancelled"].includes(record.state)) return record;
     // A concurrent caller in this process must not interpret an active send as a crashed send.
     if (record.state === "sending") return record;
     if (!transport.online()) { this.transition(nonce, "offline", now); return this.messageStatus(nonce)!; }
@@ -114,9 +114,31 @@ export class SendJournal {
     return this.messageStatus(nonce)!;
   }
 
+  acceptLocal(nonce: string, acceptanceId: string, now = Date.now()): SendRecord {
+    const current = this.messageStatus(nonce);
+    if (!current || current.state === "failed" || current.state === "cancelled" || current.acceptanceId && current.acceptanceId !== acceptanceId)
+      throw new Error("Local acceptance does not match the message");
+    if (current.state !== "acknowledged") this.transition(nonce, "accepted", now, acceptanceId);
+    return this.messageStatus(nonce)!;
+  }
+
+  park(nonce: string, now = Date.now()): SendRecord {
+    const current = this.messageStatus(nonce);
+    if (!current || !["sending", "accepted", "parked"].includes(current.state)) throw new Error("Only an unsettled send can park");
+    this.transition(nonce, "parked", now);
+    return this.messageStatus(nonce)!;
+  }
+
+  cancel(nonce: string, now = Date.now()): SendRecord {
+    const current = this.messageStatus(nonce);
+    if (!current || ["acknowledged", "failed"].includes(current.state)) throw new Error("Message already settled");
+    this.transition(nonce, "cancelled", now);
+    return this.messageStatus(nonce)!;
+  }
+
   settleTurn(turnId: string): { status: "settled" | "pending" | "needs_attention"; pending: string[] } {
     const records = this.db.prepare(`${SELECT} WHERE turn_id=? ORDER BY created_at,nonce`).all(turnId) as unknown as SendRecord[];
-    const pending = records.filter(record => record.state !== "acknowledged").map(record => record.nonce);
+    const pending = records.filter(record => record.state !== "acknowledged" && record.state !== "cancelled").map(record => record.nonce);
     const status = records.some(record => record.state === "parked" || record.state === "failed")
       ? "needs_attention" : pending.length ? "pending" : "settled";
     return { status, pending };

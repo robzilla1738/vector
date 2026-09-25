@@ -176,7 +176,7 @@ CREATE TABLE action_transitions(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, intent_id TEXT NOT NULL REFERENCES action_intents(id) ON DELETE CASCADE,
   status TEXT NOT NULL, recorded_at INTEGER NOT NULL, evidence TEXT);
 CREATE TABLE safety_approval_requests(
-  approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
+  approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, action_json TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
   lifetime TEXT NOT NULL CHECK(lifetime IN ('turn','thread')), expires_at INTEGER NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('pending','accepted','declined','cancelled','consumed')),
   decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER);
@@ -189,13 +189,14 @@ CREATE TABLE safety_standing_grants(
 CREATE INDEX idx_safety_grants_lookup ON safety_standing_grants(profile_id,scope_kind,scope_id,effect,action,origin,recipient,revoked_at);
 CREATE TABLE safety_send_journal(
   nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
-  digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed')),
+  digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
   acceptance_id TEXT, error_code TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX idx_safety_send_turn ON safety_send_journal(turn_id,created_at);
 CREATE INDEX idx_safety_send_state ON safety_send_journal(state,created_at);
 CREATE TABLE safety_challenge_recovery(
   run_id TEXT NOT NULL, origin TEXT NOT NULL, attempts INTEGER NOT NULL, updated_at INTEGER NOT NULL,
   PRIMARY KEY(run_id,origin));
+CREATE TABLE safety_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, payload TEXT NOT NULL, recorded_at INTEGER NOT NULL);
 CREATE TABLE workspaces(workspace_id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE tasks(task_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), revision INTEGER NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('open','archived')), updated_at INTEGER NOT NULL, json TEXT NOT NULL);
@@ -391,7 +392,7 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
   // v12 → v13: host-neutral approval provenance and durable send journal.
   12: [
     `CREATE TABLE IF NOT EXISTS safety_approval_requests(
-      approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
+      approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, action_json TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
       lifetime TEXT NOT NULL CHECK(lifetime IN ('turn','thread')), expires_at INTEGER NOT NULL,
       state TEXT NOT NULL CHECK(state IN ('pending','accepted','declined','cancelled','consumed')),
       decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER)`,
@@ -404,13 +405,15 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
     `CREATE INDEX IF NOT EXISTS idx_safety_grants_lookup ON safety_standing_grants(profile_id,scope_kind,scope_id,effect,action,origin,recipient,revoked_at)`,
     `CREATE TABLE IF NOT EXISTS safety_send_journal(
       nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
-      digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed')),
+      digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
       acceptance_id TEXT, error_code TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_safety_send_turn ON safety_send_journal(turn_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_safety_send_state ON safety_send_journal(state,created_at)`,
     `CREATE TABLE IF NOT EXISTS safety_challenge_recovery(
       run_id TEXT NOT NULL, origin TEXT NOT NULL, attempts INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       PRIMARY KEY(run_id,origin))`,
+    `CREATE TABLE IF NOT EXISTS safety_audit(
+      seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, payload TEXT NOT NULL, recorded_at INTEGER NOT NULL)`,
   ],
 };
 

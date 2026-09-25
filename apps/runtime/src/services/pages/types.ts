@@ -6,6 +6,7 @@ import type { EventBus } from "../../events.js";
 import type { NativeBridge } from "../../native.js";
 import type { Repo } from "../../store/repo.js";
 import type { VaultService } from "../vault.js";
+import type { SafetyDispatchGate } from "../../safety/dispatch.js";
 
 /** Backends the runtime can hold drivers for. */
 export interface DriverSet {
@@ -84,4 +85,5 @@ export interface PageServiceDeps {
   vault?: VaultService;
   /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
   durableWrites?: DurableWriteLedger;
+  safetyGate?: SafetyDispatchGate;
 }

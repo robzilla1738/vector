@@ -15,7 +15,7 @@ const ASK = "Pause this action and request approval from the user. Do not dispat
 function fingerprint(action: SafetyAction, lifetime: "turn" | "thread"): string {
   return createHash("sha256").update(JSON.stringify([
     action.profileId, action.scope.kind, action.scope.id, action.effect, action.action,
-    action.origin ?? null, action.recipient ?? null, lifetime === "turn" ? action.turnId : null, action.threadId,
+    action.invocationDigest, action.origin ?? null, action.recipient ?? null, lifetime === "turn" ? action.turnId : null, action.threadId,
   ])).digest("hex");
 }
 
@@ -25,7 +25,7 @@ type GrantRow = { grant_id: string; profile_id: string; scope_kind: string; scop
 export class ApprovalStore {
   constructor(private readonly db: DatabaseSync, private readonly audit: (event: Record<string, unknown>) => void = () => {}) {
     db.exec(`CREATE TABLE IF NOT EXISTS safety_approval_requests(
-      approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
+      approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, action_json TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
       lifetime TEXT NOT NULL CHECK(lifetime IN ('turn','thread')), expires_at INTEGER NOT NULL,
       state TEXT NOT NULL CHECK(state IN ('pending','accepted','declined','cancelled','consumed')),
       decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER);
@@ -40,13 +40,33 @@ export class ApprovalStore {
 
   issue(actionInput: SafetyAction, lifetime: "turn" | "thread", now = Date.now()): string {
     const action = SafetyActionSchema.parse(actionInput);
+    const existing = this.db.prepare(`SELECT approval_id AS approvalId FROM safety_approval_requests
+      WHERE fingerprint=? AND thread_id=? AND turn_id=? AND lifetime=? AND state='pending' AND expires_at>?
+      ORDER BY created_at DESC LIMIT 1`).get(fingerprint(action, lifetime), action.threadId, action.turnId, lifetime, now) as { approvalId: string } | undefined;
+    if (existing) return existing.approvalId;
     const approvalId = randomUUID();
     // Thread approvals still expire; they may be used by the same thread for one dispatch.
     const expiresAt = now + (lifetime === "turn" ? 30 * 60_000 : 24 * 60 * 60_000);
-    this.db.prepare(`INSERT INTO safety_approval_requests(approval_id,fingerprint,turn_id,thread_id,lifetime,expires_at,state,created_at)
-      VALUES(?,?,?,?,?,?,'pending',?)`).run(approvalId, fingerprint(action, lifetime), action.turnId, action.threadId, lifetime, expiresAt, now);
+    this.db.prepare(`INSERT INTO safety_approval_requests(approval_id,fingerprint,action_json,turn_id,thread_id,lifetime,expires_at,state,created_at)
+      VALUES(?,?,?,?,?,?,?,'pending',?)`).run(approvalId, fingerprint(action, lifetime), JSON.stringify(action), action.turnId, action.threadId, lifetime, expiresAt, now);
     this.audit({ kind: "approval_issued", approvalId, action: action.action, effect: action.effect, at: now });
     return approvalId;
+  }
+
+  pending(threadId: string, now = Date.now()): Array<{ approvalId: string; action: SafetyAction; expiresAt: number }> {
+    const rows = this.db.prepare(`SELECT approval_id AS approvalId,action_json AS actionJson,expires_at AS expiresAt
+      FROM safety_approval_requests WHERE thread_id=? AND state='pending' AND expires_at>? ORDER BY created_at`)
+      .all(threadId, now) as { approvalId: string; actionJson: string; expiresAt: number }[];
+    return rows.map(row => ({ approvalId: row.approvalId, action: SafetyActionSchema.parse(JSON.parse(row.actionJson)), expiresAt: row.expiresAt }));
+  }
+
+  /** The native approval UI sends an ID and expected turn; the saved action is authoritative. */
+  decideLocal(raw: ApprovalDecision, expectedTurnId: string, now = Date.now()): void {
+    const decision = ApprovalDecisionSchema.parse(raw);
+    const row = this.db.prepare("SELECT action_json AS actionJson,turn_id AS turnId FROM safety_approval_requests WHERE approval_id=?")
+      .get(decision.approvalId) as { actionJson: string; turnId: string } | undefined;
+    if (!row || row.turnId !== expectedTurnId) throw new Error("Stale or unknown approval turn");
+    this.recordLocalDecision(decision, SafetyActionSchema.parse(JSON.parse(row.actionJson)), now);
   }
 
   /** Only a trusted native UI handler may call this method. Never expose it as a model tool. */
@@ -91,6 +111,19 @@ export class ApprovalStore {
       lifetime, ...(sessionId ? { sessionId } : {}), createdAt: now };
   }
 
+  listGrants(profileId: string): StandingGrant[] {
+    const rows = this.db.prepare(`SELECT * FROM safety_standing_grants WHERE profile_id=? AND revoked_at IS NULL ORDER BY created_at DESC`)
+      .all(profileId) as GrantRow[];
+    return rows.map(row => ({
+      grantId: row.grant_id, profileId: row.profile_id,
+      scope: { kind: row.scope_kind as "workspace" | "task", id: row.scope_id },
+      effect: row.effect as StandingGrant["effect"], action: row.action,
+      ...(row.origin ? { origin: row.origin } : {}), ...(row.recipient ? { recipient: row.recipient } : {}),
+      lifetime: row.lifetime as "session" | "always", ...(row.session_id ? { sessionId: row.session_id } : {}),
+      createdAt: row.created_at,
+    }));
+  }
+
   revoke(filter: { profileId: string; scope?: SafetyAction["scope"]; effect?: SafetyAction["effect"]; grantId?: string }, now = Date.now()): number {
     const clauses = ["profile_id=?", "revoked_at IS NULL"];
     const values: Array<string | number> = [filter.profileId];
@@ -103,11 +136,11 @@ export class ApprovalStore {
   }
 
   /** Atomically consumes one-time approvals. A revoked grant is rejected at dispatch time. */
-  authorize(input: { action: SafetyAction; policy: OriginPolicyDecision; ceiling: LocalCeiling; sessionId?: string; approvalId?: string; now?: number }): AuthorizationDecision {
+  authorize(input: { action: SafetyAction; policy: OriginPolicyDecision; ceiling: LocalCeiling; sessionId?: string; approvalId?: string; approvalOnly?: boolean; consume?: boolean; now?: number }): AuthorizationDecision {
     const action = SafetyActionSchema.parse(input.action);
     const now = input.now ?? Date.now();
     if (input.ceiling === "never" || input.policy.access === "deny") return this.auditDecision({ status: "denied", guidance: DENIED }, action, now);
-    if (input.policy.access === "allow" && input.ceiling === "always") {
+    if (!input.approvalOnly && input.policy.access === "allow" && input.ceiling === "always") {
       return this.auditDecision({ status: "authorized", provenance: { authorizedBy: "policy", policySource: input.policy.source } }, action, now);
     }
     this.db.exec("BEGIN IMMEDIATE");
@@ -115,7 +148,7 @@ export class ApprovalStore {
       const grants = this.db.prepare(`SELECT * FROM safety_standing_grants WHERE profile_id=? AND scope_kind=? AND scope_id=?
         AND effect=? AND action=? AND origin IS ? AND recipient IS ? AND revoked_at IS NULL ORDER BY created_at DESC`)
         .all(action.profileId, action.scope.kind, action.scope.id, action.effect, action.action, action.origin ?? null, action.recipient ?? null) as GrantRow[];
-      const grant = grants.find(row => row.lifetime === "always" || row.session_id === input.sessionId && !!input.sessionId);
+      const grant = input.approvalOnly ? undefined : grants.find(row => row.lifetime === "always" || row.session_id === input.sessionId && !!input.sessionId);
       if (grant) {
         this.db.exec("COMMIT");
         return this.auditDecision({ status: "authorized", provenance: { authorizedBy: "standing", grantId: grant.grant_id } }, action, now);
@@ -126,7 +159,7 @@ export class ApprovalStore {
         } | undefined;
         if (row?.state === "accepted" && row.expires_at > now && row.fingerprint === fingerprint(action, row.lifetime)
           && (row.lifetime === "thread" || row.turn_id === action.turnId) && row.thread_id === action.threadId) {
-          this.db.prepare("UPDATE safety_approval_requests SET state='consumed' WHERE approval_id=? AND state='accepted'").run(input.approvalId);
+          if (input.consume !== false) this.db.prepare("UPDATE safety_approval_requests SET state='consumed' WHERE approval_id=? AND state='accepted'").run(input.approvalId);
           this.db.exec("COMMIT");
           return this.auditDecision({ status: "authorized", provenance: { authorizedBy: "approval", approvalId: input.approvalId } }, action, now);
         }

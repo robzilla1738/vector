@@ -1,6 +1,8 @@
 import {
   AuxError,
+  type AuthorizationProvenance,
   type Condition,
+  type FinalReviewArtifact,
   type ObservationContent,
   type Program,
   type ProgramResult,
@@ -40,7 +42,9 @@ export interface ExecContext {
   /** Recheck task authority after lane waits, immediately before journaling and dispatch. */
   beforeJournal?: () => void;
   /** Recheck live target origin and current grants immediately before dispatch. */
-  authorizeStep?: (step: Step) => Promise<void>;
+  authorizeStep?: (step: Step) => Promise<AuthorizationProvenance | void>;
+  safety?: { turnId?: string; threadId?: string; turnToolCallCount?: number;
+    steps?: Record<string, { approvalId?: string; review?: FinalReviewArtifact; sensitiveData?: boolean; restrictedRetry?: boolean }> };
   /** saved task that authorized this run, used to scope vault grants */
   taskId?: string;
   /** Saved task revision that authorized this direct program. */
@@ -165,10 +169,11 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
   const runOne = async (step: Step): Promise<StepOutcome> => {
     const startedAt = Date.now();
     let dispatched = false;
+    let authorization: AuthorizationProvenance | void = undefined;
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
-      await ctx.authorizeStep?.(step);
+      authorization = await ctx.authorizeStep?.(step);
       ctx.checkValid?.();
       dispatched = true;
       const detail = await runStep(page, step, ctx);
@@ -189,6 +194,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         status: "ok",
         startedAt,
         durationMs: Date.now() - startedAt,
+        ...(authorization ? { authorization } : {}),
         effect: postconditions.length ? "observed" : mutating ? "uncertain" : "observed",
         receipt: {
           observed: postconditions.length
@@ -238,6 +244,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         startedAt,
         durationMs: Date.now() - startedAt,
         error: { code, message: e instanceof Error ? e.message : String(e) },
+        ...(authorization ? { authorization } : {}),
         ...(takenOver ? { effect: "uncertain" as const, receipt: {
           remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true,
         } } : {}),

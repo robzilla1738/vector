@@ -37,7 +37,8 @@ import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
 import { PluginService } from "../services/plugins.js";
 import { TranslateService } from "../services/translate.js";
-import { SendJournal } from "../safety/send-journal.js";
+import { ApprovalStore } from "../safety/approval.js";
+import { SafetyAuditStore } from "../safety/audit.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -116,7 +117,8 @@ export function makeInvoker(s: Services) {
   const cloudEnvironments=new CloudEnvironmentService(s.repo,s.settings);
   const vault = s.vault ?? new VaultService(s.repo, s.native);
   const translate = new TranslateService(s.settings);
-  const sendJournal = new SendJournal(s.repo.db);
+  const safetyAudit = new SafetyAuditStore(s.repo.db);
+  const approvals = new ApprovalStore(s.repo.db, event => safetyAudit.record(event));
   const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
     objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");
   const routines = s.routines ?? new RoutineService(s.repo, s.events, async (routine, parameters) => {
@@ -745,7 +747,8 @@ export function makeInvoker(s: Services) {
         // The owner bearer token (CLI, desktop) authors programs directly and may
         // run page script. A scoped agent connection is limited to its task and
         // never gets evaluate/eval: page access is not code-execution authority.
-        const p = params as { program: Parameters<PageService["execute"]>[0]; taskId?: string; expectedRevision?: number; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown> };
+        const p = params as { program: Parameters<PageService["execute"]>[0]; taskId?: string; expectedRevision?: number; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown>; safety?: import("../execution/executor.js").ExecContext["safety"] };
+        if (client.external && p.safety) throw new AuxError("permission_denied", "Final approval metadata comes from the Aux interface.");
         if(scope&&programContainsOperationCalls(p.program))throw new AuxError("permission_denied","Use the task-scoped operation API for operation calls");
         const consequential=programHasConsequentialSteps(p.program);
         const previewGranted=!!client.connectionId&&previewPageGrants.get(client.connectionId)?.get(p.program.pageId)===p.taskId;
@@ -763,7 +766,7 @@ export function makeInvoker(s: Services) {
         // (PageService.execute).
         const { format, ...req } = p.returnObservation ?? {};
         const { observation, ...result } = await withExternalPage(p.program.pageId, () => s.pages.execute(p.program,
-          { allowEval: !scope, taskId:p.taskId,taskRevision:p.expectedRevision,
+          { allowEval: !scope, taskId:p.taskId,taskRevision:p.expectedRevision,safety:p.safety,
             beforeJournal:validateBeforeJournal,checkValid:validateDuringExecution },
           { returnObservation: p.returnObservation ? (req as never) : undefined }), p.taskId);
         if (!p.returnObservation) return result;
@@ -947,7 +950,20 @@ export function makeInvoker(s: Services) {
         return s.runs.messages.list(params.chatId);
       case "runs.messageStatus":
         if (client.external) throw new AuxError("permission_denied", "Message delivery status is available in Aux.");
-        return sendJournal.messageStatus(params.nonce) ?? null;
+        return s.runs.messages.messageStatus(params.nonce) ?? null;
+      case "safety.approvals.pending":
+        if (client.external) throw new AuxError("permission_denied", "Approval requests are available in Aux.");
+        return approvals.pending(params.threadId);
+      case "safety.approvals.decide":
+        if (client.external) throw new AuxError("permission_denied", "Only the Aux interface can decide an approval.");
+        approvals.decideLocal(params.decision, params.expectedTurnId);
+        return { ok: true };
+      case "safety.grants.list":
+        if (client.external) throw new AuxError("permission_denied", "Safety grants are managed in Aux.");
+        return approvals.listGrants(params.profileId);
+      case "safety.grants.revoke":
+        if (client.external) throw new AuxError("permission_denied", "Safety grants are managed in Aux.");
+        return { revoked: approvals.revoke(params) };
       case "runs.message.cancel":
         if (client.external) throw new AuxError("permission_denied", "Cancel queued messages in Aux.");
         return s.runs.messages.cancel(params.messageId);

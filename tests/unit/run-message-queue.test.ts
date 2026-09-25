@@ -28,12 +28,14 @@ describe("durable conversation queue", () => {
     const first = queue.queue(input("11111111-1111-4111-8111-111111111111", "Second task"));
     const second = queue.queue(input("22222222-2222-4222-8222-222222222222", "Third task"));
     expect(first.status).toBe("accepted");
+    expect(queue.messageStatus(first.messageId)).toMatchObject({ nonce: first.messageId, state: "accepted", acceptanceId: first.deliveryRunId });
     expect(queue.queue(input(first.messageId, "Second task")).deliveryRunId).toBe(first.deliveryRunId);
     expect(started).toEqual([]);
 
     repo.saveRun({ ...current, status: "completed", endedAt: Date.now() });
     events.emit(EventTypes.RunUpdated, { run: { ...current, status: "completed" } }, current.runId);
     await vi.waitFor(() => expect(queue.list("chat-1")[0]?.status).toBe("delivered"));
+    expect(queue.messageStatus(first.messageId)?.state).toBe("acknowledged");
     expect(started).toEqual([first.messageId]);
     expect(queue.list("chat-1")[1]?.status).toBe("accepted");
 
@@ -48,6 +50,7 @@ describe("durable conversation queue", () => {
     const fourth = queue.queue(input("44444444-4444-4444-8444-444444444444", "Fourth task"));
     queue.cancelForChat("chat-1");
     expect(repo.getRunMessage(fourth.messageId)?.status).toBe("cancelled");
+    expect(queue.messageStatus(fourth.messageId)?.state).toBe("cancelled");
     expect(started).toEqual([first.messageId, second.messageId]);
   });
 

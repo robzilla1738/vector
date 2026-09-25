@@ -70,7 +70,8 @@ export class ProgramExecutor {
         try { return new URL(lp.driver!.url()).origin; }
         catch { return ""; }
       };
-      const authorize = async (step: Step, projectedOrigin?: string) => {
+      const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
+      const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
         const targets = ["target" in step && typeof step.target === "string" ? step.target : undefined,
           step.op === "dragTo" ? step.to : undefined].filter((target): target is string => !!target);
         const ambiguousInput = step.op === "clickPoint" || step.op === "dialog" || step.op === "press" && targets.length === 0;
@@ -79,24 +80,48 @@ export class ProgramExecutor {
           ? await Promise.all(targets.map(target => projectedOrigin !== undefined && !isElementRef(target)
             ? projectedOrigin : lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)))
           : [fallbackOrigin];
+        let authorized: Awaited<ReturnType<NonNullable<ExecContext["authorizeStep"]>>> = undefined;
         for (const actionOrigin of origins) {
           const auth = authorizeProgram([step], grants, actionOrigin);
           if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
+          if (this.pages.deps.safetyGate && classifyStep(step.op) !== "read") {
+            const destination = step.op === "navigate"
+              ? (() => { try { return new URL(step.url, lp.driver!.url()).origin; } catch { return ""; } })()
+              : actionOrigin;
+            const metadata = ctx.safety?.steps?.[step.id];
+            const taskId = ctx.taskId ?? run?.config?.taskId;
+            const provenance = await this.pages.deps.safetyGate.check({
+              step, origin: destination, phase,
+              context: {
+                profileId: this.pages.deps.profileId ?? "default",
+                scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+                turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
+                threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
+                sessionId: lp.target.sessionId ?? undefined,
+                approvalId: metadata?.approvalId,
+                review: metadata?.review,
+                turnToolCallCount: ctx.safety?.turnToolCallCount,
+                sensitiveData: metadata?.sensitiveData,
+                restrictedRetry: metadata?.restrictedRetry,
+              },
+            });
+            if (provenance) authorized = provenance;
+          }
         }
+        return authorized;
       };
       // Fail fast while the current document is knowable. A write can navigate
       // or replace a frame, so later steps are checked against live origins at
       // dispatch instead of the program's original top-level URL.
       let projectedOrigin = origin;
       for (const step of allSteps) {
-        await authorize(step, projectedOrigin);
+        await authorize(step, projectedOrigin, "preflight");
         if (step.op === "navigate") {
           try { projectedOrigin = new URL(step.url, lp.driver.url()).origin; }
           catch { break; }
         } else if (classifyStep(step.op) !== "read") break;
       }
       ctx.beforeJournal?.();
-      const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
       if(ctx.journaled&&!ctx.journalIntentId&&this.pages.deps.durableWrites&&allSteps.some(step=>classifyStep(step.op)!=='read'))
         throw new AuxError("conflict","A pre-journaled browser write requires its durable intent ID");
       const journal = ctx.journaled ? { skip: false as const, intentId: undefined as string | undefined } : beginConsequentialWrite(this.pages.deps.durableWrites, {

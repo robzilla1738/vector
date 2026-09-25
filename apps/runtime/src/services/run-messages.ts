@@ -2,6 +2,7 @@ import { AuxError, EventTypes, newRunId, taskConversationId, type PageContextRef
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import { TaskService } from "./tasks.js";
+import { SendJournal, type SendRecord } from "../safety/send-journal.js";
 
 const active = new Set<Run["status"]>(["queued", "planning", "running", "paused", "needs_input"]);
 
@@ -17,6 +18,7 @@ export type QueueMessageInput = {
 
 /** Serialized user follow-ups. A stable delivery run ID makes restart replay idempotent. */
 export class RunMessageQueue {
+  private readonly sendJournal: SendJournal;
   private draining = new Set<string>();
   private rerun = new Set<string>();
   private inFlight = new Set<Promise<void>>();
@@ -30,6 +32,7 @@ export class RunMessageQueue {
     private canSteer: (runId: string) => boolean,
     private signalSteer: (runId: string) => void,
   ) {
+    this.sendJournal = new SendJournal(repo.db);
     this.unsubscribe = events.subscribe(event => {
       if (event.type !== EventTypes.RunUpdated) return;
       const run = event.payload.run as Run | undefined;
@@ -38,6 +41,11 @@ export class RunMessageQueue {
   }
 
   list(chatId: string): RunMessage[] { return this.repo.listRunMessages(chatId); }
+  messageStatus(nonce: string): SendRecord | undefined {
+    const message = this.repo.getRunMessage(nonce);
+    if (message) this.syncJournal(message);
+    return this.sendJournal.messageStatus(nonce);
+  }
 
   queue(input: QueueMessageInput): RunMessage {
     const message = this.repo.transaction(() => {
@@ -153,7 +161,10 @@ export class RunMessageQueue {
   }
 
   resumePending(): void {
-    for (const chatId of this.repo.pendingRunMessageChats()) this.schedule(chatId);
+    for (const chatId of this.repo.pendingRunMessageChats()) {
+      for (const message of this.repo.listRunMessages(chatId)) this.syncJournal(message);
+      this.schedule(chatId);
+    }
   }
 
   async stop(): Promise<void> {
@@ -163,7 +174,18 @@ export class RunMessageQueue {
   }
 
   private changed(message: RunMessage) {
+    this.syncJournal(message);
     this.events.emit("conversation.messages.changed", { chatId: message.chatId, messageId: message.messageId, status: message.status });
+  }
+
+  private syncJournal(message: RunMessage): void {
+    const record = this.sendJournal.queue({ nonce: message.messageId, threadId: message.chatId,
+      turnId: message.targetRunId, text: message.text }, message.createdAt);
+    if (message.status === "cancelled") { if (record.state !== "cancelled") this.sendJournal.cancel(record.nonce); return; }
+    if (record.state === "cancelled" || record.state === "failed") return;
+    const accepted = this.sendJournal.acceptLocal(record.nonce, message.deliveryRunId, message.updatedAt);
+    if (message.status === "delivered" && accepted.state !== "acknowledged") this.sendJournal.acknowledge(record.nonce, message.deliveryRunId, message.updatedAt);
+    else if (message.status === "needs_attention" && accepted.state !== "parked") this.sendJournal.park(record.nonce, message.updatedAt);
   }
 
   private schedule(chatId: string) {

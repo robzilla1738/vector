@@ -28,6 +28,7 @@ export const SafetyActionSchema = z.object({
   scope: z.object({ kind: z.enum(["workspace", "task"]), id }).strict(),
   effect: EffectSchema,
   action: id,
+  invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
   origin: origin.optional(),
   recipient: id.optional(),
   turnId: id,
@@ -71,6 +72,7 @@ export const FinalReviewArtifactSchema = z.object({
   artifactId: id,
   turnId: id,
   action: id,
+  invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
   effect: EffectSchema,
   dataDescription: z.string().trim().min(1).max(2000),
   destination: z.string().trim().min(1).max(2000),
@@ -113,10 +115,16 @@ export const SendRecordSchema = z.object({
   threadId: id,
   turnId: id,
   text: z.string().min(1).max(20_000),
-  state: z.enum(["queued", "offline", "sending", "accepted", "acknowledged", "parked", "failed"]),
+  state: z.enum(["queued", "offline", "sending", "accepted", "acknowledged", "parked", "failed", "cancelled"]),
   acceptanceId: id.optional(),
   errorCode: id.optional(),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
 }).strict();
 export type SendRecord = z.infer<typeof SendRecordSchema>;
+
+export const PendingApprovalSchema = z.object({
+  approvalId: id,
+  action: SafetyActionSchema,
+  expiresAt: z.number().int().nonnegative(),
+}).strict();

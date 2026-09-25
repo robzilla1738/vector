@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AuthorizationProvenanceSchema } from "./safety.js";
 
 /**
  * Conditions the executor can wait on — no fixed sleeps. `safeConditions`
@@ -385,6 +386,7 @@ export const StepOutcomeSchema = z.object({
     .enum(["planned", "authorized", "dispatched", "observed", "confirmed", "uncertain", "failed"])
     .optional(),
   receipt: ActionReceiptSchema.optional(),
+  authorization: AuthorizationProvenanceSchema.optional(),
 });
 export type StepOutcome = z.infer<typeof StepOutcomeSchema>;
 
