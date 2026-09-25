@@ -1,0 +1,167 @@
+@layer components {
+  .reviewed-connectors {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .reviewed-connectors > .drawer-section {
+    margin: 0;
+  }
+
+  .reviewed-connectors-scope {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .reviewed-connectors-scope label {
+    display: grid;
+    flex: 1 1 160px;
+    gap: var(--space-1);
+    min-width: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+
+  .reviewed-connectors-layout {
+    display: grid;
+    grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+    min-height: 235px;
+    overflow: hidden;
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-primary);
+    box-shadow: var(--highlight-inset);
+  }
+
+  .reviewed-connectors-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border-right: var(--hairline) solid var(--line);
+    background: color-mix(in srgb, var(--surface-secondary) 65%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+
+  .reviewed-connectors-list button {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    min-height: 50px;
+    padding: var(--space-2);
+    border-radius: var(--r-md);
+    text-align: left;
+  }
+
+  .reviewed-connectors-list button:hover,
+  .reviewed-connectors-list button[aria-current="true"] {
+    background: var(--bg-active);
+  }
+
+  .reviewed-connectors-list button:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: -2px;
+  }
+
+  .reviewed-connectors-name {
+    color: var(--ink-0);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .reviewed-connectors-sub {
+    color: var(--ink-2);
+    font-size: var(--fs-2xs);
+  }
+
+  .reviewed-connectors-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-4);
+  }
+
+  .reviewed-connectors-detail p {
+    margin: 0;
+  }
+
+  .reviewed-connectors-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .reviewed-connectors-heading strong {
+    overflow-wrap: anywhere;
+  }
+
+  .reviewed-connectors-state {
+    padding: 3px var(--space-2);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: var(--fs-2xs);
+  }
+
+  .reviewed-connectors-grant {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-md);
+    font-size: var(--fs-xs);
+  }
+
+  .reviewed-connectors-empty {
+    padding-top: var(--space-1);
+  }
+
+  .reviewed-connectors-confirm {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: var(--hairline) solid var(--line-strong);
+    border-radius: var(--r-card);
+    background: var(--surface-secondary);
+  }
+
+  .reviewed-connectors-confirm p {
+    margin: 0;
+  }
+
+  @media (max-width: 700px) {
+    .reviewed-connectors-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .reviewed-connectors-list {
+      flex-direction: row;
+      overflow-x: auto;
+      border-right: 0;
+      border-bottom: var(--hairline) solid var(--line);
+    }
+    .reviewed-connectors-list button {
+      min-width: 130px;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    .reviewed-connectors-list {
+      background: var(--bg-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+}

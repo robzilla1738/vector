@@ -28,7 +28,8 @@ export class ConnectorCatalogService {
         connectionId: connection.connectionId, label: connection.label, accountKey: connection.accountKey,
         state: connection.state, authority: "calendar_account" as const })),
       { kind: "github" as const, connectorId: "github" as const, label: "GitHub",
-        ...(github.account ? { account: github.account } : {}), state: github.connected ? "connected" as const : "disconnected" as const,
+        ...(github.account ? { account: github.account } : {}), state: github.connected
+          ? github.account ? "checked" as const : "saved" as const : "disconnected" as const,
         authority: "saved_credential_and_task_project" as const },
       ...servers.map(server => ({ kind: "mcp" as const, connectorId: `mcp:${server.serverId}`,
         serverId: server.serverId, label: server.name, state: server.state,
@@ -54,7 +55,8 @@ export class ConnectorCatalogService {
           if (grant.scope.kind === "task" && (grant.scope.taskId !== task.taskId || grant.scope.revision !== task.revision)) continue;
           if (grant.scope.kind === "workspace" && grant.scope.workspaceId !== workspaceId) continue;
           access.push({ kind: "mcp", connectorId: `mcp:${server.serverId}`, taskId: task.taskId,
-            taskRevision: task.revision, grantId: grant.grantId, toolName: grant.toolName, authority: "mcp_tool_grant" });
+            taskRevision: task.revision, grantId: grant.grantId, toolName: grant.toolName,
+            scope: grant.scope.kind, authority: "mcp_tool_grant" });
         }
       }
     }

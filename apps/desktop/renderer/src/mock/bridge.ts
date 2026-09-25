@@ -1,6 +1,7 @@
 import { GenerateResultParamsSchema, GeneratedResultSpecSchema, type GeneratedResult, type GeneratedResultSpec } from "@aux/contracts";
 import { projectFixture } from "./project";
 import { workFixtures } from "./work";
+import { connectorFixtures } from "./connectors";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { MODEL_REGISTRY, modelPickerEntries } from "@aux/contracts/model-registry";
@@ -21,6 +22,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   ?scenario=generated     versioned office or chart result (&generatedKind=csv|xlsx|docx|pptx|chart)
  *   ?scenario=many          45 tabs
  *   ?scenario=disconnected  runtime unreachable → degraded banner
+ *   ?scenario=connectors    reviewed Calendar, GitHub and MCP settings
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
@@ -169,6 +171,11 @@ export function installMockBridge(q: URLSearchParams) {
     gatewayApiKey: "••••••••",
     effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };
+  if (scenario === "connectors") {
+    settings.githubCredential = "••••••••";
+    settings.githubProbe = { login: "reviewer", accountId: 1, name: "Preview Reviewer",
+      avatarUrl: "https://example.test/avatar.png", scopes: ["repo"], checkedAt: Date.now() };
+  }
 
   if (withRun) {
     activePageId = "page-1";
@@ -243,6 +250,10 @@ export function installMockBridge(q: URLSearchParams) {
   const mockPagesBack: MockHandler = async p => {
     return page(p.pageId as string);
   };
+  const work = workFixtures(`workspace:${DEFAULT_SPACE.id}`, scenario === "work" || scenario === "connectors",
+    scenario === "connectors");
+  const connectors = connectorFixtures(`workspace:${DEFAULT_SPACE.id}`, () => work["tasks.list"](),
+    scenario === "connectors", () => settings.githubCredential === "••••••••");
   const handlers = {
     "agent.inlineAssist.capture": async p => {
       const source = pages.find(item => item.pageId === p.pageId);
@@ -449,6 +460,7 @@ export function installMockBridge(q: URLSearchParams) {
       const revoked={...grant,revokedAt:Date.now()};
       mcpGrants=mcpGrants.map(item=>item.grantId===grant.grantId?revoked:item);return revoked;
     },
+    ...connectors,
     "plugins.inspect": async () => {
       return { name: "Example bundle", version: "1.0", routineCount: 1, routineTitles: ["Weekly digest"] };
     },
@@ -461,7 +473,7 @@ export function installMockBridge(q: URLSearchParams) {
     "plugins.uninstall": async p => {
       return { plugin: { pluginId: p.pluginId, name: "Example bundle", workspaceId: "", routineIds: [], installedAt: Date.now(), uninstalledAt: Date.now() }, archivedRoutines: 0 };
     },
-    ...workFixtures(`workspace:${DEFAULT_SPACE.id}`, scenario === "work"),
+    ...work,
     "conversations.prepared": async () => {
       return [];
     },

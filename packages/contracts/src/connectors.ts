@@ -6,7 +6,7 @@ export const ConnectorEntrySchema = z.discriminatedUnion("kind", [
     label: z.string(), accountKey: z.string(), state: z.enum(["active", "needs_reauth"]),
     authority: z.literal("calendar_account") }).strict(),
   z.object({ kind: z.literal("github"), connectorId: z.literal("github"), label: z.string(),
-    account: z.string().optional(), state: z.enum(["connected", "disconnected"]),
+    account: z.string().optional(), state: z.enum(["saved", "checked", "disconnected"]),
     authority: z.literal("saved_credential_and_task_project") }).strict(),
   z.object({ kind: z.literal("mcp"), connectorId: z.string(), serverId: z.string().uuid(),
     label: z.string(), state: z.enum(["pending", "approved", "revoked"]),
@@ -23,6 +23,7 @@ export const ConnectorAccessSchema = z.discriminatedUnion("kind", [
     authority: z.literal("task_project_resource") }).strict(),
   z.object({ kind: z.literal("mcp"), connectorId: z.string(), taskId: z.string().uuid(),
     taskRevision: z.number().int().positive(), grantId: z.string().uuid(), toolName: z.string(),
+    scope: z.enum(["workspace", "task"]),
     authority: z.literal("mcp_tool_grant") }).strict(),
 ]);
 export type ConnectorAccess = z.infer<typeof ConnectorAccessSchema>;

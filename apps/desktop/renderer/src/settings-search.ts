@@ -34,6 +34,7 @@ export const settingsDestinations: SettingsDestination[] = [
   entry('Models', 'Parallel worker pages', 'Number of browser pages agents can work on.'),
   entry('Models', 'Max model turns per run', 'Limit planner calls or keep working until finished.'),
   entry('Connections', 'GitHub token', 'Connect repository access.'),
+  entry('Connections', 'Connector access', 'Review Calendar, GitHub and MCP access for a saved task.'),
   entry('Connections', 'MCP servers', 'Review server sources and grant individual tools.'),
   entry('Connections', 'Vercel token', 'Connect deployment health, teams and projects.'),
   entry('Connections', 'Sentry token', 'Connect issue health, organizations and projects.'),

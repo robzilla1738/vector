@@ -32,6 +32,12 @@ const files = [
   "apps/desktop/renderer/src/components/CalendarSourceChoiceDialog.css",
   "apps/desktop/renderer/src/components/CalendarSourceChoiceDialog.test.tsx",
   "apps/desktop/renderer/src/mock/bridge-mcp.test.ts",
+  "apps/desktop/renderer/src/components/ReviewedConnectors.tsx",
+  "apps/desktop/renderer/src/components/ReviewedConnectors.test.tsx",
+  "apps/desktop/renderer/src/components/ReviewedConnectors.css",
+  "apps/desktop/renderer/src/mock/connectors.ts",
+  "apps/desktop/renderer/src/mock/connectors.test.ts",
+  "apps/desktop/renderer/src/mock/connector-bridge.test.ts",
   "apps/desktop/renderer/src/styles/space-grain.css",
 ];
 

@@ -28,6 +28,7 @@ import { Extensions } from "./Extensions";
 import { VaultSettings } from "./VaultSettings";
 import { CalendarConnections } from "./CalendarConnections";
 import { OutboundMcpSettings } from "./OutboundMcpSettings";
+import { ReviewedConnectors } from "./ReviewedConnectors";
 import { searchSettings, type SettingsDestination } from "../settings-search";
 import { moveListFocus } from "../keyboard-list";
 
@@ -116,6 +117,11 @@ export function Settings() {
   const settings = useStore((s) => s.settings);
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const manageConnector = (kind: "calendar" | "github" | "mcp") => {
+    const target = scrollRef.current?.querySelector<HTMLElement>(`#connection-${kind}`);
+    target?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    target?.focus({ preventScroll: true });
+  };
   const setOverlay = useStore((s) => s.setOverlay);
   const openEditor = (name:string, origin:HTMLButtonElement) => {
     subviewOrigin.current=origin;setSubview(name);
@@ -433,7 +439,7 @@ export function Settings() {
         </div>
 
 
-        </section><section id="connection-panel-Services" role="tabpanel" aria-labelledby="connection-tab-Services" hidden={!visible("Connections")}><CalendarConnections /><OutboundMcpSettings /><div className="drawer-section">GitHub</div>
+        </section><section id="connection-panel-Services" role="tabpanel" aria-labelledby="connection-tab-Services" hidden={!visible("Connections")}><ReviewedConnectors onManage={manageConnector} /><div id="connection-calendar" tabIndex={-1}><CalendarConnections /></div><div id="connection-mcp" tabIndex={-1}><OutboundMcpSettings /></div><div className="drawer-section" id="connection-github" tabIndex={-1}>GitHub</div>
         <p className="field hint">Connect an explicitly supplied token for account and repository checks. Aux does not inspect GitHub CLI, Keychain, browser cookies, or other credential stores. Remote writes remain disabled.</p>
         {!!settings.githubProbe&&<output className="field" data-block><strong>{String((settings.githubProbe as GithubProbe).name??(settings.githubProbe as GithubProbe).login)}</strong><span className="hint">@{String((settings.githubProbe as GithubProbe).login)} · checked {new Date((settings.githubProbe as GithubProbe).checkedAt).toLocaleString()}</span><span className="hint">{(settings.githubProbe as GithubProbe).scopes.length?`Reported scopes: ${(settings.githubProbe as GithubProbe).scopes.join(', ')}`:'GitHub did not report classic OAuth scopes. Repository access still follows the token’s configured grants.'}</span></output>}
         <Field label="GitHub token" hint={String(settings.githubCredentialError??(settings.githubCredential===KEY_MASK?'Saved with OS encryption. The token is never returned to this page.':'Use a fine-grained token limited to the repositories Aux should inspect.'))}>

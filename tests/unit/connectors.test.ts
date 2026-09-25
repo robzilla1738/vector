@@ -57,10 +57,10 @@ describe("reviewed connector catalog", () => {
       taskId: f.task.taskId, revision: f.task.revision }, mode: "standing", outputTokenLimit: 1000 });
     const first = f.catalog.list({ workspaceId: f.workspace.workspaceId, taskId: f.task.taskId, expectedRevision: f.task.revision });
     expect(first.access.map(item => item.kind).sort()).toEqual(["calendar", "github", "mcp"]);
-    expect(first.entries.find(item => item.kind === "github")).toMatchObject({ state: "connected", authority: "saved_credential_and_task_project" });
+    expect(first.entries.find(item => item.kind === "github")).toMatchObject({ state: "saved", authority: "saved_credential_and_task_project" });
     expect(first.access.find(item => item.kind === "github")).toMatchObject({ projectId: f.projectId, authority: "task_project_resource" });
     expect(first.access.find(item => item.kind === "calendar")).toMatchObject({ grantId: calendarGrant.grantId });
-    expect(first.access.find(item => item.kind === "mcp")).toMatchObject({ grantId: mcpGrant.grantId, toolName: "search" });
+    expect(first.access.find(item => item.kind === "mcp")).toMatchObject({ grantId: mcpGrant.grantId, toolName: "search", scope: "task" });
 
     f.calendar.revokeTaskGrant(f.task.taskId, calendarGrant.grantId);
     f.mcp.revokeGrant(mcpGrant.grantId);

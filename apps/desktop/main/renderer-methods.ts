@@ -39,6 +39,7 @@ export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "calendar.taskGrants.create",
   "calendar.taskGrants.list",
   "calendar.taskGrants.revoke",
+  "connectors.catalog",
   "chrome.attach",
   "chrome.detach",
   "chrome.importCookies",
