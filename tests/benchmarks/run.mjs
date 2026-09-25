@@ -95,7 +95,7 @@ async function runBench() {
   const rec = (name, value) => {
     if (typeof value !== "number" || !Number.isFinite(value)) return;
     if (!samples.has(name)) samples.set(name, []);
-    samples.get(name).push(name.endsWith(".ms") ? +value.toFixed(1) : value);
+    samples.get(name).push(value);
   };
 
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
