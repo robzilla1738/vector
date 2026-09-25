@@ -85,7 +85,7 @@ index 0000000000..8bbeb682c8
 +}
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 new file mode 100644
-index 0000000000..d7ed93e985
+index 0000000000..023924e7b5
 --- /dev/null
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -0,0 +1,400 @@
@@ -234,7 +234,7 @@ index 0000000000..d7ed93e985
 +  const base::FilePath contents = executable.DirName().DirName();
 +  const base::FilePath node = contents.Append("Helpers").Append("Aux Runtime");
 +  const base::FilePath entry =
-+      contents.Append("Resources").Append("aux-runtime").Append("main.js");
++      contents.Append("Resources").Append("aux-runtime").Append("dist").Append("main.js");
 +  if (!base::PathExists(node) || !base::PathExists(entry)) {
 +    *error = "The signed Aux Runtime helper is missing from the app bundle";
 +    Disconnect();

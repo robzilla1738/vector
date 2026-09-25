@@ -13,12 +13,15 @@ chromium/aux-chromium push
 chromium/aux-chromium sanity
 chromium/aux-chromium configure --flavor dev
 chromium/aux-chromium build --flavor dev
+node chromium/stage-runtime.mjs
 chromium/aux-chromium run --flavor dev --profile /tmp/aux-chromium-profile
 ```
 
 `AUX_CHROMIUM_SRC` selects the source checkout; the default is `~/aux-chromium-stable/chromium/src`. `AUX_DEPOT_TOOLS` selects depot_tools. Development builds are component builds. Release flags request an official build with ThinLTO and PGO disabled. Build runs at nice 10 with eight jobs. Keep a single native build active.
 
 `pop` removes the series in reverse order. `refresh --patch aux/<area>/<name>.patch <upstream paths...>` records a selected tracked diff, and `format <upstream paths...>` runs Chromium's clang-format. `stage-shell` builds the Chromium renderer with SurfaceEmbed's restricted `object-src 'self'` policy, pins every asset with SHA-256 in [shell-assets](shell-assets), then installs the verified assets under `chrome/browser/resources/aux/assets`. Run it before `configure`; the Chromium GRD discovers those pinned assets from its manifest. A capture can be checked independently with `node chromium/stage-shell.mjs capture /tmp/aux-shell-test`. The native Mojo host integration is still required for a working shell.
+
+`stage-runtime` builds a self-contained runtime bundle and stages it beside an unsigned `Aux.app` with Node `26.7.0`. The official macOS arm64 Node archive is pinned to SHA-256 `7ee659a7768e641bbfd5360940660b8e8fd0052f77488f365562bac522fc15d4` and cached outside the repository. Pass an app path to stage a different build, for example `node chromium/stage-runtime.mjs /path/to/Aux.app`. Run this before signing; the script refuses to modify an app with a code signature. The same runtime bundler supplies the legacy Electron package until Electron is removed.
 
 ## Source and build evidence
 
