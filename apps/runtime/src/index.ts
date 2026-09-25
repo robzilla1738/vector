@@ -83,6 +83,7 @@ export { recoverAfterCrash, COORDINATOR_TRANSITIONS, type CrashRecovery } from "
 export { evaluateOriginPolicy, exactOrigin, type OriginPolicyDecision, type OriginPolicyAudit } from "./safety/origin-policy.js";
 export { ApprovalStore, type AuthorizationDecision, type LocalCeiling } from "./safety/approval.js";
 export { GoalService } from "./services/goals.js";
+export { HookService, type HookExecutor } from "./services/hooks.js";
 export { decideConfirmation, confirmationLevelForAction, ChallengeRecoveryGate, type ConfirmationResult } from "./safety/confirmation.js";
 export { secureCredentialHandoff, type CredentialHost } from "./safety/credential-handoff.js";
 export { reviewGuardian, untrustedOutput, type GuardianFinding, type GuardianDecision, type UntrustedOutput } from "./safety/guardian.js";

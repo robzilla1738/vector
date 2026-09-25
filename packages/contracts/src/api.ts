@@ -42,6 +42,7 @@ import {
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
+import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
 import { AgentModelRouteSchema } from './model-registry.js';
@@ -724,6 +725,12 @@ export const MethodSchemas = {
   "goals.pause": z.object({ goalId: z.string().uuid() }).strict(),
   "goals.resume": z.object({ goalId: z.string().uuid() }).strict(),
   "goals.cancel": z.object({ goalId: z.string().uuid() }).strict(),
+  "hooks.register": HookCreateParams,
+  "hooks.get": z.object({ hookId: z.string().uuid() }).strict(),
+  "hooks.list": z.object({ workspaceId: id }).strict(),
+  "hooks.approve": z.object({ hookId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "hooks.revoke": z.object({ hookId: z.string().uuid() }).strict(),
+  "hooks.invocations": z.object({ hookId: z.string().uuid(), limit: z.number().int().min(1).max(200).default(100) }).strict(),
   "routines.suggest": z.object({workspaceId:id.optional(),text:z.string().max(4000).optional(),pageUrl:z.string().max(2048).optional(),limit:z.number().int().min(1).max(20).default(5)}).strict(),
   "routines.get": z.object({routineId:id}),
   "routines.create": RoutineCreateParams,
@@ -1127,6 +1134,12 @@ export const ResultSchemas = {
   "goals.pause": GoalSchema,
   "goals.resume": GoalSchema,
   "goals.cancel": GoalSchema,
+  "hooks.register": HookSchema,
+  "hooks.get": HookSchema,
+  "hooks.list": z.array(HookSchema),
+  "hooks.approve": HookSchema,
+  "hooks.revoke": HookSchema,
+  "hooks.invocations": z.array(HookInvocationSchema),
   "routines.suggest": z.array(RoutineSuggestionSchema),
   "routines.get": z.object({routine:RoutineSchema,runs:z.array(RoutineRunSchema)}),
   "routines.create": RoutineSchema,

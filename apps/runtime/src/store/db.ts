@@ -304,11 +304,22 @@ CREATE TABLE goals(
   status TEXT NOT NULL, run_id TEXT UNIQUE, body TEXT NOT NULL,
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX idx_goals_workspace ON goals(workspace_id,updated_at);
+CREATE TABLE hooks(
+  hook_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+  event TEXT NOT NULL, trust TEXT NOT NULL CHECK(trust IN ('untrusted','approved','revoked')),
+  body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX idx_hooks_event ON hooks(workspace_id,event,trust);
+CREATE TABLE hook_invocations(
+  invocation_id TEXT PRIMARY KEY, hook_id TEXT NOT NULL REFERENCES hooks(hook_id),
+  event_id TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('invoking','completed','failed','uncertain')),
+  error TEXT, created_at INTEGER NOT NULL, ended_at INTEGER,
+  UNIQUE(hook_id,event_id));
+CREATE INDEX idx_hook_invocations_state ON hook_invocations(state,created_at);
 ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -468,6 +479,20 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       status TEXT NOT NULL, run_id TEXT UNIQUE, body TEXT NOT NULL,
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_goals_workspace ON goals(workspace_id,updated_at)`,
+  ],
+  // v17 → v18: trusted hook catalog and at-most-once dispatch journal.
+  17: [
+    `CREATE TABLE IF NOT EXISTS hooks(
+      hook_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+      event TEXT NOT NULL, trust TEXT NOT NULL CHECK(trust IN ('untrusted','approved','revoked')),
+      body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS idx_hooks_event ON hooks(workspace_id,event,trust)`,
+    `CREATE TABLE IF NOT EXISTS hook_invocations(
+      invocation_id TEXT PRIMARY KEY, hook_id TEXT NOT NULL REFERENCES hooks(hook_id),
+      event_id TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('invoking','completed','failed','uncertain')),
+      error TEXT, created_at INTEGER NOT NULL, ended_at INTEGER,
+      UNIQUE(hook_id,event_id))`,
+    `CREATE INDEX IF NOT EXISTS idx_hook_invocations_state ON hook_invocations(state,created_at)`,
   ],
 };
 

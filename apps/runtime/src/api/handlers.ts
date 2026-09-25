@@ -38,6 +38,7 @@ import { VaultService } from "../services/vault.js";
 import { RoutineService } from "../services/routines.js";
 import { PluginService } from "../services/plugins.js";
 import { GoalService } from "../services/goals.js";
+import { HookService } from "../services/hooks.js";
 import { TranslateService } from "../services/translate.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
@@ -153,6 +154,7 @@ export function makeInvoker(s: Services) {
   });
   const plugins = new PluginService(s.repo, routines);
   const goals = new GoalService(s.repo, s.runs);
+  const hooks = new HookService(s.repo);
   const validateCloudResult=(task:Task,result:CloudTaskResult)=>{
     const criteria=new Set(task.criteria.map(item=>item.criterionId));
     if(result.criteria.some(item=>!criteria.has(item.criterionId)))throw new AuxError('conflict','The cloud task result references a criterion outside this task revision.');
@@ -425,6 +427,20 @@ export function makeInvoker(s: Services) {
         if (method === "goals.pause") return goals.pause(params.goalId);
         if (method === "goals.resume") return goals.resume(params.goalId);
         return goals.cancel(params.goalId);
+      }
+      case "hooks.register":
+      case "hooks.get":
+      case "hooks.list":
+      case "hooks.approve":
+      case "hooks.revoke":
+      case "hooks.invocations": {
+        if (client.external) throw new AuxError("permission_denied", "Hooks are managed in Aux.");
+        if (method === "hooks.register") return hooks.register(params);
+        if (method === "hooks.get") return hooks.get(params.hookId);
+        if (method === "hooks.list") return hooks.list(params.workspaceId);
+        if (method === "hooks.approve") return hooks.approve(params.hookId, params.expectedDigest);
+        if (method === "hooks.revoke") return hooks.revoke(params.hookId);
+        return hooks.invocations(params.hookId, params.limit);
       }
       case "plugins.install":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
