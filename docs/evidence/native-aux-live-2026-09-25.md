@@ -227,3 +227,9 @@ The upstream WebUI host reads content bounds from a tracked Webium DOM element t
 ### Floating assistant material at narrow widths
 
 The responsive Ask Aux panel used an opaque `--bg-1` fill below 820 CSS px while the floating left sidebar used a translucent tint plus a 28 px saturated backdrop blur. Both floating panels now use the same tint and filter variables; docked panels continue to share the window's native glass underlay. The Chromium shell asset capture, bundle budget gate and local AuxDev resource build passed (12 actions, 1m20s; `/tmp/aux-floating-glass-build.log`). A normal relaunch loaded the updated `chrome://aux/` shell. The material's perceptual match across displays and widths still needs live owner observation; a screenshot alone is insufficient evidence of native blur quality.
+
+### Native Open File and window command
+
+- Patch 45 adds a Chromium `SelectFileDialog` bridge for Aux's Open File action. It returns only the user-selected local path to the shell, which then opens the document through its existing tab workflow. An outstanding picker is rejected instead of opening a second dialog, and the listener is detached during teardown. Close Window now calls Chromium's window command after replying to the shell.
+- **Verified:** The local development app builds (9 actions, 1m22s; `/tmp/aux-native-file-dialog-build.log`). In AuxDev, ⌘O opened the macOS picker. Selecting the local `/tmp/aux-native-open-fixture.html` fixture opened an Aux tab showing “Aux file picker verified” at its `file:///private/tmp/...` URL. No real user file was selected.
+- **Partial:** ⌘⇧W from the fixture page removed its window and a new Aux Home window became visible. The final-window lifecycle and multi-window command behavior remain to be qualified with a dedicated fixture.

@@ -42,3 +42,4 @@ aux/shell/0041-native-page-controls.patch
 aux/runtime/0042-runtime-shutdown-join.patch
 aux/shell/0043-modal-surface-bounds.patch
 aux/shell/0044-shortcut-registry.patch
+aux/shell/0045-native-file-dialog-window.patch
