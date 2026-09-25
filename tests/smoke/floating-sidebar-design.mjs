@@ -11,6 +11,10 @@ const {app,page}=await launchAux({args:['--use-mock-keychain'],env:{...process.e
 page.setDefaultTimeout(15000);
 const bounds=()=>app.evaluate(({BaseWindow},url)=>BaseWindow.getAllWindows()[0].contentView.children.find(v=>v.webContents?.getURL().startsWith(url))?.getBounds(),url);
 const settle=()=>page.locator('.sidebar').evaluate(async el=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await Promise.all(el.getAnimations().map(a=>a.finished));});
+const diagnostics=async()=>({
+ shell:await page.evaluate(()=>({app:document.querySelector('.app')?.className,stage:document.querySelector('.main-col')?.className,panel:document.querySelector('.sidebar')?.className,glass:document.querySelector('#aux-sidebar-glass')?.getAttribute('style')})),
+ views:await app.evaluate(({BaseWindow},url)=>BaseWindow.getAllWindows()[0].contentView.children.map(v=>({url:v.webContents?.getURL(),visible:v.getVisible(),bounds:v.getBounds()})).filter(v=>v.url?.startsWith(url)),url),
+});
 try {
  await page.locator('.aux-home').waitFor();
  await page.bringToFront();
@@ -36,21 +40,28 @@ try {
  await page.keyboard.press('Escape');await settle();assert.equal(await page.locator('.sidebar').isVisible(),false);
  await page.evaluate(url=>window.aux.invoke('pages.open',{url,activate:true}),url);
  await page.waitForFunction(async url=>(await window.aux.invoke('pages.list',{})).some(p=>p.url.startsWith(url)&&!p.loading),url);
+ await page.locator('.main-col.has-page').waitFor();
  const before=await bounds();
+ assert.ok(before?.width>0&&before.height>0,'native page is attached to the stage');
  await page.locator('.toolbar').dispatchEvent('pointerenter');
  await app.evaluate(({webContents})=>webContents.getAllWebContents().find(w=>w.getType()==='window' && !w.getURL().startsWith('http://127.0.0.1:'))?.send('sidebar-edge',true));await page.locator('.sidebar.peek').waitFor();await settle();
  assert.deepEqual(await bounds(),before);
  let frost=null;
  for(let attempt=0;attempt<100 && !frost;attempt++){
-  frost=await app.evaluate(async({webContents},url)=>webContents.getAllWebContents().find(w=>w.getURL().startsWith(url)).executeJavaScript(`(()=>{const el=document.getElementById('aux-sidebar-glass');return el&&getComputedStyle(el).backdropFilter})()`),url);
+  frost=await app.evaluate(async({BaseWindow},url)=>{
+    const view=BaseWindow.getAllWindows()[0].contentView.children.find(v=>v.webContents?.getURL().startsWith(url)&&v.getVisible());
+    return view?.webContents.executeJavaScript(`(()=>{const el=document.getElementById('aux-sidebar-glass');return el&&getComputedStyle(el).backdropFilter})()`);
+  },url);
   if(!frost)await new Promise(resolve=>setTimeout(resolve,50));
  }
+ if(!frost)console.error('glass diagnostics',JSON.stringify(await diagnostics()));
  assert.match(frost,/blur\(28px\)/);
   // Hosted macOS cannot grant Screen Recording; optional compositor evidence must not block input assertions.
  const png=process.env.CI ? null : await app.evaluate(async({desktopCapturer,BaseWindow,systemPreferences})=>{if(systemPreferences.getMediaAccessStatus("screen")!=="granted")return null;const id=BaseWindow.getAllWindows()[0].getMediaSourceId();return (await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}})).find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
  if(png)writeFileSync(root+'/release/test-artifacts/tabs/floating-sidebar.png',Buffer.from(png,'base64'));
   else await page.screenshot({path:root+'/release/test-artifacts/tabs/floating-sidebar-shell.png'});
  await page.mouse.click(800,500);await settle();
+ if(await page.locator('.sidebar').isVisible())console.error('outside click diagnostics',JSON.stringify(await diagnostics()));
  assert.equal(await page.locator('.sidebar').isVisible(),false,'outside click closes panel');assert.deepEqual(await bounds(),before);
  await page.mouse.move(2,150);await page.locator('.sidebar.peek').waitFor();await settle();
  await page.emulateMedia({reducedMotion:'reduce'});

@@ -54,6 +54,7 @@ export function usePagePointerForward(active: boolean) {
     };
     const onDown = (event: PointerEvent) => {
       if (!hits(event)) return;
+      window.dispatchEvent(new Event("aux-page-pointerdown"));
       const field = document.activeElement;
       if (field instanceof HTMLElement && field.closest(".toolbar")) field.blur();
       event.preventDefault();

@@ -171,6 +171,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     window.addEventListener("focus", activate);
     window.addEventListener("blur", deactivate);
     window.addEventListener("aux-page-scroll", scroll);
+    window.addEventListener("aux-page-pointerdown", scroll);
     node.addEventListener("pointerenter", enter);
     node.addEventListener("pointerleave", leave);
     node.addEventListener("focusin", focus);
@@ -186,6 +187,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
       window.removeEventListener("focus", activate);
       window.removeEventListener("blur", deactivate);
       window.removeEventListener("aux-page-scroll", scroll);
+      window.removeEventListener("aux-page-pointerdown", scroll);
       node.removeEventListener("pointerenter", enter);
       node.removeEventListener("pointerleave", leave);
       node.removeEventListener("focusin", focus);
