@@ -52,7 +52,10 @@ export function PluginsPanel() {
       bridge.invoke("plugins.skills.grants", { pluginId: selected.pluginId }),
     ])
       .then(([items, currentGrants]) => {
-        if (active) { setAssets(items); setGrants(currentGrants); }
+        if (active) {
+          setAssets(items);
+          setGrants(currentGrants);
+        }
       })
       .catch((reason) => {
         if (active) setError(messageOf(reason));
@@ -219,25 +222,56 @@ export function PluginsPanel() {
                     {asset.kind.replace("_", " ")} · {asset.name}
                   </strong>
                   <span className="hint">
-                    {grants.some(grant => grant.assetId === asset.assetId && !grant.revokedAt)
-                      ? "Granted in this Space" : "No authority"} · digest {asset.digest.slice(0, 16)}…
+                    {grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
+                      ? "Granted in this Space"
+                      : "No authority"}{" "}
+                    · digest {asset.digest.slice(0, 16)}…
                   </span>
                   {asset.description && <span className="hint">{asset.description}</span>}
-                  {asset.kind === "skill" && !grants.some(grant => grant.assetId === asset.assetId && !grant.revokedAt) && (
-                    <button className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
-                      const grant = await bridge.invoke("plugins.skills.grant", { assetId: asset.assetId,
-                        expectedDigest: asset.digest, scope: { kind: "workspace", workspaceId: selected.workspaceId } });
-                      setGrants(current => [grant, ...current]);
-                      setMessage(`${asset.name} can now be read by tasks in this Space. Its instructions remain untrusted.`);
-                    })}>Grant Skill to this Space</button>
-                  )}
-                  {grants.filter(grant => grant.assetId === asset.assetId && !grant.revokedAt).map(grant => (
-                    <button key={grant.grantId} className="btn sm ghost" disabled={busy} onClick={() => void action(async () => {
-                      const revoked = await bridge.invoke("plugins.skills.revoke", { grantId: grant.grantId });
-                      setGrants(current => current.map(item => item.grantId === revoked.grantId ? revoked : item));
-                      setMessage(`${asset.name} access revoked.`);
-                    })}>Revoke Skill access</button>
-                  ))}
+                  {asset.kind === "skill" &&
+                    !grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt) && (
+                      <button
+                        className="btn sm ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          void action(async () => {
+                            const grant = await bridge.invoke("plugins.skills.grant", {
+                              assetId: asset.assetId,
+                              expectedDigest: asset.digest,
+                              scope: { kind: "workspace", workspaceId: selected.workspaceId },
+                            });
+                            setGrants((current) => [grant, ...current]);
+                            setMessage(
+                              `${asset.name} is available in this Space. Its instructions remain untrusted.`,
+                            );
+                          })
+                        }
+                      >
+                        Grant Skill to this Space
+                      </button>
+                    )}
+                  {grants
+                    .filter((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
+                    .map((grant) => (
+                      <button
+                        key={grant.grantId}
+                        className="btn sm ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          void action(async () => {
+                            const revoked = await bridge.invoke("plugins.skills.revoke", {
+                              grantId: grant.grantId,
+                            });
+                            setGrants((current) =>
+                              current.map((item) => (item.grantId === revoked.grantId ? revoked : item)),
+                            );
+                            setMessage(`${asset.name} access revoked.`);
+                          })
+                        }
+                      >
+                        Revoke Skill access
+                      </button>
+                    ))}
                 </div>
               ))}
               <button
