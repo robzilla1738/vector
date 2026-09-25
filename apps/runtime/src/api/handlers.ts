@@ -54,6 +54,7 @@ import { AgentTurnTabs } from "../agent/turn-tabs.js";
 import { siteExportUrl } from "../agent/site-adapters.js";
 import { OutboundMcpService, type McpTransportProvider } from "../services/outbound-mcp.js";
 import type { MemoryPipeline } from "../services/memory-pipeline.js";
+import { SubagentService } from "../services/subagents.js";
 
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
@@ -106,6 +107,7 @@ export function makeInvoker(s: Services) {
   const commandSessionId = randomUUID();
   const commandEscalations = new CommandEscalationStore(s.repo.db);
   const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
+  const subagents = new SubagentService(s.repo, s.events, s.runs);
   const tasks = new TaskService(s.repo, s.events);
   const browsingMemory = new BrowsingMemory(s.repo);
   browsingMemory.prune();
@@ -302,6 +304,15 @@ export function makeInvoker(s: Services) {
         const run = typeof params.runId === "string" ? s.repo.getRun(params.runId) : undefined;
         if (!run?.config?.taskId) throw new AuxError("permission_denied", "This connection can only access runs belonging to its task scope");
         requireScopedTask(scope, run.config.taskId);
+      } else if (method.startsWith("subagents.")) {
+        const parentRunId = method === "subagents.createGroup" ? params.parentRunId
+          : subagents.view(params.groupId ?? subagents.groupIdForAgent(params.agentId)).group.parentRunId;
+        const parent = s.repo.getRun(parentRunId);
+        if (!parent?.config?.taskId) throw new AuxError("permission_denied", "Subagents require a scoped parent task.");
+        requireScopedTask(scope, parent.config.taskId);
+        if ((method === "subagents.spawn" || method === "subagents.forkSelf") &&
+          params.pageIds.some((pageId: string) => !scopedPageIds(scope, client.connectionId).has(pageId)))
+          throw new AuxError("permission_denied", "A subagent page is outside this connection's scope.");
       } else if (!["workspaces.list", "tasks.list", "pages.list", "workspace.get", "runs.list", "runtime.describe"].includes(method)) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
       }
@@ -441,6 +452,20 @@ export function makeInvoker(s: Services) {
         if (method === "mcp.grants.list") return outboundMcp.grants(params.serverId);
         if (method === "mcp.grants.revoke") return outboundMcp.revokeGrant(params.grantId);
         return outboundMcp.callTool(params.grantId, params.arguments, params.context);
+      }
+      case "subagents.createGroup":
+      case "subagents.spawn":
+      case "subagents.forkSelf":
+      case "subagents.sendMessage":
+      case "subagents.getGroup":
+      case "subagents.cancel": {
+        if (client.external && !scope) throw new AuxError("permission_denied", "Subagents require a scoped connection.");
+        if (method === "subagents.createGroup") return subagents.createGroup(params);
+        if (method === "subagents.spawn") return subagents.spawn(params);
+        if (method === "subagents.forkSelf") return subagents.forkSelf(params);
+        if (method === "subagents.sendMessage") return subagents.sendMessage(params.agentId, params.expectedRunId, params.text);
+        if (method === "subagents.getGroup") return subagents.view(params.groupId);
+        return subagents.cancel(params.agentId);
       }
       case "plugins.inspect":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");

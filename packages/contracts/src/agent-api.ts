@@ -27,6 +27,12 @@ const entry = <M extends MethodName>(value: AgentApiEntry<M>) => value;
 export const AgentApiManifest = [
   entry({ path: "js.run", method: "agent.js.run", layer: "management", summary: "Run QuickJS code with manifest-backed Aux handles.", documented: "model", unsupportedByDefaultIn: ["code"] }),
   entry({ path: "js.reset", method: "agent.js.reset", layer: "management", summary: "Discard one code-mode session.", documented: "lookup", unsupportedByDefaultIn: ["code"] }),
+  entry({ path: "subagents.create_group", method: "subagents.createGroup", layer: "management", summary: "Create one budgeted group for an active parent run.", documented: "lookup" }),
+  entry({ path: "subagents.spawn_agent", method: "subagents.spawn", layer: "management", summary: "Start a bounded child run on selected, unleased pages.", documented: "model" }),
+  entry({ path: "subagents.fork_self", method: "subagents.forkSelf", layer: "management", summary: "Fork a child with the same saved context prefix for prompt reuse.", documented: "lookup" }),
+  entry({ path: "subagents.send_message", method: "subagents.sendMessage", layer: "management", summary: "Steer an active child through its durable message queue.", documented: "model" }),
+  entry({ path: "subagents.get_group", method: "subagents.getGroup", layer: "management", summary: "Inspect child status and shared budget use.", documented: "lookup" }),
+  entry({ path: "subagents.cancel", method: "subagents.cancel", layer: "management", summary: "Cancel one child and release its active reservation.", documented: "lookup" }),
   entry({ path: "tabs.list", method: "pages.list", layer: "management", summary: "List accessible tabs and their stable Aux page IDs.", documented: "included" }),
   entry({ path: "tabs.open", method: "pages.open", layer: "management", summary: "Open a tab under the caller's page authority.", documented: "model", unsupportedByDefaultIn: ["code"] }),
   entry({ path: "tabs.close", method: "pages.close", layer: "management", summary: "Close a tab owned by this turn.", documented: "model", unsupportedByDefaultIn: ["code"] }),

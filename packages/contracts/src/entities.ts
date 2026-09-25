@@ -164,6 +164,8 @@ export const RunSchema = z.object({
       taskRevision: z.number().int().positive().optional(),
       /** routine-declared account boundary — when non-empty, only vault grants with a matching accountLabel are visible to this run */
       accountLabels: z.array(z.string().min(1).max(120)).max(20).optional(),
+      /** Child agent policy; runtime execution enforces read-only profiles. */
+      subagentProfile: z.enum(["explorer", "read_only", "default"]).optional(),
       /** Pinned provider authority for this turn, even when empty. Only these exact Calendar grants may be used. */
       calendarGrantIds: z.array(z.string().uuid()).max(20).optional(),
       /** terminal turn this run deliberately retries; used for audit and UI continuity */

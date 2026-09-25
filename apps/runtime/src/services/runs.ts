@@ -850,6 +850,7 @@ export class RunService {
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
+    subagentProfile?: "explorer" | "read_only" | "default";
     calendarGrantIds?: string[];
   }): Promise<Run> {
     if (opts.defaultWorkspaceId && !opts.taskId && !opts.contextSnapshot) {
@@ -978,6 +979,7 @@ export class RunService {
       contextWorkspaceRevision,
       contextBrowsingMemory,
       accountLabels: opts.accountLabels,
+      subagentProfile: opts.subagentProfile,
       calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
     });

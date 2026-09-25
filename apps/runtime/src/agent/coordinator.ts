@@ -131,6 +131,8 @@ export class RunCoordinator {
     modelId?: string;
     maxSteps?: number;
     maxModelCalls?: number;
+    maxTokens?: number;
+    maxCostUsd?: number;
     deadlineMs?: number;
     context?: string;
     instructions?: string;
@@ -150,6 +152,7 @@ export class RunCoordinator {
     retryOfRunId?: string;
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
+    subagentProfile?: "explorer" | "read_only" | "default";
     calendarGrantIds?: string[];
   }): Promise<Run> {
     if (opts.runId) {
@@ -174,6 +177,8 @@ export class RunCoordinator {
         modelId: opts.modelId,
         maxSteps: opts.maxSteps ?? DEFAULT_MAX_STEPS,
         maxModelCalls: opts.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS,
+        maxTokens: opts.maxTokens,
+        maxCostUsd: opts.maxCostUsd,
         deadlineMs: opts.deadlineMs,
         context: opts.context,
         instructions: opts.instructions,
@@ -195,6 +200,7 @@ export class RunCoordinator {
         taskId: opts.taskId,
         taskRevision: opts.taskRevision,
         accountLabels: opts.accountLabels,
+        subagentProfile: opts.subagentProfile,
         calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
         implementation: opts.modelId ? `agent:${opts.modelId}` : "agent",

@@ -36,6 +36,7 @@ import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, Work
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import { OutboundMcpRegisterParams, OutboundMcpGrantParams, OutboundMcpServerSchema, OutboundMcpGrantSchema, OutboundMcpToolSchema, OutboundMcpCallResultSchema, OutboundMcpBundleInspectionSchema } from "./outbound-mcp.js";
 import { MemoryPipelinePolicySchema, MemoryPipelineOverviewSchema, MemoryPipelineForgetParams, MemoryPipelineForgetResultSchema, MemoryClaimSchema } from "./memory-pipeline.js";
+import { SubagentGroupCreateParams, SubagentGroupSchema, SubagentGroupViewSchema, SubagentSpawnParams, SubagentSchema, SubagentMessageParams } from "./subagents.js";
 import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
 import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
@@ -783,6 +784,12 @@ export const MethodSchemas = {
   "memory.pipeline.overview": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.search": z.object({ workspaceId: id, query: z.string().trim().min(2).max(200) }).strict(),
   "memory.pipeline.forget": MemoryPipelineForgetParams,
+  "subagents.createGroup": SubagentGroupCreateParams,
+  "subagents.spawn": SubagentSpawnParams,
+  "subagents.forkSelf": SubagentSpawnParams.extend({ sourceRunId: id }),
+  "subagents.sendMessage": SubagentMessageParams,
+  "subagents.getGroup": z.object({ groupId: z.string().uuid() }).strict(),
+  "subagents.cancel": z.object({ agentId: z.string().uuid() }).strict(),
   "calendar.connections.list": z.object({}),
   "calendar.auth.start": z.object({}),
   "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
@@ -1226,6 +1233,12 @@ export const ResultSchemas = {
   "memory.pipeline.overview": MemoryPipelineOverviewSchema,
   "memory.pipeline.search": z.array(MemoryClaimSchema),
   "memory.pipeline.forget": MemoryPipelineForgetResultSchema,
+  "subagents.createGroup": SubagentGroupSchema,
+  "subagents.spawn": SubagentSchema,
+  "subagents.forkSelf": SubagentSchema,
+  "subagents.sendMessage": RunMessageSchema,
+  "subagents.getGroup": SubagentGroupViewSchema,
+  "subagents.cancel": SubagentSchema,
   "calendar.connections.list": z.object({ available: z.boolean(), reason: z.string().optional(), connections: z.array(CalendarConnectionSchema) }),
   "calendar.auth.start": z.object({ url: z.string().url(), expiresAt: z.number().int().nonnegative() }),
   "calendar.connections.revoke": z.object({ ok: z.literal(true), providerRevocation: z.enum(["confirmed", "pending"]) }),

@@ -10,6 +10,7 @@ export { TaskEvidenceService } from "./services/task-evidence.js";
 export { AgentConnectionService } from "./services/agent-connections.js";
 export { OutboundMcpService, type McpTransportProvider } from "./services/outbound-mcp.js";
 export { MemoryPipeline } from "./services/memory-pipeline.js";
+export { SubagentService } from "./services/subagents.js";
 export { EventBus } from "./events.js";
 export { NullNativeBridge, type NativeBridge } from "./native.js";
 export { ApiServer, MAX_BODY_BYTES } from "./api/server.js";
@@ -60,6 +61,7 @@ export {
   KNOWN_GRANTS,
   resolveGrants,
   sanitizeGrants,
+  subagentGrants,
   type EffectClass,
   type GrantSource,
   type GrantInput,

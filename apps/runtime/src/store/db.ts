@@ -330,11 +330,20 @@ CREATE TABLE outbound_mcp_calls(
   status TEXT NOT NULL CHECK(status IN ('invoking','completed','uncertain')),
   created_at INTEGER NOT NULL, ended_at INTEGER);
 CREATE INDEX idx_outbound_mcp_calls_state ON outbound_mcp_calls(status,created_at);
+CREATE TABLE subagent_groups(
+  group_id TEXT PRIMARY KEY, parent_run_id TEXT NOT NULL REFERENCES runs(run_id), workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+  body TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','closed')), created_at INTEGER NOT NULL,
+  UNIQUE(parent_run_id));
+CREATE TABLE subagents(
+  agent_id TEXT PRIMARY KEY, group_id TEXT NOT NULL REFERENCES subagent_groups(group_id), run_id TEXT REFERENCES runs(run_id),
+  state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','cancelled','interrupted')),
+  body TEXT NOT NULL, created_at INTEGER NOT NULL, ended_at INTEGER);
+CREATE INDEX idx_subagents_group_state ON subagents(group_id,state);
 ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -526,6 +535,18 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       status TEXT NOT NULL CHECK(status IN ('invoking','completed','uncertain')),
       created_at INTEGER NOT NULL, ended_at INTEGER)`,
     `CREATE INDEX IF NOT EXISTS idx_outbound_mcp_calls_state ON outbound_mcp_calls(status,created_at)`,
+  ],
+  // v19 → v20: durable subagent groups and child-run budget reservations.
+  19: [
+    `CREATE TABLE IF NOT EXISTS subagent_groups(
+      group_id TEXT PRIMARY KEY, parent_run_id TEXT NOT NULL REFERENCES runs(run_id), workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+      body TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','closed')), created_at INTEGER NOT NULL,
+      UNIQUE(parent_run_id))`,
+    `CREATE TABLE IF NOT EXISTS subagents(
+      agent_id TEXT PRIMARY KEY, group_id TEXT NOT NULL REFERENCES subagent_groups(group_id), run_id TEXT REFERENCES runs(run_id),
+      state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','cancelled','interrupted')),
+      body TEXT NOT NULL, created_at INTEGER NOT NULL, ended_at INTEGER)`,
+    `CREATE INDEX IF NOT EXISTS idx_subagents_group_state ON subagents(group_id,state)`,
   ],
 };
 

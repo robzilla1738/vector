@@ -28,7 +28,7 @@ import { compileAndAuthorize } from "./action-compiler.js";
 import { guardedExecute, type GuardedDispatchOpts } from "./guarded-dispatch.js";
 import { permissionFailure } from "./permission-failure.js";
 import { classifyModelFailure, ModelFailureError } from "./model-failure.js";
-import { isConsequential } from "./permissions.js";
+import { isConsequential, subagentGrants } from "./permissions.js";
 import { emptyRepairState, noteRepair, type RepairState } from "./repair.js";
 import { AnswerDeltaEmitter } from "./answer-delta.js";
 import {
@@ -379,8 +379,12 @@ function plannerPrompt(s: TurnState, obs: Observation): string {
   });
 }
 
+function turnGrants(s: TurnState) {
+  return subagentGrants(s.run.config?.subagentProfile, s.self.deps.grants);
+}
+
 function dispatchDeps(s: TurnState) {
-  return { pages: s.self.deps.pages, durable: s.self.durable, grants: s.self.deps.grants };
+  return { pages: s.self.deps.pages, durable: s.self.durable, grants: turnGrants(s) };
 }
 
 function dispatchOpts(s: TurnState, obs: Observation, steps: Step[], extra: Partial<GuardedDispatchOpts> = {}): GuardedDispatchOpts {
@@ -786,7 +790,7 @@ export async function dispatchPlan(
       steps,
       observation: obs.content,
       url: obs.content.url,
-      grants: s.self.deps.grants,
+      grants: turnGrants(s),
     });
     if ("rejected" in compiled || "denied" in compiled) {
       await early!.finish([]);

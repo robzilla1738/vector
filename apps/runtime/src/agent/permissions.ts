@@ -20,6 +20,12 @@ export const DEFAULT_GRANTS = ["effect:read"] as const;
 export const USER_RUN_GRANTS = ["effect:read", "effect:write"] as const;
 export const ALL_EFFECT_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress"] as const;
 
+/** Child profile restriction is applied at dispatch, after ambient settings grants. */
+export function subagentGrants(profile: "explorer" | "read_only" | "default" | undefined,
+  ambient?: GrantSource): GrantSource {
+  return profile === "explorer" || profile === "read_only" ? DEFAULT_GRANTS : ambient ?? DEFAULT_GRANTS;
+}
+
 export const KNOWN_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress", "effect:*"] as const;
 
 export type GrantSource = readonly GrantInput[] | (() => readonly GrantInput[]);
