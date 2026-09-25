@@ -424,7 +424,12 @@ export function makeInvoker(s: Services) {
       case "agent.web.fetch":
       case "agent.web.search": {
         const web = new AgentWebTools(url => authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok);
-        return method === "agent.web.fetch" ? web.fetch(params.url) : web.search(params.query, s.settings.searchEngine());
+        if (method === "agent.web.fetch") return web.fetch(params.url);
+        const engine = s.featureHost === "chromium-fork"
+          ? await s.native?.searchEngineGet?.()
+          : s.settings.searchEngine();
+        if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
+        return web.search(params.query, engine);
       }
       case "agent.images.generate": {
         const permitted = authorizeProgram([{ id: "image-egress", op: "navigate", url: "https://ai-gateway.vercel.sh" }], s.settings.effectGrants());
@@ -1496,15 +1501,43 @@ export function makeInvoker(s: Services) {
       case "vercel.projects": return s.settings.vercelProjects(params.teamId);
       case "sentry.probe": return s.settings.probeSentry();
       case "sentry.projects": return s.settings.sentryProjects(params.organization);
-      case "settings.get": return s.settings.all();
+      case "settings.get": {
+        const settings = s.settings.all();
+        if (s.featureHost !== "chromium-fork") return settings;
+        const searchEngine = await s.native?.searchEngineGet?.();
+        if (!searchEngine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
+        const searchSuggestions = await s.native?.searchSuggestionsGet?.();
+        if (searchSuggestions === undefined) throw new AuxError("backend_unavailable", "Profile search suggestions are unavailable.");
+        return { ...settings, searchEngine, searchSuggestions };
+      }
       case "command.ranking.list": return commandRanking.list();
       case "command.ranking.record": return commandRanking.record(params.query, params.candidateKey, params.source);
       case "command.ranking.clear": return commandRanking.clear();
       case "settings.set": {
-        const r = await s.settings.set(params as never);
+        const patch = { ...params };
+        let searchEngine: string | undefined;
+        let searchSuggestions: boolean | undefined;
+        if (s.featureHost === "chromium-fork" && (patch.searchEngine !== undefined || patch.searchSuggestions !== undefined)) {
+          if (Object.keys(patch).length !== 1)
+            throw new AuxError("invalid_params", "Save Profile search preferences separately from other settings.");
+          if (patch.searchEngine !== undefined) {
+            if (!s.native?.searchEngineSet) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
+            await s.native.searchEngineSet(patch.searchEngine);
+            searchEngine = await s.native.searchEngineGet?.();
+            if (!searchEngine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
+            delete patch.searchEngine;
+          } else if (patch.searchSuggestions !== undefined) {
+            if (!s.native?.searchSuggestionsSet) throw new AuxError("backend_unavailable", "Profile search suggestions are unavailable.");
+            await s.native.searchSuggestionsSet(patch.searchSuggestions);
+            searchSuggestions = await s.native.searchSuggestionsGet?.();
+            if (searchSuggestions === undefined) throw new AuxError("backend_unavailable", "Profile search suggestions are unavailable.");
+            delete patch.searchSuggestions;
+          }
+        }
+        const r = Object.keys(patch).length ? await s.settings.set(patch as never) : { ok: true as const };
         // worker limits apply live — no restart needed
         s.runs.refreshPool();
-        s.events.emit(EventTypes.SettingsChanged, { settings: s.settings.all() });
+        s.events.emit(EventTypes.SettingsChanged, { settings: { ...s.settings.all(), ...(searchEngine ? { searchEngine } : {}), ...(searchSuggestions !== undefined ? { searchSuggestions } : {}) } });
         return r;
       }
 

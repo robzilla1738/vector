@@ -111,6 +111,8 @@ export interface AuxBridge {
   surfaceContentId(pageId: string): Promise<string | null>;
   /** Chromium AutocompleteController order, before Aux provider ranking. */
   autocomplete(query: string): Promise<AutocompleteMatch[]>;
+  /** Resolve a query using the current Chromium Profile default search provider. */
+  resolveSearch?(query: string): Promise<string>;
   overlay(open: boolean): Promise<boolean>;
   /** Keep the shell painted above the native page so the address bar can slide over it. `ticket` drops stale replies. */
   windowDrag(phase: "start" | "move" | "end", point?: { x: number; y: number }): void;
@@ -288,6 +290,7 @@ const stub: AuxBridge = {
   setStage: async () => true,
   surfaceContentId: async () => null,
   autocomplete: async () => [],
+  resolveSearch: async () => { throw new Error("Profile search requires the native browser."); },
   overlay: async () => true,
   windowDrag: () => {},
   sidebarGlass: async () => true,

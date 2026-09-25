@@ -82,6 +82,29 @@ const call = async (method: MethodName, params: unknown = {}) => {
 };
 
 describe("handler results conform to ResultSchemas", () => {
+  it("uses Profile search preferences without persisting a second runtime copy", async () => {
+    let selected = "https://search.example/?q=%s";
+    let suggestions = false;
+    const chromium = makeInvoker({
+      ...fixtureServices,
+      featureHost: "chromium-fork",
+      featureProfileId: "regular-profile",
+      native: {
+        ...fixtureServices.native!,
+        searchEngineGet: async () => selected,
+        searchEngineSet: async template => { selected = template; return true; },
+        searchSuggestionsGet: async () => suggestions,
+        searchSuggestionsSet: async enabled => { suggestions = enabled; return true; },
+      },
+    });
+    const before = repo.getSetting("searchEngine");
+    expect(await chromium("settings.get", {}, { external: false })).toMatchObject({ searchEngine: selected, searchSuggestions: false });
+    await chromium("settings.set", { searchEngine: "https://other.example/?q=%s" }, { external: false });
+    await chromium("settings.set", { searchSuggestions: true }, { external: false });
+    expect(await chromium("settings.get", {}, { external: false })).toMatchObject({ searchEngine: "https://other.example/?q=%s", searchSuggestions: true });
+    expect(repo.getSetting("searchEngine")).toEqual(before);
+    expect(repo.getSetting("searchSuggestions")).toBeUndefined();
+  });
   it("routes Chromium bookmarks to BookmarkModel and waits for a fresh native history projection", async () => {
     const chromiumRepo = new Repo(openDb(":memory:"));
     chromiumRepo.requireChromiumHistory();

@@ -13,6 +13,11 @@ export interface NativeBridge {
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
   historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
+  /** The Chromium Profile's TemplateURLService is the selected engine authority. */
+  searchEngineGet?(): Promise<string>;
+  searchEngineSet?(template: string): Promise<boolean>;
+  searchSuggestionsGet?(): Promise<boolean>;
+  searchSuggestionsSet?(enabled: boolean): Promise<boolean>;
   /** Install a Profile/site stylesheet before new documents, and report active-document application. */
   installZapStylesheet?(request: ZapStylesheetInstall): Promise<ZapInstallReceipt>;
   listPages?(): Promise<{ pages: { pageId: string; windowId?: string; marker: string; url: string; title: string; active: boolean; showBlankDocument?: boolean; cdpTargetId?: string }[] }>;
@@ -77,6 +82,18 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   historyRemove(url: string, visitedAt: number) {
     return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt });
+  }
+  searchEngineGet() {
+    return this.channel.call<string>("native.searchEngineGet", {});
+  }
+  searchEngineSet(template: string) {
+    return this.channel.call<boolean>("native.searchEngineSet", { template });
+  }
+  searchSuggestionsGet() {
+    return this.channel.call<boolean>("native.searchSuggestionsGet", {});
+  }
+  searchSuggestionsSet(enabled: boolean) {
+    return this.channel.call<boolean>("native.searchSuggestionsSet", { enabled });
   }
   async installZapStylesheet(request: ZapStylesheetInstall): Promise<ZapInstallReceipt> {
     return ZapInstallReceiptSchema.parse(await this.channel.call("native.zapInstallStylesheet", request));

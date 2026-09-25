@@ -30,7 +30,7 @@ export function toUrl(v: string, searchEngine?: string): string {
     return `${local ? "http" : "https"}://${host}`;
   }
   const tpl = searchEngine || DEFAULT_SEARCH_ENGINE;
-  return tpl.includes("%s") ? tpl.replace("%s", encodeURIComponent(s)) : tpl + encodeURIComponent(s);
+  return tpl.includes("%s") ? tpl.replaceAll("%s", encodeURIComponent(s)) : tpl + encodeURIComponent(s);
 }
 
 export function addressNavigate(input: string, searchEngine?: string): { action: "navigate"; url: string } {

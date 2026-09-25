@@ -8,6 +8,7 @@ function fakeWindow(url: string, port?: ChromiumHostPort) {
     aux?: {
       windowId: string;
       tabCommand: (...args: unknown[]) => Promise<unknown>;
+      resolveSearch?: (query: string) => Promise<string>;
       onTabsPatch: (cb: (value: unknown) => void) => () => void;
     };
     auxHostProof?: { host: string };
@@ -57,6 +58,8 @@ describe("Chromium Aux shell bridge", () => {
     target.aux?.onTabsPatch(callback)();
     expect(subscribe).toHaveBeenCalledWith("onTabsPatch", callback);
     expect(unsubscribe).toHaveBeenCalledOnce();
+    await target.aux?.resolveSearch?.("aux browser");
+    expect(request).toHaveBeenCalledWith("resolveSearch", ["aux browser"]);
   });
 
   it("fails closed without the browser-process port", () => {

@@ -113,6 +113,6 @@ export class AgentWebTools {
   }
   async search(query: string, template: string): Promise<WebPage> {
     if (!template.includes("%s")) throw new AuxError("invalid_params", "Search engine template is missing %s.");
-    return this.fetch(template.replace("%s", encodeURIComponent(query)));
+    return this.fetch(template.replaceAll("%s", encodeURIComponent(query)));
   }
 }

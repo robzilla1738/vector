@@ -274,7 +274,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       switch (i.kind) {
         case "navigate":
         case "search": {
-          const url = i.url;
+          const url = i.kind === "search" && !i.engine && hostKind === "chromium"
+            ? await bridge.resolveSearch!(i.query) : i.url;
           if (!alt && page) await useStore.getState().navigatePage(page.pageId, url);
           else await newTab(url);
           break;
