@@ -190,7 +190,7 @@ try {
   await assert.rejects(shell.evaluate(({ workspaceId, memoryId, pageId }) => window.aux.invoke("runs.start", {
     goal: "Retry forgotten article", pageIds: [pageId], defaultWorkspaceId: workspaceId, chatId: "forgotten-article-fixture",
     contextMemoryIds: [memoryId],
-  }), { workspaceId, memoryId: hits[0].memoryId, pageId: blank.pageId }), /unavailable/i);
+  }), { workspaceId, memoryId: hits[0].memoryId, pageId: blank.pageId }), /The action is not authorized/i);
   const after = await shell.evaluate(workspaceId => window.aux.invoke("workspaces.contentMemory.search", { workspaceId, query: "editorial" }), workspaceId);
   assert.equal(after.length, 0);
   assert.equal(await shell.evaluate(({ workspaceId, memoryId }) => window.aux.invoke("workspaces.contentMemory.get", { workspaceId, memoryId }), { workspaceId, memoryId: hits[0].memoryId }), null);
