@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -61,7 +61,7 @@ describe("ResponseStore (batched async capture)", () => {
     store.record("p1")(info(1, "{}"));
     store.record("p2")(info(2, "{}"));
     store.record("p1")(info(3));
-    await new Promise((r) => setTimeout(r, 80));
+    await vi.waitFor(() => expect(store.list("p1")).toHaveLength(2), { timeout: 5_000 });
     expect(store.pendingCount()).toBe(0);
     expect(store.list("p1")).toHaveLength(2);
     expect(store.list("p2")).toHaveLength(1);
