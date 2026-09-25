@@ -88,7 +88,7 @@ index db698bd0f4..34ef596aa0 100644
  };
  
 diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
-index 023924e7b5..993559a4a9 100644
+index 023924e7b5..e8601431a5 100644
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -14,21 +14,34 @@
@@ -170,7 +170,7 @@ index 023924e7b5..993559a4a9 100644
  }
  
  AuxRuntimeHost::~AuxRuntimeHost() = default;
-@@ -78,10 +113,129 @@ void AuxRuntimeHost::CallApi(std::string method,
+@@ -78,10 +113,133 @@ void AuxRuntimeHost::CallApi(std::string method,
        .Then(std::move(callback));
  }
  
@@ -226,6 +226,10 @@ index 023924e7b5..993559a4a9 100644
 +      return NativeFault("invalid_argument", "Invalid tab command envelope");
 +    }
 +    auto* browsers = ProfileBrowserCollection::GetForProfile(profile_);
++    if (!browsers) {
++      return NativeFault("backend_unavailable",
++                         "No browser window is available");
++    }
 +    BrowserWindowInterface* issuer = nullptr;
 +    if (*window_id == "main") {
 +      issuer = browsers->FindTabbedBrowser();
@@ -303,7 +307,7 @@ index 023924e7b5..993559a4a9 100644
  
  AuxRuntimeHost::Worker::~Worker() {
    Disconnect();
-@@ -142,8 +296,10 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
+@@ -142,8 +300,10 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
    }
    const base::FilePath contents = executable.DirName().DirName();
    const base::FilePath node = contents.Append("Helpers").Append("Aux Runtime");
@@ -316,7 +320,7 @@ index 023924e7b5..993559a4a9 100644
    if (!base::PathExists(node) || !base::PathExists(entry)) {
      *error = "The signed Aux Runtime helper is missing from the app bundle";
      Disconnect();
-@@ -287,6 +443,30 @@ bool AuxRuntimeHost::Worker::ReadFrame(std::string* frame, int timeout_ms) {
+@@ -287,6 +447,30 @@ bool AuxRuntimeHost::Worker::ReadFrame(std::string* frame, int timeout_ms) {
    }
  }
  
@@ -347,7 +351,7 @@ index 023924e7b5..993559a4a9 100644
  AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
      std::string method,
      std::string params_json) {
-@@ -359,10 +539,18 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
+@@ -359,10 +543,18 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
            }
            reply.Set("result", std::move(result));
          }
@@ -426,10 +430,18 @@ index fb8fcf5bce..4953528803 100644
  
  #endif  // CHROME_BROWSER_UI_AUX_RUNTIME_HOST_H_
 diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
-index 1d3af44ce7..66ec46647a 100644
+index 1d3af44ce7..8da9471e99 100644
 --- a/chrome/browser/ui/aux/tab_catalog.cc
 +++ b/chrome/browser/ui/aux/tab_catalog.cc
-@@ -178,6 +178,16 @@ void TabCatalog::FinishCommand() {
+@@ -15,6 +15,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/time/time.h"
++#include "base/uuid.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_keyed_service_factory.h"
+ #include "chrome/browser/profiles/profile_selections.h"
+@@ -178,6 +179,16 @@ void TabCatalog::FinishCommand() {
    }
  }
  
@@ -446,7 +458,7 @@ index 1d3af44ce7..66ec46647a 100644
  base::CallbackListSubscription TabCatalog::ObserveChanges(
      base::RepeatingCallback<void(const std::string&)> callback) {
    return observers_.Add(std::move(callback));
-@@ -242,7 +252,8 @@ base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
+@@ -242,7 +253,8 @@ base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
    tab.Set("canGoForward", contents->GetController().CanGoForward());
    tab.Set("popup", false);
    tab.Set("crashed", contents->IsCrashed());
@@ -456,6 +468,30 @@ index 1d3af44ce7..66ec46647a 100644
    tab.Set("generation", generations_[id]);
    tab.Set("createdAt", static_cast<double>(created_at_.at(id)));
    tab.Set(
+@@ -254,6 +266,7 @@ base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
+ base::Value::Dict TabCatalog::Snapshot() {
+   base::Value::List tabs;
+   base::Value::List windows;
++  std::set<std::string> seen_pages;
+   if (browsers_) {
+     browsers_->ForEach([&](BrowserWindowInterface* browser) {
+       if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+@@ -265,6 +278,15 @@ base::Value::Dict TabCatalog::Snapshot() {
+       for (int index = 0; index < model->count(); ++index) {
+         content::WebContents* contents = model->GetWebContentsAt(index);
+         base::Value::Dict record = TabRecord(browser, contents);
++        if (!seen_pages.insert(*record.FindString("pageId")).second) {
++          std::string replacement_id;
++          do {
++            replacement_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++          } while (seen_pages.contains(replacement_id));
++          PageIdentity::Assign(profile_, contents, replacement_id);
++          record = TabRecord(browser, contents);
++          seen_pages.insert(*record.FindString("pageId"));
++        }
+         const std::string* id = record.FindString("pageId");
+         order.Append(*id);
+         if (index == model->active_index()) {
 diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
 index 5ef51e0d46..be286e9f21 100644
 --- a/chrome/browser/ui/aux/tab_catalog.h
