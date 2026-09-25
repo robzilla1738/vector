@@ -44,7 +44,7 @@ async function shell() {
     const found = app.windows().find(page => page.url().includes("renderer/index.html"));
     if (found && await found.evaluate(async () => {
       if (!window.aux?.windowId) return false;
-      try { const runtime = await window.aux.invoke("runtime.describe", {}); return runtime.methods?.includes("pages.open"); }
+      try { return Array.isArray(await window.aux.invoke("pages.list", {})); }
       catch { return false; }
     }).catch(() => false)) return found;
     await delay(100);
