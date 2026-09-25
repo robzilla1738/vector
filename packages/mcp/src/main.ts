@@ -441,19 +441,30 @@ if(projectTools)for(const [name,method,description,annotation] of developmentToo
   });
 }
 
-/** Manifest projection: new API members become MCP tools from one contract. */
-for (const item of supportedAgentApi({ surface: "mcp" })) {
-  if (item.method === "agent.js.run" || item.method === "agent.js.reset") continue;
-  const name = `aux_api_${item.path.replaceAll(".", "_")}`;
-  const annotations = ["pages.list", "pages.observe", "pages.accessibilityHtml", "pages.elementInfo", "pages.read", "pages.extract", "pages.waitFor", "pages.capture", "pages.console", "history.list"].includes(item.method) ? RO : WRITE;
-  server.registerTool(name, {
-    description: item.summary,
-    annotations,
-    inputSchema: MethodSchemas[item.method].shape,
-  }, async (params: unknown) => {
-    try { return text(await rpc(item.method, params)); } catch (error) { return err(error); }
-  });
-}
+/** One manifest-backed dispatcher keeps tools/list bounded as the typed API grows. */
+const mcpApi = supportedAgentApi({ surface: "mcp" }).filter(item => item.method !== "agent.js.run" && item.method !== "agent.js.reset");
+const mcpApiByPath = new Map(mcpApi.map(item => [item.path, item]));
+const mcpApiPaths = mcpApi.map(item => item.path);
+server.registerTool("aux_api_describe", {
+  description: "Look up an Aux API path and its exact typed input schema before calling aux_api_call. The path catalog comes from the shared agent API manifest.",
+  annotations: RO,
+  inputSchema: { path: z.string().min(1) },
+}, async ({ path }) => {
+  const item = mcpApiByPath.get(path);
+  if (!item) return err(new AuxError("not_found", `Unknown Aux API path: ${path}. Available paths: ${mcpApiPaths.join(", ")}`));
+  return text({ path: item.path, summary: item.summary, when: item.when, inputSchema: z.toJSONSchema(MethodSchemas[item.method]) });
+});
+server.registerTool("aux_api_call", {
+  description: `Call a typed Aux API path. Use aux_api_describe for its input schema. Paths: ${mcpApiPaths.join(", ")}.`,
+  annotations: WRITE,
+  inputSchema: { path: z.enum(mcpApiPaths as [string, ...string[]]), params: z.record(z.string(), z.unknown()) },
+}, async ({ path, params }) => {
+  try {
+    const item = mcpApiByPath.get(path);
+    if (!item) throw new AuxError("not_found", `Unknown Aux API path: ${path}`);
+    return text(await rpc(item.method, MethodSchemas[item.method].parse(params)));
+  } catch (error) { return err(error); }
+});
 for (const [name, method] of [["aux_js", "agent.js.run"], ["aux_js_reset", "agent.js.reset"]] as const) {
   const description = AgentApiManifest.find(item => item.method === method)!.summary;
   server.registerTool(name, { description, annotations: method === "agent.js.run" ? WRITE : RO, inputSchema: MethodSchemas[method].shape }, async (params: unknown) => {

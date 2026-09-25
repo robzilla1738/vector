@@ -4,6 +4,8 @@ Generated from `packages/contracts/src/agent-api.ts`. Run `pnpm agent-api:docs` 
 
 The SDK, MCP and CLI project this manifest. Code mode exposes only entries supported on the `code` surface. Each call is validated against the matching RPC parameter and result schemas. Calls inside QuickJS appear synchronous while the host dispatches them asynchronously.
 
+MCP keeps its default tool listing small: `aux_api_describe` returns the exact input schema for one path, and `aux_api_call` dispatches that path through the same typed RPC. Common page actions also have dedicated MCP tools; `aux_js` provides the code-mode surface.
+
 ## Included model reference
 
 - aux.tabs.list(params): List accessible tabs and their stable Aux page IDs.

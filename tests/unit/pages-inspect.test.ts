@@ -16,6 +16,7 @@ import {
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import { MethodSchemas, ResultSchemas, type Condition, type MethodName, type ObservationContent } from "@aux/contracts";
 import type { SetService, RunService, ArtifactStore, SettingsService } from "@aux/runtime";
+import { PNG } from "pngjs";
 
 const content = (url: string, over: Partial<ObservationContent> = {}): ObservationContent => ({
   url,
@@ -38,7 +39,8 @@ const content = (url: string, over: Partial<ObservationContent> = {}): Observati
 
 function fakeChromium() {
   const calls: string[] = [];
-  let capture = async () => ({ buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 });
+  const image = PNG.sync.write(new PNG({ width: 20, height: 20 }));
+  let capture = async () => ({ buffer: image, width: 20, height: 20, scale: 1 });
   let n = 0;
   const targets = new Map<string, string>();
   const makePage = (targetId: string, pageId: string, url: string): DriverPage => {
@@ -108,7 +110,7 @@ function fakeChromium() {
     },
     attach: async (targetId, pageId) => makePage(targetId, pageId, targets.get(targetId) ?? "about:blank"),
   };
-  return { driver, calls, setCapture: (next: typeof capture) => { capture = next; } };
+  return { driver, calls, image, setCapture: (next: typeof capture) => { capture = next; } };
 }
 
 function harness(grants: string[] = ["effect:read"]) {
@@ -136,7 +138,7 @@ describe("H2-C7 pages inspect RPCs", () => {
     expect((await pages.capture(page.pageId)).width).toBe(20);
     chromium.setCapture(async () => {
       await pages.navigate(page.pageId, "https://a.test/next");
-      return { buffer: Buffer.from("image"), width: 20, height: 20, scale: 1 };
+      return { buffer: chromium.image, width: 20, height: 20, scale: 1 };
     });
     await expect(pages.capture(page.pageId)).rejects.toThrow("changed during capture");
     chromium.setCapture(async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }));

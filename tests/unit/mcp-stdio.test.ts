@@ -270,6 +270,12 @@ describe("Gate F MCP stdio session", () => {
     expect(tools.find((t) => t.name === "aux_page_observe")?.annotations).toMatchObject({ readOnlyHint: true });
     expect(tools.every((t) => t.annotations)).toBe(true);
     expect(tools.some((t) => t.name.startsWith("aux_development_") || t.name.startsWith("aux_cloud_"))).toBe(false);
+    expect(tools.map((t) => t.name)).toContain("aux_api_describe");
+    expect(tools.map((t) => t.name)).toContain("aux_api_call");
+    const described = await mcp.call("tools/call", { name: "aux_api_describe", arguments: { path: "tabs.list" } });
+    expect(JSON.parse((described.result as { content: [{ text: string }] }).content[0].text)).toMatchObject({ path: "tabs.list", inputSchema: { type: "object" } });
+    const called = await mcp.call("tools/call", { name: "aux_api_call", arguments: { path: "tabs.list", params: {} } });
+    expect((called.result as { isError?: boolean }).isError).not.toBe(true);
     for (const gone of ["aux_run_start", "aux_set_map", "aux_operation_invoke", "aux_chrome_import_cookies", "aux_task_create"]) expect(tools.map((t) => t.name)).not.toContain(gone);
   });
 
