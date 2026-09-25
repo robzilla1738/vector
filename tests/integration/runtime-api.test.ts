@@ -126,11 +126,11 @@ describe("pages", () => {
     const anyRef = obs.content.elements[0]?.ref;
     expect(anyRef).toBeTruthy();
     await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/new` });
-    const res = await invoke<ProgramResult>("pages.execute", {
+    // Preflight rejects the stale ref before dispatch, so it cannot click a
+    // different node in the new document.
+    await expect(invoke<ProgramResult>("pages.execute", {
       program: { pageId: page.pageId, steps: [{ id: "s1", op: "click", target: anyRef! }] },
-    });
-    // stale ref must not silently click the wrong element
-    expect(res.status).toBe("failed");
+    })).rejects.toThrow(/unknown or stale|re-observe/i);
   }, 60_000);
 
   it("compact observation is well under the full JSON and carries usable refs", async () => {

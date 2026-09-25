@@ -180,7 +180,7 @@ describe("desktop e2e", () => {
       rpc("pages.execute", {
         program: { pageId: page.pageId, steps: [{ id: "x", op: "extract", fields: [{ name: "n", selector: "table#records-table" }] }] },
       }),
-    ).rejects.toThrow(/human control|takeover|conflict/i);
+    ).rejects.toThrow(/human control|takeover|conflict|person controls this tab/i);
     const resumed = await rpc<{ controller?: string }>("pages.resume", { pageId: page.pageId });
     expect(resumed.controller).not.toBe("human");
   }, 60_000);
