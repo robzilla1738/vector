@@ -1,0 +1,27 @@
+import { describe, expect, it } from "vitest";
+import { AUX_FEATURES, AuxError, auxFeatureEnabled, auxFeatureForBridgeMethod, auxFeatureForMethod, auxFeatureStage, requireAuxFeature, requireAuxMethod } from "@aux/contracts";
+
+describe("AuxFeature staging", () => {
+  it("registers every product feature with an owning batch", () => {
+    expect(Object.keys(AUX_FEATURES).length).toBeGreaterThan(70);
+    expect(new Set(Object.values(AUX_FEATURES))).toEqual(new Set(["B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11"]));
+  });
+
+  it("starts the Chromium fork closed and keeps the legacy vault closed", () => {
+    expect(auxFeatureStage("spaces", "chromium-fork")).toBe("off");
+    expect(auxFeatureStage("passwordManager", "chromium-fork")).toBe("off");
+    expect(auxFeatureStage("vault", "electron")).toBe("on");
+    expect(auxFeatureStage("vault", "chromium-fork")).toBe("off");
+    expect(auxFeatureStage("spaces", "electron")).toBe("on");
+    expect(auxFeatureEnabled("spaces", "chromium-fork", { spaces: "preview" })).toBe(false);
+    expect(auxFeatureEnabled("spaces", "chromium-fork", { spaces: "on" })).toBe(true);
+  });
+
+  it("returns a typed registry error for disabled runtime and bridge features", () => {
+    expect(auxFeatureForMethod("vault.fill")).toBe("vault");
+    expect(auxFeatureForBridgeMethod("vaultFill")).toBe("vault");
+    expect(() => requireAuxMethod("vault.fill", "chromium-fork")).toThrowError(AuxError);
+    expect(() => requireAuxFeature("spaces", "chromium-fork", { spaces: "preview" })).toThrowError(/preview/);
+    expect(() => requireAuxMethod("pages.list", "chromium-fork")).not.toThrow();
+  });
+});

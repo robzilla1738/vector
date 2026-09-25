@@ -6,6 +6,7 @@ export type AuxErrorCode =
   | "target_ambiguous"
   | "backend_unavailable"
   | "capability_unsupported"
+  | "feature_unavailable"
   | "step_failed"
   | "condition_timeout"
   | "cancelled"
@@ -63,6 +64,8 @@ export function errorAdvice(code: AuxErrorCode): { retryable: boolean; hint: str
       return { retryable: false, hint: "answer the human prompt and resume" };
     case "capability_unsupported":
       return { retryable: false, hint: "this page needs a different backend" };
+    case "feature_unavailable":
+      return { retryable: false, hint: "this feature is not enabled for this browser Profile" };
     case "cancelled":
       return { retryable: false, hint: null };
     default:

@@ -1,4 +1,5 @@
 import type { AuxBridge } from "./bridge";
+import { auxFeatureForBridgeMethod, requireAuxFeature, requireAuxMethod, type AuxFeatureOverrides } from "@aux/contracts";
 
 /**
  * Browser-process endpoint installed only in Aux's trusted chrome://aux/ WebUI.
@@ -13,6 +14,7 @@ export interface ChromiumHostPort {
   readonly platform: string;
   readonly privateMode: boolean;
   readonly quickAskMode?: boolean;
+  readonly featureStages?: AuxFeatureOverrides;
   request(method: string, args: unknown[]): Promise<unknown>;
   subscribe(event: string, callback: (...args: unknown[]) => void): () => void;
 }
@@ -56,12 +58,18 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
       if (eventMethods.has(key)) {
         return (callback: (...args: unknown[]) => void) => port.subscribe(key, callback);
       }
+      const bridgeFeature = auxFeatureForBridgeMethod(key);
       if (fireAndForgetMethods.has(key)) {
         return (...args: unknown[]) => {
+          if (bridgeFeature) requireAuxFeature(bridgeFeature, "chromium-fork", port.featureStages);
           void port.request(key, args).catch(error => console.error(`Aux host ${key} failed`, error));
         };
       }
-      return (...args: unknown[]) => port.request(key, args);
+      return async (...args: unknown[]) => {
+        if (bridgeFeature) requireAuxFeature(bridgeFeature, "chromium-fork", port.featureStages);
+        if (key === "invoke" && typeof args[0] === "string") requireAuxMethod(args[0], "chromium-fork", port.featureStages);
+        return port.request(key, args);
+      };
     },
   }) as AuxBridge;
   target.auxHostProof = { host: "chromium-fork" };

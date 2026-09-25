@@ -317,6 +317,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const agentConnections = new AgentConnectionService(repo);
 
   const invoke = makeInvoker({
+    featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
+    featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
     native,
     contentMemory,
     checkpointDeletedData: () => privacyCheckpoint.request(),

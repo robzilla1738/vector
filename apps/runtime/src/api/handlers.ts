@@ -1,7 +1,7 @@
 import { SavedResults } from "../services/saved-results.js";
 import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
 import { ContentMemoryStore } from "../services/content-memory.js";
-import { EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
+import { EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, requireAuxMethod, type AuxFeatureHost, type AuxFeatureOverrides, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import type { PageService } from "../services/pages.js";
@@ -41,6 +41,8 @@ import { TranslateService } from "../services/translate.js";
 function cloudArtifactMediaType(filename:string){const value=filename.toLowerCase();if(value.endsWith('.json'))return'application/json';if(value.endsWith('.md'))return'text/markdown';if(value.endsWith('.txt')||value.endsWith('.csv')||value.endsWith('.log'))return'text/plain';if(value.endsWith('.png'))return'image/png';if(value.endsWith('.jpg')||value.endsWith('.jpeg'))return'image/jpeg';if(value.endsWith('.pdf'))return'application/pdf';return'application/octet-stream';}
 
 export interface Services {
+  featureHost?: AuxFeatureHost;
+  featureProfileId?: string;
   pages: PageService;
   sets: SetService;
   runs: RunService;
@@ -200,6 +202,10 @@ export function makeInvoker(s: Services) {
   return async function invoke(method: string, rawParams: unknown, client: { external: boolean; connectionId?: string; scope?: AgentConnectionScope } = { external: true }): Promise<unknown> {
     const schema = MethodSchemas[method as MethodName];
     if (!schema) throw new AuxError("not_found", `unknown method ${method}`);
+    const host = s.featureHost ?? "electron";
+    const profileId = s.featureProfileId ?? "default";
+    const overrides = s.repo.getSetting<AuxFeatureOverrides>(`auxFeatures:${host}:${profileId}`) ?? {};
+    requireAuxMethod(method, host, overrides);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = schema.parse(rawParams ?? {});
 
