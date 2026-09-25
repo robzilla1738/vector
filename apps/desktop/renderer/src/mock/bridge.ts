@@ -24,7 +24,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
-import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent } from "@aux/contracts";
+import type { MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, OutboundMcpServer, OutboundMcpGrant, OutboundMcpTool } from "@aux/contracts";
 import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
@@ -46,6 +46,12 @@ export function installMockBridge(q: URLSearchParams) {
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
   let spaces: BrowserSpace[] = [{ ...DEFAULT_SPACE, workspaceId: `workspace:${DEFAULT_SPACE.id}`, archived: false }];
+  let mcpServers: OutboundMcpServer[] = [];
+  let mcpGrants: OutboundMcpGrant[] = [];
+  const mcpTools: OutboundMcpTool[] = [
+    {name:"search",description:"Search the mock research catalog",inputSchema:{type:"object",properties:{query:{type:"string"}}}},
+    {name:"summarize",description:"Summarize a mock document",inputSchema:{type:"object",properties:{document:{type:"string"}}}},
+  ];
   const scenario = q.get("scenario") ?? "browsing";
   type DictationEvent = Parameters<Parameters<AuxBridge["onDictation"]>[0]>[0];
   const dictationListeners = new Set<(event: DictationEvent) => void>();
@@ -298,6 +304,58 @@ export function installMockBridge(q: URLSearchParams) {
     },
     "workspaces.list": async () => {
       return spaces.map(space => ({ workspaceId: space.workspaceId, name: space.name, createdAt: 0 }));
+    },
+    "mcp.bundles.inspect": async p => {
+      const path=String(p.path);
+      const format=path.toLowerCase().endsWith(".dxt")?"dxt":path.toLowerCase().endsWith(".mcpb")?"mcpb":null;
+      if(!format)throw new Error("Choose a .mcpb or .dxt bundle.");
+      return {path,sha256:"b".repeat(64),format,name:"Research bundle",server:{type:"node",entry_point:"server.js"}};
+    },
+    "mcp.servers.register": async p => {
+      if(!spaces.some(space=>space.workspaceId===p.workspaceId&&!space.archived))throw new Error("Space does not exist.");
+      const source=p.source as OutboundMcpServer["source"];
+      if(source.kind==="bundle"&&source.sha256!=="b".repeat(64))throw new Error("Bundle contents changed. Inspect it again.");
+      const bytes=new TextEncoder().encode(JSON.stringify(source));
+      const digest=await crypto.subtle.digest("SHA-256",bytes);
+      const sourceDigest=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+      const now=Date.now();
+      const server:OutboundMcpServer={serverId:crypto.randomUUID(),workspaceId:String(p.workspaceId),name:String(p.name),source,state:"pending",sourceDigest,createdAt:now,updatedAt:now};
+      mcpServers=[server,...mcpServers];return server;
+    },
+    "mcp.servers.list": async p => mcpServers.filter(server=>server.workspaceId===p.workspaceId),
+    "mcp.servers.approve": async p => {
+      const server=mcpServers.find(item=>item.serverId===p.serverId);
+      if(!server||server.state!=="pending"||server.sourceDigest!==p.expectedDigest)throw new Error("Server source changed. Review it before approval.");
+      const approved:OutboundMcpServer={...server,state:"approved",updatedAt:Date.now()};
+      mcpServers=mcpServers.map(item=>item.serverId===server.serverId?approved:item);return approved;
+    },
+    "mcp.servers.revoke": async p => {
+      const server=mcpServers.find(item=>item.serverId===p.serverId);
+      if(!server)throw new Error("MCP server does not exist.");
+      const now=Date.now();const revoked:OutboundMcpServer={...server,state:"revoked",updatedAt:now};
+      mcpServers=mcpServers.map(item=>item.serverId===server.serverId?revoked:item);
+      mcpGrants=mcpGrants.map(grant=>grant.serverId===server.serverId&&!grant.revokedAt?{...grant,revokedAt:now}:grant);
+      return revoked;
+    },
+    "mcp.tools.list": async p => {
+      if(!mcpServers.some(server=>server.serverId===p.serverId&&server.state==="approved"))throw new Error("Approve the server before loading tools.");
+      return mcpTools;
+    },
+    "mcp.grants.create": async p => {
+      const server=mcpServers.find(item=>item.serverId===p.serverId);
+      if(!server||server.state!=="approved")throw new Error("Approve the server before granting tools.");
+      if(!mcpTools.some(tool=>tool.name===p.toolName))throw new Error("Tool is unavailable on this mock server.");
+      const scope=p.scope as OutboundMcpGrant["scope"];
+      if(scope.kind==="workspace"&&scope.workspaceId!==server.workspaceId)throw new Error("Grant Space does not match the server.");
+      const grant:OutboundMcpGrant={grantId:crypto.randomUUID(),serverId:server.serverId,toolName:String(p.toolName),scope,mode:p.mode as OutboundMcpGrant["mode"],outputTokenLimit:Number(p.outputTokenLimit),createdAt:Date.now()};
+      mcpGrants=[grant,...mcpGrants];return grant;
+    },
+    "mcp.grants.list": async p => mcpGrants.filter(grant=>grant.serverId===p.serverId),
+    "mcp.grants.revoke": async p => {
+      const grant=mcpGrants.find(item=>item.grantId===p.grantId);
+      if(!grant)throw new Error("MCP tool grant does not exist.");
+      const revoked={...grant,revokedAt:Date.now()};
+      mcpGrants=mcpGrants.map(item=>item.grantId===grant.grantId?revoked:item);return revoked;
     },
     "plugins.inspect": async () => {
       return { name: "Example bundle", version: "1.0", routineCount: 1, routineTitles: ["Weekly digest"] };
