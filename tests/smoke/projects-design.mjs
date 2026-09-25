@@ -28,7 +28,9 @@ try {
  await taskRows.filter({hasText:'Previous review'}).waitFor({state:'detached'});
  await taskRows.filter({hasText:'Compare research sources'}).waitFor();
  await page.screenshot({path:root+'/release/test-artifacts/tabs/projects-index.png'});
- await page.locator('.routine-card').click();
+ const skills=page.getByRole('region',{name:'Skills',exact:true});
+ const skillRow=skills.locator('.ui-work-row').filter({hasText:'Weekly research review'});
+ await skillRow.locator('.ui-list-open').click();
  await page.getByRole('button',{name:'Weekdays',exact:true}).click();
  await page.getByRole('button',{name:'Save schedule',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('.routine-schedule-summary')?.textContent==='Weekdays at 09:00 · America/Chicago');
@@ -38,11 +40,11 @@ try {
  await page.locator('.routine-schedule').scrollIntoViewIfNeeded();
  assert.equal(await page.locator('.tasks-page').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);
  await page.screenshot({path:root+'/release/test-artifacts/tabs/routine-narrow.png'});
- await page.getByRole('button',{name:'All routines',exact:true}).click();
- await page.getByRole('group',{name:'Routine status',exact:true}).getByRole('button',{name:'Paused',exact:true}).click();
- await page.getByText('No matching routines',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'All Skills',exact:true}).click();
+ await page.getByRole('group',{name:'Skill status',exact:true}).getByRole('button',{name:'Paused',exact:true}).click();
+ await page.getByText('No matching Skills',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Clear filters',exact:true}).click();
- await page.locator('.routine-card').waitFor();
+ await skillRow.waitFor();
  await taskRows.filter({hasText:'Compare research sources'}).locator('.ui-list-open').click();
  await page.getByLabel('Title',{exact:true}).waitFor();
  await page.screenshot({path:root+'/release/test-artifacts/tabs/task-editor.png'});

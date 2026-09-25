@@ -40,7 +40,11 @@ try {
  await page.locator('.toolbar').dispatchEvent('pointerenter');
  await app.evaluate(({webContents})=>webContents.getAllWebContents().find(w=>w.getType()==='window' && !w.getURL().startsWith('http://127.0.0.1:'))?.send('sidebar-edge',true));await page.locator('.sidebar.peek').waitFor();await settle();
  assert.deepEqual(await bounds(),before);
- const frost=await app.evaluate(async({webContents},url)=>webContents.getAllWebContents().find(w=>w.getURL().startsWith(url)).executeJavaScript(`(()=>{const el=document.getElementById('aux-sidebar-glass');return el&&getComputedStyle(el).backdropFilter})()`),url);
+ let frost=null;
+ for(let attempt=0;attempt<100 && !frost;attempt++){
+  frost=await app.evaluate(async({webContents},url)=>webContents.getAllWebContents().find(w=>w.getURL().startsWith(url)).executeJavaScript(`(()=>{const el=document.getElementById('aux-sidebar-glass');return el&&getComputedStyle(el).backdropFilter})()`),url);
+  if(!frost)await new Promise(resolve=>setTimeout(resolve,50));
+ }
  assert.match(frost,/blur\(28px\)/);
   // Hosted macOS cannot grant Screen Recording; optional compositor evidence must not block input assertions.
  const png=process.env.CI ? null : await app.evaluate(async({desktopCapturer,BaseWindow,systemPreferences})=>{if(systemPreferences.getMediaAccessStatus("screen")!=="granted")return null;const id=BaseWindow.getAllWindows()[0].getMediaSourceId();return (await desktopCapturer.getSources({types:['window'],thumbnailSize:{width:2400,height:1600}})).find(s=>s.id===id)?.thumbnail.toPNG().toString('base64');});
