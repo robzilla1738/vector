@@ -13,6 +13,7 @@ import type { PageServiceDeps } from "./pages/types.js";
 import type { Observation } from "@aux/contracts";
 import type { MethodParams } from "@aux/contracts";
 import { SiteAdapters } from "../agent/site-adapters.js";
+import { InlineAssist } from "./pages/inline-assist.js";
 
 export type { DriverSet, ExecuteResult, PageServiceDeps } from "./pages/types.js";
 
@@ -33,6 +34,7 @@ export class PageService {
   private readonly control: ControlAuthority;
   private readonly executor: ProgramExecutor;
   private readonly diagnostics: PageDiagnostics;
+  private readonly inlineAssist: InlineAssist;
 
   constructor(deps: PageServiceDeps) {
     this.pages = new PageRegistry(deps);
@@ -46,6 +48,7 @@ export class PageService {
     this.control = new ControlAuthority(this.pages);
     this.executor = new ProgramExecutor(this.pages, this.lanes, this.observation, this.control);
     this.diagnostics = new PageDiagnostics(this.pages, this.observation, this.executor);
+    this.inlineAssist = new InlineAssist(this.pages, this.lanes);
   }
 
   shuttingDown() {
@@ -109,6 +112,10 @@ export class PageService {
   readSiteContent(input: MethodParams<"sites.read">, allowOrigin: (url: URL) => boolean) {
     return new SiteAdapters(this.pages, allowOrigin).read(input);
   }
+  captureInlineAssist: InlineAssist["capture"] = (...args) => this.inlineAssist.capture(...args);
+  draftInlineAssist: InlineAssist["draft"] = (...args) => this.inlineAssist.draft(...args);
+  applyInlineAssist: InlineAssist["apply"] = (...args) => this.inlineAssist.apply(...args);
+  cancelInlineAssist: InlineAssist["cancel"] = (...args) => this.inlineAssist.cancel(...args);
   find: PageDiagnostics["find"] = (...args) => this.diagnostics.find(...args);
   stopFind: PageDiagnostics["stopFind"] = (...args) => this.diagnostics.stopFind(...args);
   zoom: PageDiagnostics["zoom"] = (...args) => this.diagnostics.zoom(...args);

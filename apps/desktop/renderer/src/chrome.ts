@@ -43,7 +43,7 @@ export function isScrimOverlay(overlay: string | null): boolean {
 }
 
 export function isFlowOverlay(overlay: string | null): boolean {
-  return overlay === "find" || overlay === "downloads";
+  return overlay === "find" || overlay === "downloads" || overlay === "inline-assist";
 }
 
 export function nativePageId(input: {

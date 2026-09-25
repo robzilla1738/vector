@@ -365,6 +365,21 @@ export function makeInvoker(s: Services) {
         s.events.emit("agent.tabName.suggested", { pageId: suggestion.pageId, modelId: suggestion.modelId });
         return suggestion;
       }
+      case "agent.inlineAssist.capture":
+        if (client.external) throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
+        return s.pages.captureInlineAssist(params);
+      case "agent.inlineAssist.draft": {
+        if (client.external) throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
+        const model = s.settings.model();
+        if (!model) throw new AuxError("backend_unavailable", "Connect a model in Settings before drafting field text.");
+        return s.pages.draftInlineAssist(params, model, s.settings.agentRoute("fast"));
+      }
+      case "agent.inlineAssist.apply":
+        if (client.external) throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
+        return s.pages.applyInlineAssist(params);
+      case "agent.inlineAssist.cancel":
+        if (client.external) throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
+        return s.pages.cancelInlineAssist(params);
       case "agent.web.fetch":
       case "agent.web.search": {
         const web = new AgentWebTools(url => authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok);

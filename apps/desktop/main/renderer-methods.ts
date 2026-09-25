@@ -8,6 +8,10 @@
 export const RENDERER_METHODS: ReadonlySet<string> = new Set([
   "agent.tidy.propose",
   "agent.tabName.suggest",
+  "agent.inlineAssist.capture",
+  "agent.inlineAssist.draft",
+  "agent.inlineAssist.apply",
+  "agent.inlineAssist.cancel",
   "artifacts.list",
   "artifacts.read",
   "bookmarks.add",

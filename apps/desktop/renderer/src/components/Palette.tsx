@@ -209,6 +209,9 @@ export function Palette() {
       { id: "ov", section: "window", t: "Tab overview", k: key("overview"), icon: I.grid, run: async () => setMode("overview") },
       { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: key("agent-rail"), icon: I.agentSm, run: () => useStore.getState().toggleRail() },
       { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: I.obs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
+      ...(activePage?.backend === "aux" && /^https?:\/\//.test(activePage.url) && !bridge.privateMode ? [{ id: "inline-assist", section: "agent" as const,
+        t: "Assist writing in this field…", d: "Focus a text field first · review before applying", icon: I.agentSm,
+        run: () => setOverlay("inline-assist") }] : []),
       { id: "collect", section: "agent", t: "Collect open tabs into a set", d: "map a task over every tab", icon: I.layersSm, run: async () => {
         const ids = pages.filter((p) => !p.ownedByRuntime).map((p) => p.pageId);
         if (!ids.length) return toast("No open tabs to collect", "error");

@@ -30,6 +30,7 @@ import {
 import { EventSchema } from "./events.js";
 import { TidyProposalParamsSchema, TidyProposalSchema } from "./tidy.js";
 import { TabNameSuggestParamsSchema, TabNameSuggestionSchema } from "./tab-name.js";
+import { InlineAssistApplyParamsSchema, InlineAssistApplySchema, InlineAssistCancelParamsSchema, InlineAssistCaptureParamsSchema, InlineAssistCaptureSchema, InlineAssistDraftParamsSchema, InlineAssistDraftSchema } from "./inline-assist.js";
 import { CompactObservationSchema, ElementRefSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
@@ -607,6 +608,10 @@ export const MethodSchemas = {
   "agent.js.reset": AgentJsResetParams,
   "agent.tidy.propose": TidyProposalParamsSchema,
   "agent.tabName.suggest": TabNameSuggestParamsSchema,
+  "agent.inlineAssist.capture": InlineAssistCaptureParamsSchema,
+  "agent.inlineAssist.draft": InlineAssistDraftParamsSchema,
+  "agent.inlineAssist.apply": InlineAssistApplyParamsSchema,
+  "agent.inlineAssist.cancel": InlineAssistCancelParamsSchema,
   "agent.web.fetch": AgentWebContextSchema.extend({ url: z.string().url().max(8192) }).strict(),
   "agent.web.search": AgentWebContextSchema.extend({ query: z.string().trim().min(1).max(500) }).strict(),
   "agent.images.generate": AgentWebContextSchema.extend({ prompt: z.string().trim().min(1).max(4000) }).strict(),
@@ -1047,6 +1052,10 @@ export const ResultSchemas = {
   "agent.js.reset": z.object({ reset: z.literal(true) }),
   "agent.tidy.propose": TidyProposalSchema,
   "agent.tabName.suggest": TabNameSuggestionSchema,
+  "agent.inlineAssist.capture": InlineAssistCaptureSchema,
+  "agent.inlineAssist.draft": InlineAssistDraftSchema,
+  "agent.inlineAssist.apply": InlineAssistApplySchema,
+  "agent.inlineAssist.cancel": z.object({ cancelled: z.literal(true) }),
   "agent.web.fetch": AgentWebPageSchema,
   "agent.web.search": AgentWebPageSchema,
   "agent.images.generate": z.object({ artifactId: id, mediaType: z.string(), size: z.number().int().positive(), modelId: z.string() }),

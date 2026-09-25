@@ -40,6 +40,7 @@ const Inspector = deferSurface(async () => { const module = await import("./comp
 const Tasks = deferSurface(async () => { const module = await import("./components/Tasks"); return {default:module.Tasks}; }, "Tasks");
 const Palette = deferSurface(async () => { const module = await import("./components/Palette"); return {default:module.Palette}; }, "Command palette");
 const Downloads = deferSurface(async () => { const module = await import("./components/Downloads"); return {default:module.Downloads}; }, "Downloads");
+const InlineAssist = deferSurface(async () => { const module = await import("./components/InlineAssist"); return {default:module.InlineAssist}; }, "Assist writing");
 const SiteControls = deferSurface(async () => { const module = await import("./components/SiteControls"); return {default:module.SiteControls}; }, "Site controls");
 const QuickAsk = deferSurface(async () => { const module = await import("./components/QuickAsk"); return {default:module.QuickAsk}; }, "Quick Ask", true, true);
 const HorizontalTabs = deferSurface(async () => { const module = await import("./components/HorizontalTabs"); return {default:module.HorizontalTabs}; }, "Tabs", true, true);
@@ -562,6 +563,7 @@ export function App() {
               {overlay === "settings" && <Settings />}
               {overlay === "tasks" && <Tasks />}
               {overlay === "downloads" && <Downloads />}
+              {overlay === "inline-assist" && <InlineAssist />}
             </div>
           </div>
         </div>

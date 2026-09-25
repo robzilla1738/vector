@@ -42,6 +42,7 @@ export function installMockBridge(q: URLSearchParams) {
   const memoryNotes=new Map<string,WorkspaceMemory>();
   const browsingMemory = new Map<string, {workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[]}>();
   const contentMemory = new Map<string, ContentMemoryPolicy>();
+  const inlineCaptures = new Map<string, { pageId: string; url: string; documentEpoch: number; drafted: boolean }>();
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
   const zoomListeners = new Set<() => void>();
@@ -241,6 +242,31 @@ export function installMockBridge(q: URLSearchParams) {
     return page(p.pageId as string);
   };
   const handlers = {
+    "agent.inlineAssist.capture": async p => {
+      const source = pages.find(item => item.pageId === p.pageId);
+      if (!source || source.url !== p.expectedUrl || source.documentEpoch !== p.expectedDocumentEpoch)
+        throw new Error("The page changed. Review the field and retry.");
+      const captureId = crypto.randomUUID();
+      inlineCaptures.set(captureId, { pageId: source.pageId, url: source.url, documentEpoch: source.documentEpoch, drafted: false });
+      return { captureId, pageId: source.pageId, url: source.url, documentEpoch: source.documentEpoch,
+        origin: new URL(source.url).origin, fieldLabel: "Project note", sourceText: "Summarize the key point clearly.", mode: "field" };
+    },
+    "agent.inlineAssist.draft": async p => {
+      const capture = inlineCaptures.get(String(p.captureId));
+      if (!capture || !pages.some(item => item.pageId === capture.pageId && item.url === capture.url && item.documentEpoch === capture.documentEpoch))
+        throw new Error("This field changed. Select it and start again.");
+      capture.drafted = true;
+      return { captureId: p.captureId, replacement: `A clear project note: ${String(p.instruction).trim()}`,
+        modelId: "meta/muse-spark-1.3-contributor" };
+    },
+    "agent.inlineAssist.apply": async p => {
+      const capture = inlineCaptures.get(String(p.captureId));
+      if (!capture?.drafted || !pages.some(item => item.pageId === capture.pageId && item.url === capture.url && item.documentEpoch === capture.documentEpoch))
+        throw new Error("This field changed. Select it and start again.");
+      inlineCaptures.delete(String(p.captureId));
+      return { applied: true, undoAvailable: true };
+    },
+    "agent.inlineAssist.cancel": async p => { inlineCaptures.delete(String(p.captureId)); return { cancelled: true }; },
     "agent.tabName.suggest": async p => {
       const source = pages.find(item => item.pageId === p.pageId);
       if (!source || source.url !== p.expectedUrl || source.documentEpoch !== p.expectedDocumentEpoch)
