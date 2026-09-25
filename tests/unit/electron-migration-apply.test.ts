@@ -64,6 +64,7 @@ it("verifies and atomically seeds a copied profile with relocated artifacts and 
   expect(first.alreadyApplied).toBe(false);
   const receipt = JSON.parse(readFileSync(join(f.profile, "apply-receipt.json"), "utf8"));
   expect(receipt).toMatchObject({ contentHash: first.contentHash, vault: { state: "pending_native_import", items: 1 } });
+  expect(sha(join(f.profile, "manifest.json"))).toBe(receipt.manifestSha256);
   expect(sha(join(f.profile, "aux-state.sqlite"))).toBe(receipt.databaseSha256);
   expect(sha(join(f.profile, "vault-transfer.auxvault"))).toBe(receipt.vault.sha256);
   expect(readFileSync(join(f.profile, "vault-transfer.auxvault"), "utf8")).not.toContain("s3cret!");
@@ -81,6 +82,17 @@ it("verifies and atomically seeds a copied profile with relocated artifacts and 
   expect(existsSync(join(f.profile, "Cookies"))).toBe(false);
   expect(f.sourceHash).toBe(before.db);
   expect(f.artifactHash).toBe(before.artifact);
+});
+
+it("rejects a changed staged manifest before treating an existing seed as idempotent", async () => {
+  const f = await fixture();
+  const sourceCookieSha = sha(join(f.source, "Cookies"));
+  await applyElectronMigration({ bundleDir: f.bundle, profileDir: f.profile });
+  const stagedManifest = join(f.profile, "manifest.json");
+  writeFileSync(stagedManifest, readFileSync(stagedManifest, "utf8").replace("Example", "Modified"));
+  await expect(applyElectronMigration({ bundleDir: f.bundle, profileDir: f.profile }))
+    .rejects.toThrow(/manifest has changed/);
+  expect(sha(join(f.source, "Cookies"))).toBe(sourceCookieSha);
 });
 
 it("rejects wrong passphrases and modified bundles before creating a profile", async () => {

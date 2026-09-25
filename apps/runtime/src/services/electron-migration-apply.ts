@@ -16,7 +16,7 @@ const MAX_VAULT = 4_100_000;
 const SHA = z.string().regex(/^[a-f0-9]{64}$/);
 const ReceiptSchema = z.object({
   format: z.literal("aux-chromium-profile-seed"), version: z.literal(1),
-  contentHash: SHA, databaseSha256: SHA, createdAt: z.number().int().nonnegative(),
+  contentHash: SHA, manifestSha256: SHA, databaseSha256: SHA, createdAt: z.number().int().nonnegative(),
   vault: z.object({ state: z.literal("pending_native_import"), sha256: SHA, items: z.number().int().min(0).max(500) }).strict().optional(),
 }).strict();
 export type ElectronMigrationApplyReport = { profileDir: string | null; dryRun: boolean; alreadyApplied: boolean; contentHash: string;
@@ -132,6 +132,7 @@ export async function applyElectronMigration(input: { bundleDir: string; profile
       if (!existing.isDirectory() || existing.isSymbolicLink()) throw new Error("The destination is not a regular profile directory.");
       const receipt = ReceiptSchema.parse(JSON.parse(await readFile(join(profile, "apply-receipt.json"), "utf8")));
       if (receipt.contentHash !== manifest.contentHash || receipt.vault?.sha256 !== vaultHash) throw new Error("This profile was seeded from a different migration bundle or vault package.");
+      if (await fileHash(join(profile, "manifest.json")) !== receipt.manifestSha256) throw new Error("The seeded migration manifest has changed.");
       await regular(join(profile, AUX_DATABASE_NAME), 2 * 1024 * 1024 * 1024);
       if (await fileHash(join(profile, AUX_DATABASE_NAME)) !== receipt.databaseSha256) throw new Error("The seeded profile database has changed; native apply must reconcile its receipt.");
       for (const item of manifest.artifacts) {
@@ -165,9 +166,11 @@ export async function applyElectronMigration(input: { bundleDir: string; profile
       if ((db.prepare("PRAGMA quick_check").get() as { quick_check: string }).quick_check !== "ok") throw new Error("The staged profile database failed integrity checking.");
     } finally { db.close(); }
     const databaseSha256 = await fileHash(stagedDb);
-    const receipt = ReceiptSchema.parse({ format: "aux-chromium-profile-seed", version: 1, contentHash: manifest.contentHash, databaseSha256,
+    const stagedManifest = JSON.stringify(manifest, null, 2) + "\n";
+    const manifestSha256 = createHash("sha256").update(stagedManifest).digest("hex");
+    const receipt = ReceiptSchema.parse({ format: "aux-chromium-profile-seed", version: 1, contentHash: manifest.contentHash, manifestSha256, databaseSha256,
       createdAt: Date.now(), ...(vaultHash ? { vault: { state: "pending_native_import", sha256: vaultHash, items: vaultItems } } : {}) });
-    await writeFile(join(stage, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", { mode: 0o600 });
+    await writeFile(join(stage, "manifest.json"), stagedManifest, { mode: 0o600 });
     await writeFile(join(stage, "apply-receipt.json"), JSON.stringify(receipt, null, 2) + "\n", { mode: 0o600 });
     if (vaultBytes) await writeFile(join(stage, "vault-transfer.auxvault"), vaultBytes, { mode: 0o600 });
     try { await lstat(profile); throw new Error("The destination profile appeared while migration was being staged."); }

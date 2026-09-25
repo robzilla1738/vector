@@ -29,7 +29,7 @@ import { textContextShares } from "@aux/contracts/text-context";
 import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, ZapRule, PluginSkillGrant } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
-import type { BrowserExtension, AuxBridge } from "../bridge";
+import type { BrowserExtension, AuxBridge, MigrationReview } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
 
@@ -51,6 +51,8 @@ export function installMockBridge(q: URLSearchParams) {
   let zapRules: ZapRule[] = [];
   let rankingChoices: CommandRankingEntry[] = [];
   let organization: OrganizationSnapshot = { revision: 0, layout: null };
+  let migration: MigrationReview = { status:"ready",contentHash:"a".repeat(64),manifestSha256:"b".repeat(64),tabs:3,bookmarks:5,bookmarkFolders:2,spaces:2,vaultPending:false,omitted:{unsafeTabs:1,unsafeBookmarks:0,missingArtifacts:0,vaultMetadata:0,layoutMissing:false} };
+  const migrationProgress={status:"importing" as const,folders:0,bookmarks:0,tabs:0};
   const organizationListeners = new Set<(revision:number)=>void>();
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
@@ -985,6 +987,30 @@ export function installMockBridge(q: URLSearchParams) {
       organization={revision:organization.revision+1,layout:next.layout};
       for(const listener of organizationListeners)listener(organization.revision);
       return organization;
+    },
+    migrationReview:async()=>structuredClone(migration),
+    migrationBegin:async input=>{
+      if(input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256)throw new Error("Migration review changed.");
+      if(migration.status==="ready")migration={...migration,status:"interrupted",progress:{...migrationProgress}};
+      return structuredClone(migration);
+    },
+    migrationBatch:async input=>{
+      if(migration.status!=="interrupted"||input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256)throw new Error("No reviewed import is in progress.");
+      const limit=input.section==="folders"?migration.bookmarkFolders:migration[input.section];
+      if(input.offset<0||input.offset>limit||input.offset%100!==0)throw new Error("Invalid migration batch.");
+      const progress={...(migration.progress??migrationProgress),[input.section]:Math.max(migration.progress?.[input.section]??0,Math.min(limit,input.offset+100))};
+      migration={...migration,progress};
+      return progress;
+    },
+    migrationFinish:async input=>{
+      if(input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256||!migration.progress||migration.progress.folders!==migration.bookmarkFolders||migration.progress.bookmarks!==migration.bookmarks||migration.progress.tabs!==migration.tabs)throw new Error("Migration batches are incomplete.");
+      migration={...migration,status:"applied",progress:undefined};
+      return structuredClone(migration);
+    },
+    migrationRollback:async input=>{
+      if(input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256||migration.status!=="interrupted")throw new Error("No import can be rolled back.");
+      migration={...migration,status:"ready",progress:undefined};
+      return structuredClone(migration);
     },
     onOrganizationChanged:cb=>(organizationListeners.add(cb),()=>organizationListeners.delete(cb)),
     tabsSince:async()=>({kind:"snapshot" as const,snapshot:await bridge.tabsSnapshot()}),

@@ -30,3 +30,4 @@ aux/runtime/0029-profile-searchbox.patch
 aux/runtime/0030-aux-result-isolation.patch
 aux/runtime/0031-cosmetic-document-start.patch
 aux/runtime/0032-native-dictation.patch
+aux/runtime/0033-native-migration-import.patch

@@ -16,6 +16,15 @@ export interface StageBounds {
 }
 
 export interface BrowserProfile { id:string;name:string;current:boolean;archived?:boolean }
+export interface MigrationReview {
+  status:"ready"|"interrupted"|"applied";
+  contentHash:string;manifestSha256:string;
+  tabs:number;bookmarks:number;bookmarkFolders:number;spaces:number;vaultPending:boolean;
+  omitted:{unsafeTabs:number;unsafeBookmarks:number;missingArtifacts:number;vaultMetadata:number;layoutMissing:boolean};
+  progress?:{status:"importing";folders:number;bookmarks:number;tabs:number};
+}
+export type MigrationToken = Pick<MigrationReview,"contentHash"|"manifestSha256">;
+export type MigrationProgress = NonNullable<MigrationReview["progress"]>;
 export interface HttpAuthRequest { id:string; origin:string;  proxy:boolean; realm:string; retry:boolean }
 export interface BrowserExtension { key:string;id?:string;name:string;version:string;permissions:string[];enabled:boolean;loaded:boolean;managed:boolean;source:"managed"|"environment"|"store";error?:string }
 export interface BrowserSiteInfo {
@@ -95,6 +104,11 @@ export interface AuxBridge {
   tabsSnapshot():Promise<TabCatalogSnapshot>;
   organizationSnapshot():Promise<OrganizationSnapshot>;
   organizationCommit(input:OrganizationCommit):Promise<OrganizationSnapshot>;
+  migrationReview():Promise<MigrationReview>;
+  migrationBegin(input:MigrationToken&{confirmed:true}):Promise<MigrationReview|MigrationProgress>;
+  migrationBatch(input:MigrationToken&{section:"folders"|"bookmarks"|"tabs";offset:number}):Promise<MigrationProgress>;
+  migrationFinish(input:MigrationToken):Promise<MigrationReview>;
+  migrationRollback(input:MigrationToken&{confirmed:true}):Promise<MigrationReview>;
   onOrganizationChanged(cb:(revision:number)=>void):()=>void;
   tabsSince(version:number):Promise<TabsSinceResult>;
   onTabsPatch(cb:(patch:TabPatch)=>void):()=>void;
@@ -279,6 +293,11 @@ const stub: AuxBridge = {
   tabsSnapshot:async()=>({version:0,tabs:[],windows:[]}),
   organizationSnapshot:async()=>({revision:0,layout:null}),
   organizationCommit:async()=>{throw new Error("Organization storage requires Aux desktop");},
+  migrationReview:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+  migrationBegin:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+  migrationBatch:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+  migrationFinish:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+  migrationRollback:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
   onOrganizationChanged:noop,
   tabsSince:async()=>({kind:"snapshot",snapshot:{version:0,tabs:[],windows:[]}}),
   onTabsPatch:noop,
