@@ -12,6 +12,7 @@ type Pending = { id: number; sessionId: string; pageId: string };
 
 const CONTEXT_ID = "aux-profile";
 const MAX_MESSAGE_BYTES = 1024 * 1024;
+const MAX_NATIVE_EVENT_BYTES = 16 * 1024 * 1024;
 const REFRESH_MS = 300;
 const PAGE_DOMAINS = new Set(["Page", "Runtime", "DOM", "DOMSnapshot", "Accessibility", "Input", "Emulation", "Log", "CSS", "Performance", "Overlay", "IO", "Network", "Fetch"]);
 
@@ -169,7 +170,7 @@ export class NativeCdpBroker {
   private forwardNative(payload: unknown): void {
     if (!payload || typeof payload !== "object") return;
     const event = payload as { pageId?: unknown; message?: unknown };
-    if (typeof event.pageId !== "string" || typeof event.message !== "string" || event.message.length > MAX_MESSAGE_BYTES) return;
+    if (typeof event.pageId !== "string" || typeof event.message !== "string" || event.message.length > MAX_NATIVE_EVENT_BYTES) return;
     let message: Record<string, unknown>;
     try { message = JSON.parse(event.message) as Record<string, unknown>; } catch { return; }
     if (typeof message.id === "number") {
