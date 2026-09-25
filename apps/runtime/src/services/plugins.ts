@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { AuxError, AuxPluginManifestSchema, PluginSchema, type AuxPluginManifest, type Plugin } from "@aux/contracts";
+import { lstat, readFile } from "node:fs/promises";
+import { AuxError, AuxPluginManifestSchema, PluginAssetSchema, PluginSchema, type AuxPluginManifest, type Plugin, type PluginAsset } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { RoutineService } from "./routines.js";
+import { readClaudePlugin, type ImportedPlugin } from "./claude-plugin-import.js";
 
 type Row = {
   plugin_id: string; name: string; version: string | null; description: string | null;
@@ -30,7 +31,10 @@ const record = (row: Row): Plugin =>
 export class PluginService {
   constructor(private repo: Repo, private routines: RoutineService) {}
 
-  private async manifest(path: string): Promise<AuxPluginManifest> {
+  private async manifest(path: string): Promise<AuxPluginManifest | ImportedPlugin> {
+    const info = await lstat(path).catch(() => undefined);
+    if (info?.isDirectory()) return readClaudePlugin(path);
+    if (!info?.isFile()) throw new AuxError("invalid_params", "Choose a regular plugin file or directory.");
     let raw: unknown;
     try {
       raw = JSON.parse(await readFile(path, "utf8"));
@@ -47,13 +51,15 @@ export class PluginService {
       throw new AuxError("not_found", "Space does not exist");
   }
 
-  inspect(path: string): Promise<{ name: string; version?: string; description?: string; routineCount: number; routineTitles: string[] }> {
+  inspect(path: string): Promise<{ name: string; version?: string; description?: string; routineCount: number; routineTitles: string[]; format: string; assets: { kind: PluginAsset["kind"]; name: string }[] }> {
     return this.manifest(path).then(bundle => ({
       name: bundle.name,
       version: bundle.version,
       description: bundle.description,
-      routineCount: bundle.routines.length,
-      routineTitles: bundle.routines.map(routine => routine.title),
+      routineCount: bundle.format === "aux-plugin@1" ? bundle.routines.length : 0,
+      routineTitles: bundle.format === "aux-plugin@1" ? bundle.routines.map(routine => routine.title) : [],
+      format: bundle.format,
+      assets: bundle.format === "claude-code" ? bundle.assets.map(({ kind, name }) => ({ kind, name })) : [],
     }));
   }
 
@@ -62,7 +68,9 @@ export class PluginService {
     this.requireWorkspace(workspaceId);
     const existing = this.repo.db.prepare("SELECT 1 FROM plugins WHERE name=? AND workspace_id=? AND uninstalled_at IS NULL").get(bundle.name, workspaceId);
     if (existing) throw new AuxError("conflict", `"${bundle.name}" is already installed in this space. Uninstall it first.`);
-    const { imported, skipped, routineIds } = this.routines.importRoutines(bundle.routines, workspaceId);
+    const { imported, skipped, routineIds } = bundle.format === "aux-plugin@1"
+      ? this.routines.importRoutines(bundle.routines, workspaceId)
+      : { imported: 0, skipped: 0, routineIds: [] };
     const plugin: Plugin = PluginSchema.parse({
       pluginId: randomUUID(),
       name: bundle.name,
@@ -72,10 +80,37 @@ export class PluginService {
       routineIds,
       installedAt: Date.now(),
     });
-    this.repo.db.prepare(
-      "INSERT INTO plugins(plugin_id,name,version,description,workspace_id,routine_ids,created_at) VALUES(?,?,?,?,?,?,?)"
-    ).run(plugin.pluginId, plugin.name, plugin.version ?? null, plugin.description ?? null, workspaceId, JSON.stringify(routineIds), plugin.installedAt);
+    this.repo.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.repo.db.prepare(
+        "INSERT INTO plugins(plugin_id,name,version,description,workspace_id,routine_ids,created_at) VALUES(?,?,?,?,?,?,?)"
+      ).run(plugin.pluginId, plugin.name, plugin.version ?? null, plugin.description ?? null, workspaceId, JSON.stringify(routineIds), plugin.installedAt);
+      if (bundle.format === "claude-code") {
+        const insert = this.repo.db.prepare("INSERT INTO plugin_assets(asset_id,plugin_id,kind,name,description,content,digest,imported_at) VALUES(?,?,?,?,?,?,?,?)");
+        for (const asset of bundle.assets) {
+          const item = PluginAssetSchema.parse({ assetId: randomUUID(), pluginId: plugin.pluginId, ...asset, authority: "none", importedAt: plugin.installedAt });
+          insert.run(item.assetId, item.pluginId, item.kind, item.name, item.description ?? null, item.content ?? null, item.digest, item.importedAt);
+        }
+      }
+      this.repo.db.exec("COMMIT");
+    } catch (error) {
+      this.repo.db.exec("ROLLBACK");
+      throw error;
+    }
     return { plugin, imported, skipped };
+  }
+
+  /** Inspect imported components. They have no execution path or grant at import time. */
+  assets(pluginId: string): PluginAsset[] {
+    const plugin = this.repo.db.prepare("SELECT 1 FROM plugins WHERE plugin_id=? AND uninstalled_at IS NULL").get(pluginId);
+    if (!plugin) throw new AuxError("not_found", "Installed plugin does not exist");
+    const rows = this.repo.db.prepare("SELECT * FROM plugin_assets WHERE plugin_id=? ORDER BY kind,name").all(pluginId) as {
+      asset_id: string; plugin_id: string; kind: string; name: string; description: string | null;
+      content: string | null; digest: string; imported_at: number;
+    }[];
+    return rows.map(row => PluginAssetSchema.parse({ assetId: row.asset_id, pluginId: row.plugin_id, kind: row.kind,
+      name: row.name, description: row.description ?? undefined, content: row.content ?? undefined,
+      digest: row.digest, authority: "none", importedAt: row.imported_at }));
   }
 
   list(params: { workspaceId?: string; includeUninstalled?: boolean } = {}): Plugin[] {
@@ -98,6 +133,7 @@ export class PluginService {
       } catch { /* The routine was already removed outside this plugin. */ }
     }
     const now = Date.now();
+    this.repo.db.prepare("DELETE FROM plugin_assets WHERE plugin_id=?").run(pluginId);
     this.repo.db.prepare("UPDATE plugins SET uninstalled_at=? WHERE plugin_id=?").run(now, pluginId);
     return { plugin: { ...plugin, uninstalledAt: now }, archivedRoutines: archived };
   }

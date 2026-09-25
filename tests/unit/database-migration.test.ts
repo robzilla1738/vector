@@ -26,7 +26,7 @@ describe("schema versioning", () => {
     old.exec("DROP TABLE safety_approval_requests; DROP TABLE safety_standing_grants; DROP TABLE safety_send_journal; DROP TABLE safety_challenge_recovery; DROP TABLE safety_audit; PRAGMA user_version=12");
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     for (const table of ["safety_approval_requests", "safety_standing_grants", "safety_send_journal", "safety_challenge_recovery", "safety_audit"]) {
       expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name=?").get(table)).toBeDefined();
     }
@@ -38,7 +38,7 @@ describe("schema versioning", () => {
     old.exec("DROP TABLE history_projection_staging; PRAGMA user_version=13");
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='history_projection_staging'").get()).toBeDefined();
   });
   it("migrates a v14 profile to durable command escalation tables", () => {
@@ -47,9 +47,18 @@ describe("schema versioning", () => {
     old.exec("DROP TABLE command_escalation_grants; DROP TABLE command_escalation_requests; PRAGMA user_version=14");
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='command_escalation_requests'").get()).toBeDefined();
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='command_escalation_grants'").get()).toBeDefined();
+  });
+  it("migrates a v15 profile to the inert plugin asset inventory", () => {
+    const { path } = fixture();
+    const old = track(openDb(path));
+    old.exec("DROP TABLE plugin_assets; PRAGMA user_version=15");
+    old.close();
+    const upgraded = track(openDb(path));
+    expect(version(upgraded)).toBe(16);
+    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugin_assets'").get()).toBeDefined();
   });
   it("scrubs legacy operation input samples when a Profile opens", () => {
     const { path } = fixture();
@@ -126,7 +135,7 @@ describe("schema versioning", () => {
   it("initializes a fresh profile with every table, indexes, and the Aux marker", () => {
     const { directory, path } = fixture();
     const db = track(openDb(path));
-    expect(version(db)).toBe(15);
+    expect(version(db)).toBe(16);
     expect((db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value: string }).value).toBe("aux");
     const tables = db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all() as { name: string }[];
     for (const table of [
@@ -139,7 +148,7 @@ describe("schema versioning", () => {
       "vault_items", "vault_grants", "vault_access", "routines", "routine_revisions", "calendar_connections", "calendar_task_grants",
       "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts", "plugins",
       "history_projection_staging", "safety_approval_requests", "safety_standing_grants", "safety_send_journal",
-      "command_escalation_requests", "command_escalation_grants",
+      "command_escalation_requests", "command_escalation_grants", "plugin_assets",
     ]) {
       expect(tables.map(row => row.name)).toContain(table);
     }
@@ -191,9 +200,9 @@ describe("schema versioning", () => {
   it("refuses newer Aux schemas without modifying them", () => {
     const { directory, path } = fixture();
     const newer = track(openDb(path));
-    newer.exec("PRAGMA user_version=16; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')");
-    expect(() => openDb(path)).toThrow(/schema 15.*newer/);
-    expect(version(newer)).toBe(16);
+    newer.exec("PRAGMA user_version=17; CREATE TABLE future(value TEXT); INSERT INTO future VALUES ('keep')");
+    expect(() => openDb(path)).toThrow(/schema 16.*newer/);
+    expect(version(newer)).toBe(17);
     expect((newer.prepare("SELECT value FROM future").get() as { value: string }).value).toBe("keep");
     expect(readdirSync(directory).filter(name => name !== "state.sqlite" && !name.startsWith("state.sqlite-"))).toEqual([]);
   });
@@ -227,7 +236,7 @@ describe("schema versioning", () => {
     old.exec("DROP TABLE result_versions; DROP TABLE run_messages; DROP TABLE calendar_task_grants; DROP TABLE calendar_connections; DROP TABLE content_memory; PRAGMA user_version=5");
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='run_messages'").get()).toBeDefined();
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_connections'").get()).toBeDefined();
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_task_grants'").get()).toBeDefined();
@@ -245,7 +254,7 @@ describe("schema versioning", () => {
       PRAGMA user_version=10`);
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='observations'").get()).toBeUndefined();
     expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value).toBe("kept");
   });
@@ -257,7 +266,7 @@ describe("schema versioning", () => {
     old.exec("DROP TABLE result_versions; PRAGMA user_version=11");
     old.close();
     const upgraded=track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='result_versions'").get()).toBeDefined();
     expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as {value:string}).value).toBe("kept");
   });
@@ -269,7 +278,7 @@ describe("schema versioning", () => {
     old.exec("DROP TABLE result_versions; DROP TABLE calendar_task_grants; DROP TABLE content_memory; PRAGMA user_version=7");
     old.close();
     const upgraded = track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='calendar_task_grants'").get()).toBeDefined();
     expect((upgraded.prepare("SELECT value FROM kv WHERE key='saved'").get() as { value: string }).value).toBe("kept");
   });
@@ -284,7 +293,7 @@ describe("schema versioning", () => {
       INSERT INTO action_intents VALUES('i1','k1','r1','p1',1,'uncertain',100,NULL);`);
     old.close();
     const upgraded=track(openDb(path));
-    expect(version(upgraded)).toBe(15);
+    expect(version(upgraded)).toBe(16);
     expect(upgraded.prepare("SELECT task_id,task_revision,status FROM action_intents WHERE id='i1'").get()).toMatchObject({task_id:null,task_revision:null,status:'uncertain'});
     expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_action_intents_task_unresolved'").get()).toBeDefined();
   });
@@ -304,7 +313,7 @@ describe("schema versioning", () => {
     `);
     legacy.close();
     const db = track(openDb(path));
-    expect(version(db)).toBe(15);
+    expect(version(db)).toBe(16);
     expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugins'").get()).toBeDefined();
     const repo = new Repo(db);
     expect(repo.listHistory()).toHaveLength(2);

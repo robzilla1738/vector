@@ -38,7 +38,7 @@ import {
   VaultAccessRecordSchema, VaultExportSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultImportParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema,
+  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
@@ -734,6 +734,7 @@ export const MethodSchemas = {
   "plugins.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
   "plugins.list": z.object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) }).strict(),
+  "plugins.assets": z.object({ pluginId: id }).strict(),
   "plugins.uninstall": z.object({ pluginId: id }).strict(),
   "agentConnections.list": z.object({}),
   "agentConnections.create": AgentConnectionCreateParams,
@@ -1125,6 +1126,8 @@ export const ResultSchemas = {
     description: z.string().optional(),
     routineCount: z.number().int().nonnegative(),
     routineTitles: z.array(z.string()),
+    format: z.enum(["aux-plugin@1", "claude-code"]),
+    assets: z.array(z.object({ kind: z.enum(["skill", "mcp_server", "hook"]), name: z.string() })),
   }),
   "plugins.install": z.object({
     plugin: PluginSchema,
@@ -1132,6 +1135,7 @@ export const ResultSchemas = {
     skipped: z.number().int().nonnegative(),
   }),
   "plugins.list": z.array(PluginSchema),
+  "plugins.assets": z.array(PluginAssetSchema),
   "plugins.uninstall": z.object({
     plugin: PluginSchema,
     archivedRoutines: z.number().int().nonnegative(),

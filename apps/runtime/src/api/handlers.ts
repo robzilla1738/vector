@@ -382,6 +382,9 @@ export function makeInvoker(s: Services) {
       case "plugins.list":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.list(params);
+      case "plugins.assets":
+        if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
+        return plugins.assets(params.pluginId);
       case "plugins.uninstall":
         if (client.external) throw new AuxError("permission_denied", "Plugins are managed in Aux.");
         return plugins.uninstall(params.pluginId);

@@ -293,11 +293,17 @@ CREATE TABLE plugins(
   routine_ids TEXT NOT NULL DEFAULT '[]',
   created_at INTEGER NOT NULL, uninstalled_at INTEGER);
 CREATE INDEX idx_plugins_workspace ON plugins(workspace_id,uninstalled_at);
+CREATE TABLE plugin_assets(
+  asset_id TEXT PRIMARY KEY, plugin_id TEXT NOT NULL REFERENCES plugins(plugin_id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK(kind IN ('skill','mcp_server','hook')),
+  name TEXT NOT NULL, description TEXT, content TEXT, digest TEXT NOT NULL,
+  imported_at INTEGER NOT NULL);
+CREATE INDEX idx_plugin_assets_plugin ON plugin_assets(plugin_id,kind,name);
 ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -440,6 +446,15 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       request_id TEXT PRIMARY KEY REFERENCES command_escalation_requests(request_id),
       body TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('once','prefix')), consumed_at INTEGER)`,
     `CREATE INDEX IF NOT EXISTS idx_command_escalation_state ON command_escalation_requests(state)`,
+  ],
+  // v15 → v16: inert imported plugin component inventory.
+  15: [
+    `CREATE TABLE IF NOT EXISTS plugin_assets(
+      asset_id TEXT PRIMARY KEY, plugin_id TEXT NOT NULL REFERENCES plugins(plugin_id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK(kind IN ('skill','mcp_server','hook')),
+      name TEXT NOT NULL, description TEXT, content TEXT, digest TEXT NOT NULL,
+      imported_at INTEGER NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS idx_plugin_assets_plugin ON plugin_assets(plugin_id,kind,name)`,
   ],
 };
 

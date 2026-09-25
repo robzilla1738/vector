@@ -68,6 +68,18 @@ export const PluginSchema = z.object({
   installedAt: z.number(),
   uninstalledAt: z.number().optional(),
 });
+/** Imported component inventory is inert until a separate, scoped grant exists. */
+export const PluginAssetSchema = z.object({
+  assetId: z.string().uuid(),
+  pluginId: text,
+  kind: z.enum(["skill", "mcp_server", "hook"]),
+  name: text.max(200),
+  description: z.string().max(2000).optional(),
+  content: z.string().max(64_000).optional(),
+  digest: z.string().regex(/^[a-f0-9]{64}$/),
+  authority: z.literal("none"),
+  importedAt: z.number(),
+});
 export const RoutineSchema = RoutineDefinitionSchema.extend({
   routineId: text,
   revision: z.number().int().positive(),
@@ -148,6 +160,7 @@ export type RoutineCompare = z.infer<typeof RoutineCompareSchema>;
 
 export type AuxPluginManifest = z.infer<typeof AuxPluginManifestSchema>;
 export type Plugin = z.infer<typeof PluginSchema>;
+export type PluginAsset = z.infer<typeof PluginAssetSchema>;
 export type RoutineShare = z.infer<typeof RoutineShareSchema>;
 export type RoutineShareEnvelope = z.infer<typeof RoutineShareEnvelopeSchema>;
 export type RoutineParameter = z.infer<typeof RoutineParameterSchema>;

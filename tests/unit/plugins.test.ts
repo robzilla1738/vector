@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -17,6 +17,7 @@ function fixture() {
   const routines = new RoutineService(repo, events);
   const plugins = new PluginService(repo, routines);
   const dir = mkdtempSync(join(tmpdir(), "aux-plugin-"));
+  cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
   const bundle = (value: unknown) => {
     const path = join(dir, "plugin.json");
     writeFileSync(path, JSON.stringify(value));
@@ -30,7 +31,7 @@ function fixture() {
     routines: [{ title: "Vendor check", objective: "Check {{topic}} vendors", parameters: [{ name: "topic", label: "Topic" }] }],
     ...overrides,
   });
-  return { workspace, routines, plugins, bundle, manifest };
+  return { workspace, routines, plugins, bundle, manifest, dir };
 }
 
 it("inspects a bundle without installing it", async () => {
@@ -81,4 +82,50 @@ it("uninstall archives the routines this plugin created and can be installed aga
   const again = await f.plugins.install(f.manifest(), f.workspace.workspaceId);
   expect(again.imported).toBe(0);
   expect(again.skipped).toBe(1);
+});
+
+it("imports Claude-format skills, MCP servers and hooks without granting execution", async () => {
+  const f = fixture();
+  const root = join(f.dir, "claude-plugin");
+  mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(root, "skills", "research"), { recursive: true });
+  mkdirSync(join(root, "hooks"), { recursive: true });
+  writeFileSync(join(root, ".claude-plugin", "plugin.json"), JSON.stringify({ name: "research-kit", version: "1.0" }));
+  writeFileSync(join(root, "skills", "research", "SKILL.md"), "---\nname: research\ndescription: Review sources\n---\nUse primary sources.");
+  const marker = join(f.dir, "executed");
+  writeFileSync(join(root, ".mcp.json"), JSON.stringify({ mcpServers: { records: { command: "sh", args: ["-c", `touch ${marker}`], env: { TOKEN: "private-token" } } } }));
+  writeFileSync(join(root, "hooks", "hooks.json"), JSON.stringify({ hooks: { PostToolUse: [{ hooks: [{ type: "command", command: `touch ${marker}` }] }] } }));
+  const inspected = await f.plugins.inspect(root);
+  expect(inspected).toMatchObject({ format: "claude-code", routineCount: 0, assets: [
+    { kind: "skill", name: "research" }, { kind: "mcp_server", name: "records" }, { kind: "hook", name: "PostToolUse" },
+  ] });
+  const { plugin, imported } = await f.plugins.install(root, f.workspace.workspaceId);
+  expect(imported).toBe(0);
+  const assets = f.plugins.assets(plugin.pluginId);
+  expect(assets).toHaveLength(3);
+  expect(assets.every(asset => asset.authority === "none")).toBe(true);
+  expect(assets.find(asset => asset.kind === "skill")?.content).toContain("Use primary sources.");
+  expect(JSON.stringify(assets)).not.toContain("private-token");
+  expect(JSON.stringify(assets)).not.toContain(`touch ${marker}`);
+  expect(existsSync(marker)).toBe(false);
+  f.plugins.uninstall(plugin.pluginId);
+  expect(() => f.plugins.assets(plugin.pluginId)).toThrow(/does not exist/);
+  expect(f.plugins.list({ includeUninstalled: true })).toHaveLength(1);
+  expect(f.plugins.list()).toHaveLength(0);
+});
+
+it("rejects symlinked plugin components and oversized skill content", async () => {
+  const f = fixture();
+  const root = join(f.dir, "claude-plugin");
+  mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(root, "skills", "escape"), { recursive: true });
+  writeFileSync(join(root, ".claude-plugin", "plugin.json"), JSON.stringify({ name: "safe-kit" }));
+  const external = join(f.dir, "external.md");
+  writeFileSync(external, "secret outside plugin");
+  symlinkSync(external, join(root, "skills", "escape", "SKILL.md"));
+  await expect(f.plugins.inspect(root)).rejects.toThrow(/regular file/);
+  rmSync(join(root, "skills", "escape", "SKILL.md"));
+  writeFileSync(join(root, "skills", "escape", "SKILL.md"), "A".repeat(64_001));
+  await expect(f.plugins.install(root, f.workspace.workspaceId)).rejects.toThrow(/bounded regular file/);
+  expect(f.plugins.list()).toHaveLength(0);
 });
