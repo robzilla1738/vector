@@ -209,10 +209,10 @@ index 248245c8c9..fda61cd0cb 100644
    void OnRuntimeNote(std::string type, std::string payload_json);
 diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
 new file mode 100644
-index 0000000000..7107918e26
+index 0000000000..50559bd009
 --- /dev/null
 +++ b/chrome/browser/ui/aux/zap_controller.cc
-@@ -0,0 +1,509 @@
+@@ -0,0 +1,513 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -517,14 +517,14 @@ index 0000000000..7107918e26
 +  pending->receipt.Set("stylesheetSha256", hash);
 +  pending->receipt.Set("phase", "document_start");
 +  pending->receipt.Set("futureDocuments", true);
-+  pending->receipt.Set(
-+      "appliedAt",
-+      static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
 +
 +  if (pending->remaining == 0) {
 +    if (stylesheet.empty()) {
 +      policies_.erase(origin);
 +    }
++    pending->receipt.Set(
++        "appliedAt",
++        static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
 +    pending->receipt.Set("activeDocuments", base::Value::List());
 +    base::Value::Dict response;
 +    response.Set("result", std::move(pending->receipt));
@@ -570,6 +570,10 @@ index 0000000000..7107918e26
 +                return;
 +              }
 +              if (!pending->failed) {
++                pending->receipt.Set(
++                    "appliedAt",
++                    static_cast<double>(
++                        base::Time::Now().InMillisecondsSinceUnixEpoch()));
 +                pending->receipt.Set("activeDocuments",
 +                                     std::move(pending->documents));
 +                base::Value::Dict response;
