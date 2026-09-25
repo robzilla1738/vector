@@ -67,10 +67,10 @@ User-supplied `/Users/rcourson/AI Blueprints/06/` provides reference geometry, m
 
 ### Native material architecture correction
 
-The initial material wrapper described above was superseded after inspecting Chromium’s own `BrowserNativeWidgetMac` implementation. Aux now installs a non-hit-testing material underlay inside the existing content view instead of replacing that view, preserving Chromium’s responder chain. The backing uses Chromium’s 0.001-alpha approach to avoid continuous transparent-surface invalidation. This final change is undergoing build/live verification; the earlier wrapper is not the handoff design.
+The initial material wrapper described above was superseded after inspecting Chromium’s own `BrowserNativeWidgetMac` implementation. Aux now installs a non-hit-testing material underlay inside the existing content view instead of replacing that view, preserving Chromium’s responder chain. The backing uses Chromium’s 0.001-alpha approach to avoid continuous transparent-surface invalidation. This final change and the updated shell both built successfully; live verification remains open; the earlier wrapper is not the handoff design.
 
 ### Bundle and restore gates
 
 - Narrowing the CSP-safe Zod configuration import reduced total renderer JavaScript from 1,958 KB to 1,677 KB (1,800 KB budget). Startup is currently 494 KB against 490 KB, so that gate still fails; CSS is 210 KB against 218 KB. No budget was raised.
 - Clean candidate startup currently opens a new tab rather than restoring the prior live tabs. Complete session-restore qualification remains open; do not assume restart restoration from shutdown success.
-- The native glass underlay compiled successfully. Latest shell resources with the narrowed Zod import are being rebuilt into the candidate.
+- The native glass underlay compiled successfully. Latest shell resources with the narrowed Zod import built into the candidate successfully (`/tmp/aux-build-glass-shell.log`, 12 steps).
