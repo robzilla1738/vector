@@ -68,7 +68,7 @@ new file mode 100644
 index 0000000000..fd08831bc5
 --- /dev/null
 +++ b/chrome/browser/resources/aux_host/BUILD.gn
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,15 @@
 +# Copyright 2026 The Aux Authors
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
@@ -83,7 +83,6 @@ index 0000000000..fd08831bc5
 +  ts_files = [ "aux_host_bootstrap.ts" ]
 +  mojo_files = [ "$root_gen_dir/chrome/browser/ui/webui_browser/shell_host.mojom-webui.ts" ]
 +  mojo_files_deps = [ "//chrome/browser/ui/webui_browser:shell_host_mojo_bindings_ts__generator" ]
-+  webui_context_type = "trusted"
 +}
 diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 new file mode 100644

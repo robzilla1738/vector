@@ -33,7 +33,7 @@ diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_
 diff --git a/components/surface_embed/common/BUILD.gn b/components/surface_embed/common/BUILD.gn
 --- a/components/surface_embed/common/BUILD.gn
 +++ b/components/surface_embed/common/BUILD.gn
-@@ -2,7 +2,13 @@
+@@ -2,7 +2,14 @@
  # Use of this source code is governed by a BSD-style license that can be
  # found in the LICENSE file.
  
@@ -42,6 +42,7 @@ diff --git a/components/surface_embed/common/BUILD.gn b/components/surface_embed
  import("//mojo/public/tools/bindings/mojom.gni")
 +
 +buildflag_header("aux_buildflags") {
++  header = "aux_buildflags.h"
 +  flags = [ "ENABLE_AUX_SHELL=$enable_aux_shell" ]
 +}
  
