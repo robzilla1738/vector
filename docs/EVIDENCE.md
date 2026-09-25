@@ -35,3 +35,4 @@ The cap is **$50 total** for Aux and its harnesses across all waves. Planned all
 | Batch / commit | Label | Result and raw evidence | Open failures |
 | --- | --- | --- | --- |
 | B0 docs reset | **[Verified]** document state | Reviewed plan adopted as the sole roadmap; superseded planning and UI ledgers archived; [reference spec scaffold](reference-specs/README.md) created. | Other B0 gates are tracked by their implementing lanes; do not infer CI or model success from this row. |
+| B2 zero-build / `154` base selection | **[Partial]** | [Webium decision](decisions/host-composition.md): existing candidate loaded Webium, local page input, tabs, context menu and window fullscreen; stock split command failed. Chromium Mac stable `154.0.8037.58` tag resolves to `a65484142514cbb703a2931e07b70a83aedbafd`. | Full critical subset, native Aux W implementation and matrix remain open. |

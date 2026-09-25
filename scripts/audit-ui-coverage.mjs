@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 // Inventory integrity only. This cannot establish visual, behavioral or native correctness.
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const ledger=JSON.parse(await readFile(resolve(root,'docs/ui/component-transplant-ledger.json'),'utf8'));
+const ledger=JSON.parse(await readFile(resolve(root,'docs/archive/2026-09-24-b0-reset/ui/component-transplant-ledger.json'),'utf8'));
 const errors=[];
 const ids=new Set();
 const files=new Set();
