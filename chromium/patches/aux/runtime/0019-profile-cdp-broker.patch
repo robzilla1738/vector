@@ -90,11 +90,11 @@ index 0000000000..374710e173
 +    "Emulation", "Log", "CSS", "Performance", "Overlay", "IO", "Network",
 +    "Fetch"};
 +
-+base::Value::Dict Fault(const char* code, const char* message) {
-+  base::Value::Dict error;
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
 +  error.Set("code", code);
 +  error.Set("message", message);
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +  reply.Set("error", std::move(error));
 +  return reply;
 +}
@@ -169,10 +169,10 @@ index 0000000000..374710e173
 +      return;
 +    }
 +    const std::string json(message.begin(), message.end());
-+    const auto parsed = base::JSONReader::Read(json);
-+    const base::Value::Dict* event = parsed ? parsed->GetIfDict() : nullptr;
++    const auto parsed = base::JSONReader::Read(json, base::JSON_PARSE_RFC);
++    const base::DictValue* event = parsed ? parsed->GetIfDict() : nullptr;
 +    const std::string* method = event ? event->FindString("method") : nullptr;
-+    const base::Value::Dict* params = event ? event->FindDict("params") : nullptr;
++    const base::DictValue* params = event ? event->FindDict("params") : nullptr;
 +    if (const std::string* session_id =
 +            event ? event->FindString("sessionId") : nullptr;
 +        session_id && !OwnsChild(*session_id)) {
@@ -181,7 +181,7 @@ index 0000000000..374710e173
 +    if (method && *method == "Target.attachedToTarget") {
 +      const std::string* session_id =
 +          params ? params->FindString("sessionId") : nullptr;
-+      const base::Value::Dict* info =
++      const base::DictValue* info =
 +          params ? params->FindDict("targetInfo") : nullptr;
 +      const std::string* target_id =
 +          info ? info->FindString("targetId") : nullptr;
@@ -231,7 +231,7 @@ index 0000000000..374710e173
 +    : profile_(profile), on_message_(std::move(on_message)) {}
 +CdpBroker::~CdpBroker() = default;
 +
-+base::Value::Dict CdpBroker::Dispatch(const std::string& page_id,
++base::DictValue CdpBroker::Dispatch(const std::string& page_id,
 +                                      const std::string& message,
 +                                      uint64_t connection_generation) {
 +  if (connection_generation_ != connection_generation) {
@@ -244,8 +244,8 @@ index 0000000000..374710e173
 +  if (message.size() > kMaxCdpMessageBytes) {
 +    return Fault("invalid_argument", "CDP message exceeds 1 MiB");
 +  }
-+  const auto parsed = base::JSONReader::Read(message);
-+  const base::Value::Dict* command = parsed ? parsed->GetIfDict() : nullptr;
++  const auto parsed = base::JSONReader::Read(message, base::JSON_PARSE_RFC);
++  const base::DictValue* command = parsed ? parsed->GetIfDict() : nullptr;
 +  const std::string* method = command ? command->FindString("method") : nullptr;
 +  const std::optional<int> id = command ? command->FindInt("id") : std::nullopt;
 +  if (!command || !method || !id || *id < 1 ||
@@ -289,18 +289,18 @@ index 0000000000..374710e173
 +  }
 +  std::string dispatched = message;
 +  if (*method == "Target.setAutoAttach") {
-+    const base::Value::Dict* params = command->FindDict("params");
++    const base::DictValue* params = command->FindDict("params");
 +    if (!params || !params->FindBool("autoAttach") ||
 +        !params->FindBool("flatten").value_or(false)) {
 +      return Fault("invalid_argument", "Flat iframe attachment is required");
 +    }
-+    base::Value::Dict restricted = command->Clone();
-+    base::Value::Dict options = params->Clone();
-+    base::Value::List filter;
-+    base::Value::Dict iframe;
++    base::DictValue restricted = command->Clone();
++    base::DictValue options = params->Clone();
++    base::ListValue filter;
++    base::DictValue iframe;
 +    iframe.Set("type", "iframe");
 +    filter.Append(std::move(iframe));
-+    base::Value::Dict exclude_all;
++    base::DictValue exclude_all;
 +    exclude_all.Set("type", "*");
 +    exclude_all.Set("exclude", true);
 +    filter.Append(std::move(exclude_all));
@@ -312,16 +312,16 @@ index 0000000000..374710e173
 +    }
 +    dispatched = *encoded;
 +  } else if (*method == "Target.detachFromTarget") {
-+    const base::Value::Dict* params = command->FindDict("params");
++    const base::DictValue* params = command->FindDict("params");
 +    const std::string* child = params ? params->FindString("sessionId") : nullptr;
 +    if (!child || !it->second->OwnsChild(*child)) {
 +      return Fault("permission_denied", "CDP child session is not owned by this page");
 +    }
 +  }
 +  it->second->Send(dispatched);
-+  base::Value::Dict result;
++  base::DictValue result;
 +  result.Set("accepted", true);
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +  reply.Set("result", std::move(result));
 +  return reply;
 +}
@@ -374,7 +374,7 @@ index 0000000000..bd447e449a
 +  CdpBroker(const CdpBroker&) = delete;
 +  CdpBroker& operator=(const CdpBroker&) = delete;
 +
-+  base::Value::Dict Dispatch(const std::string& page_id,
++  base::DictValue Dispatch(const std::string& page_id,
 +                             const std::string& message,
 +                             uint64_t connection_generation);
 +  void DetachAll();
@@ -484,10 +484,10 @@ index 2ed11dfba1..f8aa9f6f4c 100644
    }
  }
  
- base::Value::Dict AuxRuntimeHost::HandleNativeCall(
+ base::DictValue AuxRuntimeHost::HandleNativeCall(
      const std::string& method,
--    const base::Value::Dict& params) {
-+    const base::Value::Dict& params,
+-    const base::DictValue& params) {
++    const base::DictValue& params,
 +    uint64_t connection_generation) {
    auto* catalog = aux::TabCatalog::GetForProfile(profile_);
    if (!catalog) {
@@ -503,13 +503,13 @@ index 2ed11dfba1..f8aa9f6f4c 100644
 +                                 connection_generation);
 +  }
 +  if (method == "native.cdpVersion") {
-+    base::Value::Dict result;
++    base::DictValue result;
 +    result.Set("version", version_info::GetVersionNumber());
 +    return NativeResult(base::Value(std::move(result)));
 +  }
    if (method == "native.listPages") {
-     base::Value::Dict snapshot = catalog->Snapshot();
-     base::Value::List pages;
+     base::DictValue snapshot = catalog->Snapshot();
+     base::ListValue pages;
 @@ -529,6 +558,7 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
    }
    close(listener_fd_);
@@ -518,15 +518,15 @@ index 2ed11dfba1..f8aa9f6f4c 100644
    return true;
  }
  
-@@ -608,6 +638,7 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+@@ -608,6 +638,7 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
        FROM_HERE, base::BindOnce(
                       [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
-                         base::Value::Dict params,
+                         base::DictValue params,
 +                        uint64_t connection_generation,
                          std::shared_ptr<NativeReplyState> state) {
                         if (owner && method == "native.zapInstallStylesheet") {
                           owner->HandleZapInstall(params, base::BindOnce(
-@@ -619,13 +650,15 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+@@ -619,13 +650,15 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                           return;
                         }
                         state->reply =
@@ -554,10 +554,10 @@ index 2ed11dfba1..f8aa9f6f4c 100644
 +  if (connection_fd_ < 0 || connection_generation != connection_generation_) {
 +    return;
 +  }
-+  base::Value::Dict payload;
++  base::DictValue payload;
 +  payload.Set("pageId", std::move(page_id));
 +  payload.Set("message", std::move(message));
-+  base::Value::Dict note;
++  base::DictValue note;
 +  note.Set("kind", "note");
 +  note.Set("type", "native.cdpMessage");
 +  note.Set("payload", std::move(payload));
@@ -567,7 +567,7 @@ index 2ed11dfba1..f8aa9f6f4c 100644
 +  }
 +}
 +
- void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
+ void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
    const std::string* type = data.FindString("type");
    const base::Value* payload = data.Find("payload");
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
@@ -611,11 +611,11 @@ index fda61cd0cb..4564c75706 100644
    };
  
 @@ -89,14 +97,19 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
-   void HandleZapInstall(const base::Value::Dict& params,
-                         base::OnceCallback<void(base::Value::Dict)> callback);
-   base::Value::Dict HandleNativeCall(const std::string& method,
--                                     const base::Value::Dict& params);
-+                                     const base::Value::Dict& params,
+   void HandleZapInstall(const base::DictValue& params,
+                         base::OnceCallback<void(base::DictValue)> callback);
+   base::DictValue HandleNativeCall(const std::string& method,
+-                                     const base::DictValue& params);
++                                     const base::DictValue& params,
 +                                     uint64_t connection_generation);
    void OnRuntimeNote(std::string type, std::string payload_json);
 +  void OnCdpMessage(uint64_t connection_generation,

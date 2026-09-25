@@ -79,17 +79,17 @@ index a551b4052e..dd61c24938 100644
 +  }
  }
  
- base::Value::Dict AuxRuntimeHost::HandleNativeCall(
-@@ -549,6 +594,135 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+ base::DictValue AuxRuntimeHost::HandleNativeCall(
+@@ -549,6 +594,135 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
    return std::move(state->reply);
  }
  
 +bool AuxRuntimeHost::Worker::HandleNativeRequest(
-+    const base::Value::Dict& data) {
++    const base::DictValue& data) {
 +  const std::optional<int> nested_id = data.FindInt("id");
 +  const std::string* native_method = data.FindString("method");
-+  const base::Value::Dict* native_params = data.FindDict("params");
-+  base::Value::Dict reply;
++  const base::DictValue* native_params = data.FindDict("params");
++  base::DictValue reply;
 +  reply.Set("kind", "res");
 +  reply.Set("id", nested_id.value_or(0));
 +  std::string native_error;
@@ -99,7 +99,7 @@ index a551b4052e..dd61c24938 100644
 +    const std::string* value = native_params->FindString("value");
 +    if (name && value &&
 +        aux::StoreSecret(profile_path_, *name, *value, &native_error)) {
-+      base::Value::Dict result;
++      base::DictValue result;
 +      result.Set("ok", true);
 +      reply.Set("result", std::move(result));
 +    }
@@ -108,14 +108,14 @@ index a551b4052e..dd61c24938 100644
 +    const std::string* name = native_params->FindString("name");
 +    std::optional<std::string> value;
 +    if (name && aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
-+      base::Value::Dict result;
++      base::DictValue result;
 +      if (value) {
 +        result.Set("value", *value);
 +      }
 +      reply.Set("result", std::move(result));
 +    }
 +  } else if (native_method && native_params) {
-+    base::Value::Dict dispatched =
++    base::DictValue dispatched =
 +        DispatchNative(*native_method, native_params->Clone());
 +    if (base::Value* result = dispatched.Find("result")) {
 +      reply.Set("result", result->Clone());
@@ -126,7 +126,7 @@ index a551b4052e..dd61c24938 100644
 +    native_error = "Invalid native request";
 +  }
 +  if (!reply.Find("result") && !reply.Find("error")) {
-+    base::Value::Dict fault;
++    base::DictValue fault;
 +    fault.Set("code", native_error.empty() ? "invalid_argument"
 +                                            : "backend_unavailable");
 +    fault.Set("message", native_error.empty() ? "Invalid native request"
@@ -137,7 +137,7 @@ index a551b4052e..dd61c24938 100644
 +  return reply_json && SendFrame(*reply_json);
 +}
 +
-+void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
++void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
 +  const std::string* type = data.FindString("type");
 +  const base::Value* payload = data.Find("payload");
 +  if (!type || *type != "event" || !payload) {
@@ -195,8 +195,8 @@ index a551b4052e..dd61c24938 100644
 +    const size_t newline = read_buffer_.find('\n');
 +    std::string line = read_buffer_.substr(0, newline);
 +    read_buffer_.erase(0, newline + 1);
-+    const auto frame = base::JSONReader::Read(line);
-+    const base::Value::Dict* data = frame ? frame->GetIfDict() : nullptr;
++    const auto frame = base::JSONReader::Read(line, base::JSON_PARSE_RFC);
++    const base::DictValue* data = frame ? frame->GetIfDict() : nullptr;
 +    if (!data) {
 +      Disconnect();
 +      return false;
@@ -222,8 +222,8 @@ index a551b4052e..dd61c24938 100644
      if (kind && *kind == "req") {
 -      const std::optional<int> nested_id = data->FindInt("id");
 -      const std::string* native_method = data->FindString("method");
--      const base::Value::Dict* native_params = data->FindDict("params");
--      base::Value::Dict reply;
+-      const base::DictValue* native_params = data->FindDict("params");
+-      base::DictValue reply;
 -      reply.Set("kind", "res");
 -      reply.Set("id", nested_id.value_or(0));
 -      std::string native_error;
@@ -233,7 +233,7 @@ index a551b4052e..dd61c24938 100644
 -        const std::string* value = native_params->FindString("value");
 -        if (name && value &&
 -            aux::StoreSecret(profile_path_, *name, *value, &native_error)) {
--          base::Value::Dict result;
+-          base::DictValue result;
 -          result.Set("ok", true);
 -          reply.Set("result", std::move(result));
 -        }
@@ -243,14 +243,14 @@ index a551b4052e..dd61c24938 100644
 -        std::optional<std::string> value;
 -        if (name &&
 -            aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
--          base::Value::Dict result;
+-          base::DictValue result;
 -          if (value) {
 -            result.Set("value", *value);
 -          }
 -          reply.Set("result", std::move(result));
 -        }
 -      } else if (native_method && native_params) {
--        base::Value::Dict dispatched =
+-        base::DictValue dispatched =
 -            DispatchNative(*native_method, native_params->Clone());
 -        if (base::Value* result = dispatched.Find("result")) {
 -          reply.Set("result", result->Clone());
@@ -261,7 +261,7 @@ index a551b4052e..dd61c24938 100644
 -        native_error = "Invalid native request";
 -      }
 -      if (!reply.Find("result") && !reply.Find("error")) {
--        base::Value::Dict fault;
+-        base::DictValue fault;
 -        fault.Set("code", native_error.empty() ? "invalid_argument"
 -                                               : "backend_unavailable");
 -        fault.Set("message", native_error.empty() ? "Invalid native request"
@@ -316,17 +316,17 @@ index 4953528803..248245c8c9 100644
      bool Connect(std::string* error);
 @@ -57,6 +62,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
      bool ReadFrame(std::string* frame, int timeout_ms);
-     base::Value::Dict DispatchNative(const std::string& method,
-                                      base::Value::Dict params);
-+    bool HandleNativeRequest(const base::Value::Dict& data);
-+    void ForwardNote(const base::Value::Dict& data);
+     base::DictValue DispatchNative(const std::string& method,
+                                      base::DictValue params);
++    bool HandleNativeRequest(const base::DictValue& data);
++    void ForwardNote(const base::DictValue& data);
  
      base::FilePath profile_path_;
      std::string profile_id_;
 @@ -74,9 +81,16 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
    explicit AuxRuntimeHost(Profile* profile);
-   base::Value::Dict HandleNativeCall(const std::string& method,
-                                      const base::Value::Dict& params);
+   base::DictValue HandleNativeCall(const std::string& method,
+                                      const base::DictValue& params);
 +  void OnRuntimeNote(std::string type, std::string payload_json);
 +  void SchedulePump();
 +  void PumpOnce();

@@ -132,20 +132,20 @@ index 023924e7b5..e8601431a5 100644
  
 +struct NativeReplyState {
 +  base::WaitableEvent ready;
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +};
 +
-+base::Value::Dict NativeFault(std::string code, std::string message) {
-+  base::Value::Dict error;
++base::DictValue NativeFault(std::string code, std::string message) {
++  base::DictValue error;
 +  error.Set("code", std::move(code));
 +  error.Set("message", std::move(message));
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +  reply.Set("error", std::move(error));
 +  return reply;
 +}
 +
-+base::Value::Dict NativeResult(base::Value value) {
-+  base::Value::Dict reply;
++base::DictValue NativeResult(base::Value value) {
++  base::DictValue reply;
 +  reply.Set("result", std::move(value));
 +  return reply;
 +}
@@ -176,22 +176,22 @@ index 023924e7b5..e8601431a5 100644
  
 -AuxRuntimeHost::Worker::Worker(base::FilePath profile_path,
 -                               std::string profile_id)
-+base::Value::Dict AuxRuntimeHost::HandleNativeCall(
++base::DictValue AuxRuntimeHost::HandleNativeCall(
 +    const std::string& method,
-+    const base::Value::Dict& params) {
++    const base::DictValue& params) {
 +  auto* catalog = aux::TabCatalog::GetForProfile(profile_);
 +  if (!catalog) {
 +    return NativeFault("backend_unavailable", "Tab catalog is unavailable");
 +  }
 +  if (method == "native.listPages") {
-+    base::Value::Dict snapshot = catalog->Snapshot();
-+    base::Value::List pages;
-+    const base::Value::List* tabs = snapshot.FindList("tabs");
-+    const base::Value::List* windows = snapshot.FindList("windows");
++    base::DictValue snapshot = catalog->Snapshot();
++    base::ListValue pages;
++    const base::ListValue* tabs = snapshot.FindList("tabs");
++    const base::ListValue* windows = snapshot.FindList("windows");
 +    for (const base::Value& value : *tabs) {
-+      const base::Value::Dict& tab = value.GetDict();
++      const base::DictValue& tab = value.GetDict();
 +      const std::string& page_id = *tab.FindString("pageId");
-+      base::Value::Dict page;
++      base::DictValue page;
 +      page.Set("pageId", page_id);
 +      page.Set("windowId", *tab.FindString("windowId"));
 +      page.Set("marker", "atab-" + page_id);
@@ -199,7 +199,7 @@ index 023924e7b5..e8601431a5 100644
 +      page.Set("title", *tab.FindString("title"));
 +      bool active = false;
 +      for (const base::Value& window_value : *windows) {
-+        const base::Value::Dict& window = window_value.GetDict();
++        const base::DictValue& window = window_value.GetDict();
 +        const std::string* active_id = window.FindString("activePageId");
 +        if (active_id && *active_id == page_id) {
 +          active = true;
@@ -213,14 +213,14 @@ index 023924e7b5..e8601431a5 100644
 +      }
 +      pages.Append(std::move(page));
 +    }
-+    base::Value::Dict result;
++    base::DictValue result;
 +    result.Set("pages", std::move(pages));
 +    return NativeResult(base::Value(std::move(result)));
 +  }
 +  if (method == "native.tabCommand") {
 +    const std::string* command_id = params.FindString("commandId");
 +    const std::string* window_id = params.FindString("windowId");
-+    const base::Value::Dict* command = params.FindDict("command");
++    const base::DictValue* command = params.FindDict("command");
 +    if (!command_id || command_id->size() < 8 || command_id->size() > 128 ||
 +        !window_id || !command) {
 +      return NativeFault("invalid_argument", "Invalid tab command envelope");
@@ -241,7 +241,7 @@ index 023924e7b5..e8601431a5 100644
 +      issuer = browsers->FindBrowserWithID(
 +          SessionID::FromSerializedValue(parsed_id));
 +    }
-+    base::Value::Dict ack = catalog->Command(issuer, *command_id, *command,
++    base::DictValue ack = catalog->Command(issuer, *command_id, *command,
 +                                             params.FindInt("catalogVersion"));
 +    if (const std::string* page_id = ack.FindString("pageId")) {
 +      if (const std::string* kind = command->FindString("kind");
@@ -286,7 +286,7 @@ index 023924e7b5..e8601431a5 100644
 +      content::NavigationController::LoadURLParams load(url);
 +      contents->GetController().LoadURLWithParams(load);
 +    }
-+    base::Value::Dict result;
++    base::DictValue result;
 +    result.Set("ok", true);
 +    return NativeResult(base::Value(std::move(result)));
 +  }
@@ -324,14 +324,14 @@ index 023924e7b5..e8601431a5 100644
    }
  }
  
-+base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
++base::DictValue AuxRuntimeHost::Worker::DispatchNative(
 +    const std::string& method,
-+    base::Value::Dict params) {
++    base::DictValue params) {
 +  auto state = std::make_shared<NativeReplyState>();
 +  ui_runner_->PostTask(
 +      FROM_HERE, base::BindOnce(
 +                     [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
-+                        base::Value::Dict params,
++                        base::DictValue params,
 +                        std::shared_ptr<NativeReplyState> state) {
 +                       state->reply =
 +                           owner ? owner->HandleNativeCall(method, params)
@@ -356,7 +356,7 @@ index 023924e7b5..e8601431a5 100644
            reply.Set("result", std::move(result));
          }
 +      } else if (native_method && native_params) {
-+        base::Value::Dict dispatched =
++        base::DictValue dispatched =
 +            DispatchNative(*native_method, native_params->Clone());
 +        if (base::Value* result = dispatched.Find("result")) {
 +          reply.Set("result", result->Clone());
@@ -369,7 +369,7 @@ index 023924e7b5..e8601431a5 100644
        }
 -      if (!reply.Find("result")) {
 +      if (!reply.Find("result") && !reply.Find("error")) {
-         base::Value::Dict fault;
+         base::DictValue fault;
          fault.Set("code", native_error.empty() ? "invalid_argument"
                                                 : "backend_unavailable");
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
@@ -406,8 +406,8 @@ index fb8fcf5bce..4953528803 100644
      void Disconnect();
      bool SendFrame(const std::string& frame);
      bool ReadFrame(std::string* frame, int timeout_ms);
-+    base::Value::Dict DispatchNative(const std::string& method,
-+                                     base::Value::Dict params);
++    base::DictValue DispatchNative(const std::string& method,
++                                     base::DictValue params);
  
      base::FilePath profile_path_;
      std::string profile_id_;
@@ -420,8 +420,8 @@ index fb8fcf5bce..4953528803 100644
    };
  
    explicit AuxRuntimeHost(Profile* profile);
-+  base::Value::Dict HandleNativeCall(const std::string& method,
-+                                     const base::Value::Dict& params);
++  base::DictValue HandleNativeCall(const std::string& method,
++                                     const base::DictValue& params);
  
 +  raw_ptr<Profile> profile_;
    base::SequenceBound<Worker> worker_;
@@ -458,7 +458,7 @@ index 1d3af44ce7..8da9471e99 100644
  base::CallbackListSubscription TabCatalog::ObserveChanges(
      base::RepeatingCallback<void(const std::string&)> callback) {
    return observers_.Add(std::move(callback));
-@@ -242,7 +253,8 @@ base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
+@@ -242,7 +253,8 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
    tab.Set("canGoForward", contents->GetController().CanGoForward());
    tab.Set("popup", false);
    tab.Set("crashed", contents->IsCrashed());
@@ -468,18 +468,18 @@ index 1d3af44ce7..8da9471e99 100644
    tab.Set("generation", generations_[id]);
    tab.Set("createdAt", static_cast<double>(created_at_.at(id)));
    tab.Set(
-@@ -254,6 +266,7 @@ base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
- base::Value::Dict TabCatalog::Snapshot() {
-   base::Value::List tabs;
-   base::Value::List windows;
+@@ -254,6 +266,7 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+ base::DictValue TabCatalog::Snapshot() {
+   base::ListValue tabs;
+   base::ListValue windows;
 +  std::set<std::string> seen_pages;
    if (browsers_) {
      browsers_->ForEach([&](BrowserWindowInterface* browser) {
        if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
-@@ -265,6 +278,15 @@ base::Value::Dict TabCatalog::Snapshot() {
+@@ -265,6 +278,15 @@ base::DictValue TabCatalog::Snapshot() {
        for (int index = 0; index < model->count(); ++index) {
          content::WebContents* contents = model->GetWebContentsAt(index);
-         base::Value::Dict record = TabRecord(browser, contents);
+         base::DictValue record = TabRecord(browser, contents);
 +        if (!seen_pages.insert(*record.FindString("pageId")).second) {
 +          std::string replacement_id;
 +          do {

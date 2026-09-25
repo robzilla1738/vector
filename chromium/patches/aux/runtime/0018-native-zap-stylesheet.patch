@@ -72,7 +72,7 @@ index dd61c24938..2ed11dfba1 100644
  #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
  #include "chrome/browser/ui/tabs/tab_strip_model.h"
 @@ -99,6 +100,9 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
-     auto created = std::make_unique<AuxRuntimeHost>(profile);
+     auto created = std::unique_ptr<AuxRuntimeHost>(new AuxRuntimeHost(profile));
      host = created.get();
      profile->SetUserData(&kAuxRuntimeHostKey, std::move(created));
 +    // Queue the policy snapshot before any user API can create pages.
@@ -100,8 +100,8 @@ index dd61c24938..2ed11dfba1 100644
 +}
 +
 +void AuxRuntimeHost::HandleZapInstall(
-+    const base::Value::Dict& params,
-+    base::OnceCallback<void(base::Value::Dict)> callback) {
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback) {
 +  aux::ZapController* controller = aux::ZapController::ForProfile(profile_);
 +  if (!controller) {
 +    std::move(callback).Run(NativeFault("backend_unavailable",
@@ -114,14 +114,14 @@ index dd61c24938..2ed11dfba1 100644
  base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
      base::RepeatingCallback<void(const std::string&, const std::string&)>
          callback) {
-@@ -579,6 +609,15 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
+@@ -579,6 +609,15 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                       [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
-                         base::Value::Dict params,
+                         base::DictValue params,
                          std::shared_ptr<NativeReplyState> state) {
 +                       if (owner && method == "native.zapInstallStylesheet") {
 +                         owner->HandleZapInstall(params, base::BindOnce(
 +                             [](std::shared_ptr<NativeReplyState> state,
-+                                base::Value::Dict reply) {
++                                base::DictValue reply) {
 +                               state->reply = std::move(reply);
 +                               state->ready.Signal();
 +                             }, state));
@@ -153,7 +153,7 @@ index dd61c24938..2ed11dfba1 100644
 @@ -736,14 +784,17 @@ AuxRuntimeHost::Response AuxRuntimeHost::Worker::CallApi(
    }
    const uint32_t id = next_request_id_++;
-   base::Value::Dict invocation;
+   base::DictValue invocation;
 -  invocation.Set("method", std::move(method));
 -  invocation.Set("params", params->Clone());
 -  invocation.Set("desktopUser", true);
@@ -162,7 +162,7 @@ index dd61c24938..2ed11dfba1 100644
 +    invocation.Set("params", params->Clone());
 +    invocation.Set("desktopUser", true);
 +  }
-   base::Value::Dict request;
+   base::DictValue request;
    request.Set("kind", "req");
    request.Set("id", static_cast<int>(id));
 -  request.Set("method", "api.invoke");
@@ -202,10 +202,10 @@ index 248245c8c9..fda61cd0cb 100644
    };
  
    explicit AuxRuntimeHost(Profile* profile);
-+  void HandleZapInstall(const base::Value::Dict& params,
-+                        base::OnceCallback<void(base::Value::Dict)> callback);
-   base::Value::Dict HandleNativeCall(const std::string& method,
-                                      const base::Value::Dict& params);
++  void HandleZapInstall(const base::DictValue& params,
++                        base::OnceCallback<void(base::DictValue)> callback);
+   base::DictValue HandleNativeCall(const std::string& method,
+                                      const base::DictValue& params);
    void OnRuntimeNote(std::string type, std::string payload_json);
 diff --git a/chrome/browser/ui/aux/zap_controller.cc b/chrome/browser/ui/aux/zap_controller.cc
 new file mode 100644
@@ -251,11 +251,11 @@ index 0000000000..4905de3358
 +const char kZapControllerKey = 0;
 +constexpr size_t kMaxStylesheetBytes = 80000;
 +
-+base::Value::Dict Fault(const std::string& message) {
-+  base::Value::Dict error;
++base::DictValue Fault(const std::string& message) {
++  base::DictValue error;
 +  error.Set("code", "invalid_argument");
 +  error.Set("message", message);
-+  base::Value::Dict response;
++  base::DictValue response;
 +  response.Set("error", std::move(error));
 +  return response;
 +}
@@ -289,7 +289,7 @@ index 0000000000..4905de3358
 +ZapController::ZapController(Profile* profile) : profile_(profile) {}
 +ZapController::~ZapController() = default;
 +
-+bool ZapController::Validate(const base::Value::Dict& request) const {
++bool ZapController::Validate(const base::DictValue& request) const {
 +  const std::string* profile_id = request.FindString("profileId");
 +  const std::string* origin = request.FindString("origin");
 +  const std::string* stylesheet = request.FindString("stylesheet");
@@ -328,7 +328,7 @@ index 0000000000..4905de3358
 +    }
 +    return;
 +  }
-+  base::Value::Dict params;
++  base::DictValue params;
 +  params.Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe());
 +  const auto params_json = base::WriteJson(params);
 +  host->CallInternal(
@@ -342,14 +342,14 @@ index 0000000000..4905de3358
 +            bool valid = response.ok;
 +            std::map<std::string, Policy> policies;
 +            const auto parsed =
-+                valid ? base::JSONReader::Read(response.result_json)
++                valid ? base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC)
 +                      : std::nullopt;
-+            const base::Value::List* list =
++            const base::ListValue* list =
 +                parsed ? parsed->GetIfList() : nullptr;
 +            valid = list && list->size() <= 100;
 +            if (valid) {
 +              for (const base::Value& value : *list) {
-+                const base::Value::Dict* request = value.GetIfDict();
++                const base::DictValue* request = value.GetIfDict();
 +                if (!request || !owner->Validate(*request)) {
 +                  valid = false;
 +                  break;
@@ -430,7 +430,7 @@ index 0000000000..4905de3358
 +  std::move(request->callback).Run(accepted, applied);
 +}
 +
-+void ZapController::Install(const base::Value::Dict& request,
++void ZapController::Install(const base::DictValue& request,
 +                            InstallCallback callback) {
 +  if (!ready_ || !Validate(request)) {
 +    std::move(callback).Run(Fault("Invalid Zap stylesheet installation"));
@@ -470,8 +470,8 @@ index 0000000000..4905de3358
 +    std::move(callback).Run(Fault("Tab catalog is unavailable"));
 +    return;
 +  }
-+  base::Value::Dict snapshot = catalog->Snapshot();
-+  const base::Value::List* tabs = snapshot.FindList("tabs");
++  base::DictValue snapshot = catalog->Snapshot();
++  const base::ListValue* tabs = snapshot.FindList("tabs");
 +  if (!tabs) {
 +    std::move(callback).Run(Fault("Tab catalog is unavailable"));
 +    return;
@@ -509,9 +509,9 @@ index 0000000000..4905de3358
 +  struct Pending {
 +    size_t remaining = 0;
 +    bool failed = false;
-+    base::Value::List documents;
++    base::ListValue documents;
 +    InstallCallback callback;
-+    base::Value::Dict receipt;
++    base::DictValue receipt;
 +    std::vector<Target> targets;
 +    std::optional<Policy> previous;
 +    std::string origin;
@@ -538,8 +538,8 @@ index 0000000000..4905de3358
 +    pending->receipt.Set(
 +        "appliedAt",
 +        static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
-+    pending->receipt.Set("activeDocuments", base::Value::List());
-+    base::Value::Dict response;
++    pending->receipt.Set("activeDocuments", base::ListValue());
++    base::DictValue response;
 +    response.Set("result", std::move(pending->receipt));
 +    std::move(pending->callback).Run(std::move(response));
 +    return;
@@ -559,7 +559,7 @@ index 0000000000..4905de3358
 +                  current->GetLastCommittedOrigin().Serialize() ==
 +                      pending->origin;
 +              if (same_document && target.matching_origin) {
-+                base::Value::Dict document;
++                base::DictValue document;
 +                document.Set("pageId", target.page_id);
 +                document.Set(
 +                    "documentEpoch",
@@ -592,7 +592,7 @@ index 0000000000..4905de3358
 +                        base::Time::Now().InMillisecondsSinceUnixEpoch()));
 +                pending->receipt.Set("activeDocuments",
 +                                     std::move(pending->documents));
-+                base::Value::Dict response;
++                base::DictValue response;
 +                response.Set("result", std::move(pending->receipt));
 +                std::move(pending->callback).Run(std::move(response));
 +                return;
@@ -784,14 +784,14 @@ index 0000000000..8bc494e1c3
 +class ZapController final : public base::SupportsUserData::Data {
 + public:
 +  using ReadyCallback = base::OnceCallback<void(bool)>;
-+  using InstallCallback = base::OnceCallback<void(base::Value::Dict)>;
++  using InstallCallback = base::OnceCallback<void(base::DictValue)>;
 +  using FrameCallback = base::OnceCallback<void(bool accepted, bool applied)>;
 +
 +  static ZapController* ForProfile(Profile* profile);
 +  ~ZapController() override;
 +
 +  void EnsureReady(ReadyCallback callback);
-+  void Install(const base::Value::Dict& request, InstallCallback callback);
++  void Install(const base::DictValue& request, InstallCallback callback);
 +  void PrepareFrame(content::RenderFrameHost* frame,
 +                    const std::string& origin,
 +                    FrameCallback callback);
@@ -800,7 +800,7 @@ index 0000000000..8bc494e1c3
 +
 + private:
 +  explicit ZapController(Profile* profile);
-+  bool Validate(const base::Value::Dict& request) const;
++  bool Validate(const base::DictValue& request) const;
 +  void OnFrameResult(int request_id, bool accepted, bool applied);
 +  struct FrameRequest;
 +

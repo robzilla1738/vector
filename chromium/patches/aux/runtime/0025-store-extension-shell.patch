@@ -132,11 +132,11 @@ index 0000000000..e54fa1c2ea
 +  return extension && extension->from_webstore() && !extension->is_app();
 +}
 +
-+base::Value::Dict Describe(const extensions::Extension& extension,
++base::DictValue Describe(const extensions::Extension& extension,
 +                           extensions::ExtensionRegistry& registry) {
 +  const bool enabled =
 +      registry.enabled_extensions().Contains(extension.id());
-+  base::Value::Dict item;
++  base::DictValue item;
 +  item.Set("key", extension.id());
 +  item.Set("id", extension.id());
 +  item.Set("name", extension.name());
@@ -145,7 +145,7 @@ index 0000000000..e54fa1c2ea
 +  item.Set("loaded", enabled);
 +  item.Set("managed", StoreOwned(&extension));
 +  item.Set("source", extension.from_webstore() ? "store" : "environment");
-+  base::Value::List permissions;
++  base::ListValue permissions;
 +  for (const auto& message :
 +       extension.permissions_data()->GetPermissionMessages()) {
 +    if (permissions.size() == 32) {
@@ -161,7 +161,7 @@ index 0000000000..e54fa1c2ea
 +  return item;
 +}
 +
-+const std::string* OneId(const base::Value::List& args) {
++const std::string* OneId(const base::ListValue& args) {
 +  return args.size() == 1 && args[0].is_string()
 +             ? args[0].GetIfString()
 +             : nullptr;
@@ -183,7 +183,7 @@ index 0000000000..e54fa1c2ea
 +
 +void ExtensionBridge::Handle(Profile* profile, BrowserWindowInterface* browser,
 +                             gfx::NativeWindow parent, std::string_view method,
-+                             const base::Value::List& args, Callback callback) {
++                             const base::ListValue& args, Callback callback) {
 +  if (!profile || profile->IsOffTheRecord() || !browser ||
 +      browser->GetProfile() != profile) {
 +    Error(std::move(callback), "forbidden", "Extensions require a regular Profile");
@@ -200,7 +200,7 @@ index 0000000000..e54fa1c2ea
 +      Error(std::move(callback), "invalid_argument", "Unexpected extension arguments");
 +      return;
 +    }
-+    base::Value::List items;
++    base::ListValue items;
 +    for (const auto& extension : registry->GenerateInstalledExtensionsSet()) {
 +      if (extension->is_app() || extension->location() ==
 +          extensions::mojom::ManifestLocation::kComponent) {
@@ -374,7 +374,7 @@ index 0000000000..dec35e8925
 +  static bool IsStoreId(std::string_view id);
 +  static void Handle(Profile* profile, BrowserWindowInterface* browser,
 +                     gfx::NativeWindow parent, std::string_view method,
-+                     const base::Value::List& args, Callback callback);
++                     const base::ListValue& args, Callback callback);
 +};
 +
 +}  // namespace aux

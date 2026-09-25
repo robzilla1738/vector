@@ -144,7 +144,7 @@ index 0000000000..023924e7b5
 +  auto* host =
 +      static_cast<AuxRuntimeHost*>(profile->GetUserData(&kAuxRuntimeHostKey));
 +  if (!host) {
-+    auto created = std::make_unique<AuxRuntimeHost>(profile);
++    auto created = std::unique_ptr<AuxRuntimeHost>(new AuxRuntimeHost(profile));
 +    host = created.get();
 +    profile->SetUserData(&kAuxRuntimeHostKey, std::move(created));
 +  }
@@ -281,8 +281,8 @@ index 0000000000..023924e7b5
 +    Disconnect();
 +    return false;
 +  }
-+  const auto hello = base::JSONReader::Read(hello_frame);
-+  const base::Value::Dict* data = hello ? hello->GetIfDict() : nullptr;
++  const auto hello = base::JSONReader::Read(hello_frame, base::JSON_PARSE_RFC);
++  const base::DictValue* data = hello ? hello->GetIfDict() : nullptr;
 +  const std::string* kind = data ? data->FindString("kind") : nullptr;
 +  const std::string* protocol = data ? data->FindString("protocol") : nullptr;
 +  const std::string* nonce = data ? data->FindString("nonce") : nullptr;
@@ -295,7 +295,7 @@ index 0000000000..023924e7b5
 +    Disconnect();
 +    return false;
 +  }
-+  base::Value::Dict ack;
++  base::DictValue ack;
 +  ack.Set("kind", "hello-ack");
 +  ack.Set("protocol", "aux-host-v1");
 +  ack.Set("nonce", *nonce);
@@ -385,16 +385,16 @@ index 0000000000..023924e7b5
 +  if (!Connect(&error)) {
 +    return {false, "", "backend_unavailable", std::move(error)};
 +  }
-+  const auto params = base::JSONReader::Read(params_json);
++  const auto params = base::JSONReader::Read(params_json, base::JSON_PARSE_RFC);
 +  if (!params) {
 +    return {false, "", "invalid_argument", "Invalid Aux API arguments"};
 +  }
 +  const uint32_t id = next_request_id_++;
-+  base::Value::Dict invocation;
++  base::DictValue invocation;
 +  invocation.Set("method", std::move(method));
 +  invocation.Set("params", params->Clone());
 +  invocation.Set("desktopUser", true);
-+  base::Value::Dict request;
++  base::DictValue request;
 +  request.Set("kind", "req");
 +  request.Set("id", static_cast<int>(id));
 +  request.Set("method", "api.invoke");
@@ -413,8 +413,8 @@ index 0000000000..023924e7b5
 +          false, "", "operation_uncertain",
 +          "The runtime connection ended before this request was acknowledged"};
 +    }
-+    const auto frame = base::JSONReader::Read(line);
-+    const base::Value::Dict* data = frame ? frame->GetIfDict() : nullptr;
++    const auto frame = base::JSONReader::Read(line, base::JSON_PARSE_RFC);
++    const base::DictValue* data = frame ? frame->GetIfDict() : nullptr;
 +    if (!data) {
 +      Disconnect();
 +      return {false, "", "protocol_error", "Malformed Aux Runtime frame"};
@@ -423,8 +423,8 @@ index 0000000000..023924e7b5
 +    if (kind && *kind == "req") {
 +      const std::optional<int> nested_id = data->FindInt("id");
 +      const std::string* native_method = data->FindString("method");
-+      const base::Value::Dict* native_params = data->FindDict("params");
-+      base::Value::Dict reply;
++      const base::DictValue* native_params = data->FindDict("params");
++      base::DictValue reply;
 +      reply.Set("kind", "res");
 +      reply.Set("id", nested_id.value_or(0));
 +      std::string native_error;
@@ -434,7 +434,7 @@ index 0000000000..023924e7b5
 +        const std::string* value = native_params->FindString("value");
 +        if (name && value &&
 +            aux::StoreSecret(profile_path_, *name, *value, &native_error)) {
-+          base::Value::Dict result;
++          base::DictValue result;
 +          result.Set("ok", true);
 +          reply.Set("result", std::move(result));
 +        }
@@ -444,7 +444,7 @@ index 0000000000..023924e7b5
 +        std::optional<std::string> value;
 +        if (name &&
 +            aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
-+          base::Value::Dict result;
++          base::DictValue result;
 +          if (value) {
 +            result.Set("value", *value);
 +          }
@@ -454,7 +454,7 @@ index 0000000000..023924e7b5
 +        native_error = "Native method is unavailable in this build";
 +      }
 +      if (!reply.Find("result")) {
-+        base::Value::Dict fault;
++        base::DictValue fault;
 +        fault.Set("code", native_error.empty() ? "invalid_argument"
 +                                               : "backend_unavailable");
 +        fault.Set("message", native_error.empty() ? "Invalid native request"
@@ -474,7 +474,7 @@ index 0000000000..023924e7b5
 +        static_cast<uint32_t>(*response_id) != id) {
 +      continue;
 +    }
-+    if (const base::Value::Dict* fault = data->FindDict("error")) {
++    if (const base::DictValue* fault = data->FindDict("error")) {
 +      const std::string* code = fault->FindString("code");
 +      const std::string* message = fault->FindString("message");
 +      return {false, "", code ? *code : "internal",
@@ -822,8 +822,8 @@ index b9a775791e..b620f86165 100644
 +                            "Unsupported Aux shell method");
 +    return;
 +  }
-+  const auto args = base::JSONReader::Read(args_json);
-+  const base::Value::List* list = args ? args->GetIfList() : nullptr;
++  const auto args = base::JSONReader::Read(args_json, base::JSON_PARSE_RFC);
++  const base::ListValue* list = args ? args->GetIfList() : nullptr;
 +  if (!list || list->size() < 1 || list->size() > 2 ||
 +      !(*list)[0].is_string() || (*list)[0].GetString().empty() ||
 +      (*list)[0].GetString().size() > 128) {

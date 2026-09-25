@@ -111,7 +111,7 @@ index 0000000000..80007e42b2
 +  return Text(value, 200);
 +}
 +
-+bool HasOnly(const base::Value::Dict& dict,
++bool HasOnly(const base::DictValue& dict,
 +             std::initializer_list<std::string_view> names) {
 +  for (auto it = dict.begin(); it != dict.end(); ++it) {
 +    bool permitted = false;
@@ -137,7 +137,7 @@ index 0000000000..80007e42b2
 +}
 +
 +bool Space(const base::Value& value) {
-+  const base::Value::Dict* space = value.GetIfDict();
++  const base::DictValue* space = value.GetIfDict();
 +  if (!space || !HasOnly(*space, {"id", "name", "color", "grain",
 +                                 "workspaceId", "archived"}) ||
 +      !Id(space->Find("id")) || !Text(space->Find("name"), 100) ||
@@ -155,7 +155,7 @@ index 0000000000..80007e42b2
 +}
 +
 +bool Folder(const base::Value& value) {
-+  const base::Value::Dict* folder = value.GetIfDict();
++  const base::DictValue* folder = value.GetIfDict();
 +  if (!folder ||
 +      !HasOnly(*folder, {"id", "name", "spaceId", "collapsed", "color",
 +                         "emoji"}) ||
@@ -168,7 +168,7 @@ index 0000000000..80007e42b2
 +  return (!color || Color(color)) && (!emoji || Text(emoji, 16, false));
 +}
 +
-+bool IdRecord(const base::Value::Dict* record) {
++bool IdRecord(const base::DictValue* record) {
 +  if (!record) {
 +    return false;
 +  }
@@ -180,15 +180,15 @@ index 0000000000..80007e42b2
 +  return true;
 +}
 +
-+bool Shared(const base::Value::Dict* shared) {
++bool Shared(const base::DictValue* shared) {
 +  if (!shared ||
 +      !HasOnly(*shared, {"spaces", "archivedSpaces", "pins", "folders"})) {
 +    return false;
 +  }
-+  const base::Value::List* spaces = shared->FindList("spaces");
-+  const base::Value::List* archived = shared->FindList("archivedSpaces");
-+  const base::Value::List* folders = shared->FindList("folders");
-+  const base::Value::Dict* pins = shared->FindDict("pins");
++  const base::ListValue* spaces = shared->FindList("spaces");
++  const base::ListValue* archived = shared->FindList("archivedSpaces");
++  const base::ListValue* folders = shared->FindList("folders");
++  const base::DictValue* pins = shared->FindDict("pins");
 +  if (!spaces || spaces->empty() || spaces->size() > 200 || !archived ||
 +      archived->size() > 200 || !folders || folders->size() > 1000 ||
 +      !pins) {
@@ -215,7 +215,7 @@ index 0000000000..80007e42b2
 +      return false;
 +    }
 +    for (const base::Value& value : it->second.GetList()) {
-+      const base::Value::Dict* pin = value.GetIfDict();
++      const base::DictValue* pin = value.GetIfDict();
 +      if (!pin || !HasOnly(*pin, {"url", "title"}) ||
 +          !Text(pin->Find("url"), 2048) ||
 +          !Text(pin->Find("title"), 500, false)) {
@@ -226,7 +226,7 @@ index 0000000000..80007e42b2
 +  return true;
 +}
 +
-+bool Window(const base::Value::Dict* window) {
++bool Window(const base::DictValue* window) {
 +  if (!window || !HasOnly(*window, {"activeSpaceId", "activeTabs",
 +                                 "splitRatio", "tabSpace", "order",
 +                                 "tabFolder", "splits"}) ||
@@ -238,7 +238,7 @@ index 0000000000..80007e42b2
 +    return false;
 +  }
 +  const std::optional<double> ratio = window->FindDouble("splitRatio");
-+  const base::Value::List* order = window->FindList("order");
++  const base::ListValue* order = window->FindList("order");
 +  if (!ratio || *ratio < 0.1 || *ratio > 0.9 || !order ||
 +      order->size() > 5000) {
 +    return false;
@@ -251,7 +251,7 @@ index 0000000000..80007e42b2
 +  return true;
 +}
 +
-+bool ValidLayout(const base::Value::Dict& layout) {
++bool ValidLayout(const base::DictValue& layout) {
 +  if (!HasOnly(layout, {"shared", "window"}) ||
 +      !Shared(layout.FindDict("shared")) ||
 +      !Window(layout.FindDict("window"))) {
@@ -261,20 +261,20 @@ index 0000000000..80007e42b2
 +  return json && json->size() <= kMaxLayoutBytes;
 +}
 +
-+base::Value::Dict DefaultWindow(const base::Value::Dict& shared) {
-+  const base::Value::List& spaces = *shared.FindList("spaces");
-+  base::Value::Dict window;
++base::DictValue DefaultWindow(const base::DictValue& shared) {
++  const base::ListValue& spaces = *shared.FindList("spaces");
++  base::DictValue window;
 +  window.Set("activeSpaceId", *spaces[0].GetDict().FindString("id"));
-+  window.Set("activeTabs", base::Value::Dict());
++  window.Set("activeTabs", base::DictValue());
 +  window.Set("splitRatio", 0.5);
-+  window.Set("tabSpace", base::Value::Dict());
-+  window.Set("order", base::Value::List());
-+  window.Set("tabFolder", base::Value::Dict());
-+  window.Set("splits", base::Value::Dict());
++  window.Set("tabSpace", base::DictValue());
++  window.Set("order", base::ListValue());
++  window.Set("tabFolder", base::DictValue());
++  window.Set("splits", base::DictValue());
 +  return window;
 +}
 +
-+bool ValidDocument(const base::Value::Dict& document) {
++bool ValidDocument(const base::DictValue& document) {
 +  if (document.empty()) {
 +    return true;
 +  }
@@ -282,9 +282,9 @@ index 0000000000..80007e42b2
 +    return false;
 +  }
 +  const std::optional<int> revision = document.FindInt("revision");
-+  const base::Value::Dict* shared = document.FindDict("shared");
-+  const base::Value::Dict* windows = document.FindDict("windows");
-+  const base::Value::List* window_order = document.FindList("windowOrder");
++  const base::DictValue* shared = document.FindDict("shared");
++  const base::DictValue* windows = document.FindDict("windows");
++  const base::ListValue* window_order = document.FindList("windowOrder");
 +  if (!revision || *revision < 1 || !Shared(shared) || !windows ||
 +      windows->size() > kMaxWindows || !window_order ||
 +      window_order->size() != windows->size()) {
@@ -302,7 +302,7 @@ index 0000000000..80007e42b2
 +        !Window(it->second.GetIfDict())) {
 +      return false;
 +    }
-+    base::Value::Dict layout;
++    base::DictValue layout;
 +    layout.Set("shared", shared->Clone());
 +    layout.Set("window", it->second.Clone());
 +    if (!ValidLayout(layout)) {
@@ -312,19 +312,19 @@ index 0000000000..80007e42b2
 +  return true;
 +}
 +
-+base::Value::Dict MakeSnapshot(const base::Value::Dict& document,
++base::DictValue MakeSnapshot(const base::DictValue& document,
 +                               std::string_view window_id) {
-+  base::Value::Dict snapshot;
++  base::DictValue snapshot;
 +  if (document.empty()) {
 +    snapshot.Set("revision", 0);
 +    snapshot.Set("layout", base::Value());
 +    return snapshot;
 +  }
-+  const base::Value::Dict& shared = *document.FindDict("shared");
-+  const base::Value::Dict& windows = *document.FindDict("windows");
-+  base::Value::Dict layout;
++  const base::DictValue& shared = *document.FindDict("shared");
++  const base::DictValue& windows = *document.FindDict("windows");
++  base::DictValue layout;
 +  layout.Set("shared", shared.Clone());
-+  const base::Value::Dict* window = windows.FindDict(window_id);
++  const base::DictValue* window = windows.FindDict(window_id);
 +  layout.Set("window", window ? window->Clone() : DefaultWindow(shared));
 +  snapshot.Set("revision", document.FindInt("revision").value());
 +  snapshot.Set("layout", std::move(layout));
@@ -333,7 +333,7 @@ index 0000000000..80007e42b2
 +
 +}  // namespace
 +
-+std::optional<base::Value::Dict> OrganizationStore::Snapshot(
++std::optional<base::DictValue> OrganizationStore::Snapshot(
 +    Profile* profile,
 +    std::string_view window_id,
 +    std::string* error) {
@@ -342,7 +342,7 @@ index 0000000000..80007e42b2
 +    *error = "Organization is unavailable for this browser window";
 +    return std::nullopt;
 +  }
-+  const base::Value::Dict& document =
++  const base::DictValue& document =
 +      profile->GetPrefs()->GetDict(kOrganizationPref);
 +  if (!ValidDocument(document)) {
 +    *error = "The Profile organization preference is invalid";
@@ -351,11 +351,11 @@ index 0000000000..80007e42b2
 +  return MakeSnapshot(document, window_id);
 +}
 +
-+std::optional<base::Value::Dict> OrganizationStore::Commit(
++std::optional<base::DictValue> OrganizationStore::Commit(
 +    Profile* profile,
 +    std::string_view window_id,
 +    int expected_revision,
-+    const base::Value::Dict& layout,
++    const base::DictValue& layout,
 +    std::string* error) {
 +  if (!ValidLayout(layout) || expected_revision < 0) {
 +    *error = "Invalid Profile organization layout";
@@ -364,7 +364,7 @@ index 0000000000..80007e42b2
 +  if (!Snapshot(profile, window_id, error)) {
 +    return std::nullopt;
 +  }
-+  const base::Value::Dict& current =
++  const base::DictValue& current =
 +      profile->GetPrefs()->GetDict(kOrganizationPref);
 +  const int revision = current.FindInt("revision").value_or(0);
 +  if (expected_revision != revision) {
@@ -375,8 +375,8 @@ index 0000000000..80007e42b2
 +    *error = "Organization revision exhausted";
 +    return std::nullopt;
 +  }
-+  base::Value::Dict windows = current.empty()
-+                                  ? base::Value::Dict()
++  base::DictValue windows = current.empty()
++                                  ? base::DictValue()
 +                                  : current.FindDict("windows")->Clone();
 +  windows.Remove(window_id);
 +  windows.Set(window_id, layout.FindDict("window")->Clone());
@@ -409,11 +409,11 @@ index 0000000000..80007e42b2
 +    windows.Remove(*oldest_inactive);
 +    ids.erase(oldest_inactive);
 +  }
-+  base::Value::List window_order;
++  base::ListValue window_order;
 +  for (const std::string& id : ids) {
 +    window_order.Append(id);
 +  }
-+  base::Value::Dict next;
++  base::DictValue next;
 +  next.Set("revision", revision + 1);
 +  next.Set("shared", layout.FindDict("shared")->Clone());
 +  next.Set("windows", std::move(windows));
@@ -453,14 +453,14 @@ index 0000000000..69e9b89763
 +// is ever read. Every commit compares the current revision before writing.
 +class OrganizationStore {
 + public:
-+  static std::optional<base::Value::Dict> Snapshot(Profile* profile,
++  static std::optional<base::DictValue> Snapshot(Profile* profile,
 +                                                   std::string_view window_id,
 +                                                   std::string* error);
-+  static std::optional<base::Value::Dict> Commit(
++  static std::optional<base::DictValue> Commit(
 +      Profile* profile,
 +      std::string_view window_id,
 +      int expected_revision,
-+      const base::Value::Dict& layout,
++      const base::DictValue& layout,
 +      std::string* error);
 +};
 +
@@ -539,15 +539,15 @@ index d3f8e553d2..257a1716d8 100644
 +    const std::string window_id =
 +        base::NumberToString(browser_->GetSessionID().id());
 +    std::string error;
-+    std::optional<base::Value::Dict> snapshot;
++    std::optional<base::DictValue> snapshot;
 +    if (method == "organizationSnapshot" && list->empty()) {
 +      snapshot = aux::OrganizationStore::Snapshot(browser_->GetProfile(),
 +                                                   window_id, &error);
 +    } else if (method == "organizationCommit" && list->size() == 1 &&
 +               (*list)[0].is_dict()) {
-+      const base::Value::Dict& input = (*list)[0].GetDict();
++      const base::DictValue& input = (*list)[0].GetDict();
 +      const std::optional<int> expected = input.FindInt("expectedRevision");
-+      const base::Value::Dict* layout = input.FindDict("layout");
++      const base::DictValue* layout = input.FindDict("layout");
 +      if (expected && layout && input.size() == 2) {
 +        snapshot = aux::OrganizationStore::Commit(
 +            browser_->GetProfile(), window_id, *expected, *layout, &error);

@@ -268,7 +268,7 @@ index 0000000000..1d3af44ce7
 +      return true;
 +    });
 +  }
-+  base::Value::Dict initial = Snapshot();
++  base::DictValue initial = Snapshot();
 +  for (const base::Value& value : *initial.FindList("tabs")) {
 +    published_pages_.insert(*value.GetDict().FindString("pageId"));
 +  }
@@ -313,20 +313,20 @@ index 0000000000..1d3af44ce7
 +  }
 +  const int previous_version = version_;
 +  ++version_;
-+  base::Value::Dict snapshot = Snapshot();
-+  base::Value::List ops;
++  base::DictValue snapshot = Snapshot();
++  base::ListValue ops;
 +  std::set<std::string> current_pages;
 +  for (const base::Value& value : *snapshot.FindList("tabs")) {
-+    const base::Value::Dict& tab = value.GetDict();
++    const base::DictValue& tab = value.GetDict();
 +    current_pages.insert(*tab.FindString("pageId"));
-+    base::Value::Dict operation;
++    base::DictValue operation;
 +    operation.Set("op", "upsert");
 +    operation.Set("tab", tab.Clone());
 +    ops.Append(std::move(operation));
 +  }
 +  for (const std::string& page_id : published_pages_) {
 +    if (!current_pages.contains(page_id)) {
-+      base::Value::Dict operation;
++      base::DictValue operation;
 +      operation.Set("op", "remove");
 +      operation.Set("pageId", page_id);
 +      ops.Append(std::move(operation));
@@ -334,7 +334,7 @@ index 0000000000..1d3af44ce7
 +  }
 +  published_pages_ = std::move(current_pages);
 +  for (const base::Value& value : *snapshot.FindList("windows")) {
-+    base::Value::Dict operation;
++    base::DictValue operation;
 +    operation.Set("op", "window");
 +    operation.Set("window", value.GetDict().Clone());
 +    ops.Append(std::move(operation));
@@ -342,7 +342,7 @@ index 0000000000..1d3af44ce7
 +  if (ops.empty()) {
 +    return;
 +  }
-+  base::Value::Dict patch;
++  base::DictValue patch;
 +  patch.Set("version", version_);
 +  patch.Set("baseVersion", previous_version);
 +  patch.Set("ops", std::move(ops));
@@ -404,7 +404,7 @@ index 0000000000..1d3af44ce7
 +  return base::NumberToString(browser->GetSessionID().id());
 +}
 +
-+base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
++base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
 +                                        content::WebContents* contents) {
 +  const std::string id = PageIdentity::GetOrCreate(profile_, contents);
 +  const int64_t now = NowMs();
@@ -412,7 +412,7 @@ index 0000000000..1d3af44ce7
 +  if (browser->GetTabStripModel()->GetActiveWebContents() == contents) {
 +    last_active_at_[id] = now;
 +  }
-+  base::Value::Dict tab;
++  base::DictValue tab;
 +  tab.Set("pageId", id);
 +  tab.Set("windowId", WindowId(browser));
 +  tab.Set("url", contents->GetLastCommittedURL().spec());
@@ -433,20 +433,20 @@ index 0000000000..1d3af44ce7
 +  return tab;
 +}
 +
-+base::Value::Dict TabCatalog::Snapshot() {
-+  base::Value::List tabs;
-+  base::Value::List windows;
++base::DictValue TabCatalog::Snapshot() {
++  base::ListValue tabs;
++  base::ListValue windows;
 +  if (browsers_) {
 +    browsers_->ForEach([&](BrowserWindowInterface* browser) {
 +      if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
 +        return true;
 +      }
 +      TabStripModel* model = browser->GetTabStripModel();
-+      base::Value::List order;
++      base::ListValue order;
 +      base::Value active;
 +      for (int index = 0; index < model->count(); ++index) {
 +        content::WebContents* contents = model->GetWebContentsAt(index);
-+        base::Value::Dict record = TabRecord(browser, contents);
++        base::DictValue record = TabRecord(browser, contents);
 +        const std::string* id = record.FindString("pageId");
 +        order.Append(*id);
 +        if (index == model->active_index()) {
@@ -454,7 +454,7 @@ index 0000000000..1d3af44ce7
 +        }
 +        tabs.Append(std::move(record));
 +      }
-+      base::Value::Dict window;
++      base::DictValue window;
 +      window.Set("windowId", WindowId(browser));
 +      window.Set("order", std::move(order));
 +      window.Set("activePageId", std::move(active));
@@ -462,7 +462,7 @@ index 0000000000..1d3af44ce7
 +      return true;
 +    });
 +  }
-+  base::Value::Dict snapshot;
++  base::DictValue snapshot;
 +  snapshot.Set("version", version_);
 +  snapshot.Set("tabs", std::move(tabs));
 +  snapshot.Set("windows", std::move(windows));
@@ -495,13 +495,13 @@ index 0000000000..1d3af44ce7
 +  return found;
 +}
 +
-+base::Value::Dict TabCatalog::Reject(const std::string& command_id,
++base::DictValue TabCatalog::Reject(const std::string& command_id,
 +                                     std::string code,
 +                                     std::string message) const {
-+  base::Value::Dict error;
++  base::DictValue error;
 +  error.Set("code", std::move(code));
 +  error.Set("message", std::move(message));
-+  base::Value::Dict ack;
++  base::DictValue ack;
 +  ack.Set("commandId", command_id);
 +  ack.Set("status", "rejected");
 +  ack.Set("catalogVersion", version_);
@@ -509,13 +509,13 @@ index 0000000000..1d3af44ce7
 +  return ack;
 +}
 +
-+base::Value::Dict TabCatalog::Command(BrowserWindowInterface* issuer,
++base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
 +                                      const std::string& command_id,
-+                                      const base::Value::Dict& command,
++                                      const base::DictValue& command,
 +                                      std::optional<int> expected_version) {
 +  if (auto existing = command_acks_.find(command_id);
 +      existing != command_acks_.end()) {
-+    base::Value::Dict ack = existing->second.Clone();
++    base::DictValue ack = existing->second.Clone();
 +    ack.Set("status", "duplicate");
 +    return ack;
 +  }
@@ -574,7 +574,7 @@ index 0000000000..1d3af44ce7
 +                    "Chromium did not create the tab");
 +    }
 +  } else if (*kind == "reorder") {
-+    const base::Value::List* order = command.FindList("order");
++    const base::ListValue* order = command.FindList("order");
 +    if (!order || order->size() != static_cast<size_t>(model->count())) {
 +      return Reject(command_id, "invalid_params",
 +                    "Tab order must contain every tab in this window");
@@ -647,7 +647,7 @@ index 0000000000..1d3af44ce7
 +    }
 +  }
 +  finish_command.RunAndReset();
-+  base::Value::Dict ack;
++  base::DictValue ack;
 +  ack.Set("commandId", command_id);
 +  ack.Set("status", "applied");
 +  ack.Set("catalogVersion", version_);
@@ -713,10 +713,10 @@ index 0000000000..5ef51e0d46
 +  TabCatalog(const TabCatalog&) = delete;
 +  TabCatalog& operator=(const TabCatalog&) = delete;
 +
-+  base::Value::Dict Snapshot();
-+  base::Value::Dict Command(BrowserWindowInterface* issuer,
++  base::DictValue Snapshot();
++  base::DictValue Command(BrowserWindowInterface* issuer,
 +                            const std::string& command_id,
-+                            const base::Value::Dict& command,
++                            const base::DictValue& command,
 +                            std::optional<int> expected_version);
 +  content::WebContents* FindPage(const std::string& page_id,
 +                                 BrowserWindowInterface** owner = nullptr);
@@ -740,9 +740,9 @@ index 0000000000..5ef51e0d46
 +  void Changed();
 +  void FinishCommand();
 +  std::string WindowId(const BrowserWindowInterface* browser) const;
-+  base::Value::Dict TabRecord(BrowserWindowInterface* browser,
++  base::DictValue TabRecord(BrowserWindowInterface* browser,
 +                              content::WebContents* contents);
-+  base::Value::Dict Reject(const std::string& command_id,
++  base::DictValue Reject(const std::string& command_id,
 +                           std::string code,
 +                           std::string message) const;
 +
@@ -754,7 +754,7 @@ index 0000000000..5ef51e0d46
 +  std::map<std::string, int64_t> created_at_;
 +  std::map<std::string, int64_t> last_active_at_;
 +  std::map<std::string, int> generations_;
-+  std::map<std::string, base::Value::Dict> command_acks_;
++  std::map<std::string, base::DictValue> command_acks_;
 +  std::deque<std::string> ack_order_;
 +  std::set<std::string> published_pages_;
 +  base::RepeatingCallbackList<void(const std::string&)> observers_;
@@ -842,8 +842,8 @@ index b620f86165..1df15c5636 100644
 +                            "Aux shell arguments are too large");
      return;
    }
-   const auto args = base::JSONReader::Read(args_json);
-   const base::Value::List* list = args ? args->GetIfList() : nullptr;
+   const auto args = base::JSONReader::Read(args_json, base::JSON_PARSE_RFC);
+   const base::ListValue* list = args ? args->GetIfList() : nullptr;
 +  if (!list) {
 +    std::move(callback).Run(false, "", "invalid_argument",
 +                            "Aux shell arguments must be an array");
@@ -858,7 +858,7 @@ index b620f86165..1df15c5636 100644
 +      return;
 +    }
 +    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
-+    base::Value::Dict result;
++    base::DictValue result;
 +    if (method == "tabsSnapshot") {
 +      result = catalog->Snapshot();
 +    } else {
@@ -885,7 +885,7 @@ index b620f86165..1df15c5636 100644
 +    const std::optional<int> expected_version =
 +        list->size() == 3 ? std::optional<int>((*list)[2].GetInt())
 +                          : std::nullopt;
-+    base::Value::Dict ack =
++    base::DictValue ack =
 +        aux::TabCatalog::GetForProfile(browser_->GetProfile())
 +            ->Command(browser_, command_id, (*list)[1].GetDict(),
 +                      expected_version);

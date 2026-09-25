@@ -77,19 +77,19 @@ index 0000000000..e68ff072c9
 +constexpr size_t kMaxCookies = 500;
 +constexpr size_t kMaxBatchBytes = 2 * 1024 * 1024;
 +
-+base::Value::Dict Fault(const char* code, const char* message) {
-+  base::Value::Dict error;
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
 +  error.Set("code", code);
 +  error.Set("message", message);
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +  reply.Set("error", std::move(error));
 +  return reply;
 +}
 +
 +struct Batch {
-+  explicit Batch(base::OnceCallback<void(base::Value::Dict)> cb)
++  explicit Batch(base::OnceCallback<void(base::DictValue)> cb)
 +      : callback(std::move(cb)) {}
-+  base::OnceCallback<void(base::Value::Dict)> callback;
++  base::OnceCallback<void(base::DictValue)> callback;
 +  size_t pending = 0;
 +  int accepted = 0;
 +};
@@ -98,7 +98,7 @@ index 0000000000..e68ff072c9
 +
 +std::unique_ptr<net::CanonicalCookie> ParseImportedCookie(
 +    const base::Value& raw) {
-+  const base::Value::Dict* item = raw.GetIfDict();
++  const base::DictValue* item = raw.GetIfDict();
 +  if (!item) {
 +    return nullptr;
 +  }
@@ -151,9 +151,9 @@ index 0000000000..e68ff072c9
 +}
 +
 +void ImportCookies(Profile* profile,
-+                   const base::Value::Dict& params,
-+                   base::OnceCallback<void(base::Value::Dict)> callback) {
-+  const base::Value::List* cookies = params.FindList("cookies");
++                   const base::DictValue& params,
++                   base::OnceCallback<void(base::DictValue)> callback) {
++  const base::ListValue* cookies = params.FindList("cookies");
 +  if (!profile || profile->IsOffTheRecord() || !cookies ||
 +      cookies->size() > kMaxCookies) {
 +    std::move(callback).Run(
@@ -162,7 +162,7 @@ index 0000000000..e68ff072c9
 +  }
 +  size_t total_bytes = 0;
 +  for (const base::Value& raw : *cookies) {
-+    if (const base::Value::Dict* item = raw.GetIfDict()) {
++    if (const base::DictValue* item = raw.GetIfDict()) {
 +      for (const auto& [key, value] : *item) {
 +        total_bytes += key.size();
 +        if (const std::string* text = value.GetIfString()) {
@@ -194,10 +194,10 @@ index 0000000000..e68ff072c9
 +  }
 +  batch->pending = valid.size();
 +  if (batch->pending == 0) {
-+    base::Value::Dict outcome;
++    base::DictValue outcome;
 +    outcome.Set("ok", true);
 +    outcome.Set("count", 0);
-+    base::Value::Dict reply;
++    base::DictValue reply;
 +    reply.Set("result", std::move(outcome));
 +    std::move(batch->callback).Run(std::move(reply));
 +    return;
@@ -215,10 +215,10 @@ index 0000000000..e68ff072c9
 +                ++batch->accepted;
 +              }
 +              if (--batch->pending == 0) {
-+                base::Value::Dict outcome;
++                base::DictValue outcome;
 +                outcome.Set("ok", true);
 +                outcome.Set("count", batch->accepted);
-+                base::Value::Dict reply;
++                base::DictValue reply;
 +                reply.Set("result", std::move(outcome));
 +                std::move(batch->callback).Run(std::move(reply));
 +              }
@@ -260,8 +260,8 @@ index 0000000000..fd09b85a0b
 +// Invalid individual records are skipped; the returned count is the number
 +// accepted by Chromium's cookie store, not merely syntactically valid inputs.
 +void ImportCookies(Profile* profile,
-+                   const base::Value::Dict& params,
-+                   base::OnceCallback<void(base::Value::Dict)> callback);
++                   const base::DictValue& params,
++                   base::OnceCallback<void(base::DictValue)> callback);
 +
 +}  // namespace aux
 +
@@ -289,7 +289,7 @@ index 0000000000..b6c806e7e8
 +namespace {
 +
 +base::Value Cookie(std::string domain, bool secure = true) {
-+  base::Value::Dict cookie;
++  base::DictValue cookie;
 +  cookie.Set("name", "session");
 +  cookie.Set("value", "opaque");
 +  cookie.Set("domain", std::move(domain));
@@ -337,19 +337,19 @@ index 0000000000..b6c806e7e8
 +}
 +
 +TEST(NativeContentTest, RecallRequiresActiveOwningWorkspace) {
-+  base::Value::Dict space;
++  base::DictValue space;
 +  space.Set("id", "space-1");
 +  space.Set("workspaceId", "workspace-1");
-+  base::Value::List spaces;
++  base::ListValue spaces;
 +  spaces.Append(std::move(space));
-+  base::Value::Dict shared;
++  base::DictValue shared;
 +  shared.Set("spaces", std::move(spaces));
-+  base::Value::Dict tab_space;
++  base::DictValue tab_space;
 +  tab_space.Set("page-1", "space-1");
-+  base::Value::Dict window;
++  base::DictValue window;
 +  window.Set("activeSpaceId", "space-1");
 +  window.Set("tabSpace", std::move(tab_space));
-+  base::Value::Dict layout;
++  base::DictValue layout;
 +  layout.Set("shared", std::move(shared));
 +  layout.Set("window", std::move(window));
 +  EXPECT_TRUE(ReadableWorkspaceMatches(layout, "page-1", "workspace-1"));
@@ -392,11 +392,11 @@ index 0000000000..1711972d96
 +constexpr size_t kMaxTitleBytes = 1024;
 +constexpr int kCaptureWorld = content::ISOLATED_WORLD_ID_CONTENT_END + 9;
 +
-+base::Value::Dict Fault(const char* code, const char* message) {
-+  base::Value::Dict error;
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
 +  error.Set("code", code);
 +  error.Set("message", message);
-+  base::Value::Dict reply;
++  base::DictValue reply;
 +  reply.Set("error", std::move(error));
 +  return reply;
 +}
@@ -443,12 +443,12 @@ index 0000000000..1711972d96
 +  return true;
 +}
 +
-+bool ReadableWorkspaceMatches(const base::Value::Dict& layout,
++bool ReadableWorkspaceMatches(const base::DictValue& layout,
 +                              const std::string& page_id,
 +                              const std::string& workspace_id) {
-+  const base::Value::Dict* window = layout.FindDict("window");
-+  const base::Value::Dict* shared = layout.FindDict("shared");
-+  const base::Value::Dict* tab_space =
++  const base::DictValue* window = layout.FindDict("window");
++  const base::DictValue* shared = layout.FindDict("shared");
++  const base::DictValue* tab_space =
 +      window ? window->FindDict("tabSpace") : nullptr;
 +  const std::string* space_id =
 +      tab_space ? tab_space->FindString(page_id) : nullptr;
@@ -457,13 +457,13 @@ index 0000000000..1711972d96
 +  if (!space_id || !active || *space_id != *active) {
 +    return false;
 +  }
-+  const base::Value::List* spaces =
++  const base::ListValue* spaces =
 +      shared ? shared->FindList("spaces") : nullptr;
 +  if (!spaces) {
 +    return false;
 +  }
 +  for (const base::Value& value : *spaces) {
-+    const base::Value::Dict* space = value.GetIfDict();
++    const base::DictValue* space = value.GetIfDict();
 +    if (space && space->FindString("id") &&
 +        *space->FindString("id") == *space_id &&
 +        space->FindString("workspaceId") &&
@@ -509,7 +509,7 @@ index 0000000000..1711972d96
 +
 +void ReadableCapture::Extract(
 +    const std::string& expected_url,
-+    base::OnceCallback<void(base::Value::Dict)> callback) {
++    base::OnceCallback<void(base::DictValue)> callback) {
 +  if (!Eligible(expected_url)) {
 +    std::move(callback).Run(Fault("permission_denied",
 +                                  "Page is not eligible for protected recall"));
@@ -521,7 +521,7 @@ index 0000000000..1711972d96
 +      base::BindOnce(
 +          [](base::WeakPtr<ReadableCapture> self, std::string expected_url,
 +             int64_t document_id,
-+             base::OnceCallback<void(base::Value::Dict)> callback,
++             base::OnceCallback<void(base::DictValue)> callback,
 +             base::Value value) {
 +            if (!self || self->document_id_ != document_id ||
 +                !self->Eligible(expected_url)) {
@@ -529,7 +529,7 @@ index 0000000000..1711972d96
 +                  Fault("conflict", "Page changed during capture"));
 +              return;
 +            }
-+            const base::Value::Dict* article = value.GetIfDict();
++            const base::DictValue* article = value.GetIfDict();
 +            const std::string* title =
 +                article ? article->FindString("title") : nullptr;
 +            const std::string* text =
@@ -541,11 +541,11 @@ index 0000000000..1711972d96
 +                                            "or contains private fields"));
 +              return;
 +            }
-+            base::Value::Dict result;
++            base::DictValue result;
 +            result.Set("url", expected_url);
 +            result.Set("title", *title);
 +            result.Set("text", *text);
-+            base::Value::Dict reply;
++            base::DictValue reply;
 +            reply.Set("result", std::move(result));
 +            std::move(callback).Run(std::move(reply));
 +          },
@@ -588,7 +588,7 @@ index 0000000000..f036251e41
 +
 +// Response status, MIME type, and cache directive gate for protected recall.
 +bool ReadableResponseAllowed(const net::HttpResponseHeaders* headers);
-+bool ReadableWorkspaceMatches(const base::Value::Dict& layout,
++bool ReadableWorkspaceMatches(const base::DictValue& layout,
 +                              const std::string& page_id,
 +                              const std::string& workspace_id);
 +
@@ -604,7 +604,7 @@ index 0000000000..f036251e41
 +
 +  bool Eligible(const std::string& expected_url) const;
 +  void Extract(const std::string& expected_url,
-+               base::OnceCallback<void(base::Value::Dict)> callback);
++               base::OnceCallback<void(base::DictValue)> callback);
 +
 + private:
 +  friend class content::WebContentsUserData<ReadableCapture>;
@@ -641,7 +641,7 @@ index f8aa9f6f4c..cd426c39de 100644
  
 +namespace {
 +
-+bool CaptureAllowed(Profile* profile, const base::Value::Dict& params,
++bool CaptureAllowed(Profile* profile, const base::DictValue& params,
 +                    content::WebContents** page_out) {
 +  const std::string* page_id = params.FindString("pageId");
 +  const std::string* workspace_id = params.FindString("workspaceId");
@@ -663,7 +663,7 @@ index f8aa9f6f4c..cd426c39de 100644
 +  std::string error;
 +  const auto snapshot = aux::OrganizationStore::Snapshot(
 +      profile, base::NumberToString(owner->GetSessionID().id()), &error);
-+  const base::Value::Dict* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++  const base::DictValue* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
 +  if (!layout ||
 +      !aux::ReadableWorkspaceMatches(*layout, *page_id, *workspace_id))
 +    return false;
@@ -674,8 +674,8 @@ index f8aa9f6f4c..cd426c39de 100644
 +}  // namespace
 +
 +void AuxRuntimeHost::HandleReadableCapture(
-+    const base::Value::Dict& params,
-+    base::OnceCallback<void(base::Value::Dict)> callback) {
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback) {
 +  content::WebContents* page = nullptr;
 +  if (!CaptureAllowed(profile_, params, &page)) {
 +    std::move(callback).Run(NativeFault("permission_denied", "Select the visible HTTPS page in its owning Space"));
@@ -689,10 +689,10 @@ index f8aa9f6f4c..cd426c39de 100644
 +  capture->Extract(
 +      *params.FindString("expectedUrl"),
 +      base::BindOnce(
-+          [](base::WeakPtr<AuxRuntimeHost> owner, base::Value::Dict params,
++          [](base::WeakPtr<AuxRuntimeHost> owner, base::DictValue params,
 +             content::WebContents* original,
-+             base::OnceCallback<void(base::Value::Dict)> callback,
-+             base::Value::Dict reply) {
++             base::OnceCallback<void(base::DictValue)> callback,
++             base::DictValue reply) {
 +            content::WebContents* current = nullptr;
 +            if (!owner || !CaptureAllowed(owner->profile_, params, &current) ||
 +                current != original) {
@@ -707,14 +707,14 @@ index f8aa9f6f4c..cd426c39de 100644
  base::CallbackListSubscription AuxRuntimeHost::ObserveEvents(
      base::RepeatingCallback<void(const std::string&, const std::string&)>
          callback) {
-@@ -640,6 +709,24 @@ base::Value::Dict AuxRuntimeHost::Worker::DispatchNative(
-                         base::Value::Dict params,
+@@ -640,6 +709,24 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                         base::DictValue params,
                          uint64_t connection_generation,
                          std::shared_ptr<NativeReplyState> state) {
 +                       if (owner && method == "native.setCookies") {
 +                         aux::ImportCookies(owner->profile_, params, base::BindOnce(
 +                             [](std::shared_ptr<NativeReplyState> state,
-+                                base::Value::Dict reply) {
++                                base::DictValue reply) {
 +                               state->reply = std::move(reply);
 +                               state->ready.Signal();
 +                             }, state));
@@ -723,7 +723,7 @@ index f8aa9f6f4c..cd426c39de 100644
 +                       if (owner && method == "native.captureReadablePage") {
 +                         owner->HandleReadableCapture(params, base::BindOnce(
 +                             [](std::shared_ptr<NativeReplyState> state,
-+                                base::Value::Dict reply) {
++                                base::DictValue reply) {
 +                               state->reply = std::move(reply);
 +                               state->ready.Signal();
 +                             }, state));
@@ -738,12 +738,12 @@ index 4564c75706..be75a9cd02 100644
 +++ b/chrome/browser/ui/aux/runtime_host.h
 @@ -96,6 +96,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
    explicit AuxRuntimeHost(Profile* profile);
-   void HandleZapInstall(const base::Value::Dict& params,
-                         base::OnceCallback<void(base::Value::Dict)> callback);
-+  void HandleReadableCapture(const base::Value::Dict& params,
-+                             base::OnceCallback<void(base::Value::Dict)> callback);
-   base::Value::Dict HandleNativeCall(const std::string& method,
-                                      const base::Value::Dict& params,
+   void HandleZapInstall(const base::DictValue& params,
+                         base::OnceCallback<void(base::DictValue)> callback);
++  void HandleReadableCapture(const base::DictValue& params,
++                             base::OnceCallback<void(base::DictValue)> callback);
+   base::DictValue HandleNativeCall(const std::string& method,
+                                      const base::DictValue& params,
                                       uint64_t connection_generation);
 diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
 index 8da9471e99..0f3186b4fb 100644
@@ -759,7 +759,7 @@ index 8da9471e99..0f3186b4fb 100644
  #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 @@ -235,6 +236,9 @@ std::string TabCatalog::WindowId(const BrowserWindowInterface* browser) const {
  
- base::Value::Dict TabCatalog::TabRecord(BrowserWindowInterface* browser,
+ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
                                          content::WebContents* contents) {
 +  if (!ReadableCapture::FromWebContents(contents)) {
 +    ReadableCapture::CreateForWebContents(contents);

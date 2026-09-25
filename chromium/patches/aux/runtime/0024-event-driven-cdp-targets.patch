@@ -24,16 +24,16 @@ index f8aa9f6f4c..4e49fe8fac 100644
 +void AuxRuntimeHost::Worker::SendTabsChanged() {
 +  if (connection_fd_ < 0)
 +    return;
-+  base::Value::Dict note;
++  base::DictValue note;
 +  note.Set("kind", "note");
 +  note.Set("type", "native.tabsChanged");
-+  note.Set("payload", base::Value::Dict());
++  note.Set("payload", base::DictValue());
 +  const auto json = base::WriteJson(note);
 +  if (!json || !SendFrame(*json))
 +    Disconnect();
 +}
 +
- void AuxRuntimeHost::Worker::ForwardNote(const base::Value::Dict& data) {
+ void AuxRuntimeHost::Worker::ForwardNote(const base::DictValue& data) {
    const std::string* type = data.FindString("type");
    const base::Value* payload = data.Find("payload");
 diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
