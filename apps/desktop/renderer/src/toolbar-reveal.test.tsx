@@ -8,6 +8,9 @@ import { TOOLBAR_ENTRY_MS, TOOLBAR_EXIT_MS, useToolbarReveal } from "./toolbar-r
 const events = vi.hoisted(() => ({ edge: null as ((near: boolean) => void) | null }));
 vi.mock("./bridge", () => ({
   bridge: {
+    privateMode: false,
+    quickAskMode: false,
+    onOrganizationChanged: () => () => {},
     onToolbarEdge: (listener: (near: boolean) => void) => {
       events.edge = listener;
       return () => {

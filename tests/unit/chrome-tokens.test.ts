@@ -206,6 +206,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
 
 describe("session chrome — search, preview, close, settings, attachments", () => {
   const commandBar = readFileSync(join(here, "../../apps/desktop/renderer/src/components/CommandBar.tsx"), "utf8");
+  const commandTabRows = readFileSync(join(here, "../../apps/desktop/renderer/src/components/command-tab-rows.tsx"), "utf8");
   const conversation = readFileSync(join(here, "../../apps/desktop/renderer/src/components/Conversation.tsx"), "utf8");
   const images = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ConversationImages.tsx"), "utf8");
   const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
@@ -219,9 +220,9 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   });
 
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
-    expect(commandBar).toContain('s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null');
+    expect(commandBar).toContain('trailing={s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null}');
     expect(commandBar).toContain('hint: "Ask"');
-    expect(commandBar).toContain('hint: "Switch"');
+    expect(commandTabRows).toContain('hint: "Switch"');
     expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
     expect(commandBar).toContain("{I.send}");
     expect(commandBar).not.toContain("I.enter");
