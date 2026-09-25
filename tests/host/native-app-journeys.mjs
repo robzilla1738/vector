@@ -14,6 +14,7 @@ const journeys = [
   "Authenticated native runtime and no public debugging port",
   "Two real local pages, observation, action and human takeover",
   "Identical-URL tabs and parallel actions on background pages",
+  "Native Find counts, direction and zoom on real pages",
   "Keyboard tab switching in vertical and horizontal layouts",
   "Vertical expanded, collapsed and floating liquid-glass sidebar with Escape dismissal",
   "Horizontal tabs, Profile layout preference and accessible address focus",
@@ -117,7 +118,8 @@ try {
     const color = request.url?.startsWith("/blue") ? "#164b72" : "#7c344b";
     const name = color === "#164b72" ? "Blue" : "Red";
     response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-    response.end(`<!doctype html><title>Aux native ${name}</title><style>html,body{margin:0;height:100%;background:${color};color:white;font:24px system-ui}main{padding:64px}</style><main><h1>Aux native ${name} fixture</h1><label for="name">Title</label><input id="name" name="title"><button id="act" onclick="fetch('/click');this.textContent='Clicked'">Act</button></main>`);
+    const needles = name === "Red" ? "<p>Visible needle one</p><p>Visible needle two</p><p>Visible needle three</p>" : "<p>Visible needle</p>";
+    response.end(`<!doctype html><title>Aux native ${name}</title><style>html,body{margin:0;height:100%;background:${color};color:white;font:24px system-ui}main{padding:64px}</style><main><h1>Aux native ${name} fixture</h1>${needles}<p hidden>needle hidden</p><label for="name">Title</label><input id="name" name="title"><button id="act" onclick="fetch('/click');this.textContent='Clicked'">Act</button></main>`);
   });
   await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
   origin = `http://127.0.0.1:${fixture.address().port}`;
@@ -156,6 +158,19 @@ try {
   });
   assert.match(JSON.stringify(await rpc("pages.observe", { pageId: blue.pageId })), /Aux native Blue fixture/);
   record("two native pages retain distinct IDs and readable content", { red: red.pageId, blue: blue.pageId });
+
+  assert.equal((await rpc("pages.find", { pageId: blue.pageId, text: "needle" })).matches, 1);
+  assert.equal((await rpc("pages.find", { pageId: blue.pageId, text: "absent" })).matches, 0);
+  await rpc("pages.activate", { pageId: red.pageId });
+  await until("red tab activation", async () => (await rpc("workspace.get")).activePageId === red.pageId);
+  assert.equal((await rpc("pages.find", { pageId: red.pageId, text: "needle" })).matches, 3);
+  assert.equal((await rpc("pages.find", { pageId: red.pageId, text: "needle", findNext: true })).activeMatch, 2);
+  assert.equal((await rpc("pages.zoom", { pageId: red.pageId, direction: "in" })).level > 0, true);
+  assert.equal((await rpc("pages.zoom", { pageId: red.pageId, reset: true })).level, 0);
+  await rpc("pages.stopFind", { pageId: red.pageId, action: "clear" });
+  await rpc("pages.activate", { pageId: blue.pageId });
+  await until("blue tab reactivation", async () => (await rpc("workspace.get")).activePageId === blue.pageId);
+  record("native Find sees visible text, advances matches and clears; page zoom resets", { blueMatches: 1, redMatches: 3 });
 
   await rpc("settings.set", { effectGrants: ["effect:read", "effect:write"] });
   const action = await rpc("pages.execute", { program: { pageId: blue.pageId,

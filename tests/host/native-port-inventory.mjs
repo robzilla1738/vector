@@ -19,11 +19,14 @@ const independent = new Set([
   "chromium-store-lifecycle.mjs", "chromium-webauthn-virtual.mjs", "muse-gateway.mjs",
 ]);
 const partial = new Map([
+  ["find-desktop.mjs", "Native Find counts visible matches, advances, handles no result and clears; the Find bar's UI and debounce remain."],
   ["floating-sidebar-design.mjs", "Edge reveal, visible change, Escape dismissal; exact blur, bounds, reduced-motion, and outside-click assertions remain."],
   ["keyboard-browser-desktop.mjs", "Control-Tab selects both real tabs; other browser keyboard shortcuts remain."],
+  ["restore-tabs-desktop.mjs", "Official Aux.app restores one active tab with a stable page ID; 20/100-tab resource and latency trials remain."],
   ["shell-visual-desktop.mjs", "Expanded/collapsed/peek/horizontal captures and Command-L focus; populated spaces, rail and fine layout checks remain."],
   ["tab-activation-desktop.mjs", "Keyboard switching updates the active native page ID in both layouts; other activation routes remain."],
   ["tab-loading-desktop.mjs", "Two real pages finish loading and preserve distinct IDs; loading-state UI timing remains."],
+  ["two-profiles-desktop.mjs", "Two disposable regular Profiles isolate cookies and page authority across a restart; managed extensions and site storage remain."],
 ]);
 
 const files = smoke.map(path => {
