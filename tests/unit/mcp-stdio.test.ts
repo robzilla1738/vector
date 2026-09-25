@@ -128,6 +128,7 @@ describe("Gate F MCP stdio session", () => {
   let mcp: McpStdio;
   const calls: Rpc[] = [];
   let controller = "agent";
+  let revoked = false;
 
   beforeAll(async () => {
     dataDir = mkdtempSync(join(tmpdir(), "aux-mcp-"));
@@ -137,6 +138,11 @@ describe("Gate F MCP stdio session", () => {
         raw += c;
       });
       req.on("end", () => {
+        if (revoked) {
+          res.writeHead(401, { "content-type": "application/json" });
+          res.end(JSON.stringify({ error: { code: "unauthorized", message: "Revoked token" } }));
+          return;
+        }
         const body = JSON.parse(raw || "{}") as Rpc;
         if (typeof body.method === "string") {
           calls.push({ method: body.method, params: body.params });
@@ -291,6 +297,14 @@ describe("Gate F MCP stdio session", () => {
     const stale = await mcp.call("tools/call", { name: "aux_page_execute", arguments: { pageId: "p1", steps: [{ id: "c", op: "click", target: "r404" }] } });
     const payload = JSON.parse((stale.result as { content: [{ text: string }] }).content[0].text) as { code: string; retryable: boolean };
     expect(payload).toMatchObject({ code: "ref_stale", retryable: true });
+  });
+
+  it("reports a revoked scoped token as a non-retryable authorization denial", async () => {
+    revoked = true;
+    const denied = await mcp.call("tools/call", { name: "aux_pages_list" });
+    const payload = JSON.parse((denied.result as { content: [{ text: string }] }).content[0].text) as { code: string; retryable: boolean; message: string };
+    expect(payload).toMatchObject({ code: "permission_denied", retryable: false });
+    expect(payload.message).not.toContain("Revoked token");
   });
 });
 

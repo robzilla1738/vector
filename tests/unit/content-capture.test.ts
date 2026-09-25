@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { contentResponseEligible, forgetContentResponse, noteContentResponse } from "../../apps/desktop/main/content-capture.js";
+import { captureReadablePage, contentResponseEligible, forgetContentResponse, noteContentResponse } from "../../apps/desktop/main/content-capture.js";
+import type { WebContents } from "electron";
 
 describe("native content response eligibility", () => {
   it("requires the current successful HTML document without no-store", () => {
@@ -17,5 +18,17 @@ describe("native content response eligibility", () => {
     expect(contentResponseEligible(id, url)).toBe(false);
     noteContentResponse(id, url, 200, { "Content-Type": ["application/pdf"] });
     expect(contentResponseEligible(id, url)).toBe(false);
+  });
+
+  it("classifies deliberate capture denials without exposing page content", async () => {
+    const id = 915;
+    const url = "https://example.com/private";
+    const contents = { id, isDestroyed: () => false, getURL: () => url,
+      executeJavaScriptInIsolatedWorld: async () => false } as unknown as WebContents;
+    noteContentResponse(id, url, 200, { "Content-Type": "text/html", "Cache-Control": "no-store" });
+    await expect(captureReadablePage(contents, url, () => true)).rejects.toMatchObject({ code: "permission_denied" });
+    noteContentResponse(id, url, 200, { "Content-Type": "text/html" });
+    await expect(captureReadablePage(contents, url, () => true)).rejects.toMatchObject({ code: "permission_denied" });
+    forgetContentResponse(id);
   });
 });

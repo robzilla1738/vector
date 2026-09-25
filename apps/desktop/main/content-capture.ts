@@ -1,4 +1,5 @@
 import type { WebContents } from "electron";
+import { AuxError } from "@aux/contracts";
 import { readArticle } from "./read-article.js";
 
 type Response = { url: string; html: boolean; noStore: boolean };
@@ -36,13 +37,15 @@ function textOf(node: ReaderNode): string {
 export async function captureReadablePage(contents: WebContents, expectedUrl: string, available: () => boolean) {
   const eligible = () => available() && !contents.isDestroyed() && contents.getURL() === expectedUrl
     && contentResponseEligible(contents.id, expectedUrl);
-  if (!eligible()) throw new Error("This page is not eligible for content recall. It must be a visible HTTPS article without a no-store response.");
+  if (!eligible()) throw new AuxError("permission_denied", "This page is not eligible for content recall. It must be a visible HTTPS article without a no-store response.");
   const safe = await contents.executeJavaScriptInIsolatedWorld(997, [{ code: sensitiveDocumentProbe }]);
-  if (safe !== true || !eligible()) throw new Error("This page may contain private fields or changed during capture.");
+  if (safe !== true) throw new AuxError("permission_denied", "This page may contain private fields.");
+  if (!eligible()) throw new AuxError("conflict", "The page changed during capture.");
   const article = await readArticle(contents, eligible) as { title: string; url: string; content: ReaderNode };
   const stillSafe = await contents.executeJavaScriptInIsolatedWorld(997, [{ code: sensitiveDocumentProbe }]);
-  if (stillSafe !== true || !eligible() || article.url !== expectedUrl) throw new Error("The page changed or became sensitive during capture.");
+  if (stillSafe !== true) throw new AuxError("permission_denied", "This page may contain private fields.");
+  if (!eligible() || article.url !== expectedUrl) throw new AuxError("conflict", "The page changed during capture.");
   const text = textOf(article.content).replace(/\s+/g, " ").trim();
-  if (!text || Buffer.byteLength(text, "utf8") > 64 * 1024) throw new Error("This article is too large for protected recall.");
+  if (!text || Buffer.byteLength(text, "utf8") > 64 * 1024) throw new AuxError("invalid_params", "This article is too large for protected recall.");
   return { url: expectedUrl, title: article.title, text };
 }

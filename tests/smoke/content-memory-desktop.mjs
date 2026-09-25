@@ -149,12 +149,12 @@ try {
   const bound = await shell.evaluate(pageId => window.aux.tabsSnapshot().then(snapshot => snapshot.tabs.find(tab => tab.pageId === pageId)), legacy.pageId);
   assert.equal(bound.workspaceId, workspaceId);
   assert.equal((await shell.evaluate(({pageId,spaceId}) => window.aux.migrateTabSpaces([{pageId,spaceId}]), {pageId:legacy.pageId,spaceId:other.id})).migrated, 0);
-  const assertCaptureDenied = async (page, reason) => {
+  const assertCaptureDenied = async page => {
     const deadline = Date.now() + 5000;
     while (true) {
       try { await capture(page); }
       catch (error) {
-        if (reason.test(String(error))) return;
+        if (/The action is not authorized/i.test(String(error))) return;
         if (!/Select the visible tab/i.test(String(error)) || Date.now() >= deadline) throw error;
         await new Promise(resolve => setTimeout(resolve, 50));
         continue;
@@ -163,9 +163,11 @@ try {
     }
   };
   const noStore = await open("/no-store");
-  await assertCaptureDenied(noStore, /not eligible|no-store/i);
+  await assertCaptureDenied(noStore);
   const sensitive = await open("/sensitive");
-  await assertCaptureDenied(sensitive, /private fields|sensitive/i);
+  await assertCaptureDenied(sensitive);
+  const protectedHits = await shell.evaluate(workspaceId => window.aux.invoke("workspaces.contentMemory.search", { workspaceId, query: "editorial" }), workspaceId);
+  assert.deepEqual(protectedHits.map(hit => hit.memoryId), [hits[0].memoryId]);
   holdProvider = true;
   const pending = await shell.evaluate(({ workspaceId, memoryId, pageId }) => window.aux.invoke("runs.start", {
     goal: "Use this saved article while the provider is slow", pageIds: [pageId], defaultWorkspaceId: workspaceId,

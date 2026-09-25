@@ -18,6 +18,8 @@ export async function rpc<T=unknown>(method:string,params:unknown={}):Promise<T>
   try{return await client.call(method as never,params as never) as T;}
   catch(error){
     if(error instanceof AuxRpcError&&error.code==='transport_error')cached=null;
+    if(error instanceof AuxRpcError&&(error.status===401||error.code==='unauthorized'))
+      throw new AuxError('permission_denied','This Aux connection is no longer authorized. Recreate it in Aux Settings.');
     if(error instanceof AuxRpcError)throw AUX_CODES.has(error.code)?new AuxError(error.code as AuxErrorCode,error.message,error.detail):new AuxError('backend_unavailable',`${error.code}: ${error.message}`);
     throw error;
   }
