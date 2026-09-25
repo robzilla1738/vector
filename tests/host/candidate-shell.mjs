@@ -69,11 +69,11 @@ try {
     commands: typeof window.aux?.tabCommand,
     snapshot: typeof window.aux?.tabsSnapshot,
     runtime: typeof window.aux?.invoke,
-    stage: typeof window.aux?.setStage,
+    surface: typeof window.aux?.surfaceContentId,
     host: window.auxHostProof?.host,
   }));
   record('production Aux bridge', bridge.present && !bridge.mock && bridge.host === 'chromium-fork' &&
-    bridge.commands === 'function' && bridge.snapshot === 'function' && bridge.runtime === 'function' && bridge.stage === 'function' && !!bridge.windowId,
+    bridge.commands === 'function' && bridge.snapshot === 'function' && bridge.runtime === 'function' && bridge.surface === 'function' && !!bridge.windowId,
     JSON.stringify(bridge));
 
   server = createServer((request, response) => {
@@ -97,6 +97,13 @@ try {
   record('native tabs match one Aux catalog', opened.tabs.some(tab => tab.pageId === a.pageId && tab.url === aUrl) &&
     opened.tabs.some(tab => tab.pageId === b.pageId && tab.url === bUrl) && opened.version > baseline.version,
     JSON.stringify({ before: baseline.version, after: opened.version, matching: opened.tabs.filter(tab => [a.pageId, b.pageId].includes(tab.pageId)) }));
+
+  const contentId = await shell.evaluate(pageId => window.aux.surfaceContentId(pageId), b.pageId);
+  await shell.waitForSelector('embed.page-surface.webium[data-content-id]', { timeout: 10000 });
+  const embeddedId = await shell.locator('embed.page-surface.webium').getAttribute('data-content-id');
+  record('active native page uses the authorized SurfaceEmbed handle',
+    !!contentId && embeddedId === contentId,
+    JSON.stringify({ expected: contentId, embedded: embeddedId }));
 
   await shell.evaluate(() => window.aux.invoke('settings.set', { tabLayout: 'horizontal' }));
   await shell.waitForSelector('.app.tabs-horizontal .horizontal-chrome', { timeout: 10000 });
