@@ -232,7 +232,9 @@ export class ContentMemoryStore {
       const haystack = index.searchable.get(id)!;
       const hits = tokens.filter(token => termPosition(haystack.title, token) >= 0 || termPosition(haystack.text, token) >= 0);
       for (const token of hits) frequencies.set(token, frequencies.get(token)! + 1);
-      return hits.length ? [{ body, haystack, hits }] : [];
+      // Multi-term questions need corroboration. A single common word such as
+      // Spanish "de" should not surface an unrelated saved page as an answer.
+      return hits.length >= (tokens.length >= 3 ? 2 : 1) ? [{ body, haystack, hits }] : [];
     });
     const ranked = candidates.map(({ body, haystack, hits }) => {
       const score = hits.reduce((sum, token) => {

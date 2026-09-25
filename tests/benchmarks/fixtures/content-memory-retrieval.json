@@ -1,0 +1,40 @@
+{
+  "documents": [
+    { "id": "bike-returns", "title": "Bicycle returns", "text": "The bicycle shop accepts returns within thirty days when the receipt is available. Refunds go to the original payment method." },
+    { "id": "bike-warranty", "title": "Bicycle frame warranty", "text": "The bicycle frame has a two year warranty. Tire punctures and ordinary wear are excluded." },
+    { "id": "train-timetable", "title": "Harbor train timetable", "text": "The first harbor train departs the depot at 06:20 on weekdays. The final departure is at 22:40." },
+    { "id": "ferry-timetable", "title": "Harbor ferry timetable", "text": "The harbor ferry departs Pier Seven at 07:10 and 18:30. Bicycles are allowed aboard the ferry." },
+    { "id": "solar-rebate", "title": "Solar installation rebate", "text": "Households installing rooftop solar panels may claim a 1500 dollar rebate after inspection." },
+    { "id": "insulation-rebate", "title": "Attic insulation rebate", "text": "The attic insulation rebate is 400 dollars. Keep the contractor invoice for the application." },
+    { "id": "library-hours-es", "title": "Horario de la biblioteca", "text": "La biblioteca del barrio abre los martes hasta las 18:00. Los domingos permanece cerrada." },
+    { "id": "library-events-es", "title": "Eventos de la biblioteca", "text": "La biblioteca organiza un taller de escritura los jueves a las 17:00. La inscripción es gratuita." },
+    { "id": "earthquake-drill-ja", "title": "地震訓練の予定", "text": "学校の地震訓練は金曜日の午前九時に始まります。参加者は校庭に集合します。" },
+    { "id": "evacuation-route-ja", "title": "避難経路の案内", "text": "避難経路は西門から公園へ続きます。大雨の場合は体育館を集合場所にします。" },
+    { "id": "museum-hours-fr", "title": "Horaires du musée", "text": "Le musée ouvre le mercredi à 10 h et ferme à 19 h. Il est fermé le lundi." },
+    { "id": "museum-tickets-fr", "title": "Billets du musée", "text": "Les billets du musée coûtent douze euros. La réservation en ligne est recommandée." },
+    { "id": "orchard-irrigation", "title": "Orchard irrigation schedule", "text": "Water the apple orchard at dawn every third day during the dry season. Check soil moisture first." },
+    { "id": "orchard-harvest", "title": "Orchard harvest schedule", "text": "Harvest the apple orchard in late September. Sort damaged fruit before packing." },
+    { "id": "workspace-keys", "title": "Workspace key rotation", "text": "Rotate workspace access keys every ninety days. Revoke the old key after clients acknowledge the new key." },
+    { "id": "workspace-backups", "title": "Workspace backup policy", "text": "Create an encrypted workspace backup every Friday. Test restoration once each quarter." }
+  ],
+  "questions": [
+    { "language": "en", "kind": "lexical", "query": "bicycle return receipt", "relevant": ["bike-returns"] },
+    { "language": "en", "kind": "lexical", "query": "frame warranty punctures", "relevant": ["bike-warranty"] },
+    { "language": "en", "kind": "lexical", "query": "first harbor train depot", "relevant": ["train-timetable"] },
+    { "language": "en", "kind": "lexical", "query": "ferry Pier Seven bicycles", "relevant": ["ferry-timetable"] },
+    { "language": "en", "kind": "lexical", "query": "solar panels inspection rebate", "relevant": ["solar-rebate"] },
+    { "language": "en", "kind": "lexical", "query": "attic insulation contractor invoice", "relevant": ["insulation-rebate"] },
+    { "language": "en", "kind": "lexical", "query": "apple orchard soil moisture", "relevant": ["orchard-irrigation"] },
+    { "language": "en", "kind": "lexical", "query": "workspace encrypted backup Friday", "relevant": ["workspace-backups"] },
+    { "language": "es", "kind": "lexical", "query": "biblioteca martes horario", "relevant": ["library-hours-es"] },
+    { "language": "es", "kind": "lexical", "query": "biblioteca taller escritura jueves", "relevant": ["library-events-es"] },
+    { "language": "ja", "kind": "lexical", "query": "地震訓練 金曜日", "relevant": ["earthquake-drill-ja"] },
+    { "language": "ja", "kind": "lexical", "query": "避難経路 西門", "relevant": ["evacuation-route-ja"] },
+    { "language": "fr", "kind": "lexical", "query": "musée mercredi horaires", "relevant": ["museum-hours-fr"] },
+    { "language": "fr", "kind": "lexical", "query": "billets musée réservation", "relevant": ["museum-tickets-fr"] },
+    { "language": "en", "kind": "paraphrase", "query": "How long can I reverse a purchase?", "relevant": ["bike-returns"] },
+    { "language": "en", "kind": "paraphrase", "query": "Where do we go if there is a tremor?", "relevant": ["earthquake-drill-ja", "evacuation-route-ja"] },
+    { "language": "en", "kind": "negative", "query": "submarine engine maintenance", "relevant": [] },
+    { "language": "es", "kind": "negative", "query": "receta de chocolate", "relevant": [] }
+  ]
+}

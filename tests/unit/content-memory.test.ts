@@ -99,6 +99,7 @@ it("retrieves Spanish and Japanese article terms within their exact Space", asyn
     url: "https://example.test/coffee-jp", title: "コーヒーの収穫", text: "コーヒーの収穫は十月に始まる。" });
   expect((await f.memory.search(space, "¿Cuándo empieza la cosecha de café?"))[0]?.pageId).toBe("spanish");
   expect((await f.memory.search(space, "コーヒーの収穫はいつ始まる？"))[0]?.pageId).toBe("japanese");
+  expect(await f.memory.search(space, "receta de chocolate")).toEqual([]);
   const other = f.tasks.createWorkspace("Other");
   f.memory.setPolicy(other.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });
   expect(await f.memory.search(other.workspaceId, "cosecha café")).toEqual([]);
