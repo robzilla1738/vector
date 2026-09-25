@@ -47,10 +47,13 @@ try {
   await page.locator(".history-conversation").filter({ hasText: "Prepare a meeting brief" }).click();
   await page.getByRole("link", { name: "older source" }).click();
   await chooser.waitFor();
+  assert.equal(await chooser.evaluate(element => element.matches(":modal")), true, "Profile choice uses the native modal top layer");
   assert.match(await chooser.innerText(), /alice@example\.test/);
   await chooser.getByRole("button", { name: "Work" }).waitFor();
-  await chooser.getByRole("button", { name: "Cancel" }).click();
+  await page.keyboard.press("Escape");
   await chooser.waitFor({ state: "detached" });
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes("older source"));
+  assert.match(await page.evaluate(() => document.activeElement?.textContent?.trim() ?? ""), /older source/, "Escape returns focus to the Calendar citation");
   await page.getByText("Sources", { exact: true }).click();
   await page.locator(".conversation-sources button").filter({ hasText: "Earlier meeting" }).click();
   await chooser.waitFor();

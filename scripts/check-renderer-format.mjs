@@ -26,6 +26,9 @@ const files = [
   "apps/desktop/renderer/src/components/OutboundMcpSettings.css",
   "apps/desktop/renderer/src/components/SiteControls.tsx",
   "apps/desktop/renderer/src/components/SiteControls.css",
+  "apps/desktop/renderer/src/components/CalendarSourceChoiceDialog.tsx",
+  "apps/desktop/renderer/src/components/CalendarSourceChoiceDialog.css",
+  "apps/desktop/renderer/src/components/CalendarSourceChoiceDialog.test.tsx",
   "apps/desktop/renderer/src/mock/bridge-mcp.test.ts",
   "apps/desktop/renderer/src/styles/space-grain.css",
 ];

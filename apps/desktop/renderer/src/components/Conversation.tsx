@@ -1,5 +1,6 @@
 import { AnchoredPanel } from "./AnchoredPanel";
 import { RunControls } from "./RunControls";
+import { CalendarSourceChoiceDialog } from "./CalendarSourceChoiceDialog";
 import { AttachmentTray, type AttachmentItem } from "./AttachmentTray";
 import { SupportingContent } from "./SupportingContent";
 import { SourceRow } from "./SourceRow";
@@ -21,7 +22,6 @@ import { conversationPage } from "../conversation-page";
 import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-sources";
 import { isScrimOverlay } from "../chrome";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
@@ -190,24 +190,20 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     return grouped;
   }, [conversationSources]);
   const [calendarSourceChoice, setCalendarSourceChoice] = useState<{ source: Extract<ConversationSource, { kind: "calendar" }>; profiles: BrowserProfile[]; background: boolean } | null>(null);
-  const calendarChoiceRef = useRef<HTMLDivElement>(null);
+  const calendarChoiceOpen = !!calendarSourceChoice;
+  const calendarChoiceOpener = useRef<HTMLElement | null>(null);
+  const calendarChoiceCancel = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!calendarSourceChoice) return;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const body = document.querySelector<HTMLElement>(".app-body");
-    const wasInert = body?.inert;
-    if (body) body.inert = true;
+    if (!calendarChoiceOpen) return;
     let live = true;
     void bridge.overlay(true).then(() => live ? bridge.focusShell() : undefined).then(() => {
-      if (live) calendarChoiceRef.current?.querySelector<HTMLElement>("button")?.focus();
+      if (live) calendarChoiceCancel.current?.focus();
     }).catch(() => {});
     return () => {
       live = false;
-      if (body) body.inert = !!wasInert;
       void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
-      if (previous?.isConnected) previous.focus();
     };
-  }, [!!calendarSourceChoice]);
+  }, [calendarChoiceOpen]);
   const [sourceProfileNames, setSourceProfileNames] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!conversationSources.some(source => source.profileId)) return;
@@ -319,6 +315,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     else useStore.getState().setAgentDraft(value);
   };
   const openSource = useCallback(async (source: ConversationSource, background=false) => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     try {
       if (source.kind === "calendar") {
         const profiles = (await bridge.browserProfiles()).filter(profile => !profile.archived);
@@ -332,6 +329,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
           } else if (!await bridge.openBrowserProfileUrl(owner.id, source.url)) throw new Error("The source Profile could not open this Calendar event.");
           return;
         }
+        calendarChoiceOpener.current = opener;
         setCalendarSourceChoice({ source, profiles, background });
         return;
       }
@@ -350,7 +348,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       else if (background) await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
       else await useStore.getState().newTab(source.url);
     } catch (error) { errToast(error); }
-  },[]);
+  },[setCalendarSourceChoice]);
   const openCitation = useCallback((url:string,background:boolean,runId?:string):boolean => {
     const matching=conversationSources.filter(source=>answerUrl(source.url)===url && (!runId || source.runId===runId));
     if (!matching.length) {
@@ -375,7 +373,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         else await useStore.getState().newTab(choice.source.url);
       } else if (!await bridge.openBrowserProfileUrl(profile.id, choice.source.url)) throw new Error("The selected Profile could not open this Calendar event.");
     } catch (error) { errToast(error); }
-  }, [calendarSourceChoice]);
+  }, [calendarSourceChoice, setCalendarSourceChoice]);
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const missingContext = !["active", "linked", "none"].includes(contextPage) && !selectedContext;
@@ -741,24 +739,6 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       </ComposerFrame>
     </div></div>
     </div>{supporting && <SupportingContent key={supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
-    {calendarSourceChoice && createPortal(<div className="scrim-soft" onMouseDown={() => setCalendarSourceChoice(null)}>
-      <div ref={calendarChoiceRef} className="sheet conversation-calendar-choice" role="dialog" aria-modal="true" aria-labelledby="calendar-source-choice-title"
-        onMouseDown={event => event.stopPropagation()} onKeyDown={event => {
-          event.stopPropagation();
-          if (event.key === "Escape") { event.preventDefault(); setCalendarSourceChoice(null); }
-          if (event.key === "Tab") {
-            const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)")];
-            const first = controls[0], last = controls.at(-1);
-            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-          }
-        }}>
-        <header><h3 id="calendar-source-choice-title">Open Calendar source</h3><button className="icon-btn" aria-label="Cancel" onClick={() => setCalendarSourceChoice(null)}>{I.close}</button></header>
-        <p><b>{calendarSourceChoice.source.title}</b><br/>Google account: {calendarSourceChoice.source.accountKey}</p>
-        <p>Choose the browser Profile signed in to this account.</p>
-        <div className="conversation-calendar-profiles">{calendarSourceChoice.profiles.map(profile => <button key={profile.id} className="btn sm"
-          onClick={() => void openCalendarSourceInProfile(profile)}>{profile.name}{profile.current ? " · current" : ""}</button>)}</div>
-      </div>
-    </div>, document.body)}
+    {calendarSourceChoice && <CalendarSourceChoiceDialog choice={calendarSourceChoice} returnFocus={calendarChoiceOpener} initialFocus={calendarChoiceCancel} onClose={() => setCalendarSourceChoice(null)} onChoose={profile => void openCalendarSourceInProfile(profile)} />}
   </section>;
 }
