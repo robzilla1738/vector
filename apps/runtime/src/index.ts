@@ -195,6 +195,11 @@ export {
 } from "./safety/guardian.js";
 export { createGuardianJudge } from "./safety/guardian-model.js";
 export { SafetyDispatchGate, type StepSafetyContext } from "./safety/dispatch.js";
+export {
+  decide, categoryForOp, effectRequestForStep, sensitiveStep, confirmsAtAction,
+  DecisionJournal, REFUSAL,
+  type DecideDeps, type DecideContext, type DecisionRecord, type DecisionSource,
+} from "./safety/decide.js";
 export { SafetyAuditStore } from "./safety/audit.js";
 export { SendJournal, sendNotice, type MessageTransport, type SendState } from "./safety/send-journal.js";
 export {

@@ -65,6 +65,7 @@ import { DurableWriteLedger } from "./agent/durable.js";
 import { modelCallCost } from "./agent/model-client.js";
 import { ApprovalStore } from "./safety/approval.js";
 import { SafetyAuditStore } from "./safety/audit.js";
+import { DecisionJournal } from "./safety/decide.js";
 import { SafetyDispatchGate } from "./safety/dispatch.js";
 import { createGuardianJudge } from "./safety/guardian-model.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
@@ -104,6 +105,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const safetyGate = env.AUX_HOST_SOCKET
     ? new SafetyDispatchGate({
         approvals,
+        journal: new DecisionJournal(repo.db),
         managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
         userRules: () => settings.originPolicies(),
         localCeiling: (action) => settings.safetyCeiling(action.effect),

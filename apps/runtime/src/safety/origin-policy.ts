@@ -38,6 +38,15 @@ function mostRestrictive<T extends string>(a: T | undefined, b: T | undefined, r
   return rank[a] <= rank[b] ? a : b;
 }
 
+/** "Browse freely, confirm consequences": unruled origins allow reads, writes and
+ * navigation, ask for external tools, and deny only page-JS evaluation, which is
+ * unreachable by model/MCP callers. Explicit rules can only tighten this. */
+export function defaultAccessFor(effect: Effect): OriginAccess {
+  if (effect === "destructive") return "deny";
+  if (effect === "external_tool") return "ask";
+  return "allow";
+}
+
 /** Managed policy and user settings can each tighten; neither can override a deny. */
 export function evaluateOriginPolicy(input: {
   url: string;
@@ -58,7 +67,7 @@ export function evaluateOriginPolicy(input: {
   const managedAccess = accessFor(managed);
   const userAccess = accessFor(user);
   const access = normalized
-    ? mostRestrictive(managedAccess, userAccess, ACCESS_RANK, "deny")
+    ? mostRestrictive(managedAccess, userAccess, ACCESS_RANK, defaultAccessFor(input.effect))
     : "deny";
   const source: PolicySource = managedAccess && (!userAccess || ACCESS_RANK[managedAccess] <= ACCESS_RANK[userAccess])
     ? "managed" : userAccess ? "user" : "default";

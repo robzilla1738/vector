@@ -1,9 +1,10 @@
 /**
  * Privilege-independent permission checks (Gate D / H2-C4). Model text cannot grant.
  */
-import type { Step } from "@aux/contracts";
+import type { Effect, Step } from "@aux/contracts";
 
-export type EffectClass = "read" | "write" | "destructive" | "egress";
+/** Step classification subset of the unified contract `Effect` taxonomy (safety.ts). */
+export type EffectClass = Extract<Effect, "read" | "write" | "destructive" | "egress">;
 
 /** Structured grant. `origin`/`scope` `*` and `expiresAt` 0 mean unrestricted/session. */
 export interface PermissionGrant {

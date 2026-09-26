@@ -136,3 +136,70 @@ export const PendingApprovalSchema = z.object({
   action: SafetyActionSchema,
   expiresAt: z.number().int().nonnegative(),
 }).strict();
+
+/** v2: every effect decision names its actor, category, endpoints, and data provenance. */
+export const EffectActorSchema = z.enum(["builtin_agent", "subagent", "code_mode", "external_token", "user"]);
+export type EffectActor = z.infer<typeof EffectActorSchema>;
+export const EffectProvenanceSchema = z.enum(["user", "page", "memory", "template"]);
+export type EffectProvenance = z.infer<typeof EffectProvenanceSchema>;
+export const DataClassSchema = z.enum(["none", "form", "sensitive", "credential", "payment", "file"]);
+export type DataClass = z.infer<typeof DataClassSchema>;
+/** Semantic category; `submit` also covers send/post/purchase/delete/account/security consequences. */
+export const EffectCategorySchema = z.enum([
+  "read", "navigate", "input", "interact", "submit", "send", "post", "purchase", "delete",
+  "account", "security", "download", "upload", "credential", "payment", "evaluate", "external_tool", "dialog",
+]);
+export type EffectCategory = z.infer<typeof EffectCategorySchema>;
+
+export const EffectRequestSchema = z.object({
+  profileId: id,
+  scope: SafetyActionSchema.shape.scope,
+  actor: EffectActorSchema,
+  effect: EffectSchema,
+  category: EffectCategorySchema,
+  action: id,
+  /** Raw endpoint as observed — decide() normalizes with exactOrigin and can deny it. */
+  origin: z.string().trim().min(1).max(2048).optional(),
+  destination: z.string().trim().min(1).max(2048).optional(),
+  recipient: id.optional(),
+  dataClasses: z.array(DataClassSchema).max(8).default([]),
+  provenance: EffectProvenanceSchema,
+  invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  turnId: id,
+  threadId: id,
+  runId: id.optional(),
+  requestedAt: z.number().int().nonnegative(),
+}).strict().refine(value => !!value.origin || !!value.recipient, "Name an origin or recipient.");
+export type EffectRequest = z.infer<typeof EffectRequestSchema>;
+
+export const SuspensionKindSchema = z.enum(["ask-user-question", "approval", "action-confirmation", "handoff"]);
+export type SuspensionKind = z.infer<typeof SuspensionKindSchema>;
+/** The parked side of an `ask` decision; one pending suspension per run. */
+export const SuspensionRequestSchema = z.object({
+  kind: SuspensionKindSchema,
+  approvalId: id.optional(),
+  instruction: z.string().trim().min(1).max(4000),
+  guidance: z.string().trim().min(1).max(4000),
+}).strict();
+export type SuspensionRequest = z.infer<typeof SuspensionRequestSchema>;
+
+export const DecisionSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("allow"), authorizedBy: AuthorizationProvenanceSchema }).strict(),
+  z.object({ status: z.literal("ask"), suspension: SuspensionRequestSchema }).strict(),
+  z.object({ status: z.literal("deny"), refusalId: id, guidance: z.string().trim().min(1).max(4000) }).strict(),
+]);
+export type Decision = z.infer<typeof DecisionSchema>;
+
+export const SuspensionStateSchema = z.enum(["pending", "answered", "cancelled", "expired"]);
+export const SuspensionSchema = z.object({
+  suspensionId: id,
+  runId: id,
+  threadId: id,
+  turnId: id,
+  kind: SuspensionKindSchema,
+  request: SuspensionRequestSchema,
+  state: SuspensionStateSchema,
+  createdAt: z.number().int().nonnegative(),
+  resolvedAt: z.number().int().nonnegative().optional(),
+}).strict();
+export type Suspension = z.infer<typeof SuspensionSchema>;

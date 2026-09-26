@@ -4,6 +4,7 @@ import { EventBus, NullNativeBridge, PageService, Repo, openDb } from "@aux/runt
 import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { Step } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
+import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
 import { SafetyDispatchGate, type SafetyDispatchDeps } from "../../apps/runtime/src/safety/dispatch.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
@@ -20,6 +21,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
   let access: "allow" | "deny" = "allow";
   const gate = new SafetyDispatchGate({
     approvals,
+    journal: new DecisionJournal(db),
     managedRules: () => [],
     userRules: () => [{ origin: "https://allowed.test/", access, confirmation: "none" }],
     localCeiling: () => "always",
@@ -52,7 +54,7 @@ describe("B5 live dispatch gate", () => {
   it("requires a one-time credential approval even when the origin rule says none", async () => {
     const db = openDb(":memory:"); databases.push(db);
     const approvals = new ApprovalStore(db);
-    const gate = new SafetyDispatchGate({ approvals, managedRules: () => [],
+    const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(db), managedRules: () => [],
       userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "none" }],
       localCeiling: () => "always", audit: () => {} });
     const step: Step = { id: "saved-password", op: "fillCredential", passwordSelector: "#password" };
@@ -71,7 +73,7 @@ describe("B5 live dispatch gate", () => {
       context: { ...context, approvalId }, phase: "dispatch" })).toMatchObject({ authorizedBy: "approval", approvalId });
   });
 
-  it("records policy authorization and blocks a second step after an origin change", async () => {
+  it("records policy authorization and asks for confirmation after an origin change", async () => {
     const { pages, calls } = fixture();
     const page = await pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });
     const result = await pages.execute({ pageId: page.pageId, steps: [
@@ -80,7 +82,9 @@ describe("B5 live dispatch gate", () => {
     ] });
     expect(calls).toEqual(["click"]);
     expect(result.steps[0]).toMatchObject({ status: "ok", authorization: { authorizedBy: "policy", policySource: "user" } });
-    expect(result.steps[1]).toMatchObject({ status: "failed", error: { code: "permission_denied" } });
+    // Unruled destinations are no longer denied outright: a consequential
+    // action on a new origin parks for action-time confirmation instead.
+    expect(result.steps[1]).toMatchObject({ status: "failed", error: { code: "needs_input" } });
   });
 
   it("fails closed before dispatch when an origin policy is revoked", async () => {
@@ -101,7 +105,7 @@ describe("B5 live dispatch gate", () => {
     const entered = new Promise<void>(resolve => { judging = resolve; });
     const pending = new Promise<void>(resolve => { release = resolve; });
     const gate = new SafetyDispatchGate({
-      approvals, managedRules: () => [],
+      approvals, journal: new DecisionJournal(db), managedRules: () => [],
       userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "none" }],
       localCeiling: () => "ask", audit: () => {},
       judge: async () => { judging(); await pending; return []; },
@@ -138,7 +142,7 @@ describe("B5 live dispatch gate", () => {
   it("requires an exact action approval even with an always ceiling or standing grant", async () => {
     const db = openDb(":memory:"); databases.push(db);
     const approvals = new ApprovalStore(db);
-    const gate = new SafetyDispatchGate({ approvals, managedRules: () => [],
+    const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(db), managedRules: () => [],
       userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "action" }],
       localCeiling: () => "always", audit: () => {} });
     const step: Step = { id: "step-consent", op: "click", target: "#submit" };
@@ -163,7 +167,7 @@ describe("B5 live dispatch gate", () => {
   it("binds an action-time review and one-time approval to the exact invocation", async () => {
     const db = openDb(":memory:"); databases.push(db);
     const approvals = new ApprovalStore(db);
-    const gate = new SafetyDispatchGate({ approvals, managedRules: () => [],
+    const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(db), managedRules: () => [],
       userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "action" }],
       localCeiling: () => "ask", audit: () => {} });
     const step: Step = { id: "step-review", op: "click", target: "#submit" };

@@ -21,17 +21,20 @@ const allowed = { access: "allow" as const, confirmation: "action" as const, app
   grantLifetime: "session" as const, source: "user" as const, reason: "matched_rule", origin: "https://example.test", effect: "write" as const };
 
 describe("B5 safety core", () => {
-  it("fails closed on unconfigured and malformed origins, audits every decision, and cascades managed denies", () => {
+  it("browses freely on unconfigured origins, fails closed on malformed ones, and cascades managed denies", () => {
     const audits: unknown[] = [];
-    const decide = (url: string, managed = [rule], user = [rule]) => evaluateOriginPolicy({
-      url, effect: "write", action: "submit", managed, user, audit: event => audits.push(event), now: 200,
+    const decide = (url: string, managed = [rule], user = [rule], effect: "write" | "destructive" = "write") => evaluateOriginPolicy({
+      url, effect, action: "submit", managed, user, audit: event => audits.push(event), now: 200,
     });
     expect(decide("https://example.test/path").access).toBe("allow");
-    expect(decide("https://other.test/").access).toBe("deny");
+    // "Browse freely, confirm consequences": unruled origins are no longer a blanket deny.
+    expect(decide("https://other.test/").access).toBe("allow");
+    // Evaluation stays unreachable by default.
+    expect(decide("https://other.test/", [rule], [rule], "destructive").access).toBe("deny");
     expect(decide("javascript:alert(1)").access).toBe("deny");
     expect(decide("https://example.test/", [{ ...rule, access: "deny" }], [rule])).toMatchObject({ access: "deny", source: "managed" });
     expect(decide("https://example.test/", [rule], [{ ...rule, access: "deny" }])).toMatchObject({ access: "deny", source: "user" });
-    expect(audits).toHaveLength(5);
+    expect(audits).toHaveLength(6);
   });
 
   it("combines duplicate exact-origin rules conservatively in either order", () => {
