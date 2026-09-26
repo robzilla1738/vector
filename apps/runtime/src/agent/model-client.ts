@@ -5,6 +5,8 @@ import { DEFAULT_PLANNER_MODEL_ID, MODEL_REGISTRY, modelPickerEntries, registryC
 /** Usage of one provider round trip. Every attempt a client makes is reported, including hidden retries. */
 export interface ModelAttempt {
   durationMs: number;
+  /** Model that actually served this attempt — differs from the request on failover. */
+  modelId?: string;
   inputTokens?: number;
   outputTokens?: number;
   cachedInputTokens?: number;
@@ -17,10 +19,14 @@ export interface StructuredCallResult<T> extends ModelAttempt {
   object: T;
   /** earlier attempts inside this call that failed to parse; each is a billed model call */
   retries?: ModelAttempt[];
+  /** Model that produced `object` — the request's model unless failover rerouted. */
+  resolvedModelId?: string;
 }
 
 export interface TextCallResult extends ModelAttempt {
   text: string;
+  retries?: ModelAttempt[];
+  resolvedModelId?: string;
 }
 
 /** One model round trip in the agent loop (S5): assistant message + client-side tool calls. */
@@ -38,6 +44,10 @@ export interface ToolCallStepResult extends ModelAttempt {
   finishReason?: string;
   /** Tool calls the provider executed in-band; the loop must not re-run them. */
   providerExecuted?: string[];
+  /** Earlier billed attempts on failover candidates that failed. */
+  retries?: ModelAttempt[];
+  /** Model that served this step — the request's model unless failover rerouted. */
+  resolvedModelId?: string;
 }
 
 const ATTEMPTS = Symbol.for("aux.modelAttempts");

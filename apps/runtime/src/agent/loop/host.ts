@@ -401,10 +401,21 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     deps,
     maxSteps: Math.max(1, maxModelCalls - modelCalls),
     steerCheck: steerPending,
+    beforeModelCall: () => self.deps.checkBudget?.({ runId }),
     onStep: async ({ step }) => {
+      for (const a of step.retries ?? []) {
+        modelCalls++;
+        self.deps.recordModelCall({
+          runId, role: "agent", modelId: a.modelId ?? modelId(),
+          durationMs: a.durationMs, inputTokens: a.inputTokens, outputTokens: a.outputTokens,
+          ...(a.cachedInputTokens ? { cachedInputTokens: a.cachedInputTokens } : {}),
+          ...(a.providerMetadata ? { providerMetadata: a.providerMetadata } : {}),
+          ...(a.error ? { error: a.error } : {}),
+        });
+      }
       modelCalls++;
       self.deps.recordModelCall({
-        runId, role: "agent", modelId: modelId(),
+        runId, role: "agent", modelId: step.resolvedModelId ?? step.modelId ?? modelId(),
         durationMs: step.durationMs, inputTokens: step.inputTokens, outputTokens: step.outputTokens,
         ...(step.cachedInputTokens ? { cachedInputTokens: step.cachedInputTokens } : {}),
         ...(step.providerMetadata ? { providerMetadata: step.providerMetadata } : {}),

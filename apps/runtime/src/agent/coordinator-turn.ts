@@ -216,6 +216,7 @@ export async function structuredCall<T>(
     if (s.run.config?.contextMemoryIds?.length && references?.length !== s.run.config.contextMemoryIds.length)
       throw new AuxError("permission_denied", "A selected article is no longer available.");
     const memoryText = references?.map((item, index) => `SAVED ARTICLE ${index + 1}: ${item.title}\nSource: ${item.url}\nSaved: ${new Date(item.capturedAt).toISOString()}\n${item.text}`).join("\n\n");
+    await s.self.deps.checkBudget?.({ runId: s.runId });
     const category: AgentModelCategory = role === "final" ? "fast" : role === "repair" ? "deep" : "standard";
     const reasoning = s.self.deps.routeModel?.(category).reasoning ?? agentModelRoute(category).reasoning;
     const input = {...args, reasoning,
@@ -227,10 +228,10 @@ export async function structuredCall<T>(
         : await s.model.generateStructured<T>({ ...input, signal });
     for (const retry of call.retries ?? []) {
       s.modelCalls++;
-      recordAttempt(s, role, args.modelId, retry);
+      recordAttempt(s, role, retry.modelId ?? args.modelId, retry);
     }
     const firstDispatchAt = stream?.firstDispatchAt();
-    recordAttempt(s, role, args.modelId, {
+    recordAttempt(s, role, call.resolvedModelId ?? args.modelId, {
       ...call,
       providerMetadata:
         firstDispatchAt === undefined
@@ -242,7 +243,7 @@ export async function structuredCall<T>(
     const safe = classifyModelFailure(e);
     const attempts = attemptsOf(e);
     s.modelCalls += Math.max(0, attempts.length - 1);
-    if (attempts.length) for (const a of attempts) recordAttempt(s, role, args.modelId, a, `${safe.category}: ${safe.message}`);
+    if (attempts.length) for (const a of attempts) recordAttempt(s, role, a.modelId ?? args.modelId, a, `${safe.category}: ${safe.message}`);
     else recordAttempt(s, role, args.modelId, { durationMs: Date.now() - started }, `${safe.category}: ${safe.message}`);
     throw e;
   }

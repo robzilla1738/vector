@@ -52,6 +52,8 @@ export interface CoordinatorDeps {
   recoveryModel: () => string | undefined;
   visionModel?: () => string | undefined;
   routeModel?: (category: AgentModelCategory) => AgentModelRoute;
+  /** Pre-call user-budget gate (D11): throws permission_denied when a scope is spent. */
+  checkBudget?: (scope: { runId: string }) => void | Promise<void>;
   recordModelCall: (c: {
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";

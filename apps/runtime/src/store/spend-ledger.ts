@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { resolveDataDirectory } from "@aux/contracts/installation";
-import { modelCapabilities } from "@aux/contracts/model-registry";
+import { modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 
 const NANODOLLARS_PER_USD = 1_000_000_000;
 
@@ -35,8 +35,13 @@ export function estimatedPromptTokens(...parts: unknown[]): number {
   return Math.max(1, Math.ceil(Buffer.byteLength(parts.map(part => typeof part === "string" ? part : JSON.stringify(part) ?? "").join("\n"), "utf8") / 3));
 }
 
-export function projectedModelCostUsd(modelId: string, promptTokens: number, maxOutputTokens: number): number {
-  const model = modelCapabilities(modelId);
+export function projectedModelCostUsd(
+  modelId: string,
+  promptTokens: number,
+  maxOutputTokens: number,
+  models?: readonly ModelCapability[],
+): number {
+  const model = modelCapabilities(modelId, models);
   if (!model?.contextTokens || model.inputUsdPerMTok === undefined || model.outputUsdPerMTok === undefined) {
     throw new Error(`AI spend projection unavailable for ${modelId}; configure a priced model before calling Gateway`);
   }

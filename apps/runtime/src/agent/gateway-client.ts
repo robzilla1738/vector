@@ -14,9 +14,9 @@ import {
 import { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
-import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
+import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type AgentModelRoute, type ModelCapability } from "@aux/contracts/model-registry";
 import { extractJson } from "./json-text.js";
-import { DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult, type ToolCallStepResult } from "./model-client.js";
+import { attemptsOf, DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult, type ToolCallStepResult } from "./model-client.js";
 import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
@@ -158,8 +158,35 @@ export function gatewayOnlyForModel(modelId: string, only?: string[]): string[] 
   return allowed ? only : undefined;
 }
 
+/**
+ * Retriable-for-failover: the request never meaningfully started or the
+ * server side wedged. Walks cause/lastError chains because the SDK wraps
+ * provider errors (RetryError, GatewayError) before they reach callers.
+ */
+export function isFailoverStatus(e: unknown): boolean {
+  const seen = new Set<unknown>();
+  const visit = (v: unknown): boolean => {
+    if (!v || typeof v !== "object" || seen.has(v)) return false;
+    seen.add(v);
+    const rec = v as Record<string, unknown>;
+    const status =
+      typeof rec.statusCode === "number" ? rec.statusCode
+      : typeof rec.status === "number" ? rec.status
+      : typeof rec.responseStatusCode === "number" ? rec.responseStatusCode
+      : undefined;
+    if (status === 429 || (status !== undefined && status >= 500 && status <= 599)) return true;
+    return visit(rec.cause) || visit(rec.lastError) || visit(rec.error);
+  };
+  return visit(e);
+}
+
 /** OpenAI reasoning effort goes only to registry models that reason; others reject or ignore it. */
-export function gatewayProviderOptions(only?: string[], modelId?: string, models: readonly ModelCapability[] = MODEL_REGISTRY) {
+export function gatewayProviderOptions(
+  only?: string[],
+  modelId?: string,
+  models: readonly ModelCapability[] = MODEL_REGISTRY,
+  effort?: "low" | "medium" | "xhigh",
+) {
   const effective = modelId ? gatewayOnlyForModel(modelId, only) : only;
   const cap = modelId ? modelCapabilities(modelId, models) : undefined;
   const reasons = cap?.provider === "openai" && (cap.reasoning === "supported" || cap.reasoning === "required");
@@ -170,7 +197,7 @@ export function gatewayProviderOptions(only?: string[], modelId?: string, models
       ...(effective?.length ? { only: effective } : {}),
       ...(modelId?.endsWith("-fast") ? { speed: "fast" as const } : {}),
     },
-    ...(reasons ? { openai: { reasoningEffort: "minimal" as const } } : {}),
+    ...(reasons ? { openai: { reasoningEffort: (effort === "xhigh" ? "high" : effort ?? "minimal") as "low" | "medium" | "high" | "minimal" } } : {}),
   };
 }
 
@@ -193,21 +220,75 @@ export class GatewayModelClient implements ModelClient {
   private readonly callTimeoutMs: number;
   private readonly only: string[] | undefined;
   private readonly spendLedger: SpendLedger | undefined;
+  /** Live-catalog-fed capability list (S5.9); falls back to the bundled snapshot. */
+  private readonly registryModels: () => readonly ModelCapability[];
+  /** Route chain per requested model — runtime failover on 429/5xx (S5.9). */
+  private readonly candidatesFor: ((modelId: string) => readonly AgentModelRoute[]) | undefined;
 
-  constructor(apiKey: string, opts: { callTimeoutMs?: number; only?: string[]; model?: (id: string) => LanguageModel; spendLedger?: SpendLedger } = {}) {
+  constructor(apiKey: string, opts: {
+    callTimeoutMs?: number;
+    only?: string[];
+    model?: (id: string) => LanguageModel;
+    spendLedger?: SpendLedger;
+    models?: () => readonly ModelCapability[];
+    candidatesFor?: (modelId: string) => readonly AgentModelRoute[];
+  } = {}) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.gateway = opts.model ? undefined : createGateway({ apiKey });
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.callTimeoutMs = opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
     this.only = this.gateway && opts.only?.length ? opts.only : undefined;
     this.spendLedger = opts.spendLedger ?? (this.gateway ? new SpendLedger() : undefined);
+    this.registryModels = opts.models ?? (() => MODEL_REGISTRY);
+    this.candidatesFor = opts.candidatesFor;
+  }
+
+  private capabilities() { return this.registryModels(); }
+
+  /**
+   * Walk the route chain for `opts.modelId`: each candidate carries its own
+   * reasoning effort, and a 429/5xx advances to the next candidate. Prior
+   * candidates' billed attempts survive as `retries` on the result (or
+   * attached to a thrown error via withAttempts) so billing never loses a
+   * failover hop. A chain whose head isn't the requested model still starts
+   * at the requested candidate when it appears later in the chain.
+   */
+  private async withFailover<
+    R extends ModelAttempt & { retries?: ModelAttempt[]; resolvedModelId?: string },
+    O extends { modelId: string; reasoning?: CallOpts["reasoning"]; signal?: AbortSignal },
+  >(opts: O, invoke: (o: O) => Promise<R>): Promise<R> {
+    const chain = this.candidatesFor?.(opts.modelId) ?? [];
+    const at = chain.findIndex((c) => c.modelId === opts.modelId);
+    const seq: readonly AgentModelRoute[] =
+      at >= 0 ? chain.slice(at) : [{ modelId: opts.modelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }];
+    const prior: ModelAttempt[] = [];
+    for (let i = 0; i < seq.length; i++) {
+      const c = seq[i]!;
+      try {
+        const res = await invoke({ ...opts, modelId: c.modelId, reasoning: opts.reasoning ?? c.reasoning });
+        res.modelId = c.modelId;
+        res.resolvedModelId = c.modelId;
+        if (prior.length) res.retries = [...prior, ...(res.retries ?? [])];
+        return res;
+      } catch (e) {
+        if (opts.signal?.aborted) throw withAttempts(e, prior);
+        const billed = attemptsOf(e).map((a) => ({ ...a, modelId: a.modelId ?? c.modelId }));
+        if (i === seq.length - 1 || !isFailoverStatus(e)) throw withAttempts(e, prior);
+        prior.push(
+          ...(billed.length
+            ? billed
+            : [{ durationMs: 0, modelId: c.modelId, error: `failover: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}` }]),
+        );
+      }
+    }
+    throw new AuxError("internal", "Model failover chain exhausted without a result.");
   }
 
   private async billed<T extends { usage?: unknown; providerMetadata?: unknown }>(
     modelId: string, promptTokens: number, maxOutputTokens: number, call: () => Promise<T>,
   ): Promise<T> {
     if (!this.spendLedger) return call();
-    const reservation = this.spendLedger.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, promptTokens, maxOutputTokens));
+    const reservation = this.spendLedger.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()));
     try {
       const result = await call();
       const cost = modelCallCost(modelId, { ...usageFields(result.usage), providerMetadata: result.providerMetadata as Record<string, unknown> | undefined });
@@ -222,7 +303,7 @@ export class GatewayModelClient implements ModelClient {
   }
 
   private requireVision(modelId: string, images?: string[]) {
-    if (images?.length && !modelAcceptsImages(modelId))
+    if (images?.length && !modelAcceptsImages(modelId, this.capabilities()))
       throw new AuxError("capability_unsupported", "Choose an image-capable model to use these image references. This model accepts text only.");
   }
 
@@ -231,13 +312,17 @@ export class GatewayModelClient implements ModelClient {
       model: this.resolveModel(opts.modelId),
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
-      maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens),
+      maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
-      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId) : undefined,
+      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId, this.capabilities(), opts.reasoning as "low" | "medium" | "xhigh" | undefined) : undefined,
     };
   }
 
   async generateStructured<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
+    return this.withFailover(opts, (o) => this.generateStructuredInner(o));
+  }
+
+  private async generateStructuredInner<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const retries: ModelAttempt[] = [];
@@ -274,9 +359,13 @@ export class GatewayModelClient implements ModelClient {
    * already dispatched from the stream.
    */
   async streamStructured<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
+    return this.withFailover(opts, (o) => this.streamStructuredInner(o));
+  }
+
+  private async streamStructuredInner<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
-    const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000));
+    const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, this.capabilities()));
     const stream = streamText({
       ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
       system: `${opts.system}${schemaHint(opts.schema)}`,
@@ -348,6 +437,19 @@ export class GatewayModelClient implements ModelClient {
     maxOutputTokens?: number;
     reasoning?: CallOpts["reasoning"];
   }): Promise<TextCallResult> {
+    return this.withFailover(opts, (o) => this.generateTextInner(o));
+  }
+
+  private async generateTextInner(opts: {
+    modelId: string;
+    system?: string;
+    prompt: string;
+    imageDataUrls?: string[];
+    imageDataUrl?: string;
+    signal?: AbortSignal;
+    maxOutputTokens?: number;
+    reasoning?: CallOpts["reasoning"];
+  }): Promise<TextCallResult> {
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
@@ -375,6 +477,19 @@ export class GatewayModelClient implements ModelClient {
     maxOutputTokens?: number;
     reasoning?: CallOpts["reasoning"];
   }): Promise<ToolCallStepResult> {
+    return this.withFailover(opts, (o) => this.toolCallStepInner(o));
+  }
+
+  private async toolCallStepInner(opts: {
+    modelId: string;
+    system: string;
+    messages: ModelMessage[];
+    tools: Record<string, { description?: string; inputSchema: z.ZodType }>;
+    signal?: AbortSignal;
+    providerOptions?: Record<string, Record<string, unknown>>;
+    maxOutputTokens?: number;
+    reasoning?: CallOpts["reasoning"];
+  }): Promise<ToolCallStepResult> {
     const started = Date.now();
     const tools = Object.fromEntries(
       Object.entries(opts.tools).map(([name, spec]) => [
@@ -383,14 +498,14 @@ export class GatewayModelClient implements ModelClient {
         tool({ ...(spec.description ? { description: spec.description } : {}), inputSchema: spec.inputSchema }),
       ]),
     );
-    const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000);
+    const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000, this.capabilities());
     const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, () => generateText({
       model: this.resolveModel(opts.modelId),
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: maxOut,
       ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
-      providerOptions: { ...gatewayProviderOptions(this.only, opts.modelId), ...opts.providerOptions },
+      providerOptions: { ...gatewayProviderOptions(this.only, opts.modelId, this.capabilities(), opts.reasoning as "low" | "medium" | "xhigh" | undefined), ...opts.providerOptions },
       system: opts.system,
       messages: opts.messages,
       tools,

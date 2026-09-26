@@ -16,7 +16,7 @@ import {
   MODEL_REGISTRY,
   mergeModelCapabilities,
   agentModelRoute,
-  AgentModelRouteSchema,
+  normalizeRouteChain,
   type AgentModelCategory,
   type AgentModelRoute,
   type ModelCapability,
@@ -25,6 +25,7 @@ import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from
 import {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_PLANNER_MODEL,
+  LUNA_FAST_MODEL,
   modelCallBudget,
   type ModelClient,
 } from "../agent/model-client.js";
@@ -51,7 +52,9 @@ export interface Settings {
   plannerModel?: string;
   recoveryModel?: string;
   visionModel?: string;
-  agentModelRoutes?: Partial<Record<AgentModelCategory, AgentModelRoute>>;
+  agentModelRoutes?: Partial<Record<AgentModelCategory, AgentModelRoute | AgentModelRoute[]>>;
+  /** User budgets in USD (D11): per run, per local day, per routine lifetime. Unset = unlimited. */
+  budgets?: { runUsd?: number; dayUsd?: number; routineUsd?: number };
   searchEngine?: string;
   searchEngines?: { keyword: string; name: string; template: string }[];
   searchSuggestions?: boolean;
@@ -216,6 +219,7 @@ export class SettingsService {
         deep: this.agentRoute("deep"),
         visual: this.agentRoute("visual"),
       },
+      budgets: this.budgetLimits(),
       searchEngine: this.searchEngine(),
       searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
       searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,
@@ -380,10 +384,7 @@ export class SettingsService {
     return (this.get("visionModel") as string) || this.env.AUX_VISION_MODEL || this.plannerModel();
   }
   /** Existing model choices remain the category defaults; explicit routes can tune model and effort. */
-  agentRoute(category: AgentModelCategory): AgentModelRoute {
-    const explicit = (this.get("agentModelRoutes") as Settings["agentModelRoutes"] | undefined)?.[category];
-    const valid = AgentModelRouteSchema.safeParse(explicit);
-    if (valid.success) return valid.data;
+  private routeBaseline(category: AgentModelCategory): AgentModelRoute {
     const baseline = agentModelRoute(category);
     const modelId =
       category === "visual"
@@ -392,6 +393,41 @@ export class SettingsService {
           ? this.recoveryModel()
           : this.plannerModel();
     return { ...baseline, modelId: modelId || baseline.modelId };
+  }
+  /**
+   * Ordered candidate chain per category (S5.9): stored single route or
+   * array first, then built-in fallbacks deduped by model — every category
+   * keeps at least one alternate so a 429/5xx has somewhere to go.
+   */
+  agentRouteChain(category: AgentModelCategory): AgentModelRoute[] {
+    const stored = normalizeRouteChain(
+      (this.get("agentModelRoutes") as Settings["agentModelRoutes"] | undefined)?.[category],
+    );
+    const chain = stored.length ? stored : [this.routeBaseline(category)];
+    const seen = new Set(chain.map((r) => r.modelId));
+    for (const fb of [this.routeBaseline(category), { modelId: LUNA_FAST_MODEL, reasoning: "low" as const }, agentModelRoute(category)]) {
+      if (!seen.has(fb.modelId)) { chain.push(fb); seen.add(fb.modelId); }
+    }
+    return chain.slice(0, 4);
+  }
+  agentRoute(category: AgentModelCategory): AgentModelRoute {
+    return this.agentRouteChain(category)[0]!;
+  }
+  /** Chain for the failover wrapper: the category whose head this model routes. */
+  candidatesForModel(modelId: string): AgentModelRoute[] {
+    for (const category of ["fast", "standard", "deep", "visual"] as const) {
+      const chain = this.agentRouteChain(category);
+      if (chain[0]?.modelId === modelId) return chain;
+    }
+    return [];
+  }
+  /** Snapshot + live-catalog merged capability list, refreshed by listModels(). */
+  private mergedCatalog: readonly ModelCapability[] = MODEL_REGISTRY;
+  registryModels(): readonly ModelCapability[] { return this.mergedCatalog; }
+  budgetLimits(): { runUsd?: number; dayUsd?: number; routineUsd?: number } {
+    const b = this.get("budgets") as Settings["budgets"] | undefined;
+    const pos = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : undefined; };
+    return { runUsd: pos(b?.runUsd), dayUsd: pos(b?.dayUsd), routineUsd: pos(b?.routineUsd) };
   }
   searchEngine(): string {
     return (this.get("searchEngine") as string) ?? DEFAULT_SEARCH_ENGINE;
@@ -430,6 +466,8 @@ export class SettingsService {
       this.gatewayClient = new GatewayModelClient(key, {
         callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
         only: only?.length ? only : undefined,
+        models: () => this.mergedCatalog,
+        candidatesFor: (id) => this.candidatesForModel(id),
       });
     }
     return this.gatewayClient;
@@ -504,8 +542,9 @@ export class SettingsService {
       }
     }
     const catalog = extra.map((x) => ({ ...x, source: "catalog" as const }));
+    this.mergedCatalog = mergeModelCapabilities(MODEL_REGISTRY, catalog);
     return {
-      models: mergeModelCapabilities(MODEL_REGISTRY, catalog),
+      models: this.mergedCatalog as ModelCapability[],
       source,
     };
   }

@@ -39,6 +39,8 @@ export interface AgentLoopOptions {
   maxSteps?: number;
   /** New steer pending → stop before the next model call (or after in-flight tools). */
   steerCheck?: () => boolean;
+  /** Pre-call gate (D11 budgets): throws before the model step is billed. */
+  beforeModelCall?: () => void | Promise<void>;
   /** Called after each model step is persisted — usage/billing/reporting. */
   onStep?: (info: { index: number; step: ToolCallStepResult }) => void | Promise<void>;
   /** Called after each tool executes — status/byline reporting. */
@@ -148,6 +150,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
 
     let step;
     try {
+      await opts.beforeModelCall?.();
       step = await model.toolCallStep({
         modelId: opts.modelId,
         system,

@@ -55,7 +55,8 @@ export {
   type ModelClient,
 } from "./agent/model-client.js";
 export type { ToolCallStepResult, ToolStepToolCall } from "./agent/model-client.js";
-export { GatewayModelClient } from "./agent/gateway-client.js";
+export { GatewayModelClient, isFailoverStatus } from "./agent/gateway-client.js";
+export { BudgetsService, dayStartMs, type BudgetLimits, type BudgetStatus } from "./services/budgets.js";
 export {
   SpendLedger,
   spendLedgerPath,

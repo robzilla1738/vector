@@ -560,6 +560,8 @@ export class RunService {
     operations?: import("./operations.js").OperationService;
     durableWrites?: DurableWriteLedger;
     pageClaims?: PageClaimStore;
+    /** User budgets per run/day/routine (D11) — pre-call gate in the coordinator + loop host. */
+    budgets?: import("./budgets.js").BudgetsService;
     /** S5 tool-loop backends (decide()-gated web tools) — main.ts wires them. */
     agentLoop?: import("../agent/loop/host.js").AgentLoopHostDeps;
     tracer?: {
@@ -599,6 +601,7 @@ export class RunService {
       recoveryModel: () => deps.settings.agentRoute("deep").modelId,
       visionModel: () => deps.settings.agentRoute("visual").modelId,
       routeModel: category => deps.settings.agentRoute(category),
+      checkBudget: async ({ runId }) => deps.budgets?.assertWithin({ runId }),
       recordModelCall: (c) => this.recordModelCall(c),
       // step recording is unified in PageService.recordStep (wired in main.ts)
       // — every execution, agent or program, lands in the same step ledger

@@ -41,6 +41,19 @@ export const AgentModelRouteSchema = z.object({
   reasoning: z.enum(["low", "medium", "xhigh"]),
 }).strict();
 export type AgentModelRoute = z.infer<typeof AgentModelRouteSchema>;
+/**
+ * Settings value per category: one route or an ordered candidate chain.
+ * Each candidate carries its own reasoning effort; runtime failover walks
+ * the chain on 429/5xx (S5 deliverable 9).
+ */
+export const AgentModelRouteChainSchema = z.union([AgentModelRouteSchema, z.array(AgentModelRouteSchema).min(1).max(8)]);
+export type AgentModelRouteChain = z.infer<typeof AgentModelRouteChainSchema>;
+export const AgentModelRoutesSettingSchema = z.record(AgentModelCategorySchema, AgentModelRouteChainSchema);
+export function normalizeRouteChain(value: unknown): AgentModelRoute[] {
+  const parsed = AgentModelRouteChainSchema.safeParse(value);
+  if (!parsed.success) return [];
+  return Array.isArray(parsed.data) ? parsed.data : [parsed.data];
+}
 
 /** One Contributor model for every role; only effort changes by default. */
 export const DEFAULT_AGENT_MODEL_ROUTES: Readonly<Record<AgentModelCategory, AgentModelRoute>> = {

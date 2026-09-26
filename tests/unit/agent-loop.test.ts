@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { AuxError } from "@aux/contracts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -260,6 +261,18 @@ describe("runAgentLoop (S5)", () => {
     const bare = {} as Pick<import("@aux/runtime").ModelClient, "toolCallStep">;
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model: bare });
     expect(outcome).toMatchObject({ kind: "failed" });
+  });
+
+  it("beforeModelCall gates the step — a spent budget fails the run without billing a call", async () => {
+    const { transcript } = fixture();
+    const model = new MockModelClient().scriptToolSteps([{ text: "unreached" }]);
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript),
+      model,
+      beforeModelCall: () => { throw new AuxError("permission_denied", "The user-set run budget is spent."); },
+    });
+    expect(outcome).toMatchObject({ kind: "failed", error: { code: "permission_denied" } });
+    expect(transcript.count("run-1")).toBe(0); // no assistant step was billed or persisted
   });
 });
 

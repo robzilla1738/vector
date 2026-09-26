@@ -46,6 +46,7 @@ import { PageService, type DriverSet } from "./services/pages.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
 import { SubagentService } from "./services/subagents.js";
+import { BudgetsService } from "./services/budgets.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
 import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
@@ -693,6 +694,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
   };
 
+  // User budgets per run/day/routine (D11): limits from settings, actuals
+  // from the model_calls ledger — the coordinator and loop host gate each
+  // model call through this before spending.
+  const budgets = new BudgetsService(repo.db, () => settings.budgetLimits());
+
   const runs = new RunService({
     repo,
     events,
@@ -710,6 +716,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     operations,
     durableWrites,
     pageClaims,
+    budgets,
     agentLoop,
   });
 
